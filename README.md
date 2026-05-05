@@ -1,4 +1,4 @@
-# hermes-rig
+# hermes-machines
 
 > An agent with a body that writes its own code.
 
@@ -30,13 +30,13 @@ A fully-loaded [Hermes Agent](https://github.com/NousResearch/hermes-agent) depl
 
 ## Shoutouts
 
-Huge thanks to [`dedalus-labs/openclaw-demo`](https://github.com/dedalus-labs/openclaw-demo) and [`AgentWings/hermes-agent-ddls`](https://github.com/AgentWings/hermes-agent-ddls) for the inspiration — both showed the path: provision a machine, install the agent, point it at Dedalus as the OpenAI provider. `hermes-rig` grows that pattern into a fuller deployment with the Cursor SDK as a delegation surface, kevin-wiki skills as the knowledge base, scheduled cron automations, a Reticle-styled chat UI, and a complete lifecycle CLI.
+Huge thanks to [`dedalus-labs/openclaw-demo`](https://github.com/dedalus-labs/openclaw-demo) and [`AgentWings/hermes-agent-ddls`](https://github.com/AgentWings/hermes-agent-ddls) for the inspiration — both showed the path: provision a machine, install the agent, point it at Dedalus as the OpenAI provider. `hermes-machines` grows that pattern into a fuller deployment with the Cursor SDK as a delegation surface, kevin-wiki skills as the knowledge base, scheduled cron automations, a Reticle-styled chat UI, and a complete lifecycle CLI.
 
 ## Quick start
 
 ```bash
-git clone https://github.com/Kevin-Liu-01/hermes-rig
-cd hermes-rig
+git clone https://github.com/Kevin-Liu-01/hermes-machines
+cd hermes-machines
 cp .env.example .env
 # paste your DEDALUS_API_KEY into .env
 
@@ -189,7 +189,7 @@ You only `npm run destroy` when you mean it.
 ## File layout
 
 ```
-hermes-rig/
+hermes-machines/
 ├── README.md                 (this file)
 ├── package.json              (cli scripts + deps)
 ├── .env.example

@@ -16,7 +16,7 @@ TypeScript everywhere except the host-agent (Rust). Next.js 15 App Router, Tailw
 
 ## Current focus
 
-Dedalus DCS (Dedalus Cloud Services): host-agent, dhv microVMs, controlplane, machines API, dashboard. Building the agent infrastructure layer that people will run on top of. Also: hermes-rig (this repo), Sigil UI design system, recurring blog drafts about agent infra.
+Dedalus DCS (Dedalus Cloud Services): host-agent, dhv microVMs, controlplane, machines API, dashboard. Building the agent infrastructure layer that people will run on top of. Also: hermes-machines (this repo), Sigil UI design system, recurring blog drafts about agent infra.
 
 ## People
 

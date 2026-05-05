@@ -1,5 +1,5 @@
 {
-  "name": "hermes-rig",
+  "name": "hermes-machines",
   "version": "0.1.0",
   "private": true,
   "description": "Hermes Agent on Dedalus Machines with kevin-wiki skills + Cursor SDK delegation",

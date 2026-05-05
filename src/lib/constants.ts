@@ -17,7 +17,7 @@ export const VM_BRIDGE_DROP = `${VM_HOME}/.cursor-bridge-payload.tar.gz`;
 
 export const VM_KNOWLEDGE_DROP = `${VM_HOME}/.knowledge-payload.tar.gz`;
 export const VM_GATEWAY_LOG = `${VM_HERMES_HOME}/logs/gateway.log`;
-export const VM_DEPLOY_MARKER = `${VM_HERMES_HOME}/.hermes-rig-version`;
+export const VM_DEPLOY_MARKER = `${VM_HERMES_HOME}/.hermes-machines-version`;
 
 /** Hermes API server (OpenAI-compatible) port. */
 export const PORT_API = 8642;

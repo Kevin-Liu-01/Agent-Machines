@@ -7,7 +7,7 @@ export function HeroBlock() {
 		<div className="grid items-start gap-12 md:grid-cols-[1.4fr_1fr]">
 			<div>
 				<div className="flex flex-wrap items-center gap-2">
-					<ReticleLabel>HERMES RIG</ReticleLabel>
+					<ReticleLabel>HERMES MACHINES</ReticleLabel>
 					<ReticleBadge variant="accent">v0.1</ReticleBadge>
 					<ReticleBadge>dedalus machines</ReticleBadge>
 				</div>
@@ -25,7 +25,7 @@ export function HeroBlock() {
 				<div className="mt-7 flex flex-wrap gap-3">
 					<ReticleButton
 						as="a"
-						href="https://github.com/Kevin-Liu-01/hermes-rig"
+						href="https://github.com/Kevin-Liu-01/hermes-machines"
 						target="_blank"
 						variant="primary"
 					>
