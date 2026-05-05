@@ -7,19 +7,19 @@
   },
   {
     "name": "daily-wiki-digest",
-    "schedule": "every 1d at 09:00",
+    "schedule": "0 9 * * *",
     "prompt": "Look at /home/machine/.hermes/MEMORY.md and any wiki content available locally. Summarize the most important pieces of context I should keep in active memory today in 5 bullets or fewer. Update MEMORY.md only if you find a new pattern worth saving.",
     "skills": ["agent-ethos"]
   },
   {
     "name": "weekly-skill-audit",
-    "schedule": "every 1d at 04:00",
+    "schedule": "0 4 * * mon",
     "prompt": "Audit my skills folder at ~/.hermes/skills. For each skill, verify the description still matches the body. Flag any skills that are stale, duplicated, or drift from their declared description. Output a JSON array of {name, issue} entries; empty array if all clean.",
     "skills": ["plan-mode-review"]
   },
   {
     "name": "nightly-memory-consolidation",
-    "schedule": "every 1d at 03:00",
+    "schedule": "0 3 * * *",
     "prompt": "Read MEMORY.md and USER.md. Consolidate redundant entries, merge similar facts, and prune anything stale. Keep both files within their character limits (2200 / 1375). Do not invent new facts; only reorganize what already exists.",
     "skills": ["agent-ethos"]
   }

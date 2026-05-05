@@ -35,32 +35,56 @@ import {
 } from "../lib/machine.js";
 import { probeApi, generateApiServerKey } from "../lib/api.js";
 import { dim, header, info, phase, success, warn } from "../lib/progress.js";
+import { startQuickTunnel } from "../lib/tunnel.js";
 
 function repoRoot(): string {
 	const here = fileURLToPath(import.meta.url);
 	return resolve(here, "..", "..", "..");
 }
 
-async function ensurePreview(args: {
+type ExposureResult = { url: string; via: "preview" | "cloudflared" };
+
+/**
+ * Try the Dedalus preview first (cleanest URL, integrated with the platform).
+ * Fall back to a cloudflared trycloudflare quick tunnel when the org doesn't
+ * have a preview hostname suffix configured (returns 503 from the API).
+ */
+async function exposePort(args: {
 	client: ReturnType<typeof makeClient>;
 	machineId: string;
 	port: number;
-}): Promise<string> {
-	const existing = await args.client.machines.previews.list({
-		machine_id: args.machineId,
-	});
-	const match = existing.items?.find(
-		(p) => p.port === args.port && p.status === "ready",
-	);
-	if (match?.url) return match.url;
+	name: string;
+}): Promise<ExposureResult> {
+	try {
+		const list = await args.client.machines.previews.list({
+			machine_id: args.machineId,
+		});
+		const match = list.items?.find(
+			(p) => p.port === args.port && p.status === "ready",
+		);
+		if (match?.url) return { url: match.url, via: "preview" };
 
-	const created = await args.client.machines.previews.create({
-		machine_id: args.machineId,
+		const created = await args.client.machines.previews.create({
+			machine_id: args.machineId,
+			port: args.port,
+			protocol: "http",
+			visibility: "public",
+		});
+		if (created.url) return { url: created.url, via: "preview" };
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err);
+		if (!message.includes("preview hostname suffix")) throw err;
+		warn(
+			"  Dedalus previews are not configured for this org. Falling back to Cloudflare quick tunnel.",
+		);
+	}
+	const tunnel = await startQuickTunnel({
+		client: args.client,
+		machineId: args.machineId,
 		port: args.port,
-		protocol: "http",
-		visibility: "public",
+		name: args.name,
 	});
-	return created.url ?? "";
+	return { url: tunnel.url, via: "cloudflared" };
 }
 
 export async function deploy(): Promise<void> {
@@ -97,6 +121,16 @@ export async function deploy(): Promise<void> {
 		return ready.machine_id;
 	});
 
+	// Save state right after provisioning so a bootstrap failure doesn't orphan
+	// the machine — re-running deploy will resume against the same VM.
+	saveState({
+		machineId,
+		apiServerKey,
+		deployedAt: new Date().toISOString(),
+		deployVersion: DEPLOY_VERSION,
+		model: config.model,
+	});
+
 	await runBootstrap({
 		client,
 		machineId,
@@ -105,14 +139,26 @@ export async function deploy(): Promise<void> {
 		repoRoot: repoRoot(),
 	});
 
-	const apiPreviewUrl = await phase(
-		`Expose API on public preview (port ${PORT_API})`,
-		() => ensurePreview({ client, machineId, port: PORT_API }),
+	const apiExposure = await phase(
+		`Expose API publicly (port ${PORT_API})`,
+		() => exposePort({ client, machineId, port: PORT_API, name: "api" }),
 	);
-	const dashboardPreviewUrl = await phase(
-		`Expose dashboard on public preview (port ${PORT_DASHBOARD})`,
-		() => ensurePreview({ client, machineId, port: PORT_DASHBOARD }),
-	);
+	const apiPreviewUrl = apiExposure.url;
+	info(`  via ${apiExposure.via}`);
+
+	let dashboardPreviewUrl = "";
+	try {
+		const dashExposure = await phase(
+			`Expose dashboard publicly (port ${PORT_DASHBOARD})`,
+			() =>
+				exposePort({ client, machineId, port: PORT_DASHBOARD, name: "dash" }),
+		);
+		dashboardPreviewUrl = dashExposure.url;
+		info(`  via ${dashExposure.via}`);
+	} catch (err) {
+		const message = err instanceof Error ? err.message : String(err);
+		warn(`  dashboard exposure skipped: ${message.slice(0, 200)}`);
+	}
 
 	const state: MachineState = {
 		machineId,

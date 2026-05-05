@@ -174,9 +174,12 @@ You only `npm run destroy` when you mean it.
 - Heredocs (`cat << 'EOF'`) are unreliable through the execution API. Use base64 + `printf` for any multi-line content.
 - The root filesystem is small (~2.4 GB, 60-70% used). Pin `HOME`, `UV_CACHE_DIR`, and the venv to `/home/machine` or installs `ENOSPC`.
 - Guest agent needs ~5s after `phase=running` before the first exec succeeds (`503` otherwise).
-- `hermes setup-hermes.sh` expects a TTY; the deploy bypasses it with direct `uv pip install hermes-agent`.
-- Hermes API server only binds publicly with `API_SERVER_HOST=0.0.0.0` AND a non-empty `API_SERVER_KEY`. We generate a random one.
-- `hermes web` needs `--insecure` to bind to `0.0.0.0`. We pass it explicitly because the dashboard relies on a session token, not network ACLs.
+- `hermes-agent` is **not on PyPI**; install via `uv pip install 'hermes-agent[web] @ git+https://github.com/NousResearch/hermes-agent.git@main'`. The `[web]` extra is needed for `hermes dashboard` (FastAPI + uvicorn).
+- Hermes config keys: use `model.provider: custom`, `model.base_url`, `model.api_key`, and `model.default` (just the model name). The older `providers.openai.*` keys are silently ignored on current Hermes.
+- Model slug for `model.default` must match Dedalus's catalog exactly. List via `curl https://api.dedaluslabs.ai/v1/models`. Use hyphenated slugs (`anthropic/claude-sonnet-4-6`), not dotted (`claude-sonnet-4.6`).
+- The gateway only reads config at startup. Always restart it after `hermes config set`. We do this by killing the gateway via `ps + awk + xargs kill` (avoids `pkill -f` matching its own argv).
+- `setsid foo & disown` doesn't fully detach inside the execution API. Use `(setsid ${launcher} </dev/null &>/dev/null &)` to push it into a subshell that exits immediately.
+- Dedalus public previews require a hostname suffix configured at the org level. When unconfigured, the API returns 503; we fall back to a free Cloudflare quick tunnel (`*.trycloudflare.com`).
 
 ## File layout
 

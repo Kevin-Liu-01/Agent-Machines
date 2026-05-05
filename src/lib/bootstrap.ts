@@ -45,6 +45,14 @@ export type BootstrapInput = {
 };
 
 async function systemDeps({ client, machineId }: BootstrapInput): Promise<void> {
+	// `/home/machine` should pre-exist on Dedalus dev machines, but a fresh
+	// reboot or volume recycle can leave the root fs in a state where we have
+	// to recreate it. mkdir -p is cheap and idempotent.
+	await exec(
+		client,
+		machineId,
+		`mkdir -p ${VM_HOME} ${VM_LOCAL_BIN} ${VM_UV_CACHE} ${VM_HERMES_HOME}/logs`,
+	);
 	if (await check(client, machineId, `command -v curl && command -v git && command -v gcc`)) {
 		dim("  apt deps already present");
 		return;
@@ -77,14 +85,17 @@ async function installUv({ client, machineId }: BootstrapInput): Promise<void> {
 }
 
 async function installHermes({ client, machineId }: BootstrapInput): Promise<void> {
+	// Both the binary AND the [web] extra (fastapi) need to be present.
+	// Old base-only installs from earlier deploy versions need a re-install.
 	if (
 		await check(
 			client,
 			machineId,
-			`${SHELL_ENV} && [ -x ${VM_VENV}/bin/hermes ] && hermes --version`,
+			`${SHELL_ENV} && [ -x ${VM_VENV}/bin/hermes ] && hermes --version >/dev/null && ` +
+				`${VM_VENV}/bin/python -c 'import fastapi'`,
 		)
 	) {
-		dim("  hermes already installed");
+		dim("  hermes + web extra already installed");
 		return;
 	}
 	if (
@@ -97,18 +108,30 @@ async function installHermes({ client, machineId }: BootstrapInput): Promise<voi
 		await exec(
 			client,
 			machineId,
-			`${SHELL_ENV} && uv venv ${VM_VENV} --python 3.11 2>&1 | tail -5`,
+			`${SHELL_ENV} && uv venv ${VM_VENV} --python 3.11 2>&1 | tail -3`,
 			{ timeoutMs: 180_000 },
 		);
 	}
+	// Wipe any prior failed clone so a partial repo state from an earlier run
+	// doesn't poison the install. uv resolves the git ref + clones + installs
+	// in one optimized step.
+	await exec(client, machineId, `rm -rf ${VM_HOME}/hermes-agent-src`);
+	// Install with the [web] extra so `hermes dashboard` works (pulls FastAPI
+	// + uvicorn — about 5 MB). We deliberately avoid [all] which would pull
+	// Playwright/Chromium (~250 MB) and ElevenLabs/Modal/Daytona deps we
+	// don't need for an API + dashboard + cron deployment.
 	await exec(
 		client,
 		machineId,
 		`${SHELL_ENV} && uv pip install --python ${VM_VENV}/bin/python ` +
-			"'hermes-agent' 2>&1 | tail -10",
+			`'hermes-agent[web] @ git+https://github.com/NousResearch/hermes-agent.git@main' 2>&1 | tail -8`,
 		{ timeoutMs: 900_000 },
 	);
-	await exec(client, machineId, `${SHELL_ENV} && hermes --version`);
+	await exec(
+		client,
+		machineId,
+		`${SHELL_ENV} && [ -x ${VM_VENV}/bin/hermes ] && hermes --version`,
+	);
 }
 
 async function seedKnowledge({
@@ -133,10 +156,26 @@ async function seedKnowledge({
 
 async function configureHermes(input: BootstrapInput): Promise<void> {
 	const { client, machineId, config, apiServerKey } = input;
+	// Strip the optional "openai:" prefix from the model spec — Hermes's
+	// `model.default` wants just the model name (e.g. "anthropic/claude-sonnet-4.5").
+	const modelName = config.model.startsWith("openai:")
+		? config.model.slice("openai:".length)
+		: config.model;
+	// Reset the config so stale `providers.*` keys from earlier deploy
+	// versions don't shadow the new `model.*` keys.
+	await exec(
+		client,
+		machineId,
+		`${SHELL_ENV} && rm -f ${VM_HERMES_HOME}/config.yaml`,
+	);
 	const settings: Array<[string, string]> = [
-		["providers.openai.api_key", config.apiKey],
-		["providers.openai.base_url", config.chatBaseUrl],
-		["model", config.model],
+		// Use `provider: custom` to point at any OpenAI-compatible endpoint.
+		// Per hermes_cli/runtime_provider.py, when provider=custom the runtime
+		// honors model.base_url + model.api_key and won't fall back to OpenRouter.
+		["model.provider", "custom"],
+		["model.base_url", config.chatBaseUrl],
+		["model.api_key", config.apiKey],
+		["model.default", modelName],
 		["first_run_complete", "true"],
 		["display.streaming", "true"],
 		["display.tool_progress", "all"],
@@ -175,38 +214,61 @@ async function configureHermes(input: BootstrapInput): Promise<void> {
 }
 
 async function seedCronJobs({ client, machineId }: BootstrapInput): Promise<void> {
-	const seedFile = `${VM_HERMES_HOME}/cron/seed.json`;
+	// Hermes itself owns ${VM_HERMES_HOME}/cron/ (singular, scheduler state).
+	// Our knowledge tarball drops the seed file at crons/seed.json (plural)
+	// to avoid colliding with that directory.
+	const seedFile = `${VM_HERMES_HOME}/crons/seed.json`;
 	if (!(await check(client, machineId, `[ -f ${seedFile} ]`))) {
 		dim("  no cron seed file, skipping");
 		return;
 	}
-	if (await check(client, machineId, `[ -f ${VM_HERMES_HOME}/cron/.seeded ]`)) {
+	if (await check(client, machineId, `[ -f ${VM_HERMES_HOME}/crons/.seeded ]`)) {
 		dim("  cron seed already applied");
 		return;
 	}
+	// Write the seeder script to a real file so we can avoid escape-hell with
+	// quoted python -c. Heredocs are unreliable through the execution API
+	// (per the AgentWings notes), so we use a one-line printf chain instead.
+	const seederScript = `${VM_HERMES_HOME}/crons/seed.py`;
+	const seederBody = [
+		"import json, subprocess",
+		`with open("${seedFile}") as f: jobs = json.load(f)`,
+		"for job in jobs:",
+		"    cmd = [\"hermes\", \"cron\", \"create\", job[\"schedule\"], job[\"prompt\"], \"--name\", job[\"name\"]]",
+		"    for s in job.get(\"skills\", []): cmd += [\"--skill\", s]",
+		"    r = subprocess.run(cmd, capture_output=True, text=True)",
+		"    out = (r.stdout or r.stderr).strip()[:200]",
+		'    print("[" + str(r.returncode) + "] " + job["name"] + ": " + out)',
+	].join("\\n");
+	await exec(
+		client,
+		machineId,
+		`printf '%b' '${seederBody}' > ${seederScript}`,
+	);
 	const stdout = await execOut(
 		client,
 		machineId,
-		`${SHELL_ENV} && python3 -c '\n` +
-			"import json, subprocess, sys\n" +
-			`with open("${seedFile}") as f: jobs = json.load(f)\n` +
-			'for job in jobs:\n' +
-			'    cmd = ["hermes", "cron", "create", job["schedule"], job["prompt"], "--name", job["name"]]\n' +
-			'    for s in job.get("skills", []): cmd += ["--skill", s]\n' +
-			'    r = subprocess.run(cmd, capture_output=True, text=True)\n' +
-			'    print(f"[{r.returncode}] {job[\\"name\\"]}: {(r.stdout or r.stderr).strip()[:200]}")\n' +
-			"'",
+		`${SHELL_ENV} && python3 ${seederScript}`,
 		{ timeoutMs: 120_000 },
 	);
 	if (stdout) dim(stdout.split("\n").slice(0, 6).map((l) => `  ${l}`).join("\n"));
-	await exec(client, machineId, `touch ${VM_HERMES_HOME}/cron/.seeded`);
+	await exec(client, machineId, `touch ${VM_HERMES_HOME}/crons/.seeded`);
 }
 
 async function startGateway({ client, machineId }: BootstrapInput): Promise<void> {
-	if (await check(client, machineId, `ss -tlnp | grep ':${PORT_API}'`)) {
-		dim(`  gateway already bound on :${PORT_API}`);
-		return;
-	}
+	// Always restart: the gateway only reads config at process startup, so
+	// any config or .env change made earlier in this bootstrap run won't
+	// take effect until we recycle. The cost is ~10s; the alternative is
+	// the user wondering why their model setting silently doesn't apply.
+	//
+	// `pkill -f` matches its own /proc/PID/cmdline, so we filter through
+	// `ps + grep -v grep + awk + xargs kill` to avoid killing the bash that
+	// runs the kill itself.
+	await exec(
+		client,
+		machineId,
+		`ps -eo pid,cmd | awk '/${VM_VENV.replace(/\//g, "\\/")}\\/bin\\/hermes gateway/ && !/awk/ && !/bash/ {print $1}' | xargs -r kill 2>/dev/null; sleep 3; true`,
+	);
 	const startScript = `${VM_HOME}/start-gateway.sh`;
 	const startScriptContent = [
 		"#!/bin/bash",
@@ -226,7 +288,7 @@ async function startGateway({ client, machineId }: BootstrapInput): Promise<void
 	await exec(
 		client,
 		machineId,
-		`setsid ${startScript} </dev/null &>/dev/null & disown && sleep 12`,
+		`(setsid ${startScript} </dev/null &>/dev/null &) && sleep 12`,
 	);
 	if (!(await check(client, machineId, `ss -tlnp | grep ':${PORT_API}'`))) {
 		const tail = await execOut(client, machineId, `tail -50 ${VM_GATEWAY_LOG} || true`);
@@ -248,7 +310,7 @@ async function startDashboard({ client, machineId }: BootstrapInput): Promise<vo
 		`export VIRTUAL_ENV=${VM_VENV}`,
 		`export PATH=${VM_LOCAL_BIN}:${VM_VENV}/bin:$PATH`,
 		`mkdir -p ${VM_HERMES_HOME}/logs`,
-		`exec hermes web --host 0.0.0.0 --port ${PORT_DASHBOARD} --no-open --insecure >> ${dashLog} 2>&1`,
+		`exec hermes dashboard --host 0.0.0.0 --port ${PORT_DASHBOARD} --no-open --insecure >> ${dashLog} 2>&1`,
 	].join("\\n");
 	await exec(
 		client,
@@ -258,10 +320,12 @@ async function startDashboard({ client, machineId }: BootstrapInput): Promise<vo
 	await exec(
 		client,
 		machineId,
-		`setsid ${startScript} </dev/null &>/dev/null & disown && sleep 8`,
+		`(setsid ${startScript} </dev/null &>/dev/null &) && sleep 10`,
 	);
 	if (!(await check(client, machineId, `ss -tlnp | grep ':${PORT_DASHBOARD}'`))) {
-		dim(`  dashboard did not bind on :${PORT_DASHBOARD} (skipping; non-fatal)`);
+		const tail = await execOut(client, machineId, `tail -20 ${dashLog} 2>/dev/null || echo "(no log)"`);
+		dim(`  dashboard did not bind on :${PORT_DASHBOARD} (non-fatal):`);
+		dim(tail.split("\n").slice(0, 5).map((l) => `    ${l}`).join("\n"));
 	}
 }
 

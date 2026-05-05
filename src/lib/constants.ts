@@ -29,10 +29,10 @@ export const STATE_FILE = ".machine-state.json";
 export const DEPLOY_VERSION = "1.0.0";
 
 export const DEFAULTS = {
-	vcpu: 2,
-	memoryMib: 4096,
-	storageGib: 20,
-	model: "openai:anthropic/claude-sonnet-4.5",
+	vcpu: 1,
+	memoryMib: 2048,
+	storageGib: 10,
+	model: "anthropic/claude-sonnet-4-6",
 	dedalusBaseUrl: "https://dcs.dedaluslabs.ai",
 	dedalusChatBaseUrl: "https://api.dedaluslabs.ai/v1",
 } as const;
