@@ -4,8 +4,8 @@
  * Reticle / Sigil design tokens.
  *
  * The aesthetic: structural visibility. Grid lines, margin rails, and cross
- * marks at intersections. Components consume only `var(--ret-*)` — never raw
- * hex values — so swapping a theme means swapping these tokens.
+ * marks at intersections. Components consume only `var(--ret-*)` -- never raw
+ * hex values -- so swapping a theme means swapping these tokens.
  */
 
 :root {

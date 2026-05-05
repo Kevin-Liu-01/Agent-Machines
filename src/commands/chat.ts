@@ -1,5 +1,5 @@
 /**
- * `npm run chat -- "your message"` — single-turn streaming chat against the
+ * `npm run chat -- "your message"` -- single-turn streaming chat against the
  * deployed Hermes API. Falls back to stdin when no positional message is given.
  *
  * This goes through the public preview URL using the OpenAI-compatible
@@ -33,7 +33,7 @@ export async function chat(args: string[]): Promise<void> {
 		process.exit(1);
 	}
 
-	header(`hermes — ${state.model}`);
+	header(`hermes -- ${state.model}`);
 	console.log(`> ${message}\n`);
 
 	try {

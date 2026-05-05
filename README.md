@@ -2,7 +2,7 @@
 
 > An agent with a body that writes its own code.
 
-A fully-loaded [Hermes Agent](https://github.com/NousResearch/hermes-agent) deployed onto a [Dedalus Machine](https://docs.dedaluslabs.ai/dcs) — exposing an OpenAI-compatible chat API, a web dashboard, a bundled skill library, scheduled cron automations, a polished Next.js chat UI built on the Reticle / Sigil design system, and the [Cursor TypeScript SDK](https://cursor.com/docs/sdk/typescript) wired in as an MCP tool so the agent can spawn real coding agents that inherit the rig's conventions as `.cursor/rules`. Drop your own skills in to swap any of it for your own opinions.
+A fully-loaded [Hermes Agent](https://github.com/NousResearch/hermes-agent) deployed onto a [Dedalus Machine](https://docs.dedaluslabs.ai/dcs) -- exposing an OpenAI-compatible chat API, a web dashboard, a bundled skill library, scheduled cron automations, a polished Next.js chat UI built on the Reticle / Sigil design system, and the [Cursor TypeScript SDK](https://cursor.com/docs/sdk/typescript) wired in as an MCP tool so the agent can spawn real coding agents that inherit the rig's conventions as `.cursor/rules`. Drop your own skills in to swap any of it for your own opinions.
 
 ```
                           [ you @ npm run chat ]
@@ -30,7 +30,7 @@ A fully-loaded [Hermes Agent](https://github.com/NousResearch/hermes-agent) depl
 
 ## Shoutouts
 
-Huge thanks to [`dedalus-labs/openclaw-demo`](https://github.com/dedalus-labs/openclaw-demo) and [`AgentWings/hermes-agent-ddls`](https://github.com/AgentWings/hermes-agent-ddls) for the inspiration — both showed the path: provision a machine, install the agent, point it at Dedalus as the OpenAI provider. `hermes-machines` grows that pattern into a fuller deployment with the Cursor SDK as a delegation surface, a bundled skill library as the knowledge base, scheduled cron automations, a Reticle-styled chat UI, and a complete lifecycle CLI.
+Huge thanks to [`dedalus-labs/openclaw-demo`](https://github.com/dedalus-labs/openclaw-demo) and [`AgentWings/hermes-agent-ddls`](https://github.com/AgentWings/hermes-agent-ddls) for the inspiration -- both showed the path: provision a machine, install the agent, point it at Dedalus as the OpenAI provider. `hermes-machines` grows that pattern into a fuller deployment with the Cursor SDK as a delegation surface, a bundled skill library as the knowledge base, scheduled cron automations, a Reticle-styled chat UI, and a complete lifecycle CLI.
 
 ## Quick start
 
@@ -55,7 +55,7 @@ After ~6-10 minutes (most of which is `uv pip install hermes-agent`), you get:
   Quick chat:     npm run chat -- "Say hi in one sentence."
 ```
 
-Optional: set `CURSOR_API_KEY` in `.env` (from [cursor.com/dashboard/integrations](https://cursor.com/dashboard/integrations)) to enable the `cursor_agent` MCP tool — without it the rest of the agent works fine, only delegating code work to a Cursor agent will fail with a clear error.
+Optional: set `CURSOR_API_KEY` in `.env` (from [cursor.com/dashboard/integrations](https://cursor.com/dashboard/integrations)) to enable the `cursor_agent` MCP tool -- without it the rest of the agent works fine, only delegating code work to a Cursor agent will fail with a clear error.
 
 State is recorded in `.machine-state.json` (gitignored). Subsequent CLI commands reuse the same machine.
 
@@ -85,7 +85,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3210](http://localhost:3210). Or deploy to Vercel — same env vars, same surface.
+Open [http://localhost:3210](http://localhost:3210). Or deploy to Vercel -- same env vars, same surface.
 
 ## What ships into the machine
 
@@ -93,8 +93,8 @@ Open [http://localhost:3210](http://localhost:3210). Or deploy to Vercel — sam
 
 ```
 knowledge/
-├── SOUL.md          # persona — direct, surgeon-not-painter, no emoji
-├── USER.md          # operator profile — placeholder; the agent fills this in
+├── SOUL.md          # persona -- direct, surgeon-not-painter, no emoji
+├── USER.md          # operator profile -- placeholder; the agent fills this in
 ├── MEMORY.md        # what the agent knows about its environment
 ├── AGENTS.md        # operating principles (loaded into system prompt)
 ├── crons/
@@ -115,7 +115,7 @@ knowledge/
     └── cursor-coding/SKILL.md
 ```
 
-Replace these with your own opinions to retune the rig — every file in `knowledge/` is just markdown.
+Replace these with your own opinions to retune the rig -- every file in `knowledge/` is just markdown.
 
 Edit any of these and run `npm run reload` to push them onto the live machine without re-bootstrapping.
 
@@ -143,7 +143,7 @@ Plus four MCP tools from the bundled `cursor-bridge` (Cursor TypeScript SDK):
 
 | Tool | What it does |
 |------|--------------|
-| `cursor_agent` | Spawn a Cursor coding agent against a working directory. Same model that runs in the Cursor IDE — full file/terminal access, codebase semantic search, lints. Pass `load_skills: ["agent-ethos", "git-workflow", ...]` to inject Hermes skills as `.cursor/rules` for the run. |
+| `cursor_agent` | Spawn a Cursor coding agent against a working directory. Same model that runs in the Cursor IDE -- full file/terminal access, codebase semantic search, lints. Pass `load_skills: ["agent-ethos", "git-workflow", ...]` to inject Hermes skills as `.cursor/rules` for the run. |
 | `cursor_resume` | Continue a previous Cursor agent by ID. Retains full conversation context. |
 | `cursor_list_skills` | List local Hermes skills available for `load_skills` injection. |
 | `cursor_models` | Enumerate models the configured `CURSOR_API_KEY` can use. |
@@ -158,7 +158,7 @@ Sleep / wake is the loop. Sleep stops per-second billing while preserving the pe
 
 ```bash
 npm run sleep    # ↓ pause
-npm run wake     # ↑ resume — same skills, memory, sessions, port bindings
+npm run wake     # ↑ resume -- same skills, memory, sessions, port bindings
 ```
 
 You only `npm run destroy` when you mean it.
@@ -184,7 +184,7 @@ You only `npm run destroy` when you mean it.
 - The gateway only reads config at startup. Always restart it after `hermes config set`. We do this by killing the gateway via `ps + awk + xargs kill` (avoids `pkill -f` matching its own argv).
 - `setsid foo & disown` doesn't fully detach inside the execution API. Use `(setsid ${launcher} </dev/null &>/dev/null &)` to push it into a subshell that exits immediately.
 - Dedalus public previews require a hostname suffix configured at the org level. When unconfigured, the API returns 503; we fall back to a free Cloudflare quick tunnel (`*.trycloudflare.com`).
-- Wake/sleep/admit/purge are gated by HMAC signing in the controlplane. The public Dedalus SDK doesn't sign, so a self-slept machine can't be woken via the SDK — clear `.machine-state.json` and provision a fresh one (the bootstrap is idempotent and re-seeds knowledge from local files).
+- Wake/sleep/admit/purge are gated by HMAC signing in the controlplane. The public Dedalus SDK doesn't sign, so a self-slept machine can't be woken via the SDK -- clear `.machine-state.json` and provision a fresh one (the bootstrap is idempotent and re-seeds knowledge from local files).
 - The MCP subprocess inherits a minimal `PATH` from the gateway. Use absolute `/home/machine/node/bin/node` in `mcp_servers.<name>.command`, not bare `node`, or the bridge fails with `No such file or directory` even when the binary exists.
 
 ## File layout

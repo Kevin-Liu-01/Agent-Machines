@@ -1,5 +1,5 @@
 /**
- * `npm run wake` — resume a sleeping machine and re-bind the gateway.
+ * `npm run wake` -- resume a sleeping machine and re-bind the gateway.
  *
  * After wake, the root filesystem is fresh (apt deps gone), but /home/machine
  * persists, so the venv + Hermes + skills + sessions DB are all intact. We
@@ -30,7 +30,7 @@ export async function wake(): Promise<void> {
 	const config = loadConfig();
 	const client = makeClient(config);
 
-	header(`Wake — ${state.machineId}`);
+	header(`Wake -- ${state.machineId}`);
 	const machine = await getMachine(client, state.machineId);
 	const ready = await wakeMachine(client, machine);
 	info(`machine running (phase: ${ready.status.phase})`);

@@ -1,6 +1,6 @@
 ---
 name: empirical-verification
-description: "Scientific method for software. Use when debugging, reviewing surprising behavior, or before claiming code works — always tether assumptions to reality with a small experiment."
+description: "Scientific method for software. Use when debugging, reviewing surprising behavior, or before claiming code works -- always tether assumptions to reality with a small experiment."
 version: 1.0.0
 author: Kevin Liu
 license: MIT
@@ -16,7 +16,7 @@ metadata:
 
 ## The process
 
-When you believe something about how code behaves, devise a hypothesis and test it. Write a small script. Add a log statement. Run the debugger. If the empirics match your expectation, proceed. If they do not, you have found a bug, a misconception, or a premature assumption — investigate.
+When you believe something about how code behaves, devise a hypothesis and test it. Write a small script. Add a log statement. Run the debugger. If the empirics match your expectation, proceed. If they do not, you have found a bug, a misconception, or a premature assumption -- investigate.
 
 ## Search before invent
 
@@ -30,7 +30,7 @@ Quick fixes become permanent fixtures. The shortcut you take today becomes the c
 
 ## Verify before ship
 
-The pattern is simple: do not guess when you can verify. A distinguished engineer does not assume they remember how an API works — they check. Especially true for security code, payments, and external services.
+The pattern is simple: do not guess when you can verify. A distinguished engineer does not assume they remember how an API works -- they check. Especially true for security code, payments, and external services.
 
 ## Quality measurement
 

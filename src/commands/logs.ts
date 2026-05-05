@@ -1,5 +1,5 @@
 /**
- * `npm run logs` — print the last N lines of the Hermes gateway log.
+ * `npm run logs` -- print the last N lines of the Hermes gateway log.
  *
  * Pass `-n 200` (or any number) to widen the window. Default is 80 lines,
  * which is enough to see the most recent agent turn and any tool errors.
@@ -28,7 +28,7 @@ export async function logs(args: string[]): Promise<void> {
 	const config = loadConfig();
 	const client = makeClient(config);
 
-	header(`Last ${lines} lines — ${VM_GATEWAY_LOG}`);
+	header(`Last ${lines} lines -- ${VM_GATEWAY_LOG}`);
 	const tail = await execOut(
 		client,
 		state.machineId,

@@ -1,6 +1,6 @@
 # cursor-bridge
 
-An MCP server that exposes the [Cursor TypeScript SDK](https://cursor.com/docs/sdk/typescript) as tools Hermes Agent can call. Lets Hermes spawn real Cursor coding agents — full file access, terminal, repo awareness, the same agent that runs in the Cursor IDE — from any conversation, using Hermes skills as the operating manual.
+An MCP server that exposes the [Cursor TypeScript SDK](https://cursor.com/docs/sdk/typescript) as tools Hermes Agent can call. Lets Hermes spawn real Cursor coding agents -- full file access, terminal, repo awareness, the same agent that runs in the Cursor IDE -- from any conversation, using Hermes skills as the operating manual.
 
 ## What it exposes
 

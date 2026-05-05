@@ -1,5 +1,5 @@
 /**
- * `npm run shell` — print the `dedalus ssh` invocation for the current machine.
+ * `npm run shell` -- print the `dedalus ssh` invocation for the current machine.
  *
  * We don't try to spawn ssh ourselves because the Dedalus CLI handles guest
  * key trust, retry on `SSH_GUEST_CONNECT_FAILED`, and tunnel setup. This just

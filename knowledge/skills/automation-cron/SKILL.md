@@ -24,8 +24,8 @@ Hermes accepts both natural language and crontab syntax:
 "every 1d at 09:00"
 "daily at 04:00"
 "every monday at 09:00"
-"0 9 * * *"           # crontab — daily at 09:00 UTC
-"30 */4 * * *"        # crontab — every 4 hours at :30
+"0 9 * * *"           # crontab -- daily at 09:00 UTC
+"30 */4 * * *"        # crontab -- every 4 hours at :30
 ```
 
 ## Creating a job
@@ -89,10 +89,10 @@ Cron-run sessions cannot themselves create more cron jobs. Hermes disables `cron
 
 These ship with the deployment and run automatically:
 
-- **Hourly health check** — verify the API server is responsive, restart the gateway if not.
-- **Daily wiki digest** — summarize what changed in `~/Documents/GitHub/my-wiki` and post to chat.
-- **Weekly skill audit** — review my own skills folder, flag stale or duplicated entries.
-- **Nightly memory consolidation** — fold redundant entries in MEMORY.md, prune to fit the character limit.
+- **Hourly health check** -- verify the API server is responsive, restart the gateway if not.
+- **Daily wiki digest** -- summarize what changed in `~/Documents/GitHub/my-wiki` and post to chat.
+- **Weekly skill audit** -- review my own skills folder, flag stale or duplicated entries.
+- **Nightly memory consolidation** -- fold redundant entries in MEMORY.md, prune to fit the character limit.
 
 ## When I propose a new cron
 

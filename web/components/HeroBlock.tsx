@@ -18,7 +18,7 @@ export function HeroBlock() {
 				</h1>
 				<p className="mt-5 max-w-[58ch] text-base leading-relaxed text-[var(--ret-text-dim)] md:text-lg">
 					Hermes Agent on a Dedalus microVM. Shell, browser, file access,
-					scheduled crons, a bundled skill library — and when you ask for
+					scheduled crons, a bundled skill library -- and when you ask for
 					real code, it spawns a Cursor agent with the rig's skills wired in
 					as <code className="rounded border border-[var(--ret-border)] bg-[var(--ret-surface)] px-1 font-mono text-[0.85em]">.cursor/rules</code>. Talk to it here. It remembers.
 				</p>

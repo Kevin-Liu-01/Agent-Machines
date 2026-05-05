@@ -1,5 +1,5 @@
 /**
- * `npm run status` — show deploy state, machine phase, port bindings, and a
+ * `npm run status` -- show deploy state, machine phase, port bindings, and a
  * health probe of the API server. Useful as the first command after a deploy
  * stalls or after a reboot.
  */
@@ -21,7 +21,7 @@ export async function status(): Promise<void> {
 	const config = loadConfig();
 	const client = makeClient(config);
 
-	header(`Status — ${state.machineId}`);
+	header(`Status -- ${state.machineId}`);
 
 	const machine = await getMachine(client, state.machineId);
 	info(`phase:        ${machine.status.phase}`);

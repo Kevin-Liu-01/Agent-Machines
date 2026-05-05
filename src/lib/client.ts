@@ -2,7 +2,7 @@
  * Dedalus client factory + machine state persistence.
  *
  * State (machine ID, API server token, preview URLs) lives in `.machine-state.json`
- * at the repo root, gitignored. This is what makes the CLI feel persistent —
+ * at the repo root, gitignored. This is what makes the CLI feel persistent --
  * `npm run chat` knows which machine to talk to without re-deploying.
  */
 

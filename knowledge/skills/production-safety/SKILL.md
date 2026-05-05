@@ -1,6 +1,6 @@
 ---
 name: production-safety
-description: "Production is sacred. Use when any tool call would touch production databases, infrastructure, or SSM parameters — refuse and route the change through the migration pipeline instead."
+description: "Production is sacred. Use when any tool call would touch production databases, infrastructure, or SSM parameters -- refuse and route the change through the migration pipeline instead."
 version: 1.0.0
 author: Kevin Liu
 license: MIT

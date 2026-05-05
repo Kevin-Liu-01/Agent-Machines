@@ -2,7 +2,7 @@
  * Machine lifecycle helpers: create, find, wait, sleep, wake, destroy.
  *
  * The deploy command treats machines as cattle when there's no state file,
- * but as pets once one is recorded — so a re-deploy reuses the same machine
+ * but as pets once one is recorded -- so a re-deploy reuses the same machine
  * (waking it from sleep if needed) instead of provisioning a fresh one.
  */
 

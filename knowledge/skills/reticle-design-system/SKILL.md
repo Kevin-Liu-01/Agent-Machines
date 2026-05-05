@@ -1,6 +1,6 @@
 ---
 name: reticle-design-system
-description: "Reticle/Sigil design system reference. Use when generating UI for a project that uses this design system — provides token names, layout primitives (margins, gutters, crosses), typography, and component patterns. Drop in your own design-system skill to replace it."
+description: "Reticle/Sigil design system reference. Use when generating UI for a project that uses this design system -- provides token names, layout primitives (margins, gutters, crosses), typography, and component patterns. Drop in your own design-system skill to replace it."
 version: 1.0.0
 author: Kevin Liu
 license: MIT

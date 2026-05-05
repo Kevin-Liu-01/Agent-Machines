@@ -1,5 +1,5 @@
 /**
- * Health probe — used by the chat UI to render an "agent online" badge before
+ * Health probe -- used by the chat UI to render an "agent online" badge before
  * the user sends a message. We hit /v1/models because that's the cheapest
  * upstream call that requires a valid bearer token.
  */

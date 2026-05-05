@@ -1,5 +1,5 @@
 /**
- * `npm run sleep` — sleep the machine to pause billing while preserving state.
+ * `npm run sleep` -- sleep the machine to pause billing while preserving state.
  *
  * Sleep keeps the persistent volume (skills, sessions DB, venv, config) intact.
  * Wake brings it back exactly as it was. This is the cheap-mode for a Hermes
@@ -20,7 +20,7 @@ export async function sleep(): Promise<void> {
 	const config = loadConfig();
 	const client = makeClient(config);
 
-	header(`Sleep — ${state.machineId}`);
+	header(`Sleep -- ${state.machineId}`);
 	const machine = await getMachine(client, state.machineId);
 	if (machine.status.phase !== "running") {
 		info(`already ${machine.status.phase}; nothing to do`);

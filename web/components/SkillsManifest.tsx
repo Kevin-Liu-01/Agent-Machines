@@ -8,13 +8,13 @@ const SKILLS: ReadonlyArray<{
 	purpose: string;
 }> = [
 	{ name: "agent-ethos", category: "philosophy", purpose: "minimal-fix coding, hard line/file/PR limits" },
-	{ name: "empirical-verification", category: "philosophy", purpose: "scientific method — verify before claiming" },
+	{ name: "empirical-verification", category: "philosophy", purpose: "scientific method -- verify before claiming" },
 	{ name: "taste-output", category: "philosophy", purpose: "no skeleton stubs, no // TODO, no truncation" },
 	{ name: "git-workflow", category: "engineering", purpose: "git switch, worktrees, conventional commits, force-with-lease" },
-	{ name: "production-safety", category: "engineering", purpose: "production is sacred — refuse direct DDL or SSM edits" },
+	{ name: "production-safety", category: "engineering", purpose: "production is sacred -- refuse direct DDL or SSM edits" },
 	{ name: "plan-mode-review", category: "engineering", purpose: "structured architecture/quality/test/perf checklist" },
 	{ name: "security-audit", category: "engineering", purpose: "CTF-style adversarial review with reproducible findings" },
-	{ name: "frontend-design-taste", category: "design", purpose: "anti-slop UI rules — bans the AI default aesthetics" },
+	{ name: "frontend-design-taste", category: "design", purpose: "anti-slop UI rules -- bans the AI default aesthetics" },
 	{ name: "reticle-design-system", category: "design", purpose: "Reticle/Sigil tokens, layout primitives, components" },
 	{ name: "automation-cron", category: "ops", purpose: "schedule recurring agent tasks via the cronjob tool" },
 	{ name: "computer-use", category: "ops", purpose: "Playwright browser_* patterns and stop-conditions" },
@@ -27,7 +27,7 @@ export function SkillsManifest() {
 		<>
 			<div className="flex items-end justify-between gap-4">
 				<div>
-					<ReticleLabel>SKILLS — BUNDLED LIBRARY</ReticleLabel>
+					<ReticleLabel>SKILLS -- BUNDLED LIBRARY</ReticleLabel>
 					<h2 className="mt-3 text-2xl font-semibold tracking-tight md:text-3xl">
 						Loaded into{" "}
 						<span className="font-mono text-[var(--ret-purple)]">~/.hermes/skills/</span>
@@ -50,7 +50,7 @@ export function SkillsManifest() {
 			</div>
 
 			<p className="mt-4 max-w-prose text-sm text-[var(--ret-text-dim)]">
-				Replace any of these with your own opinions —{" "}
+				Replace any of these with your own opinions --{" "}
 				<code className="rounded border border-[var(--ret-border)] bg-[var(--ret-surface)] px-1 font-mono text-[0.85em]">
 					knowledge/skills/&lt;name&gt;/SKILL.md
 				</code>{" "}

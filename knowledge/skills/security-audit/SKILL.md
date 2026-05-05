@@ -12,7 +12,7 @@ metadata:
 
 # Security Audit
 
-Adversarial code review against a real attacker model. The goal is to find a real bug — not to write a generic security checklist. Each finding must include a working repro or a path the attacker would take.
+Adversarial code review against a real attacker model. The goal is to find a real bug -- not to write a generic security checklist. Each finding must include a working repro or a path the attacker would take.
 
 ## Trust boundaries
 

@@ -61,7 +61,7 @@ export default function HomePage() {
 					id="chat"
 					contentClassName="px-6 pt-12 pb-16"
 				>
-					<ReticleLabel>LIVE — talk to the deployed agent</ReticleLabel>
+					<ReticleLabel>LIVE -- talk to the deployed agent</ReticleLabel>
 					<h2 className="mt-3 text-2xl font-semibold tracking-tight md:text-3xl">
 						Chat
 					</h2>

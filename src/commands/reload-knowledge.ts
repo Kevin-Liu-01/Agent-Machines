@@ -1,5 +1,5 @@
 /**
- * `npm run reload` — re-upload the local knowledge/ folder onto the machine.
+ * `npm run reload` -- re-upload the local knowledge/ folder onto the machine.
  *
  * Useful when you edit a SKILL.md, MEMORY.md, or cron seed locally and want
  * the deployed agent to pick up the new content without a full re-bootstrap.
@@ -30,7 +30,7 @@ export async function reloadKnowledge(): Promise<void> {
 	const config = loadConfig();
 	const client = makeClient(config);
 
-	header(`Reload knowledge — ${state.machineId}`);
+	header(`Reload knowledge -- ${state.machineId}`);
 
 	await phase("Re-upload knowledge folder", async () => {
 		await uploadKnowledge(

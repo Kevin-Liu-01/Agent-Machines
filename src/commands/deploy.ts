@@ -1,5 +1,5 @@
 /**
- * `npm run deploy` — provision (or wake), bootstrap, and expose a Hermes Agent.
+ * `npm run deploy` -- provision (or wake), bootstrap, and expose a Hermes Agent.
  *
  * The deploy is idempotent in three layers:
  *   1. State file. If a machine ID is recorded, we wake it instead of creating.
@@ -93,7 +93,7 @@ export async function deploy(): Promise<void> {
 	const existing = loadState();
 	const apiServerKey = existing?.apiServerKey ?? generateApiServerKey();
 
-	header("Hermes Persistent — deploy");
+	header("Hermes Persistent -- deploy");
 	info(
 		`Model: ${config.model}  ·  vCPU ${config.vcpu}  ·  ${config.memoryMib} MiB  ·  ${config.storageGib} GiB`,
 	);
@@ -122,7 +122,7 @@ export async function deploy(): Promise<void> {
 	});
 
 	// Save state right after provisioning so a bootstrap failure doesn't orphan
-	// the machine — re-running deploy will resume against the same VM.
+	// the machine -- re-running deploy will resume against the same VM.
 	saveState({
 		machineId,
 		apiServerKey,

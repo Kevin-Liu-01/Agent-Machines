@@ -63,11 +63,11 @@ EOF
 
 ## Pre-commit checklist
 
-1. `git status -sb` — review staged + unstaged changes.
-2. `git diff` — eyeball every hunk.
-3. `git add -p` — stage precisely; split unrelated hunks across commits.
+1. `git status -sb` -- review staged + unstaged changes.
+2. `git diff` -- eyeball every hunk.
+3. `git add -p` -- stage precisely; split unrelated hunks across commits.
 4. `pnpm typecheck && pnpm lint && pnpm test` (or the project's equivalent).
-5. `git commit -m "..."` — Conventional, ≤72 chars.
+5. `git commit -m "..."` -- Conventional, ≤72 chars.
 
 ## Never
 

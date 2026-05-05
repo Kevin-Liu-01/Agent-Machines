@@ -32,7 +32,7 @@ export function CronSection() {
 		<>
 			<div className="flex flex-wrap items-end justify-between gap-3">
 				<div>
-					<ReticleLabel>CRON — PRE-SEEDED AUTOMATIONS</ReticleLabel>
+					<ReticleLabel>CRON -- PRE-SEEDED AUTOMATIONS</ReticleLabel>
 					<h2 className="mt-3 text-2xl font-semibold tracking-tight md:text-3xl">
 						Always-on, even when you're not
 					</h2>

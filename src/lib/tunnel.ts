@@ -4,7 +4,7 @@
  *
  * `cloudflared tunnel --url http://localhost:8642` creates a free, anonymous
  * `*.trycloudflare.com` URL that proxies to the local port. No Cloudflare
- * account required. Ephemeral — regenerated on every start, which is fine
+ * account required. Ephemeral -- regenerated on every start, which is fine
  * for a development demo.
  *
  * We install cloudflared into ~/.local/bin, start it via setsid, scrape the

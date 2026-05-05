@@ -4,14 +4,14 @@
  * already done, so re-running `npm run deploy` is cheap and safe.
  *
  * Phases (in order):
- *   1. systemDeps      — apt: curl, git, build-essential, ca-certs
- *   2. installUv       — uv into /home/machine/.local/bin
- *   3. installHermes   — Python 3.11 venv + `uv pip install hermes-agent`
- *   4. seedKnowledge   — tarball the local knowledge/ folder into ~/.hermes/
- *   5. configureHermes — set provider, model, API server, knowledge paths
- *   6. seedCronJobs    — create the scheduled automations from knowledge/crons
- *   7. startGateway    — `hermes gateway` in setsid background, binds 8642
- *   8. startDashboard  — `hermes web` in setsid background, binds 9119
+ *   1. systemDeps      -- apt: curl, git, build-essential, ca-certs
+ *   2. installUv       -- uv into /home/machine/.local/bin
+ *   3. installHermes   -- Python 3.11 venv + `uv pip install hermes-agent`
+ *   4. seedKnowledge   -- tarball the local knowledge/ folder into ~/.hermes/
+ *   5. configureHermes -- set provider, model, API server, knowledge paths
+ *   6. seedCronJobs    -- create the scheduled automations from knowledge/crons
+ *   7. startGateway    -- `hermes gateway` in setsid background, binds 8642
+ *   8. startDashboard  -- `hermes web` in setsid background, binds 9119
  */
 
 import { resolve } from "node:path";
@@ -93,7 +93,7 @@ async function installUv({ client, machineId }: BootstrapInput): Promise<void> {
 async function installHermes({ client, machineId }: BootstrapInput): Promise<void> {
 	// Three things need to be present: the binary, the [web] extra (fastapi
 	// for `hermes dashboard`), and the [mcp] extra (the upstream `mcp` Python
-	// package — Hermes loads `mcp_servers` from config.yaml only when this
+	// package -- Hermes loads `mcp_servers` from config.yaml only when this
 	// import succeeds; without it MCP support is a silent no-op).
 	if (
 		await check(
@@ -165,7 +165,7 @@ async function seedKnowledge({
 
 async function configureHermes(input: BootstrapInput): Promise<void> {
 	const { client, machineId, config, apiServerKey } = input;
-	// Strip the optional "openai:" prefix from the model spec — Hermes's
+	// Strip the optional "openai:" prefix from the model spec -- Hermes's
 	// `model.default` wants just the model name (e.g. "anthropic/claude-sonnet-4.5").
 	const modelName = config.model.startsWith("openai:")
 		? config.model.slice("openai:".length)
@@ -413,7 +413,7 @@ async function registerCursorMcp(input: BootstrapInput): Promise<void> {
 		dim("  CURSOR_API_KEY not set; cursor_agent tool will refuse calls until set");
 	}
 	// Hermes reads ~/.hermes/config.yaml at startup. We yaml-rewrite the file
-	// in place via a Python helper that we write to disk first — inlining it
+	// in place via a Python helper that we write to disk first -- inlining it
 	// via `python3 -c` and `printf '%b'` collides with the bash single-quote
 	// boundary because the Python uses single-quoted literals too.
 	const scriptPath = `${VM_HERMES_HOME}/.register-cursor-mcp.py`;
@@ -423,7 +423,7 @@ async function registerCursorMcp(input: BootstrapInput): Promise<void> {
 		"data = yaml.safe_load(open(p).read()) if os.path.exists(p) else {}",
 		"data.setdefault(\"mcp_servers\", {})",
 		"data[\"mcp_servers\"][\"cursor\"] = {",
-		// Absolute node path — the gateway subprocess inherits a minimal
+		// Absolute node path -- the gateway subprocess inherits a minimal
 		// PATH that doesn't include /home/machine/node/bin, so `command: node`
 		// would 'No such file or directory' even though the binary exists.
 		`    \"command\": ${JSON.stringify(`${VM_NODE_DIR}/bin/node`)},`,

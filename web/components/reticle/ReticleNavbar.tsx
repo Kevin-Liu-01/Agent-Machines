@@ -7,7 +7,7 @@ type Props = {
 	className?: string;
 };
 
-/** Inline navbar — assumes it's inside a ReticlePageGrid content column. */
+/** Inline navbar -- assumes it's inside a ReticlePageGrid content column. */
 export function ReticleNavbar({ children, className }: Props) {
 	return (
 		<nav

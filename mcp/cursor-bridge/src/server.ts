@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * cursor-bridge — an MCP server that exposes the Cursor SDK as Hermes tools.
+ * cursor-bridge -- an MCP server that exposes the Cursor SDK as Hermes tools.
  *
  * Hermes spawns this process via stdio and gets four tools:
  *   - cursor_agent       : run a Cursor agent against a local working dir
@@ -86,7 +86,7 @@ function injectSkills(args: {
 		const skillPath = join(SKILLS_DIR, name, "SKILL.md");
 		if (!existsSync(skillPath)) continue;
 		const body = readFileSync(skillPath, "utf8");
-		// Strip the YAML frontmatter — it's metadata for Hermes, not for the
+		// Strip the YAML frontmatter -- it's metadata for Hermes, not for the
 		// model. The first H1 in the body becomes the section header.
 		const stripped = body.replace(/^---[\s\S]*?---\s*/m, "").trim();
 		sections.push(`## skill: ${name}`, "", stripped, "");
@@ -264,8 +264,8 @@ server.registerTool(
 		title: "Spawn a Cursor coding agent",
 		description: [
 			"Spin up a Cursor coding agent against a local working directory and run one prompt.",
-			"Use when the user asks for actual code changes — refactors, bug fixes, new features,",
-			"repo-level work — that benefit from full file/terminal access and iterative tool calls.",
+			"Use when the user asks for actual code changes -- refactors, bug fixes, new features,",
+			"repo-level work -- that benefit from full file/terminal access and iterative tool calls.",
 			"For pure-discussion answers stay in Hermes; for code that ships, hand off to Cursor.",
 			"",
 			"Pass `load_skills` to inherit Hermes skill conventions (e.g. agent-ethos, git-workflow).",

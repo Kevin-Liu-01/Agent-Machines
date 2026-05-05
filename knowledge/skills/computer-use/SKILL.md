@@ -17,7 +17,7 @@ Hermes ships with a `browser_*` toolset backed by Playwright. I can navigate, cl
 ## Workflow
 
 1. **Observe before acting.** Always call `browser_snapshot` first. Don't click on guesses.
-2. **Refs are sticky.** A snapshot returns refs you can pass to `browser_click(ref=...)`. Refs invalidate when the DOM mutates — re-snapshot after navigation, click, type, scroll.
+2. **Refs are sticky.** A snapshot returns refs you can pass to `browser_click(ref=...)`. Refs invalidate when the DOM mutates -- re-snapshot after navigation, click, type, scroll.
 3. **One deliberate step, then verify.** After a click that should change state, snapshot again. After a navigate, wait briefly then snapshot. Don't chain four actions and hope.
 4. **Stop after 4 failed attempts.** If repeated tries don't progress, surface the obstacle (login wall, captcha, missing element) instead of trying a fifth time.
 
@@ -57,4 +57,4 @@ Don't improvise more clicks; the user makes the call.
 
 ## Console + network
 
-`browser_console_messages` and `browser_network_requests` give me the page's JS errors and HTTP traffic. Useful for diagnosing "the button does nothing" — usually it does something, just throws or returns 500.
+`browser_console_messages` and `browser_network_requests` give me the page's JS errors and HTTP traffic. Useful for diagnosing "the button does nothing" -- usually it does something, just throws or returns 500.

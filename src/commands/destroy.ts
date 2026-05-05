@@ -1,5 +1,5 @@
 /**
- * `npm run destroy` — permanently delete the machine and clear local state.
+ * `npm run destroy` -- permanently delete the machine and clear local state.
  *
  * Requires `--yes` to actually fire so a stray autocomplete doesn't nuke a
  * deployment with hours of accumulated skills + memory.
@@ -25,7 +25,7 @@ export async function destroy(args: string[]): Promise<void> {
 	const config = loadConfig();
 	const client = makeClient(config);
 
-	header(`Destroy — ${state.machineId}`);
+	header(`Destroy -- ${state.machineId}`);
 	const machine = await getMachine(client, state.machineId);
 	await destroyMachine(client, machine);
 	clearState();

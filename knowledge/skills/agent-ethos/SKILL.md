@@ -1,6 +1,6 @@
 ---
 name: agent-ethos
-description: "Minimal-fix coding philosophy. Use when writing or reviewing any code change — favors deletions, hard line/file/PR limits, and elegance over cleverness."
+description: "Minimal-fix coding philosophy. Use when writing or reviewing any code change -- favors deletions, hard line/file/PR limits, and elegance over cleverness."
 version: 1.0.0
 author: Kevin Liu
 license: MIT

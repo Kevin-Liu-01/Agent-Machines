@@ -1,6 +1,6 @@
 ---
 name: taste-output
-description: "Output completeness enforcement. Use whenever generating code, configs, docs, or any artifact — bans placeholder patterns, partial outputs, and skeleton stubs presented as full implementations."
+description: "Output completeness enforcement. Use whenever generating code, configs, docs, or any artifact -- bans placeholder patterns, partial outputs, and skeleton stubs presented as full implementations."
 version: 1.0.0
 author: Kevin Liu
 license: MIT
@@ -9,7 +9,7 @@ metadata:
     tags: [output, completeness, anti-slop]
 ---
 
-# Taste — Output Completeness
+# Taste -- Output Completeness
 
 Override default LLM truncation behavior. When asked for code, generate complete code. When asked for a config, generate a complete config. Don't abridge.
 
@@ -45,7 +45,7 @@ Never silently abridge. Never stub the second half. Never paraphrase code with c
 
 Two options, in order:
 
-1. **Refactor for size.** Propose splitting the file into smaller modules and ship those instead. (This usually applies — files > 500 lines are likely architecture problems.)
+1. **Refactor for size.** Propose splitting the file into smaller modules and ship those instead. (This usually applies -- files > 500 lines are likely architecture problems.)
 2. **Two-pass output.** Ship the first half, ask the user to confirm, then ship the second half. Don't try to cram with abridgments.
 
 ## When I show diffs

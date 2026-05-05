@@ -1,6 +1,6 @@
 ---
 name: frontend-design-taste
-description: "Anti-slop frontend rules. Use when generating UI code, reviewing components, or deciding visual direction — bans the AI-default aesthetics and enforces variance, taste, and motion discipline."
+description: "Anti-slop frontend rules. Use when generating UI code, reviewing components, or deciding visual direction -- bans the AI-default aesthetics and enforces variance, taste, and motion discipline."
 version: 1.0.0
 author: Kevin Liu
 license: MIT
@@ -12,7 +12,7 @@ metadata:
 
 # Frontend Design Taste
 
-The default LLM aesthetic — centered hero with blur blobs, three equal cards, AI purple gradients, glassmorphism on white — is generic. This skill is the override.
+The default LLM aesthetic -- centered hero with blur blobs, three equal cards, AI purple gradients, glassmorphism on white -- is generic. This skill is the override.
 
 ## Variance dials
 
@@ -89,7 +89,7 @@ Stagger children: `staggerChildren` in Motion or CSS `animation-delay: calc(var(
 
 ## Output completeness
 
-Banned: `// ...`, `// TODO`, `// implement here`, "for brevity", skeleton functions presented as full implementations. If a generation hits a token limit, split it deterministically across multiple file outputs — never abridge.
+Banned: `// ...`, `// TODO`, `// implement here`, "for brevity", skeleton functions presented as full implementations. If a generation hits a token limit, split it deterministically across multiple file outputs -- never abridge.
 
 ## Pre-ship taste check
 
@@ -100,4 +100,4 @@ Banned: `// ...`, `// TODO`, `// implement here`, "for brevity", skeleton functi
 - [ ] Spring physics on interactive animations
 - [ ] Staggered reveals on lists/grids
 - [ ] Mobile collapse for high-variance layouts
-- [ ] No `h-screen` — only `min-h-[100dvh]`
+- [ ] No `h-screen` -- only `min-h-[100dvh]`

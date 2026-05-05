@@ -10,7 +10,7 @@ const CAPABILITIES: ReadonlyArray<{
 	{
 		kicker: "DELEGATION",
 		title: "Spawns Cursor coding agents",
-		body: "When you ask for real code changes — refactor, bug fix, new feature — Hermes hands off to a Cursor agent via the cursor_agent MCP tool. Same model that runs in the Cursor IDE, full file access, with my skills injected as .cursor/rules.",
+		body: "When you ask for real code changes -- refactor, bug fix, new feature -- Hermes hands off to a Cursor agent via the cursor_agent MCP tool. Same model that runs in the Cursor IDE, full file access, with my skills injected as .cursor/rules.",
 		notes: ["cursor_agent", "@cursor/sdk", "load_skills", ".cursor/rules/from-hermes.mdc"],
 	},
 	{
@@ -46,7 +46,7 @@ const CAPABILITIES: ReadonlyArray<{
 	{
 		kicker: "API",
 		title: "OpenAI-compatible endpoint",
-		body: "Hermes exposes /v1/chat/completions, /v1/responses, /v1/models. Open WebUI, LobeChat, ChatBox — anything that speaks OpenAI works as a frontend.",
+		body: "Hermes exposes /v1/chat/completions, /v1/responses, /v1/models. Open WebUI, LobeChat, ChatBox -- anything that speaks OpenAI works as a frontend.",
 		notes: ["/v1/chat/completions", "Bearer auth", "SSE streaming"],
 	},
 ];

@@ -12,7 +12,7 @@ metadata:
 
 # Plan-Mode Review Checklist
 
-A structured review pass that catches issues before they ship. Walk through each section in order. A finding in section 1 invalidates everything in sections 2-4 — don't review code that isn't the right code.
+A structured review pass that catches issues before they ship. Walk through each section in order. A finding in section 1 invalidates everything in sections 2-4 -- don't review code that isn't the right code.
 
 ## 1. Architecture
 

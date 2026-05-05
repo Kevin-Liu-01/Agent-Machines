@@ -11,14 +11,14 @@ metadata:
 
 # Dedalus Machines (DCS)
 
-This Hermes Agent runs inside a Dedalus Machine — a Firecracker microVM provisioned by Dedalus Cloud Services (DCS). Knowing how the runtime works lets me reason about my own state, costs, and recovery paths.
+This Hermes Agent runs inside a Dedalus Machine -- a Firecracker microVM provisioned by Dedalus Cloud Services (DCS). Knowing how the runtime works lets me reason about my own state, costs, and recovery paths.
 
 ## Architecture summary
 
 - Each machine is a microVM with isolated kernel, vCPU, memory, and disk. Process model: one Dedalus Hypervisor (DHV) process per machine.
 - The host-agent exposes a ConnectRPC API on port 18080 that the controlplane uses to manage VMs.
 - vCPU and memory hotplug is supported via ACPI GED + virtio-mem.
-- Local migration uses fd passing over Unix sockets — sub-millisecond.
+- Local migration uses fd passing over Unix sockets -- sub-millisecond.
 - Persistent storage is at `/home/machine` (this is what survives sleep/wake). Root filesystem resets on wake.
 
 ## Lifecycle phases
@@ -72,7 +72,7 @@ Anything written elsewhere (e.g. `/tmp`, `/etc`) is gone after wake.
 ## Public surfaces
 
 - **Port 8642**: Hermes API server, OpenAI-compatible. Reachable via Dedalus preview URL. Auth: bearer token = `API_SERVER_KEY` from `~/.hermes/.env`.
-- **Port 9119**: Hermes web dashboard (FastAPI + React SPA). Reachable via Dedalus preview URL. `--insecure` because the dashboard does not require auth — only the API server does.
+- **Port 9119**: Hermes web dashboard (FastAPI + React SPA). Reachable via Dedalus preview URL. `--insecure` because the dashboard does not require auth -- only the API server does.
 - **Port 18790** (optional): MCP server, if started.
 
 ## SDK touchpoints
@@ -103,13 +103,13 @@ const p = await client.machines.previews.create({
 
 ## Common operational issues
 
-- `SSH_GUEST_CONNECT_FAILED` — guest sshd not yet ready. Retry after ~10s.
-- `execution_runner_prepare_failed` — vsock path; retry. Persistent across machines means degraded environment.
-- `ENOSPC` during install — root fs is small; redirect `HOME`, `UV_CACHE_DIR`, venv to `/home/machine`.
-- `EADDRINUSE` on 8642 — duplicate gateway. `pkill -f 'hermes gateway' && /home/machine/start-gateway.sh`.
-- `machine_not_routable` — sleeping or destroyed. Check phase first.
-- `503` on first exec — wait 5s after `phase=running`.
+- `SSH_GUEST_CONNECT_FAILED` -- guest sshd not yet ready. Retry after ~10s.
+- `execution_runner_prepare_failed` -- vsock path; retry. Persistent across machines means degraded environment.
+- `ENOSPC` during install -- root fs is small; redirect `HOME`, `UV_CACHE_DIR`, venv to `/home/machine`.
+- `EADDRINUSE` on 8642 -- duplicate gateway. `pkill -f 'hermes gateway' && /home/machine/start-gateway.sh`.
+- `machine_not_routable` -- sleeping or destroyed. Check phase first.
+- `503` on first exec -- wait 5s after `phase=running`.
 
 ## When the user asks me about this VM
 
-Run `hermes doctor` first. Then check the gateway log (`tail ~/.hermes/logs/gateway.log`). Then check port bindings (`ss -tlnp`). Don't speculate — empirics first.
+Run `hermes doctor` first. Then check the gateway log (`tail ~/.hermes/logs/gateway.log`). Then check port bindings (`ss -tlnp`). Don't speculate -- empirics first.

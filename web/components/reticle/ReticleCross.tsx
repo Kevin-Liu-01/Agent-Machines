@@ -12,7 +12,7 @@ type Props = {
 
 /**
  * The `+` mark drawn at structural intersections. Position absolutely from
- * the parent — the SVG is sized by `size * 2` and centered on the intersection.
+ * the parent -- the SVG is sized by `size * 2` and centered on the intersection.
  */
 export function ReticleCross({ className, style, size = RETICLE_SIZES.crossArm }: Props) {
 	const full = size * 2;

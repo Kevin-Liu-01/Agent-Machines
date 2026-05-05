@@ -14,7 +14,7 @@ type Props = {
 
 /**
  * A page section. Inside a <ReticlePageGrid> this renders only the content
- * with optional border-top/bottom — the parent grid provides the rails. The
+ * with optional border-top/bottom -- the parent grid provides the rails. The
  * outer rails of every section line up exactly because they share the parent.
  */
 export function ReticleSection({
