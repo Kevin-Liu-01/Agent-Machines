@@ -1,5 +1,5 @@
 {
-	"name": "@hermes-persistent/cursor-bridge",
+	"name": "@hermes-rig/cursor-bridge",
 	"version": "0.1.0",
 	"private": true,
 	"description": "MCP server that exposes Cursor SDK agents as tools to Hermes",

@@ -1,8 +1,8 @@
 {
-  "name": "hermes-persistent",
+  "name": "hermes-rig",
   "version": "0.1.0",
   "private": true,
-  "description": "Persistent Hermes Agent on Dedalus Machines with preloaded kevin-wiki knowledge",
+  "description": "Hermes Agent on Dedalus Machines with kevin-wiki skills + Cursor SDK delegation",
   "type": "module",
   "scripts": {
     "deploy": "tsx src/cli.ts deploy",

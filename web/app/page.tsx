@@ -22,7 +22,7 @@ export default function HomePage() {
 						<span className="grid h-7 w-7 place-items-center rounded border border-[var(--ret-border)] bg-[var(--ret-surface)] text-[var(--ret-purple)]">
 							{"☤"}
 						</span>
-						hermes-persistent
+						hermes-rig
 					</a>
 					<div className="hidden items-center gap-6 font-mono text-xs text-[var(--ret-text-dim)] md:flex">
 						<a href="#chat" className="hover:text-[var(--ret-text)]">
@@ -38,7 +38,7 @@ export default function HomePage() {
 							architecture
 						</a>
 						<a
-							href="https://github.com/Kevin-Liu-01/hermes-persistent"
+							href="https://github.com/Kevin-Liu-01/hermes-rig"
 							target="_blank"
 							rel="noreferrer"
 							className="hover:text-[var(--ret-text)]"

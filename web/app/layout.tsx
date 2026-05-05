@@ -4,19 +4,19 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-	title: "Hermes Persistent — agent on Dedalus Machines",
+	title: "Hermes Rig — agent on Dedalus Machines",
 	description:
-		"A self-improving Hermes Agent deployed to a Dedalus microVM. Tools, scheduled crons, and a knowledge base of skills lifted from kevin-wiki.",
+		"A Hermes Agent deployed to a Dedalus microVM. Tools, scheduled crons, a knowledge base of skills lifted from kevin-wiki, and the Cursor SDK wired in as an MCP tool for real code work.",
 	openGraph: {
-		title: "Hermes Persistent",
+		title: "Hermes Rig",
 		description:
-			"A persistent agent with a body and a memory. Hermes Agent + Dedalus Machines.",
+			"An agent with a body that writes its own code. Hermes Agent + Dedalus Machines + Cursor SDK.",
 		type: "website",
 	},
 	twitter: {
 		card: "summary_large_image",
-		title: "Hermes Persistent",
-		description: "A persistent agent with a body and a memory.",
+		title: "Hermes Rig",
+		description: "An agent with a body that writes its own code.",
 	},
 };
 

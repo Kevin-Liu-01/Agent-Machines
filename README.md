@@ -1,8 +1,8 @@
-# hermes-persistent
+# hermes-rig
 
-> A persistent agent with a body and a memory.
+> An agent with a body that writes its own code.
 
-A fully-loaded [Hermes Agent](https://github.com/NousResearch/hermes-agent) deployed onto a [Dedalus Machine](https://docs.dedaluslabs.ai/dcs) — exposing an OpenAI-compatible chat API, a web dashboard, a knowledge base of skills lifted from the kevin-wiki, scheduled cron automations, and a polished Next.js chat UI built on the Reticle / Sigil design system.
+A fully-loaded [Hermes Agent](https://github.com/NousResearch/hermes-agent) deployed onto a [Dedalus Machine](https://docs.dedaluslabs.ai/dcs) — exposing an OpenAI-compatible chat API, a web dashboard, a knowledge base of skills lifted from the kevin-wiki, scheduled cron automations, a polished Next.js chat UI built on the Reticle / Sigil design system, and the [Cursor TypeScript SDK](https://cursor.com/docs/sdk/typescript) wired in as an MCP tool so the agent can spawn real coding agents that inherit my conventions as `.cursor/rules`.
 
 ```
                           [ you @ npm run chat ]
@@ -17,7 +17,7 @@ A fully-loaded [Hermes Agent](https://github.com/NousResearch/hermes-agent) depl
         ║   :9119  hermes web       ── browser dashboard        ║
         ║                                                        ║
         ║   /home/machine/.hermes/                               ║
-        ║     ├─ skills/   ← 13 skills from kevin-wiki           ║
+        ║     ├─ skills/   ← 15 skills from kevin-wiki           ║
         ║     ├─ cron/     ← 4 scheduled automations             ║
         ║     ├─ MEMORY.md ← agent memory                        ║
         ║     ├─ USER.md   ← Kevin profile                       ║
@@ -28,27 +28,15 @@ A fully-loaded [Hermes Agent](https://github.com/NousResearch/hermes-agent) depl
                   https://api.dedaluslabs.ai/v1
 ```
 
-## What's different from the baselines
+## Shoutouts
 
-[`dedalus-labs/openclaw-demo`](https://github.com/dedalus-labs/openclaw-demo) and [`AgentWings/hermes-agent-ddls`](https://github.com/AgentWings/hermes-agent-ddls) prove the path: provision a machine, install the agent, point it at Dedalus as the OpenAI provider. This repo extends that to a real, opinionated deployment.
-
-| | openclaw-demo | hermes-agent-ddls | **hermes-persistent** |
-|---|---|---|---|
-| **Surface** | local gateway | local MCP | public OpenAI API + dashboard + Next.js UI |
-| **Auth** | none | none | bearer token + DNS rebinding guard |
-| **Lifecycle** | destroy on Ctrl-C | manual | full CLI: deploy / chat / status / logs / wake / sleep / destroy / shell / reload |
-| **Idempotency** | none | none | every bootstrap phase short-circuits when already done |
-| **Knowledge** | none | none | 13 SKILL.md files lifted from kevin-wiki (security, computer-use, design taste, kevin-voice, …) |
-| **Memory** | none | default | pre-seeded SOUL/USER/MEMORY/AGENTS files |
-| **Automation** | none | none | 4 cron jobs (health check, wiki digest, skill audit, memory consolidation) |
-| **UI** | none | none | Reticle/Sigil-styled Next.js chat with starter prompts and streaming |
-| **Persistence** | destroy | machine survives | sleep ↔ wake by default; no destruction without `--yes` |
+Huge thanks to [`dedalus-labs/openclaw-demo`](https://github.com/dedalus-labs/openclaw-demo) and [`AgentWings/hermes-agent-ddls`](https://github.com/AgentWings/hermes-agent-ddls) for the inspiration — both showed the path: provision a machine, install the agent, point it at Dedalus as the OpenAI provider. `hermes-rig` grows that pattern into a fuller deployment with the Cursor SDK as a delegation surface, kevin-wiki skills as the knowledge base, scheduled cron automations, a Reticle-styled chat UI, and a complete lifecycle CLI.
 
 ## Quick start
 
 ```bash
-git clone https://github.com/Kevin-Liu-01/hermes-persistent
-cd hermes-persistent
+git clone https://github.com/Kevin-Liu-01/hermes-rig
+cd hermes-rig
 cp .env.example .env
 # paste your DEDALUS_API_KEY into .env
 
@@ -59,13 +47,15 @@ npm run deploy
 After ~6-10 minutes (most of which is `uv pip install hermes-agent`), you get:
 
 ```
-  API URL:        https://<preview>.dedaluslabs.ai/v1
+  API URL:        https://<tunnel>.trycloudflare.com/v1
   API Key:        hp-<random>
-  Dashboard:      https://<preview>.dedaluslabs.ai
+  Dashboard:      https://<tunnel>.trycloudflare.com
   Machine ID:     dm-<id>
 
   Quick chat:     npm run chat -- "Say hi in one sentence."
 ```
+
+Optional: set `CURSOR_API_KEY` in `.env` (from [cursor.com/dashboard/integrations](https://cursor.com/dashboard/integrations)) to enable the `cursor_agent` MCP tool — without it the rest of the agent works fine, only delegating code work to a Cursor agent will fail with a clear error.
 
 State is recorded in `.machine-state.json` (gitignored). Subsequent CLI commands reuse the same machine.
 
@@ -187,17 +177,19 @@ You only `npm run destroy` when you mean it.
 - Heredocs (`cat << 'EOF'`) are unreliable through the execution API. Use base64 + `printf` for any multi-line content.
 - The root filesystem is small (~2.4 GB, 60-70% used). Pin `HOME`, `UV_CACHE_DIR`, and the venv to `/home/machine` or installs `ENOSPC`.
 - Guest agent needs ~5s after `phase=running` before the first exec succeeds (`503` otherwise).
-- `hermes-agent` is **not on PyPI**; install via `uv pip install 'hermes-agent[web] @ git+https://github.com/NousResearch/hermes-agent.git@main'`. The `[web]` extra is needed for `hermes dashboard` (FastAPI + uvicorn).
+- `hermes-agent` is **not on PyPI**; install via `uv pip install 'hermes-agent[web,mcp] @ git+https://github.com/NousResearch/hermes-agent.git@main'`. The `[web]` extra is needed for `hermes dashboard` (FastAPI + uvicorn); `[mcp]` is needed for `mcp_servers` to actually load (without it, Hermes silently no-ops MCP support even when `hermes mcp list` shows servers as enabled).
 - Hermes config keys: use `model.provider: custom`, `model.base_url`, `model.api_key`, and `model.default` (just the model name). The older `providers.openai.*` keys are silently ignored on current Hermes.
 - Model slug for `model.default` must match Dedalus's catalog exactly. List via `curl https://api.dedaluslabs.ai/v1/models`. Use hyphenated slugs (`anthropic/claude-sonnet-4-6`), not dotted (`claude-sonnet-4.6`).
 - The gateway only reads config at startup. Always restart it after `hermes config set`. We do this by killing the gateway via `ps + awk + xargs kill` (avoids `pkill -f` matching its own argv).
 - `setsid foo & disown` doesn't fully detach inside the execution API. Use `(setsid ${launcher} </dev/null &>/dev/null &)` to push it into a subshell that exits immediately.
 - Dedalus public previews require a hostname suffix configured at the org level. When unconfigured, the API returns 503; we fall back to a free Cloudflare quick tunnel (`*.trycloudflare.com`).
+- Wake/sleep/admit/purge are gated by HMAC signing in the controlplane. The public Dedalus SDK doesn't sign, so a self-slept machine can't be woken via the SDK — clear `.machine-state.json` and provision a fresh one (the bootstrap is idempotent and re-seeds knowledge from local files).
+- The MCP subprocess inherits a minimal `PATH` from the gateway. Use absolute `/home/machine/node/bin/node` in `mcp_servers.<name>.command`, not bare `node`, or the bridge fails with `No such file or directory` even when the binary exists.
 
 ## File layout
 
 ```
-hermes-persistent/
+hermes-rig/
 ├── README.md                 (this file)
 ├── package.json              (cli scripts + deps)
 ├── .env.example
