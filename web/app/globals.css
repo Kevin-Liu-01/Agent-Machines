@@ -185,3 +185,28 @@ body {
 	vertical-align: text-bottom;
 	animation: ret-caret 1s steps(1) infinite;
 }
+
+/* Static grain layer used as a fixed overlay. SVG noise is cheap, doesn't
+ * scroll, and doesn't impact reflows. Opacity is bumped slightly in dark
+ * mode where the noise reads as light dust on the background. */
+.ret-grain {
+	position: fixed;
+	inset: 0;
+	pointer-events: none;
+	z-index: 60;
+	opacity: 0.035;
+	background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+	background-size: 160px 160px;
+	mix-blend-mode: multiply;
+}
+.dark .ret-grain,
+:root[data-theme="dark"] .ret-grain {
+	opacity: 0.06;
+	mix-blend-mode: screen;
+}
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme="light"]) .ret-grain {
+		opacity: 0.06;
+		mix-blend-mode: screen;
+	}
+}

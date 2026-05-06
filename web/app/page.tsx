@@ -9,6 +9,8 @@ import { ReticleNavbar } from "@/components/reticle/ReticleNavbar";
 import { ReticlePageGrid } from "@/components/reticle/ReticlePageGrid";
 import { ReticleSection } from "@/components/reticle/ReticleSection";
 import { SkillsManifest } from "@/components/SkillsManifest";
+import { StatsRow } from "@/components/StatsRow";
+import { TempleDivider } from "@/components/TempleDivider";
 
 export default function HomePage() {
 	return (
@@ -52,10 +54,13 @@ export default function HomePage() {
 			<main id="top">
 				<ReticleSection
 					borderTop={false}
-					contentClassName="px-6 pt-14 pb-16 md:pt-20 md:pb-20"
+					contentClassName="px-6 pt-14 pb-16 md:pt-20 md:pb-12"
 				>
 					<HeroBlock />
+					<StatsRow />
 				</ReticleSection>
+
+				<TempleDivider />
 
 				<ReticleSection
 					id="chat"

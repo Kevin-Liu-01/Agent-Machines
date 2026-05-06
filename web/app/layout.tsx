@@ -23,7 +23,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
 	return (
 		<html lang="en" suppressHydrationWarning>
-			<body>{children}</body>
+			<body>
+				{children}
+				<div className="ret-grain" aria-hidden="true" />
+			</body>
 		</html>
 	);
 }
