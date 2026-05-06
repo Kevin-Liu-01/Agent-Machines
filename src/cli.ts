@@ -1,5 +1,5 @@
 /**
- * Hermes Persistent CLI dispatcher.
+ * Hermes Machines CLI dispatcher.
  *
  * Usage:
  *   npm run deploy
@@ -38,7 +38,7 @@ const COMMANDS: Record<string, (args: string[]) => Promise<void>> = {
 };
 
 function help(): void {
-	console.log("Hermes Persistent -- manage a persistent Hermes Agent on Dedalus.");
+	console.log("Hermes Machines -- manage a persistent Hermes Agent on Dedalus.");
 	console.log("");
 	console.log("Commands:");
 	console.log("  deploy             Provision a machine and install Hermes (idempotent)");

@@ -14,7 +14,7 @@
   {
     "name": "weekly-skill-audit",
     "schedule": "0 4 * * mon",
-    "prompt": "Audit my skills folder at ~/.hermes/skills. For each skill, verify the description still matches the body. Flag any skills that are stale, duplicated, or drift from their declared description. Output a JSON array of {name, issue} entries; empty array if all clean.",
+    "prompt": "Audit the skills folder at ~/.hermes/skills. For each skill, verify the description still matches the body. Flag any skills that are stale, duplicated, or drift from their declared description. Output a JSON array of {name, issue} entries; empty array if all clean.",
     "skills": ["plan-mode-review"]
   },
   {
