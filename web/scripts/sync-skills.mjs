@@ -1,17 +1,27 @@
 #!/usr/bin/env node
 /**
  * Sync the bundled skill library from `knowledge/skills/<slug>/SKILL.md`
- * into a single `web/data/skills.json` artifact that the dashboard can
- * import at request time. Runs as `predev` and `prebuild` so the build
- * output always carries the current skills without a manual step.
+ * into a single `web/data/skills.json` artifact that the dashboard imports
+ * at request time. The JSON is committed (treat it like a lockfile -- the
+ * source of truth is the .md files; the JSON is the derived artifact the
+ * Vercel build consumes).
  *
- * Why bake to JSON instead of reading filesystem at runtime: the Vercel
- * project root is `web/`, so production builds don't include
- * `../knowledge/`. Bundling the data into the Next.js graph is the
- * portable way to ship the same content to local dev, preview, and prod.
+ * The script is a no-op when `../knowledge/skills` doesn't exist (e.g.
+ * Vercel's `web/`-rooted build, which never sees the parent directory).
+ * In that case we expect `data/skills.json` to already be checked in.
+ *
+ * For local dev (`predev`) and root-rooted builds, the script regenerates
+ * the JSON from current source. After editing a `SKILL.md`, run
+ * `npm run sync-skills` and commit the updated JSON alongside.
  */
 
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	readdirSync,
+	writeFileSync,
+} from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -64,6 +74,19 @@ function readSkill(slug) {
 }
 
 function main() {
+	if (!existsSync(SKILLS_DIR)) {
+		if (existsSync(OUT_FILE)) {
+			console.log(
+				`sync-skills: ${SKILLS_DIR} not present (expected on Vercel root=web/); using committed ${OUT_FILE}`,
+			);
+			return;
+		}
+		console.error(
+			`sync-skills: ${SKILLS_DIR} not present and no committed ${OUT_FILE} to fall back on`,
+		);
+		process.exit(1);
+	}
+
 	const slugs = readdirSync(SKILLS_DIR, { withFileTypes: true })
 		.filter((entry) => entry.isDirectory())
 		.map((entry) => entry.name)
