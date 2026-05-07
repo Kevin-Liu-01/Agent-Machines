@@ -1,12 +1,12 @@
 import { SignedIn, SignedOut } from "@/components/AuthSwitch";
+import { ContributionGrid } from "@/components/ContributionGrid";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
-import { HermesBustScene } from "@/components/three";
 
 export function HeroBlock() {
 	return (
-		<div className="grid items-center gap-8 md:grid-cols-[1.4fr_1fr] md:gap-10">
+		<div className="grid items-stretch gap-8 md:grid-cols-[1fr_1.1fr] md:gap-10">
 			<div className="flex flex-col">
 				<div className="flex flex-wrap items-center gap-2">
 					<ReticleLabel>HERMES MACHINES</ReticleLabel>
@@ -59,9 +59,16 @@ export function HeroBlock() {
 						Hermes docs
 					</ReticleButton>
 				</div>
+				<p className="mt-5 max-w-[60ch] font-mono text-[11px] text-[var(--ret-text-muted)]">
+					{"->"} every cell on the right is one day in this rig's life. hover
+					to see what fired, click to pin. dedalus boots, nous serves, cursor
+					codes, the rig itself reloads skills from github.
+				</p>
 			</div>
 
-			<HermesBustScene className="aspect-square w-full max-w-[420px] justify-self-end border border-[var(--ret-border)]" />
+			<div className="min-h-[280px]">
+				<ContributionGrid />
+			</div>
 		</div>
 	);
 }
