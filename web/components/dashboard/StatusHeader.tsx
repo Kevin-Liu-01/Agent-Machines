@@ -4,6 +4,7 @@ import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { BrandMark } from "@/components/BrandMark";
 import { cn } from "@/lib/cn";
 import type {
 	GatewaySummary,
@@ -84,14 +85,11 @@ export function StatusHeader() {
 			)}
 		>
 			<div className="flex items-center gap-3 min-w-0">
-				<Link
-					href="/"
-					className="flex items-center gap-2 font-mono text-[13px] text-[var(--ret-text)]"
-				>
-					<span className="grid h-6 w-6 place-items-center rounded border border-[var(--ret-border)] bg-[var(--ret-surface)] text-[var(--ret-purple)]">
-						{"\u2624"}
+				<Link href="/" className="flex items-center">
+					<BrandMark size={20} gap="tight" withLabel={false} />
+					<span className="ml-2 hidden font-mono text-[13px] md:inline">
+						hermes-machines
 					</span>
-					<span className="hidden md:inline">hermes-machines</span>
 				</Link>
 				<span className="text-[var(--ret-text-muted)]">/</span>
 				<StatusPill phase={machinePhase} />

@@ -1,5 +1,6 @@
 import { SignIn } from "@clerk/nextjs";
 
+import { BrandMark } from "@/components/BrandMark";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 
 const CLERK_READY = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
@@ -20,7 +21,8 @@ export default function SignInPage() {
 	return (
 		<main className="flex min-h-[100dvh] items-center justify-center bg-[var(--ret-bg)] px-6 py-16">
 			<div className="flex w-full max-w-md flex-col items-center gap-6">
-				<div className="flex flex-col items-center gap-2 text-center">
+				<div className="flex flex-col items-center gap-3 text-center">
+					<BrandMark size={28} withLabel={false} />
 					<ReticleLabel>HERMES MACHINES</ReticleLabel>
 					<h1 className="text-2xl font-semibold tracking-tight">
 						{CLERK_READY ? "Sign in to dashboard" : "Auth not configured"}

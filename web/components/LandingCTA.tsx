@@ -9,8 +9,16 @@ import { ReticleLabel } from "@/components/reticle/ReticleLabel";
  */
 export function LandingCTA() {
 	return (
-		<div className="rounded-[var(--ret-card-radius)] border border-[var(--ret-border)] bg-[var(--ret-bg)] p-6 md:p-9">
-			<div className="grid gap-6 md:grid-cols-[1.4fr_1fr]">
+		<div className="relative overflow-hidden rounded-[var(--ret-card-radius)] border border-[var(--ret-border)] bg-[var(--ret-bg)] p-6 md:p-9">
+			{/* Subtle nyx-waves pattern from the Dedalus brand kit. Sits at very
+			    low opacity behind the content so the signature Dedalus-feel is
+			    present without competing with the CTAs. */}
+			<div
+				aria-hidden="true"
+				className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat opacity-[0.05] mix-blend-luminosity dark:opacity-[0.08]"
+				style={{ backgroundImage: "url(/brand/bg-nyx-waves.png)" }}
+			/>
+			<div className="relative grid gap-6 md:grid-cols-[1.4fr_1fr]">
 				<div>
 					<ReticleLabel>CHAT -- AUTH-GATED</ReticleLabel>
 					<h2 className="mt-3 text-2xl font-semibold tracking-tight md:text-3xl">

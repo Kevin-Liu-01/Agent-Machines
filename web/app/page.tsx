@@ -1,9 +1,8 @@
 import { UserButton } from "@clerk/nextjs";
 
-import { SignedIn, SignedOut } from "@/components/AuthSwitch";
-
-const CLERK_READY = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 import { ArchitectureDiagram } from "@/components/ArchitectureDiagram";
+import { SignedIn, SignedOut } from "@/components/AuthSwitch";
+import { BrandMark } from "@/components/BrandMark";
 import { CapabilityGrid } from "@/components/CapabilityGrid";
 import { CronSection } from "@/components/CronSection";
 import { Footer } from "@/components/Footer";
@@ -17,6 +16,8 @@ import { SkillsManifest } from "@/components/SkillsManifest";
 import { StatsRow } from "@/components/StatsRow";
 import { TempleDivider } from "@/components/TempleDivider";
 
+const CLERK_READY = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+
 export default function HomePage() {
 	return (
 		<ReticlePageGrid>
@@ -24,12 +25,9 @@ export default function HomePage() {
 				<div className="flex h-14 items-center justify-between px-6">
 					<a
 						href="#top"
-						className="flex items-center gap-2.5 font-mono text-sm text-[var(--ret-text)]"
+						className="flex items-center"
 					>
-						<span className="grid h-7 w-7 place-items-center rounded border border-[var(--ret-border)] bg-[var(--ret-surface)] text-[var(--ret-purple)]">
-							{"\u2624"}
-						</span>
-						hermes-machines
+						<BrandMark size={24} />
 					</a>
 					<div className="flex items-center gap-5 font-mono text-xs text-[var(--ret-text-dim)]">
 						<a href="#capabilities" className="hidden hover:text-[var(--ret-text)] md:inline">
