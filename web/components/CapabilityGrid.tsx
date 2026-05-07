@@ -1,23 +1,30 @@
+import { Logo, type Mark } from "@/components/Logo";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { cn } from "@/lib/cn";
 
-const CAPABILITIES: ReadonlyArray<{
+type Capability = {
 	kicker: string;
 	title: string;
 	body: string;
 	notes: string[];
-}> = [
+	/** The partner whose surface this capability lives on, if any. */
+	mark?: Mark;
+};
+
+const CAPABILITIES: ReadonlyArray<Capability> = [
 	{
 		kicker: "DELEGATION",
 		title: "Spawns Cursor coding agents",
 		body: "When you ask for real code changes -- refactor, bug fix, new feature -- Hermes hands off to a Cursor agent via the cursor_agent MCP tool. Same model that runs in the Cursor IDE, full file access, with the rig's skills injected as .cursor/rules.",
 		notes: ["cursor_agent", "@cursor/sdk", "load_skills", ".cursor/rules/from-hermes.mdc"],
+		mark: "cursor",
 	},
 	{
 		kicker: "TOOLS",
 		title: "40+ tools, one prompt away",
 		body: "Terminal, file ops, web search, browser automation (Playwright), vision, image generation, TTS, MCP servers, code execution, subagent delegation.",
 		notes: ["terminal", "browser_*", "web_search", "vision_analyze", "execute_code"],
+		mark: "nous",
 	},
 	{
 		kicker: "KNOWLEDGE",
@@ -30,6 +37,7 @@ const CAPABILITIES: ReadonlyArray<{
 		title: "Persistent across sessions",
 		body: "USER.md models you. MEMORY.md models the environment. FTS5 sessions DB lets the agent search every prior conversation it had with you.",
 		notes: ["USER.md", "MEMORY.md", "FTS5 search", "auto-summarize"],
+		mark: "nous",
 	},
 	{
 		kicker: "SCHEDULE",
@@ -42,12 +50,14 @@ const CAPABILITIES: ReadonlyArray<{
 		title: "Sleep / wake, by the second",
 		body: "Dedalus microVMs hibernate while idle and wake in seconds. Persistent volume keeps your skills, memory, and venv intact across sleeps.",
 		notes: ["microVM", "/home/machine persists", "second-billing"],
+		mark: "dedalus",
 	},
 	{
 		kicker: "API",
 		title: "OpenAI-compatible endpoint",
 		body: "Hermes exposes /v1/chat/completions, /v1/responses, /v1/models. Open WebUI, LobeChat, ChatBox -- anything that speaks OpenAI works as a frontend.",
 		notes: ["/v1/chat/completions", "Bearer auth", "SSE streaming"],
+		mark: "dedalus",
 	},
 ];
 
@@ -64,9 +74,12 @@ export function CapabilityGrid() {
 							"transition-colors duration-200 hover:bg-[var(--ret-surface)]",
 						)}
 					>
-						<p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
-							{c.kicker}
-						</p>
+						<div className="flex items-center justify-between gap-3">
+							<p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
+								{c.kicker}
+							</p>
+							{c.mark ? <Logo mark={c.mark} size={16} /> : null}
+						</div>
 						<h3 className="text-lg font-semibold leading-snug tracking-tight">
 							{c.title}
 						</h3>

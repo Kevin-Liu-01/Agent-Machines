@@ -3,8 +3,19 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { Logo, type Mark } from "@/components/Logo";
 import { cn } from "@/lib/cn";
 import type { SkillSummary } from "@/lib/dashboard/types";
+
+/**
+ * Skill slugs that map to a partner whose logo we should attribute on the
+ * card. Most skills are general-purpose (no logo), but a few like
+ * cursor-coding and dedalus-machines are about a specific partner system.
+ */
+const SKILL_BRAND: Record<string, Mark> = {
+	"cursor-coding": "cursor",
+	"dedalus-machines": "dedalus",
+};
 
 const ALL = "all";
 
@@ -82,15 +93,19 @@ function Chip({
 }
 
 function SkillCard({ skill }: { skill: SkillSummary }) {
+	const mark = SKILL_BRAND[skill.slug];
 	return (
 		<Link
 			href={`/dashboard/skills/${skill.slug}`}
 			className="group flex h-full flex-col rounded-[var(--ret-card-radius)] border border-[var(--ret-border)] bg-[var(--ret-bg)] p-5 transition-colors duration-200 hover:border-[var(--ret-purple)]/40"
 		>
 			<div className="flex items-start justify-between gap-3">
-				<p className="font-mono text-sm text-[var(--ret-purple)] group-hover:underline">
-					{skill.slug}
-				</p>
+				<div className="flex min-w-0 items-center gap-2">
+					{mark ? <Logo mark={mark} size={14} /> : null}
+					<p className="font-mono text-sm text-[var(--ret-purple)] group-hover:underline">
+						{skill.slug}
+					</p>
+				</div>
 				<span className="rounded border border-[var(--ret-border)] bg-[var(--ret-surface)] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					{skill.category}
 				</span>

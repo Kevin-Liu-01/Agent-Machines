@@ -8,12 +8,23 @@
  * surface changes, mirror it here.
  */
 
+import type { Mark } from "@/components/Logo";
+
 import type { McpServerSummary } from "./types";
 
-const CURSOR_BRIDGE: McpServerSummary = {
+export type McpServerWithBrand = McpServerSummary & {
+	brand?: Mark;
+	owner?: string;
+	link?: string;
+};
+
+const CURSOR_BRIDGE: McpServerWithBrand = {
 	name: "cursor-bridge",
 	transport: "stdio",
 	source: "mcp/cursor-bridge/src/server.ts",
+	brand: "cursor",
+	owner: "Cursor",
+	link: "https://cursor.com/docs/sdk/typescript",
 	tools: [
 		{
 			name: "cursor_agent",
@@ -42,10 +53,13 @@ const CURSOR_BRIDGE: McpServerSummary = {
 	],
 };
 
-const HERMES_BUILTINS: McpServerSummary = {
+const HERMES_BUILTINS: McpServerWithBrand = {
 	name: "hermes-builtins",
 	transport: "stdio",
 	source: "hermes-agent (NousResearch/hermes-agent)",
+	brand: "nous",
+	owner: "Nous Research",
+	link: "https://github.com/NousResearch/hermes-agent",
 	tools: [
 		{
 			name: "shell_exec",
@@ -86,6 +100,6 @@ const HERMES_BUILTINS: McpServerSummary = {
 	],
 };
 
-export function listMcpServers(): McpServerSummary[] {
+export function listMcpServers(): McpServerWithBrand[] {
 	return [CURSOR_BRIDGE, HERMES_BUILTINS];
 }

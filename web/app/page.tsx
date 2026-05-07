@@ -13,6 +13,7 @@ import { ReticleNavbar } from "@/components/reticle/ReticleNavbar";
 import { ReticlePageGrid } from "@/components/reticle/ReticlePageGrid";
 import { ReticleSection } from "@/components/reticle/ReticleSection";
 import { SkillsManifest } from "@/components/SkillsManifest";
+import { StackRow } from "@/components/StackRow";
 import { StatsRow } from "@/components/StatsRow";
 import { TempleDivider } from "@/components/TempleDivider";
 
@@ -73,6 +74,7 @@ export default function HomePage() {
 				>
 					<HeroBlock />
 					<StatsRow />
+					<StackRow />
 				</ReticleSection>
 
 				<TempleDivider />

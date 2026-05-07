@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { BrandMark } from "@/components/BrandMark";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 
 type Props = {
@@ -13,6 +14,10 @@ type Props = {
  * Page header used on every dashboard route. Mirrors the marketing landing's
  * heading rhythm but at smaller scale -- 2xl title, dim description, optional
  * right-side action area for inline tools (filters, refresh, etc.).
+ *
+ * A muted BrandMark sits on the right when no other action is supplied so
+ * the partner attribution is felt across the auth-gated surface, not just
+ * on the public landing.
  */
 export function PageHeader({ kicker, title, description, right }: Props) {
 	return (
@@ -28,9 +33,16 @@ export function PageHeader({ kicker, title, description, right }: Props) {
 					</p>
 				) : null}
 			</div>
-			{right ? (
-				<div className="flex shrink-0 items-center gap-2">{right}</div>
-			) : null}
+			<div className="flex shrink-0 items-center gap-3">
+				{right ?? (
+					<BrandMark
+						size={18}
+						gap="tight"
+						withLabel={false}
+						className="opacity-60 hover:opacity-100 transition-opacity"
+					/>
+				)}
+			</div>
 		</div>
 	);
 }
