@@ -13,6 +13,7 @@ import type {
 import { StatusPill } from "./StatusPill";
 
 const POLL_MS = 5000;
+const CLERK_READY = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
 type State = {
 	machine: MachineSummary | null;
@@ -103,13 +104,15 @@ export function StatusHeader() {
 
 			<div className="flex items-center gap-4">
 				<GatewayBadge data={gateway} />
-				<UserButton
-					appearance={{
-						elements: {
-							avatarBox: "h-7 w-7",
-						},
-					}}
-				/>
+				{CLERK_READY ? (
+					<UserButton
+						appearance={{
+							elements: {
+								avatarBox: "h-7 w-7",
+							},
+						}}
+					/>
+				) : null}
 			</div>
 		</header>
 	);

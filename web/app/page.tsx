@@ -1,6 +1,8 @@
 import { UserButton } from "@clerk/nextjs";
 
 import { SignedIn, SignedOut } from "@/components/AuthSwitch";
+
+const CLERK_READY = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 import { ArchitectureDiagram } from "@/components/ArchitectureDiagram";
 import { CapabilityGrid } from "@/components/CapabilityGrid";
 import { CronSection } from "@/components/CronSection";
@@ -51,9 +53,11 @@ export default function HomePage() {
 							<ReticleButton as="a" href="/dashboard" variant="primary" size="sm">
 								Dashboard
 							</ReticleButton>
-							<UserButton
-								appearance={{ elements: { avatarBox: "h-7 w-7" } }}
-							/>
+							{CLERK_READY ? (
+								<UserButton
+									appearance={{ elements: { avatarBox: "h-7 w-7" } }}
+								/>
+							) : null}
 						</SignedIn>
 						<SignedOut>
 							<ReticleButton as="a" href="/sign-in" variant="primary" size="sm">

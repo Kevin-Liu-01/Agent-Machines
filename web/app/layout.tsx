@@ -21,7 +21,23 @@ export const metadata: Metadata = {
 	},
 };
 
+const CLERK_CONFIGURED = Boolean(
+	process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+);
+
 export default function RootLayout({ children }: { children: ReactNode }) {
+	const tree = (
+		<html lang="en" suppressHydrationWarning>
+			<body>
+				{children}
+				<div className="ret-grain" aria-hidden="true" />
+			</body>
+		</html>
+	);
+	// When Clerk isn't configured (fresh Vercel deploy, no env vars yet) we
+	// skip the provider entirely so the public landing still renders. The
+	// middleware handles gating /dashboard/* with a 503 + setup message.
+	if (!CLERK_CONFIGURED) return tree;
 	return (
 		<ClerkProvider
 			signInUrl="/sign-in"
@@ -38,12 +54,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 				},
 			}}
 		>
-			<html lang="en" suppressHydrationWarning>
-				<body>
-					{children}
-					<div className="ret-grain" aria-hidden="true" />
-				</body>
-			</html>
+			{tree}
 		</ClerkProvider>
 	);
 }
