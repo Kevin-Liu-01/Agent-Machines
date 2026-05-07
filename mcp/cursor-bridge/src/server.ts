@@ -13,8 +13,8 @@
  * wait + dispose` for streaming) so we never leak agent handles or run stores.
  */
 
-import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync, rmSync, existsSync } from "node:fs";
-import { resolve, join } from "node:path";
+import { appendFileSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync, rmSync, existsSync } from "node:fs";
+import { resolve, join, dirname } from "node:path";
 
 import { Agent, Cursor, CursorAgentError } from "@cursor/sdk";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -23,7 +23,30 @@ import { z } from "zod";
 
 const HERMES_HOME = process.env.HERMES_HOME ?? `${process.env.HOME}/.hermes`;
 const SKILLS_DIR = `${HERMES_HOME}/skills`;
+const RUN_LOG_PATH = `${HERMES_HOME}/cursor-runs.jsonl`;
 const DEFAULT_MODEL = "composer-2";
+
+/**
+ * Append a one-line JSON record after each Cursor agent run.
+ *
+ * The `/dashboard/cursor` page reads this file via Dedalus
+ * `executions.create` so the UI can list every code-delegation that ever
+ * happened on this machine. JSONL is the right shape: append-only,
+ * trivially tail-able, no migration story when the schema grows.
+ *
+ * Failures are swallowed -- a busted log file should never crash the
+ * agent run. If the directory is missing we create it; everything else
+ * is best-effort.
+ */
+function appendRunLog(record: Record<string, unknown>): void {
+	try {
+		mkdirSync(dirname(RUN_LOG_PATH), { recursive: true });
+		const line = JSON.stringify({ logged_at: new Date().toISOString(), ...record });
+		appendFileSync(RUN_LOG_PATH, `${line}\n`);
+	} catch {
+		// Logging is observability, not correctness; never fail the run.
+	}
+}
 
 function readApiKey(): string {
 	const key = process.env.CURSOR_API_KEY?.trim();
@@ -172,7 +195,7 @@ async function runOneShot(args: {
 		cleanupRuleFile(ruleFilePath);
 	}
 
-	return {
+	const summary: RunSummary = {
 		agent_id: agent.agentId,
 		run_id: runId,
 		status,
@@ -181,6 +204,8 @@ async function runOneShot(args: {
 		loaded_skills: loaded,
 		working_dir: workingDir,
 	};
+	appendRunLog({ kind: "one_shot", model: args.model, prompt: args.prompt, ...summary });
+	return summary;
 }
 
 async function resumeAndSend(args: {
@@ -227,7 +252,7 @@ async function resumeAndSend(args: {
 		cleanupRuleFile(ruleFilePath);
 	}
 
-	return {
+	const summary: RunSummary = {
 		agent_id: agent.agentId,
 		run_id: runId,
 		status,
@@ -236,6 +261,8 @@ async function resumeAndSend(args: {
 		loaded_skills: loaded,
 		working_dir: workingDir,
 	};
+	appendRunLog({ kind: "resume", model: args.model, prompt: args.prompt, ...summary });
+	return summary;
 }
 
 function asTextResult(payload: unknown): { content: Array<{ type: "text"; text: string }> } {

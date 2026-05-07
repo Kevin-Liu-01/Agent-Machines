@@ -1,8 +1,26 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
+import localFont from "next/font/local";
 import type { ReactNode } from "react";
 
 import "./globals.css";
+
+/**
+ * Nacelle is the canonical Dedalus typeface. We load three weights
+ * locally so the font ships with the bundle and never blocks paint on a
+ * remote font server. The `--font-sans` CSS variable threads through
+ * globals.css and Tailwind so every component picks it up automatically.
+ */
+const nacelle = localFont({
+	src: [
+		{ path: "../public/fonts/Nacelle-Regular.otf", weight: "400", style: "normal" },
+		{ path: "../public/fonts/Nacelle-SemiBold.otf", weight: "600", style: "normal" },
+		{ path: "../public/fonts/Nacelle-Bold.otf", weight: "700", style: "normal" },
+	],
+	variable: "--font-nacelle",
+	display: "swap",
+	preload: true,
+});
 
 export const metadata: Metadata = {
 	title: "Hermes Machines -- agent on Dedalus Machines",
@@ -27,7 +45,7 @@ const CLERK_CONFIGURED = Boolean(
 
 export default function RootLayout({ children }: { children: ReactNode }) {
 	const tree = (
-		<html lang="en" suppressHydrationWarning>
+		<html lang="en" className={nacelle.variable} suppressHydrationWarning>
 			<body>
 				{children}
 				<div className="ret-grain" aria-hidden="true" />

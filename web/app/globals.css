@@ -38,9 +38,16 @@
 
 	--ret-card-radius: 10px;
 
+	/*
+	 * --font-sans points at Nacelle by default. The `var(--font-nacelle)`
+	 * fallback is the next/font/local-injected variable from
+	 * `app/layout.tsx`; the strings after are graceful fallbacks for
+	 * the brief moment before fonts hydrate.
+	 */
 	--font-sans:
-		"Geist", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
-		sans-serif;
+		var(--font-nacelle), "Nacelle", "Geist", "Inter", -apple-system,
+		BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+	--font-display: var(--font-sans);
 	--font-mono:
 		"Geist Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo,
 		Consolas, monospace;

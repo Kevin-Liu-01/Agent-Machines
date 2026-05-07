@@ -1,6 +1,6 @@
 import { UserButton } from "@clerk/nextjs";
 
-import { ArchitectureDiagram } from "@/components/ArchitectureDiagram";
+import { ArchitectureFlow } from "@/components/ArchitectureFlow";
 import { SignedIn, SignedOut } from "@/components/AuthSwitch";
 import { BrandMark } from "@/components/BrandMark";
 import { CapabilityGrid } from "@/components/CapabilityGrid";
@@ -96,7 +96,7 @@ export default function HomePage() {
 				</ReticleSection>
 
 				<ReticleSection id="architecture" contentClassName="px-6 pt-12 pb-20">
-					<ArchitectureDiagram />
+					<ArchitectureFlow />
 				</ReticleSection>
 			</main>
 

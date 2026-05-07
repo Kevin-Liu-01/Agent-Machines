@@ -188,9 +188,9 @@ export function OverviewClient({ counts }: Props) {
 						/>
 					</dl>
 					<p className="mt-4 text-[11px] text-[var(--ret-text-muted)]">
-						Live data flows: <Link href="/dashboard/logs" className="underline opacity-60">logs (PR2)</Link> <span>.</span>{" "}
-						<Link href="/dashboard/sessions" className="underline opacity-60">sessions (PR2)</Link> <span>.</span>{" "}
-						<Link href="/dashboard/cursor" className="underline opacity-60">cursor runs (PR2)</Link>
+						Live data flows: <Link href="/dashboard/logs" className="underline">logs</Link> <span>.</span>{" "}
+						<Link href="/dashboard/sessions" className="underline">sessions</Link> <span>.</span>{" "}
+						<Link href="/dashboard/cursor" className="underline">cursor runs</Link>
 					</p>
 				</div>
 			</section>

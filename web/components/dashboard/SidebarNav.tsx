@@ -19,9 +19,9 @@ const NAV: NavItem[] = [
 	{ href: "/dashboard/chat", label: "Chat", hint: "talk to hermes", icon: IconChat },
 	{ href: "/dashboard/skills", label: "Skills", hint: "13 bundled", icon: IconScroll },
 	{ href: "/dashboard/mcps", label: "MCPs", hint: "tool servers", icon: IconPlug },
-	{ href: "/dashboard/sessions", label: "Sessions", hint: "PR2", icon: IconRows, disabled: true },
-	{ href: "/dashboard/logs", label: "Logs", hint: "PR2", icon: IconWave, disabled: true },
-	{ href: "/dashboard/cursor", label: "Cursor runs", hint: "PR2", icon: IconBolt, disabled: true },
+	{ href: "/dashboard/sessions", label: "Sessions", hint: "live", icon: IconRows },
+	{ href: "/dashboard/logs", label: "Logs", hint: "live", icon: IconWave },
+	{ href: "/dashboard/cursor", label: "Cursor runs", hint: "live", icon: IconBolt },
 ];
 
 export function SidebarNav() {
