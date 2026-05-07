@@ -109,12 +109,27 @@ export async function deploy(): Promise<void> {
 				return ready.machine_id;
 			}
 		}
-		const created = await createMachine(client, {
-			vcpu: config.vcpu,
-			memoryMib: config.memoryMib,
-			storageGib: config.storageGib,
-		});
-		info(`  created ${created.machine_id}`);
+		const created = await createMachine(
+			client,
+			{
+				vcpu: config.vcpu,
+				memoryMib: config.memoryMib,
+				storageGib: config.storageGib,
+			},
+			{
+				onAttempt: (event) => {
+					if (event.event === "created") {
+						info(`  attempt ${event.attempt}: created ${event.machineId}`);
+					} else if (event.event === "transient_retry") {
+						warn(
+							`  attempt ${event.attempt} failed (transient): ${event.message?.slice(0, 140)}`,
+						);
+						dim("  destroying dead machine and retrying with backoff");
+					}
+				},
+			},
+		);
+		// createMachine already waits for `running`, so this returns immediately.
 		const ready = await waitForRunning(client, created.machine_id, (p) =>
 			dim(`  phase: ${p}`),
 		);

@@ -15,6 +15,7 @@
     "shell": "tsx src/cli.ts shell",
     "reload": "tsx src/cli.ts reload-knowledge",
     "reset": "tsx src/cli.ts reset",
+    "gc": "tsx scripts/cleanup-machines.ts",
     "typecheck": "tsc --noEmit",
     "web": "cd web && npm run dev"
   },

@@ -71,6 +71,7 @@ npm run sleep              # pause to save costs (state preserved)
 npm run destroy -- --yes   # permanent delete
 npm run shell              # print `dedalus ssh` invocation
 npm run reload             # re-upload knowledge/ folder
+npm run gc                 # destroy every machine on the org (use after `409 quota exceeded`)
 ```
 
 ## Web UI (Next.js + Reticle/Sigil)

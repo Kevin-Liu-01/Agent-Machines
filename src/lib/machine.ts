@@ -16,15 +16,98 @@ function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * Transient infra errors observed in the wild on this org's Dedalus dev fleet:
+ *   - SNAPSHOT_LAUNCH_HYPERVISOR_CONNECT_FAILED -- DHV socket not ready
+ *   - STORAGE_DAEMON_API_ERROR (HTTP 500 during provision)
+ *   - "machine launch throttle exhausted on this host"
+ *   - 503 placement_pending stalls
+ * The scheduler picks a different host on a fresh request, so the cure is
+ * destroy-the-failed-machine-and-create-again. We give it three attempts
+ * before surfacing the error; quota errors are NOT retried (those need a
+ * `npm run destroy` first).
+ */
+const TRANSIENT_PATTERNS = [
+	"SNAPSHOT_LAUNCH_HYPERVISOR_CONNECT_FAILED",
+	"STORAGE_DAEMON_API_ERROR",
+	"machine launch throttle exhausted",
+	"placement_pending",
+] as const;
+
+function isTransient(message: string): boolean {
+	return TRANSIENT_PATTERNS.some((p) => message.includes(p));
+}
+
+async function destroyQuiet(client: Dedalus, machineId: string): Promise<void> {
+	try {
+		const m = await getMachine(client, machineId);
+		if (m.status.phase === "destroyed") return;
+		await client.machines.delete({
+			machine_id: machineId,
+			"If-Match": m.status.revision,
+		});
+	} catch {
+		// Best-effort cleanup; we're already on a failure path.
+	}
+}
+
+export type CreateMachineOptions = {
+	maxAttempts?: number;
+	onAttempt?: (info: {
+		attempt: number;
+		machineId: string;
+		event: "created" | "transient_retry" | "fatal";
+		message?: string;
+	}) => void;
+};
+
 export async function createMachine(
 	client: Dedalus,
 	config: { vcpu: number; memoryMib: number; storageGib: number },
+	options: CreateMachineOptions = {},
 ): Promise<Machine> {
-	return client.machines.create({
-		vcpu: config.vcpu,
-		memory_mib: config.memoryMib,
-		storage_gib: config.storageGib,
-	});
+	const maxAttempts = options.maxAttempts ?? 5;
+	const onAttempt = options.onAttempt;
+	let lastError: unknown;
+	for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+		const machine = await client.machines.create({
+			vcpu: config.vcpu,
+			memory_mib: config.memoryMib,
+			storage_gib: config.storageGib,
+		});
+		onAttempt?.({
+			attempt,
+			machineId: machine.machine_id,
+			event: "created",
+		});
+		try {
+			return await waitForRunning(client, machine.machine_id);
+		} catch (err) {
+			lastError = err;
+			const message = err instanceof Error ? err.message : String(err);
+			const transient = isTransient(message);
+			if (!transient || attempt === maxAttempts) {
+				onAttempt?.({
+					attempt,
+					machineId: machine.machine_id,
+					event: "fatal",
+					message,
+				});
+				throw err;
+			}
+			onAttempt?.({
+				attempt,
+				machineId: machine.machine_id,
+				event: "transient_retry",
+				message,
+			});
+			// Transient placement failure: destroy this dead-on-arrival
+			// machine so we don't burn quota, then back off and retry.
+			await destroyQuiet(client, machine.machine_id);
+			await new Promise((resolve) => setTimeout(resolve, 5000 * attempt));
+		}
+	}
+	throw lastError ?? new Error("machine create failed for an unknown reason");
 }
 
 export async function getMachine(
