@@ -6,6 +6,7 @@
  * stream the SSE response back unchanged. Errors return JSON, not partial SSE.
  */
 
+import { auth } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 
 import { getServerConfig } from "@/lib/env";
@@ -15,6 +16,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest): Promise<Response> {
+	const { userId } = await auth();
+	if (!userId) {
+		return Response.json({ error: "unauthorized" }, { status: 401 });
+	}
+
 	let body: ChatRequestBody;
 	try {
 		body = (await request.json()) as ChatRequestBody;

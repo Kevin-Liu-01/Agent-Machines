@@ -1,10 +1,13 @@
+import { UserButton } from "@clerk/nextjs";
+
+import { SignedIn, SignedOut } from "@/components/AuthSwitch";
 import { ArchitectureDiagram } from "@/components/ArchitectureDiagram";
 import { CapabilityGrid } from "@/components/CapabilityGrid";
-import { Chat } from "@/components/Chat";
 import { CronSection } from "@/components/CronSection";
 import { Footer } from "@/components/Footer";
 import { HeroBlock } from "@/components/HeroBlock";
-import { ReticleLabel } from "@/components/reticle/ReticleLabel";
+import { LandingCTA } from "@/components/LandingCTA";
+import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleNavbar } from "@/components/reticle/ReticleNavbar";
 import { ReticlePageGrid } from "@/components/reticle/ReticlePageGrid";
 import { ReticleSection } from "@/components/reticle/ReticleSection";
@@ -22,31 +25,41 @@ export default function HomePage() {
 						className="flex items-center gap-2.5 font-mono text-sm text-[var(--ret-text)]"
 					>
 						<span className="grid h-7 w-7 place-items-center rounded border border-[var(--ret-border)] bg-[var(--ret-surface)] text-[var(--ret-purple)]">
-							{"☤"}
+							{"\u2624"}
 						</span>
 						hermes-machines
 					</a>
-					<div className="hidden items-center gap-6 font-mono text-xs text-[var(--ret-text-dim)] md:flex">
-						<a href="#chat" className="hover:text-[var(--ret-text)]">
-							chat
-						</a>
-						<a href="#capabilities" className="hover:text-[var(--ret-text)]">
+					<div className="flex items-center gap-5 font-mono text-xs text-[var(--ret-text-dim)]">
+						<a href="#capabilities" className="hidden hover:text-[var(--ret-text)] md:inline">
 							capabilities
 						</a>
-						<a href="#skills" className="hover:text-[var(--ret-text)]">
+						<a href="#skills" className="hidden hover:text-[var(--ret-text)] md:inline">
 							skills
 						</a>
-						<a href="#architecture" className="hover:text-[var(--ret-text)]">
+						<a href="#architecture" className="hidden hover:text-[var(--ret-text)] md:inline">
 							architecture
 						</a>
 						<a
 							href="https://github.com/Kevin-Liu-01/hermes-machines"
 							target="_blank"
 							rel="noreferrer"
-							className="hover:text-[var(--ret-text)]"
+							className="hidden hover:text-[var(--ret-text)] md:inline"
 						>
 							github
 						</a>
+						<SignedIn>
+							<ReticleButton as="a" href="/dashboard" variant="primary" size="sm">
+								Dashboard
+							</ReticleButton>
+							<UserButton
+								appearance={{ elements: { avatarBox: "h-7 w-7" } }}
+							/>
+						</SignedIn>
+						<SignedOut>
+							<ReticleButton as="a" href="/sign-in" variant="primary" size="sm">
+								Sign in
+							</ReticleButton>
+						</SignedOut>
 					</div>
 				</div>
 			</ReticleNavbar>
@@ -62,25 +75,8 @@ export default function HomePage() {
 
 				<TempleDivider />
 
-				<ReticleSection
-					id="chat"
-					contentClassName="px-6 pt-12 pb-16"
-				>
-					<ReticleLabel>LIVE -- talk to the deployed agent</ReticleLabel>
-					<h2 className="mt-3 text-2xl font-semibold tracking-tight md:text-3xl">
-						Chat
-					</h2>
-					<p className="mt-2 max-w-[60ch] text-sm leading-relaxed text-[var(--ret-text-dim)] md:text-base">
-						This box streams from{" "}
-						<code className="rounded border border-[var(--ret-border)] bg-[var(--ret-surface)] px-1 font-mono text-[0.85em]">
-							/v1/chat/completions
-						</code>{" "}
-						on the deployed machine. Tools fire on the VM. Memory persists between
-						sessions.
-					</p>
-					<div className="mt-7">
-						<Chat />
-					</div>
+				<ReticleSection contentClassName="px-6 pt-12 pb-16">
+					<LandingCTA />
 				</ReticleSection>
 
 				<ReticleSection id="capabilities" contentClassName="px-6 pt-12 pb-16">

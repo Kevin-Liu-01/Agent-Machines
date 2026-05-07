@@ -74,19 +74,45 @@ npm run reload             # re-upload knowledge/ folder
 npm run gc                 # destroy every machine on the org (use after `409 quota exceeded`)
 ```
 
-## Web UI (Next.js + Reticle/Sigil)
+## Web UI -- Next.js + Reticle/Sigil + Clerk-gated dashboard
 
-Optional polished chat frontend. Lives in `web/`. Streams via a server-side proxy so the bearer token never reaches the browser.
+The `web/` app is the polished console for the rig. Public marketing landing at `/`; everything live (chat, skills browser, MCP browser, machine telemetry) lives behind Clerk auth at `/dashboard/*`.
 
 ```bash
 cd web
 cp .env.local.example .env.local
-# paste HERMES_API_URL and HERMES_API_KEY from `npm run deploy` output
 npm install
 npm run dev
 ```
 
-Open [http://localhost:3210](http://localhost:3210). Or deploy to Vercel -- same env vars, same surface.
+Open [http://localhost:3210](http://localhost:3210). Sign in routes through Clerk; allowlist your email in the Clerk dashboard. The dashboard polls Dedalus and the Hermes gateway every five seconds for live state.
+
+### Required env vars
+
+| Var | Where it lives | Purpose |
+|---|---|---|
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk dashboard -> API Keys | Auth -- public client key |
+| `CLERK_SECRET_KEY` | Clerk dashboard -> API Keys | Auth -- server secret |
+| `DEDALUS_API_KEY` | same as the CLI's `.env` | dashboard reads machine state |
+| `HERMES_MACHINE_ID` | printed by `npm run deploy` | which machine the dashboard reports on |
+| `HERMES_API_URL` | printed by `npm run deploy` | gateway base URL |
+| `HERMES_API_KEY` | printed by `npm run deploy` | gateway bearer |
+| `HERMES_MODEL` | optional | label only; the gateway picks the actual model |
+
+For a Vercel deploy, set the same vars in the project env and push -- Vercel auto-builds the `web/` root.
+
+### Routes
+
+| Route | Auth | What it does |
+|---|---|---|
+| `/` | public | marketing landing with hero, three.js bust, architecture diagram |
+| `/sign-in` | public | Clerk sign-in card, redirects to `/dashboard` after success |
+| `/dashboard` | gated | overview cards: machine status, gateway state, latency, counts |
+| `/dashboard/chat` | gated | streaming chat (same UX as before, behind auth) |
+| `/dashboard/skills` | gated | 13 skills grouped by category, click for full markdown |
+| `/dashboard/skills/[slug]` | gated | rendered SKILL.md with metadata sidebar |
+| `/dashboard/mcps` | gated | MCP servers + per-tool descriptions |
+| `/dashboard/{sessions,logs,cursor}` | gated | placeholder nav -- live data ships in PR2 |
 
 ## What ships into the machine
 

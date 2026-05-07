@@ -3,12 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "node scripts/sync-skills.mjs",
+    "prebuild": "node scripts/sync-skills.mjs",
     "dev": "next dev -p 3210",
     "build": "next build",
     "start": "next start -p 3210",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "node scripts/sync-skills.mjs && tsc --noEmit",
+    "sync-skills": "node scripts/sync-skills.mjs"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.3.2",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@types/three": "^0.184.0",
@@ -26,6 +30,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "autoprefixer": "^10.4.20",
+    "gray-matter": "^4.0.3",
     "postcss": "^8.4.49",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.0"

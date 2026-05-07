@@ -1,3 +1,4 @@
+import { SignedIn, SignedOut } from "@/components/AuthSwitch";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
@@ -28,16 +29,19 @@ export function HeroBlock() {
 					<code className="rounded border border-[var(--ret-border)] bg-[var(--ret-surface)] px-1 font-mono text-[0.85em]">
 						.cursor/rules
 					</code>
-					. Talk to it here. It remembers.
+					.
 				</p>
 				<div className="mt-8 flex flex-wrap gap-3">
-					<ReticleButton
-						as="a"
-						href="#chat"
-						variant="primary"
-					>
-						Talk to it
-					</ReticleButton>
+					<SignedIn>
+						<ReticleButton as="a" href="/dashboard" variant="primary">
+							Open dashboard
+						</ReticleButton>
+					</SignedIn>
+					<SignedOut>
+						<ReticleButton as="a" href="/sign-in" variant="primary">
+							Sign in to chat
+						</ReticleButton>
+					</SignedOut>
 					<ReticleButton
 						as="a"
 						href="https://github.com/Kevin-Liu-01/hermes-machines"

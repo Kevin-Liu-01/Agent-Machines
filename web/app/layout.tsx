@@ -1,3 +1,4 @@
+import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
@@ -22,11 +23,27 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
 	return (
-		<html lang="en" suppressHydrationWarning>
-			<body>
-				{children}
-				<div className="ret-grain" aria-hidden="true" />
-			</body>
-		</html>
+		<ClerkProvider
+			signInUrl="/sign-in"
+			signInForceRedirectUrl="/dashboard"
+			signUpForceRedirectUrl="/dashboard"
+			afterSignOutUrl="/"
+			appearance={{
+				variables: {
+					colorPrimary: "var(--ret-purple)",
+					colorBackground: "var(--ret-bg)",
+					colorText: "var(--ret-text)",
+					fontFamily: "var(--font-sans)",
+					borderRadius: "10px",
+				},
+			}}
+		>
+			<html lang="en" suppressHydrationWarning>
+				<body>
+					{children}
+					<div className="ret-grain" aria-hidden="true" />
+				</body>
+			</html>
+		</ClerkProvider>
 	);
 }
