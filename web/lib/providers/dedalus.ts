@@ -139,13 +139,23 @@ export class DedalusProvider implements MachineProvider {
 		path: string,
 		init?: RequestInit,
 	): Promise<Response> {
+		// Dedalus requires `Idempotency-Key` on every POST so retried
+		// requests don't double-spend. Generate a UUID per call -- the
+		// SDK does the same. Caller can override by passing the header
+		// explicitly (useful when the same logical operation needs to
+		// be retried with the same key).
+		const headers: Record<string, string> = {
+			"X-API-Key": this.apiKey,
+			"Content-Type": "application/json",
+			...(init?.headers as Record<string, string> | undefined),
+		};
+		const method = (init?.method ?? "GET").toUpperCase();
+		if (method === "POST" && !headers["Idempotency-Key"]) {
+			headers["Idempotency-Key"] = crypto.randomUUID();
+		}
 		return fetch(`${this.baseUrl}${path}`, {
 			...init,
-			headers: {
-				"X-API-Key": this.apiKey,
-				"Content-Type": "application/json",
-				...(init?.headers ?? {}),
-			},
+			headers,
 			cache: "no-store",
 		});
 	}
