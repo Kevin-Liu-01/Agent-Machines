@@ -98,8 +98,10 @@ export function isServiceSlug(value: string): value is ServiceSlug {
  * Figma, Linear, ...) keep their native palette via `tone="color"`.
  */
 const FORCE_MONO = new Set<ServiceSlug>([
-	// vercel + posthog now ship in their native palette (white triangle,
-	// rainbow hedgehog) so they read on dark mode without inverting.
+	// posthog ships its native rainbow palette and reads on both
+	// themes; the rest of the monochrome marks adopt currentColor so
+	// they're black on light surfaces and white on dark surfaces.
+	"vercel", // triangle: black on light, white on dark
 	"github", // near-black octocat
 	"anthropic", // near-black A
 	"openai", // unfilled paths default to black
