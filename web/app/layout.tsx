@@ -110,14 +110,21 @@ const CLERK_CONFIGURED = Boolean(
 
 /**
  * Boot script that runs synchronously in <head> before first paint.
- * Reads the persisted theme from localStorage and writes data-theme
- * on <html> so the page renders in the right palette immediately --
- * without this the page flashes the system theme on every nav.
+ * Mirrors ThemeToggle.applyTheme:
  *
- * Wrapped in IIFE + try/catch so a storage exception (private mode,
- * permissions denied) silently falls through to system-prefers.
+ *   - Reads the stored theme (light / dark / system, default system).
+ *   - Resolves the effective dark state (explicit dark, or system +
+ *     prefers-color-scheme: dark).
+ *   - Toggles `.dark` class on <html> (drives Tailwind's class-based
+ *     dark: variant) AND sets `data-theme` attribute (drives the CSS
+ *     variable token swap).
+ *
+ * Without this synchronous mirror the page flashes the wrong palette
+ * on every nav. Wrapped in IIFE + try/catch so storage exceptions
+ * (private mode, permissions denied) silently fall through to the
+ * system preference.
  */
-const THEME_BOOT = `(function(){try{var t=localStorage.getItem("agent-machines.theme");if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t);}}catch(e){}})();`;
+const THEME_BOOT = `(function(){try{var s=localStorage.getItem("agent-machines.theme");var t=(s==="light"||s==="dark"||s==="system")?s:"system";var sys=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;var dark=t==="dark"||(t==="system"&&sys);var r=document.documentElement;if(dark){r.classList.add("dark");}else{r.classList.remove("dark");}if(t==="system"){r.removeAttribute("data-theme");}else{r.setAttribute("data-theme",t);}}catch(e){}})();`;
 
 export default function RootLayout({ children }: { children: ReactNode }) {
 	const jsonLd = buildRootJsonLd();

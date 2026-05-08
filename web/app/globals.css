@@ -1,6 +1,17 @@
 @import "tailwindcss";
 
 /*
+ * Custom `dark:` variant. Tailwind v4's default ties `dark:` to
+ * prefers-color-scheme only, which means the manual theme toggle
+ * couldn't flip Tailwind utilities like `dark:hidden`. Bind it to the
+ * `.dark` class on <html> instead -- the ThemeToggle adds/removes
+ * that class (and the boot script in app/layout.tsx mirrors the same
+ * logic synchronously to avoid FOUC). Both manual toggle and
+ * "system" mode now drive every dark: utility uniformly.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
  * Reticle / Sigil design tokens.
  *
  * The aesthetic: structural visibility. Grid lines, margin rails, and cross

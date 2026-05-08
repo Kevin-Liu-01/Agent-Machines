@@ -64,9 +64,29 @@ function readStored(): Theme {
 	return "system";
 }
 
+function systemPrefersDark(): boolean {
+	if (typeof window === "undefined") return false;
+	return window.matchMedia("(prefers-color-scheme: dark)").matches;
+}
+
+/**
+ * Apply the resolved theme to <html>. We toggle BOTH:
+ *
+ *   - `class="dark"` -- drives Tailwind's `dark:` variant (registered
+ *     in globals.css as a class-based variant).
+ *   - `data-theme="dark"|"light"` -- drives the CSS variable token
+ *     swap in globals.css. `system` removes the attribute so the
+ *     `prefers-color-scheme: dark` media query takes over for tokens.
+ *
+ * Tokens and Tailwind utilities now flip together regardless of
+ * whether the resolution came from the toggle or the system.
+ */
 function applyTheme(theme: Theme) {
 	if (typeof document === "undefined") return;
 	const root = document.documentElement;
+	const isDark =
+		theme === "dark" || (theme === "system" && systemPrefersDark());
+	root.classList.toggle("dark", isDark);
 	if (theme === "system") {
 		root.removeAttribute("data-theme");
 	} else {
@@ -80,8 +100,23 @@ export function ThemeToggle({ className }: { className?: string }) {
 
 	useEffect(() => {
 		setMounted(true);
-		setTheme(readStored());
+		const stored = readStored();
+		setTheme(stored);
+		// Re-apply on mount so the class lands even when SSR didn't
+		// pre-set it (matches the boot script logic for the system case).
+		applyTheme(stored);
 	}, []);
+
+	// When the user is on "system", track OS preference changes live so
+	// the page flips alongside the system without requiring a toggle
+	// click.
+	useEffect(() => {
+		if (theme !== "system") return;
+		const mq = window.matchMedia("(prefers-color-scheme: dark)");
+		const onChange = () => applyTheme("system");
+		mq.addEventListener("change", onChange);
+		return () => mq.removeEventListener("change", onChange);
+	}, [theme]);
 
 	function pick(next: Theme) {
 		setTheme(next);
