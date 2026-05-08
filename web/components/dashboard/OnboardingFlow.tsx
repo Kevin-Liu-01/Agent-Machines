@@ -848,12 +848,12 @@ function KeyStep({
 				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
 					Get one at{" "}
 					<a
-						href="https://dcs.dedaluslabs.ai"
+						href="https://www.dedaluslabs.ai/dashboard/api-keys"
 						target="_blank"
 						rel="noreferrer"
 						className="text-[var(--ret-purple)] underline"
 					>
-						dcs.dedaluslabs.ai
+						dedaluslabs.ai/dashboard/api-keys
 					</a>
 					. Stored in your Clerk private metadata, never sent to the browser.
 					Same key authenticates inference too -- one key, two endpoints.
