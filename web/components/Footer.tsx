@@ -29,75 +29,83 @@ export function Footer() {
 					<div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-5">
 						<BrandMark size={18} gap="tight" withLabel={false} />
 						<span>agent-machines . MIT . Reticle / Sigil UI</span>
-						<span className="hidden items-center gap-2 text-[var(--ret-text-muted)] md:flex">
-							<span>built with</span>
-							<a
-								href="https://docs.dedaluslabs.ai/dcs"
-								target="_blank"
-								rel="noreferrer"
-								className="inline-flex items-center gap-1 hover:text-[var(--ret-text)]"
-							>
-								<Logo mark="dedalus" size={14} />
-								<span>Dedalus</span>
-							</a>
-							<span>+</span>
-							<a
-								href="https://nousresearch.com/"
-								target="_blank"
-								rel="noreferrer"
-								className="inline-flex items-center gap-1 hover:text-[var(--ret-text)]"
-							>
-								<Logo mark="nous" size={14} />
-								<span>Nous</span>
-							</a>
-							<span>/</span>
-							<a
-								href="https://github.com/openclaw/openclaw"
-								target="_blank"
-								rel="noreferrer"
-								className="inline-flex items-center gap-1 hover:text-[var(--ret-text)]"
-							>
-								<Logo mark="openclaw" size={14} />
-								<span>OpenClaw</span>
-							</a>
-							<span>+</span>
-							<a
-								href="https://cursor.com/"
-								target="_blank"
-								rel="noreferrer"
-								className="inline-flex items-center gap-1 hover:text-[var(--ret-text)]"
-							>
-								<Logo mark="cursor" size={14} />
-								<span>Cursor</span>
-							</a>
-						</span>
-					</div>
-					<span className="flex items-center gap-3">
-						<a
-							href="https://github.com/Kevin-Liu-01/agent-machines"
-							className="hover:text-[var(--ret-text)]"
-							target="_blank"
-							rel="noreferrer"
-						>
-							github
-						</a>
-						<a
-							href="https://hermes-agent.nousresearch.com/docs/"
-							className="hover:text-[var(--ret-text)]"
-							target="_blank"
-							rel="noreferrer"
-						>
-							hermes docs
-						</a>
+					<span className="hidden items-center gap-2 text-[var(--ret-text-muted)] md:flex">
+						<span>built with</span>
 						<a
 							href="https://docs.dedaluslabs.ai/dcs"
-							className="hover:text-[var(--ret-text)]"
 							target="_blank"
 							rel="noreferrer"
+							className="inline-flex items-center gap-1 hover:text-[var(--ret-text)]"
 						>
-							dcs
+							<Logo mark="dedalus" size={14} />
+							<span>Dedalus</span>
+						</a>
+						<span>+</span>
+						<a
+							href="https://github.com/NousResearch/hermes-agent"
+							target="_blank"
+							rel="noreferrer"
+							className="inline-flex items-center gap-1 hover:text-[var(--ret-text)]"
+						>
+							<Logo mark="nous" size={14} />
+							<span>Hermes</span>
+						</a>
+						<span>/</span>
+						<a
+							href="https://github.com/openclaw/openclaw"
+							target="_blank"
+							rel="noreferrer"
+							className="inline-flex items-center gap-1 hover:text-[var(--ret-text)]"
+						>
+							<Logo mark="openclaw" size={14} />
+							<span>OpenClaw</span>
+						</a>
+						<span>+</span>
+						<a
+							href="https://cursor.com/"
+							target="_blank"
+							rel="noreferrer"
+							className="inline-flex items-center gap-1 hover:text-[var(--ret-text)]"
+						>
+							<Logo mark="cursor" size={14} />
+							<span>Cursor</span>
 						</a>
 					</span>
+				</div>
+				<span className="flex items-center gap-3">
+					<a
+						href="https://github.com/Kevin-Liu-01/agent-machines"
+						className="hover:text-[var(--ret-text)]"
+						target="_blank"
+						rel="noreferrer"
+					>
+						github
+					</a>
+					<a
+						href="https://hermes-agent.nousresearch.com/docs/"
+						className="hover:text-[var(--ret-text)]"
+						target="_blank"
+						rel="noreferrer"
+					>
+						hermes docs
+					</a>
+					<a
+						href="https://github.com/openclaw/openclaw"
+						className="hover:text-[var(--ret-text)]"
+						target="_blank"
+						rel="noreferrer"
+					>
+						openclaw docs
+					</a>
+					<a
+						href="https://docs.dedaluslabs.ai/dcs"
+						className="hover:text-[var(--ret-text)]"
+						target="_blank"
+						rel="noreferrer"
+					>
+						dcs
+					</a>
+				</span>
 				</div>
 			</div>
 		</footer>

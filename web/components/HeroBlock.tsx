@@ -93,6 +93,15 @@ export function HeroBlock() {
 					>
 						Hermes docs
 					</ReticleButton>
+					<ReticleButton
+						as="a"
+						href="https://github.com/openclaw/openclaw"
+						target="_blank"
+						variant="ghost"
+						size="sm"
+					>
+						OpenClaw docs
+					</ReticleButton>
 				</div>
 				<p className="mt-5 max-w-[60ch] font-mono text-[11px] text-[var(--ret-text-muted)]">
 					{"->"} every cell on the right is one day this machine was awake.

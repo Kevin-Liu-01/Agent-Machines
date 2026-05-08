@@ -56,7 +56,13 @@ const STEPS: ReadonlyArray<{ id: Step; label: string; hint: string }> = [
 
 const AGENT_DESC: Record<
 	AgentKind,
-	{ name: string; mark: "nous" | "openclaw"; tagline: string; bullets: string[] }
+	{
+		name: string;
+		mark: "nous" | "openclaw";
+		tagline: string;
+		bullets: string[];
+		links: ReadonlyArray<{ label: string; href: string }>;
+	}
 > = {
 	hermes: {
 		name: "Hermes",
@@ -66,7 +72,10 @@ const AGENT_DESC: Record<
 			"USER.md + MEMORY.md persist on /home/machine",
 			"FTS5 sessions DB indexes every chat for instant recall",
 			"Cron schedules survive sleeps; wake the VM on tick",
-			"By Nous Research",
+		],
+		links: [
+			{ label: "github", href: "https://github.com/NousResearch/hermes-agent" },
+			{ label: "docs", href: "https://hermes-agent.nousresearch.com/docs/" },
 		],
 	},
 	openclaw: {
@@ -77,7 +86,10 @@ const AGENT_DESC: Record<
 			"Anthropic computer-use loop on a real X server",
 			"Browser + screenshot + click-by-coordinates",
 			"State + screenshots cached on the machine disk",
-			"By Dedalus Labs",
+		],
+		links: [
+			{ label: "github", href: "https://github.com/openclaw/openclaw" },
+			{ label: "ddls cookbook", href: "https://github.com/dedalus-labs/openclaw-ddls" },
 		],
 	},
 };
@@ -466,40 +478,59 @@ function AgentStep({
 					const meta = AGENT_DESC[kind];
 					const selected = value === kind;
 					return (
-						<button
+						<div
 							key={kind}
-							type="button"
-							onClick={() => onPick(kind)}
 							className={cn(
-								"group flex flex-col gap-3 border bg-[var(--ret-bg)] p-4 text-left transition-colors",
+								"flex flex-col border transition-colors",
 								selected
 									? "border-[var(--ret-purple)] bg-[var(--ret-purple-glow)]"
-									: "border-[var(--ret-border)] hover:border-[var(--ret-border-hover)] hover:bg-[var(--ret-surface)]",
+									: "border-[var(--ret-border)] bg-[var(--ret-bg)] hover:border-[var(--ret-border-hover)]",
 							)}
 						>
-							<div className="flex items-center justify-between gap-2">
-								<div className="flex items-center gap-2">
-									<Logo mark={meta.mark} size={20} />
-									<h2 className="font-mono text-[14px] text-[var(--ret-text)]">
-										{meta.name}
-									</h2>
+							<button
+								type="button"
+								onClick={() => onPick(kind)}
+								className="group flex flex-col gap-3 p-4 text-left"
+							>
+								<div className="flex items-center justify-between gap-2">
+									<div className="flex items-center gap-2">
+										<Logo mark={meta.mark} size={20} />
+										<h2 className="font-mono text-[14px] text-[var(--ret-text)]">
+											{meta.name}
+										</h2>
+									</div>
+									{selected ? (
+										<ReticleBadge variant="accent">selected</ReticleBadge>
+									) : null}
 								</div>
-								{selected ? (
-									<ReticleBadge variant="accent">selected</ReticleBadge>
-								) : null}
-							</div>
-							<p className="text-[12px] text-[var(--ret-text-dim)]">
-								{meta.tagline}
-							</p>
-							<ul className="space-y-0.5 font-mono text-[10px] text-[var(--ret-text-muted)]">
-								{meta.bullets.map((b) => (
-									<li key={b} className="flex items-start gap-1.5">
-										<span>.</span>
-										<span>{b}</span>
-									</li>
+								<p className="text-[12px] text-[var(--ret-text-dim)]">
+									{meta.tagline}
+								</p>
+								<ul className="space-y-0.5 font-mono text-[10px] text-[var(--ret-text-muted)]">
+									{meta.bullets.map((b) => (
+										<li key={b} className="flex items-start gap-1.5">
+											<span>.</span>
+											<span>{b}</span>
+										</li>
+									))}
+								</ul>
+							</button>
+							{/* Source links sit OUTSIDE the picker button so clicking
+							    them opens the link instead of selecting the agent. */}
+							<div className="flex flex-wrap gap-1.5 border-t border-[var(--ret-border)] px-4 py-2">
+								{meta.links.map((l) => (
+									<a
+										key={l.href}
+										href={l.href}
+										target="_blank"
+										rel="noreferrer"
+										className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)] transition-colors hover:text-[var(--ret-purple)]"
+									>
+										{l.label} {"->"}
+									</a>
 								))}
-							</ul>
-						</button>
+							</div>
+						</div>
 					);
 				})}
 			</div>
