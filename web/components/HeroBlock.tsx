@@ -1,4 +1,5 @@
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import type { SVGProps } from "react";
 
 import { SignedIn, SignedOut } from "@/components/AuthSwitch";
@@ -8,6 +9,16 @@ import { ServiceIcon } from "@/components/ServiceIcon";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
+
+/**
+ * Hero-side 3D bust portrait. Rendered client-side via the same
+ * SceneCanvas the dashboard's IDENTITY card uses, so the marketing
+ * page and the in-product card share visual language.
+ */
+const HermesBustScene = dynamic(
+	() => import("@/components/three").then((m) => m.HermesBustScene),
+	{ ssr: false, loading: () => null },
+);
 
 const PROOF_POINTS: ReadonlyArray<{
 	Icon: (p: SVGProps<SVGSVGElement>) => React.ReactElement;
@@ -66,13 +77,16 @@ export function HeroBlock() {
 					<ReticleBadge>per-account fleet</ReticleBadge>
 				</div>
 
-				<h1 className="ret-display mt-5 text-3xl leading-[1.05] md:text-[44px]">
-					A persistent machine
-					<br />
-					<span className="text-[var(--ret-text-dim)]">
-						for your agent.
-					</span>
-				</h1>
+				<div className="mt-5 flex items-start gap-5 md:gap-7">
+					<h1 className="ret-display text-3xl leading-[1.05] md:text-[44px]">
+						A persistent machine
+						<br />
+						<span className="text-[var(--ret-text-dim)]">
+							for your agent.
+						</span>
+					</h1>
+					<AgentPortrait />
+				</div>
 
 				<p className="mt-5 max-w-[55ch] text-[14px] leading-relaxed text-[var(--ret-text-dim)]">
 					One stateful microVM per account.{" "}
@@ -168,6 +182,38 @@ export function HeroBlock() {
 				<ContributionGrid />
 			</div>
 		</div>
+	);
+}
+
+/* ------------------------------------------------------------------ */
+/* Agent portrait -- mirrors the dashboard IDENTITY card               */
+/* ------------------------------------------------------------------ */
+
+function AgentPortrait() {
+	return (
+		<aside className="relative hidden shrink-0 lg:block">
+			<div className="relative aspect-square w-[156px] border border-[var(--ret-border)] bg-[var(--ret-bg-soft)]">
+				<HermesBustScene className="h-full w-full" />
+				{/* Cross marks on the four corners pin the canvas into the
+				    Reticle grid -- same treatment as the dashboard
+				    IDENTITY card. */}
+				<span className="pointer-events-none absolute left-1.5 top-1.5 h-2.5 w-2.5 border-l border-t border-[var(--ret-cross)]" />
+				<span className="pointer-events-none absolute right-1.5 top-1.5 h-2.5 w-2.5 border-r border-t border-[var(--ret-cross)]" />
+				<span className="pointer-events-none absolute bottom-1.5 left-1.5 h-2.5 w-2.5 border-b border-l border-[var(--ret-cross)]" />
+				<span className="pointer-events-none absolute bottom-1.5 right-1.5 h-2.5 w-2.5 border-b border-r border-[var(--ret-cross)]" />
+				<span className="pointer-events-none absolute right-1.5 top-1.5 z-10 border border-[var(--ret-green)]/45 bg-[var(--ret-green)]/10 px-1 py-px font-mono text-[8px] uppercase tracking-[0.22em] text-[var(--ret-green)]">
+					default
+				</span>
+			</div>
+			<div className="mt-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
+				<Logo mark="nous" size={10} />
+				<span className="text-[var(--ret-text-dim)]">Hermes</span>
+				<span className="text-[var(--ret-text-muted)]">. by Nous Research</span>
+			</div>
+			<p className="font-mono text-[10px] tracking-wide text-[var(--ret-text-muted)]">
+				swap to OpenClaw any time
+			</p>
+		</aside>
 	);
 }
 
