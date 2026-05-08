@@ -1,24 +1,28 @@
 /**
  * GET / POST /api/dashboard/chats
  *
- * GET  -- returns the user's chat list (summaries; no message bodies).
- * POST -- creates or updates a chat; saves messages + summary back to Vercel Blob.
+ * Reads + writes chat history on the user's active Dedalus machine
+ * (under `~/.agent-machines/chats/`). The machine is the storage layer
+ * because the persistent volume already survives sleep/wake and the
+ * agent itself can `cat` the same files for context.
  *
- * The chat UI auto-saves on every message exchange. The streaming chat
- * endpoint stays in /api/chat (no change there); the client is the one
- * that calls POST /api/dashboard/chats once a stream finishes to
- * persist the new turn.
+ * Wake-on-read: if the machine is sleeping, GET fires a wake and
+ * returns `{ ok: false, reason: "machine_starting" }` so the client
+ * can poll. POSTs that arrive while a machine is asleep similarly
+ * return a transitional state -- the client retries after the machine
+ * is ready.
  */
 
 import { auth } from "@clerk/nextjs/server";
 
 import {
-	BlobUnavailableError,
-	isStorageConfigured,
+	deleteChat,
 	listChats,
+	loadChat,
 	saveChat,
 	type ChatRecord,
-} from "@/lib/storage/blob";
+} from "@/lib/storage/machine-chats";
+import { withActiveMachine } from "@/lib/storage/machine-fs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,29 +32,23 @@ export async function GET(): Promise<Response> {
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}
-	if (!isStorageConfigured()) {
-		return Response.json({
-			ok: false,
-			reason: "storage_not_configured",
-			message:
-				"Vercel Blob is not configured. Set BLOB_READ_WRITE_TOKEN to enable chat history.",
-			chats: [],
-		});
+	const handle = await withActiveMachine();
+	if ("ok" in handle) {
+		return Response.json({ ...handle, chats: [] });
 	}
 	try {
-		const chats = await listChats(userId);
-		return Response.json({ ok: true, chats });
+		const chats = await listChats();
+		return Response.json({
+			ok: true,
+			chats,
+			machineId: handle.machine.id,
+		});
 	} catch (err) {
-		if (err instanceof BlobUnavailableError) {
-			return Response.json({
-				ok: false,
-				reason: "storage_not_configured",
-				message: err.message,
-				chats: [],
-			});
-		}
-		const message = err instanceof Error ? err.message : "unknown_error";
-		return Response.json({ error: "list_failed", message }, { status: 502 });
+		const message = err instanceof Error ? err.message : "list_failed";
+		return Response.json(
+			{ ok: false, reason: "exec_failed", message, chats: [] },
+			{ status: 502 },
+		);
 	}
 }
 
@@ -59,15 +57,9 @@ export async function POST(request: Request): Promise<Response> {
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}
-	if (!isStorageConfigured()) {
-		return Response.json(
-			{
-				error: "storage_not_configured",
-				message:
-					"Vercel Blob is not configured. Set BLOB_READ_WRITE_TOKEN to enable chat history.",
-			},
-			{ status: 503 },
-		);
+	const handle = await withActiveMachine();
+	if ("ok" in handle) {
+		return Response.json(handle, { status: 503 });
 	}
 	let body: ChatRecord;
 	try {
@@ -87,20 +79,42 @@ export async function POST(request: Request): Promise<Response> {
 		updatedAt: now,
 		createdAt: body.createdAt || now,
 		messageCount: body.messages.length,
+		machineId: handle.machine.id,
 		title: (body.title || derivedTitle(body.messages)).slice(0, 120),
 	};
 	try {
-		await saveChat(userId, record);
+		await saveChat(record);
 		return Response.json({ ok: true, chat: record });
 	} catch (err) {
-		if (err instanceof BlobUnavailableError) {
-			return Response.json(
-				{ error: "storage_not_configured", message: err.message },
-				{ status: 503 },
-			);
-		}
-		const message = err instanceof Error ? err.message : "unknown_error";
-		return Response.json({ error: "save_failed", message }, { status: 502 });
+		const message = err instanceof Error ? err.message : "save_failed";
+		return Response.json(
+			{ error: "save_failed", message },
+			{ status: 502 },
+		);
+	}
+}
+
+export async function DELETE(request: Request): Promise<Response> {
+	const { userId } = await auth();
+	if (!userId) {
+		return Response.json({ error: "unauthorized" }, { status: 401 });
+	}
+	const handle = await withActiveMachine();
+	if ("ok" in handle) {
+		return Response.json(handle, { status: 503 });
+	}
+	const url = new URL(request.url);
+	const id = url.searchParams.get("id");
+	if (!id) return Response.json({ error: "id_required" }, { status: 422 });
+	try {
+		await deleteChat(id);
+		return Response.json({ ok: true });
+	} catch (err) {
+		const message = err instanceof Error ? err.message : "delete_failed";
+		return Response.json(
+			{ error: "delete_failed", message },
+			{ status: 502 },
+		);
 	}
 }
 
@@ -110,3 +124,7 @@ function derivedTitle(messages: ChatRecord["messages"]): string {
 	const text = firstUser.content.trim().replace(/\s+/g, " ");
 	return text.length > 0 ? text : "untitled chat";
 }
+
+// `loadChat` is referenced by the [id] route only; re-exporting from
+// here would force the route into the same chunk for no reason.
+void loadChat;

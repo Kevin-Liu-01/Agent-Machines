@@ -1,65 +1,57 @@
 /**
  * GET / POST /api/dashboard/artifacts
  *
- * GET  -- list user's artifacts.
- * POST -- multipart upload: file + optional chatId. Returns the persisted ref.
- *
- * Files go to Vercel Blob under users/<userId>/artifacts/<id>/<name>.
- * The metadata index (URL, mime, bytes, chatId) lives next to the
- * blobs in users/<userId>/artifacts-index.json so the dashboard can
- * render the gallery in one round-trip.
+ * Lists + uploads artifacts onto the user's active Dedalus machine.
+ * Each artifact lives under `~/.agent-machines/artifacts/<id>/<name>`
+ * with a sibling `_meta.json` describing it. The agent on the same
+ * machine can read these files directly as context.
  */
 
+import { Buffer } from "node:buffer";
 import { randomUUID } from "node:crypto";
 
 import { auth } from "@clerk/nextjs/server";
 
 import {
-	BlobUnavailableError,
-	isStorageConfigured,
 	listArtifacts,
 	saveArtifact,
-} from "@/lib/storage/blob";
+} from "@/lib/storage/machine-artifacts";
+import { withActiveMachine } from "@/lib/storage/machine-fs";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = 8 * 1024 * 1024;
 
 export async function GET(): Promise<Response> {
 	const { userId } = await auth();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
-	if (!isStorageConfigured()) {
-		return Response.json({
-			ok: false,
-			reason: "storage_not_configured",
-			artifacts: [],
-		});
+	const handle = await withActiveMachine();
+	if ("ok" in handle) {
+		return Response.json({ ...handle, artifacts: [] });
 	}
 	try {
-		const artifacts = await listArtifacts(userId);
-		return Response.json({ ok: true, artifacts });
+		const artifacts = await listArtifacts();
+		return Response.json({
+			ok: true,
+			artifacts,
+			machineId: handle.machine.id,
+		});
 	} catch (err) {
-		if (err instanceof BlobUnavailableError) {
-			return Response.json({
-				ok: false,
-				reason: "storage_not_configured",
-				artifacts: [],
-			});
-		}
-		const message = err instanceof Error ? err.message : "unknown_error";
-		return Response.json({ error: "list_failed", message }, { status: 502 });
+		const message = err instanceof Error ? err.message : "list_failed";
+		return Response.json(
+			{ ok: false, reason: "exec_failed", message, artifacts: [] },
+			{ status: 502 },
+		);
 	}
 }
 
 export async function POST(request: Request): Promise<Response> {
 	const { userId } = await auth();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
-	if (!isStorageConfigured()) {
-		return Response.json(
-			{ error: "storage_not_configured" },
-			{ status: 503 },
-		);
+	const handle = await withActiveMachine();
+	if ("ok" in handle) {
+		return Response.json(handle, { status: 503 });
 	}
 
 	let form: FormData;
@@ -77,29 +69,25 @@ export async function POST(request: Request): Promise<Response> {
 		return Response.json(
 			{
 				error: "too_large",
-				message: `Artifact exceeds ${MAX_BYTES} byte limit (got ${file.size}).`,
+				message: `Artifact exceeds ${MAX_BYTES} byte cap (got ${file.size}). The execution-API write surface caps at 8 MiB per call; chunked upload lands in a follow-up.`,
 			},
 			{ status: 413 },
 		);
 	}
 	try {
 		const ref = await saveArtifact({
-			userId,
 			id: randomUUID(),
 			name: file.name,
 			mime: file.type || "application/octet-stream",
-			body: await file.arrayBuffer(),
+			body: Buffer.from(await file.arrayBuffer()),
 			chatId: typeof chatId === "string" && chatId ? chatId : undefined,
 		});
 		return Response.json({ ok: true, artifact: ref });
 	} catch (err) {
-		if (err instanceof BlobUnavailableError) {
-			return Response.json(
-				{ error: "storage_not_configured", message: err.message },
-				{ status: 503 },
-			);
-		}
-		const message = err instanceof Error ? err.message : "unknown_error";
-		return Response.json({ error: "save_failed", message }, { status: 502 });
+		const message = err instanceof Error ? err.message : "save_failed";
+		return Response.json(
+			{ error: "save_failed", message },
+			{ status: 502 },
+		);
 	}
 }

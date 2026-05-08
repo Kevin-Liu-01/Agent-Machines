@@ -22,74 +22,105 @@ type ChatSummary = {
 
 type ChatRecord = ChatSummary & { messages: Message[] };
 
-type ListResponse = {
-	ok: boolean;
-	chats?: ChatSummary[];
-	reason?: string;
-	message?: string;
-};
+type ChatsListResponse =
+	| { ok: true; chats: ChatSummary[]; machineId: string }
+	| {
+			ok: false;
+			reason:
+				| "machine_starting"
+				| "machine_asleep"
+				| "machine_error"
+				| "no_active_machine"
+				| "missing_credentials"
+				| "exec_failed";
+			message: string;
+			machineId?: string;
+			chats: [];
+	  };
 
-type LoadResponse = {
-	ok: boolean;
-	chat?: ChatRecord;
-	error?: string;
-	message?: string;
-};
+type LoadResponse =
+	| { ok: true; chat: ChatRecord }
+	| {
+			ok: false;
+			reason: string;
+			message: string;
+	  };
 
 type Props = {
 	activeMachineId: string | null;
 	model: string | null;
 };
 
-const newId = () => `chat_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+const newId = () =>
+	`chat${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+
+const TRANSIENT_REASONS: ReadonlySet<string> = new Set([
+	"machine_starting",
+	"machine_asleep",
+]);
 
 export function ChatShell({ activeMachineId, model }: Props) {
 	const [chats, setChats] = useState<ChatSummary[]>([]);
-	const [storageReason, setStorageReason] = useState<string | null>(null);
+	const [machineState, setMachineState] = useState<{
+		ok: boolean;
+		reason: string | null;
+		message: string | null;
+	}>({ ok: false, reason: null, message: "loading..." });
 	const [activeChatId, setActiveChatId] = useState<string | null>(null);
 	const [messages, setMessages] = useState<Message[]>([]);
-	const [busy, setBusy] = useState(false);
 	const [loadError, setLoadError] = useState<string | null>(null);
-
 	const titleRef = useRef<string>("untitled chat");
 	const createdAtRef = useRef<string>(new Date().toISOString());
 
-	const refreshList = useCallback(async () => {
+	const refreshList = useCallback(async (): Promise<ChatsListResponse | null> => {
 		try {
 			const response = await fetch("/api/dashboard/chats", {
 				cache: "no-store",
 			});
-			const body = (await response.json()) as ListResponse;
-			if (!response.ok) {
-				setLoadError(body.message ?? `HTTP ${response.status}`);
-				return;
-			}
-			if (body.ok && body.chats) {
+			const body = (await response.json()) as ChatsListResponse;
+			if (body.ok) {
 				setChats(body.chats);
-				setStorageReason(null);
+				setMachineState({ ok: true, reason: null, message: null });
 			} else {
-				setStorageReason(body.message ?? body.reason ?? "Storage unavailable");
 				setChats([]);
+				setMachineState({
+					ok: false,
+					reason: body.reason,
+					message: body.message,
+				});
 			}
+			return body;
 		} catch (err) {
-			setLoadError(err instanceof Error ? err.message : "fetch failed");
+			const msg = err instanceof Error ? err.message : "fetch failed";
+			setMachineState({ ok: false, reason: "network", message: msg });
+			return null;
 		}
 	}, []);
 
 	useEffect(() => {
-		refreshList();
+		void refreshList();
 	}, [refreshList]);
 
+	// Auto-poll while transitioning (machine waking up). Backs off when
+	// machine reaches a terminal state (ok or error).
+	useEffect(() => {
+		if (!machineState.reason) return;
+		if (!TRANSIENT_REASONS.has(machineState.reason)) return;
+		const id = window.setTimeout(() => {
+			void refreshList();
+		}, 3000);
+		return () => window.clearTimeout(id);
+	}, [machineState, refreshList]);
+
 	const loadChat = useCallback(async (chatId: string) => {
-		setBusy(true);
 		setLoadError(null);
 		try {
 			const response = await fetch(`/api/dashboard/chats/${chatId}`, {
 				cache: "no-store",
 			});
 			const body = (await response.json()) as LoadResponse;
-			if (!response.ok || !body.ok || !body.chat) {
-				setLoadError(body.message ?? `HTTP ${response.status}`);
+			if (!body.ok) {
+				setLoadError(body.message);
 				return;
 			}
 			setActiveChatId(body.chat.id);
@@ -98,8 +129,6 @@ export function ChatShell({ activeMachineId, model }: Props) {
 			createdAtRef.current = body.chat.createdAt;
 		} catch (err) {
 			setLoadError(err instanceof Error ? err.message : "load failed");
-		} finally {
-			setBusy(false);
 		}
 	}, []);
 
@@ -140,15 +169,15 @@ export function ChatShell({ activeMachineId, model }: Props) {
 		if (activeChatId !== null) return;
 		if (chats.length > 0) {
 			void loadChat(chats[0].id);
-		} else {
+		} else if (machineState.ok) {
 			newChat();
 		}
-	}, [activeChatId, chats, loadChat, newChat]);
+	}, [activeChatId, chats, loadChat, newChat, machineState.ok]);
 
 	const persistTurn = useCallback(
 		async (final: Message[]) => {
 			if (!activeChatId) return;
-			if (storageReason) return;
+			if (!machineState.ok) return;
 			const firstUser = final.find((m) => m.role === "user");
 			const title = firstUser
 				? firstUser.content.trim().replace(/\s+/g, " ").slice(0, 80)
@@ -175,8 +204,11 @@ export function ChatShell({ activeMachineId, model }: Props) {
 				// Surfaced via the chat error UI on the next interaction.
 			}
 		},
-		[activeChatId, activeMachineId, model, refreshList, storageReason],
+		[activeChatId, activeMachineId, machineState.ok, model, refreshList],
 	);
+
+	const isTransient =
+		machineState.reason !== null && TRANSIENT_REASONS.has(machineState.reason);
 
 	return (
 		<div className="grid gap-px bg-[var(--ret-border)] lg:grid-cols-[260px_1fr]">
@@ -185,20 +217,16 @@ export function ChatShell({ activeMachineId, model }: Props) {
 					<span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
 						History
 					</span>
-					<ReticleButton variant="primary" size="sm" onClick={newChat}>
+					<ReticleButton
+						variant="primary"
+						size="sm"
+						onClick={newChat}
+						disabled={!machineState.ok}
+					>
 						New
 					</ReticleButton>
 				</div>
-				{storageReason ? (
-					<ReticleFrame className="mb-3 border-[var(--ret-amber)]/40 bg-[var(--ret-amber)]/5 p-3">
-						<p className="font-mono text-[10px] text-[var(--ret-amber)]">
-							{storageReason}
-						</p>
-						<p className="mt-1 font-mono text-[10px] text-[var(--ret-text-muted)]">
-							In-memory chats still work; nothing is saved.
-						</p>
-					</ReticleFrame>
-				) : null}
+				<MachineStateBanner state={machineState} />
 				{loadError ? (
 					<ReticleFrame className="mb-3 border-[var(--ret-red)]/40 bg-[var(--ret-red)]/5 p-3">
 						<p className="font-mono text-[10px] text-[var(--ret-red)]">
@@ -207,7 +235,7 @@ export function ChatShell({ activeMachineId, model }: Props) {
 					</ReticleFrame>
 				) : null}
 				<ul className="flex flex-col gap-px bg-[var(--ret-border)]">
-					{chats.length === 0 ? (
+					{machineState.ok && chats.length === 0 ? (
 						<li className="bg-[var(--ret-bg)] p-3 font-mono text-[11px] text-[var(--ret-text-muted)]">
 							no past chats
 						</li>
@@ -227,7 +255,6 @@ export function ChatShell({ activeMachineId, model }: Props) {
 								<button
 									type="button"
 									onClick={() => void loadChat(chat.id)}
-									disabled={busy}
 									className="text-left"
 								>
 									<p
@@ -260,15 +287,25 @@ export function ChatShell({ activeMachineId, model }: Props) {
 			</aside>
 
 			<section className="bg-[var(--ret-bg)] p-5">
-				<div className="mb-3 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
+				<div className="mb-3 flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
 					<span>chat</span>
 					<span>.</span>
 					<span className="text-[var(--ret-text-dim)]">
 						{titleRef.current}
 					</span>
 					{activeMachineId ? (
-						<ReticleBadge variant="default" className="text-[10px]">
+						<ReticleBadge
+							variant={
+								machineState.ok
+									? "default"
+									: isTransient
+										? "warning"
+										: "warning"
+							}
+							className="text-[10px]"
+						>
 							{activeMachineId.slice(0, 14)}
+							{isTransient ? " · waking" : ""}
 						</ReticleBadge>
 					) : (
 						<ReticleBadge variant="warning" className="text-[10px]">
@@ -276,21 +313,68 @@ export function ChatShell({ activeMachineId, model }: Props) {
 						</ReticleBadge>
 					)}
 				</div>
-				<ReticleHatch className="mb-4 h-1 border-b border-[var(--ret-border)]" pitch={6} />
+				<ReticleHatch
+					className="mb-4 h-1 border-b border-[var(--ret-border)]"
+					pitch={6}
+				/>
 				<Chat
 					key={activeChatId ?? "blank"}
 					messages={messages}
 					onMessagesChange={setMessages}
 					onTurnComplete={persistTurn}
-					disabled={!activeMachineId}
+					disabled={!activeMachineId || !machineState.ok}
 					disabledReason={
 						!activeMachineId
 							? "No active machine. Pick or provision one in /dashboard/machines."
-							: undefined
+							: !machineState.ok
+								? machineState.message ?? "Storage unavailable."
+								: undefined
 					}
 				/>
 			</section>
 		</div>
+	);
+}
+
+function MachineStateBanner({
+	state,
+}: {
+	state: { ok: boolean; reason: string | null; message: string | null };
+}) {
+	if (state.ok) return null;
+	if (state.reason === "machine_starting" || state.reason === "machine_asleep") {
+		return (
+			<ReticleFrame className="mb-3 border-[var(--ret-amber)]/40 bg-[var(--ret-amber)]/5 p-3">
+				<p className="font-mono text-[10px] text-[var(--ret-amber)]">
+					Waking your machine... chats are stored on its disk.
+				</p>
+				<p className="mt-1 font-mono text-[10px] text-[var(--ret-text-muted)]">
+					{state.message ?? "First open after sleep takes ~30 seconds."}
+				</p>
+			</ReticleFrame>
+		);
+	}
+	if (state.reason === "no_active_machine") {
+		return (
+			<ReticleFrame className="mb-3 border-[var(--ret-amber)]/40 bg-[var(--ret-amber)]/5 p-3">
+				<p className="font-mono text-[10px] text-[var(--ret-amber)]">
+					No active machine.
+				</p>
+				<a
+					href="/dashboard/setup"
+					className="mt-1 inline-block font-mono text-[10px] text-[var(--ret-purple)] underline"
+				>
+					{"Provision one ->"}
+				</a>
+			</ReticleFrame>
+		);
+	}
+	return (
+		<ReticleFrame className="mb-3 border-[var(--ret-red)]/40 bg-[var(--ret-red)]/5 p-3">
+			<p className="font-mono text-[10px] text-[var(--ret-red)]">
+				{state.message ?? "Storage unavailable."}
+			</p>
+		</ReticleFrame>
 	);
 }
 

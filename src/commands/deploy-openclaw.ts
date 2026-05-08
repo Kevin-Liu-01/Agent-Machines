@@ -161,7 +161,7 @@ export async function deployOpenclaw(args: string[]): Promise<void> {
 	const result = await runOpenclawBootstrap({
 		client,
 		machineId,
-		dedalusApiKey: config.apiKey,
+		llmApiKey: config.apiKey,
 	});
 
 	const exposure = await phase(
