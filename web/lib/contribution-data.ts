@@ -1,4 +1,6 @@
 import type { Mark } from "@/components/Logo";
+import type { ServiceSlug } from "@/components/ServiceIcon";
+import type { ToolCategory } from "@/lib/dashboard/loadout";
 
 /**
  * One day in the contribution grid.
@@ -7,6 +9,11 @@ import type { Mark } from "@/components/Logo";
  * system in the rig; `intensity` (0-4) maps to the green-scale color
  * ramp; `events` lists the actual happenings on that day with a
  * `kind`, a one-line label, and an optional secondary detail.
+ *
+ * Each event also carries an optional `brand` (third-party logo via
+ * `<ServiceIcon>`) or `category` (Lucide-style `<ToolIcon>`) tag so the
+ * day-detail panel can render the right glyph next to the event row
+ * instead of pure text.
  */
 export type ContributionEvent = {
 	kind:
@@ -17,9 +24,13 @@ export type ContributionEvent = {
 		| "wake"
 		| "sleep"
 		| "deploy"
-		| "milestone";
+		| "milestone"
+		| "compute"
+		| "browser";
 	label: string;
 	detail?: string;
+	brand?: ServiceSlug | "dedalus" | "nous" | "cursor" | "openclaw";
+	category?: ToolCategory;
 };
 
 export type ContributionDay = {
@@ -50,35 +61,75 @@ function makePrng(seed: number) {
 
 function pickPartner(rng: () => number): ContributionDay["partner"] {
 	const roll = rng();
-	if (roll < 0.36) return "dedalus";
-	if (roll < 0.66) return "nous";
+	if (roll < 0.32) return "dedalus";
+	if (roll < 0.55) return "nous";
+	if (roll < 0.7) return "openclaw";
 	if (roll < 0.9) return "cursor";
 	return "rig";
 }
 
-const SKILL_NAMES = [
-	"agent-ethos",
-	"empirical-verification",
-	"taste-output",
-	"deepsec",
-	"torvalds",
-	"counterfactual",
-	"vercel-react-best-practices",
-	"code-review",
-	"reticle-design-system",
-	"automation-cron",
-	"cursor-coding",
-	"production-safety",
+type SkillEntry = {
+	name: string;
+	brand?: ContributionEvent["brand"];
+	category?: ContributionEvent["category"];
+};
+
+const SKILLS: ReadonlyArray<SkillEntry> = [
+	{ name: "agent-ethos", category: "memory" },
+	{ name: "empirical-verification", category: "search" },
+	{ name: "taste-output", category: "code" },
+	{ name: "deepsec", category: "shell" },
+	{ name: "torvalds", category: "code" },
+	{ name: "counterfactual", category: "search" },
+	{ name: "vercel-react-best-practices", brand: "vercel" },
+	{ name: "code-review", category: "code" },
+	{ name: "reticle-design-system", category: "vision" },
+	{ name: "automation-cron", category: "schedule" },
+	{ name: "cursor-coding", brand: "cursor" },
+	{ name: "production-safety", category: "shell" },
+	{ name: "supabase", brand: "supabase" },
+	{ name: "stripe-best-practices", brand: "stripe" },
+	{ name: "clerk-orgs", brand: "clerk" },
+	{ name: "posthog-llm-traces", brand: "posthog" },
+	{ name: "sentry-workflow", brand: "sentry" },
 ];
 
-const MCP_NAMES = [
-	"cursor_agent",
-	"cursor_resume",
-	"shell_exec",
-	"fs_read",
-	"fs_write",
-	"browser_use",
-	"cron_create",
+type McpEntry = {
+	name: string;
+	brand?: ContributionEvent["brand"];
+	category?: ContributionEvent["category"];
+};
+
+const MCPS: ReadonlyArray<McpEntry> = [
+	{ name: "cursor_agent", brand: "cursor" },
+	{ name: "cursor_resume", brand: "cursor" },
+	{ name: "shell_exec", category: "shell" },
+	{ name: "fs_read", category: "filesystem" },
+	{ name: "fs_write", category: "filesystem" },
+	{ name: "browser_use", category: "browser" },
+	{ name: "cron_create", category: "schedule" },
+	{ name: "vercel_deploy", brand: "vercel" },
+	{ name: "supabase_query", brand: "supabase" },
+	{ name: "linear_create_issue", brand: "linear" },
+	{ name: "stripe_get_customer", brand: "stripe" },
+	{ name: "github_open_pr", brand: "github" },
+	{ name: "slack_post", brand: "slack" },
+];
+
+type OpenclawTool = {
+	label: string;
+	category?: ContributionEvent["category"];
+};
+
+const OPENCLAW_TOOLS: ReadonlyArray<OpenclawTool> = [
+	{ label: "browser.navigate", category: "browser" },
+	{ label: "browser.click_xy", category: "browser" },
+	{ label: "browser.screenshot", category: "vision" },
+	{ label: "browser.snapshot", category: "browser" },
+	{ label: "shell.exec", category: "shell" },
+	{ label: "computer.move_mouse", category: "browser" },
+	{ label: "computer.type_text", category: "browser" },
+	{ label: "vision.analyze", category: "vision" },
 ];
 
 const CRON_NAMES = [
@@ -101,33 +152,76 @@ function buildDayEvents(
 		const r = rng();
 		if (partner === "cursor") {
 			if (r < 0.6) {
-				const name = MCP_NAMES[Math.floor(rng() * 4)];
+				const mcp = MCPS[Math.floor(rng() * 4)];
 				events.push({
 					kind: "cursor",
-					label: `cursor_agent run`,
-					detail: `tool: ${name} . dur: ${(rng() * 30 + 4).toFixed(1)}s`,
+					label: "cursor_agent run",
+					detail: `tool: ${mcp.name} . dur: ${(rng() * 30 + 4).toFixed(1)}s`,
+					brand: "cursor",
 				});
 			} else {
-				const name = SKILL_NAMES[Math.floor(rng() * SKILL_NAMES.length)];
+				const skill = SKILLS[Math.floor(rng() * SKILLS.length)];
 				events.push({
 					kind: "mcp",
-					label: `cursor_resume`,
-					detail: `loaded skills: ${name}`,
+					label: "cursor_resume",
+					detail: `loaded skills: ${skill.name}`,
+					brand: "cursor",
 				});
 			}
 		} else if (partner === "nous") {
-			if (r < 0.5) {
+			if (r < 0.45) {
+				const mcp = MCPS[Math.floor(rng() * MCPS.length)];
 				events.push({
 					kind: "mcp",
-					label: MCP_NAMES[Math.floor(rng() * MCP_NAMES.length)],
+					label: mcp.name,
 					detail: `tokens: ${Math.floor(rng() * 4000 + 200)}`,
+					brand: mcp.brand,
+					category: mcp.category,
 				});
-			} else {
+			} else if (r < 0.85) {
 				const name = CRON_NAMES[Math.floor(rng() * CRON_NAMES.length)];
 				events.push({
 					kind: "cron",
 					label: `${name} fired`,
 					detail: r < 0.85 ? "exit 0" : "exit 1 . retried",
+					brand: "nous",
+					category: "schedule",
+				});
+			} else {
+				const skill = SKILLS[Math.floor(rng() * SKILLS.length)];
+				events.push({
+					kind: "skill",
+					label: `loaded ${skill.name}`,
+					detail: `intent match . in-context`,
+					brand: skill.brand ?? "nous",
+					category: skill.category,
+				});
+			}
+		} else if (partner === "openclaw") {
+			if (r < 0.55) {
+				const tool = OPENCLAW_TOOLS[Math.floor(rng() * OPENCLAW_TOOLS.length)];
+				events.push({
+					kind: "browser",
+					label: tool.label,
+					detail: `dur: ${(rng() * 6 + 0.4).toFixed(1)}s`,
+					brand: "openclaw",
+					category: tool.category,
+				});
+			} else if (r < 0.85) {
+				events.push({
+					kind: "compute",
+					label: "computer-use loop",
+					detail: `${Math.floor(rng() * 8 + 2)} steps . X server`,
+					brand: "openclaw",
+					category: "browser",
+				});
+			} else {
+				events.push({
+					kind: "mcp",
+					label: "screenshot artifact",
+					detail: "saved to /home/machine/.agent-machines/artifacts",
+					brand: "openclaw",
+					category: "vision",
 				});
 			}
 		} else if (partner === "dedalus") {
@@ -136,26 +230,31 @@ function buildDayEvents(
 					kind: "wake",
 					label: "machine woke",
 					detail: `${(rng() * 4 + 1.5).toFixed(1)}s . tunnel reused`,
+					brand: "dedalus",
 				});
 			} else if (r < 0.7) {
 				events.push({
 					kind: "sleep",
 					label: "machine slept",
 					detail: `${Math.floor(rng() * 60 + 4)} min idle`,
+					brand: "dedalus",
 				});
 			} else {
 				events.push({
 					kind: "deploy",
 					label: "tunnel re-established",
 					detail: "cloudflared quick-tunnel",
+					brand: "cloudflare",
 				});
 			}
 		} else {
-			const skill = SKILL_NAMES[Math.floor(rng() * SKILL_NAMES.length)];
+			const skill = SKILLS[Math.floor(rng() * SKILLS.length)];
 			events.push({
 				kind: "skill",
-				label: `${skill} reloaded`,
+				label: `${skill.name} reloaded`,
 				detail: r < 0.5 ? "git fetch . rsync" : "edited via dashboard",
+				brand: skill.brand,
+				category: skill.category,
 			});
 		}
 	}

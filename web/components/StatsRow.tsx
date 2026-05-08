@@ -1,13 +1,20 @@
 import { Logo } from "@/components/Logo";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
+import { ToolIcon } from "@/components/ToolIcon";
+import type { ToolCategory } from "@/lib/dashboard/loadout";
 
-const STATS: ReadonlyArray<{ label: string; value: string; hint?: string }> = [
-	{ label: "vCPU", value: "1", hint: "second-billed" },
-	{ label: "memory", value: "2 GiB" },
-	{ label: "storage", value: "10 GiB", hint: "persists across sleeps" },
-	{ label: "boot", value: "<30s", hint: "cold . <5s warm" },
-	{ label: "skills", value: "95", hint: "bundled + wiki" },
-	{ label: "fleet", value: "per-account", hint: "Clerk-tied" },
+const STATS: ReadonlyArray<{
+	label: string;
+	value: string;
+	hint?: string;
+	icon: ToolCategory;
+}> = [
+	{ label: "vCPU", value: "1", hint: "second-billed", icon: "shell" },
+	{ label: "memory", value: "2 GiB", icon: "memory" },
+	{ label: "storage", value: "10 GiB", hint: "persists across sleeps", icon: "filesystem" },
+	{ label: "boot", value: "<30s", hint: "cold . <5s warm", icon: "schedule" },
+	{ label: "skills", value: "95", hint: "bundled + wiki", icon: "memory" },
+	{ label: "fleet", value: "per-account", hint: "Clerk-tied", icon: "delegate" },
 ];
 
 type StackEntry = {
@@ -66,7 +73,8 @@ export function StatsRow() {
 						key={s.label}
 						className="flex flex-col gap-1 bg-[var(--ret-bg)] px-4 py-3 transition-colors duration-150 hover:bg-[var(--ret-surface)]"
 					>
-						<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+						<p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+							<ToolIcon name={s.icon} size={11} />
 							{s.label}
 						</p>
 						<p className="font-mono text-base tabular-nums text-[var(--ret-text)]">

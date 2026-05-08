@@ -18,6 +18,10 @@ type Props = {
 	hint?: ReactNode;
 	tone?: Tone;
 	className?: string;
+	/** Small leading glyph rendered next to the label. Pass a brand
+	 *  mark, category icon, or any inline ReactNode -- the card aligns
+	 *  it to the label baseline. */
+	icon?: ReactNode;
 };
 
 /**
@@ -25,7 +29,14 @@ type Props = {
  * `tabular-nums` so a stack of cards aligns vertically even when widths
  * differ (e.g. "running" vs "1024 ms").
  */
-export function MetricCard({ label, value, hint, tone = "default", className }: Props) {
+export function MetricCard({
+	label,
+	value,
+	hint,
+	tone = "default",
+	className,
+	icon,
+}: Props) {
 	return (
 		<div
 			className={cn(
@@ -34,7 +45,8 @@ export function MetricCard({ label, value, hint, tone = "default", className }: 
 				className,
 			)}
 		>
-			<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+			<p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				{icon ? <span className="inline-flex">{icon}</span> : null}
 				{label}
 			</p>
 			<p

@@ -1,6 +1,8 @@
 import { SignedIn, SignedOut } from "@/components/AuthSwitch";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
+import { ToolIcon } from "@/components/ToolIcon";
+import type { ToolCategory } from "@/lib/dashboard/loadout";
 
 /**
  * Section that replaces the public chat box. Chat moved into the
@@ -64,24 +66,30 @@ export function LandingCTA() {
 
 				<div className="border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-5 font-mono text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
 					<p className="text-[var(--ret-text-muted)]">{"# stays on the machine"}</p>
-					<p className="mt-2">
-						<span className="text-[var(--ret-purple)]">$</span> chat history (.jsonl)
-					</p>
-					<p>
-						<span className="text-[var(--ret-purple)]">$</span> uploaded artifacts
-					</p>
-					<p>
-						<span className="text-[var(--ret-purple)]">$</span> USER.md . MEMORY.md
-					</p>
-					<p>
-						<span className="text-[var(--ret-purple)]">$</span> FTS5 sessions DB
-					</p>
-					<p>
-						<span className="text-[var(--ret-purple)]">$</span> cron schedules
-					</p>
-					<p>
-						<span className="text-[var(--ret-purple)]">$</span> python venv + skills
-					</p>
+					<ul className="mt-2 space-y-1">
+						{(
+							[
+								{ icon: "memory", label: "chat history (.jsonl)" },
+								{ icon: "image", label: "uploaded artifacts" },
+								{ icon: "memory", label: "USER.md . MEMORY.md" },
+								{ icon: "search", label: "FTS5 sessions DB" },
+								{ icon: "schedule", label: "cron schedules" },
+								{ icon: "code", label: "python venv + skills" },
+							] satisfies ReadonlyArray<{ icon: ToolCategory; label: string }>
+						).map((row) => (
+							<li
+								key={row.label}
+								className="flex items-center gap-2"
+							>
+								<ToolIcon
+									name={row.icon}
+									size={11}
+									className="text-[var(--ret-purple)]"
+								/>
+								<span>{row.label}</span>
+							</li>
+						))}
+					</ul>
 				</div>
 			</div>
 		</div>

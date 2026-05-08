@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+import { Logo } from "@/components/Logo";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleHatch } from "@/components/reticle/ReticleHatch";
+import { ToolIcon } from "@/components/ToolIcon";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { useMachineControl } from "@/lib/dashboard/use-machine-control";
 import type { GatewaySummary } from "@/lib/dashboard/types";
@@ -86,6 +88,7 @@ export function OverviewClient({ counts }: Props) {
 			<section className="grid grid-cols-2 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] md:grid-cols-3 xl:grid-cols-6">
 				<MetricCard
 					label="machine"
+					icon={<Logo mark="dedalus" size={11} />}
 					value={<StatusPill phase={phase} className="text-[11px] px-2 py-0.5" />}
 					hint={
 						machine.machine
@@ -95,6 +98,13 @@ export function OverviewClient({ counts }: Props) {
 				/>
 				<MetricCard
 					label="gateway"
+					icon={
+						<ToolIcon
+							name="browser"
+							size={11}
+							className="text-[var(--ret-text-muted)]"
+						/>
+					}
 					value={
 						gateway ? (
 							gateway.ok ? (
@@ -117,6 +127,13 @@ export function OverviewClient({ counts }: Props) {
 				/>
 				<MetricCard
 					label="latency"
+					icon={
+						<ToolIcon
+							name="schedule"
+							size={11}
+							className="text-[var(--ret-text-muted)]"
+						/>
+					}
 					value={
 						gateway ? (
 							`${gateway.latencyMs} ms`
@@ -129,6 +146,13 @@ export function OverviewClient({ counts }: Props) {
 				/>
 				<MetricCard
 					label="spec"
+					icon={
+						<ToolIcon
+							name="memory"
+							size={11}
+							className="text-[var(--ret-text-muted)]"
+						/>
+					}
 					value={
 						machine.machine
 							? `${machine.machine.vcpu}v . ${memoryGib}G`
@@ -140,12 +164,26 @@ export function OverviewClient({ counts }: Props) {
 				/>
 				<MetricCard
 					label="skills"
+					icon={
+						<ToolIcon
+							name="skill"
+							size={11}
+							className="text-[var(--ret-text-muted)]"
+						/>
+					}
 					value={String(counts.skills)}
 					hint={`bundled in ~/.hermes/skills`}
 					tone="purple"
 				/>
 				<MetricCard
 					label="mcps + tools"
+					icon={
+						<ToolIcon
+							name="delegate"
+							size={11}
+							className="text-[var(--ret-text-muted)]"
+						/>
+					}
 					value={`${counts.mcps} . ${counts.tools}`}
 					hint={`crons: ${counts.crons} scheduled`}
 					tone="purple"

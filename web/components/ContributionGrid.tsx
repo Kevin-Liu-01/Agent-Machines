@@ -5,12 +5,16 @@ import { useMemo, useState } from "react";
 import { Logo, type Mark } from "@/components/Logo";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
+import { ServiceIcon, isServiceSlug } from "@/components/ServiceIcon";
+import { ToolIcon } from "@/components/ToolIcon";
 import { cn } from "@/lib/cn";
 import {
 	generateContributionGrid,
 	type ContributionDay,
 	type ContributionEvent,
 } from "@/lib/contribution-data";
+
+const PARTNER_MARKS = new Set<Mark>(["dedalus", "nous", "cursor", "openclaw"]);
 
 /**
  * GitHub-contribution-style activity grid for the rig.
@@ -60,7 +64,52 @@ const KIND_LABEL: Record<ContributionEvent["kind"], string> = {
 	sleep: "sleep",
 	deploy: "deploy",
 	milestone: "milestone",
+	compute: "compute",
+	browser: "browser",
 };
+
+function EventRow({ event }: { event: ContributionEvent }) {
+	// Resolve which icon to render: brand mark (partner / service) wins,
+	// then category icon, then a default by event kind. Every row gets
+	// some glyph -- never plain text against the rail.
+	function icon(): React.ReactNode {
+		if (event.brand && PARTNER_MARKS.has(event.brand as Mark)) {
+			return <Logo mark={event.brand as Mark} size={12} />;
+		}
+		if (event.brand && isServiceSlug(event.brand)) {
+			return <ServiceIcon slug={event.brand} size={12} />;
+		}
+		if (event.category) {
+			return (
+				<ToolIcon
+					name={event.category}
+					size={12}
+					className="text-[var(--ret-text-muted)]"
+				/>
+			);
+		}
+		return (
+			<span
+				className="h-2 w-2 border border-[var(--ret-border)]"
+				aria-hidden="true"
+			/>
+		);
+	}
+	return (
+		<li className="border-l border-[var(--ret-border)] pl-2">
+			<p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				{icon()}
+				{KIND_LABEL[event.kind]}
+			</p>
+			<p className="text-[12px] text-[var(--ret-text)]">{event.label}</p>
+			{event.detail ? (
+				<p className="font-mono text-[10px] text-[var(--ret-text-dim)]">
+					{event.detail}
+				</p>
+			) : null}
+		</li>
+	);
+}
 
 const INTENSITY_OPACITY = [0.06, 0.3, 0.55, 0.78, 1] as const;
 
@@ -246,34 +295,19 @@ export function ContributionGrid() {
 					</div>
 					<div className="flex flex-wrap items-center justify-between gap-2 pt-1">
 						<div className="flex flex-wrap gap-1.5">
-							<PartnerSwatch
-								partner="dedalus"
-								count={partnerCounts.dedalus}
-								active={filter === "dedalus"}
-								onClick={() =>
-									setFilter(filter === "dedalus" ? "all" : "dedalus")
-								}
-							/>
-							<PartnerSwatch
-								partner="nous"
-								count={partnerCounts.nous}
-								active={filter === "nous"}
-								onClick={() => setFilter(filter === "nous" ? "all" : "nous")}
-							/>
-							<PartnerSwatch
-								partner="cursor"
-								count={partnerCounts.cursor}
-								active={filter === "cursor"}
-								onClick={() =>
-									setFilter(filter === "cursor" ? "all" : "cursor")
-								}
-							/>
-							<PartnerSwatch
-								partner="rig"
-								count={partnerCounts.rig}
-								active={filter === "rig"}
-								onClick={() => setFilter(filter === "rig" ? "all" : "rig")}
-							/>
+							{(["dedalus", "nous", "openclaw", "cursor", "rig"] as const).map(
+								(partner) => (
+									<PartnerSwatch
+										key={partner}
+										partner={partner}
+										count={partnerCounts[partner]}
+										active={filter === partner}
+										onClick={() =>
+											setFilter(filter === partner ? "all" : partner)
+										}
+									/>
+								),
+							)}
 						</div>
 						<div className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 							<span>less</span>
@@ -336,20 +370,7 @@ function DayDetail({ day }: { day: ContributionDay }) {
 			) : (
 				<ul className="flex flex-col gap-2">
 					{day.events.map((event, idx) => (
-						<li
-							key={`${day.date}-${idx}`}
-							className="border-l border-[var(--ret-border)] pl-2"
-						>
-							<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-								{KIND_LABEL[event.kind]}
-							</p>
-							<p className="text-[12px] text-[var(--ret-text)]">{event.label}</p>
-							{event.detail ? (
-								<p className="font-mono text-[10px] text-[var(--ret-text-dim)]">
-									{event.detail}
-								</p>
-							) : null}
-						</li>
+						<EventRow key={`${day.date}-${idx}`} event={event} />
 					))}
 				</ul>
 			)}
