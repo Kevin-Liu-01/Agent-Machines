@@ -1,8 +1,10 @@
-# hermes-machines
+# agent-machines
 
-> An agent with a body that writes its own code.
+> Bring any agent to any provider.
 
-A fully-loaded [Hermes Agent](https://github.com/NousResearch/hermes-agent) deployed onto a [Dedalus Machine](https://docs.dedaluslabs.ai/dcs) -- exposing an OpenAI-compatible chat API, a web dashboard, a bundled skill library, scheduled cron automations, a polished Next.js chat UI built on the Reticle / Sigil design system, and the [Cursor TypeScript SDK](https://cursor.com/docs/sdk/typescript) wired in as an MCP tool so the agent can spawn real coding agents that inherit the rig's conventions as `.cursor/rules`. Drop your own skills in to swap any of it for your own opinions.
+A multi-tenant rig that lets any signed-in user spin up a persistent agent on the cloud microVM provider of their choice. Pick **[Hermes](https://github.com/NousResearch/hermes-agent)** (Nous Research's self-improving agent) or **[OpenClaw](https://github.com/openclaw/openclaw)** (Dedalus's open computer-use baseline). Plug in a key for **[Dedalus Machines](https://docs.dedaluslabs.ai/dcs)**, **Vercel Sandbox**, or **Fly Machines**. Get an OpenAI-compatible chat gateway, a per-user fleet view, persistent chat history + artifact storage on Vercel Blob, scheduled cron automations, a 95-skill library, and the [Cursor TypeScript SDK](https://cursor.com/docs/sdk/typescript) wired in as an MCP tool so the agent can spawn real coding agents that inherit the rig's conventions as `.cursor/rules`.
+
+> Note: the GitHub repo is still `Kevin-Liu-01/hermes-machines` while the rebrand percolates. The package + display name is `agent-machines`; the repo URL stays unchanged for now to keep deploy hooks and the on-VM `reload-from-git` script working.
 
 ```
                           [ you @ npm run chat ]

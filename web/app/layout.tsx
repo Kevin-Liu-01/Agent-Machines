@@ -23,19 +23,20 @@ const nacelle = localFont({
 });
 
 export const metadata: Metadata = {
-	title: "Hermes Machines -- agent on Dedalus Machines",
+	title: "Agent Machines -- bring any agent to any provider",
 	description:
-		"A Hermes Agent deployed to a Dedalus microVM. Tools, scheduled crons, a bundled skill library, and the Cursor SDK wired in as an MCP tool for real code work.",
+		"Multi-tenant agent rig. Pick Hermes or OpenClaw, plug in a Dedalus / Vercel Sandbox / Fly key, and ship. Persistent chats and artifacts on Vercel Blob.",
 	openGraph: {
-		title: "Hermes Machines",
+		title: "Agent Machines",
 		description:
-			"An agent with a body that writes its own code. Hermes Agent + Dedalus Machines + Cursor SDK.",
+			"Bring any agent (Hermes, OpenClaw) to any provider (Dedalus, Vercel Sandbox, Fly). Per-user fleets, persistent chats, artifacts.",
 		type: "website",
 	},
 	twitter: {
 		card: "summary_large_image",
-		title: "Hermes Machines",
-		description: "An agent with a body that writes its own code.",
+		title: "Agent Machines",
+		description:
+			"Bring any agent to any provider. Per-user fleets with persistent chats and artifacts.",
 	},
 };
 

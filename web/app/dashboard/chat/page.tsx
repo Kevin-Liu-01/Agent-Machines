@@ -10,9 +10,9 @@ export default async function DashboardChatPage() {
 	return (
 		<div className="flex flex-col">
 			<PageHeader
-				kicker="LIVE -- /v1/chat/completions"
+				kicker={`LIVE -- ${active?.agentKind === "openclaw" ? "openclaw" : "hermes"} gateway`}
 				title="Chat"
-				description="Streams from the OpenAI-compatible gateway on your active machine. Tools fire on the VM. Past chats persist to Vercel Blob, scoped to your account."
+				description="Streams from the OpenAI-compatible gateway on your active machine. Switch agents (Hermes / OpenClaw) from the navbar dropdown -- the dropdown changes the draft for new machines; existing machines keep their installed agent. Past chats persist to Vercel Blob, scoped to your account."
 			/>
 			<ChatShell
 				activeMachineId={active?.id ?? null}

@@ -94,7 +94,7 @@ export function StatusHeader({ agentKind }: Props) {
 				<Link href="/" className="flex items-center">
 					<BrandMark agent={agentKind} size={20} gap="tight" withLabel={false} />
 					<span className="ml-2 hidden font-mono text-[13px] md:inline">
-						hermes-machines
+						agent-machines
 					</span>
 				</Link>
 				<span className="text-[var(--ret-text-muted)]">/</span>

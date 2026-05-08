@@ -93,7 +93,7 @@ export async function deploy(): Promise<void> {
 	const existing = loadState();
 	const apiServerKey = existing?.apiServerKey ?? generateApiServerKey();
 
-	header("Hermes Machines -- deploy");
+	header("Agent Machines -- deploy hermes");
 	info(
 		`Model: ${config.model}  ·  vCPU ${config.vcpu}  ·  ${config.memoryMib} MiB  ·  ${config.storageGib} GiB`,
 	);

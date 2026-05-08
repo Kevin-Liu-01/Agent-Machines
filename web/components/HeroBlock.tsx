@@ -9,21 +9,24 @@ export function HeroBlock() {
 		<div className="grid items-stretch gap-8 md:grid-cols-[1fr_1.1fr] md:gap-10">
 			<div className="flex flex-col">
 				<div className="flex flex-wrap items-center gap-2">
-					<ReticleLabel>HERMES MACHINES</ReticleLabel>
-					<ReticleBadge variant="accent">v0.1</ReticleBadge>
-					<ReticleBadge>dedalus + cursor sdk</ReticleBadge>
+					<ReticleLabel>AGENT MACHINES</ReticleLabel>
+					<ReticleBadge variant="accent">v0.2 multi-agent</ReticleBadge>
+					<ReticleBadge>hermes . openclaw</ReticleBadge>
 				</div>
 				<h1 className="ret-display mt-4 text-3xl md:text-[44px]">
-					An agent with a body
+					Bring any agent
 					<br />
 					<span className="text-[var(--ret-text-dim)]">
-						that writes its own code.
+						to any provider.
 					</span>
 				</h1>
 				<p className="mt-4 max-w-[58ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)] md:text-sm">
-					Hermes Agent on a Dedalus microVM. Shell, browser, file access,
-					scheduled crons, a 95-skill library -- and when you ask for real
-					code, it spawns a Cursor agent with the rig's skills wired in as{" "}
+					Pick <strong className="text-[var(--ret-text)]">Hermes</strong>{" "}
+					(Nous Research) or{" "}
+					<strong className="text-[var(--ret-text)]">OpenClaw</strong>{" "}
+					(Dedalus). Plug in a Dedalus, Vercel Sandbox, or Fly key. Per-user
+					fleets, persistent chats and artifacts on Vercel Blob, and Cursor
+					SDK delegation wired in as{" "}
 					<code className="border border-[var(--ret-border)] bg-[var(--ret-surface)] px-1 font-mono text-[0.85em]">
 						.cursor/rules
 					</code>
@@ -61,8 +64,8 @@ export function HeroBlock() {
 				</div>
 				<p className="mt-5 max-w-[60ch] font-mono text-[11px] text-[var(--ret-text-muted)]">
 					{"->"} every cell on the right is one day in this rig's life. hover
-					to see what fired, click to pin. dedalus boots, nous serves, cursor
-					codes, the rig itself reloads skills from github.
+					to see what fired, click to pin. dedalus boots, an agent serves,
+					cursor codes, the rig itself reloads skills from github.
 				</p>
 			</div>
 

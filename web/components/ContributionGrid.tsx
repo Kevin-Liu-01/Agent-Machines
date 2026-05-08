@@ -30,6 +30,7 @@ const PARTNER_HUE: Record<ContributionDay["partner"], string> = {
 	dedalus: "var(--ret-purple)",
 	nous: "#9aa6c4",
 	cursor: "#e8e6dc",
+	openclaw: "#c9b48a",
 	rig: "var(--ret-amber)",
 };
 
@@ -37,6 +38,7 @@ const PARTNER_LABEL: Record<ContributionDay["partner"], string> = {
 	dedalus: "dedalus",
 	nous: "nous",
 	cursor: "cursor",
+	openclaw: "openclaw",
 	rig: "rig",
 };
 
@@ -46,6 +48,7 @@ const PARTNER_MARK: Record<Exclude<ContributionDay["partner"], "rig">, Mark> = {
 	dedalus: "dedalus",
 	nous: "nous",
 	cursor: "cursor",
+	openclaw: "openclaw",
 };
 
 const KIND_LABEL: Record<ContributionEvent["kind"], string> = {
@@ -174,6 +177,7 @@ export function ContributionGrid() {
 			dedalus: 0,
 			nous: 0,
 			cursor: 0,
+			openclaw: 0,
 			rig: 0,
 		};
 		for (const day of allDays) {

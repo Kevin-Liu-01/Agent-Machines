@@ -10,7 +10,7 @@ import {
 } from "@/lib/user-config/schema";
 
 export const metadata = {
-	title: "Dashboard -- Hermes Machines",
+	title: "Dashboard -- Agent Machines",
 };
 
 /**

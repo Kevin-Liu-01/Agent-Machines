@@ -10,7 +10,7 @@ type Props = {
 	/**
 	 * Agent variant of the lockup. Defaults to "hermes" (Dedalus x Nous).
 	 *   - "hermes"   -> Dedalus mark x Nous mark
-	 *   - "openclaw" -> Dedalus mark x "OpenClaw" wordmark
+	 *   - "openclaw" -> Dedalus mark x OpenClaw mark
 	 *
 	 * The Dedalus mark is always present because Dedalus runs the
 	 * machine; the right side identifies the agent personality.
@@ -18,16 +18,16 @@ type Props = {
 	agent?: AgentKind;
 };
 
-const SECONDARY_LABEL: Record<AgentKind, string> = {
-	hermes: "Nous",
-	openclaw: "OpenClaw",
+const SECONDARY_MARK: Record<AgentKind, "nous" | "openclaw"> = {
+	hermes: "nous",
+	openclaw: "openclaw",
 };
 
 /**
- * Lockup of the Dedalus mark and the agent's mark separated by a thin "x".
- * Used in the public landing navbar, the dashboard status header, and the
- * sign-in card so the collaboration is the first thing a visitor sees:
- * Hermes Machines is the binding between Dedalus's microVM runtime and an
+ * Lockup of the Dedalus mark x the agent's mark separated by a thin "x".
+ * Used in the public landing navbar, the dashboard status header, and
+ * the sign-in card so the collaboration is the first thing a visitor sees:
+ * agent-machines is the binding between Dedalus's microVM runtime and an
  * agent personality (Hermes by default, OpenClaw as an alternative).
  */
 export function BrandMark({
@@ -52,17 +52,8 @@ export function BrandMark({
 			>
 				{"\u00d7"}
 			</span>
-			{agent === "hermes" ? (
-				<Logo mark="nous" size={size} />
-			) : (
-				<span
-					className="font-mono text-[0.85em] text-[var(--ret-text)]"
-					style={{ lineHeight: 1, letterSpacing: "-0.01em" }}
-				>
-					{SECONDARY_LABEL[agent]}
-				</span>
-			)}
-			{withLabel ? <span className="text-sm">hermes-machines</span> : null}
+			<Logo mark={SECONDARY_MARK[agent]} size={size} />
+			{withLabel ? <span className="text-sm">agent-machines</span> : null}
 		</span>
 	);
 }

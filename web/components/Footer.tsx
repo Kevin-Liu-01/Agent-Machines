@@ -28,7 +28,7 @@ export function Footer() {
 				<div className="flex flex-col gap-4 px-6 py-8 md:flex-row md:items-center md:justify-between">
 					<div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-5">
 						<BrandMark size={18} gap="tight" withLabel={false} />
-						<span>hermes-machines . MIT . Reticle / Sigil UI</span>
+						<span>agent-machines . MIT . Reticle / Sigil UI</span>
 						<span className="hidden items-center gap-2 text-[var(--ret-text-muted)] md:flex">
 							<span>built with</span>
 							<a

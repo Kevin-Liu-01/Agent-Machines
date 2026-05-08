@@ -2,7 +2,7 @@ import Image from "next/image";
 
 import { cn } from "@/lib/cn";
 
-export type Mark = "dedalus" | "nous" | "cursor";
+export type Mark = "dedalus" | "nous" | "cursor" | "openclaw";
 
 type Props = {
 	mark: Mark;
@@ -35,24 +35,31 @@ const NATIVE_SRC: Record<Mark, { light: string; dark: string }> = {
 		light: "/brand/cursor-mark.svg",
 		dark: "/brand/cursor-mark-light.svg",
 	},
+	openclaw: {
+		light: "/brand/openclaw-mark.png",
+		dark: "/brand/openclaw-mark.png",
+	},
 };
 
 const MASK_SRC: Record<Mark, string> = {
 	dedalus: "/brand/dedalus-mark-black.svg",
 	nous: "/brand/nous-mark.svg",
 	cursor: "/brand/cursor-mark.svg",
+	openclaw: "/brand/openclaw-mark.png",
 };
 
 const DEFAULT_TONE: Record<Mark, NonNullable<Props["tone"]>> = {
 	dedalus: "auto",
 	nous: "currentColor",
 	cursor: "auto",
+	openclaw: "native",
 };
 
 const ARIA_LABEL: Record<Mark, string> = {
 	dedalus: "Dedalus Labs",
 	nous: "Nous Research",
 	cursor: "Cursor",
+	openclaw: "OpenClaw",
 };
 
 /**

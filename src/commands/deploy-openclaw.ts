@@ -96,7 +96,7 @@ export async function deployOpenclaw(args: string[]): Promise<void> {
 	const existing = loadState();
 	const apiServerKey = existing?.apiServerKey ?? generateApiServerKey();
 
-	header("Hermes Machines -- deploy openclaw");
+	header("Agent Machines -- deploy openclaw");
 	info(
 		`Spec: vCPU ${config.vcpu}  ·  ${config.memoryMib} MiB  ·  ${config.storageGib} GiB`,
 	);
