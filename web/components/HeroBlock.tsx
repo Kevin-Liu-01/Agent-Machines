@@ -158,18 +158,22 @@ export function HeroBlock() {
 					</ReticleButton>
 				</div>
 
-				<p className="mt-6 flex items-start gap-2 max-w-[55ch] font-mono text-[11px] leading-relaxed text-[var(--ret-text-muted)]">
-					<span className="mt-0.5 text-[var(--ret-purple)]">{"->"}</span>
-					<span>
-						Each cell on the right is one day this machine was awake. Hover
-						to peek, click to pin. Nothing lives in RAM that it can't rebuild
-						from <code className="text-[var(--ret-text-dim)]">/home/machine</code>.
-					</span>
-				</p>
 			</div>
 
-			<div className="relative z-10 min-h-[280px]">
-				<ContributionGrid />
+			<div className="relative z-10 flex min-h-[280px] flex-col">
+				<div className="flex-1">
+					<ContributionGrid />
+				</div>
+				<p className="mt-3 flex items-start gap-2 font-mono text-[11px] leading-relaxed text-[var(--ret-text-muted)] lg:justify-end lg:text-right">
+					<span className="mt-0.5 shrink-0 text-[var(--ret-purple)] lg:order-2">
+						{"->"}
+					</span>
+					<span className="max-w-[55ch] lg:order-1">
+						Each cell above is one day this machine was awake. Hover to peek,
+						click to pin. Nothing lives in RAM that it can't rebuild from{" "}
+						<code className="text-[var(--ret-text-dim)]">/home/machine</code>.
+					</span>
+				</p>
 			</div>
 		</div>
 	);
