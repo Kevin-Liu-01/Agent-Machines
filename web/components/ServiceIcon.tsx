@@ -88,6 +88,26 @@ export function isServiceSlug(value: string): value is ServiceSlug {
 	return SERVICE_SET.has(value);
 }
 
+/**
+ * Slugs whose brand SVG ships with a fill that disappears against the
+ * Reticle background (pure or near-black). For these we force
+ * `tone="mono"` so the mark inherits `currentColor` (the surrounding
+ * text color) and stays legible in both themes.
+ *
+ * Multi-color or saturated marks (Slack, Stripe, Supabase, Firebase,
+ * Figma, Linear, ...) keep their native palette via `tone="color"`.
+ */
+const FORCE_MONO = new Set<ServiceSlug>([
+	"vercel", // black triangle
+	"posthog", // black hedgehog
+	"github", // near-black octocat
+	"anthropic", // near-black A
+	"openai", // unfilled paths default to black
+	"sentry", // #362D59 reads as black on dark mode
+	"threedotjs", // black trefoil
+	"nextdotjs", // black N circle
+]);
+
 type Props = {
 	slug: ServiceSlug;
 	size?: number;
@@ -99,13 +119,15 @@ export function ServiceIcon({
 	slug,
 	size = 14,
 	className,
-	tone = "color",
+	tone,
 }: Props) {
 	const src = `/brand/services/${slug}.svg`;
 	const dim = `${size}px`;
 	const label = SERVICE_LABEL[slug];
+	const resolvedTone: "color" | "mono" =
+		tone ?? (FORCE_MONO.has(slug) ? "mono" : "color");
 
-	if (tone === "mono") {
+	if (resolvedTone === "mono") {
 		return (
 			<span
 				role="img"
