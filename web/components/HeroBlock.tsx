@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 import { SignedIn, SignedOut } from "@/components/AuthSwitch";
 import { ContributionGrid } from "@/components/ContributionGrid";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
@@ -6,8 +8,35 @@ import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 
 export function HeroBlock() {
 	return (
-		<div className="grid items-stretch gap-8 md:grid-cols-[1fr_1.1fr] md:gap-10">
-			<div className="flex flex-col">
+		<div className="relative grid items-stretch gap-8 md:grid-cols-[1fr_1.1fr] md:gap-10">
+			{/*
+			  Faint wing watermark anchored to the top-right of the hero.
+			  Sits behind everything via z-0 / pointer-events-none. The
+			  wing is the brand mark; using it as ambient wallpaper here
+			  (instead of a tiny corner logo) makes the hero feel weighted
+			  to the brand without needing literal wordmarks.
+			*/}
+			<div
+				aria-hidden="true"
+				className="pointer-events-none absolute -top-8 right-[-4%] hidden h-[420px] w-[420px] opacity-[0.07] md:block dark:opacity-[0.10]"
+			>
+				<Image
+					src="/brand/wing-mark.png"
+					alt=""
+					fill
+					sizes="420px"
+					className="object-contain object-right-top dark:hidden"
+				/>
+				<Image
+					src="/brand/wing-mark-dark.png"
+					alt=""
+					fill
+					sizes="420px"
+					className="hidden object-contain object-right-top dark:block"
+				/>
+			</div>
+
+			<div className="relative z-10 flex flex-col">
 				<div className="flex flex-wrap items-center gap-2">
 					<ReticleLabel>AGENT MACHINES</ReticleLabel>
 					<ReticleBadge variant="accent">v0.2 multi-agent</ReticleBadge>
@@ -72,7 +101,7 @@ export function HeroBlock() {
 				</p>
 			</div>
 
-			<div className="min-h-[280px]">
+			<div className="relative z-10 min-h-[280px]">
 				<ContributionGrid />
 			</div>
 		</div>

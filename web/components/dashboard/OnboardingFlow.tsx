@@ -1,7 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { BrandMark } from "@/components/BrandMark";
 import { Logo } from "@/components/Logo";
@@ -261,8 +262,19 @@ export function OnboardingFlow({
 	const canProvision = hasKey || ownerKey || dedalusKey.trim().length > 0;
 
 	return (
-		<main className="relative min-h-[100dvh] bg-[var(--ret-bg)] text-[var(--ret-text)]">
-			<header className="border-b border-[var(--ret-border)] px-6 py-4">
+		<main className="relative min-h-[100dvh] overflow-hidden bg-[var(--ret-bg)] text-[var(--ret-text)]">
+			{/*
+			  Ambient cloud-lines watermark across the entire onboarding
+			  shell. Sits at the bottom layer (z-0), pointer-events-none,
+			  so the kit-builder reads as a designed surface instead of a
+			  cold form -- without ever competing with the steps.
+			*/}
+			<div
+				aria-hidden="true"
+				className="pointer-events-none absolute inset-0 z-0 bg-cover bg-center opacity-[0.05] dark:opacity-[0.08]"
+				style={{ backgroundImage: "url(/brand/bg-cloud-lines.png)" }}
+			/>
+			<header className="relative z-10 border-b border-[var(--ret-border)] bg-[var(--ret-bg)]/85 px-6 py-4 backdrop-blur">
 				<div className="mx-auto flex max-w-[var(--ret-content-max)] items-center justify-between gap-4">
 					<a href="/" className="flex items-center gap-2">
 						<BrandMark size={20} gap="tight" withLabel={false} />
@@ -277,7 +289,7 @@ export function OnboardingFlow({
 				</div>
 			</header>
 
-			<div className="mx-auto grid max-w-[var(--ret-content-max)] gap-px bg-[var(--ret-border)] lg:grid-cols-[1.4fr_1fr]">
+			<div className="relative z-10 mx-auto grid max-w-[var(--ret-content-max)] gap-px bg-[var(--ret-border)] lg:grid-cols-[1.4fr_1fr]">
 				<section className="bg-[var(--ret-bg)] p-6">
 					<StepRail step={step} />
 
@@ -343,7 +355,26 @@ export function OnboardingFlow({
 					</div>
 				</section>
 
-				<aside className="hidden bg-[var(--ret-bg-soft)] lg:block">
+				<aside className="relative hidden overflow-hidden bg-[var(--ret-bg-soft)] lg:block">
+					<div
+						aria-hidden="true"
+						className="pointer-events-none absolute -right-16 -top-16 h-[420px] w-[420px] opacity-[0.07] dark:opacity-[0.10]"
+					>
+						<Image
+							src="/brand/wing-mark.png"
+							alt=""
+							fill
+							sizes="420px"
+							className="object-contain object-right-top dark:hidden"
+						/>
+						<Image
+							src="/brand/wing-mark-dark.png"
+							alt=""
+							fill
+							sizes="420px"
+							className="hidden object-contain object-right-top dark:block"
+						/>
+					</div>
 					<RigPreview
 						agent={agent}
 						counts={counts}
