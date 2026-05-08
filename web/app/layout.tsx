@@ -23,20 +23,20 @@ const nacelle = localFont({
 });
 
 export const metadata: Metadata = {
-	title: "Agent Machines -- bring any agent to any provider",
+	title: "Agent Machines -- a persistent machine for your agent",
 	description:
-		"Multi-tenant agent rig. Pick Hermes or OpenClaw, plug in a Dedalus / Vercel Sandbox / Fly key, and ship. Persistent chats and artifacts on Vercel Blob.",
+		"One stateful microVM per Clerk account. Boot in 30 seconds, sleep on idle, wake on the first prompt. Chat history, files, learned skills, and cron all persist on /home/machine. Hermes or OpenClaw, any provider key, 95 skills + 17 MCP services.",
 	openGraph: {
 		title: "Agent Machines",
 		description:
-			"Bring any agent (Hermes, OpenClaw) to any provider (Dedalus, Vercel Sandbox, Fly). Per-user fleets, persistent chats, artifacts.",
+			"A persistent machine for your agent. One per account, stateful filesystem, sleep/wake by the second. Bring Hermes or OpenClaw, any provider key, any skill.",
 		type: "website",
 	},
 	twitter: {
 		card: "summary_large_image",
 		title: "Agent Machines",
 		description:
-			"Bring any agent to any provider. Per-user fleets with persistent chats and artifacts.",
+			"A persistent machine for your agent. Stateful filesystem, per-account fleet, sleep/wake by the second.",
 	},
 };
 

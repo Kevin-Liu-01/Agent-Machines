@@ -2,12 +2,12 @@ import { Logo } from "@/components/Logo";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 
 const STATS: ReadonlyArray<{ label: string; value: string; hint?: string }> = [
-	{ label: "vCPU", value: "1" },
+	{ label: "vCPU", value: "1", hint: "second-billed" },
 	{ label: "memory", value: "2 GiB" },
-	{ label: "storage", value: "10 GiB" },
-	{ label: "ports", value: "8642 / 9119", hint: "api / dashboard" },
+	{ label: "storage", value: "10 GiB", hint: "persists across sleeps" },
+	{ label: "boot", value: "<30s", hint: "cold . <5s warm" },
 	{ label: "skills", value: "95", hint: "bundled + wiki" },
-	{ label: "mcp", value: "cursor", hint: "@cursor/sdk" },
+	{ label: "fleet", value: "per-account", hint: "Clerk-tied" },
 ];
 
 const STACK: ReadonlyArray<{
@@ -46,7 +46,7 @@ const STACK: ReadonlyArray<{
 export function StatsRow() {
 	return (
 		<div className="mt-10">
-			<ReticleLabel>SHAPE -- STACK</ReticleLabel>
+			<ReticleLabel>MACHINE -- STACK</ReticleLabel>
 			<div className="mt-3 grid grid-cols-2 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-3 lg:grid-cols-6">
 				{STATS.map((s) => (
 					<div

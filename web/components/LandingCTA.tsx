@@ -20,30 +20,35 @@ export function LandingCTA() {
 			/>
 			<div className="relative grid gap-6 md:grid-cols-[1.4fr_1fr]">
 				<div>
-					<ReticleLabel>CHAT -- AUTH-GATED</ReticleLabel>
+					<ReticleLabel>FLEET -- AUTH-GATED</ReticleLabel>
 					<h2 className="mt-3 text-2xl font-semibold tracking-tight md:text-3xl">
-						Talk to it from the dashboard
+						Sign in. See your machines.
 					</h2>
 					<p className="mt-3 max-w-[60ch] text-sm leading-relaxed text-[var(--ret-text-dim)] md:text-base">
-						The chat surface streams from{" "}
+						Clerk session in, fleet out. Each user's{" "}
 						<code className="border border-[var(--ret-border)] bg-[var(--ret-surface)] px-1 font-mono text-[0.85em]">
-							/v1/chat/completions
+							UserConfig
 						</code>{" "}
-						on the deployed machine. Tools fire on the VM. Memory persists
-						across sessions. Access is allowlisted -- bring an authorized email.
+						-- attached provider keys, machine fleet, active machine, draft
+						agent -- lives in Clerk private metadata. Wake any machine; chat
+						history, files, and learned skills stream in from{" "}
+						<code className="border border-[var(--ret-border)] bg-[var(--ret-surface)] px-1 font-mono text-[0.85em]">
+							/home/machine
+						</code>
+						. Same machine, every device.
 					</p>
 					<div className="mt-6 flex flex-wrap gap-3">
 						<SignedIn>
-							<ReticleButton as="a" href="/dashboard/chat" variant="primary">
-								Open chat
+							<ReticleButton as="a" href="/dashboard/machines" variant="primary">
+								See my fleet
 							</ReticleButton>
-							<ReticleButton as="a" href="/dashboard" variant="secondary">
-								Dashboard overview
+							<ReticleButton as="a" href="/dashboard/chat" variant="secondary">
+								Open chat
 							</ReticleButton>
 						</SignedIn>
 						<SignedOut>
 							<ReticleButton as="a" href="/sign-in" variant="primary">
-								Sign in
+								Sign in to provision
 							</ReticleButton>
 							<ReticleButton
 								as="a"
@@ -58,21 +63,24 @@ export function LandingCTA() {
 				</div>
 
 				<div className="border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-5 font-mono text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
-					<p className="text-[var(--ret-text-muted)]">{"# what you get"}</p>
+					<p className="text-[var(--ret-text-muted)]">{"# stays on the machine"}</p>
 					<p className="mt-2">
-						<span className="text-[var(--ret-purple)]">$</span> 13 bundled skills
+						<span className="text-[var(--ret-purple)]">$</span> chat history (.jsonl)
 					</p>
 					<p>
-						<span className="text-[var(--ret-purple)]">$</span> 2 MCP servers . 10 tools
+						<span className="text-[var(--ret-purple)]">$</span> uploaded artifacts
 					</p>
 					<p>
-						<span className="text-[var(--ret-purple)]">$</span> 4 cron automations
+						<span className="text-[var(--ret-purple)]">$</span> USER.md . MEMORY.md
 					</p>
 					<p>
-						<span className="text-[var(--ret-purple)]">$</span> Cursor SDK delegation
+						<span className="text-[var(--ret-purple)]">$</span> FTS5 sessions DB
 					</p>
 					<p>
-						<span className="text-[var(--ret-purple)]">$</span> Live machine state
+						<span className="text-[var(--ret-purple)]">$</span> cron schedules
+					</p>
+					<p>
+						<span className="text-[var(--ret-purple)]">$</span> python venv + skills
 					</p>
 				</div>
 			</div>

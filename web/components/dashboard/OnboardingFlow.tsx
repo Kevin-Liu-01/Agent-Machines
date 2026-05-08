@@ -60,22 +60,22 @@ const AGENT_DESC: Record<
 	hermes: {
 		name: "Hermes",
 		mark: "nous",
-		tagline: "Self-improving agent. Memory. Cron. MCP-native.",
+		tagline: "Self-improving. Memory + cron. MCP-native.",
 		bullets: [
-			"Persistent memory in MEMORY.md, USER.md",
-			"FTS5 session search across every chat",
-			"Cron jobs that wake the machine on schedule",
+			"USER.md + MEMORY.md persist on /home/machine",
+			"FTS5 sessions DB indexes every chat for instant recall",
+			"Cron schedules survive sleeps; wake the VM on tick",
 			"By Nous Research",
 		],
 	},
 	openclaw: {
 		name: "OpenClaw",
 		mark: "openclaw",
-		tagline: "Computer-use baseline. Browser, shell, vision.",
+		tagline: "Computer use. Browser + shell + vision.",
 		bullets: [
-			"Anthropic computer-use loop, real X server",
-			"Browser + screenshot + click via coordinates",
-			"OpenAI-compatible /v1/chat/completions",
+			"Anthropic computer-use loop on a real X server",
+			"Browser + screenshot + click-by-coordinates",
+			"State + screenshots cached on the machine disk",
 			"By Dedalus Labs",
 		],
 	},
@@ -454,9 +454,10 @@ function AgentStep({
 					Pick your agent
 				</h1>
 				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
-					Both run on the same Dedalus runtime, expose the same OpenAI-compatible API,
-					and read the same skills + tools. They differ in personality and native toolset.
-					You can swap later from the navbar.
+					Both run on the same machine, persist to the same /home/machine
+					filesystem, expose the same OpenAI-compatible API, and read the
+					same skills + tools. They differ in personality and native toolset.
+					You can swap later from the navbar -- the disk doesn't care.
 				</p>
 			</div>
 			<div className="grid gap-3 md:grid-cols-2">

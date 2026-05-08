@@ -39,30 +39,30 @@ export function HeroBlock() {
 			<div className="relative z-10 flex flex-col">
 				<div className="flex flex-wrap items-center gap-2">
 					<ReticleLabel>AGENT MACHINES</ReticleLabel>
-					<ReticleBadge variant="accent">v0.2 multi-agent</ReticleBadge>
-					<ReticleBadge>hermes . openclaw</ReticleBadge>
+					<ReticleBadge variant="accent">stateful microVM</ReticleBadge>
+					<ReticleBadge>per-account fleet</ReticleBadge>
 				</div>
 				<h1 className="ret-display mt-4 text-3xl md:text-[44px]">
-					An agent's loadout,
+					A persistent machine
 					<br />
 					<span className="text-[var(--ret-text-dim)]">
-						in one machine.
+						for your agent.
 					</span>
 				</h1>
 				<p className="mt-4 max-w-[58ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)] md:text-sm">
-					A rig with everything wired in:{" "}
-					<strong className="text-[var(--ret-text)]">23 built-in tools</strong>{" "}
-					(shell, browser, vision, cron, memory),{" "}
-					<strong className="text-[var(--ret-text)]">95 SKILL.md files</strong>{" "}
-					that auto-load by intent,{" "}
-					<strong className="text-[var(--ret-text)]">17 services</strong>{" "}
-					ranked by interface (Vercel, Stripe, Supabase, Linear, ...), and
-					Cursor SDK delegation
-					through{" "}
+					One stateful microVM per account.{" "}
+					<strong className="text-[var(--ret-text)]">
+						Boot in 30 seconds, sleep on idle, wake on the first prompt
+					</strong>
+					. Chat history, working files, learned skills, and cron jobs all
+					persist on the machine's filesystem at{" "}
 					<code className="border border-[var(--ret-border)] bg-[var(--ret-surface)] px-1 font-mono text-[0.85em]">
-						.cursor/rules
+						/home/machine
 					</code>
-					. Pick Hermes or OpenClaw; plug in any provider key.
+					-- not in browser localStorage, not in a black-box memory service.
+					Sign in once with Clerk; your fleet follows you across devices.
+					Then pick Hermes or OpenClaw, attach any provider key, and load
+					any of 95 skills + 17 MCP services. Same machine.
 				</p>
 				<div className="mt-5 flex flex-wrap gap-2">
 					<SignedIn>
@@ -95,9 +95,10 @@ export function HeroBlock() {
 					</ReticleButton>
 				</div>
 				<p className="mt-5 max-w-[60ch] font-mono text-[11px] text-[var(--ret-text-muted)]">
-					{"->"} every cell on the right is one day in this rig's life. hover
-					to see what fired, click to pin. dedalus boots, an agent serves,
-					cursor codes, the rig itself reloads skills from github.
+					{"->"} every cell on the right is one day this machine was awake.
+					hover to see what fired, click to pin. boots, sleeps, wakes,
+					checkpoints state to disk -- nothing lives in RAM that it can't
+					rebuild from /home/machine on restart.
 				</p>
 			</div>
 

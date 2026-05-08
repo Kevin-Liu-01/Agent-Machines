@@ -63,11 +63,11 @@ export default function SignInPage() {
 					<BrandMark size={28} withLabel={false} />
 					<ReticleLabel>AGENT MACHINES</ReticleLabel>
 					<h1 className="text-2xl font-semibold tracking-tight">
-						{CLERK_READY ? "Sign in to dashboard" : "Auth not configured"}
+						{CLERK_READY ? "Sign in to your fleet" : "Auth not configured"}
 					</h1>
-					<p className="max-w-[40ch] text-sm text-[var(--ret-text-dim)]">
+					<p className="max-w-[44ch] text-sm text-[var(--ret-text-dim)]">
 						{CLERK_READY
-							? "The chat, MCP tools, and live machine state are gated behind a Clerk-managed allowlist."
+							? "Your machines, chat history, and learned skills are scoped to your Clerk identity. Sign in once and your fleet follows you across devices."
 							: "Set NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY in the Vercel project env, then redeploy."}
 					</p>
 				</div>

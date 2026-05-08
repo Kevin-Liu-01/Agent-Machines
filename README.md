@@ -1,8 +1,14 @@
 # agent-machines
 
-> Bring any agent to any provider.
+> A persistent machine for your agent.
 
-A multi-tenant rig that lets any signed-in user spin up a persistent agent on the cloud microVM provider of their choice. Pick **[Hermes](https://github.com/NousResearch/hermes-agent)** (Nous Research's self-improving agent) or **[OpenClaw](https://github.com/openclaw/openclaw)** (Dedalus's open computer-use baseline). Plug in a key for **[Dedalus Machines](https://docs.dedaluslabs.ai/dcs)**, **Vercel Sandbox**, or **Fly Machines**. Get an OpenAI-compatible chat gateway, a per-user fleet view, persistent chat history + artifact storage on the user's own machine (under `~/.agent-machines/` on the persistent volume), scheduled cron automations, a 95-skill library, and the [Cursor TypeScript SDK](https://cursor.com/docs/sdk/typescript) wired in as an MCP tool so the agent can spawn real coding agents that inherit the rig's conventions as `.cursor/rules`.
+One stateful microVM per Clerk account. Boot in 30 seconds, sleep on idle, wake on the first prompt. **Chat history, uploaded files, learned skills, USER.md, MEMORY.md, the FTS5 sessions DB, cron schedules, and the Python venv all persist on the machine's filesystem under `/home/machine/.agent-machines/`** -- not in browser localStorage, not in a black-box memory service. Sign in once with Clerk; your fleet follows you across devices and browsers.
+
+Then bring whatever you want on top:
+
+- **Pick an agent**: [Hermes](https://github.com/NousResearch/hermes-agent) (Nous Research's self-improving agent, memory + cron + MCP-native) or [OpenClaw](https://github.com/openclaw/openclaw) (Dedalus Labs's open computer-use baseline, browser + screenshot + click).
+- **Pick a provider**: [Dedalus Machines](https://docs.dedaluslabs.ai/dcs) (default, second-billed), Vercel Sandbox, Fly Machines. Same `MachineProvider` interface; bring your own key.
+- **Pick your tools**: 95 SKILL.md files load on demand by intent, 17 MCP services (Cursor, Stripe, Supabase, Linear, Vercel, GitHub, Slack, PostHog, Sentry, ...) mount on the machine, and the [Cursor TypeScript SDK](https://cursor.com/docs/sdk/typescript) wires in as a delegation surface so the agent can spawn real coding agents with the rig's conventions injected as `.cursor/rules`.
 
 Live at **<https://agentmachines.vercel.app>**. Repo at **<https://github.com/Kevin-Liu-01/agent-machines>**.
 
