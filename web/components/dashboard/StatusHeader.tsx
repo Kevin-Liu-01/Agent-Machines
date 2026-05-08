@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { BrandMark } from "@/components/BrandMark";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
 import type {
@@ -110,6 +111,7 @@ export function StatusHeader({ agentKind }: Props) {
 			<div className="flex items-center gap-3">
 				<GatewayBadge data={gateway} />
 				<AgentSwitcher value={agentKind} />
+				<ThemeToggle />
 				{CLERK_READY ? (
 					<UserButton
 						appearance={{

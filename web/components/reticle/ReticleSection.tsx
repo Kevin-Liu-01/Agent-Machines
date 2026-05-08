@@ -13,19 +13,37 @@ type Props = {
 	/** Render `+` cross marks where the top border meets the page rails. */
 	corners?: boolean;
 	/**
-	 * Background hatching behind the inner content column. "none" (default)
-	 * paints solid `--ret-bg`; "hatch" paints the same diagonal pattern
-	 * the page-grid uses for its margins, so an emphasized section reads
-	 * as belonging to the engineering grid. Tailwind's marketing site
-	 * uses this for "feature highlight" sections.
+	 * Background hatching behind the inner content column.
+	 *
+	 * - "none" (default): solid `--ret-bg`.
+	 * - "hatch": diagonal margin-rail pattern, used for "feature highlight"
+	 *   sections (Tailwind's marketing site uses this look).
+	 * - "wing-cloud" / "wing-nyx-lines" / "wing-nyx-waves": subtle
+	 *   wing-cloud / nyx-line / nyx-wave imagery as a cover-bg layer
+	 *   beneath the content; reads as ambient brand wallpaper without
+	 *   ever overpowering the copy.
 	 */
-	background?: "none" | "hatch";
+	background?:
+		| "none"
+		| "hatch"
+		| "wing-cloud"
+		| "wing-nyx-lines"
+		| "wing-nyx-waves";
 	as?: "section" | "div" | "header" | "footer" | "main";
 	id?: string;
 };
 
 const SECTION_HATCH =
 	"repeating-linear-gradient(135deg, var(--ret-rail) 0 1px, transparent 1px 5px)";
+
+const WING_BG: Record<
+	"wing-cloud" | "wing-nyx-lines" | "wing-nyx-waves",
+	string
+> = {
+	"wing-cloud": "url(/brand/bg-cloud-lines.png)",
+	"wing-nyx-lines": "url(/brand/bg-nyx-lines.png)",
+	"wing-nyx-waves": "url(/brand/bg-nyx-waves.png)",
+};
 
 /**
  * A page section. Renders full-width so its `border-t` / `border-b`
@@ -50,8 +68,14 @@ export function ReticleSection({
 	id,
 }: Props) {
 	const showCorners = corners ?? borderTop;
-	const innerStyle: CSSProperties =
-		background === "hatch" ? { backgroundImage: SECTION_HATCH } : {};
+	const isHatch = background === "hatch";
+	const isWing =
+		background === "wing-cloud" ||
+		background === "wing-nyx-lines" ||
+		background === "wing-nyx-waves";
+	const innerStyle: CSSProperties = isHatch
+		? { backgroundImage: SECTION_HATCH }
+		: {};
 	return (
 		<Tag
 			id={id}
@@ -62,6 +86,13 @@ export function ReticleSection({
 				className,
 			)}
 		>
+			{isWing ? (
+				<div
+					aria-hidden="true"
+					className="pointer-events-none absolute inset-0 z-0 bg-cover bg-center opacity-[0.04] mix-blend-soft-light dark:opacity-[0.08]"
+					style={{ backgroundImage: WING_BG[background] }}
+				/>
+			) : null}
 			{showCorners ? (
 				<>
 					{/*
@@ -90,8 +121,8 @@ export function ReticleSection({
 			) : null}
 			<div
 				className={cn(
-					"relative mx-auto max-w-[var(--ret-content-max)]",
-					background === "hatch" ? null : "bg-[var(--ret-bg)]",
+					"relative z-10 mx-auto max-w-[var(--ret-content-max)]",
+					isHatch || isWing ? null : "bg-[var(--ret-bg)]",
 					contentClassName,
 				)}
 				style={innerStyle}

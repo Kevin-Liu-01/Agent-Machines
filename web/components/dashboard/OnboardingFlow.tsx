@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { BrandMark } from "@/components/BrandMark";
 import { Logo } from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { ToolIcon } from "@/components/ToolIcon";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
@@ -293,12 +294,15 @@ export function OnboardingFlow({
 						<BrandMark size={20} gap="tight" withLabel={false} />
 						<span className="font-mono text-[13px]">agent-machines</span>
 					</a>
-					<a
-						href="/dashboard"
-						className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)] hover:text-[var(--ret-text)]"
-					>
-						{"skip ->"}
-					</a>
+					<div className="flex items-center gap-3">
+						<ThemeToggle />
+						<a
+							href="/dashboard"
+							className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)] hover:text-[var(--ret-text)]"
+						>
+							{"skip ->"}
+						</a>
+					</div>
 				</div>
 			</header>
 

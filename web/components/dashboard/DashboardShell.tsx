@@ -29,14 +29,27 @@ export function DashboardShell({ children, config }: Props) {
 	const agentKind = active?.agentKind ?? config.draftAgentKind;
 	const setupComplete = config.machines.some((m) => !m.archived);
 	return (
-		<div className="grid min-h-[100dvh] bg-[var(--ret-bg-soft)] lg:grid-cols-[220px_1fr]">
-			<aside className="relative hidden border-r border-[var(--ret-border)] bg-[var(--ret-bg)] lg:flex lg:flex-col">
+		<div className="relative grid min-h-[100dvh] bg-[var(--ret-bg-soft)] lg:grid-cols-[220px_1fr]">
+			{/*
+			  Faint nyx-lines watermark covering the entire dashboard
+			  shell. Sits at z-0 + pointer-events-none so the sidebar
+			  and main column overlay it cleanly via their solid
+			  --ret-bg backgrounds. Effectively only paints in the
+			  hairline gap between sidebar and content + the soft bg
+			  underneath the sticky header's blur.
+			*/}
+			<div
+				aria-hidden="true"
+				className="pointer-events-none absolute inset-0 z-0 bg-cover bg-center opacity-[0.05] mix-blend-soft-light dark:opacity-[0.10]"
+				style={{ backgroundImage: "url(/brand/bg-nyx-lines.png)" }}
+			/>
+			<aside className="relative z-10 hidden border-r border-[var(--ret-border)] bg-[var(--ret-bg)] lg:flex lg:flex-col">
 				<SidebarNav setupComplete={setupComplete} />
 				<div className="mt-auto border-t border-[var(--ret-border)]">
 					<ReticleHatch className="h-24" pitch={6} />
 				</div>
 			</aside>
-			<div className="flex min-h-[100dvh] min-w-0 flex-col bg-[var(--ret-bg)]">
+			<div className="relative z-10 flex min-h-[100dvh] min-w-0 flex-col bg-[var(--ret-bg)]">
 				<StatusHeader agentKind={agentKind} />
 				<main className="flex-1">{children}</main>
 			</div>

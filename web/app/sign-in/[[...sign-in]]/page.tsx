@@ -1,9 +1,8 @@
-import Image from "next/image";
-
 import { SignIn } from "@clerk/nextjs";
 
 import { BrandMark } from "@/components/BrandMark";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const CLERK_READY = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
@@ -23,40 +22,24 @@ export default function SignInPage() {
 	return (
 		<main className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[var(--ret-bg)] px-6 py-16">
 			{/*
-			  Two-layer backdrop:
-			  1. wing-bg-nyx-waves: ambient wave texture covering the whole
-			     viewport, ~6% opacity so it reads as a watermark, never
-			     competes with copy.
-			  2. wing-mark watermark: 720px centered behind the card, tiny
-			     opacity so it ghosts behind the form.
-			  Both pointer-events-none + z-0 so the SignIn card stays
-			  fully interactive on top.
+			  Two-layer brand backdrop, both rendered as low-opacity
+			  cover-bg images behind the SignIn card. nyx-waves sits at
+			  the bottom for the ambient wave texture; cloud-lines layers
+			  over it for the structural wing-cloud lines. mix-blend-soft-
+			  light keeps the layered images from saturating the dark bg.
 			*/}
 			<div
 				aria-hidden="true"
-				className="pointer-events-none absolute inset-0 z-0 bg-cover bg-center opacity-[0.06] dark:opacity-[0.10]"
+				className="pointer-events-none absolute inset-0 z-0 bg-cover bg-center opacity-[0.10] mix-blend-soft-light dark:opacity-[0.18]"
 				style={{ backgroundImage: "url(/brand/bg-nyx-waves.png)" }}
 			/>
 			<div
 				aria-hidden="true"
-				className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-[720px] w-[720px] -translate-x-1/2 -translate-y-1/2 opacity-[0.05] dark:opacity-[0.08]"
-			>
-				<Image
-					src="/brand/wing-mark.png"
-					alt=""
-					fill
-					sizes="720px"
-					priority
-					className="object-contain dark:hidden"
-				/>
-				<Image
-					src="/brand/wing-mark-dark.png"
-					alt=""
-					fill
-					sizes="720px"
-					priority
-					className="hidden object-contain dark:block"
-				/>
+				className="pointer-events-none absolute inset-0 z-0 bg-cover bg-center opacity-[0.07] mix-blend-soft-light dark:opacity-[0.12]"
+				style={{ backgroundImage: "url(/brand/bg-cloud-lines.png)" }}
+			/>
+			<div className="absolute right-5 top-5 z-20">
+				<ThemeToggle />
 			</div>
 			<div className="relative z-10 flex w-full max-w-md flex-col items-center gap-6">
 				<div className="flex flex-col items-center gap-3 text-center">

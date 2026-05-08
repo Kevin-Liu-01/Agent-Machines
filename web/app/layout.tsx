@@ -44,9 +44,23 @@ const CLERK_CONFIGURED = Boolean(
 	process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
 );
 
+/**
+ * Boot script that runs synchronously in <head> before first paint.
+ * Reads the persisted theme from localStorage and writes data-theme
+ * on <html> so the page renders in the right palette immediately --
+ * without this the page flashes the system theme on every nav.
+ *
+ * Wrapped in IIFE + try/catch so a storage exception (private mode,
+ * permissions denied) silently falls through to system-prefers.
+ */
+const THEME_BOOT = `(function(){try{var t=localStorage.getItem("agent-machines.theme");if(t==="light"||t==="dark"){document.documentElement.setAttribute("data-theme",t);}}catch(e){}})();`;
+
 export default function RootLayout({ children }: { children: ReactNode }) {
 	const tree = (
 		<html lang="en" className={nacelle.variable} suppressHydrationWarning>
+			<head>
+				<script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+			</head>
 			<body>
 				{children}
 				<div className="ret-grain" aria-hidden="true" />

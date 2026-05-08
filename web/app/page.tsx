@@ -4,6 +4,7 @@ import { ArchitectureFlow } from "@/components/ArchitectureFlow";
 import { SignedIn, SignedOut } from "@/components/AuthSwitch";
 import { BrandMark } from "@/components/BrandMark";
 import { CapabilityGrid } from "@/components/CapabilityGrid";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
 	ComponentShowcase,
 	ShowcaseAttribution,
@@ -67,6 +68,7 @@ export default function HomePage() {
 						>
 							github
 						</a>
+						<ThemeToggle />
 						<SignedIn>
 							<ReticleButton as="a" href="/dashboard" variant="primary" size="sm">
 								Dashboard
@@ -95,11 +97,11 @@ export default function HomePage() {
 					<StatsRow />
 				</ReticleSection>
 
-				<ReticleSection id="capabilities">
+				<ReticleSection id="capabilities" background="wing-cloud">
 					<CapabilityGrid />
 				</ReticleSection>
 
-				<ReticleSection id="loadout">
+				<ReticleSection id="loadout" background="wing-nyx-lines">
 					<LoadoutPreview />
 				</ReticleSection>
 
@@ -112,7 +114,7 @@ export default function HomePage() {
 					<SkillsManifest />
 				</ReticleSection>
 
-				<ReticleSection id="architecture">
+				<ReticleSection id="architecture" background="wing-nyx-waves">
 					<ArchitectureFlow />
 				</ReticleSection>
 			</main>
