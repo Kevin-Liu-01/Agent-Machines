@@ -22,6 +22,7 @@ const CLERK_READY = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
 type Props = {
 	agentKind: AgentKind;
+	activeMachineId?: string;
 };
 
 type State = {
@@ -36,7 +37,7 @@ type State = {
  * cheap endpoints every five seconds; pauses while the tab is hidden so
  * we don't burn budget on a backgrounded laptop.
  */
-export function StatusHeader({ agentKind }: Props) {
+export function StatusHeader({ agentKind, activeMachineId }: Props) {
 	const [state, setState] = useState<State>({
 		machine: null,
 		gateway: null,
@@ -113,7 +114,7 @@ export function StatusHeader({ agentKind }: Props) {
 
 			<div className="flex items-center gap-3">
 				<GatewayBadge data={gateway} />
-				<AgentSwitcher value={agentKind} />
+				<AgentSwitcher value={agentKind} activeMachineId={activeMachineId} />
 				<ThemeToggle />
 				{CLERK_READY ? (
 					<UserButton

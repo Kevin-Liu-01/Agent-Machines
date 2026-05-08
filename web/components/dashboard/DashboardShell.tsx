@@ -47,7 +47,7 @@ export function DashboardShell({ children, config }: Props) {
 				</div>
 			</aside>
 			<div className="relative z-10 flex min-h-[100dvh] min-w-0 flex-col bg-[var(--ret-bg)]">
-				<StatusHeader agentKind={agentKind} />
+				<StatusHeader agentKind={agentKind} activeMachineId={active?.id} />
 				<main className="flex-1">{children}</main>
 			</div>
 		</div>

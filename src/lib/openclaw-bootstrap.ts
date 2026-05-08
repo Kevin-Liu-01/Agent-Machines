@@ -1,19 +1,36 @@
 /**
- * OpenClaw install pipeline for an existing Dedalus machine.
+ * OpenClaw install pipeline.
  *
- * Modeled on `dedalus-labs/openclaw-ddls` (the official cookbook), with
- * three deliberate divergences:
- *   - We bind the gateway to `0.0.0.0` (their cookbook binds to loopback
+ * Installs the upstream OpenClaw package (`npm i -g openclaw@latest`
+ * from <https://github.com/openclaw/openclaw>) onto a host VM. By
+ * default that host is a Dedalus microVM, but the script only needs:
+ *
+ *   - a POSIX shell with Node 22+ + npm available
+ *   - a writable HOME (we use /home/machine)
+ *   - inbound port 18789 reachable from outside the VM
+ *
+ * So swapping Dedalus for any other Linux host (Vercel Sandbox, Fly
+ * Machines, a bare EC2 box, ...) is a question of how you provision
+ * the host, not the agent install. The Dedalus exec API is just our
+ * runner of choice today.
+ *
+ * Inspired by the `dedalus-labs/openclaw-ddls` cookbook but uses the
+ * real OpenClaw package; we are not vendoring or forking. Three
+ * deliberate divergences from the cookbook:
+ *
+ *   - Bind the gateway to `0.0.0.0` (the cookbook binds to loopback
  *     because they curl from the same VM via the execution API). We
- *     expose the gateway publicly via Dedalus preview, so loopback
- *     would make the chat surface unreachable.
- *   - We retry on transient infra failures (HOST_LAUNCH_THROTTLED,
- *     SNAPSHOT_LAUNCH_HYPERVISOR_CONNECT_FAILED) at the machine layer
- *     before this script runs.
- *   - We mirror the API key into BOTH `ANTHROPIC_API_KEY` and
- *     `OPENAI_API_KEY`, exactly like upstream, so the gateway routes
- *     correctly whether the user picks an `anthropic/*` or `openai/*`
- *     model via the `x-openclaw-model` header.
+ *     expose the gateway publicly via the host's preview / tunnel,
+ *     so loopback would make the chat surface unreachable.
+ *   - Retry on transient infra failures (HOST_LAUNCH_THROTTLED,
+ *     SNAPSHOT_LAUNCH_HYPERVISOR_CONNECT_FAILED) at the machine
+ *     layer before this script runs.
+ *   - Mirror the API key into BOTH `ANTHROPIC_API_KEY` and
+ *     `OPENAI_API_KEY` so the gateway routes correctly whether the
+ *     user picks an `anthropic/*` or `openai/*` model via the
+ *     `x-openclaw-model` header. The base URL is whatever the user
+ *     points the gateway at -- Dedalus's router by default, or any
+ *     other OpenAI-compatible endpoint via `ANTHROPIC_BASE_URL`.
  *
  * Combined into ONE long exec on purpose -- splitting setup across
  * multiple short execs lets the machine sleep mid-install (Dedalus

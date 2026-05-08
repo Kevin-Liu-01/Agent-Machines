@@ -9,6 +9,11 @@ import { AGENT_KINDS, type AgentKind } from "@/lib/user-config/schema";
 
 type Props = {
 	value: AgentKind;
+	/** Active machine id, when one is provisioned. When present, the
+	 *  switch PATCHes that machine's agentKind in addition to flipping
+	 *  the draft -- so the dashboard immediately reflects the chosen
+	 *  agent for the live machine. */
+	activeMachineId?: string;
 };
 
 const LABEL: Record<AgentKind, string> = {
@@ -38,15 +43,25 @@ const SOURCE: Record<AgentKind, string> = {
  * shows both agents with logo, source, and tagline so the choice is
  * informed even on first visit.
  *
- * The actual switch is a POST to `/api/dashboard/admin/setup`; the
- * gateway behavior catches up lazily on the next reload (PR2 will
- * trigger a SOUL.md rewrite + gateway restart so the change is
- * immediate).
+ * What the swap actually does:
+ *
+ *   1. POST /api/dashboard/admin/setup with `draftAgentKind` so the
+ *      next provisioned machine ships with the chosen agent.
+ *   2. If there's an active machine, PATCH /api/dashboard/machines/<id>
+ *      with `agentKind` so the dashboard's gateway / status / chat
+ *      surfaces flip to that agent immediately.
+ *
+ * The agent install on the live VM is whatever was bootstrapped (we
+ * don't auto-reinstall here). When the active agent kind is changed
+ * to one that isn't installed yet, the user runs `npm run
+ * deploy:openclaw` (or equivalent) once, then the dashboard tracks
+ * the new agent.
  */
-export function AgentSwitcher({ value }: Props) {
+export function AgentSwitcher({ value, activeMachineId }: Props) {
 	const router = useRouter();
 	const [open, setOpen] = useState(false);
 	const [pending, setPending] = useState<AgentKind | null>(null);
+	const [error, setError] = useState<string | null>(null);
 	const ref = useRef<HTMLDivElement | null>(null);
 
 	useEffect(() => {
@@ -66,16 +81,36 @@ export function AgentSwitcher({ value }: Props) {
 			return;
 		}
 		setPending(next);
+		setError(null);
 		try {
-			const response = await fetch("/api/dashboard/admin/setup", {
+			// Always update the draft so the next provisioned machine
+			// ships with the chosen agent.
+			const draftResponse = await fetch("/api/dashboard/admin/setup", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ draftAgentKind: next }),
 			});
-			if (!response.ok) throw new Error(`HTTP ${response.status}`);
+			if (!draftResponse.ok) {
+				throw new Error(`setup HTTP ${draftResponse.status}`);
+			}
+			// If there's an active machine, flip its agent label so the
+			// dashboard's chat / status / gateway surfaces follow.
+			if (activeMachineId) {
+				const machineResponse = await fetch(
+					`/api/dashboard/machines/${activeMachineId}`,
+					{
+						method: "PATCH",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({ agentKind: next }),
+					},
+				);
+				if (!machineResponse.ok) {
+					throw new Error(`machine HTTP ${machineResponse.status}`);
+				}
+			}
 			router.refresh();
-		} catch {
-			// Swallowed; the next refresh will surface state.
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "switch failed");
 		} finally {
 			setPending(null);
 			setOpen(false);
@@ -169,8 +204,15 @@ export function AgentSwitcher({ value }: Props) {
 							</li>
 						);
 					})}
+					{error ? (
+						<li className="border-t border-[var(--ret-red)]/40 bg-[var(--ret-red)]/10 px-3 py-1.5 font-mono text-[10px] text-[var(--ret-red)]">
+							{error}
+						</li>
+					) : null}
 					<li className="border-t border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-3 py-1.5 font-mono text-[10px] text-[var(--ret-text-muted)]">
-						switching changes the draft for new machines; existing machines keep their agent
+						{activeMachineId
+							? "flips the active machine's agent label + the draft for the next machine"
+							: "sets the agent for the next provisioned machine"}
 					</li>
 				</ul>
 			) : null}

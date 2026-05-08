@@ -139,12 +139,18 @@ export class DedalusProvider implements MachineProvider {
 		path: string,
 		init?: RequestInit,
 	): Promise<Response> {
-		// Dedalus requires `Idempotency-Key` on every POST so retried
-		// requests don't double-spend. Generate a UUID per call -- the
-		// SDK does the same. Caller can override by passing the header
-		// explicitly (useful when the same logical operation needs to
-		// be retried with the same key).
+		// Dedalus auth: send BOTH `Authorization: Bearer <key>` (used by
+		// the wake/sleep "internal route" signature check) AND
+		// `X-API-Key` for compatibility with older endpoints. The SDK
+		// uses Bearer; the dashboard kept getting 401
+		// "missing internal route signature" with X-API-Key alone.
+		//
+		// `Idempotency-Key` is also required on every POST so retried
+		// requests don't double-spend. UUID per call -- the SDK does
+		// the same. Caller can override by passing the header
+		// explicitly when retrying the same logical operation.
 		const headers: Record<string, string> = {
+			Authorization: `Bearer ${this.apiKey}`,
 			"X-API-Key": this.apiKey,
 			"Content-Type": "application/json",
 			...(init?.headers as Record<string, string> | undefined),
