@@ -3,6 +3,7 @@ import { SignIn } from "@clerk/nextjs";
 import { BrandMark } from "@/components/BrandMark";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { WingBackground } from "@/components/WingBackground";
 
 const CLERK_READY = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
@@ -22,22 +23,11 @@ export default function SignInPage() {
 	return (
 		<main className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[var(--ret-bg)] px-6 py-16">
 			{/*
-			  Two-layer brand backdrop, both rendered as low-opacity
-			  cover-bg images behind the SignIn card. nyx-waves sits at
-			  the bottom for the ambient wave texture; cloud-lines layers
-			  over it for the structural wing-cloud lines. mix-blend-soft-
-			  light keeps the layered images from saturating the dark bg.
+			  Brand backdrop. Light theme renders the cloud-lines plate;
+			  dark theme renders nyx-waves. WingBackground swaps via
+			  Tailwind dark: variants -- no theme prop wiring needed.
 			*/}
-			<div
-				aria-hidden="true"
-				className="pointer-events-none absolute inset-0 z-0 bg-cover bg-center opacity-[0.10] mix-blend-soft-light dark:opacity-[0.18]"
-				style={{ backgroundImage: "url(/brand/bg-nyx-waves.png)" }}
-			/>
-			<div
-				aria-hidden="true"
-				className="pointer-events-none absolute inset-0 z-0 bg-cover bg-center opacity-[0.07] mix-blend-soft-light dark:opacity-[0.12]"
-				style={{ backgroundImage: "url(/brand/bg-cloud-lines.png)" }}
-			/>
+			<WingBackground variant="nyx-waves" />
 			<div className="absolute right-5 top-5 z-20">
 				<ThemeToggle />
 			</div>

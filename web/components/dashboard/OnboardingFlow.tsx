@@ -8,6 +8,7 @@ import { BrandMark } from "@/components/BrandMark";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ToolIcon } from "@/components/ToolIcon";
+import { WingBackground } from "@/components/WingBackground";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
@@ -278,16 +279,11 @@ export function OnboardingFlow({
 	return (
 		<main className="relative min-h-[100dvh] overflow-hidden bg-[var(--ret-bg)] text-[var(--ret-text)]">
 			{/*
-			  Ambient cloud-lines watermark across the entire onboarding
-			  shell. Sits at the bottom layer (z-0), pointer-events-none,
-			  so the kit-builder reads as a designed surface instead of a
-			  cold form -- without ever competing with the steps.
+			  Ambient brand backdrop. Light mode = cloud-lines plate,
+			  dark mode = nyx-lines plate. The kit-builder reads as a
+			  designed surface, never a cold form.
 			*/}
-			<div
-				aria-hidden="true"
-				className="pointer-events-none absolute inset-0 z-0 bg-cover bg-center opacity-[0.05] dark:opacity-[0.08]"
-				style={{ backgroundImage: "url(/brand/bg-cloud-lines.png)" }}
-			/>
+			<WingBackground variant="cloud" />
 			<header className="relative z-10 border-b border-[var(--ret-border)] bg-[var(--ret-bg)]/85 px-6 py-4 backdrop-blur">
 				<div className="mx-auto flex max-w-[var(--ret-content-max)] items-center justify-between gap-4">
 					<a href="/" className="flex items-center gap-2">

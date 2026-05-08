@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 
+import { WingBackground } from "@/components/WingBackground";
 import { cn } from "@/lib/cn";
 
 import { ReticleCross } from "./ReticleCross";
@@ -36,13 +37,13 @@ type Props = {
 const SECTION_HATCH =
 	"repeating-linear-gradient(135deg, var(--ret-rail) 0 1px, transparent 1px 5px)";
 
-const WING_BG: Record<
+const WING_VARIANT: Record<
 	"wing-cloud" | "wing-nyx-lines" | "wing-nyx-waves",
-	string
+	"cloud" | "nyx-lines" | "nyx-waves"
 > = {
-	"wing-cloud": "url(/brand/bg-cloud-lines.png)",
-	"wing-nyx-lines": "url(/brand/bg-nyx-lines.png)",
-	"wing-nyx-waves": "url(/brand/bg-nyx-waves.png)",
+	"wing-cloud": "cloud",
+	"wing-nyx-lines": "nyx-lines",
+	"wing-nyx-waves": "nyx-waves",
 };
 
 /**
@@ -87,10 +88,9 @@ export function ReticleSection({
 			)}
 		>
 			{isWing ? (
-				<div
-					aria-hidden="true"
-					className="pointer-events-none absolute inset-0 z-0 bg-cover bg-center opacity-[0.04] mix-blend-soft-light dark:opacity-[0.08]"
-					style={{ backgroundImage: WING_BG[background] }}
+				<WingBackground
+					variant={WING_VARIANT[background]}
+					opacity={{ light: 0.45, dark: 0.30 }}
 				/>
 			) : null}
 			{showCorners ? (

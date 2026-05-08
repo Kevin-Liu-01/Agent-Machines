@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { ReticleHatch } from "@/components/reticle/ReticleHatch";
+import { WingBackground } from "@/components/WingBackground";
 import type { PublicUserConfig } from "@/lib/user-config/schema";
 
 import { SidebarNav } from "./SidebarNav";
@@ -31,18 +32,14 @@ export function DashboardShell({ children, config }: Props) {
 	return (
 		<div className="relative grid min-h-[100dvh] bg-[var(--ret-bg-soft)] lg:grid-cols-[220px_1fr]">
 			{/*
-			  Faint nyx-lines watermark covering the entire dashboard
-			  shell. Sits at z-0 + pointer-events-none so the sidebar
-			  and main column overlay it cleanly via their solid
-			  --ret-bg backgrounds. Effectively only paints in the
-			  hairline gap between sidebar and content + the soft bg
-			  underneath the sticky header's blur.
+			  Brand backdrop covering the entire dashboard shell. Sits
+			  at z-0 + pointer-events-none; the sidebar and main column
+			  overlay it via their solid --ret-bg backgrounds, so the
+			  texture only paints in the hairline gap between the
+			  sidebar and content + softly under the blurred sticky
+			  header. Cloud variant in light mode, nyx-lines in dark.
 			*/}
-			<div
-				aria-hidden="true"
-				className="pointer-events-none absolute inset-0 z-0 bg-cover bg-center opacity-[0.05] mix-blend-soft-light dark:opacity-[0.10]"
-				style={{ backgroundImage: "url(/brand/bg-nyx-lines.png)" }}
-			/>
+			<WingBackground variant="cloud" />
 			<aside className="relative z-10 hidden border-r border-[var(--ret-border)] bg-[var(--ret-bg)] lg:flex lg:flex-col">
 				<SidebarNav setupComplete={setupComplete} />
 				<div className="mt-auto border-t border-[var(--ret-border)]">
