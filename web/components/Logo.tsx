@@ -36,8 +36,10 @@ const NATIVE_SRC: Record<Mark, { light: string; dark: string }> = {
 		dark: "/brand/cursor-mark-light.svg",
 	},
 	openclaw: {
-		light: "/brand/openclaw-mark.png",
-		dark: "/brand/openclaw-mark.png",
+		// Color variant ships only when explicitly requested via tone="native".
+		// Default rendering uses the mask + currentColor branch below.
+		light: "/brand/openclaw-mark-color.svg",
+		dark: "/brand/openclaw-mark-color.svg",
 	},
 };
 
@@ -45,14 +47,18 @@ const MASK_SRC: Record<Mark, string> = {
 	dedalus: "/brand/dedalus-mark-black.svg",
 	nous: "/brand/nous-mark.svg",
 	cursor: "/brand/cursor-mark.svg",
-	openclaw: "/brand/openclaw-mark.png",
+	openclaw: "/brand/openclaw-mark.svg",
 };
 
 const DEFAULT_TONE: Record<Mark, NonNullable<Props["tone"]>> = {
 	dedalus: "auto",
 	nous: "currentColor",
 	cursor: "auto",
-	openclaw: "native",
+	// LobeHub ships a clean monochrome SVG with fill="currentColor"; render
+	// it as a CSS mask so it adopts the parent text color (same pattern as
+	// the Nous mark). The brand-gradient version still ships as openclaw-
+	// mark-color.svg if anyone wants it via tone="native".
+	openclaw: "currentColor",
 };
 
 const ARIA_LABEL: Record<Mark, string> = {
