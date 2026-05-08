@@ -485,6 +485,20 @@ function DayDetail({ day }: { day: ContributionDay }) {
 					))}
 				</ul>
 			)}
+			{/*
+			  Reading guide for the grid. Lives inside the right
+			  column (not below the whole panel) so it sits next to
+			  the data it explains -- "what does a cell mean, and why
+			  does it matter when the machine sleeps". `mt-auto`
+			  pushes it to the bottom of the aside no matter how many
+			  events the selected day has.
+			*/}
+			<p className="mt-auto border-t border-[var(--ret-border)] pt-3 font-mono text-[10px] leading-relaxed text-[var(--ret-text-muted)]">
+				<span className="text-[var(--ret-purple)]">{"->"}</span> each cell is
+				one day this machine was awake. hover to peek, click to pin. nothing
+				lives in RAM that it can&rsquo;t rebuild from{" "}
+				<code className="text-[var(--ret-text-dim)]">/home/machine</code>.
+			</p>
 		</aside>
 	);
 }

@@ -1,14 +1,31 @@
+"use client";
+
 import Image from "next/image";
-import type { SVGProps } from "react";
+import { useState, type SVGProps } from "react";
 
 import { SignedIn, SignedOut } from "@/components/AuthSwitch";
 import { ContributionGrid } from "@/components/ContributionGrid";
-import { HeroAgentPortrait } from "@/components/HeroAgentPortrait";
+import {
+	HeroAgentPortrait,
+	type HeroAgent,
+} from "@/components/HeroAgentPortrait";
 import { Logo } from "@/components/Logo";
 import { ServiceIcon } from "@/components/ServiceIcon";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
+
+const AGENT_TAGLINE: Record<HeroAgent, { label: string; capabilities: string }> =
+	{
+		hermes: {
+			label: "Hermes",
+			capabilities: "memory . cron . sessions . MCP-native",
+		},
+		openclaw: {
+			label: "OpenClaw",
+			capabilities: "computer use . browser . shell . vision",
+		},
+	};
 
 const PROOF_POINTS: ReadonlyArray<{
 	Icon: (p: SVGProps<SVGSVGElement>) => React.ReactElement;
@@ -33,6 +50,19 @@ const PROOF_POINTS: ReadonlyArray<{
 ];
 
 export function HeroBlock() {
+	// Hero-only preview state: which agent the portrait is showing
+	// right now. Independent of the user's actual configured agent
+	// (that lives in Clerk metadata + the dashboard). Clicking the
+	// portrait toggles between Hermes (default) and OpenClaw
+	// (preview); the subheader tagline below the heading swaps in
+	// lockstep so the relationship between the wireframe identity
+	// and the capability line is unambiguous.
+	const [agent, setAgent] = useState<HeroAgent>("hermes");
+	const tagline = AGENT_TAGLINE[agent];
+	function toggleAgent() {
+		setAgent((cur) => (cur === "hermes" ? "openclaw" : "hermes"));
+	}
+
 	return (
 		<div className="relative grid items-stretch gap-10 md:grid-cols-[1fr_1.05fr] md:gap-12">
 			{/*
@@ -68,7 +98,7 @@ export function HeroBlock() {
 				</div>
 
 				<div className="mt-5 flex items-start gap-5 md:gap-7">
-					<HeroAgentPortrait />
+					<HeroAgentPortrait agent={agent} onToggle={toggleAgent} />
 					<h1 className="ret-display text-3xl leading-[1.05] md:text-[44px]">
 						A persistent machine
 						<br />
@@ -83,6 +113,33 @@ export function HeroBlock() {
 					<strong className="text-[var(--ret-text)]">
 						Boot in 30 seconds, sleep on idle, wake on the first prompt.
 					</strong>
+				</p>
+
+				{/*
+				  Active-agent tagline. Bound to the portrait's preview
+				  state -- click the wireframe and this line swaps in
+				  the same beat. The agent label is the anchor, the
+				  capability list is the payoff. `aria-live="polite"`
+				  so screen readers announce the change without
+				  interrupting whatever else they're reading.
+				*/}
+				<p
+					aria-live="polite"
+					className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]"
+				>
+					<span className="inline-flex items-center gap-1.5 text-[var(--ret-text)]">
+						<Logo
+							mark={agent === "hermes" ? "nous" : "openclaw"}
+							size={11}
+						/>
+						{tagline.label}
+					</span>
+					<span className="text-[var(--ret-text-dim)]">
+						{tagline.capabilities}
+					</span>
+					<span className="text-[var(--ret-purple)]/80">
+						{"->"} click portrait to swap
+					</span>
 				</p>
 
 				<ul className="mt-5 flex flex-col divide-y divide-[var(--ret-border)] border-y border-[var(--ret-border)]">
@@ -161,19 +218,7 @@ export function HeroBlock() {
 			</div>
 
 			<div className="relative z-10 flex min-h-[280px] flex-col">
-				<div className="flex-1">
-					<ContributionGrid />
-				</div>
-				<p className="mt-3 flex items-start gap-2 font-mono text-[11px] leading-relaxed text-[var(--ret-text-muted)] lg:justify-end lg:text-right">
-					<span className="mt-0.5 shrink-0 text-[var(--ret-purple)] lg:order-2">
-						{"->"}
-					</span>
-					<span className="max-w-[55ch] lg:order-1">
-						Each cell above is one day this machine was awake. Hover to peek,
-						click to pin. Nothing lives in RAM that it can't rebuild from{" "}
-						<code className="text-[var(--ret-text-dim)]">/home/machine</code>.
-					</span>
-				</p>
+				<ContributionGrid />
 			</div>
 		</div>
 	);
