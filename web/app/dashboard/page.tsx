@@ -6,6 +6,10 @@ import { listCrons } from "@/lib/dashboard/crons";
 import { listMcpServers } from "@/lib/dashboard/mcps";
 import { listSkills } from "@/lib/dashboard/skills";
 import { getUserConfig } from "@/lib/user-config/clerk";
+import {
+	activeMachine,
+	type AgentKind,
+} from "@/lib/user-config/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -14,9 +18,19 @@ export default async function OverviewPage() {
 	// they ever see the busy dashboard. After provisioning, they're
 	// redirected back here for the live machine view.
 	let needsOnboarding = false;
+	let agentKind: AgentKind = "hermes";
+	let model: string | null = null;
 	try {
 		const config = await getUserConfig();
 		needsOnboarding = !config.machines.some((m) => !m.archived);
+		const active = activeMachine(config);
+		if (active) {
+			agentKind = active.agentKind;
+			model = active.model ?? null;
+		} else {
+			agentKind = config.draftAgentKind;
+			model = config.draftModel ?? null;
+		}
 	} catch {
 		// Auth / config probe failed -- the layout will surface the right
 		// error; render the degraded overview below.
@@ -42,6 +56,8 @@ export default async function OverviewPage() {
 					tools,
 					crons: crons.length,
 				}}
+				agentKind={agentKind}
+				model={model}
 			/>
 		</div>
 	);

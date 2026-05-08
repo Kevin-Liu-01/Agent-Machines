@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { Logo } from "@/components/Logo";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { cn } from "@/lib/cn";
@@ -12,10 +13,22 @@ import type {
 	GatewaySummary,
 	LiveDataEnvelope,
 	LogsPayload,
+	MachineSummary,
 	SessionsPayload,
 } from "@/lib/dashboard/types";
+import { AGENT_LABEL, type AgentKind } from "@/lib/user-config/schema";
 
 import { Sparkline } from "./Sparkline";
+
+const AGENT_SOURCE: Record<AgentKind, string> = {
+	hermes: "by Nous Research",
+	openclaw: "by openclaw/openclaw",
+};
+
+const AGENT_MARK: Record<AgentKind, "nous" | "openclaw"> = {
+	hermes: "nous",
+	openclaw: "openclaw",
+};
 
 const HermesBustScene = dynamic(
 	() => import("@/components/three").then((m) => m.HermesBustScene),
@@ -47,7 +60,17 @@ type ObservabilityState = {
  * or HERMES_MACHINE_ID isn't configured -- the underlying envelopes
  * carry typed reasons we propagate through to the UI copy.
  */
-export function ObservabilityPanel() {
+type Props = {
+	agentKind: AgentKind;
+	modelOverride: string | null;
+	machineSummary: MachineSummary | null;
+};
+
+export function ObservabilityPanel({
+	agentKind,
+	modelOverride,
+	machineSummary,
+}: Props) {
 	const [state, setState] = useState<ObservabilityState>({
 		gateway: null,
 		logs: null,
@@ -125,7 +148,11 @@ export function ObservabilityPanel() {
 			className="grid grid-cols-1 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] md:grid-cols-2 xl:grid-cols-4"
 			aria-label="observability"
 		>
-			<IdentityCell />
+			<IdentityCell
+				agentKind={agentKind}
+				model={modelOverride ?? state.gateway?.model ?? null}
+				machineSummary={machineSummary}
+			/>
 			<LatencyCell history={latencyHistory} gateway={state.gateway} />
 			<ActivityCell logs={state.logs} cursor={state.cursor} />
 			<BreakdownCell
@@ -161,23 +188,46 @@ function CellShell({
 	);
 }
 
-function IdentityCell() {
+function IdentityCell({
+	agentKind,
+	model,
+	machineSummary,
+}: {
+	agentKind: AgentKind;
+	model: string | null;
+	machineSummary: MachineSummary | null;
+}) {
+	const label = AGENT_LABEL[agentKind];
+	const source = AGENT_SOURCE[agentKind];
+	const mark = AGENT_MARK[agentKind];
+	const vcpu = machineSummary?.vcpu;
+	const memoryGib = machineSummary
+		? Math.round(machineSummary.memoryMib / 1024)
+		: null;
+	const spec = vcpu && memoryGib ? `microVM . ${vcpu}v . ${memoryGib} GiB` : "microVM";
+	const modelLabel = model ?? "—";
 	return (
-		<CellShell kicker="IDENTITY" footnote="Hermes Agent">
+		<CellShell kicker="IDENTITY" footnote={`${label} Agent`}>
 			<div className="grid h-full grid-cols-[88px_1fr] gap-3">
 				<div className="aspect-square w-full border border-[var(--ret-border)] bg-[var(--ret-bg-soft)]">
+					{/* Bust always renders the Hermes wireframe today; the
+					    OpenClaw scene reuses the same procedural geometry
+					    until a dedicated computer-use diorama lands. */}
 					<HermesBustScene className="h-full w-full" />
 				</div>
 				<div className="flex min-w-0 flex-col gap-1">
-					<p className="text-[13px] font-semibold tracking-tight">Hermes</p>
+					<p className="flex items-center gap-1.5 text-[13px] font-semibold tracking-tight">
+						<Logo mark={mark} size={14} />
+						{label}
+					</p>
 					<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-						by Nous Research
+						{source}
 					</p>
 					<p className="mt-1 font-mono text-[11px] text-[var(--ret-text-dim)]">
-						microVM . 1v . 2 GiB
+						{spec}
 					</p>
-					<p className="font-mono text-[11px] text-[var(--ret-text-dim)]">
-						claude-sonnet-4-6
+					<p className="truncate font-mono text-[11px] text-[var(--ret-text-dim)]">
+						{modelLabel}
 					</p>
 				</div>
 			</div>

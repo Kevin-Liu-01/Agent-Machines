@@ -24,6 +24,10 @@ type CountInfo = { skills: number; mcps: number; tools: number; crons: number };
 
 type Props = {
 	counts: CountInfo;
+	agentKind: import("@/lib/user-config/schema").AgentKind;
+	/** Model slug from the active machine record. Falls back to the
+	 *  gateway probe's reported model when null. */
+	model: string | null;
 };
 
 /**
@@ -31,7 +35,7 @@ type Props = {
  * (auto-wakes a sleeping machine on first load, exposes wake / sleep
  * actions) and polls the gateway probe alongside it.
  */
-export function OverviewClient({ counts }: Props) {
+export function OverviewClient({ counts, agentKind, model }: Props) {
 	const machine = useMachineControl();
 	const [gateway, setGateway] = useState<GatewaySummary | null>(null);
 	const [stamp, setStamp] = useState<number | null>(null);
@@ -190,7 +194,11 @@ export function OverviewClient({ counts }: Props) {
 				/>
 			</section>
 
-			<ObservabilityPanel />
+			<ObservabilityPanel
+				agentKind={agentKind}
+				modelOverride={model}
+				machineSummary={machine.machine}
+			/>
 
 			<ReloadKnowledge machinePhase={phase} />
 
