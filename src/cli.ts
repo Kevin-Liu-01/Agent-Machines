@@ -17,6 +17,7 @@
 
 import { chat } from "./commands/chat.js";
 import { deploy } from "./commands/deploy.js";
+import { deployOpenclaw } from "./commands/deploy-openclaw.js";
 import { destroy } from "./commands/destroy.js";
 import { logs } from "./commands/logs.js";
 import { reloadKnowledge } from "./commands/reload-knowledge.js";
@@ -28,6 +29,7 @@ import { wake } from "./commands/wake.js";
 
 const COMMANDS: Record<string, (args: string[]) => Promise<void>> = {
 	deploy: () => deploy(),
+	"deploy:openclaw": (args) => deployOpenclaw(args),
 	chat: (args) => chat(args),
 	status: () => status(),
 	logs: (args) => logs(args),
@@ -44,6 +46,7 @@ function help(): void {
 	console.log("");
 	console.log("Commands:");
 	console.log("  deploy             Provision a machine and install Hermes (idempotent)");
+	console.log("  deploy:openclaw    Install OpenClaw (alternative agent) on a machine");
 	console.log('  chat "message"     Stream a single chat completion');
 	console.log("  status             Machine phase, port bindings, API health");
 	console.log("  logs [-n 200]      Tail the gateway log");

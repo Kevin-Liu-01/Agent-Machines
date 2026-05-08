@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "deploy": "tsx src/cli.ts deploy",
+    "deploy:openclaw": "tsx src/cli.ts deploy:openclaw",
     "chat": "tsx src/cli.ts chat",
     "status": "tsx src/cli.ts status",
     "logs": "tsx src/cli.ts logs",

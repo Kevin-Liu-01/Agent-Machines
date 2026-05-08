@@ -30,8 +30,14 @@ function sleep(ms: number): Promise<void> {
 const TRANSIENT_PATTERNS = [
 	"SNAPSHOT_LAUNCH_HYPERVISOR_CONNECT_FAILED",
 	"STORAGE_DAEMON_API_ERROR",
+	"HOST_LAUNCH_THROTTLED",
 	"machine launch throttle exhausted",
 	"placement_pending",
+	// Observed 2026-05-08: bare DHV socket failure surfaced as `internal:`
+	// without the SNAPSHOT_LAUNCH_HYPERVISOR_CONNECT_FAILED prefix.
+	"DHV failed during dhv_socket_ready",
+	"host-agent launch call",
+	"dhv_socket_ready",
 ] as const;
 
 function isTransient(message: string): boolean {
