@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType, SVGProps } from "react";
 
+import { BrandMark } from "@/components/BrandMark";
 import { cn } from "@/lib/cn";
 
 /**
@@ -93,20 +94,26 @@ export function SidebarNav({ setupComplete }: Props) {
 			aria-label="Dashboard"
 			className="flex flex-col gap-5 px-3 pb-6 pt-5 text-[13px]"
 		>
-			<header className="px-3 pb-1">
-				{/* Serif italic wordmark mirrors the navbar wordmark on
-				    the marketing site -- gives the sidebar a brand
-				    moment instead of "Dashboard" rendered as a mono
-				    section label. */}
-				<p
-					className="ret-serif text-[18px] leading-none text-[var(--ret-text)]"
+			{/* Brand wordmark + mark, identical to the navbar pattern on
+			    the marketing site. Linking back to "/" matches the same
+			    convention -- click the wordmark to leave the dashboard
+			    and land on the public marketing surface. The serif
+			    italic typeface is the existing display-serif variable
+			    (Instrument Serif italic) so the mark reads as identity,
+			    not as another section label. */}
+			<Link
+				href="/"
+				className="group flex items-center gap-2.5 px-3 pb-1"
+				aria-label="agent-machines (back to home)"
+			>
+				<BrandMark size={22} gap="tight" withLabel={false} />
+				<span
+					className="text-[20px] leading-none tracking-tight text-[var(--ret-text)] transition-colors group-hover:text-[var(--ret-purple)]"
+					style={{ fontFamily: "var(--font-display-serif)" }}
 				>
-					dashboard
-				</p>
-				<p className="mt-1 text-[11px] text-[var(--ret-text-muted)]">
-					Machine telemetry + control.
-				</p>
-			</header>
+					agent-machines
+				</span>
+			</Link>
 			{sections.map((section) => (
 				<Section key={section.id} section={section} pathname={pathname} />
 			))}
