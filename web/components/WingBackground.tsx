@@ -94,11 +94,20 @@ export function WingBackground({
 					}}
 				/>
 			) : null}
+			{/*
+			  The dark plate ALWAYS renders only in dark mode, regardless of
+			  whether a light fallback exists. Previously the conditional was
+			  `lightSrc ? "hidden dark:block" : "block"`, which meant the
+			  `nyx-lines` variant (lightSrc=null) rendered its dark image
+			  unconditionally and showed up as a dark wash on the LOADOUT /
+			  ARCHITECTURE sections in light mode -- the exact thing the
+			  variant's JSDoc said it would NOT do. Forcing the dark plate
+			  to `hidden dark:block` in every variant makes the JSDoc true:
+			  light mode sees the lightSrc (or nothing, for nyx-lines), dark
+			  mode sees the darkSrc.
+			*/}
 			<div
-				className={cn(
-					"absolute inset-0 bg-cover bg-center bg-no-repeat",
-					lightSrc ? "hidden dark:block" : "block",
-				)}
+				className="absolute inset-0 hidden bg-cover bg-center bg-no-repeat dark:block"
 				style={{
 					backgroundImage: `url(${darkSrc})`,
 					opacity: darkOpacity,
