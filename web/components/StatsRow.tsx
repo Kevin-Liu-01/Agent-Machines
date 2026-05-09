@@ -117,7 +117,7 @@ function StackIconView({ icon }: { icon: StackIcon }) {
  */
 export function StatsRow() {
 	return (
-		<div className="mt-10">
+		<div>
 			<ReticleLabel>MACHINE -- STACK</ReticleLabel>
 			<div className="mt-3 grid grid-cols-2 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-3 lg:grid-cols-6">
 				{STATS.map((s) => (

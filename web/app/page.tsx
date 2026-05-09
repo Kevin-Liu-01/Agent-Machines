@@ -10,6 +10,7 @@ import { Footer } from "@/components/Footer";
 import { HeroBlock } from "@/components/HeroBlock";
 import { LoadoutPreview } from "@/components/LoadoutPreview";
 import { PublicNavbar } from "@/components/PublicNavbar";
+import { ReticleBand } from "@/components/reticle/ReticleBand";
 import { ReticlePageGrid } from "@/components/reticle/ReticlePageGrid";
 import { ReticleSection } from "@/components/reticle/ReticleSection";
 import { ReticleSpacer } from "@/components/reticle/ReticleSpacer";
@@ -24,11 +25,20 @@ export default function HomePage() {
 			<main id="top">
 				<ReticleSection
 					borderTop={false}
-					contentClassName="px-6 pt-14 pb-16 md:pt-16 md:pb-20"
+					contentClassName="px-6 pt-14 pb-12 md:pt-16 md:pb-14"
 				>
 					<HeroBlock />
-					<StatsRow />
 				</ReticleSection>
+
+				{/*
+				  StatsRow rides as its own band so its surrounding hairlines
+				  extend edge-to-edge through the page rails, with hatching
+				  filling the margin strips. Reads as a structural ledger
+				  beneath the hero copy.
+				*/}
+				<ReticleBand hatchMargins contentClassName="px-6 py-6 md:py-8">
+					<StatsRow />
+				</ReticleBand>
 
 				<ReticleSpacer />
 
@@ -38,9 +48,9 @@ export default function HomePage() {
 
 				<ReticleSpacer />
 
-				<ReticleSection id="runtime" borderTop={false}>
+				<ReticleBand id="runtime" hatchMargins contentClassName="px-6 py-10 md:py-14">
 					<RuntimeVizGrid />
-				</ReticleSection>
+				</ReticleBand>
 
 				<ReticleSpacer />
 
@@ -69,9 +79,9 @@ export default function HomePage() {
 
 				<ReticleSpacer />
 
-				<ReticleSection id="faq" borderTop={false}>
+				<ReticleBand id="faq" hatchMargins contentClassName="px-6 py-10 md:py-14">
 					<FaqSection />
-				</ReticleSection>
+				</ReticleBand>
 			</main>
 
 			<Footer />
