@@ -14,6 +14,7 @@ import { useMachineControl } from "@/lib/dashboard/use-machine-control";
 import type { GatewaySummary } from "@/lib/dashboard/types";
 
 import { MetricCard } from "./MetricCard";
+import { MetricsChartPanel } from "./MetricsChartPanel";
 import { ObservabilityPanel } from "./ObservabilityPanel";
 import { ReloadKnowledge } from "./ReloadKnowledge";
 import { StatusPill } from "./StatusPill";
@@ -199,6 +200,8 @@ export function OverviewClient({ counts, agentKind, model }: Props) {
 				modelOverride={model}
 				machineSummary={machine.machine}
 			/>
+
+			<MetricsChartPanel />
 
 			<ReloadKnowledge machinePhase={phase} />
 
