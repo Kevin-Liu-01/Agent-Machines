@@ -475,12 +475,20 @@ async function installCursorBridge(input: BootstrapInput): Promise<void> {
 	// silently in production -- the bridge dir had source but no node_modules
 	// or dist, the gateway failed its 3 MCP connection retries, and the deploy
 	// only noticed because the gateway's port-bind raced with our check.
+	//
+	// `chmod +x dist/server.js` after build because the package.json declares
+	// `bin: { "cursor-bridge": "./dist/server.js" }`, but npm only sets the
+	// executable bit when the package is *installed* (linked), not when its
+	// own `npm run build` finishes. Skipping this leaves the file readable
+	// but not executable, which trips the `[ -x ... ]` check below and
+	// fails the entire deploy mid-bootstrap.
 	await exec(
 		client,
 		machineId,
 		`set -o pipefail; ${SHELL_ENV} && cd ${VM_BRIDGE_DIR} && rm -rf node_modules dist && ` +
 			`npm install --no-audit --no-fund 2>&1 | tail -30 && ` +
-			`npm run build 2>&1 | tail -10`,
+			`npm run build 2>&1 | tail -10 && ` +
+			`chmod +x dist/server.js`,
 		{ timeoutMs: 600_000 },
 	);
 	// Hard-fail if the build artifact isn't where we expect it.
