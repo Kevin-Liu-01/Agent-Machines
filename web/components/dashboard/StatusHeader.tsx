@@ -15,6 +15,7 @@ import type {
 import type { AgentKind } from "@/lib/user-config/schema";
 
 import { AgentSwitcher } from "./AgentSwitcher";
+import { MachineSwitcher } from "./MachineSwitcher";
 import { StatusPill } from "./StatusPill";
 
 const POLL_MS = 5000;
@@ -114,6 +115,7 @@ export function StatusHeader({ agentKind, activeMachineId }: Props) {
 
 			<div className="flex items-center gap-3">
 				<GatewayBadge data={gateway} />
+				<MachineSwitcher />
 				<AgentSwitcher value={agentKind} activeMachineId={activeMachineId} />
 				<ThemeToggle />
 				{CLERK_READY ? (
