@@ -15,17 +15,12 @@ import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 
-const AGENT_TAGLINE: Record<HeroAgent, { label: string; capabilities: string }> =
-	{
-		hermes: {
-			label: "Hermes",
-			capabilities: "memory . cron . sessions . MCP-native",
-		},
-		openclaw: {
-			label: "OpenClaw",
-			capabilities: "computer use . browser . shell . vision",
-		},
-	};
+// Capability suffix appended to the subheader; swaps when the
+// portrait toggles between Hermes (default) and OpenClaw (preview).
+const AGENT_CAPABILITIES: Record<HeroAgent, string> = {
+	hermes: "memory . cron . sessions . MCP-native",
+	openclaw: "computer use . browser . shell . vision",
+};
 
 const PROOF_POINTS: ReadonlyArray<{
 	Icon: (p: SVGProps<SVGSVGElement>) => React.ReactElement;
@@ -35,17 +30,17 @@ const PROOF_POINTS: ReadonlyArray<{
 	{
 		Icon: IconDisk,
 		title: "State on disk, not in RAM",
-		body: "Chats, files, USER.md, MEMORY.md, FTS5 sessions, cron, venv -- everything lives at /home/machine and survives every sleep.",
+		body: "Chats, files, memory, sessions, crons -- all in /home/machine. Survives every sleep.",
 	},
 	{
 		Icon: IconKey,
 		title: "Per-account fleet",
-		body: "Sign in once with Clerk; the same machine wakes on every device. Provider keys + agent choice persist in private metadata.",
+		body: "One Clerk sign-in. Same machine on every device. Keys + agent choice in private metadata.",
 	},
 	{
 		Icon: IconStack,
 		title: "Bring any agent + tool",
-		body: "Hermes or OpenClaw, 95 skills, 23 built-ins, and 17 service routes. Dedalus runs today; Sandbox and Fly are shaped in the provider layer.",
+		body: "Hermes or OpenClaw. 95 skills, 23 built-ins, 17 services. Dedalus live; Sandbox + Fly shaped.",
 	},
 ];
 
@@ -58,7 +53,7 @@ export function HeroBlock() {
 	// lockstep so the relationship between the wireframe identity
 	// and the capability line is unambiguous.
 	const [agent, setAgent] = useState<HeroAgent>("hermes");
-	const tagline = AGENT_TAGLINE[agent];
+	const capabilities = AGENT_CAPABILITIES[agent];
 	function toggleAgent() {
 		setAgent((cur) => (cur === "hermes" ? "openclaw" : "hermes"));
 	}
@@ -97,48 +92,50 @@ export function HeroBlock() {
 					<ReticleBadge>per-account fleet</ReticleBadge>
 				</div>
 
-				<div className="mt-5 flex items-start gap-5 md:gap-7">
+				{/*
+				  Items-stretch + aspect-square + self-stretch makes the
+				  portrait's height equal the heading's natural height
+				  exactly, no magic numbers. Width is derived from the
+				  square ratio.
+				
+				  Each line of the heading is its own block + whitespace-
+				  nowrap so "Persistent Machines" can't break across two
+				  lines just because the column is narrow. md:text-[36px]
+				  is the largest size where "Persistent Machines" fits on
+				  one line in the available column area; bumping back up
+				  to text-[44px] makes the heading wrap to 4 lines and
+				  drags the portrait with it.
+				*/}
+				<div className="mt-5 flex items-stretch gap-5 md:gap-7">
 					<HeroAgentPortrait agent={agent} onToggle={toggleAgent} />
-					<h1 className="ret-display text-3xl leading-[1.05] md:text-[44px]">
-						A persistent machine
-						<br />
-						<span className="text-[var(--ret-text-dim)]">
-							for your agent.
+					<h1 className="ret-display text-3xl leading-[1.05] md:text-[36px]">
+						<span className="block whitespace-nowrap">
+							Persistent Machines
+						</span>
+						<span className="block whitespace-nowrap text-[var(--ret-text-dim)]">
+							for your Agent
 						</span>
 					</h1>
 				</div>
 
-				<p className="mt-5 max-w-[55ch] text-[14px] leading-relaxed text-[var(--ret-text-dim)]">
+				{/*
+				  Subheader is one paragraph: the static promise + the
+				  dynamic capability suffix. Click the wireframe and the
+				  trailing capability list swaps without moving any
+				  layout. `aria-live="polite"` so screen readers
+				  announce the change without interrupting other
+				  content.
+				*/}
+				<p className="mt-5 max-w-[60ch] text-[14px] leading-relaxed text-[var(--ret-text-dim)]">
 					One stateful microVM per account.{" "}
 					<strong className="text-[var(--ret-text)]">
 						Boot in 30 seconds, sleep on idle, wake on the first prompt.
-					</strong>
-				</p>
-
-				{/*
-				  Active-agent tagline. Bound to the portrait's preview
-				  state -- click the wireframe and this line swaps in
-				  the same beat. The agent label is the anchor, the
-				  capability list is the payoff. `aria-live="polite"`
-				  so screen readers announce the change without
-				  interrupting whatever else they're reading.
-				*/}
-				<p
-					aria-live="polite"
-					className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]"
-				>
-					<span className="inline-flex items-center gap-1.5 text-[var(--ret-text)]">
-						<Logo
-							mark={agent === "hermes" ? "nous" : "openclaw"}
-							size={11}
-						/>
-						{tagline.label}
-					</span>
-					<span className="text-[var(--ret-text-dim)]">
-						{tagline.capabilities}
-					</span>
-					<span className="text-[var(--ret-purple)]/80">
-						{"->"} click portrait to swap
+					</strong>{" "}
+					<span
+						aria-live="polite"
+						className="font-mono text-[12px] tracking-tight text-[var(--ret-text-muted)]"
+					>
+						{capabilities}.
 					</span>
 				</p>
 
