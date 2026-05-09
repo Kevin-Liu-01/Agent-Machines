@@ -14,6 +14,7 @@ import { useMachineControl } from "@/lib/dashboard/use-machine-control";
 import type { GatewaySummary } from "@/lib/dashboard/types";
 
 import { BootTranscript } from "./BootTranscript";
+import { FleetMetrics } from "./FleetMetrics";
 import { FleetMonitor } from "./FleetMonitor";
 import { MetricCard } from "./MetricCard";
 import { MetricsChartPanel } from "./MetricsChartPanel";
@@ -100,6 +101,16 @@ export function OverviewClient({ counts, agentKind, model }: Props) {
 			  the deep dive on the currently-active machine.
 			*/}
 			<FleetMonitor />
+
+			{/*
+			  Operations-style fleet metrics: counters, phase
+			  distribution, workspace heatmap, latency histogram +
+			  percentiles, transitions log. Modeled on the platform-
+			  admin dashboards at Vercel / Datadog -- gives the
+			  operator a "everything at a glance" view of fleet
+			  health before drilling into any single machine.
+			*/}
+			<FleetMetrics />
 
 			<MachineControlBar
 				phase={phase}
