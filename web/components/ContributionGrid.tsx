@@ -90,17 +90,53 @@ function BrandChip({
 		<button
 			type="button"
 			onClick={onClick}
-			title={`${SERVICE_LABEL[slug]} . ${days} days . ${events} events`}
-			className={cn(
-				"flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[10px] transition-colors",
+			aria-pressed={active}
+			title={
 				active
-					? "border-[var(--ret-purple)]/50 bg-[var(--ret-purple-glow)] text-[var(--ret-purple)]"
-					: "border-[var(--ret-border)] bg-[var(--ret-bg-soft)] text-[var(--ret-text-dim)] hover:border-[var(--ret-border-hover)] hover:text-[var(--ret-text)]",
+					? `Click to clear: showing only ${SERVICE_LABEL[slug]} (${days} days, ${events} events)`
+					: `Click to filter to days that touched ${SERVICE_LABEL[slug]} (${days} days, ${events} events)`
+			}
+			className={cn(
+				"group flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[10px] transition-all",
+				active
+					? // Active: solid purple wash so the chosen brand is obvious
+					  // among 20+ siblings.
+					  "border-[var(--ret-purple)]/55 bg-[var(--ret-purple-glow)] text-[var(--ret-purple)] shadow-[0_0_10px_var(--ret-purple-glow)]"
+					: // Idle: dashed border + hover-revealed `+` glyph so the
+					  // "click to filter" intent is obvious without adding
+					  // noise to every chip in the resting state.
+					  "border-dashed border-[var(--ret-border)] bg-[var(--ret-bg-soft)] text-[var(--ret-text-dim)] hover:border-solid hover:border-[var(--ret-purple)]/45 hover:text-[var(--ret-text)]",
 			)}
 		>
 			<ServiceIcon slug={slug} size={11} />
-			<span className="text-[var(--ret-text)]">{SERVICE_LABEL[slug]}</span>
-			<span className="text-[var(--ret-text-muted)] tabular-nums">{events}</span>
+			<span
+				className={cn(
+					active ? "text-[var(--ret-purple)]" : "text-[var(--ret-text)]",
+				)}
+			>
+				{SERVICE_LABEL[slug]}
+			</span>
+			<span
+				className={cn(
+					"tabular-nums",
+					active
+						? "text-[var(--ret-purple)]"
+						: "text-[var(--ret-text-muted)]",
+				)}
+			>
+				{events}
+			</span>
+			<span
+				aria-hidden="true"
+				className={cn(
+					"font-mono",
+					active
+						? "text-[var(--ret-purple)]"
+						: "text-[var(--ret-text-muted)] opacity-0 transition-opacity group-hover:opacity-100",
+				)}
+			>
+				{active ? "x" : "+"}
+			</span>
 		</button>
 	);
 }
@@ -169,8 +205,17 @@ function CellSwatch({
 			onFocus={() => onSelect(day)}
 			aria-label={`${day.date}, ${day.events.length} events on ${day.partner}`}
 			className={cn(
-				"h-3 w-3 cursor-pointer border border-[var(--ret-border)] transition-transform duration-100",
-				active ? "scale-[1.4] z-10 border-[var(--ret-text)]" : "hover:scale-[1.25]",
+				"relative h-3 w-3 cursor-pointer border transition-all duration-100",
+				active
+					? // Selected: bigger scale + outline ring above the cell so it
+					  // jumps off the grid even at high cell density. The
+					  // outline-style ring uses currentColor so it picks up the
+					  // theme's text color and stays visible against any cell hue.
+					  "z-20 scale-[1.6] border-[var(--ret-text)] outline outline-2 outline-offset-1 outline-[var(--ret-purple)]/70 shadow-[0_0_0_1px_var(--ret-bg)]"
+					: // Idle: subtle border. Hover: scale + flip the border to
+					  // text-strong so the "you can pick me" affordance reads
+					  // immediately on first mouseover.
+					  "border-[var(--ret-border)] hover:z-10 hover:scale-[1.4] hover:border-[var(--ret-text)]",
 			)}
 			style={{ background: hue, opacity }}
 		/>
@@ -226,11 +271,22 @@ function PartnerSwatch({
 		<button
 			type="button"
 			onClick={onClick}
-			className={cn(
-				"flex items-center gap-2 border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors",
+			aria-pressed={active}
+			title={
 				active
-					? "border-[var(--ret-text)] text-[var(--ret-text)]"
-					: "border-[var(--ret-border)] text-[var(--ret-text-dim)] hover:border-[var(--ret-border-hover)]",
+					? `Click to clear: showing only ${PARTNER_LABEL[partner]}`
+					: `Click to filter the grid by ${PARTNER_LABEL[partner]}`
+			}
+			className={cn(
+				"group flex items-center gap-2 border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] transition-all",
+				active
+					? // Active: purple wash + filled state so the operator sees
+					  // immediately which filter is currently narrowing the grid.
+					  "border-[var(--ret-purple)]/55 bg-[var(--ret-purple-glow)] text-[var(--ret-purple)] shadow-[0_0_12px_var(--ret-purple-glow)]"
+					: // Idle: dashed border + filter glyph on hover so the "click to filter"
+					  // affordance is unmistakable. The dashed style reads as "interactive
+					  // chip" the way the chanhdai filter strips do.
+					  "border-dashed border-[var(--ret-border)] text-[var(--ret-text-dim)] hover:border-solid hover:border-[var(--ret-purple)]/50 hover:bg-[var(--ret-surface)] hover:text-[var(--ret-text)]",
 			)}
 		>
 			{partner === "rig" ? (
@@ -243,7 +299,27 @@ function PartnerSwatch({
 				<Logo mark={PARTNER_MARK[partner]} size={12} />
 			)}
 			<span>{PARTNER_LABEL[partner]}</span>
-			<span className="text-[var(--ret-text-muted)] tabular-nums">{count}</span>
+			<span
+				className={cn(
+					"tabular-nums",
+					active
+						? "text-[var(--ret-purple)]"
+						: "text-[var(--ret-text-muted)]",
+				)}
+			>
+				{count}
+			</span>
+			<span
+				aria-hidden="true"
+				className={cn(
+					"font-mono",
+					active
+						? "text-[var(--ret-purple)]"
+						: "text-[var(--ret-text-muted)] opacity-0 transition-opacity group-hover:opacity-100",
+				)}
+			>
+				{active ? "x" : "+"}
+			</span>
 		</button>
 	);
 }
@@ -300,17 +376,44 @@ export function ContributionGrid() {
 
 	const totalActive = allDays.filter((d) => d.intensity > 0).length;
 
+	const hasFilter = filter !== "all" || brandFilter !== null;
+	const filterLabel = (() => {
+		if (filter !== "all") return PARTNER_LABEL[filter];
+		if (brandFilter !== null) return SERVICE_LABEL[brandFilter];
+		return null;
+	})();
+	function clearFilters(): void {
+		setFilter("all");
+		setBrandFilter(null);
+	}
+
 	return (
 		<div className="flex h-full flex-col border border-[var(--ret-border)] bg-[var(--ret-bg)]">
 			<div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--ret-border)] px-3 py-2">
 				<div className="flex items-center gap-2">
 					<ReticleLabel>ACTIVITY -- 6 MONTHS</ReticleLabel>
-					<ReticleBadge>
-						{totalActive} active days
-					</ReticleBadge>
+					<ReticleBadge>{totalActive} active days</ReticleBadge>
+					{hasFilter ? (
+						// Prominent active-filter chip in the header so the
+						// operator can never miss that the grid is narrowed.
+						// Clicking the [x] resets both filter axes in one tap.
+						<button
+							type="button"
+							onClick={clearFilters}
+							className="group flex items-center gap-1.5 border border-[var(--ret-purple)]/50 bg-[var(--ret-purple-glow)] px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-purple)] transition-colors hover:bg-[var(--ret-purple)]/15"
+							title="Clear filter"
+						>
+							<span className="h-1.5 w-1.5 animate-pulse bg-[var(--ret-purple)]" />
+							filtered: {filterLabel}
+							<span aria-hidden="true">x</span>
+						</button>
+					) : null}
 				</div>
-				<p className="font-mono text-[10px] text-[var(--ret-text-muted)]">
-					hover or click a cell
+				<p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+					<span aria-hidden="true" className="text-[var(--ret-purple)]">
+						{"->"}
+					</span>
+					tap a cell . click a chip to filter
 				</p>
 			</div>
 
@@ -360,7 +463,27 @@ export function ContributionGrid() {
 							</div>
 						))}
 					</div>
-					<div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+					<div className="flex flex-col gap-1.5 pt-1">
+						<div className="flex items-baseline justify-between gap-2">
+							<p className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
+								<span aria-hidden="true" className="text-[var(--ret-purple)]">
+									{"->"}
+								</span>
+								filter by partner . {Object.keys(partnerCounts).length}
+							</p>
+							<div className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+								<span>less</span>
+								{INTENSITY_OPACITY.map((o, idx) => (
+									<span
+										key={idx}
+										className="h-2 w-2 border border-[var(--ret-border)]"
+										style={{ background: "var(--ret-text)", opacity: o }}
+										aria-hidden="true"
+									/>
+								))}
+								<span>more</span>
+							</div>
+						</div>
 						<div className="flex flex-wrap gap-1.5">
 							{(["dedalus", "nous", "openclaw", "cursor", "rig"] as const).map(
 								(partner) => (
@@ -376,18 +499,6 @@ export function ContributionGrid() {
 								),
 							)}
 						</div>
-						<div className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-							<span>less</span>
-							{INTENSITY_OPACITY.map((o, idx) => (
-								<span
-									key={idx}
-									className="h-2 w-2 border border-[var(--ret-border)]"
-									style={{ background: "var(--ret-text)", opacity: o }}
-									aria-hidden="true"
-								/>
-							))}
-							<span>more</span>
-						</div>
 					</div>
 
 					{/*
@@ -400,8 +511,14 @@ export function ContributionGrid() {
 					{brandStats.slugs.length > 0 ? (
 						<div className="flex flex-col gap-1.5 pt-1">
 							<div className="flex items-baseline justify-between gap-2">
-								<p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
-									services touched . {brandStats.slugs.length}
+								<p className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
+									<span
+										aria-hidden="true"
+										className="text-[var(--ret-purple)]"
+									>
+										{"->"}
+									</span>
+									filter by service . {brandStats.slugs.length}
 								</p>
 								{brandFilter ? (
 									<button
@@ -409,13 +526,9 @@ export function ContributionGrid() {
 										onClick={() => setBrandFilter(null)}
 										className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-purple)] hover:underline"
 									>
-										clear filter
+										clear filter x
 									</button>
-								) : (
-									<p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-										click to filter
-									</p>
-								)}
+								) : null}
 							</div>
 							<div className="flex flex-wrap gap-1">
 								{brandStats.slugs.map((slug) => (
