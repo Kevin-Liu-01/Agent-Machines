@@ -30,6 +30,15 @@ export type MachineSummary = {
 	createdAt: string;
 	configuredAt: string | null;
 	reason: string | null;
+	/**
+	 * Dedalus controlplane progress markers. Surface them on the
+	 * onboarding boot step + the dashboard wake banner so operators
+	 * see meaningful "machine is doing work" signals instead of just
+	 * a phase label that hasn't changed for 90 seconds.
+	 */
+	statusReason: string | null;
+	lastTransitionAt: string | null;
+	lastProgressAt: string | null;
 };
 
 export type GatewaySummary = {

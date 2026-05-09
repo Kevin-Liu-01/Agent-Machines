@@ -34,6 +34,8 @@ type RawMachine = {
 		revision?: string | number;
 		reason?: string | null;
 		last_error?: string | null;
+		last_transition_at?: string | null;
+		last_progress_at?: string | null;
 	};
 };
 
@@ -88,6 +90,9 @@ function summarize(raw: RawMachine): MachineSummary {
 		createdAt: raw.created_at,
 		configuredAt: raw.configured_at ?? null,
 		reason: raw.status.last_error ?? raw.status.reason ?? null,
+		statusReason: raw.status.reason ?? null,
+		lastTransitionAt: raw.status.last_transition_at ?? null,
+		lastProgressAt: raw.status.last_progress_at ?? null,
 	};
 }
 

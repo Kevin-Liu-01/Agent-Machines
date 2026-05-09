@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { BrandMark } from "@/components/BrandMark";
+import { BootTranscript } from "@/components/dashboard/BootTranscript";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ToolIcon } from "@/components/ToolIcon";
@@ -1004,6 +1005,15 @@ function BootStep({
 					<BrailleSpinner /> waiting for machine id...
 				</p>
 			)}
+
+			{/*
+			  Live transcript of every controlplane phase change + on-VM
+			  log line we can pull. Replaces the old "this can take a
+			  minute" silence with a real running commentary so the
+			  operator can see exactly which step the machine is
+			  blocked on (and which Dedalus error code if it's failing).
+			*/}
+			<BootTranscript active={!done} machineId={machineId} maxHeight={280} />
 		</div>
 	);
 }

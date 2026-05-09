@@ -13,6 +13,7 @@ import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { useMachineControl } from "@/lib/dashboard/use-machine-control";
 import type { GatewaySummary } from "@/lib/dashboard/types";
 
+import { BootTranscript } from "./BootTranscript";
 import { MetricCard } from "./MetricCard";
 import { MetricsChartPanel } from "./MetricsChartPanel";
 import { ObservabilityPanel } from "./ObservabilityPanel";
@@ -79,6 +80,15 @@ export function OverviewClient({ counts, agentKind, model }: Props) {
 				? "warn"
 				: "error";
 
+	const inTransition =
+		machine.pending !== null ||
+		phase === "wake_pending" ||
+		phase === "starting" ||
+		phase === "sleep_pending" ||
+		phase === "placement_pending" ||
+		phase === "accepted" ||
+		phase === "failed";
+
 	return (
 		<div className="space-y-6 px-5 py-5">
 			<MachineControlBar
@@ -89,6 +99,22 @@ export function OverviewClient({ counts, agentKind, model }: Props) {
 				onWake={() => void machine.wake()}
 				onSleep={() => void machine.sleep()}
 			/>
+
+			{/*
+			  When the machine is mid-transition (waking, sleeping,
+			  failed, etc.), show the live boot transcript so the
+			  operator sees the controlplane events + on-VM logs in
+			  real time instead of staring at "in transition" for 30
+			  seconds. Hides itself once the machine settles into
+			  `running`.
+			*/}
+			{inTransition && machine.machine ? (
+				<BootTranscript
+					active={inTransition}
+					machineId={machine.machine.machineId}
+					maxHeight={240}
+				/>
+			) : null}
 
 			<section className="grid grid-cols-2 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] md:grid-cols-3 xl:grid-cols-6">
 				<MetricCard
