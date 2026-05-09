@@ -19,6 +19,12 @@ import { NextResponse } from "next/server";
  * user wires Clerk), we close the protected routes with a 503 explaining
  * what's missing and let public routes through. This means the marketing
  * landing always renders even before auth is configured.
+ *
+ * Local dev: setting `ALLOW_DEV_AUTH=1` (only honored when
+ * `NODE_ENV=development`) bypasses every auth check. Protected routes
+ * pass through and the route handlers see the synthetic `dev-user`
+ * identity from `lib/user-config/identity.ts`. Lets you iterate on the
+ * dashboard without Clerk credentials.
  */
 const isProtectedPage = createRouteMatcher(["/dashboard(.*)", "/onboarding(.*)"]);
 const isProtectedApi = createRouteMatcher([
@@ -31,6 +37,10 @@ const CLERK_CONFIGURED = Boolean(
 		process.env.CLERK_SECRET_KEY,
 );
 
+const DEV_BYPASS =
+	process.env.NODE_ENV === "development" &&
+	process.env.ALLOW_DEV_AUTH === "1";
+
 const FALLBACK_MESSAGE =
 	"Clerk is not configured on this deployment yet. Set NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY in the Vercel project env, then redeploy.";
 
@@ -39,6 +49,13 @@ const guarded = clerkMiddleware(async (auth, request) => {
 
 	const { userId } = await auth();
 	if (userId) return;
+
+	// Dev bypass: let the request through with no Clerk session. The
+	// route handler resolves identity via `getEffectiveUserId()` which
+	// returns the synthetic `dev-user` id and routes config reads to
+	// the file-backed dev store. Production never hits this branch
+	// because `DEV_BYPASS` requires NODE_ENV=development.
+	if (DEV_BYPASS) return;
 
 	if (isProtectedApi(request)) {
 		return NextResponse.json(
@@ -60,6 +77,10 @@ export default async function middleware(
 	if (!isProtectedPage(request) && !isProtectedApi(request)) {
 		return NextResponse.next();
 	}
+	// Dev bypass even works when Clerk isn't configured at all -- run a
+	// fresh checkout with just `ALLOW_DEV_AUTH=1` and the dashboard is
+	// usable. Without bypass we fall through to the 503 below.
+	if (DEV_BYPASS) return NextResponse.next();
 	if (isProtectedApi(request)) {
 		return NextResponse.json(
 			{ error: "auth_unconfigured", message: FALLBACK_MESSAGE },

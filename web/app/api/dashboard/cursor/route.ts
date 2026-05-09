@@ -10,7 +10,7 @@
  * so the UI can render empty / setup states instead of generic 5xx.
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import { execOnMachine, isMachineRunning } from "@/lib/dashboard/exec";
 import type {
@@ -51,7 +51,7 @@ function parseLine(line: string): CursorRun | null {
 }
 
 export async function GET(): Promise<Response> {
-	const { userId } = await auth();
+	const userId = await getEffectiveUserId();
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}

@@ -5,7 +5,7 @@
  * lives at `~/.agent-machines/chats/<id>.json` on the VM.
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import { deleteChat, loadChat } from "@/lib/storage/machine-chats";
 import { withActiveMachine } from "@/lib/storage/machine-fs";
@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
-	const { userId } = await auth();
+	const userId = await getEffectiveUserId();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 	const handle = await withActiveMachine();
 	if ("ok" in handle) {
@@ -37,7 +37,7 @@ export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
 }
 
 export async function DELETE(_req: Request, ctx: Ctx): Promise<Response> {
-	const { userId } = await auth();
+	const userId = await getEffectiveUserId();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 	const handle = await withActiveMachine();
 	if ("ok" in handle) {

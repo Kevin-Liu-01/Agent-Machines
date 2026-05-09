@@ -12,7 +12,7 @@
  * useful message; storage is `setUserConfig` in clerk.ts.
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import {
 	getOwnerDefaults,
@@ -107,7 +107,7 @@ function validateCreds(input: CredsBody): {
 }
 
 export async function GET(): Promise<Response> {
-	const { userId } = await auth();
+	const userId = await getEffectiveUserId();
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}
@@ -126,7 +126,7 @@ export async function GET(): Promise<Response> {
 }
 
 export async function POST(request: Request): Promise<Response> {
-	const { userId } = await auth();
+	const userId = await getEffectiveUserId();
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}

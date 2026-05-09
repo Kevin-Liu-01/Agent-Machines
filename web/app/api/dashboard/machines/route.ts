@@ -11,7 +11,7 @@
  * because we batch all live calls in parallel.
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import {
 	MachineProviderError,
@@ -36,7 +36,7 @@ type LiveMachine = Omit<MachineRef, "apiKey"> & {
 };
 
 export async function GET(): Promise<Response> {
-	const { userId } = await auth();
+	const userId = await getEffectiveUserId();
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}

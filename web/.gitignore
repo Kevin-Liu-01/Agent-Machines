@@ -12,3 +12,7 @@ tsconfig.tsbuildinfo
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# Local dev store -- file-backed UserConfig for `ALLOW_DEV_AUTH=1`.
+# Holds provider keys and machine refs for the synthetic dev-user.
+.dev-user-config.json

@@ -7,7 +7,7 @@
  *   DELETE -- archive (default) or hard-destroy via ?destroy=1
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import { MachineProviderError, getProvider } from "@/lib/providers";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
@@ -41,7 +41,7 @@ async function find(id: string): Promise<MachineRef | null> {
 }
 
 export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
-	const { userId } = await auth();
+	const userId = await getEffectiveUserId();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 	const { id } = await ctx.params;
 	const machine = await find(id);
@@ -65,7 +65,7 @@ export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
 }
 
 export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
-	const { userId } = await auth();
+	const userId = await getEffectiveUserId();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 	const { id } = await ctx.params;
 	const machine = await find(id);
@@ -124,7 +124,7 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
 }
 
 export async function DELETE(request: Request, ctx: Ctx): Promise<Response> {
-	const { userId } = await auth();
+	const userId = await getEffectiveUserId();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 	const { id } = await ctx.params;
 	const machine = await find(id);

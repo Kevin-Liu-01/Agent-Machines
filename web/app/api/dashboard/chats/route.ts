@@ -13,7 +13,7 @@
  * is ready.
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import {
 	deleteChat,
@@ -28,7 +28,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(): Promise<Response> {
-	const { userId } = await auth();
+	const userId = await getEffectiveUserId();
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}
@@ -53,7 +53,7 @@ export async function GET(): Promise<Response> {
 }
 
 export async function POST(request: Request): Promise<Response> {
-	const { userId } = await auth();
+	const userId = await getEffectiveUserId();
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}
@@ -95,7 +95,7 @@ export async function POST(request: Request): Promise<Response> {
 }
 
 export async function DELETE(request: Request): Promise<Response> {
-	const { userId } = await auth();
+	const userId = await getEffectiveUserId();
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}

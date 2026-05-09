@@ -16,7 +16,7 @@
 
 import { randomUUID } from "node:crypto";
 
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import {
 	MachineProviderError,
@@ -73,7 +73,7 @@ function asSpec(value: unknown, fallback: MachineSpec): MachineSpec {
 }
 
 export async function POST(request: Request): Promise<Response> {
-	const { userId } = await auth();
+	const userId = await getEffectiveUserId();
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}

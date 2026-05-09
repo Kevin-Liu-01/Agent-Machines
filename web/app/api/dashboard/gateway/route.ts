@@ -10,7 +10,7 @@
  * Reads the gateway URL + bearer token from the caller's Clerk metadata.
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import type { GatewaySummary } from "@/lib/dashboard/types";
 import { getGatewayEnvForUser } from "@/lib/user-config/clerk";
@@ -19,7 +19,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(): Promise<Response> {
-	const { userId } = await auth();
+	const userId = await getEffectiveUserId();
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}

@@ -21,8 +21,10 @@
  * new shape and persisted back, so deployed users keep their state.
  */
 
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { clerkClient } from "@clerk/nextjs/server";
 
+import { getDevUserConfig, setDevUserConfig } from "./dev-store";
+import { getEffectiveUserId, isDevUserId } from "./identity";
 import {
 	BOOTSTRAP_PHASES,
 	DEFAULT_MACHINE_SPEC,
@@ -313,12 +315,18 @@ export function getOwnerDefaults(): UserConfig {
 }
 
 export async function getUserConfig(): Promise<UserConfig> {
-	const { userId } = await auth();
-	if (!userId) throw new Error("getUserConfig called without an authenticated user");
+	const userId = await getEffectiveUserId();
+	if (!userId) {
+		throw new Error("getUserConfig called without an authenticated user");
+	}
 	return getUserConfigById(userId);
 }
 
 export async function getUserConfigById(userId: string): Promise<UserConfig> {
+	// Dev bypass: route the local dev identity to the file-backed
+	// store. Lets the dashboard read/write a UserConfig without
+	// hitting Clerk at all when ALLOW_DEV_AUTH=1 is set locally.
+	if (isDevUserId(userId)) return getDevUserConfig();
 	const client = await clerkClient();
 	const user = await client.users.getUser(userId);
 	const publicMeta = (user.publicMetadata ?? {}) as RawPublic;
@@ -358,8 +366,10 @@ function machineKeyMap(machines: MachineRef[]): Record<string, string> {
 }
 
 export async function setUserConfig(patch: ConfigPatch): Promise<UserConfig> {
-	const { userId } = await auth();
-	if (!userId) throw new Error("setUserConfig called without an authenticated user");
+	const userId = await getEffectiveUserId();
+	if (!userId) {
+		throw new Error("setUserConfig called without an authenticated user");
+	}
 	return setUserConfigById(userId, patch);
 }
 
@@ -367,6 +377,9 @@ export async function setUserConfigById(
 	userId: string,
 	patch: ConfigPatch,
 ): Promise<UserConfig> {
+	// Dev bypass: persist to the file-backed store. Same patch shape,
+	// same UserConfig output -- callers stay store-agnostic.
+	if (isDevUserId(userId)) return setDevUserConfig(patch);
 	const client = await clerkClient();
 	const user = await client.users.getUser(userId);
 	const existingPublic = { ...(user.publicMetadata ?? {}) } as RawPublic;

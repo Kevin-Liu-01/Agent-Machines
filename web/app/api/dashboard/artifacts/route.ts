@@ -10,7 +10,7 @@
 import { Buffer } from "node:buffer";
 import { randomUUID } from "node:crypto";
 
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import {
 	listArtifacts,
@@ -24,7 +24,7 @@ export const dynamic = "force-dynamic";
 const MAX_BYTES = 8 * 1024 * 1024;
 
 export async function GET(): Promise<Response> {
-	const { userId } = await auth();
+	const userId = await getEffectiveUserId();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 	const handle = await withActiveMachine();
 	if ("ok" in handle) {
@@ -47,7 +47,7 @@ export async function GET(): Promise<Response> {
 }
 
 export async function POST(request: Request): Promise<Response> {
-	const { userId } = await auth();
+	const userId = await getEffectiveUserId();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 	const handle = await withActiveMachine();
 	if ("ok" in handle) {

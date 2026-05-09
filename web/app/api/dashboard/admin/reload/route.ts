@@ -19,7 +19,7 @@
  * envelope; users whose machine is asleep get `machine_offline`.
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import { execOnMachine, isMachineRunning } from "@/lib/dashboard/exec";
 import { getUserConfig } from "@/lib/user-config/clerk";
@@ -30,7 +30,7 @@ export const dynamic = "force-dynamic";
 const RELOAD_SCRIPT = "$HOME/.hermes/scripts/reload-from-git.sh";
 
 export async function POST(): Promise<Response> {
-	const { userId } = await auth();
+	const userId = await getEffectiveUserId();
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}
