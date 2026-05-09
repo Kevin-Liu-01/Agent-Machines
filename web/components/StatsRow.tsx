@@ -19,24 +19,21 @@ const STATS: ReadonlyArray<{
 ];
 
 type StackIcon =
-	| { kind: "logo"; mark: "dedalus" | "agent" | "cursor" | "nous" | "openclaw" }
+	| { kind: "logo"; mark: "dedalus" | "cursor" | "nous" | "openclaw" }
 	| { kind: "service"; slug: ServiceSlug };
 
+// Every stack entry is one component, one logo, one link. Hermes and
+// OpenClaw used to share a "Hermes / OpenClaw" cell with two pill
+// buttons inside, which read visually as a pipeline ("HERMES ->
+// OPENCLAW ->") instead of two alternative agents -- so they get
+// their own cells now, like everything else in the stack.
 type StackEntry = {
 	id: string;
 	icon: StackIcon;
 	name: string;
 	role: string;
-} & (
-	| { href: string; links?: never }
-	| {
-			href?: never;
-			/** Multiple sub-links rendered as a row of small "name ->"
-			 *  anchors. Used for the agent layer where both Hermes and
-			 *  OpenClaw deserve attribution. */
-			links: ReadonlyArray<{ label: string; href: string }>;
-	  }
-);
+	href: string;
+};
 
 const STACK: ReadonlyArray<StackEntry> = [
 	{
@@ -47,14 +44,18 @@ const STACK: ReadonlyArray<StackEntry> = [
 		href: "https://docs.dedaluslabs.ai/dcs",
 	},
 	{
-		id: "agent",
-		icon: { kind: "logo", mark: "agent" },
-		name: "Hermes / OpenClaw",
-		role: "agent",
-		links: [
-			{ label: "Hermes", href: "https://github.com/NousResearch/hermes-agent" },
-			{ label: "OpenClaw", href: "https://github.com/openclaw/openclaw" },
-		],
+		id: "hermes",
+		icon: { kind: "logo", mark: "nous" },
+		name: "Hermes",
+		role: "agent (default)",
+		href: "https://github.com/NousResearch/hermes-agent",
+	},
+	{
+		id: "openclaw",
+		icon: { kind: "logo", mark: "openclaw" },
+		name: "OpenClaw",
+		role: "agent (preview)",
+		href: "https://github.com/openclaw/openclaw",
 	},
 	{
 		id: "cursor",
@@ -62,27 +63,6 @@ const STACK: ReadonlyArray<StackEntry> = [
 		name: "Cursor SDK",
 		role: "codework",
 		href: "https://cursor.com/docs/sdk/typescript",
-	},
-	{
-		id: "vercel",
-		icon: { kind: "service", slug: "vercel" },
-		name: "Vercel",
-		role: "web console",
-		href: "https://vercel.com",
-	},
-	{
-		id: "clerk",
-		icon: { kind: "service", slug: "clerk" },
-		name: "Clerk",
-		role: "auth + fleet metadata",
-		href: "https://clerk.com",
-	},
-	{
-		id: "cloudflare",
-		icon: { kind: "service", slug: "cloudflare" },
-		name: "Cloudflare",
-		role: "public tunnel",
-		href: "https://www.cloudflare.com/products/tunnel/",
 	},
 	{
 		id: "anthropic",
@@ -97,6 +77,27 @@ const STACK: ReadonlyArray<StackEntry> = [
 		name: "OpenAI",
 		role: "model provider",
 		href: "https://openai.com",
+	},
+	{
+		id: "cloudflare",
+		icon: { kind: "service", slug: "cloudflare" },
+		name: "Cloudflare",
+		role: "public tunnel",
+		href: "https://www.cloudflare.com/products/tunnel/",
+	},
+	{
+		id: "clerk",
+		icon: { kind: "service", slug: "clerk" },
+		name: "Clerk",
+		role: "auth + fleet",
+		href: "https://clerk.com",
+	},
+	{
+		id: "vercel",
+		icon: { kind: "service", slug: "vercel" },
+		name: "Vercel",
+		role: "web console",
+		href: "https://vercel.com",
 	},
 ];
 
@@ -140,60 +141,37 @@ export function StatsRow() {
 				))}
 			</div>
 
-			<div className="mt-px grid grid-cols-1 gap-px overflow-hidden border border-[var(--ret-border)] border-t-0 bg-[var(--ret-border)] sm:grid-cols-2 lg:grid-cols-4">
-				{STACK.map((s) => {
-					const inner = (
-						<>
-							<StackIconView icon={s.icon} />
-							<div className="min-w-0 flex-1">
-								<p className="truncate text-sm font-semibold tracking-tight text-[var(--ret-text)] group-hover:text-[var(--ret-purple)]">
-									{s.name}
-								</p>
-								<p className="truncate font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-									{s.role} layer
-								</p>
-							</div>
-						</>
-					);
-					if (s.href) {
-						return (
-							<a
-								key={s.id}
-								href={s.href}
-								target="_blank"
-								rel="noreferrer"
-								className="group flex items-center gap-3 bg-[var(--ret-bg)] px-4 py-3 transition-colors duration-150 hover:bg-[var(--ret-surface)]"
-							>
-								{inner}
-								<span className="font-mono text-[11px] text-[var(--ret-text-muted)] group-hover:text-[var(--ret-purple)]">
-									{"->"}
-								</span>
-							</a>
-						);
-					}
-					const links = s.links ?? [];
-					return (
-						<div
-							key={s.id}
-							className="group flex items-center gap-3 bg-[var(--ret-bg)] px-4 py-3"
-						>
-							{inner}
-							<span className="ml-auto flex shrink-0 items-center gap-1.5">
-								{links.map((l) => (
-									<a
-										key={l.href}
-										href={l.href}
-										target="_blank"
-										rel="noreferrer"
-										className="border border-[var(--ret-border)] bg-[var(--ret-surface)] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-dim)] transition-colors hover:border-[var(--ret-purple)]/40 hover:text-[var(--ret-purple)]"
-									>
-										{l.label} {"->"}
-									</a>
-								))}
-							</span>
+			{/*
+			  Three columns on lg so all 9 stack entries fit cleanly in
+			  3 rows of 3. The previous 4-col grid orphaned a cell and
+			  forced the role labels ("auth + fleet metadata layer",
+			  "web console layer") to truncate. Dropping the redundant
+			  " layer" suffix (the section title already says STACK)
+			  also helps each role stay on one line.
+			*/}
+			<div className="mt-px grid grid-cols-1 gap-px overflow-hidden border border-[var(--ret-border)] border-t-0 bg-[var(--ret-border)] sm:grid-cols-2 lg:grid-cols-3">
+				{STACK.map((s) => (
+					<a
+						key={s.id}
+						href={s.href}
+						target="_blank"
+						rel="noreferrer"
+						className="group flex items-center gap-3 bg-[var(--ret-bg)] px-4 py-3 transition-colors duration-150 hover:bg-[var(--ret-surface)]"
+					>
+						<StackIconView icon={s.icon} />
+						<div className="min-w-0 flex-1">
+							<p className="truncate text-sm font-semibold tracking-tight text-[var(--ret-text)] group-hover:text-[var(--ret-purple)]">
+								{s.name}
+							</p>
+							<p className="truncate font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+								{s.role}
+							</p>
 						</div>
-					);
-				})}
+						<span className="font-mono text-[11px] text-[var(--ret-text-muted)] group-hover:text-[var(--ret-purple)]">
+							{"->"}
+						</span>
+					</a>
+				))}
 			</div>
 		</div>
 	);
