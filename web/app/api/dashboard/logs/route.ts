@@ -7,7 +7,7 @@
  * than this PR's scope).
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import { execOnMachine, isMachineRunning } from "@/lib/dashboard/exec";
 import type {
@@ -47,7 +47,7 @@ function parseLine(raw: string, source: string): LogLine {
 }
 
 export async function GET(request: Request): Promise<Response> {
-	const { userId } = await auth();
+	const userId = await getEffectiveUserId();
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}
@@ -80,35 +80,76 @@ export async function GET(request: Request): Promise<Response> {
 	}
 
 	try {
-		// `find -printf` is GNU-only and the VM image ships with it. We pull
-		// the file list + sizes in one shot so the UI can show "you have N
-		// log files totalling X MiB".
+		// Inventory: list every log file under both agent runtimes
+		// (~/.hermes/logs/* and ~/.openclaw/) plus their sizes in one
+		// shot so the UI can show "you have N log files totalling X
+		// MiB". `find -printf` is GNU-only; the VM image ships GNU
+		// findutils so we lean on it. The OpenClaw bootstrap appends
+		// its gateway log directly under `~/.openclaw/gateway.log`
+		// (no `logs/` subdir), so we glob both layouts.
 		const inventoryOut = await execOnMachine(
-			`mkdir -p $HOME/.hermes/logs && find $HOME/.hermes/logs -maxdepth 2 -type f -printf '%p\\t%s\\n' 2>/dev/null | sort`,
+			[
+				"mkdir -p $HOME/.hermes/logs $HOME/.openclaw",
+				"find $HOME/.hermes/logs $HOME/.openclaw -maxdepth 2 -type f \\( -name '*.log' -o -name 'gateway.log' \\) -printf '%p\\t%s\\n' 2>/dev/null | sort",
+			].join(" && "),
 		);
 		const files = inventoryOut.stdout
 			.split("\n")
 			.filter(Boolean)
 			.map((line) => {
-				const [path, size] = line.split("\t");
+				const [rawPath, size] = line.split("\t");
+				const path = rawPath
+					.replace(/\/home\/[^/]+\/\.hermes/, "~/.hermes")
+					.replace(/\/home\/[^/]+\/\.openclaw/, "~/.openclaw");
 				return {
-					path: path.replace(/\/home\/[^/]+\/\.hermes/, "~/.hermes"),
+					path,
 					bytes: Number.parseInt(size ?? "0", 10) || 0,
 				};
 			});
 
-		const tailOut = await execOnMachine(
-			`if compgen -G "$HOME/.hermes/logs/*.log" > /dev/null; then tail -n ${tailLines} $HOME/.hermes/logs/*.log 2>/dev/null; else echo ""; fi`,
-		);
-		const lines = tailOut.stdout
-			.split("\n")
-			.filter((line) => line.length > 0 && !line.startsWith("=="))
-			.slice(-tailLines)
-			.map((line) => parseLine(line, "gateway.log"));
+		// Tail Hermes + OpenClaw log files in parallel. We label each
+		// line with its source (`hermes` / `openclaw`) so the UI can
+		// filter or color-code by agent. tailLines is the per-agent
+		// budget, not the total -- so the caller asking for n=200 can
+		// see up to 200 lines from each runtime.
+		const [hermesOut, openclawOut] = await Promise.all([
+			execOnMachine(
+				`if compgen -G "$HOME/.hermes/logs/*.log" > /dev/null; then tail -n ${tailLines} $HOME/.hermes/logs/*.log 2>/dev/null; else echo ""; fi`,
+			),
+			execOnMachine(
+				`if [ -f "$HOME/.openclaw/gateway.log" ]; then tail -n ${tailLines} $HOME/.openclaw/gateway.log 2>/dev/null; else echo ""; fi`,
+			),
+		]);
+
+		function tailToLines(stdout: string, source: string): LogLine[] {
+			return stdout
+				.split("\n")
+				.filter((line) => line.length > 0 && !line.startsWith("=="))
+				.map((line) => parseLine(line, source));
+		}
+
+		const hermesLines = tailToLines(hermesOut.stdout, "hermes");
+		const openclawLines = tailToLines(openclawOut.stdout, "openclaw");
+
+		// Merge by parsed timestamp. Lines without a parseable
+		// timestamp keep their relative position within their agent
+		// stream so they don't bunch at the top. We allocate the
+		// merged result up to the requested tailLines so the response
+		// stays bounded regardless of how chatty either agent is.
+		const merged = [...hermesLines, ...openclawLines]
+			.sort((a, b) => {
+				const aT = a.at ?? "";
+				const bT = b.at ?? "";
+				if (!aT && !bT) return 0;
+				if (!aT) return -1;
+				if (!bT) return 1;
+				return aT.localeCompare(bT);
+			})
+			.slice(-tailLines);
 
 		const envelope: LiveDataEnvelope<LogsPayload> = {
 			ok: true,
-			data: { lines, files, tailLines },
+			data: { lines: merged, files, tailLines },
 			fetchedAt: new Date().toISOString(),
 		};
 		return Response.json(envelope, {
