@@ -5,7 +5,7 @@ version: 1.0.0
 author: Kevin Liu
 license: MIT
 metadata:
-  hermes:
+  agent-machines:
     tags: [cron, automation, scheduling, recurring]
 ---
 
@@ -34,7 +34,7 @@ Three surfaces, same effect:
 
 ```bash
 # CLI
-hermes cron create "every 1h" "Summarize new feed items" --skill blogwatcher --name "Hourly feeds"
+agent-machines cron create "every 1h" "Summarize new feed items" --skill blogwatcher --name "Hourly feeds"
 
 # In-chat slash command
 /cron add "0 9 * * *" "Audit my open PRs and post a summary"

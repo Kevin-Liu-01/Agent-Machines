@@ -5,7 +5,7 @@ version: 1.0.0
 author: Kevin Liu
 license: MIT
 metadata:
-  hermes:
+  agent-machines:
     tags: [design-system, reticle, sigil, tokens, layout]
     related_skills: [frontend-design-taste]
 ---

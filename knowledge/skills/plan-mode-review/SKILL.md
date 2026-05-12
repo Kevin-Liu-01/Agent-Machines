@@ -5,7 +5,7 @@ version: 1.0.0
 author: Kevin Liu
 license: MIT
 metadata:
-  hermes:
+  agent-machines:
     tags: [review, planning, code-quality, architecture]
     related_skills: [agent-ethos, empirical-verification, security-audit]
 ---

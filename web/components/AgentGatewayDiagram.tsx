@@ -176,9 +176,9 @@ function ContainerDiagram() {
 	return (
 		<div className="grid w-full grid-cols-3 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)]">
 			{[
-				["~/.hermes/", "runtime state"],
-				["~/.agent-machines/", "app data"],
-				["~/agent-machines/", "git checkout"],
+				["~/.agent-machines/", "runtime state"],
+				["skills/", "SKILL.md files"],
+				["config.toml", "agent config"],
 				["skills/", "96 SKILL.md"],
 				["sessions.db", "FTS5 history"],
 				["crons/", "scheduled tasks"],

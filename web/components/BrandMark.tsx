@@ -26,9 +26,11 @@ type Props = {
 	agent?: Variant;
 };
 
-const SECONDARY_MARK: Record<AgentKind, "nous" | "openclaw"> = {
+const SECONDARY_MARK: Record<AgentKind, "nous" | "openclaw" | "anthropic" | "openai"> = {
 	hermes: "nous",
 	openclaw: "openclaw",
+	"claude-code": "anthropic",
+	codex: "openai",
 };
 
 /**

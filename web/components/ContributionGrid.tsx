@@ -17,48 +17,53 @@ import {
 	generateContributionGrid,
 	type ContributionDay,
 	type ContributionEvent,
+	type PartnerKey,
 } from "@/lib/contribution-data";
 
 const PARTNER_MARKS = new Set<Mark>(["dedalus", "nous", "cursor", "openclaw"]);
 
-/**
- * GitHub-contribution-style activity grid for the rig.
- *
- * Each cell is one day in the 6-month window; the color hue maps to
- * the partner attributed for that day's dominant activity (Dedalus
- * runtime / Nous agent / Cursor codework / rig itself). Intensity
- * 0..4 maps to opacity steps. Click a cell to pin it; the right-side
- * panel shows the day's events with kind, label, and detail.
- *
- * Data comes from a deterministic seeded PRNG -- looks real, stays
- * stable across renders. The dashboard variant of this component
- * (forthcoming) will swap in live machine data via the same shape.
- */
-
-const PARTNER_HUE: Record<ContributionDay["partner"], string> = {
+const PARTNER_HUE: Record<PartnerKey, string> = {
 	dedalus: "var(--ret-purple)",
-	nous: "#9aa6c4",
-	cursor: "#e8e6dc",
-	openclaw: "#c9b48a",
-	rig: "var(--ret-amber)",
+	nous: "#7c8cf8",
+	cursor: "#f5c542",
+	openclaw: "#e87c4f",
+	anthropic: "#d4a574",
+	openai: "#4ae0a0",
+	"claude-code": "#d4a574",
+	codex: "#4ae0a0",
 };
 
-const PARTNER_LABEL: Record<ContributionDay["partner"], string> = {
+const PARTNER_LABEL: Record<PartnerKey, string> = {
 	dedalus: "dedalus",
 	nous: "nous",
 	cursor: "cursor",
 	openclaw: "openclaw",
-	rig: "rig",
+	anthropic: "anthropic",
+	openai: "openai",
+	"claude-code": "claude code",
+	codex: "codex cli",
 };
 
-// Map partner -> Logo Mark. "rig" has no Logo so we render an inline
-// glyph in the legend instead.
-const PARTNER_MARK: Record<Exclude<ContributionDay["partner"], "rig">, Mark> = {
+const LOGO_PARTNERS = new Set<PartnerKey>(["dedalus", "nous", "cursor", "openclaw"]);
+const LOGO_MARK: Record<string, Mark> = {
 	dedalus: "dedalus",
 	nous: "nous",
 	cursor: "cursor",
 	openclaw: "openclaw",
 };
+const SERVICE_PARTNER: Record<string, ServiceSlug> = {
+	"claude-code": "anthropic",
+	codex: "openai",
+};
+
+const ALL_PARTNERS: ReadonlyArray<PartnerKey> = [
+	"dedalus",
+	"nous",
+	"openclaw",
+	"cursor",
+	"claude-code",
+	"codex",
+];
 
 const KIND_LABEL: Record<ContributionEvent["kind"], string> = {
 	skill: "skill",
@@ -71,11 +76,26 @@ const KIND_LABEL: Record<ContributionEvent["kind"], string> = {
 	milestone: "milestone",
 	compute: "compute",
 	browser: "browser",
+	codegen: "codegen",
 };
+
+function PartnerIcon({ partner, size }: { partner: PartnerKey; size: number }) {
+	if (LOGO_PARTNERS.has(partner)) {
+		return <Logo mark={LOGO_MARK[partner]!} size={size} />;
+	}
+	const slug = SERVICE_PARTNER[partner];
+	if (slug) return <ServiceIcon slug={slug} size={size} />;
+	return (
+		<span
+			className="shrink-0"
+			style={{ width: size, height: size, background: PARTNER_HUE[partner] }}
+			aria-hidden="true"
+		/>
+	);
+}
 
 function BrandChip({
 	slug,
-	days,
 	events,
 	active,
 	onClick,
@@ -91,39 +111,18 @@ function BrandChip({
 			type="button"
 			onClick={onClick}
 			aria-pressed={active}
-			title={
-				active
-					? `Click to clear: showing only ${SERVICE_LABEL[slug]} (${days} days, ${events} events)`
-					: `Click to filter to days that touched ${SERVICE_LABEL[slug]} (${days} days, ${events} events)`
-			}
 			className={cn(
 				"group flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[10px] transition-all",
 				active
-					? // Active: solid purple wash so the chosen brand is obvious
-					  // among 20+ siblings.
-					  "border-[var(--ret-purple)]/55 bg-[var(--ret-purple-glow)] text-[var(--ret-purple)] shadow-[0_0_10px_var(--ret-purple-glow)]"
-					: // Idle: dashed border + hover-revealed `+` glyph so the
-					  // "click to filter" intent is obvious without adding
-					  // noise to every chip in the resting state.
-					  "border-dashed border-[var(--ret-border)] bg-[var(--ret-bg-soft)] text-[var(--ret-text-dim)] hover:border-solid hover:border-[var(--ret-purple)]/45 hover:text-[var(--ret-text)]",
+					? "border-[var(--ret-purple)]/55 bg-[var(--ret-purple-glow)] text-[var(--ret-purple)] shadow-[0_0_10px_var(--ret-purple-glow)]"
+					: "border-dashed border-[var(--ret-border)] bg-[var(--ret-bg-soft)] text-[var(--ret-text-dim)] hover:border-solid hover:border-[var(--ret-purple)]/45 hover:text-[var(--ret-text)]",
 			)}
 		>
 			<ServiceIcon slug={slug} size={11} />
-			<span
-				className={cn(
-					active ? "text-[var(--ret-purple)]" : "text-[var(--ret-text)]",
-				)}
-			>
+			<span className={active ? "text-[var(--ret-purple)]" : "text-[var(--ret-text)]"}>
 				{SERVICE_LABEL[slug]}
 			</span>
-			<span
-				className={cn(
-					"tabular-nums",
-					active
-						? "text-[var(--ret-purple)]"
-						: "text-[var(--ret-text-muted)]",
-				)}
-			>
+			<span className={cn("tabular-nums", active ? "text-[var(--ret-purple)]" : "text-[var(--ret-text-muted)]")}>
 				{events}
 			</span>
 			<span
@@ -142,9 +141,6 @@ function BrandChip({
 }
 
 function EventRow({ event }: { event: ContributionEvent }) {
-	// Resolve which icon to render: brand mark (partner / service) wins,
-	// then category icon, then a default by event kind. Every row gets
-	// some glyph -- never plain text against the rail.
 	function icon(): React.ReactNode {
 		if (event.brand && PARTNER_MARKS.has(event.brand as Mark)) {
 			return <Logo mark={event.brand as Mark} size={12} />;
@@ -153,20 +149,9 @@ function EventRow({ event }: { event: ContributionEvent }) {
 			return <ServiceIcon slug={event.brand} size={12} />;
 		}
 		if (event.category) {
-			return (
-				<ToolIcon
-					name={event.category}
-					size={12}
-					className="text-[var(--ret-text-muted)]"
-				/>
-			);
+			return <ToolIcon name={event.category} size={12} className="text-[var(--ret-text-muted)]" />;
 		}
-		return (
-			<span
-				className="h-2 w-2 border border-[var(--ret-border)]"
-				aria-hidden="true"
-			/>
-		);
+		return <span className="h-2 w-2 border border-[var(--ret-border)]" aria-hidden="true" />;
 	}
 	return (
 		<li className="border-l border-[var(--ret-border)] pl-2">
@@ -176,15 +161,13 @@ function EventRow({ event }: { event: ContributionEvent }) {
 			</p>
 			<p className="text-[12px] text-[var(--ret-text)]">{event.label}</p>
 			{event.detail ? (
-				<p className="font-mono text-[10px] text-[var(--ret-text-dim)]">
-					{event.detail}
-				</p>
+				<p className="font-mono text-[10px] text-[var(--ret-text-dim)]">{event.detail}</p>
 			) : null}
 		</li>
 	);
 }
 
-const INTENSITY_OPACITY = [0.06, 0.3, 0.55, 0.78, 1] as const;
+const INTENSITY_OPACITY = [0.06, 0.32, 0.55, 0.78, 1] as const;
 
 function CellSwatch({
 	day,
@@ -205,17 +188,10 @@ function CellSwatch({
 			onFocus={() => onSelect(day)}
 			aria-label={`${day.date}, ${day.events.length} events on ${day.partner}`}
 			className={cn(
-				"relative h-3 w-3 cursor-pointer border transition-all duration-100",
+				"relative h-2.5 w-2.5 cursor-pointer border transition-all duration-100",
 				active
-					? // Selected: bigger scale + outline ring above the cell so it
-					  // jumps off the grid even at high cell density. The
-					  // outline-style ring uses currentColor so it picks up the
-					  // theme's text color and stays visible against any cell hue.
-					  "z-20 scale-[1.6] border-[var(--ret-text)] outline outline-2 outline-offset-1 outline-[var(--ret-purple)]/70 shadow-[0_0_0_1px_var(--ret-bg)]"
-					: // Idle: subtle border. Hover: scale + flip the border to
-					  // text-strong so the "you can pick me" affordance reads
-					  // immediately on first mouseover.
-					  "border-[var(--ret-border)] hover:z-10 hover:scale-[1.4] hover:border-[var(--ret-text)]",
+					? "z-20 scale-[1.8] border-[var(--ret-text)] outline outline-2 outline-offset-1 outline-[var(--ret-purple)]/70 shadow-[0_0_0_1px_var(--ret-bg)]"
+					: "border-[var(--ret-border)]/50 hover:z-10 hover:scale-[1.5] hover:border-[var(--ret-text)]",
 			)}
 			style={{ background: hue, opacity }}
 		/>
@@ -228,26 +204,18 @@ function MonthLabels({ weeks }: { weeks: ContributionDay[][] }) {
 		const first = week[0];
 		if (!first) return null;
 		const date = new Date(`${first.date}T00:00:00Z`);
-		const month = date.toLocaleString("en-US", { month: "short", timeZone: "UTC" });
+		const month = date.toLocaleString("en-US", { month: "short", timeZone: "UTC" }).toUpperCase();
 		const key = `${date.getUTCFullYear()}-${date.getUTCMonth()}`;
 		if (monthsSeen.has(key)) return null;
 		monthsSeen.add(key);
-		return { idx, label: month.toLowerCase() };
+		return { idx, label: month };
 	});
 	return (
-		<div
-			className="grid"
-			style={{
-				gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))`,
-			}}
-		>
+		<div className="grid" style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }}>
 			{weeks.map((_, weekIdx) => {
 				const tag = labels.find((l) => l?.idx === weekIdx);
 				return (
-					<div
-						key={weekIdx}
-						className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]"
-					>
+					<div key={weekIdx} className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 						{tag?.label ?? ""}
 					</div>
 				);
@@ -262,7 +230,7 @@ function PartnerSwatch({
 	active,
 	onClick,
 }: {
-	partner: ContributionDay["partner"];
+	partner: PartnerKey;
 	count: number;
 	active: boolean;
 	onClick: () => void;
@@ -272,50 +240,23 @@ function PartnerSwatch({
 			type="button"
 			onClick={onClick}
 			aria-pressed={active}
-			title={
-				active
-					? `Click to clear: showing only ${PARTNER_LABEL[partner]}`
-					: `Click to filter the grid by ${PARTNER_LABEL[partner]}`
-			}
 			className={cn(
 				"group flex items-center gap-2 border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] transition-all",
 				active
-					? // Active: purple wash + filled state so the operator sees
-					  // immediately which filter is currently narrowing the grid.
-					  "border-[var(--ret-purple)]/55 bg-[var(--ret-purple-glow)] text-[var(--ret-purple)] shadow-[0_0_12px_var(--ret-purple-glow)]"
-					: // Idle: dashed border + filter glyph on hover so the "click to filter"
-					  // affordance is unmistakable. The dashed style reads as "interactive
-					  // chip" the way the chanhdai filter strips do.
-					  "border-dashed border-[var(--ret-border)] text-[var(--ret-text-dim)] hover:border-solid hover:border-[var(--ret-purple)]/50 hover:bg-[var(--ret-surface)] hover:text-[var(--ret-text)]",
+					? "border-[var(--ret-purple)]/55 bg-[var(--ret-purple-glow)] text-[var(--ret-purple)] shadow-[0_0_12px_var(--ret-purple-glow)]"
+					: "border-dashed border-[var(--ret-border)] text-[var(--ret-text-dim)] hover:border-solid hover:border-[var(--ret-purple)]/50 hover:bg-[var(--ret-surface)] hover:text-[var(--ret-text)]",
 			)}
 		>
-			{partner === "rig" ? (
-				<span
-					className="h-2 w-2"
-					style={{ background: PARTNER_HUE.rig }}
-					aria-hidden="true"
-				/>
-			) : (
-				<Logo mark={PARTNER_MARK[partner]} size={12} />
-			)}
+			<PartnerIcon partner={partner} size={12} />
 			<span>{PARTNER_LABEL[partner]}</span>
-			<span
-				className={cn(
-					"tabular-nums",
-					active
-						? "text-[var(--ret-purple)]"
-						: "text-[var(--ret-text-muted)]",
-				)}
-			>
+			<span className={cn("tabular-nums", active ? "text-[var(--ret-purple)]" : "text-[var(--ret-text-muted)]")}>
 				{count}
 			</span>
 			<span
 				aria-hidden="true"
 				className={cn(
 					"font-mono",
-					active
-						? "text-[var(--ret-purple)]"
-						: "text-[var(--ret-text-muted)] opacity-0 transition-opacity group-hover:opacity-100",
+					active ? "text-[var(--ret-purple)]" : "text-[var(--ret-text-muted)] opacity-0 transition-opacity group-hover:opacity-100",
 				)}
 			>
 				{active ? "x" : "+"}
@@ -328,20 +269,22 @@ export function ContributionGrid() {
 	const weeks = useMemo(() => generateContributionGrid(182), []);
 	const allDays = useMemo(() => weeks.flat(), [weeks]);
 
-	// Default selected = the most recent day with at least one event.
 	const initial =
 		[...allDays].reverse().find((d) => d.events.length > 0) ?? allDays[allDays.length - 1];
 	const [selected, setSelected] = useState<ContributionDay>(initial);
-	const [filter, setFilter] = useState<ContributionDay["partner"] | "all">("all");
+	const [filter, setFilter] = useState<PartnerKey | "all">("all");
 	const [brandFilter, setBrandFilter] = useState<ServiceSlug | null>(null);
 
 	const partnerCounts = useMemo(() => {
-		const counts: Record<ContributionDay["partner"], number> = {
+		const counts: Record<PartnerKey, number> = {
 			dedalus: 0,
 			nous: 0,
 			cursor: 0,
 			openclaw: 0,
-			rig: 0,
+			anthropic: 0,
+			openai: 0,
+			"claude-code": 0,
+			codex: 0,
 		};
 		for (const day of allDays) {
 			if (day.intensity > 0) counts[day.partner] += 1;
@@ -349,11 +292,6 @@ export function ContributionGrid() {
 		return counts;
 	}, [allDays]);
 
-	// Per-service-brand activity rolled up across every event in the
-	// 6-month window. A day "uses" a brand if any event on that day
-	// carries that brand. Powers the brand-strip filter beneath the
-	// partner swatches so users can see e.g. "20 days touched Vercel"
-	// and click to narrow the grid to only those days.
 	const brandStats = useMemo(() => {
 		const eventCount = new Map<ServiceSlug, number>();
 		const dayCount = new Map<ServiceSlug, number>();
@@ -394,9 +332,6 @@ export function ContributionGrid() {
 					<ReticleLabel>ACTIVITY -- 6 MONTHS</ReticleLabel>
 					<ReticleBadge>{totalActive} active days</ReticleBadge>
 					{hasFilter ? (
-						// Prominent active-filter chip in the header so the
-						// operator can never miss that the grid is narrowed.
-						// Clicking the [x] resets both filter axes in one tap.
 						<button
 							type="button"
 							onClick={clearFilters}
@@ -410,53 +345,32 @@ export function ContributionGrid() {
 					) : null}
 				</div>
 				<p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-					<span aria-hidden="true" className="text-[var(--ret-purple)]">
-						{"->"}
+					<span aria-hidden="true" className="text-[var(--ret-purple)]">{"->"}
 					</span>
 					tap a cell . click a chip to filter
 				</p>
 			</div>
 
 			<div className="grid flex-1 gap-px bg-[var(--ret-border)] md:grid-cols-[1fr_minmax(0,200px)]">
-				<div className="flex flex-col gap-3 bg-[var(--ret-bg)] px-3 py-3">
+				<div className="flex flex-col gap-2.5 bg-[var(--ret-bg)] px-3 py-3">
 					<MonthLabels weeks={weeks} />
 					<div
-						className="grid gap-px"
-						style={{
-							gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))`,
-						}}
+						className="grid gap-[1px]"
+						style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }}
 					>
 						{weeks.map((week, weekIdx) => (
-							<div key={`week-${weekIdx}`} className="grid grid-rows-7 gap-px">
+							<div key={`week-${weekIdx}`} className="grid grid-rows-7 gap-[1px]">
 								{Array.from({ length: 7 }).map((_, dayIdx) => {
 									const day = week[dayIdx];
 									if (!day) {
-										return (
-											<div
-												key={`empty-${weekIdx}-${dayIdx}`}
-												className="h-3 w-3"
-												aria-hidden="true"
-											/>
-										);
+										return <div key={`empty-${weekIdx}-${dayIdx}`} className="h-2.5 w-2.5" aria-hidden="true" />;
 									}
-									const partnerDim =
-										filter !== "all" && day.partner !== filter;
-									const brandDim =
-										brandFilter !== null &&
-										!day.events.some((e) => e.brand === brandFilter);
+									const partnerDim = filter !== "all" && day.partner !== filter;
+									const brandDim = brandFilter !== null && !day.events.some((e) => e.brand === brandFilter);
 									const dimmed = partnerDim || brandDim;
 									return (
-										<div
-											key={day.date}
-											className={cn(
-												dimmed && "opacity-25",
-											)}
-										>
-											<CellSwatch
-												day={day}
-												active={day.date === selected.date}
-												onSelect={setSelected}
-											/>
+										<div key={day.date} className={cn(dimmed && "opacity-20")}>
+											<CellSwatch day={day} active={day.date === selected.date} onSelect={setSelected} />
 										</div>
 									);
 								})}
@@ -466,10 +380,9 @@ export function ContributionGrid() {
 					<div className="flex flex-col gap-1.5 pt-1">
 						<div className="flex items-baseline justify-between gap-2">
 							<p className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
-								<span aria-hidden="true" className="text-[var(--ret-purple)]">
-									{"->"}
+								<span aria-hidden="true" className="text-[var(--ret-purple)]">{"->"}
 								</span>
-								filter by partner . {Object.keys(partnerCounts).length}
+								filter by agent . {ALL_PARTNERS.length}
 							</p>
 							<div className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 								<span>less</span>
@@ -485,38 +398,23 @@ export function ContributionGrid() {
 							</div>
 						</div>
 						<div className="flex flex-wrap gap-1.5">
-							{(["dedalus", "nous", "openclaw", "cursor", "rig"] as const).map(
-								(partner) => (
-									<PartnerSwatch
-										key={partner}
-										partner={partner}
-										count={partnerCounts[partner]}
-										active={filter === partner}
-										onClick={() =>
-											setFilter(filter === partner ? "all" : partner)
-										}
-									/>
-								),
-							)}
+							{ALL_PARTNERS.map((partner) => (
+								<PartnerSwatch
+									key={partner}
+									partner={partner}
+									count={partnerCounts[partner]}
+									active={filter === partner}
+									onClick={() => setFilter(filter === partner ? "all" : partner)}
+								/>
+							))}
 						</div>
 					</div>
 
-					{/*
-					  Per-service brand strip. Aggregates every event across
-					  every day, ranks services by event count, and renders
-					  them as compact filter chips. Click one to narrow the
-					  grid to days that touched that service. Click again
-					  (or the "clear" pill) to reset.
-					*/}
 					{brandStats.slugs.length > 0 ? (
 						<div className="flex flex-col gap-1.5 pt-1">
 							<div className="flex items-baseline justify-between gap-2">
 								<p className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
-									<span
-										aria-hidden="true"
-										className="text-[var(--ret-purple)]"
-									>
-										{"->"}
+									<span aria-hidden="true" className="text-[var(--ret-purple)]">{"->"}
 									</span>
 									filter by service . {brandStats.slugs.length}
 								</p>
@@ -538,9 +436,7 @@ export function ContributionGrid() {
 										days={brandStats.dayCount.get(slug) ?? 0}
 										events={brandStats.eventCount.get(slug) ?? 0}
 										active={brandFilter === slug}
-										onClick={() =>
-											setBrandFilter((cur) => (cur === slug ? null : slug))
-										}
+										onClick={() => setBrandFilter((cur) => (cur === slug ? null : slug))}
 									/>
 								))}
 							</div>
@@ -569,15 +465,7 @@ function DayDetail({ day }: { day: ContributionDay }) {
 				<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					{formatted}
 				</p>
-				{day.partner === "rig" ? (
-					<span
-						className="h-3 w-3"
-						style={{ background: PARTNER_HUE.rig }}
-						aria-hidden="true"
-					/>
-				) : (
-					<Logo mark={PARTNER_MARK[day.partner]} size={14} />
-				)}
+				<PartnerIcon partner={day.partner} size={14} />
 			</div>
 			<div className="flex items-baseline gap-2">
 				<p className="font-mono text-base tabular-nums text-[var(--ret-text)]">
@@ -598,14 +486,6 @@ function DayDetail({ day }: { day: ContributionDay }) {
 					))}
 				</ul>
 			)}
-			{/*
-			  Reading guide for the grid. Lives inside the right
-			  column (not below the whole panel) so it sits next to
-			  the data it explains -- "what does a cell mean, and why
-			  does it matter when the machine sleeps". `mt-auto`
-			  pushes it to the bottom of the aside no matter how many
-			  events the selected day has.
-			*/}
 			<p className="mt-auto border-t border-[var(--ret-border)] pt-3 font-mono text-[10px] leading-relaxed text-[var(--ret-text-muted)]">
 				<span className="text-[var(--ret-purple)]">{"->"}</span> each cell is
 				one day this machine was awake. hover to peek, click to pin. nothing

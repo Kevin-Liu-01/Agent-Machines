@@ -1,14 +1,11 @@
 /**
  * POST /api/dashboard/admin/reload
  *
- * Runs `~/.hermes/scripts/reload-from-git.sh` on the live machine via
- * Dedalus exec. The script does a shallow git fetch + reset on the
- * agent-machines repo checkout under /home/machine/ and re-syncs
+ * Runs `~/.agent-machines/scripts/reload-from-git.sh` on the live
+ * machine via Dedalus exec. The script does a shallow git fetch + reset
+ * on the agent-machines repo checkout under /home/machine/ and re-syncs
  * `knowledge/skills`, `knowledge/crons`, and the persona files into
- * `~/.hermes/`. (The on-disk directory name is preserved as
- * /home/machine/hermes-machines/ so existing machines keep working
- * after the rename; the repo's display name and remote are
- * agent-machines.)
+ * `~/.agent-machines/`.
  *
  * This is the "edit on GitHub, click reload, agent picks it up" flow --
  * the persistence story for skills, crons, MEMORY.md, USER.md, etc.
@@ -27,7 +24,7 @@ import { getUserConfig } from "@/lib/user-config/clerk";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const RELOAD_SCRIPT = "$HOME/.hermes/scripts/reload-from-git.sh";
+const RELOAD_SCRIPT = "$HOME/.agent-machines/scripts/reload-from-git.sh";
 
 export async function POST(): Promise<Response> {
 	const userId = await getEffectiveUserId();

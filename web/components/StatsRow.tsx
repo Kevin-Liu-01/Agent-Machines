@@ -1,3 +1,5 @@
+import type { SVGProps } from "react";
+
 import { Logo } from "@/components/Logo";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { ServiceIcon, type ServiceSlug } from "@/components/ServiceIcon";
@@ -173,6 +175,74 @@ export function StatsRow() {
 					</a>
 				))}
 			</div>
+
+			<div className="mt-px grid grid-cols-1 gap-px overflow-hidden border border-[var(--ret-border)] border-t-0 bg-[var(--ret-border)] md:grid-cols-3">
+				{PROOF_POINTS.map(({ Icon, title, body }) => (
+					<div key={title} className="flex items-start gap-3 border-l-2 border-l-[var(--ret-purple)]/40 bg-[var(--ret-bg)] px-4 py-3">
+						<span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] text-[var(--ret-purple)]">
+							<Icon className="h-3.5 w-3.5" />
+						</span>
+						<div className="min-w-0 flex-1">
+							<p className="text-[13px] font-semibold tracking-tight text-[var(--ret-text)]">
+								{title}
+							</p>
+							<p className="mt-0.5 text-[12px] leading-snug text-[var(--ret-text-dim)]">
+								{body}
+							</p>
+						</div>
+					</div>
+				))}
+			</div>
 		</div>
+	);
+}
+
+const PROOF_POINTS: ReadonlyArray<{
+	Icon: (p: SVGProps<SVGSVGElement>) => React.ReactElement;
+	title: string;
+	body: string;
+}> = [
+	{
+		Icon: IconDisk,
+		title: "State on disk, not in RAM",
+		body: "Chats, files, memory, sessions, crons -- all in /home/machine. Survives every sleep.",
+	},
+	{
+		Icon: IconFleet,
+		title: "Per-account fleet",
+		body: "One Clerk sign-in. Same machine on every device. Keys + agent choice in private metadata.",
+	},
+	{
+		Icon: IconToolStack,
+		title: "Bring any agent + tool",
+		body: "Hermes or OpenClaw. 96 skills, 23 built-ins, 17 services. Dedalus live; Sandbox + Fly shaped.",
+	},
+];
+
+function IconDisk(props: SVGProps<SVGSVGElement>) {
+	return (
+		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+			<ellipse cx="8" cy="4" rx="6" ry="2" />
+			<path d="M2 4v8c0 1.1 2.7 2 6 2s6-.9 6-2V4" />
+			<path d="M2 8c0 1.1 2.7 2 6 2s6-.9 6-2" />
+		</svg>
+	);
+}
+
+function IconFleet(props: SVGProps<SVGSVGElement>) {
+	return (
+		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+			<circle cx="5" cy="11" r="2.5" />
+			<path d="M7 9l6.5-6.5M11 5l1.5 1.5M9.5 6.5L11 8" />
+		</svg>
+	);
+}
+
+function IconToolStack(props: SVGProps<SVGSVGElement>) {
+	return (
+		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+			<path d="M8 2L2 5l6 3 6-3z" />
+			<path d="M2 11l6 3 6-3M2 8l6 3 6-3" />
+		</svg>
 	);
 }

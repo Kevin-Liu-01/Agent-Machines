@@ -22,7 +22,7 @@ export function CursorRunsList() {
 		<LiveDataView<CursorRunsPayload>
 			endpoint="/api/dashboard/cursor"
 			pollMs={30_000}
-			offlineHint={"# the dashboard reads:\ncat ~/.hermes/cursor-runs.jsonl"}
+			offlineHint={"# the dashboard reads:\ncat ~/.agent-machines/cursor-runs.jsonl"}
 			render={(data, fetchedAt) => (
 				<div className="flex flex-col gap-4 px-6 py-6">
 					<div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 font-mono text-[11px] text-[var(--ret-text-dim)]">

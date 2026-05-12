@@ -1,8 +1,8 @@
 /**
  * GET /api/dashboard/sessions
  *
- * Lists recent Hermes session SQLite files in `~/.hermes/sessions/`.
- * Hermes stores one DB per session by default. We don't crack the SQLite
+ * Lists recent agent session SQLite files in `~/.agent-machines/sessions/`.
+ * The agent stores one DB per session by default. We don't crack the SQLite
  * open here -- that requires a binary on the VM. Instead, we treat each
  * `.db` file as one session and surface size + mtime + filename. PR2.5
  * would add a session detail view that runs a small `sqlite3` query
@@ -85,7 +85,7 @@ export async function GET(): Promise<Response> {
 	}
 
 	try {
-		const command = `find $HOME/.hermes/sessions -maxdepth 2 -type f -name '*.db' -printf '%p\\t%s\\t%T@\\n' 2>/dev/null | sort -t$'\\t' -k3,3nr | head -n ${LIST_LIMIT}`;
+		const command = `find $HOME/.agent-machines/sessions -maxdepth 2 -type f -name '*.db' -printf '%p\\t%s\\t%T@\\n' 2>/dev/null | sort -t$'\\t' -k3,3nr | head -n ${LIST_LIMIT}`;
 		const { stdout } = await execOnMachine(command);
 		const rows = parseRows(stdout);
 		const sessions = rows.map(toSummary);
@@ -97,7 +97,7 @@ export async function GET(): Promise<Response> {
 				sessions,
 				totalSessions: sessions.length,
 				totalBytes,
-				dbPath: "~/.hermes/sessions/",
+				dbPath: "~/.agent-machines/sessions/",
 			},
 			fetchedAt: new Date().toISOString(),
 		};

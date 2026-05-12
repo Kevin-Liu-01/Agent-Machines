@@ -248,7 +248,7 @@ export function OverviewClient({ counts, agentKind, model }: Props) {
 						/>
 					}
 					value={String(counts.skills)}
-					hint={`bundled in ~/.hermes/skills`}
+					hint={`bundled in ~/.agent-machines/skills`}
 					tone="purple"
 				/>
 				<MetricCard

@@ -27,6 +27,30 @@ const HeadField = dynamic(
 	() => import("./HeadField").then((m) => m.HeadField),
 	{ ssr: false },
 );
+const DashboardWire = dynamic(
+	() => import("./WireframeShapes").then((m) => m.DashboardWire),
+	{ ssr: false },
+);
+const AgentWire = dynamic(
+	() => import("./WireframeShapes").then((m) => m.AgentWire),
+	{ ssr: false },
+);
+const LoadoutWire = dynamic(
+	() => import("./WireframeShapes").then((m) => m.LoadoutWire),
+	{ ssr: false },
+);
+const HostsWire = dynamic(
+	() => import("./WireframeShapes").then((m) => m.HostsWire),
+	{ ssr: false },
+);
+const EnvironmentWire = dynamic(
+	() => import("./WireframeShapes").then((m) => m.EnvironmentWire),
+	{ ssr: false },
+);
+const MachineWireShape = dynamic(
+	() => import("./WireframeShapes").then((m) => m.MachineWire),
+	{ ssr: false },
+);
 
 type FrameProps = {
 	className?: string;
@@ -84,6 +108,84 @@ export function HeadTriptych({ className }: { className?: string }) {
 				<ambientLight intensity={0.5} />
 				<HeadField />
 			</SceneCanvas>
+		</SceneFrame>
+	);
+}
+
+function CrossOverlay() {
+	return (
+		<div className="pointer-events-none absolute inset-0">
+			<div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_50%,var(--ret-bg)_100%)]" />
+			<div className="absolute left-1.5 top-1.5 h-2 w-2 border-l border-t border-[var(--ret-cross)]" />
+			<div className="absolute right-1.5 top-1.5 h-2 w-2 border-r border-t border-[var(--ret-cross)]" />
+			<div className="absolute bottom-1.5 left-1.5 h-2 w-2 border-b border-l border-[var(--ret-cross)]" />
+			<div className="absolute bottom-1.5 right-1.5 h-2 w-2 border-b border-r border-[var(--ret-cross)]" />
+		</div>
+	);
+}
+
+export function WireframeDashboard({ className }: { className?: string }) {
+	return (
+		<SceneFrame className={className}>
+			<SceneCanvas camera={{ position: [0, 0.3, 4.5], fov: 30 }}>
+				<DashboardWire />
+			</SceneCanvas>
+			<CrossOverlay />
+		</SceneFrame>
+	);
+}
+
+export function WireframeAgent({ className }: { className?: string }) {
+	return (
+		<SceneFrame className={className}>
+			<SceneCanvas camera={{ position: [0, 0.5, 4], fov: 32 }}>
+				<AgentWire />
+			</SceneCanvas>
+			<CrossOverlay />
+		</SceneFrame>
+	);
+}
+
+export function WireframeLoadout({ className }: { className?: string }) {
+	return (
+		<SceneFrame className={className}>
+			<SceneCanvas camera={{ position: [0, 0, 5], fov: 30 }}>
+				<LoadoutWire />
+			</SceneCanvas>
+			<CrossOverlay />
+		</SceneFrame>
+	);
+}
+
+export function WireframeHosts({ className }: { className?: string }) {
+	return (
+		<SceneFrame className={className}>
+			<SceneCanvas camera={{ position: [0.5, 0.3, 4.2], fov: 32 }}>
+				<HostsWire />
+			</SceneCanvas>
+			<CrossOverlay />
+		</SceneFrame>
+	);
+}
+
+export function WireframeEnvironment({ className }: { className?: string }) {
+	return (
+		<SceneFrame className={className}>
+			<SceneCanvas camera={{ position: [0, 0, 4.5], fov: 30 }}>
+				<EnvironmentWire />
+			</SceneCanvas>
+			<CrossOverlay />
+		</SceneFrame>
+	);
+}
+
+export function WireframeMachine({ className }: { className?: string }) {
+	return (
+		<SceneFrame className={className}>
+			<SceneCanvas camera={{ position: [0, 0, 4], fov: 34 }}>
+				<MachineWireShape />
+			</SceneCanvas>
+			<CrossOverlay />
 		</SceneFrame>
 	);
 }

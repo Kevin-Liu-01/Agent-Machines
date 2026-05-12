@@ -25,6 +25,7 @@ import {
 	SETUP_STEPS,
 	toPublicConfig,
 	type AgentKind,
+	type AiProviderKeys,
 	type MachineSpec,
 	type ProviderCredentials,
 	type ProviderKind,
@@ -67,8 +68,17 @@ type CredsBody = {
 	fly?: { apiKey?: string; orgSlug?: string };
 };
 
+type AiKeysBody = {
+	anthropic?: string;
+	openai?: string;
+	openrouter?: string;
+	google?: string;
+	custom?: { url?: string; key?: string; label?: string };
+};
+
 type SetupBody = {
 	providerCredentials?: CredsBody;
+	aiProviderKeys?: AiKeysBody;
 	cursorApiKey?: string;
 	draftAgentKind?: AgentKind;
 	draftProviderKind?: ProviderKind;
@@ -149,6 +159,22 @@ export async function POST(request: Request): Promise<Response> {
 			);
 		}
 		patch.providers = validated.value;
+	}
+	if (body.aiProviderKeys) {
+		const ai: AiProviderKeys = {};
+		const k = body.aiProviderKeys;
+		if (k.anthropic?.trim()) ai.anthropic = k.anthropic.trim();
+		if (k.openai?.trim()) ai.openai = k.openai.trim();
+		if (k.openrouter?.trim()) ai.openrouter = k.openrouter.trim();
+		if (k.google?.trim()) ai.google = k.google.trim();
+		if (k.custom?.url?.trim() && k.custom?.key?.trim()) {
+			ai.custom = {
+				url: k.custom.url.trim(),
+				key: k.custom.key.trim(),
+				label: k.custom.label?.trim() || undefined,
+			};
+		}
+		patch.aiProviderKeys = ai;
 	}
 	if (body.cursorApiKey !== undefined) {
 		const v = String(body.cursorApiKey).trim();

@@ -1,9 +1,9 @@
 /**
  * GET /api/dashboard/cursor
  *
- * Reads `~/.hermes/cursor-runs.jsonl` off the live machine and returns
- * the parsed list of past Cursor agent runs. The cursor-bridge MCP
- * server appends one line per `cursor_agent` / `cursor_resume` call.
+ * Reads `~/.agent-machines/cursor-runs.jsonl` off the live machine and
+ * returns the parsed list of past Cursor agent runs. The cursor-bridge
+ * MCP server appends one line per `cursor_agent` / `cursor_resume` call.
  *
  * Auth: Clerk middleware + redundant `auth()` check. Live machine state
  * (failed VM, no machine ID configured) is surfaced as a typed envelope
@@ -23,7 +23,7 @@ import { getUserConfig } from "@/lib/user-config/clerk";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const LOG_PATH = "$HOME/.hermes/cursor-runs.jsonl";
+const LOG_PATH = "$HOME/.agent-machines/cursor-runs.jsonl";
 const MAX_LINES = 100;
 
 function parseLine(line: string): CursorRun | null {
@@ -92,7 +92,7 @@ export async function GET(): Promise<Response> {
 			data: {
 				runs,
 				totalRuns: runs.length,
-				logPath: "~/.hermes/cursor-runs.jsonl",
+				logPath: "~/.agent-machines/cursor-runs.jsonl",
 			},
 			fetchedAt: new Date().toISOString(),
 		};

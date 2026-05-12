@@ -6,7 +6,7 @@ This file is a placeholder. The agent fills it in over time as it learns about i
 
 - Add facts that are stable and worth carrying across sessions: name, role, current project focus, stack, recurring collaborators.
 - Keep it under ~1300 characters (~500 tokens) so it fits comfortably in the system prompt every turn. The agent will prune to fit.
-- Don't put secrets here -- the file is loaded into every prompt, and prompt-injecting content from elsewhere can read it. Secrets belong in `~/.hermes/.env`.
+- Don't put secrets here -- the file is loaded into every prompt, and prompt-injecting content from elsewhere can read it. Secrets belong in `~/.agent-machines/.env`.
 
 ## Suggested seed (edit before first session)
 

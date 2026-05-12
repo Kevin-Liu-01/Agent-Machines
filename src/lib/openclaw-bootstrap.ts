@@ -53,7 +53,7 @@ const LOG_PATH = `${STATE_DIR}/gateway.log`;
  * point at the persistent volume so config + logs survive sleep/wake. */
 const ENV_PREFIX = [
 	`export HOME=${H}`,
-	`export PATH=${H}/.npm-global/bin:$PATH`,
+	`export PATH=${H}/node/bin:${H}/.npm-global/bin:${H}/.local/bin:$PATH`,
 	`export OPENCLAW_STATE_DIR=${STATE_DIR}`,
 	`export OPENCLAW_NO_RESPAWN=1`,
 ].join(" && ");
@@ -123,30 +123,25 @@ export async function runOpenclawBootstrap(
 			: `openclaw config unset env.vars.ANTHROPIC_BASE_URL || true`;
 
 		const setup = [
-			`set -e`,
-			// Node 22 via apt + nodesource. Upstream cookbook does this;
-			// it's smaller surface than the tarball download.
-			`command -v node >/dev/null || (curl -fsSL https://deb.nodesource.com/setup_22.x | bash - >/dev/null 2>&1 && apt-get install -y nodejs >/dev/null 2>&1)`,
-			`node --version`,
+			ENV_PREFIX,
+			`${H}/node/bin/node --version`,
 			`mkdir -p ${H}/.npm-global ${H}/.npm-cache ${H}/.tmp ${STATE_DIR}`,
-			`NPM_CONFIG_PREFIX=${H}/.npm-global \\
-			  NPM_CONFIG_CACHE=${H}/.npm-cache \\
-			  TMPDIR=${H}/.tmp \\
-			  npm install -g openclaw@latest --no-audit --no-fund --loglevel=error 2>&1 | tail -3`,
+			`NPM_CONFIG_PREFIX=${H}/.npm-global ` +
+				`NPM_CONFIG_CACHE=${H}/.npm-cache ` +
+				`TMPDIR=${H}/.tmp ` +
+				`${H}/node/bin/npm install -g openclaw@latest --no-audit --no-fund --loglevel=error 2>&1 | tail -20`,
 			ENV_PREFIX,
 			`openclaw --version`,
-			`openclaw config set gateway.mode local`,
-			`openclaw config set gateway.http.endpoints.chatCompletions.enabled true`,
-			// Bind 0.0.0.0 (not loopback) so the Dedalus preview tunnel
-			// can reach us. Auth is intentionally `none` because the
-			// preview hostname is unguessable; tighten with token auth
-			// before exposing on a stable domain.
-			`openclaw config set gateway.bind "0.0.0.0"`,
-			`openclaw config set gateway.auth.mode none`,
-			`openclaw config set agent.model "${model}"`,
-			`openclaw config set env.vars.ANTHROPIC_API_KEY "${llmApiKey}"`,
-			`openclaw config set env.vars.OPENAI_API_KEY "${llmApiKey}"`,
-			baseUrlLine,
+			`echo "configuring gateway..."`,
+			`openclaw config set gateway.mode local 2>&1 || true`,
+			`openclaw config set gateway.http.endpoints.chatCompletions.enabled true 2>&1 || true`,
+			`openclaw config set gateway.bind lan 2>&1 || true`,
+			`openclaw config set gateway.auth.mode token 2>&1 || true`,
+			`openclaw config set gateway.auth.token "openclaw-api-token" 2>&1 || true`,
+			`openclaw config set agent.model "${model}" 2>&1 || true`,
+			`openclaw config set env.vars.ANTHROPIC_API_KEY "${llmApiKey}" 2>&1 || true`,
+			`openclaw config set env.vars.OPENAI_API_KEY "${llmApiKey}" 2>&1 || true`,
+			`(${baseUrlLine}) 2>&1 || true`,
 			`echo done`,
 		].join(" && ");
 
@@ -176,8 +171,8 @@ export async function runOpenclawBootstrap(
 		await exec(
 			client,
 			machineId,
-			`${launchCmd} && sleep 14 && ss -tln 2>/dev/null | awk '{print $4}' | grep -q ':${PORT_OPENCLAW}$' && echo OK`,
-			{ timeoutMs: 60_000 },
+			`${launchCmd} && sleep 20 && (ss -tln 2>/dev/null | awk '{print $4}' | grep -q ':${PORT_OPENCLAW}$' && echo OK || (echo "port ${PORT_OPENCLAW} not bound; last 30 lines of log:" && tail -30 ${LOG_PATH} && exit 1))`,
+			{ timeoutMs: 90_000 },
 		);
 		success(`  gateway listening on :${PORT_OPENCLAW}`);
 	});

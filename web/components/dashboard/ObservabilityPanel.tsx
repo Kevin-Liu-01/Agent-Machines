@@ -23,11 +23,15 @@ import { Sparkline } from "./Sparkline";
 const AGENT_SOURCE: Record<AgentKind, string> = {
 	hermes: "by Nous Research",
 	openclaw: "by openclaw/openclaw",
+	"claude-code": "by Anthropic",
+	codex: "by OpenAI",
 };
 
-const AGENT_MARK: Record<AgentKind, "nous" | "openclaw"> = {
+const AGENT_MARK: Record<AgentKind, "nous" | "openclaw" | "anthropic" | "openai"> = {
 	hermes: "nous",
 	openclaw: "openclaw",
+	"claude-code": "anthropic",
+	codex: "openai",
 };
 
 const HermesBustScene = dynamic(
@@ -57,7 +61,7 @@ type ObservabilityState = {
  * merges the most recent log lines with the most recent cursor runs.
  *
  * Renders empty / loading states gracefully when the machine is asleep
- * or HERMES_MACHINE_ID isn't configured -- the underlying envelopes
+ * or AGENT_MACHINE_ID isn't configured -- the underlying envelopes
  * carry typed reasons we propagate through to the UI copy.
  */
 type Props = {

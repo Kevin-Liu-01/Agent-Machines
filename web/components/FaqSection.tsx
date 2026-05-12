@@ -1,17 +1,6 @@
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { FAQ } from "@/lib/seo/config";
 
-/**
- * Visible FAQ rendered into the landing page. Mirrors the
- * `FAQPage` JSON-LD entries 1:1 (`lib/seo/config.ts` is the single
- * source of truth for both) so AI search engines see matched on-page
- * + schema content -- a Princeton GEO method that compounds the
- * citation rate of either signal alone.
- *
- * Format chosen for AI extractability: question-led H3, direct
- * one-paragraph answer immediately after, no nested headings, no
- * surrounding chrome that would dilute the answer block.
- */
 export function FaqSection() {
 	return (
 		<>
@@ -27,11 +16,11 @@ export function FaqSection() {
 				</p>
 			</div>
 
-			<dl className="mt-5 flex flex-col divide-y divide-[var(--ret-border)] border-y border-[var(--ret-border)]">
+			<dl className="mt-5 grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)]">
 				{FAQ.map(({ question, answer }, i) => (
 					<div
 						key={question}
-						className="grid gap-3 py-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] md:gap-8"
+						className="grid gap-3 border-l-2 border-l-[var(--ret-purple)]/30 bg-[var(--ret-bg)] px-5 py-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] md:gap-8"
 					>
 						<dt className="flex items-baseline gap-3">
 							<span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">

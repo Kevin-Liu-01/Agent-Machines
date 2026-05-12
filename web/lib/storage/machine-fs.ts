@@ -29,9 +29,9 @@ import {
 } from "@/lib/user-config/schema";
 
 /**
- * Root directory on the VM for our app's persistent state. Lives under
- * `/home/machine` (the persistent volume). Distinct from `~/.hermes/`
- * and `~/.openclaw/` so neither agent's bootstrap touches our data.
+ * Root directory on the VM for all persistent state -- runtime, app data,
+ * skills, sessions, crons, and config. Lives under `/home/machine`
+ * (the persistent volume).
  */
 export const APP_DATA_ROOT = "/home/machine/.agent-machines";
 

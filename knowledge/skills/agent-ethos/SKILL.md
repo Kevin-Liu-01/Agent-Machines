@@ -5,7 +5,7 @@ version: 1.0.0
 author: Kevin Liu
 license: MIT
 metadata:
-  hermes:
+  agent-machines:
     tags: [philosophy, code-quality, minimalism, hard-limits]
     related_skills: [empirical-verification, plan-mode-review]
 ---

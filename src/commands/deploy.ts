@@ -95,7 +95,7 @@ export async function deploy(): Promise<void> {
 
 	header("Agent Machines -- deploy hermes");
 	info(
-		`Model: ${config.model}  ·  vCPU ${config.vcpu}  ·  ${config.memoryMib} MiB  ·  ${config.storageGib} GiB`,
+		`Model: ${config.model}  ·  vCPU ${config.vcpu}  ·  ${config.memoryMib} MiB  ·  ${config.storageGib} GiB  ·  autosleep: ${config.autosleep ? "on" : "off"}`,
 	);
 
 	const machineId = await phase("Provision or wake machine", async () => {

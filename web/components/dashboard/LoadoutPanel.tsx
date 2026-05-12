@@ -394,7 +394,7 @@ function McpSection({
 		<Section
 			kicker={`MCP SERVERS · ${source.mcps.length} . TOOLS · ${source.counts.mcpTools}`}
 			title="External tool servers the agent talks to over stdio"
-			body="cursor-bridge spawns Cursor coding agents for actual file edits. hermes-builtins exposes Hermes's full tool surface. Both registered in ~/.hermes/config.toml on bootstrap."
+			body="cursor-bridge spawns Cursor coding agents for actual file edits. Agent built-ins expose the full tool surface. Both registered in ~/.agent-machines/config.toml on bootstrap."
 		>
 			<div className="grid gap-3 md:grid-cols-2">
 				{source.mcps.map((server) => (

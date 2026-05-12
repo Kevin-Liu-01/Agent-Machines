@@ -120,7 +120,7 @@ async function installHermes({ client, machineId }: BootstrapInput): Promise<voi
 			client,
 			machineId,
 			`${SHELL_ENV} && [ -x ${VM_VENV}/bin/hermes ] && hermes --version >/dev/null && ` +
-				`${VM_VENV}/bin/python -c 'import fastapi, mcp'`,
+				`${VM_VENV}/bin/python -c 'import fastapi, mcp, aiohttp'`,
 		)
 	) {
 		dim("  hermes + web + mcp already installed");
@@ -149,11 +149,14 @@ async function installHermes({ client, machineId }: BootstrapInput): Promise<voi
 	// upstream `mcp` Python package). We deliberately avoid [all] which would
 	// pull Playwright/Chromium (~250 MB) and ElevenLabs/Modal/Daytona deps we
 	// don't need for an API + dashboard + cron + cursor-bridge deployment.
+	// aiohttp is required separately -- the API server adapter imports it at
+	// runtime and silently disables the /v1 endpoint when it's absent.
 	await exec(
 		client,
 		machineId,
 		`${SHELL_ENV} && uv pip install --python ${VM_VENV}/bin/python ` +
-			`'hermes-agent[web,mcp] @ git+https://github.com/NousResearch/hermes-agent.git@main' 2>&1 | tail -8`,
+			`'hermes-agent[web,mcp] @ git+https://github.com/NousResearch/hermes-agent.git@main' ` +
+			`aiohttp 2>&1 | tail -8`,
 		{ timeoutMs: 900_000 },
 	);
 	await exec(
@@ -301,6 +304,7 @@ async function configureHermes(input: BootstrapInput): Promise<void> {
 		`API_SERVER_KEY=${apiServerKey}`,
 		"API_SERVER_HOST=0.0.0.0",
 		`API_SERVER_PORT=${PORT_API}`,
+		"GATEWAY_ALLOW_ALL_USERS=true",
 	];
 	for (const line of envLines) {
 		const [name] = line.split("=");
@@ -514,7 +518,7 @@ async function installClosedLoopTools({
 	await exec(
 		client,
 		machineId,
-		`${SHELL_ENV} && command -v agent-browser && playwright --version && httpx --version`,
+		`${SHELL_ENV} && command -v agent-browser && playwright --version && command -v httpx`,
 	);
 }
 
@@ -697,6 +701,43 @@ async function registerCursorMcp(input: BootstrapInput): Promise<void> {
 	}
 }
 
+const KEEPALIVE_SCRIPT = `${VM_HOME}/.machine/keepalive.sh`;
+const KEEPALIVE_CRON_ID = "dedalus-keepalive";
+
+async function configureAutosleep({
+	client,
+	machineId,
+	config,
+}: BootstrapInput): Promise<void> {
+	if (config.autosleep) {
+		await exec(
+			client,
+			machineId,
+			`rm -f ${KEEPALIVE_SCRIPT} && ` +
+				`(crontab -l 2>/dev/null | grep -v '${KEEPALIVE_CRON_ID}' | crontab - 2>/dev/null) || true`,
+		);
+		dim("  keepalive removed (if present)");
+		return;
+	}
+	await exec(
+		client,
+		machineId,
+		`mkdir -p ${VM_HOME}/.machine && cat > ${KEEPALIVE_SCRIPT} << 'KEEPALIVE_EOF'\n` +
+			`#!/bin/sh\n` +
+			`# ${KEEPALIVE_CRON_ID}: ping every 3 min to prevent Dedalus autosleep (300s idle)\n` +
+			`echo "keepalive $(date -Is)" >> ${VM_HOME}/.machine/keepalive.log\n` +
+			`KEEPALIVE_EOF\n` +
+			`chmod +x ${KEEPALIVE_SCRIPT}`,
+	);
+	await exec(
+		client,
+		machineId,
+		`(crontab -l 2>/dev/null | grep -v '${KEEPALIVE_CRON_ID}'; ` +
+			`echo '*/3 * * * * ${KEEPALIVE_SCRIPT} # ${KEEPALIVE_CRON_ID}') | crontab -`,
+	);
+	dim("  cron keepalive every 3 min installed");
+}
+
 export async function runBootstrap(input: BootstrapInput): Promise<void> {
 	await phase("Install system deps (curl, git, build-essential)", () => systemDeps(input));
 	await phase("Install uv (Python package manager)", () => installUv(input));
@@ -716,5 +757,11 @@ export async function runBootstrap(input: BootstrapInput): Promise<void> {
 	await phase("Seed scheduled cron automations", () => seedCronJobs(input));
 	await phase(`Start gateway + API server on :${PORT_API}`, () => startGateway(input));
 	await phase(`Start web dashboard on :${PORT_DASHBOARD}`, () => startDashboard(input));
+	await phase(
+		input.config.autosleep
+			? "Autosleep: enabled (default 300s idle)"
+			: "Autosleep: disabled (keepalive installed)",
+		() => configureAutosleep(input),
+	);
 	await phase("Record deploy version", () => recordVersion(input));
 }

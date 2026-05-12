@@ -2,7 +2,7 @@
  * GET /api/dashboard/mcps
  *
  * Returns the static MCP server registry the agent has wired in.
- * Auth-gated. The on-VM source of truth is `~/.hermes/config.toml`;
+ * Auth-gated. The on-VM source of truth is `~/.agent-machines/config.toml`;
  * this is the documentation reflection so the dashboard renders without
  * needing to round-trip the gateway.
  */

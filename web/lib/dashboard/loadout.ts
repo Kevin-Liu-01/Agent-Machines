@@ -106,7 +106,7 @@ export const BUILTIN_TOOLS: ReadonlyArray<BuiltinTool> = [
 		name: "write_file",
 		title: "Write file",
 		description:
-			"Write or overwrite a file on the VM. Strict path checks keep writes inside ~/work and ~/.hermes by default.",
+			"Write or overwrite a file on the VM. Strict path checks keep writes inside ~/work and ~/.agent-machines by default.",
 		category: "filesystem",
 		agent: "both",
 		provider: "rig",
@@ -196,7 +196,7 @@ export const BUILTIN_TOOLS: ReadonlyArray<BuiltinTool> = [
 		name: "image_generate",
 		title: "Generate image",
 		description:
-			"Generate images with FLUX via FAL. Optional. Requires FAL_KEY in ~/.hermes/.env when used.",
+			"Generate images with FLUX via FAL. Optional. Requires FAL_KEY in ~/.agent-machines/.env when used.",
 		category: "image",
 		agent: "hermes",
 		provider: "nous",
@@ -241,7 +241,7 @@ export const BUILTIN_TOOLS: ReadonlyArray<BuiltinTool> = [
 		name: "skills_list",
 		title: "List skills",
 		description:
-			"Enumerate the SKILL.md files in ~/.hermes/skills. The agent inspects this when picking which skill conventions to load.",
+			"Enumerate the SKILL.md files in ~/.agent-machines/skills. The agent inspects this when picking which skill conventions to load.",
 		category: "memory",
 		agent: "hermes",
 		provider: "nous",
@@ -268,7 +268,7 @@ export const BUILTIN_TOOLS: ReadonlyArray<BuiltinTool> = [
 		name: "session_search",
 		title: "FTS5 session search",
 		description:
-			"Full-text search over every prior conversation stored in ~/.hermes/sessions/*.db. Surfaces past tool outputs as context.",
+			"Full-text search over every prior conversation stored in ~/.agent-machines/sessions/*.db. Surfaces past tool outputs as context.",
 		category: "search",
 		agent: "hermes",
 		provider: "nous",

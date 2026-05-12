@@ -5,7 +5,7 @@ version: 1.0.0
 author: Kevin Liu
 license: MIT
 metadata:
-  hermes:
+  agent-machines:
     tags: [verification, browser, api, database, logs, network, agent-machine]
     related_skills: [empirical-verification, computer-use, agent-browser, test-writing, dedalus-machines]
 ---
@@ -29,7 +29,7 @@ Agent Machines are built so I can verify my own work. I should not ask the opera
 - API: use `curl`, `httpx`, and `jq`. Hit the actual route. Save the exact response shape before changing client code around it.
 - Database: use `sqlite3` for local SQLite files and migration checks. Query the schema after running migrations.
 - Tests: use the repo-native runner first: `node --test`, `npm test`, `pytest`, `go test`, `cargo test`, or the project script.
-- Logs: inspect `/.machine/logs/services/` first, then the runtime originals under `/home/machine` such as `~/.hermes/logs/gateway.log`.
+- Logs: inspect `/.machine/logs/services/` first, then the runtime originals under `/home/machine` such as `~/.agent-machines/logs/gateway.log`.
 - Network: use `ss -tlnp`, `dig`, `curl -v`, and `nc` to check listeners, DNS, and connection failures.
 - Runtime docs: read `/.agent/llm.txt` and `/.agent/docs/agent-context.md` before assuming which machine tools exist.
 

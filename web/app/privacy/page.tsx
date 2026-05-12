@@ -64,9 +64,10 @@ export default function PrivacyPage() {
 						only when you configure CURSOR_API_KEY and call cursor-bridge.
 					</p>
 					<p>
-						Inside the machine, ~/.agent-machines stores product data.
-						~/.hermes stores Hermes runtime data. /home/machine/hermes-machines
-						stores the git checkout used for reloads.
+						Inside the machine, ~/.agent-machines stores all agent
+						state -- runtime data, app data, skills, sessions, crons, and
+						config. /home/machine/agent-machines stores the git checkout
+						used for reloads.
 					</p>
 				</DocSection>
 

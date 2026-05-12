@@ -96,8 +96,8 @@ export function LiveDataView<T>({
 		const descriptions: Record<string, string> = {
 			machine_offline:
 				"Live data needs a running Dedalus machine. Wake it from your terminal, then refresh this page.",
-			config_missing:
-				"Set DEDALUS_API_KEY and HERMES_MACHINE_ID in the Vercel env so the dashboard knows which machine to read.",
+		config_missing:
+			"Set DEDALUS_API_KEY and AGENT_MACHINE_ID in the Vercel env so the dashboard knows which machine to read.",
 			exec_failed:
 				"The Dedalus exec call returned an error. The machine may be in an unhealthy state.",
 		};

@@ -2,19 +2,19 @@
   {
     "name": "hourly-health-check",
     "schedule": "every 1h",
-    "prompt": "Run `hermes doctor`. If anything is unhealthy, summarize the issues in three lines or fewer. If everything is healthy, reply with the single word 'OK'.",
+    "prompt": "Run a health check on the agent runtime. If anything is unhealthy, summarize the issues in three lines or fewer. If everything is healthy, reply with the single word 'OK'.",
     "skills": ["dedalus-machines"]
   },
   {
     "name": "daily-wiki-digest",
     "schedule": "0 9 * * *",
-    "prompt": "Look at /home/machine/.hermes/MEMORY.md and any wiki content available locally. Summarize the most important pieces of context I should keep in active memory today in 5 bullets or fewer. Update MEMORY.md only if you find a new pattern worth saving.",
+    "prompt": "Look at /home/machine/.agent-machines/MEMORY.md and any wiki content available locally. Summarize the most important pieces of context I should keep in active memory today in 5 bullets or fewer. Update MEMORY.md only if you find a new pattern worth saving.",
     "skills": ["agent-ethos"]
   },
   {
     "name": "weekly-skill-audit",
     "schedule": "0 4 * * mon",
-    "prompt": "Audit the skills folder at ~/.hermes/skills. For each skill, verify the description still matches the body. Flag any skills that are stale, duplicated, or drift from their declared description. Output a JSON array of {name, issue} entries; empty array if all clean.",
+    "prompt": "Audit the skills folder at ~/.agent-machines/skills. For each skill, verify the description still matches the body. Flag any skills that are stale, duplicated, or drift from their declared description. Output a JSON array of {name, issue} entries; empty array if all clean.",
     "skills": ["plan-mode-review"]
   },
   {

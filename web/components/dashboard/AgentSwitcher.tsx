@@ -19,21 +19,29 @@ type Props = {
 const LABEL: Record<AgentKind, string> = {
 	hermes: "Hermes",
 	openclaw: "OpenClaw",
+	"claude-code": "Claude Code",
+	codex: "Codex CLI",
 };
 
 const TAGLINE: Record<AgentKind, string> = {
 	hermes: "self-improving . persistent memory . MCP-native",
 	openclaw: "computer-use . shell . browser . vision",
+	"claude-code": "agentic coding . file edit . SDK . headless",
+	codex: "agentic coding . sandbox . exec mode",
 };
 
-const MARK: Record<AgentKind, "nous" | "openclaw"> = {
+const MARK: Record<AgentKind, "nous" | "openclaw" | "anthropic" | "openai"> = {
 	hermes: "nous",
 	openclaw: "openclaw",
+	"claude-code": "anthropic",
+	codex: "openai",
 };
 
 const SOURCE: Record<AgentKind, string> = {
 	hermes: "Nous Research",
-	openclaw: "Dedalus Labs",
+	openclaw: "OpenClaw",
+	"claude-code": "Anthropic",
+	codex: "OpenAI",
 };
 
 /**

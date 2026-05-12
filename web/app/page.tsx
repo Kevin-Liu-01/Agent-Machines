@@ -1,22 +1,17 @@
-import { CapabilityGrid } from "@/components/CapabilityGrid";
+import { AgentCommandToggle } from "@/components/AgentCommandToggle";
 import { RuntimeVizGrid } from "@/components/RuntimeVizGrid";
-import {
-	ComponentShowcase,
-	ShowcaseAttribution,
-} from "@/components/ComponentShowcase";
 import { FaqSection } from "@/components/FaqSection";
 import { Footer } from "@/components/Footer";
 import { HeroBlock } from "@/components/HeroBlock";
 import { LoadoutPreview } from "@/components/LoadoutPreview";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import { ReticleBand } from "@/components/reticle/ReticleBand";
+import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { ReticlePageGrid } from "@/components/reticle/ReticlePageGrid";
 import { ReticleSection } from "@/components/reticle/ReticleSection";
-import { SkillsManifest } from "@/components/SkillsManifest";
 import { StatsRow } from "@/components/StatsRow";
 import { StickyRuntimeStory } from "@/components/StickyRuntimeStory";
 import { WorkflowNavigator } from "@/components/WorkflowNavigator";
-import { AgentGatewayDiagram } from "@/components/AgentGatewayDiagram";
 
 export default function HomePage() {
 	return (
@@ -36,27 +31,35 @@ export default function HomePage() {
 				</ReticleBand>
 
 				<ReticleSection
-					id="architecture"
-					borderTop={false}
-					contentClassName="px-3 py-5 md:px-4 md:py-6"
-				>
-					<AgentGatewayDiagram />
-				</ReticleSection>
-
-				<ReticleSection
 					id="workflow"
-					borderTop={false}
 					contentClassName="px-3 py-5 md:px-4 md:py-6"
 				>
 					<WorkflowNavigator />
 				</ReticleSection>
 
 				<ReticleSection
-					id="capabilities"
-					borderTop={false}
+					id="agents"
 					contentClassName="px-3 py-5 md:px-4 md:py-6"
 				>
-					<CapabilityGrid />
+					<ReticleLabel>AGENTS</ReticleLabel>
+					<h2 className="ret-display mt-2 text-xl md:text-2xl">
+						Chat and terminal commands for every agent.
+					</h2>
+					<p className="mt-2 max-w-[72ch] text-[12px] text-[var(--ret-text-dim)]">
+						Autonomous agents have built-in drivers that wake up on schedule.
+						Task-driven CLIs run per-task but can be automated via headless
+						flags and cron.
+					</p>
+					<div className="mt-4">
+						<AgentCommandToggle />
+					</div>
+				</ReticleSection>
+
+				<ReticleSection
+					id="loadout"
+					contentClassName="px-3 py-5 md:px-4 md:py-6"
+				>
+					<LoadoutPreview />
 				</ReticleSection>
 
 				<ReticleBand id="runtime" hatchMargins contentClassName="px-3 py-5 md:px-4 md:py-6">
@@ -65,35 +68,9 @@ export default function HomePage() {
 
 				<ReticleSection
 					id="scroll-story"
-					borderTop={false}
 					contentClassName="px-3 py-5 md:px-4 md:py-6"
 				>
 					<StickyRuntimeStory />
-				</ReticleSection>
-
-				<ReticleSection
-					id="loadout"
-					borderTop={false}
-					contentClassName="px-3 py-5 md:px-4 md:py-6"
-				>
-					<LoadoutPreview />
-				</ReticleSection>
-
-				<ReticleSection
-					id="components"
-					borderTop={false}
-					contentClassName="px-3 py-5 md:px-4 md:py-6"
-				>
-					<ComponentShowcase />
-					<ShowcaseAttribution />
-				</ReticleSection>
-
-				<ReticleSection
-					id="skills"
-					borderTop={false}
-					contentClassName="px-3 py-5 md:px-4 md:py-6"
-				>
-					<SkillsManifest />
 				</ReticleSection>
 
 				<ReticleBand id="faq" hatchMargins contentClassName="px-3 py-5 md:px-4 md:py-6">

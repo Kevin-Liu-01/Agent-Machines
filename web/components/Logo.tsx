@@ -2,7 +2,7 @@ import Image from "next/image";
 
 import { cn } from "@/lib/cn";
 
-export type Mark = "dedalus" | "nous" | "cursor" | "openclaw";
+export type Mark = "dedalus" | "nous" | "cursor" | "openclaw" | "anthropic" | "openai";
 
 /**
  * Pseudo-mark for "either agent". Wherever a UI surface represents the
@@ -45,10 +45,16 @@ const NATIVE_SRC: Record<Mark, { light: string; dark: string }> = {
 		dark: "/brand/cursor-mark-light.svg",
 	},
 	openclaw: {
-		// Color variant ships only when explicitly requested via tone="native".
-		// Default rendering uses the mask + currentColor branch below.
 		light: "/brand/openclaw-mark-color.svg",
 		dark: "/brand/openclaw-mark-color.svg",
+	},
+	anthropic: {
+		light: "/brand/services/anthropic.svg",
+		dark: "/brand/services/anthropic.svg",
+	},
+	openai: {
+		light: "/brand/services/openai.svg",
+		dark: "/brand/services/openai.svg",
 	},
 };
 
@@ -57,17 +63,17 @@ const MASK_SRC: Record<Mark, string> = {
 	nous: "/brand/nous-mark.svg",
 	cursor: "/brand/cursor-mark.svg",
 	openclaw: "/brand/openclaw-mark.svg",
+	anthropic: "/brand/services/anthropic.svg",
+	openai: "/brand/services/openai.svg",
 };
 
 const DEFAULT_TONE: Record<Mark, NonNullable<Props["tone"]>> = {
 	dedalus: "auto",
 	nous: "currentColor",
 	cursor: "auto",
-	// LobeHub ships a clean monochrome SVG with fill="currentColor"; render
-	// it as a CSS mask so it adopts the parent text color (same pattern as
-	// the Nous mark). The brand-gradient version still ships as openclaw-
-	// mark-color.svg if anyone wants it via tone="native".
 	openclaw: "currentColor",
+	anthropic: "currentColor",
+	openai: "currentColor",
 };
 
 const ARIA_LABEL: Record<Mark, string> = {
@@ -75,6 +81,8 @@ const ARIA_LABEL: Record<Mark, string> = {
 	nous: "Nous Research",
 	cursor: "Cursor",
 	openclaw: "OpenClaw",
+	anthropic: "Anthropic",
+	openai: "OpenAI",
 };
 
 /**

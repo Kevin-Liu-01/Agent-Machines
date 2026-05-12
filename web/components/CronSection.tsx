@@ -18,7 +18,7 @@ const CRONS: ReadonlyArray<{
 	{
 		name: "weekly-skill-audit",
 		schedule: "every 1d at 04:00",
-		prompt: "audit ~/.hermes/skills for stale, drifted, or duplicated entries.",
+		prompt: "audit ~/.agent-machines/skills for stale, drifted, or duplicated entries.",
 	},
 	{
 		name: "nightly-memory-consolidation",

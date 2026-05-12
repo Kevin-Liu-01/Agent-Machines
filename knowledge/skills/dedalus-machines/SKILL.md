@@ -5,7 +5,7 @@ version: 1.0.0
 author: Kevin Liu
 license: MIT
 metadata:
-  hermes:
+  agent-machines:
     tags: [dedalus, machines, dcs, runtime, infra]
 ---
 
@@ -49,7 +49,7 @@ Per-second usage while awake. Storage charged monthly. Sleep stops the per-secon
 /home/machine/                  # persistent volume, survives sleep/wake
 ├── .venv/                      # Python 3.11 venv with Hermes installed
 ├── .uv-cache/                  # uv package cache
-├── .local/bin/                 # uv binary, hermes symlink
+├── .local/bin/                 # uv binary, agent CLI symlink
 ├── .npm-global/                # global npm packages (agent-browser, playwright, etc.)
 ├── .npm-cache/                 # npm cache
 ├── .cache/ms-playwright/       # persistent Chromium install for Playwright
@@ -60,7 +60,7 @@ Per-second usage while awake. Storage charged monthly. Sleep stops the per-secon
 │       └── agent-context.md    # full closed-loop tool inventory and workflow
 ├── .machine/                   # runtime state (also symlinked at /.machine)
 │   └── logs/services/          # symlinks to gateway/dashboard logs
-├── .hermes/
+├── .agent-machines/
 │   ├── config.yaml             # provider, model, agent settings
 │   ├── .env                    # API_SERVER_KEY and other secrets
 │   ├── SOUL.md                 # persona (loaded into system prompt)
@@ -90,13 +90,13 @@ Bootstrap installs these so the agent can verify its own work without asking the
 | Database | `sqlite3` | Query local DBs, verify migrations, inspect schema. |
 | Network | `ss`, `dig`, `curl -v`, `nc` | Check listeners, resolve DNS, inspect connections. |
 | Test runners | `node --test`, `npm test`, `pytest`, `go test`, `cargo test` | Use the repo-native runner. |
-| Service logs | `/.machine/logs/services/` | Symlinks to gateway and dashboard logs. Originals under `~/.hermes/logs/`. |
+| Service logs | `/.machine/logs/services/` | Symlinks to gateway and dashboard logs. Originals under `~/.agent-machines/logs/`. |
 | Agent docs | `/.agent/llm.txt`, `/.agent/docs/agent-context.md` | Read these before assuming which tools exist. |
 
 ## Public surfaces
 
-- **Port 8642**: Hermes API server, OpenAI-compatible. Reachable via Dedalus preview URL. Auth: bearer token = `API_SERVER_KEY` from `~/.hermes/.env`.
-- **Port 9119**: Hermes web dashboard (FastAPI + React SPA). Reachable via Dedalus preview URL. `--insecure` because the dashboard does not require auth -- only the API server does.
+- **Port 8642**: Agent API server, OpenAI-compatible. Reachable via Dedalus preview URL. Auth: bearer token = `API_SERVER_KEY` from `~/.agent-machines/.env`.
+- **Port 9119**: Agent web dashboard. Reachable via Dedalus preview URL. `--insecure` because the dashboard does not require auth -- only the API server does.
 - **Port 18790** (optional): MCP server, if started.
 
 ## SDK touchpoints
@@ -130,10 +130,10 @@ const p = await client.machines.previews.create({
 - `SSH_GUEST_CONNECT_FAILED` -- guest sshd not yet ready. Retry after ~10s.
 - `execution_runner_prepare_failed` -- vsock path; retry. Persistent across machines means degraded environment.
 - `ENOSPC` during install -- root fs is small; redirect `HOME`, `UV_CACHE_DIR`, venv to `/home/machine`.
-- `EADDRINUSE` on 8642 -- duplicate gateway. `pkill -f 'hermes gateway' && /home/machine/start-gateway.sh`.
+- `EADDRINUSE` on 8642 -- duplicate gateway. `pkill -f gateway && /home/machine/start-gateway.sh`.
 - `machine_not_routable` -- sleeping or destroyed. Check phase first.
 - `503` on first exec -- wait 5s after `phase=running`.
 
 ## When the user asks me about this VM
 
-Run `hermes doctor` first. Then check the gateway log (`tail ~/.hermes/logs/gateway.log` or `tail /.machine/logs/services/hermes-gateway.log`). Then check port bindings (`ss -tlnp`). Don't speculate -- empirics first. Read `/.agent/docs/agent-context.md` for the full closed-loop tool inventory.
+Check the gateway log (`tail ~/.agent-machines/logs/gateway.log` or `tail /.machine/logs/services/gateway.log`). Then check port bindings (`ss -tlnp`). Don't speculate -- empirics first. Read `/.agent/docs/agent-context.md` for the full closed-loop tool inventory.

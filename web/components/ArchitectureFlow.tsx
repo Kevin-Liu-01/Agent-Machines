@@ -36,16 +36,14 @@ import { cn } from "@/lib/cn";
  *   y=420  Vercel | Dedalus(live) | Fly       <- 3-column             *
  *   y=580  persistent Linux machine                                   *
  *   y=720  Hermes  |  gateway  |  OpenClaw    <- agent runtime row    *
- *   y=860  ~/.agent-machines | ~/.hermes | repo | ~/.openclaw         *
+ *   y=860  ~/.agent-machines/ (runtime state + app data + repo)        *
  *   y=1000 built-ins | services | skills | cursor-bridge              *
  *   y=1140 Dedalus AI router                                          *
  *   y=1280 Anthropic | OpenAI | other catalogs                        *
  *                                                                     *
  * Critically, path-row col k sits directly under tool-row col k, and  *
- * agent-row "Hermes" sits over path col 1, "gateway" over path col 2, *
- * "OpenClaw" over path col 3. So almost every runtime edge is a       *
- * straight vertical line; only Hermes -> ~/.agent-machines bends      *
- * sideways, and that's the lone diagonal in the cluster.              *
+ * agent-row sits over its path col. Most runtime edges are straight   *
+ * vertical lines.                                                     *
  * ------------------------------------------------------------------ */
 
 type NodeTone =
@@ -236,7 +234,7 @@ const NODE_TYPES = { box: FlowNode };
 // Runtime cluster: 4 columns at 360px stride, sm node width 230.
 const COL = {
 	c0: 40, // ~/.agent-machines / built-ins
-	c1: 400, // Hermes / ~/.hermes / MCP services
+	c1: 400, // agent runtime / ~/.agent-machines / MCP services
 	c2: 760, // gateway / repo checkout / SKILL.md
 	c3: 1120, // OpenClaw / ~/.openclaw / cursor-bridge
 };
@@ -524,14 +522,14 @@ const INITIAL_NODES: Node<NodeData>[] = [
 		},
 	},
 	{
-		id: "path-hermes",
+		id: "path-runtime",
 		type: "box",
 		position: { x: COL.c1, y: Y.paths },
 		data: {
 			eyebrow: "on-disk path",
-			title: "~/.hermes/",
-			subtitle: "Hermes runtime, NOT app data",
-			body: "Footgun defused: ~/.hermes is the Hermes runtime root. Skills, crons, sessions, gateway logs, model config. Not the app data root.",
+			title: "~/.agent-machines/",
+			subtitle: "agent runtime state",
+			body: "The agent runtime root. Skills, crons, sessions, gateway logs, model config, and app data all live here.",
 			bullets: [
 				"skills/ + crons/",
 				"sessions.db (FTS5)",
@@ -550,10 +548,10 @@ const INITIAL_NODES: Node<NodeData>[] = [
 			eyebrow: "on-disk path",
 			title: "/home/machine/agent-machines/",
 			subtitle: "git checkout for reloads",
-			body: "Just the repo checkout used by reload-from-git.sh. Not ~/.hermes and not the agent runtime.",
+			body: "The repo checkout used by reload-from-git.sh. Syncs knowledge/ into the runtime.",
 			bullets: [
 				"git fetch origin/main",
-				"sync knowledge/ into ~/.hermes",
+				"sync knowledge/ into runtime",
 				"used by Reload Knowledge",
 			],
 			tone: "state",
@@ -791,8 +789,8 @@ const EDGES: Edge[] = [
 		targetHandle: "l",
 		label: "turn loop",
 	},
-	// Agents -> on-disk paths. Hermes owns its column and writes to the
-	// shared app data path (the only diagonal in the cluster).
+	// Agents -> on-disk paths. Each agent owns runtime state under
+	// ~/.agent-machines/ and writes to the shared app data path.
 	{
 		id: "e-hermes-app",
 		source: "hermes",
@@ -802,7 +800,7 @@ const EDGES: Edge[] = [
 	{
 		id: "e-hermes-runtime",
 		source: "hermes",
-		target: "path-hermes",
+		target: "path-runtime",
 		label: "owns",
 	},
 	{
@@ -826,7 +824,7 @@ const EDGES: Edge[] = [
 	},
 	{
 		id: "e-hermes-services",
-		source: "path-hermes",
+		source: "path-runtime",
 		target: "loadout-services",
 		label: "MCP",
 	},
@@ -976,7 +974,7 @@ export function ArchitectureFlow() {
 				<MachineNote
 					label="path split"
 					value="four roots, no overlap"
-					body=".agent-machines (app), .hermes (runtime), .openclaw, repo checkout."
+					body="~/.agent-machines/ holds runtime state, app data, skills, crons, sessions, and config."
 				/>
 				<MachineNote
 					label="providers"

@@ -17,9 +17,9 @@
  * deployed users don't lose state when this schema lands.
  */
 
-export type AgentKind = "hermes" | "openclaw";
+export type AgentKind = "hermes" | "openclaw" | "claude-code" | "codex";
 
-export const AGENT_KINDS: ReadonlyArray<AgentKind> = ["hermes", "openclaw"];
+export const AGENT_KINDS: ReadonlyArray<AgentKind> = ["hermes", "openclaw", "claude-code", "codex"];
 
 /** Where the agent's microVM lives. */
 export type ProviderKind = "dedalus" | "vercel-sandbox" | "fly";
@@ -112,6 +112,36 @@ export type ProviderCredentials = {
 	"vercel-sandbox"?: { apiKey: string; teamId?: string; projectId?: string };
 	fly?: { apiKey: string; orgSlug?: string };
 };
+
+/**
+ * AI provider API keys that power the agent's LLM inference.
+ * Separate from infrastructure ProviderCredentials because these
+ * are about which model backend the agent talks to, not where the
+ * VM runs. Every agent accepts at least one of these; Hermes and
+ * OpenClaw accept any OpenAI-compatible endpoint.
+ */
+export type AiProviderKeys = {
+	anthropic?: string;
+	openai?: string;
+	openrouter?: string;
+	google?: string;
+	custom?: { url: string; key: string; label?: string };
+};
+
+export type AiProviderSlug = keyof AiProviderKeys;
+
+export const AI_PROVIDER_SLUGS: ReadonlyArray<AiProviderSlug> = [
+	"anthropic",
+	"openai",
+	"openrouter",
+	"google",
+	"custom",
+];
+
+export type PublicAiProviderStatus = Record<
+	AiProviderSlug,
+	{ configured: boolean; label?: string }
+>;
 
 export type GatewayKind = "dedalus" | "vercel-ai-gateway" | "openai-compatible";
 
@@ -234,6 +264,7 @@ export type MachineRef = {
 
 export type UserConfig = {
 	providers: ProviderCredentials;
+	aiProviderKeys: AiProviderKeys;
 	machines: MachineRef[];
 	activeMachineId: string | null;
 	cursorApiKey: string | null;
@@ -529,6 +560,7 @@ export const DEFAULT_LOADOUT_PRESETS: LoadoutPreset[] = [
 
 export const DEFAULT_USER_CONFIG: UserConfig = {
 	providers: {},
+	aiProviderKeys: {},
 	machines: [],
 	activeMachineId: null,
 	cursorApiKey: null,
@@ -566,12 +598,14 @@ export type PublicMachineRef = Omit<MachineRef, "apiKey"> & {
 export type PublicUserConfig = Omit<
 	UserConfig,
 	| "providers"
+	| "aiProviderKeys"
 	| "machines"
 	| "cursorApiKey"
 	| "gatewayProfiles"
 	| "environmentProfiles"
 > & {
 	providers: Record<ProviderKind, PublicProviderStatus>;
+	aiProviders: PublicAiProviderStatus;
 	machines: PublicMachineRef[];
 	gatewayProfiles: Array<Omit<GatewayProfile, "apiKey"> & { hasApiKey: boolean }>;
 	environmentProfiles: Array<Omit<EnvironmentProfile, "vars"> & { varCount: number }>;
@@ -594,8 +628,18 @@ export function toPublicConfig(config: UserConfig): PublicUserConfig {
 		const { apiKey, ...rest } = m;
 		return { ...rest, hasApiKey: Boolean(apiKey) };
 	});
+	const ai = config.aiProviderKeys;
+	const aiProviders: PublicAiProviderStatus = {
+		anthropic: { configured: Boolean(ai.anthropic) },
+		openai: { configured: Boolean(ai.openai) },
+		openrouter: { configured: Boolean(ai.openrouter) },
+		google: { configured: Boolean(ai.google) },
+		custom: { configured: Boolean(ai.custom?.key), label: ai.custom?.label },
+	};
+
 	return {
 		providers,
+		aiProviders,
 		machines,
 		activeMachineId: config.activeMachineId,
 		gatewayProfiles: config.gatewayProfiles.map(({ apiKey, ...profile }) => ({
@@ -643,4 +687,6 @@ export const PROVIDER_LABEL: Record<ProviderKind, string> = {
 export const AGENT_LABEL: Record<AgentKind, string> = {
 	hermes: "Hermes",
 	openclaw: "OpenClaw",
+	"claude-code": "Claude Code",
+	codex: "Codex CLI",
 };

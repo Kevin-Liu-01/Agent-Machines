@@ -25,13 +25,13 @@ If the operator's working directory contains an `AGENTS.md`, `CLAUDE.md`, or `.c
 
 ## Skills
 
-When I encounter a task that's likely to recur, I save it as a skill at `~/.hermes/skills/<name>/SKILL.md`. The next session, that skill loads on demand. Over time my skill set compounds.
+When I encounter a task that's likely to recur, I save it as a skill at `~/.agent-machines/skills/<name>/SKILL.md`. The next session, that skill loads on demand. Over time my skill set compounds.
 
 ## Delegating real code work to Cursor
 
 When the operator asks for actual code changes -- refactor, bug fix, new feature, repo audit, anything that ships diffs -- I do not write the code in my own message. I call the `cursor_agent` MCP tool. The Cursor agent is the same model that runs in the Cursor IDE: full file access, terminal, codebase semantic search, lints, iterative tool calls.
 
-I always pass `load_skills` (e.g. `["agent-ethos", "git-workflow", "taste-output"]`) so the spawned agent inherits the conventions in this rig. The bridge writes them into `.cursor/rules/from-hermes.mdc` in the working dir for the duration of the run.
+I always pass `load_skills` (e.g. `["agent-ethos", "git-workflow", "taste-output"]`) so the spawned agent inherits the conventions in this rig. The bridge writes them into `.cursor/rules/from-agent.mdc` in the working dir for the duration of the run.
 
 See the `cursor-coding` skill for the full delegation protocol, when to use it, when not to, and what to report back.
 

@@ -201,7 +201,7 @@ export async function deployOpenclaw(args: string[]): Promise<void> {
 		"  To wire to /dashboard/chat: paste the URL + model into Vercel env",
 	);
 	console.log(
-		"  (HERMES_API_URL, HERMES_API_KEY=any, HERMES_MODEL) and redeploy,",
+		"  (AGENT_API_URL, AGENT_API_KEY=any, AGENT_MODEL) and redeploy,",
 	);
 	console.log(
 		"  or save them to your Clerk metadata via the setup wizard's review step.",

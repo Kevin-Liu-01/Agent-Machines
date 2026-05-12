@@ -195,12 +195,9 @@ function readSkill(slug) {
 		data = fallback.data;
 		content = fallback.content;
 	}
-	const tags = Array.isArray(data?.metadata?.hermes?.tags)
-		? data.metadata.hermes.tags
-		: [];
-	const related = Array.isArray(data?.metadata?.hermes?.related_skills)
-		? data.metadata.hermes.related_skills
-		: [];
+	const meta = data?.metadata?.["agent-machines"] ?? data?.metadata?.hermes ?? {};
+	const tags = Array.isArray(meta?.tags) ? meta.tags : [];
+	const related = Array.isArray(meta?.related_skills) ? meta.related_skills : [];
 	return {
 		slug,
 		name: data.name ?? slug,

@@ -5,7 +5,7 @@ version: 1.0.0
 author: Kevin Liu
 license: MIT
 metadata:
-  hermes:
+  agent-machines:
     tags: [security, audit, ctf, code-review]
     related_skills: [empirical-verification, plan-mode-review]
 ---
@@ -76,6 +76,6 @@ Before reporting, run the repro. If it doesn't fire, downgrade or drop it. False
 
 - **`grant-credits-webhook-500`**: webhook handler that 500'd and the platform retried, double-granting credits. Always idempotent on user-visible state.
 - **`signup-credit-abuse-bot-farming`**: bot farms creating accounts to harvest signup credits. Email + IP fingerprinting alone is insufficient.
-- **`prod-migrations-never-applied`**: a migration file existed but was never applied to prod. Always confirm with `hermes config get` or a real query.
+- **`prod-migrations-never-applied`**: a migration file existed but was never applied to prod. Always confirm with a real query against the live database.
 
 When auditing, also pattern-match for these.

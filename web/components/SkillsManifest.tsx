@@ -71,7 +71,7 @@ export function SkillsManifest() {
 					<ReticleLabel>SKILLS -- {SKILLS.length} BUNDLED</ReticleLabel>
 					<h2 className="ret-display mt-2 text-xl md:text-2xl">
 						Loaded into{" "}
-						<span className="font-mono text-[var(--ret-purple)]">~/.hermes/skills/</span>
+						<span className="font-mono text-[var(--ret-purple)]">~/.agent-machines/skills/</span>
 					</h2>
 				</div>
 				<p className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)] md:block">

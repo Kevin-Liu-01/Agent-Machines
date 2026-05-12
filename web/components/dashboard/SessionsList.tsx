@@ -9,7 +9,7 @@ export function SessionsList() {
 		<LiveDataView<SessionsPayload>
 			endpoint="/api/dashboard/sessions"
 			pollMs={30_000}
-			offlineHint={"# the dashboard reads:\nfind ~/.hermes/sessions -name '*.db'"}
+			offlineHint={"# the dashboard reads:\nfind ~/.agent-machines/sessions -name '*.db'"}
 			render={(data, fetchedAt) => (
 				<div className="px-6 py-6">
 					<div className="mb-5 flex flex-wrap items-baseline gap-x-6 gap-y-1 font-mono text-[11px] text-[var(--ret-text-dim)]">

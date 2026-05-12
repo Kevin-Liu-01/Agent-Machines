@@ -18,7 +18,7 @@ const LEVEL_COLOR: Record<LogLine["level"], string> = {
 };
 
 /**
- * Polled tail of `~/.hermes/logs/*.log`. Auto-scrolls to bottom when
+ * Polled tail of `~/.agent-machines/logs/*.log`. Auto-scrolls to bottom when
  * follow-mode is on; users can pause it to scroll back through history.
  * SSE streaming is reserved for PR2.5 -- this version is good enough to
  * watch live agent activity without burning agent-machines' Vercel
@@ -96,7 +96,7 @@ export function LogsTail() {
 			<EmptyState
 				title={titles[envelope.reason] ?? "Unavailable"}
 				description={envelope.message}
-				hint="# tail expected at\n~/.hermes/logs/*.log"
+				hint="# tail expected at\n~/.agent-machines/logs/*.log"
 				action={
 					envelope.reason === "machine_offline"
 						? { label: "View overview", href: "/dashboard" }

@@ -1,6 +1,6 @@
 /**
  * Static cron registry. Mirrors `knowledge/crons/seed.json`.
- * The live machine's view of cron state is in `~/.hermes/cron/registry.json`;
+ * The live machine's view of cron state is in `~/.agent-machines/cron/registry.json`;
  * the dashboard surfaces this seed list as documentation. PR2 adds a route
  * that talks to the gateway to expose live last-run state.
  */
@@ -12,7 +12,7 @@ const CRONS: ReadonlyArray<CronSummary> = [
 		name: "hourly-health-check",
 		schedule: "every 1h",
 		prompt:
-			"Run hermes doctor; summarize unhealthy items in 3 lines or fewer; reply OK if clean.",
+			"Run a runtime health check; summarize unhealthy items in 3 lines or fewer; reply OK if clean.",
 		skills: ["dedalus-machines"],
 	},
 	{
@@ -26,7 +26,7 @@ const CRONS: ReadonlyArray<CronSummary> = [
 		name: "weekly-skill-audit",
 		schedule: "0 4 * * mon",
 		prompt:
-			"Audit ~/.hermes/skills for stale, drifted, or duplicated entries. Output JSON.",
+			"Audit ~/.agent-machines/skills for stale, drifted, or duplicated entries. Output JSON.",
 		skills: ["plan-mode-review"],
 	},
 	{

@@ -7,9 +7,9 @@ export default function SessionsPage() {
 	return (
 		<div className="flex flex-col">
 			<PageHeader
-				kicker="SESSIONS -- ~/.hermes/sessions/"
+				kicker="SESSIONS -- ~/.agent-machines/sessions/"
 				title="Conversation history"
-				description="Hermes stores one SQLite DB per session. The dashboard polls the live machine every 30s and lists every conversation it's holding. Transcript drill-in is a follow-up; this view tells you what's there and how heavy each one is."
+				description="The agent stores one SQLite DB per session. The dashboard polls the live machine every 30s and lists every conversation it's holding. Transcript drill-in is a follow-up; this view tells you what's there and how heavy each one is."
 			/>
 			<SessionsList />
 		</div>

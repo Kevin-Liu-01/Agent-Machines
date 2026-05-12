@@ -66,7 +66,7 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "How is this different from a regular chatbot?",
 		answer:
-			"A regular chatbot usually stores memory in browser state or a vendor-owned memory layer. Agent Machines persists operational state to a real machine filesystem: chat records, artifacts, USER.md, MEMORY.md, Hermes sessions, cron schedules, skills, and the runtime venv.",
+			"A regular chatbot usually stores memory in browser state or a vendor-owned memory layer. Agent Machines persists operational state to a real machine filesystem: chat records, artifacts, USER.md, MEMORY.md, agent sessions, cron schedules, skills, and the runtime venv.",
 	},
 	{
 		question: "Which agents can I run?",
@@ -94,14 +94,14 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 			"No. Cursor is optional delegation for code edits through cursor-bridge and @cursor/sdk. Without CURSOR_API_KEY, the rest of the machine still runs: chat, files, browser automation, closed-loop tools, skills, cron, memory, dashboard polling, artifacts, and provider lifecycle controls.",
 	},
 	{
-		question: "What are ~/.agent-machines, ~/.hermes, and /home/machine/hermes-machines?",
+		question: "What is ~/.agent-machines?",
 		answer:
-			"~/.agent-machines is Agent Machines product data such as chats and artifacts. ~/.hermes is Hermes runtime state such as skills, crons, sessions, logs, MEMORY.md, USER.md, and config. /home/machine/hermes-machines is the git checkout used by reload-from-git.sh. They are separate on purpose.",
+			"~/.agent-machines is the unified runtime root for Agent Machines. It holds all agent state -- skills, crons, sessions, logs, MEMORY.md, USER.md, config, chats, and artifacts. The repo checkout at /home/machine/agent-machines is used by reload-from-git.sh to sync knowledge from GitHub.",
 	},
 	{
 		question: "What inference providers are supported?",
 		answer:
-			"Dedalus is the default OpenAI-compatible inference endpoint. Hermes is configured through model.base_url and model.default, so the CLI can point DEDALUS_CHAT_BASE_URL at another compatible /v1 endpoint when needed. The dashboard stores a model slug per machine.",
+			"Dedalus is the default OpenAI-compatible inference endpoint. The agent is configured through model.base_url and model.default, so the CLI can point DEDALUS_CHAT_BASE_URL at another compatible /v1 endpoint when needed. The dashboard stores a model slug per machine.",
 	},
 	{
 		question: "What happens when a machine sleeps?",
@@ -111,6 +111,6 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "Where does my data live?",
 		answer:
-			"Provider credentials and gateway bearers live in Clerk private metadata. Machine state lives on the provider machine under /home/machine, with Agent Machines product data under ~/.agent-machines and Hermes runtime data under ~/.hermes. The public client only sees redacted provider and machine status.",
+			"Provider credentials and gateway bearers live in Clerk private metadata. Machine state lives on the provider machine under /home/machine, with all agent runtime data and app state under ~/.agent-machines. The public client only sees redacted provider and machine status.",
 	},
 ];

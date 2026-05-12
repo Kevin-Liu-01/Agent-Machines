@@ -61,6 +61,7 @@ const LIVE_ITEMS: ReadonlyArray<NavItem> = [
 const CONFIG_ITEMS: ReadonlyArray<NavItem> = [
 	{ href: "/dashboard/machines", label: "Machines", icon: IconStack },
 	{ href: "/dashboard/settings", label: "Settings", icon: IconKey },
+	{ href: "/dashboard/registry", label: "Registry", icon: IconStore, badge: "new" },
 	{ href: "/dashboard/skills", label: "Skills", icon: IconScroll },
 	{ href: "/dashboard/mcps", label: "MCPs", icon: IconPlug },
 ];
@@ -313,6 +314,16 @@ function IconBox(props: SVGProps<SVGSVGElement>) {
 		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
 			<path d="M2 5 L8 2 L14 5 V11 L8 14 L2 11 Z" />
 			<path d="M2 5 L8 8 L14 5 M8 8 V14" />
+		</svg>
+	);
+}
+
+function IconStore(props: SVGProps<SVGSVGElement>) {
+	return (
+		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+			<path d="M2 6 L2 13 H14 V6" />
+			<path d="M1 3 H15 V6 H1 Z" />
+			<path d="M6 9 H10 V13 H6 Z" />
 		</svg>
 	);
 }

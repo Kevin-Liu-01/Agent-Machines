@@ -13,7 +13,7 @@ export default function McpsPage() {
 			<PageHeader
 				kicker={`MCPS -- ${servers.length} SERVERS . ${totalTools} TOOLS`}
 				title="Tool servers"
-				description="Every tool the agent can call, grouped by MCP server. Cursor-bridge is bundled in this repo (mcp/cursor-bridge). Hermes built-ins ship with the agent. The on-VM source of truth lives in ~/.hermes/config.toml."
+				description="Every tool the agent can call, grouped by MCP server. Cursor-bridge is bundled in this repo (mcp/cursor-bridge). Agent built-ins ship with the runtime. The on-VM source of truth lives in ~/.agent-machines/config.toml."
 			/>
 			<div className="grid gap-5 px-6 py-6">
 				{servers.map((server) => (

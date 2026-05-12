@@ -84,11 +84,8 @@ npm run sync-skills  # regenerate data/skills.json from ../knowledge/skills
 
 - Clerk private metadata stores provider keys, Cursor key, gateway bearers, and full `UserConfig`.
 - Clerk public metadata only exposes redacted setup and machine state.
-- Machine product data lives under `/home/machine/.agent-machines/`.
-- Hermes runtime data lives under `/home/machine/.hermes/`.
-- The VM repo checkout lives at `/home/machine/hermes-machines/` and is only used for reloads.
-
-These paths are deliberately separate. `~/.hermes` is not the app data root. `/home/machine/hermes-machines` is not the Hermes runtime. Tiny naming mines, neatly flagged. Horrifying, but flagged.
+- All agent state (runtime, app data, skills, sessions, crons, config) lives under `/home/machine/.agent-machines/`.
+- The VM repo checkout lives at `/home/machine/agent-machines/` and is only used for reloads.
 
 ## Important files
 

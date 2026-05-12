@@ -17,6 +17,7 @@ import { getEffectiveUserId } from "@/lib/user-config/identity";
 import {
 	toPublicConfig,
 	type AgentProfile,
+	type AiProviderKeys,
 	type BootstrapPreset,
 	type CustomLoadoutEntry,
 	type EnvironmentProfile,
@@ -31,6 +32,7 @@ export const dynamic = "force-dynamic";
 
 type SettingsBody = Partial<{
 	providers: ProviderCredentials;
+	aiProviderKeys: AiProviderKeys;
 	cursorApiKey: string | null;
 	gatewayProfiles: Array<Partial<GatewayProfile>>;
 	agentProfiles: AgentProfile[];
@@ -92,6 +94,7 @@ export async function POST(request: Request): Promise<Response> {
 
 	const patch: Parameters<typeof setUserConfig>[0] = {};
 	if (body.providers) patch.providers = body.providers;
+	if (body.aiProviderKeys) patch.aiProviderKeys = body.aiProviderKeys;
 	if (body.cursorApiKey !== undefined) {
 		patch.cursorApiKey = body.cursorApiKey;
 	}

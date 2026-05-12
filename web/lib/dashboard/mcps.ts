@@ -1,8 +1,8 @@
 /**
  * Static MCP registry. The dashboard reads from this list to render the
  * MCPs page. The source of truth on the live machine is
- * `~/.hermes/config.toml` -- this file is the marketing-friendly reflection,
- * derived from `mcp/cursor-bridge/src/server.ts` and the Hermes built-ins.
+ * `~/.agent-machines/config.toml` -- this file is the marketing-friendly
+ * reflection, derived from `mcp/cursor-bridge/src/server.ts` and agent built-ins.
  *
  * Keep tool descriptions short and accurate. When the cursor-bridge tool
  * surface changes, mirror it here.
@@ -30,7 +30,7 @@ const CURSOR_BRIDGE: McpServerWithBrand = {
 			name: "cursor_agent",
 			title: "Spawn a Cursor coding agent",
 			description:
-				"Run a Cursor agent against a working dir for actual code changes. Inherits Hermes skill conventions through .cursor/rules.",
+				"Run a Cursor agent against a working dir for actual code changes. Inherits agent skill conventions through .cursor/rules.",
 		},
 		{
 			name: "cursor_resume",
@@ -42,7 +42,7 @@ const CURSOR_BRIDGE: McpServerWithBrand = {
 			name: "cursor_list_skills",
 			title: "List skills available for injection",
 			description:
-				"Enumerate skills in ~/.hermes/skills so the agent can pick which conventions to load when delegating.",
+				"Enumerate skills in ~/.agent-machines/skills so the agent can pick which conventions to load when delegating.",
 		},
 		{
 			name: "cursor_models",
@@ -77,7 +77,7 @@ const HERMES_BUILTINS: McpServerWithBrand = {
 			name: "fs_write",
 			title: "Write a file",
 			description:
-				"Write or overwrite a file on the VM. Strict path checks keep writes inside ~/work and ~/.hermes by default.",
+				"Write or overwrite a file on the VM. Strict path checks keep writes inside ~/work and ~/.agent-machines by default.",
 		},
 		{
 			name: "browser_use",

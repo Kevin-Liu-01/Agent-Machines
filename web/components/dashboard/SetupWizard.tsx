@@ -48,7 +48,7 @@ const STEPS: ReadonlyArray<StepDef> = [
 
 const AGENTS_DESC: Record<
 	AgentKind,
-	{ name: string; tagline: string; logo: "nous" | "dedalus" }
+	{ name: string; tagline: string; logo: "nous" | "dedalus" | "anthropic" | "openai" }
 > = {
 	hermes: {
 		name: "Hermes",
@@ -61,6 +61,18 @@ const AGENTS_DESC: Record<
 		tagline:
 			"Persistent computer-use agent. Browser, shell, filesystem, screenshots, and vision on the same durable machine.",
 		logo: "nous",
+	},
+	"claude-code": {
+		name: "Claude Code",
+		tagline:
+			"Anthropic's terminal coding agent. Deep repo awareness, multi-step tool use, headless via claude -p, Agent SDK.",
+		logo: "anthropic",
+	},
+	codex: {
+		name: "Codex CLI",
+		tagline:
+			"OpenAI's terminal coding agent. Sandbox isolation, workspace-write mode, non-interactive via codex exec.",
+		logo: "openai",
 	},
 };
 

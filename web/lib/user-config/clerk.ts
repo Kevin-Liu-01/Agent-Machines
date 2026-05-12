@@ -47,6 +47,7 @@ import {
 	type LoadoutSourceKind,
 	type MachineRef,
 	type MachineSpec,
+	type AiProviderKeys,
 	type ProviderCredentials,
 	type ProviderKind,
 	type SetupStep,
@@ -207,14 +208,14 @@ function readEnvProviderCreds(): ProviderCredentials {
 }
 
 function envFallbackMachine(): MachineRef | null {
-	const machineId = process.env.HERMES_MACHINE_ID?.trim();
-	const apiUrl = process.env.HERMES_API_URL?.trim() ?? null;
-	const apiKey = process.env.HERMES_API_KEY?.trim() ?? null;
-	const model = process.env.HERMES_MODEL?.trim() || DEFAULT_MODEL;
+	const machineId = (process.env.AGENT_MACHINE_ID ?? process.env.HERMES_MACHINE_ID)?.trim();
+	const apiUrl = (process.env.AGENT_API_URL ?? process.env.HERMES_API_URL)?.trim() ?? null;
+	const apiKey = (process.env.AGENT_API_KEY ?? process.env.HERMES_API_KEY)?.trim() ?? null;
+	const model = (process.env.AGENT_MODEL ?? process.env.HERMES_MODEL)?.trim() || DEFAULT_MODEL;
 	if (!machineId) return null;
-	const vcpu = Number(process.env.HERMES_VCPU);
-	const mem = Number(process.env.HERMES_MEMORY_MIB);
-	const stor = Number(process.env.HERMES_STORAGE_GIB);
+	const vcpu = Number(process.env.AGENT_VCPU ?? process.env.HERMES_VCPU);
+	const mem = Number(process.env.AGENT_MEMORY_MIB ?? process.env.HERMES_MEMORY_MIB);
+	const stor = Number(process.env.AGENT_STORAGE_GIB ?? process.env.HERMES_STORAGE_GIB);
 	return {
 		id: machineId,
 		providerKind: "dedalus",
@@ -459,8 +460,11 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
 		process.env.CURSOR_API_KEY?.trim() ??
 		null;
 
+	const aiProviderKeys: AiProviderKeys = (privateMeta.aiProviderKeys as AiProviderKeys) ?? {};
+
 	return {
 		providers,
+		aiProviderKeys,
 		machines,
 		activeMachineId,
 		cursorApiKey,
@@ -526,6 +530,7 @@ export async function getUserConfigById(userId: string): Promise<UserConfig> {
 
 type ConfigPatch = {
 	providers?: ProviderCredentials;
+	aiProviderKeys?: AiProviderKeys;
 	cursorApiKey?: string | null;
 	gatewayProfiles?: GatewayProfile[];
 	agentProfiles?: AgentProfile[];
@@ -774,6 +779,17 @@ export async function setUserConfigById(
 		}
 	}
 
+	// AI provider keys (privateMetadata.aiProviderKeys).
+	const nextAiKeys: AiProviderKeys = { ...current.aiProviderKeys };
+	if (patch.aiProviderKeys) {
+		const ak = patch.aiProviderKeys;
+		if (ak.anthropic) nextAiKeys.anthropic = ak.anthropic;
+		if (ak.openai) nextAiKeys.openai = ak.openai;
+		if (ak.openrouter) nextAiKeys.openrouter = ak.openrouter;
+		if (ak.google) nextAiKeys.google = ak.google;
+		if (ak.custom) nextAiKeys.custom = ak.custom;
+	}
+
 	// Machines (publicMetadata.machines + privateMetadata.machineApiKeys).
 	let nextMachines: MachineRef[] = [...current.machines];
 	if (patch.upsertMachine) {
@@ -863,6 +879,7 @@ export async function setUserConfigById(
 	const nextPrivate: RawPrivate = {
 		...existingPrivate,
 		providers: nextProviders,
+		aiProviderKeys: nextAiKeys,
 		machineApiKeys: machineKeyMap(nextMachines),
 		gatewayApiKeys: gatewayKeyMap(nextGatewayProfiles),
 		environmentProfileVars: environmentVarsMap(nextEnvironmentProfiles),

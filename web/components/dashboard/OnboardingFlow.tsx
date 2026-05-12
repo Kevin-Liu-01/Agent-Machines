@@ -63,7 +63,7 @@ const AGENT_DESC: Record<
 	AgentKind,
 	{
 		name: string;
-		mark: "nous" | "openclaw";
+		mark: "nous" | "openclaw" | "anthropic" | "openai";
 		tagline: string;
 		bullets: string[];
 		links: ReadonlyArray<{ label: string; href: string }>;
@@ -95,6 +95,34 @@ const AGENT_DESC: Record<
 		links: [
 			{ label: "github", href: "https://github.com/openclaw/openclaw" },
 			{ label: "ddls cookbook", href: "https://github.com/dedalus-labs/openclaw-ddls" },
+		],
+	},
+	"claude-code": {
+		name: "Claude Code",
+		mark: "anthropic",
+		tagline: "Agentic coding. File edit + shell + SDK.",
+		bullets: [
+			"Terminal coding agent with deep repo awareness and multi-step tool use",
+			"Headless execution via claude -p for automation and cron workflows",
+			"Agent SDK for programmatic control from TypeScript or Python",
+		],
+		links: [
+			{ label: "github", href: "https://github.com/anthropics/claude-code" },
+			{ label: "docs", href: "https://code.claude.com/docs/" },
+		],
+	},
+	codex: {
+		name: "Codex CLI",
+		mark: "openai",
+		tagline: "Agentic coding. Sandbox + exec mode.",
+		bullets: [
+			"Terminal coding agent with sandbox isolation and workspace-write modes",
+			"Non-interactive via codex exec for CI/CD pipelines and automation",
+			"JSONL output for programmatic parsing and integration",
+		],
+		links: [
+			{ label: "github", href: "https://github.com/openai/codex" },
+			{ label: "docs", href: "https://developers.openai.com/codex/" },
 		],
 	},
 };

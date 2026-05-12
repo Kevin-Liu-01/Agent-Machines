@@ -1,6 +1,7 @@
 import { Logo } from "@/components/Logo";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
+import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { ServiceIcon } from "@/components/ServiceIcon";
@@ -83,7 +84,7 @@ export function LoadoutPreview() {
 
 			<div className="mt-px grid grid-cols-1 gap-px overflow-hidden border border-[var(--ret-border)] border-t-0 bg-[var(--ret-border)] lg:grid-cols-3">
 				{/* Built-in tools by category */}
-				<div className="relative space-y-3 overflow-hidden bg-[var(--ret-bg)] p-4">
+				<ReticleFrame corners={false} className="relative space-y-3 overflow-hidden p-4">
 					<WingBackground variant="nyx-lines" opacity={{ light: 0.12, dark: 0.28 }} fadeEdges />
 					<div className="ret-material-field absolute inset-0 opacity-30" aria-hidden="true" />
 					<div className="relative z-10 flex items-baseline justify-between">
@@ -121,10 +122,10 @@ export function LoadoutPreview() {
 							</li>
 						))}
 					</ul>
-				</div>
+				</ReticleFrame>
 
 				{/* Services by partner */}
-				<div className="relative space-y-3 overflow-hidden bg-[var(--ret-bg)] p-4">
+				<ReticleFrame corners={false} className="relative space-y-3 overflow-hidden p-4">
 					<WingBackground variant="nyx-waves" opacity={{ light: 0.12, dark: 0.28 }} fadeEdges />
 					<div className="ret-material-field absolute inset-0 opacity-30" aria-hidden="true" />
 					<div className="relative z-10 flex items-baseline justify-between">
@@ -176,10 +177,10 @@ export function LoadoutPreview() {
 							skills
 						</ReticleBadge>
 					</div>
-				</div>
+				</ReticleFrame>
 
 				{/* Task hierarchy */}
-				<div className="relative space-y-3 overflow-hidden bg-[var(--ret-bg)] p-4">
+				<ReticleFrame corners={false} className="relative space-y-3 overflow-hidden p-4">
 					<WingBackground variant="cloud" opacity={{ light: 0.18, dark: 0.18 }} fadeEdges />
 					<div className="ret-material-field absolute inset-0 opacity-30" aria-hidden="true" />
 					<div className="relative z-10 flex items-baseline justify-between">
@@ -215,7 +216,7 @@ export function LoadoutPreview() {
 							</li>
 						))}
 					</ul>
-				</div>
+				</ReticleFrame>
 			</div>
 
 			<div className="mt-px grid grid-cols-2 gap-px overflow-hidden border border-[var(--ret-border)] border-t-0 bg-[var(--ret-border)] sm:grid-cols-3 lg:grid-cols-7">
@@ -249,6 +250,16 @@ export function LoadoutPreview() {
 					<span className="flex items-center gap-1.5">
 						<Logo mark="openclaw" size={14} />
 						openclaw
+					</span>
+					<span>/</span>
+					<span className="flex items-center gap-1.5">
+						<Logo mark="anthropic" size={14} />
+						claude code
+					</span>
+					<span>/</span>
+					<span className="flex items-center gap-1.5">
+						<Logo mark="openai" size={14} />
+						codex
 					</span>
 				</div>
 				<p className="relative z-10 mt-2 text-[11px] text-[var(--ret-text-dim)]">

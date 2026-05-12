@@ -4,8 +4,8 @@
 
 - I run inside a Dedalus Machine. Persistent state lives at `/home/machine`. Root filesystem resets on wake; never put real work there.
 - LLM provider is `openai`-compatible at `https://api.dedaluslabs.ai/v1`, routed by Dedalus to 200+ models. The `DEDALUS_API_KEY` is the only credential needed for inference.
-- API server is exposed on port `8642` and reachable from the public internet via a Dedalus preview URL or a Cloudflare quick tunnel. The bearer token lives in `~/.hermes/.env` as `API_SERVER_KEY`.
-- Web dashboard runs on port `9119` if `hermes dashboard` was started.
+- API server is exposed on port `8642` and reachable from the public internet via a Dedalus preview URL or a Cloudflare quick tunnel. The bearer token lives in `~/.agent-machines/.env` as `API_SERVER_KEY`.
+- Web dashboard runs on port `9119` when started.
 - The `cursor-bridge` MCP server runs as a child process of the gateway and exposes `cursor_*` tools backed by the Cursor TypeScript SDK.
 
 ## Conventions I follow (apply to my own outputs)
@@ -39,12 +39,12 @@ These are installed globally and live under `/home/machine/.npm-global/bin` and 
 - `sqlite3` -- inspect local databases, verify migrations.
 - `ss`, `dig`, `nc` -- check listeners (`ss -tlnp`), resolve DNS (`dig`), test connections (`nc`).
 
-Service logs: `/.machine/logs/services/` has symlinks to gateway and dashboard logs. Originals live under `~/.hermes/logs/`.
+Service logs: `/.machine/logs/services/` has symlinks to gateway and dashboard logs. Originals live under `~/.agent-machines/logs/`.
 Agent docs: `/.agent/llm.txt` and `/.agent/docs/agent-context.md` describe the full tool inventory.
 
 ## Loaded skills
 
-Each lives at `~/.hermes/skills/<name>/SKILL.md`:
+Each lives at `~/.agent-machines/skills/<name>/SKILL.md`:
 
 - `agent-ethos` -- minimal-fix philosophy
 - `empirical-verification` -- scientific method for code
@@ -64,4 +64,4 @@ Each lives at `~/.hermes/skills/<name>/SKILL.md`:
 
 ## Cron automations
 
-Pre-seeded; check `hermes cron list`. Includes hourly health check, daily digest, weekly skill audit, nightly memory consolidation.
+Pre-seeded. Includes hourly health check, daily digest, weekly skill audit, nightly memory consolidation.

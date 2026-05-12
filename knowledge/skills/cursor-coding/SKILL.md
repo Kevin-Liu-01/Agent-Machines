@@ -5,7 +5,7 @@ version: 1.0.0
 author: Kevin Liu
 license: MIT
 metadata:
-  hermes:
+  agent-machines:
     tags: [cursor, coding, agents, mcp, delegation]
     related_skills: [agent-ethos, git-workflow, plan-mode-review, taste-output]
 ---
@@ -45,7 +45,7 @@ cursor_agent(
 
 ## load_skills is non-negotiable
 
-Always pass `load_skills`. Pick the skills that match the task. The bridge writes the requested skills into `<working_dir>/.cursor/rules/from-hermes.mdc` so the spawned agent inherits the same conventions Hermes itself follows. Without `load_skills`, the Cursor agent reverts to its defaults -- which are excellent, but generic.
+Always pass `load_skills`. Pick the skills that match the task. The bridge writes the requested skills into `<working_dir>/.cursor/rules/from-agent.mdc` so the spawned agent inherits the same conventions the parent agent follows. Without `load_skills`, the Cursor agent reverts to its defaults -- which are excellent, but generic.
 
 Default bundle for any code work:
 
@@ -86,5 +86,5 @@ I do not paste 200 lines of agent transcript. The user trusts the delegation.
 ## Gotchas
 
 - `working_dir` must be absolute. Relative paths get rejected upstream.
-- The Cursor agent runs as a subprocess of the bridge (Node) which runs as a subprocess of Hermes (Python). Three-layer process tree. Long-running `cursor_agent` calls can hit the bridge's 600-second tool timeout -- for big refactors, split into multiple sequential calls instead.
-- `load_skills` writes a `.cursor/rules/from-hermes.mdc` file that gets cleaned up when the agent disposes. If the bridge crashes, that file may linger; remove it manually if you see it in `git status`.
+- The Cursor agent runs as a subprocess of the bridge (Node) which runs as a subprocess of the agent runtime. Three-layer process tree. Long-running `cursor_agent` calls can hit the bridge's 600-second tool timeout -- for big refactors, split into multiple sequential calls instead.
+- `load_skills` writes a `.cursor/rules/from-agent.mdc` file that gets cleaned up when the agent disposes. If the bridge crashes, that file may linger; remove it manually if you see it in `git status`.

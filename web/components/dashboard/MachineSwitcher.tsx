@@ -70,9 +70,11 @@ const STATE_TONE: Record<string, string> = {
 	unknown: "muted",
 };
 
-const AGENT_MARK: Record<AgentKind, "nous" | "openclaw"> = {
+const AGENT_MARK: Record<AgentKind, "nous" | "openclaw" | "anthropic" | "openai"> = {
 	hermes: "nous",
 	openclaw: "openclaw",
+	"claude-code": "anthropic",
+	codex: "openai",
 };
 
 export function MachineSwitcher() {

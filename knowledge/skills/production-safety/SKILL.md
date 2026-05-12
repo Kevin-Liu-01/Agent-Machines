@@ -5,7 +5,7 @@ version: 1.0.0
 author: Kevin Liu
 license: MIT
 metadata:
-  hermes:
+  agent-machines:
     tags: [production, safety, infrastructure, deployment]
     related_skills: [agent-ethos, plan-mode-review]
 ---

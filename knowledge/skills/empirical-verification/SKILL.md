@@ -5,7 +5,7 @@ version: 1.0.0
 author: Kevin Liu
 license: MIT
 metadata:
-  hermes:
+  agent-machines:
     tags: [debugging, methodology, scientific-method]
     related_skills: [agent-ethos, plan-mode-review]
 ---

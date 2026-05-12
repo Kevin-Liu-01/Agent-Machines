@@ -3,12 +3,15 @@
 import { useState } from "react";
 
 import { DashboardPageBody } from "@/components/dashboard/DashboardPageBody";
+import { Logo } from "@/components/Logo";
+import { ServiceIcon } from "@/components/ServiceIcon";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { WingBackground } from "@/components/WingBackground";
+import { AGENTS } from "@/lib/agents";
 import { TRUSTED_ADDONS } from "@/lib/dashboard/loadout";
 import type {
 	AgentProfile,
@@ -42,6 +45,13 @@ export function SettingsPanel({ initialConfig }: Props) {
 	const [flyKey, setFlyKey] = useState("");
 	const [flyOrgSlug, setFlyOrgSlug] = useState("");
 	const [cursorApiKey, setCursorApiKey] = useState("");
+	const [anthropicKey, setAnthropicKey] = useState("");
+	const [openaiKey, setOpenaiKey] = useState("");
+	const [openrouterKey, setOpenrouterKey] = useState("");
+	const [googleKey, setGoogleKey] = useState("");
+	const [customUrl, setCustomUrl] = useState("");
+	const [customKey, setCustomKey] = useState("");
+	const [customLabel, setCustomLabel] = useState("");
 	const [gatewayJson, setGatewayJson] = useState(
 		json(config.gatewayProfiles),
 	);
@@ -81,11 +91,25 @@ export function SettingsPanel({ initialConfig }: Props) {
 					orgSlug: flyOrgSlug.trim() || undefined,
 				};
 			}
+			const aiProviderKeys: Record<string, unknown> = {};
+			if (anthropicKey.trim()) aiProviderKeys.anthropic = anthropicKey.trim();
+			if (openaiKey.trim()) aiProviderKeys.openai = openaiKey.trim();
+			if (openrouterKey.trim()) aiProviderKeys.openrouter = openrouterKey.trim();
+			if (googleKey.trim()) aiProviderKeys.google = googleKey.trim();
+			if (customUrl.trim() && customKey.trim()) {
+				aiProviderKeys.custom = {
+					url: customUrl.trim(),
+					key: customKey.trim(),
+					label: customLabel.trim() || undefined,
+				};
+			}
+
 			const response = await fetch("/api/dashboard/admin/settings", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					providers: Object.keys(providers).length > 0 ? providers : undefined,
+					aiProviderKeys: Object.keys(aiProviderKeys).length > 0 ? aiProviderKeys : undefined,
 					cursorApiKey: cursorApiKey.trim() || undefined,
 					gatewayProfiles: parse<GatewayProfile[]>(gatewayJson),
 					agentProfiles: parse<AgentProfile[]>(agentJson),
@@ -151,7 +175,7 @@ export function SettingsPanel({ initialConfig }: Props) {
 		<DashboardPageBody>
 			<ReticleFrame>
 				<ReticleHatch className="h-1.5 border-b border-[var(--ret-border)]" pitch={6} />
-				<div className="grid gap-px bg-[var(--ret-border)] md:grid-cols-[1.2fr_0.7fr_0.7fr_0.7fr_0.7fr_0.7fr]">
+				<div className="grid gap-px bg-[var(--ret-border)] md:grid-cols-[1.2fr_0.6fr_0.6fr_0.6fr_0.6fr_0.6fr_0.6fr]">
 					<div className="relative min-h-[120px] overflow-hidden bg-[var(--ret-bg)] p-3">
 						<WingBackground
 							variant="nyx-lines"
@@ -161,12 +185,13 @@ export function SettingsPanel({ initialConfig }: Props) {
 						<div className="relative z-10">
 							<ReticleLabel>CONFIG GRAPH</ReticleLabel>
 							<p className="mt-2 max-w-[32ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
-								Settings become reusable recipes: provider, gateway, agent,
-								environment, then machine.
+								Settings become reusable recipes: AI keys, provider, gateway,
+								agent, environment, then machine.
 							</p>
 						</div>
 					</div>
-					<Summary label="providers" value={configuredCount(config.providers)} />
+					<Summary label="ai keys" value={aiProviderCount(config.aiProviders)} />
+					<Summary label="hosts" value={configuredCount(config.providers)} />
 					<Summary label="gateways" value={config.gatewayProfiles.length} />
 					<Summary label="agents" value={config.agentProfiles.length} />
 					<Summary label="sources" value={config.loadoutSources.length} />
@@ -229,6 +254,77 @@ export function SettingsPanel({ initialConfig }: Props) {
 						className="mt-1 w-full border border-[var(--ret-border)] bg-[var(--ret-bg)] px-2 py-1.5 text-[12px] text-[var(--ret-text)]"
 					/>
 				</label>
+			</Section>
+
+			<Section
+				kicker="AI PROVIDERS"
+				title="LLM inference keys"
+				description="Add your own API keys for any AI provider. Hermes and OpenClaw accept any OpenAI-compatible endpoint. Claude Code requires Anthropic. Codex requires OpenAI. Blank fields preserve existing keys."
+			>
+				<div className="mb-3 grid gap-px bg-[var(--ret-border)] md:grid-cols-4">
+					{AGENTS.map((agent) => {
+						const primaryKey = agent.providerKeys[0];
+						const slug = agent.serviceSlug;
+						return (
+							<div key={agent.id} className="flex items-center gap-2 bg-[var(--ret-bg)] px-3 py-2">
+								<Logo mark={agent.logoMark} size={14} />
+								<div className="min-w-0 flex-1">
+									<p className="truncate font-mono text-[10px] text-[var(--ret-text)]">{agent.name}</p>
+									<p className="truncate font-mono text-[8px] text-[var(--ret-text-muted)]">{primaryKey}</p>
+								</div>
+								{slug ? (
+									<ServiceIcon slug={slug} size={12} tone="mono" />
+								) : null}
+							</div>
+						);
+					})}
+				</div>
+				<div className="grid gap-px bg-[var(--ret-border)] md:grid-cols-2">
+					<AiProviderBox
+						title="Anthropic"
+						hint="Claude Code, OpenClaw, Hermes"
+						configured={config.aiProviders.anthropic.configured}
+						fields={[
+							["API key", anthropicKey, setAnthropicKey, "sk-ant-..."],
+						]}
+					/>
+					<AiProviderBox
+						title="OpenAI"
+						hint="Codex CLI, OpenClaw, Hermes"
+						configured={config.aiProviders.openai.configured}
+						fields={[
+							["API key", openaiKey, setOpenaiKey, "sk-..."],
+						]}
+					/>
+					<AiProviderBox
+						title="OpenRouter"
+						hint="Hermes, OpenClaw -- routes 200+ models"
+						configured={config.aiProviders.openrouter.configured}
+						fields={[
+							["API key", openrouterKey, setOpenrouterKey, "sk-or-..."],
+						]}
+					/>
+					<AiProviderBox
+						title="Google AI"
+						hint="Hermes -- Gemini models"
+						configured={config.aiProviders.google.configured}
+						fields={[
+							["API key", googleKey, setGoogleKey, "AIza..."],
+						]}
+					/>
+				</div>
+				<div className="mt-px grid gap-px bg-[var(--ret-border)]">
+					<AiProviderBox
+						title="Custom gateway"
+						hint="LiteLLM, Portkey, RelayPlane, self-hosted -- any OpenAI-compatible endpoint"
+						configured={config.aiProviders.custom.configured}
+						fields={[
+							["Label", customLabel, setCustomLabel, "My gateway"],
+							["Base URL", customUrl, setCustomUrl, "https://my-gateway.example.com/v1"],
+							["API key", customKey, setCustomKey, "key-..."],
+						]}
+					/>
+				</div>
 			</Section>
 
 			<Section
@@ -342,6 +438,49 @@ function ProviderBox({
 	);
 }
 
+function AiProviderBox({
+	title,
+	hint,
+	configured,
+	fields,
+}: {
+	title: string;
+	hint: string;
+	configured: boolean;
+	fields: Array<[string, string, (value: string) => void, string]>;
+}) {
+	return (
+		<div className="bg-[var(--ret-bg)] p-3">
+			<div className="mb-1.5 flex items-center justify-between gap-2">
+				<div>
+					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--ret-text)]">
+						{title}
+					</p>
+					<p className="font-mono text-[9px] text-[var(--ret-text-muted)]">
+						{hint}
+					</p>
+				</div>
+				<ReticleBadge variant={configured ? "success" : "default"}>
+					{configured ? "configured" : "empty"}
+				</ReticleBadge>
+			</div>
+			<div className="space-y-2">
+				{fields.map(([label, value, onChange, placeholder]) => (
+					<label key={label} className="block font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+						{label}
+						<input
+							value={value}
+							onChange={(event) => onChange(event.target.value)}
+							placeholder={configured && label.toLowerCase().includes("key") ? "configured (leave blank to preserve)" : placeholder}
+							className="mt-1 w-full border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1 text-[12px] normal-case tracking-normal text-[var(--ret-text)]"
+						/>
+					</label>
+				))}
+			</div>
+		</div>
+	);
+}
+
 function CatalogHint() {
 	const preview = TRUSTED_ADDONS.slice(0, 8);
 	return (
@@ -427,4 +566,8 @@ function parse<T>(value: string): T {
 
 function configuredCount(providers: PublicUserConfig["providers"]): number {
 	return Object.values(providers).filter((provider) => provider.configured).length;
+}
+
+function aiProviderCount(aiProviders: PublicUserConfig["aiProviders"]): number {
+	return Object.values(aiProviders).filter((p) => p.configured).length;
 }

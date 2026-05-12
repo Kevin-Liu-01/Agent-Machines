@@ -1,7 +1,7 @@
 /**
  * GET /api/dashboard/logs?n=200
  *
- * Tails the Hermes gateway log on the live machine. PR2 keeps it as
+ * Tails the agent gateway log on the live machine. PR2 keeps it as
  * a polled tail; SSE streaming is a future hardening (would need a
  * Cloudflare-friendly long-poll or a separate admin daemon, both bigger
  * than this PR's scope).
@@ -80,17 +80,14 @@ export async function GET(request: Request): Promise<Response> {
 	}
 
 	try {
-		// Inventory: list every log file under both agent runtimes
-		// (~/.hermes/logs/* and ~/.openclaw/) plus their sizes in one
-		// shot so the UI can show "you have N log files totalling X
-		// MiB". `find -printf` is GNU-only; the VM image ships GNU
-		// findutils so we lean on it. The OpenClaw bootstrap appends
-		// its gateway log directly under `~/.openclaw/gateway.log`
-		// (no `logs/` subdir), so we glob both layouts.
+		// Inventory: list every log file under the agent runtime
+		// (~/.agent-machines/logs/*) plus their sizes in one shot so the
+		// UI can show "you have N log files totalling X MiB". `find -printf`
+		// is GNU-only; the VM image ships GNU findutils so we lean on it.
 		const inventoryOut = await execOnMachine(
 			[
-				"mkdir -p $HOME/.hermes/logs $HOME/.openclaw",
-				"find $HOME/.hermes/logs $HOME/.openclaw -maxdepth 2 -type f \\( -name '*.log' -o -name 'gateway.log' \\) -printf '%p\\t%s\\n' 2>/dev/null | sort",
+				"mkdir -p $HOME/.agent-machines/logs",
+				"find $HOME/.agent-machines/logs -maxdepth 2 -type f \\( -name '*.log' -o -name 'gateway.log' \\) -printf '%p\\t%s\\n' 2>/dev/null | sort",
 			].join(" && "),
 		);
 		const files = inventoryOut.stdout
@@ -99,27 +96,18 @@ export async function GET(request: Request): Promise<Response> {
 			.map((line) => {
 				const [rawPath, size] = line.split("\t");
 				const path = rawPath
-					.replace(/\/home\/[^/]+\/\.hermes/, "~/.hermes")
-					.replace(/\/home\/[^/]+\/\.openclaw/, "~/.openclaw");
+					.replace(/\/home\/[^/]+\/\.agent-machines/, "~/.agent-machines");
 				return {
 					path,
 					bytes: Number.parseInt(size ?? "0", 10) || 0,
 				};
 			});
 
-		// Tail Hermes + OpenClaw log files in parallel. We label each
-		// line with its source (`hermes` / `openclaw`) so the UI can
-		// filter or color-code by agent. tailLines is the per-agent
-		// budget, not the total -- so the caller asking for n=200 can
-		// see up to 200 lines from each runtime.
-		const [hermesOut, openclawOut] = await Promise.all([
-			execOnMachine(
-				`if compgen -G "$HOME/.hermes/logs/*.log" > /dev/null; then tail -n ${tailLines} $HOME/.hermes/logs/*.log 2>/dev/null; else echo ""; fi`,
-			),
-			execOnMachine(
-				`if [ -f "$HOME/.openclaw/gateway.log" ]; then tail -n ${tailLines} $HOME/.openclaw/gateway.log 2>/dev/null; else echo ""; fi`,
-			),
-		]);
+		// Tail agent log files. tailLines is the budget -- so the caller
+		// asking for n=200 can see up to 200 lines from the runtime.
+		const agentOut = await execOnMachine(
+			`if compgen -G "$HOME/.agent-machines/logs/*.log" > /dev/null; then tail -n ${tailLines} $HOME/.agent-machines/logs/*.log 2>/dev/null; else echo ""; fi`,
+		);
 
 		function tailToLines(stdout: string, source: string): LogLine[] {
 			return stdout
@@ -128,8 +116,8 @@ export async function GET(request: Request): Promise<Response> {
 				.map((line) => parseLine(line, source));
 		}
 
-		const hermesLines = tailToLines(hermesOut.stdout, "hermes");
-		const openclawLines = tailToLines(openclawOut.stdout, "openclaw");
+		const hermesLines = tailToLines(agentOut.stdout, "agent");
+		const openclawLines: LogLine[] = [];
 
 		// Merge by parsed timestamp. Lines without a parseable
 		// timestamp keep their relative position within their agent

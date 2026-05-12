@@ -8,7 +8,7 @@
  * play, so route handlers don't need to branch.
  *
  * On first read with no file yet, returns `getOwnerDefaults()` so the
- * project owner's env-driven seed (HERMES_API_URL, etc.) is the
+ * project owner's env-driven seed (AGENT_API_URL, etc.) is the
  * starting point. The first write materializes the file; subsequent
  * runs reuse it.
  *
@@ -30,6 +30,7 @@ import {
 	type LoadoutSource,
 	type MachineRef,
 	type MachineSpec,
+	type AiProviderKeys,
 	type ProviderCredentials,
 	type ProviderKind,
 	type SetupStep,
@@ -44,6 +45,7 @@ const DEV_STORE_PATH = path.join(process.cwd(), ".dev-user-config.json");
 
 type ConfigPatch = {
 	providers?: ProviderCredentials;
+	aiProviderKeys?: AiProviderKeys;
 	cursorApiKey?: string | null;
 	gatewayProfiles?: GatewayProfile[];
 	agentProfiles?: AgentProfile[];
@@ -113,7 +115,7 @@ async function writeDevStore(config: UserConfig): Promise<void> {
 
 /**
  * Read the dev user's config. On a fresh checkout with no file yet,
- * this returns the owner-env defaults (HERMES_API_URL etc.) so the
+ * this returns the owner-env defaults (AGENT_API_URL etc.) so the
  * dashboard has something to talk to immediately, without writing
  * anything to disk.
  */
@@ -183,8 +185,13 @@ export async function setDevUserConfig(
 		nextActive = nextMachines.find((m) => !m.archived)?.id ?? null;
 	}
 
+	const nextAiKeys = patch.aiProviderKeys
+		? { ...current.aiProviderKeys, ...patch.aiProviderKeys }
+		: current.aiProviderKeys;
+
 	const next: UserConfig = {
 		providers: nextProviders,
+		aiProviderKeys: nextAiKeys,
 		machines: nextMachines,
 		activeMachineId: nextActive,
 		cursorApiKey:

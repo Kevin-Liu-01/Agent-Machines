@@ -315,10 +315,26 @@ textarea::placeholder {
 	display: inline-block;
 	width: 8px;
 	height: 1em;
-	background: var(--ret-text);
+	background: var(--ret-purple);
 	margin-left: 2px;
 	vertical-align: text-bottom;
 	animation: ret-caret 1s steps(1) infinite;
+}
+
+/* Chat event timeline entrance animation */
+@keyframes ret-event-enter {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+.prose-msg > *:last-child + .ret-caret,
+.ret-caret.inline-block {
+	background: var(--ret-purple);
 }
 
 /* Skeleton shimmer. A diagonal translucent band drifts across the

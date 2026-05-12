@@ -5,7 +5,7 @@ version: 1.0.0
 author: Kevin Liu
 license: MIT
 metadata:
-  hermes:
+  agent-machines:
     tags: [browser, automation, playwright, computer-use]
     related_skills: [empirical-verification]
 ---
