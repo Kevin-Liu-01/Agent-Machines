@@ -48,7 +48,7 @@ export function LoadoutPreview() {
 
 	return (
 		<>
-			<div className="flex items-baseline justify-between gap-3">
+			<div className="flex items-baseline justify-between gap-3 px-4 md:px-5">
 				<div>
 					<ReticleLabel>LOADOUT</ReticleLabel>
 					<h2 className="ret-display mt-2 text-xl md:text-2xl">
@@ -65,7 +65,7 @@ export function LoadoutPreview() {
 				</ReticleButton>
 			</div>
 
-			<p className="mt-2 max-w-[80ch] text-[12px] text-[var(--ret-text-dim)]">
+			<p className="mt-2 max-w-[80ch] px-4 text-[12px] text-[var(--ret-text-dim)] md:px-5">
 				Mirrors the wiki's <code>tool-hierarchy.mdc</code>: every tool the
 				agent picks from, ranked. Built-in tools fire in one turn. MCP servers
 				get auto-spawned at bootstrap. Service entries cover{" "}

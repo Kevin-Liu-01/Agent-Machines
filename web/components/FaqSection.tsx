@@ -4,7 +4,7 @@ import { FAQ } from "@/lib/seo/config";
 export function FaqSection() {
 	return (
 		<>
-			<div className="flex items-baseline justify-between gap-3">
+			<div className="flex items-baseline justify-between gap-3 px-4 md:px-5">
 				<div>
 					<ReticleLabel>FAQ</ReticleLabel>
 					<h2 className="ret-display mt-2 text-xl md:text-2xl">

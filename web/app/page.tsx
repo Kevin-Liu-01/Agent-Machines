@@ -21,35 +21,37 @@ export default function HomePage() {
 			<main id="top">
 				<ReticleSection
 					borderTop={false}
-					contentClassName="px-3 pt-8 pb-0 md:px-4 md:pt-10"
+					contentClassName="pt-8 pb-0 md:pt-10"
 				>
 					<HeroBlock />
 				</ReticleSection>
 
-				<ReticleBand hatchMargins contentClassName="px-3 py-3 md:px-4 md:py-4">
+				<ReticleBand hatchMargins contentClassName="py-3 md:py-4">
 					<StatsRow />
 				</ReticleBand>
 
 				<ReticleSection
 					id="workflow"
-					contentClassName="px-3 py-5 md:px-4 md:py-6"
+					contentClassName="py-5 md:py-6"
 				>
 					<WorkflowNavigator />
 				</ReticleSection>
 
 				<ReticleSection
 					id="agents"
-					contentClassName="px-3 py-5 md:px-4 md:py-6"
+					contentClassName="py-5 md:py-6"
 				>
-					<ReticleLabel>AGENTS</ReticleLabel>
-					<h2 className="ret-display mt-2 text-xl md:text-2xl">
-						Chat and terminal commands for every agent.
-					</h2>
-					<p className="mt-2 max-w-[72ch] text-[12px] text-[var(--ret-text-dim)]">
-						Autonomous agents have built-in drivers that wake up on schedule.
-						Task-driven CLIs run per-task but can be automated via headless
-						flags and cron.
-					</p>
+					<div className="px-4 md:px-5">
+						<ReticleLabel>AGENTS</ReticleLabel>
+						<h2 className="ret-display mt-2 text-xl md:text-2xl">
+							Chat and terminal commands for every agent.
+						</h2>
+						<p className="mt-2 max-w-[72ch] text-[12px] text-[var(--ret-text-dim)]">
+							Autonomous agents have built-in drivers that wake up on schedule.
+							Task-driven CLIs run per-task but can be automated via headless
+							flags and cron.
+						</p>
+					</div>
 					<div className="mt-4">
 						<AgentCommandToggle />
 					</div>
@@ -57,23 +59,23 @@ export default function HomePage() {
 
 				<ReticleSection
 					id="loadout"
-					contentClassName="px-3 py-5 md:px-4 md:py-6"
+					contentClassName="py-5 md:py-6"
 				>
 					<LoadoutPreview />
 				</ReticleSection>
 
-				<ReticleBand id="runtime" hatchMargins contentClassName="px-3 py-5 md:px-4 md:py-6">
+				<ReticleBand id="runtime" hatchMargins contentClassName="py-5 md:py-6">
 					<RuntimeVizGrid />
 				</ReticleBand>
 
 				<ReticleSection
 					id="scroll-story"
-					contentClassName="px-3 py-5 md:px-4 md:py-6"
+					contentClassName="py-5 md:py-6"
 				>
 					<StickyRuntimeStory />
 				</ReticleSection>
 
-				<ReticleBand id="faq" hatchMargins contentClassName="px-3 py-5 md:px-4 md:py-6">
+				<ReticleBand id="faq" hatchMargins contentClassName="py-5 md:py-6">
 					<FaqSection />
 				</ReticleBand>
 			</main>

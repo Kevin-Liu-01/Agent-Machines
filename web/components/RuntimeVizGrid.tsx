@@ -36,7 +36,7 @@ const LCP_COLOR: Record<Lcp, string> = {
 export function RuntimeVizGrid() {
 	return (
 		<>
-			<div className="flex items-baseline justify-between gap-3">
+			<div className="flex items-baseline justify-between gap-3 px-4 md:px-5">
 				<div>
 					<ReticleLabel>RUNTIME -- LIVE</ReticleLabel>
 					<h2 className="ret-display mt-2 text-xl md:text-2xl">
