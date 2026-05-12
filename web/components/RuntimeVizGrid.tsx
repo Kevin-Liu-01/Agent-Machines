@@ -93,7 +93,7 @@ export function RuntimeVizGrid() {
 					icon="memory"
 					label="loaded"
 					hint="skills active in context"
-					footer="6 of 95 . by intent match"
+					footer="6 of 96 . by intent match"
 				>
 					<ChipStack chips={SKILL_CHIPS} />
 				</RuntimeCard>

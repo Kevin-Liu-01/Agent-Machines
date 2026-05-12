@@ -14,7 +14,7 @@ export const SITE = {
 	wordmark: "agent-machines",
 	url: "https://www.agent-machines.dev",
 	description:
-		"A persistent machine for your agent. One stateful microVM per Clerk account; chat history, files, learned skills, and cron live on /home/machine. Hermes or OpenClaw, Dedalus Machines today, provider abstraction for Vercel Sandbox and Fly, 95 skills, 23 built-ins, and 17 service routes.",
+		"A persistent machine for your agent. One stateful microVM per Clerk account; chat history, files, learned skills, and cron live on /home/machine. Hermes or OpenClaw, Dedalus Machines today, provider abstraction for Vercel Sandbox and Fly, 96 skills, 23 built-ins, and 17 service routes.",
 	tagline: "A persistent machine for your agent",
 	ogImage: "/og.png",
 	twitterHandle: "@kevin_liu_01",
@@ -86,12 +86,12 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "What tools and skills come pre-installed?",
 		answer:
-			"The public loadout tracks 23 built-in tools, 17 service routes, and 95 SKILL.md files. The surface includes terminal, filesystem, browser automation, web search, vision, image generation, code execution, cron, memory, sessions, Vercel, Stripe, Supabase, Linear, GitHub, Slack, PostHog, Sentry, Clerk, Firebase, Figma, Shopify, ClickHouse, Datadog, AWS, Cloudflare, and model providers.",
+			"The public loadout tracks 23 built-in tools, 17 service routes, and 96 SKILL.md files. The surface includes terminal, filesystem, browser automation, web search, vision, image generation, code execution, cron, memory, sessions, closed-loop CLIs (agent-browser, Playwright, curl, jq, httpx, sqlite3, ss, dig), Vercel, Stripe, Supabase, Linear, GitHub, Slack, PostHog, Sentry, Clerk, Firebase, Figma, Shopify, ClickHouse, Datadog, AWS, Cloudflare, and model providers.",
 	},
 	{
 		question: "Is Cursor required?",
 		answer:
-			"No. Cursor is optional delegation for code edits through cursor-bridge and @cursor/sdk. Without CURSOR_API_KEY, the rest of the machine still runs: chat, files, browser automation, skills, cron, memory, dashboard polling, artifacts, and provider lifecycle controls.",
+			"No. Cursor is optional delegation for code edits through cursor-bridge and @cursor/sdk. Without CURSOR_API_KEY, the rest of the machine still runs: chat, files, browser automation, closed-loop tools, skills, cron, memory, dashboard polling, artifacts, and provider lifecycle controls.",
 	},
 	{
 		question: "What are ~/.agent-machines, ~/.hermes, and /home/machine/hermes-machines?",

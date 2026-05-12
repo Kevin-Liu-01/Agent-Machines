@@ -13,6 +13,7 @@ import {
 	CATEGORY_LABEL,
 	SERVICES,
 	TASKS,
+	TRUSTED_ADDONS,
 	type ToolCategory,
 } from "@/lib/dashboard/loadout";
 
@@ -231,24 +232,45 @@ export function LoadoutPreview() {
 				))}
 			</div>
 
-			<div className="mt-3 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-				<span>callable by</span>
-				<span className="flex items-center gap-1.5">
-					<Logo mark="nous" size={14} />
-					hermes
-				</span>
-				<span className="text-[var(--ret-text-muted)]">/</span>
-				<span className="flex items-center gap-1.5">
-					<Logo mark="openclaw" size={14} />
-					openclaw
-				</span>
-				<span className="ml-auto hidden md:inline">
-					mirrors{" "}
-					<code className="bg-[var(--ret-surface)] px-1">
-						tool-hierarchy.mdc
-					</code>
-				</span>
+		<div className="mt-px grid grid-cols-1 gap-px overflow-hidden border border-[var(--ret-border)] border-t-0 bg-[var(--ret-border)] md:grid-cols-[1.2fr_0.8fr]">
+			<div className="relative min-h-[80px] overflow-hidden bg-[var(--ret-bg)] p-4">
+				<WingBackground
+					variant="nyx-lines"
+					opacity={{ light: 0.1, dark: 0.24 }}
+					fadeEdges
+				/>
+				<div className="relative z-10 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+					<span>callable by</span>
+					<span className="flex items-center gap-1.5">
+						<Logo mark="nous" size={14} />
+						hermes
+					</span>
+					<span>/</span>
+					<span className="flex items-center gap-1.5">
+						<Logo mark="openclaw" size={14} />
+						openclaw
+					</span>
+				</div>
+				<p className="relative z-10 mt-2 text-[11px] text-[var(--ret-text-dim)]">
+					Mirrors <code className="bg-[var(--ret-surface)] px-1">tool-hierarchy.mdc</code>
+				</p>
 			</div>
+			<div className="relative min-h-[80px] overflow-hidden bg-[var(--ret-bg)] p-4">
+				<WingBackground
+					variant="nyx-waves"
+					opacity={{ light: 0.1, dark: 0.24 }}
+					fadeEdges
+				/>
+				<div className="relative z-10">
+					<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+						{TRUSTED_ADDONS.length} trusted add-ons available
+					</p>
+					<p className="mt-1 text-[11px] text-[var(--ret-text-dim)]">
+						MCPs, CLIs, skills, sources, and providers composable into custom presets.
+					</p>
+				</div>
+			</div>
+		</div>
 		</>
 	);
 }

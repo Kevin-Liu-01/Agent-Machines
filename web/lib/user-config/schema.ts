@@ -45,8 +45,8 @@ export const DEFAULT_MACHINE_SPEC: MachineSpec = {
 export const DEFAULT_MODEL = "anthropic/claude-sonnet-4-6";
 
 /**
- * The 12 bootstrap phases the wizard executes after a machine is
- * provisioned. Phase IDs are stable keys -- never reorder, only append.
+ * Bootstrap phases the wizard executes after a machine is provisioned.
+ * Phase IDs are stable keys -- never reorder, only append.
  */
 export const BOOTSTRAP_PHASES = [
 	"system-deps",
@@ -61,6 +61,7 @@ export const BOOTSTRAP_PHASES = [
 	"register-cursor-mcp",
 	"seed-cron-jobs",
 	"start-gateway",
+	"install-closed-loop-tools",
 ] as const;
 
 export type BootstrapPhaseId = (typeof BOOTSTRAP_PHASES)[number];
@@ -325,7 +326,7 @@ export const DEFAULT_LOADOUT_SOURCES: LoadoutSource[] = [
 		id: "bundled-skills",
 		name: "Bundled SKILL.md library",
 		kind: "bundled",
-		description: "The curated 95-skill wiki-derived library shipped in knowledge/skills.",
+		description: "The curated 96-skill wiki-derived library shipped in knowledge/skills.",
 		uri: "knowledge/skills",
 		enabled: true,
 		createdAt: DEFAULT_CREATED_AT,
@@ -371,6 +372,61 @@ export const DEFAULT_LOADOUT_SOURCES: LoadoutSource[] = [
 		createdAt: DEFAULT_CREATED_AT,
 		updatedAt: DEFAULT_CREATED_AT,
 	},
+	{
+		id: "official-mcp-registry",
+		name: "Model Context Protocol registry",
+		kind: "github",
+		description:
+			"Reputable MCP server source for adding official and maintained tool servers beyond the bundled machine defaults.",
+		uri: "github:modelcontextprotocol/servers",
+		enabled: false,
+		createdAt: DEFAULT_CREATED_AT,
+		updatedAt: DEFAULT_CREATED_AT,
+	},
+	{
+		id: "cursor-skill-packs",
+		name: "Cursor and plugin skill packs",
+		kind: "github",
+		description:
+			"Cursor rules, plugin-provided SKILL.md packs, and local ~/.cursor skills that can be composed into agent presets.",
+		uri: "cursor-public plugins + ~/.cursor/skills",
+		enabled: false,
+		createdAt: DEFAULT_CREATED_AT,
+		updatedAt: DEFAULT_CREATED_AT,
+	},
+	{
+		id: "github-agent-repos",
+		name: "GitHub agent repositories",
+		kind: "github",
+		description:
+			"Any trusted repository containing SKILL.md files, MCP descriptors, install scripts, package manifests, or docs indexes.",
+		uri: "github:<owner>/<repo>",
+		enabled: false,
+		createdAt: DEFAULT_CREATED_AT,
+		updatedAt: DEFAULT_CREATED_AT,
+	},
+	{
+		id: "npm-tool-packages",
+		name: "npm / pnpm tool packages",
+		kind: "npm",
+		description:
+			"Package manifests for CLIs and agent tools that should be installed into the VM and exposed in a preset.",
+		uri: "npm:<package-name>",
+		enabled: false,
+		createdAt: DEFAULT_CREATED_AT,
+		updatedAt: DEFAULT_CREATED_AT,
+	},
+	{
+		id: "url-manifests",
+		name: "Remote agent manifests",
+		kind: "url",
+		description:
+			"JSON or YAML manifests from reputable docs, registries, or internal catalogs describing skills, MCPs, CLIs, and providers.",
+		uri: "https://example.com/agent-machines.json",
+		enabled: false,
+		createdAt: DEFAULT_CREATED_AT,
+		updatedAt: DEFAULT_CREATED_AT,
+	},
 ];
 
 export const DEFAULT_LOADOUT_PRESET: LoadoutPreset = {
@@ -387,6 +443,90 @@ export const DEFAULT_LOADOUT_PRESET: LoadoutPreset = {
 	updatedAt: DEFAULT_CREATED_AT,
 };
 
+export const DEFAULT_LOADOUT_PRESETS: LoadoutPreset[] = [
+	DEFAULT_LOADOUT_PRESET,
+	{
+		id: "frontend-design-lab",
+		name: "Frontend design lab",
+		description:
+			"Design-heavy preset for taste work, browser QA, Figma, animation libraries, and visual implementation loops.",
+		sourceIds: [
+			"bundled-skills",
+			"builtin-tools",
+			"service-registry",
+			"cursor-skill-packs",
+			"npm-tool-packages",
+		],
+		customEntryIds: [],
+		enabledSkillIds: [
+			"frontend-design",
+			"frontend-design-taste",
+			"design-review",
+			"taste-redesign",
+			"agent-browser",
+			"closed-loop-development",
+		],
+		enabledToolIds: ["browser_*", "vision_analyze", "image_generate"],
+		enabledMcpServerIds: ["plugin-figma-figma", "cursor-bridge"],
+		createdAt: DEFAULT_CREATED_AT,
+		updatedAt: DEFAULT_CREATED_AT,
+	},
+	{
+		id: "production-ops",
+		name: "Production ops",
+		description:
+			"Operational preset for Vercel, GitHub, Datadog, Sentry, Linear, logs, CI, incidents, and deployment work.",
+		sourceIds: [
+			"bundled-skills",
+			"bundled-mcps",
+			"builtin-tools",
+			"service-registry",
+			"official-mcp-registry",
+		],
+		customEntryIds: [],
+		enabledSkillIds: [
+			"production-safety",
+			"closed-loop-development",
+			"gh-fix-ci",
+			"deepsec",
+			"perf",
+		],
+		enabledToolIds: ["terminal", "web_search", "session_search"],
+		enabledMcpServerIds: [
+			"plugin-vercel-vercel",
+			"plugin-linear-linear",
+			"plugin-datadog-datadog",
+		],
+		createdAt: DEFAULT_CREATED_AT,
+		updatedAt: DEFAULT_CREATED_AT,
+	},
+	{
+		id: "research-browser",
+		name: "Research browser",
+		description:
+			"Research preset for web search, page extraction, social reach, browser automation, citation gathering, and live source review.",
+		sourceIds: [
+			"bundled-skills",
+			"builtin-tools",
+			"task-hierarchy",
+			"github-agent-repos",
+			"url-manifests",
+		],
+		customEntryIds: [],
+		enabledSkillIds: [
+			"agent-reach",
+			"closed-loop-development",
+			"rtfm",
+			"read-and-review",
+			"content-strategy",
+		],
+		enabledToolIds: ["web_search", "web_extract", "browser_*"],
+		enabledMcpServerIds: ["cursor-ide-browser"],
+		createdAt: DEFAULT_CREATED_AT,
+		updatedAt: DEFAULT_CREATED_AT,
+	},
+];
+
 export const DEFAULT_USER_CONFIG: UserConfig = {
 	providers: {},
 	machines: [],
@@ -398,7 +538,7 @@ export const DEFAULT_USER_CONFIG: UserConfig = {
 	bootstrapPresets: DEFAULT_BOOTSTRAP_PRESETS,
 	customLoadout: [],
 	loadoutSources: DEFAULT_LOADOUT_SOURCES,
-	loadoutPresets: [DEFAULT_LOADOUT_PRESET],
+	loadoutPresets: DEFAULT_LOADOUT_PRESETS,
 	activeLoadoutPresetId: DEFAULT_LOADOUT_PRESET.id,
 	setupStep: "api-key",
 	draftAgentKind: "hermes",

@@ -9,61 +9,66 @@ type Capability = {
 	body: string;
 	notes: string[];
 	mark?: CompositeMark;
+	nyx?: "nyx-lines" | "nyx-waves";
 };
 
 const CAPABILITIES: ReadonlyArray<Capability> = [
 	{
 		kicker: "STATE",
 		title: "Disk persists across sleeps",
-		body: "Chat history, uploaded files, USER.md, MEMORY.md, the FTS5 sessions DB, cron schedules, Python venv, learned skills -- all written to /home/machine. The microVM hibernates between requests; nothing in RAM matters because the disk is the source of truth.",
+		body: "Chat history, files, MEMORY.md, the FTS5 sessions DB, cron schedules, Python venv, skills -- all on /home/machine. The microVM hibernates; the disk is the source of truth.",
 		notes: ["/home/machine", "MEMORY.md", "FTS5"],
 		mark: "agent",
+		nyx: "nyx-waves",
 	},
 	{
 		kicker: "ACCOUNT",
-		title: "One fleet per Clerk identity",
-		body: "Sign in once; your machines follow you across devices and browsers. UserConfig lives in Clerk private metadata -- which provider keys you've attached, which machine is active, which agent is selected. Per-user multi-tenancy from line one.",
-		notes: ["Clerk private metadata", "MachineRef[]", "activeMachineId"],
+		title: "One fleet per identity",
+		body: "Sign in once; machines follow across devices. UserConfig in Clerk metadata -- provider keys, active machine, agent choice. Per-user multi-tenancy.",
+		notes: ["Clerk metadata", "MachineRef[]", "activeMachineId"],
 	},
 	{
 		kicker: "RUNTIME",
-		title: "Sleep / wake by the second",
-		body: "Dedalus microVMs hibernate when idle and wake on the first prompt -- typically <30s cold-start, <5s after recent activity. Billed by the second. Wake-on-read is wired into chat, artifacts, and the live dashboard.",
-		notes: ["microVM", "wake-on-read", "second-billing"],
+		title: "Sleep / wake by second",
+		body: "Dedalus microVMs hibernate idle, wake on first prompt -- <30s cold, <5s warm. Billed by the second. Wake-on-read wired into chat and dashboard.",
+		notes: ["microVM", "wake-on-read", "second-billed"],
 		mark: "dedalus",
+		nyx: "nyx-lines",
 	},
 	{
 		kicker: "PROVIDERS",
-		title: "Dedalus live; more hosts shaped",
-		body: "Dedalus Machines is wired end-to-end today. Vercel Sandbox and Fly Machines already exist in the MachineProvider schema and setup UI, with explicit not-supported responses until their provisioners land.",
-		notes: ["dedalus live", "vercel-sandbox", "fly"],
+		title: "Dedalus + 2 stubs",
+		body: "Dedalus live end-to-end. Vercel Sandbox and Fly Machines exist in the schema and setup UI, responding explicitly until their provisioners land.",
+		notes: ["dedalus", "vercel-sandbox", "fly"],
 	},
 	{
 		kicker: "AGENTS",
 		title: "Hermes or OpenClaw",
-		body: "Two agents, same OpenAI-compatible /v1/chat/completions endpoint. Hermes ships memory + cron + MCP-native; OpenClaw ships Anthropic computer-use loop with browser + screenshot. Swap from the dashboard navbar.",
-		notes: ["/v1/chat/completions", "swap any time", "same machine"],
+		body: "Two agents, same /v1 endpoint. Hermes: memory + cron + MCP. OpenClaw: Anthropic computer-use + browser + screenshot. Swap from the navbar.",
+		notes: ["/v1/chat", "swap any time"],
 		mark: "agent",
 	},
 	{
 		kicker: "TOOLS",
-		title: "23 built-ins + 17 service routes",
-		body: "Terminal, filesystem, web search, browser automation, vision, image generation, code execution, subagent delegation. Cursor is one path; Vercel, Stripe, Supabase, Linear, GitHub, Slack, PostHog, Sentry, Figma, and more sit in the MCP/CLI/skill hierarchy.",
-		notes: ["terminal", "browser_*", "MCP/CLI", "skills"],
+		title: "23 built-ins + 17 services",
+		body: "Terminal, fs, web search, browser, vision, codegen, subagent. Plus closed-loop CLIs for browser, API, DB, logs, and network verification.",
+		notes: ["terminal", "browser_*", "curl/httpx", "sqlite3"],
 		mark: "agent",
+		nyx: "nyx-waves",
 	},
 	{
 		kicker: "KNOWLEDGE",
-		title: "95-skill bundled library",
-		body: "SKILL.md docs auto-loaded by intent: agent-ethos, empirical-verification, production-safety, design-taste, deepsec, torvalds. Drop a folder into knowledge/skills/, click Reload on the dashboard, the VM git-pulls and rsyncs -- no CLI ever.",
-		notes: ["agent-ethos", "deepsec", "git pull", "Reload button"],
+		title: "96-skill library",
+		body: "SKILL.md docs auto-loaded by intent. Drop a folder into knowledge/skills/, click Reload on the dashboard, the VM git-pulls -- no CLI.",
+		notes: ["agent-ethos", "deepsec", "Reload"],
 	},
 	{
 		kicker: "DELEGATION",
-		title: "Cursor is optional delegation",
-		body: "When configured, Hermes can hand code work to a Cursor SDK subagent through cursor_agent. Without CURSOR_API_KEY, the machine still keeps chat, tools, skills, cron, browser automation, files, and provider control working.",
-		notes: ["cursor_agent", "optional", ".cursor/rules"],
+		title: "Cursor is optional",
+		body: "Hermes can hand code work to Cursor SDK through cursor_agent. Without CURSOR_API_KEY, the machine still works: chat, tools, skills, cron, browser, files.",
+		notes: ["cursor_agent", "optional"],
 		mark: "cursor",
+		nyx: "nyx-lines",
 	},
 ];
 
@@ -90,9 +95,9 @@ export function CapabilityGrid() {
 							"transition-colors duration-150 hover:bg-[var(--ret-surface)]",
 						)}
 					>
-						{index % 2 === 0 ? (
+						{c.nyx ? (
 							<WingBackground
-								variant={index % 4 === 0 ? "nyx-lines" : "nyx-waves"}
+								variant={c.nyx}
 								opacity={{ light: 0.13, dark: 0.26 }}
 								fadeEdges
 							/>

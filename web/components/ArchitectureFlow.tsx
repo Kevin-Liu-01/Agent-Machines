@@ -623,7 +623,7 @@ const INITIAL_NODES: Node<NodeData>[] = [
 		position: { x: COL.c2, y: Y.tools },
 		data: {
 			eyebrow: "behavior packs",
-			title: "95 SKILL.md files",
+			title: "96 SKILL.md files",
 			subtitle: "load on demand by intent",
 			body: "Behavior packs that activate when a prompt matches the skill description. Reload from GitHub via the dashboard.",
 			bullets: [
@@ -986,7 +986,7 @@ export function ArchitectureFlow() {
 				<MachineNote
 					label="loadout"
 					value="more than cursor"
-					body="23 built-ins + 17 service MCPs + 95 skills + optional cursor."
+					body="23 built-ins + 17 service MCPs + 96 skills + optional cursor."
 				/>
 			</div>
 

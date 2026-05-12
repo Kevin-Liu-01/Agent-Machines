@@ -7,11 +7,18 @@
  */
 
 export const VM_HOME = "/home/machine";
+export const VM_AGENT_HOME = `${VM_HOME}/.agent`;
+export const VM_AGENT_DOCS_DIR = `${VM_AGENT_HOME}/docs`;
+export const VM_MACHINE_HOME = `${VM_HOME}/.machine`;
 export const VM_HERMES_HOME = `${VM_HOME}/.hermes`;
 export const VM_VENV = `${VM_HOME}/.venv`;
 export const VM_UV_CACHE = `${VM_HOME}/.uv-cache`;
 export const VM_LOCAL_BIN = `${VM_HOME}/.local/bin`;
 export const VM_NODE_DIR = `${VM_HOME}/node`;
+export const VM_NPM_PREFIX = `${VM_HOME}/.npm-global`;
+export const VM_NPM_CACHE = `${VM_HOME}/.npm-cache`;
+export const VM_PLAYWRIGHT_BROWSERS = `${VM_HOME}/.cache/ms-playwright`;
+export const VM_AGENT_BROWSER_HOME = `${VM_HOME}/.agent-browser`;
 export const VM_BRIDGE_DIR = `${VM_HOME}/cursor-bridge`;
 export const VM_BRIDGE_DROP = `${VM_HOME}/.cursor-bridge-payload.tar.gz`;
 
@@ -53,7 +60,7 @@ export const PORT_DASHBOARD = 9119;
 export const STATE_FILE = ".machine-state.json";
 
 /** Bumped whenever bootstrap logic changes; triggers re-bootstrap on deploy. */
-export const DEPLOY_VERSION = "1.2.0";
+export const DEPLOY_VERSION = "1.3.0";
 
 /** Pinned Node major for the cursor-bridge MCP server. Cursor SDK needs Node 20+. */
 export const NODE_MAJOR = "22";
@@ -73,5 +80,9 @@ export const SHELL_ENV = [
 	`export HERMES_HOME=${VM_HERMES_HOME}`,
 	`export VIRTUAL_ENV=${VM_VENV}`,
 	`export UV_CACHE_DIR=${VM_UV_CACHE}`,
-	`export PATH=${VM_NODE_DIR}/bin:${VM_LOCAL_BIN}:${VM_VENV}/bin:$PATH`,
+	`export NPM_CONFIG_PREFIX=${VM_NPM_PREFIX}`,
+	`export NPM_CONFIG_CACHE=${VM_NPM_CACHE}`,
+	`export PLAYWRIGHT_BROWSERS_PATH=${VM_PLAYWRIGHT_BROWSERS}`,
+	`export AGENT_BROWSER_DATA_DIR=${VM_AGENT_BROWSER_HOME}`,
+	`export PATH=${VM_NPM_PREFIX}/bin:${VM_NODE_DIR}/bin:${VM_LOCAL_BIN}:${VM_VENV}/bin:$PATH`,
 ].join(" && ");

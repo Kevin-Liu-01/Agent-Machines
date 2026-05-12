@@ -132,6 +132,7 @@ const CATEGORY_OF = {
 	"agent-browser": "ops",
 	"agent-reach": "ops",
 	"agent-activity-log": "ops",
+	"closed-loop-development": "ops",
 	"project-briefing": "ops",
 	"db": "ops",
 	"db-write": "ops",

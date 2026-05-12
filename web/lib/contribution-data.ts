@@ -440,10 +440,10 @@ function pickMilestoneEvent(
 			},
 		],
 		[
-			95,
+			96,
 			{
 				kind: "milestone",
-				label: "wiki sync . 95 skills",
+				label: "wiki sync . 96 skills",
 				detail: "knowledge/skills filled from my-wiki",
 			},
 		],

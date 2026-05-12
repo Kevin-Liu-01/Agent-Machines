@@ -50,7 +50,7 @@ const STEPS: ReadonlyArray<Step> = [
 		body: "Built-ins and custom loadout entries live in the same account settings model so terminal edits can sync back into the dashboard.",
 		Icon: IconTools,
 		metrics: [
-			["skills", "95 synced"],
+			["skills", "96 synced"],
 			["services", "17 routes"],
 			["custom", "skill . tool . mcp . cli . plugin"],
 		],

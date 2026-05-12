@@ -28,13 +28,20 @@ import {
 	REPO_BRANCH,
 	REPO_CLONE_URL,
 	SHELL_ENV,
+	VM_AGENT_DOCS_DIR,
+	VM_AGENT_HOME,
+	VM_AGENT_BROWSER_HOME,
 	VM_BRIDGE_DIR,
 	VM_DEPLOY_MARKER,
 	VM_GATEWAY_LOG,
 	VM_HERMES_HOME,
 	VM_HOME,
 	VM_LOCAL_BIN,
+	VM_MACHINE_HOME,
 	VM_NODE_DIR,
+	VM_NPM_CACHE,
+	VM_NPM_PREFIX,
+	VM_PLAYWRIGHT_BROWSERS,
 	VM_RELOAD_SCRIPT,
 	VM_REPO_DIR,
 	VM_UV_CACHE,
@@ -61,9 +68,18 @@ async function systemDeps({ client, machineId }: BootstrapInput): Promise<void> 
 	await exec(
 		client,
 		machineId,
-		`mkdir -p ${VM_HOME} ${VM_LOCAL_BIN} ${VM_UV_CACHE} ${VM_HERMES_HOME}/logs`,
+		`mkdir -p ${VM_HOME} ${VM_LOCAL_BIN} ${VM_UV_CACHE} ${VM_NPM_PREFIX} ${VM_NPM_CACHE} ` +
+			`${VM_PLAYWRIGHT_BROWSERS} ${VM_AGENT_BROWSER_HOME} ${VM_AGENT_DOCS_DIR} ` +
+			`${VM_HERMES_HOME}/logs ${VM_MACHINE_HOME}/logs/services`,
 	);
-	if (await check(client, machineId, `command -v curl && command -v git && command -v gcc`)) {
+	if (
+		await check(
+			client,
+			machineId,
+			"command -v curl && command -v git && command -v gcc && " +
+				"command -v jq && command -v sqlite3 && command -v dig && command -v ss",
+		)
+	) {
 		dim("  apt deps already present");
 		return;
 	}
@@ -71,7 +87,7 @@ async function systemDeps({ client, machineId }: BootstrapInput): Promise<void> 
 		client,
 		machineId,
 		"apt-get update -qq 2>&1 | tail -3 && " +
-			"apt-get install -y -qq curl git build-essential ca-certificates 2>&1 | tail -3",
+			"apt-get install -y -qq curl git build-essential ca-certificates jq sqlite3 dnsutils iproute2 netcat-openbsd 2>&1 | tail -3",
 		{ timeoutMs: 300_000 },
 	);
 }
@@ -363,8 +379,13 @@ async function startGateway({ client, machineId }: BootstrapInput): Promise<void
 		`export HERMES_HOME=${VM_HERMES_HOME}`,
 		`export VIRTUAL_ENV=${VM_VENV}`,
 		`export UV_CACHE_DIR=${VM_UV_CACHE}`,
-		`export PATH=${VM_NODE_DIR}/bin:${VM_LOCAL_BIN}:${VM_VENV}/bin:$PATH`,
-		`mkdir -p ${VM_HERMES_HOME}/logs`,
+		`export NPM_CONFIG_PREFIX=${VM_NPM_PREFIX}`,
+		`export NPM_CONFIG_CACHE=${VM_NPM_CACHE}`,
+		`export PLAYWRIGHT_BROWSERS_PATH=${VM_PLAYWRIGHT_BROWSERS}`,
+		`export AGENT_BROWSER_DATA_DIR=${VM_AGENT_BROWSER_HOME}`,
+		`export PATH=${VM_NPM_PREFIX}/bin:${VM_NODE_DIR}/bin:${VM_LOCAL_BIN}:${VM_VENV}/bin:$PATH`,
+		`mkdir -p ${VM_HERMES_HOME}/logs ${VM_MACHINE_HOME}/logs/services`,
+		`ln -sfn ${VM_GATEWAY_LOG} ${VM_MACHINE_HOME}/logs/services/hermes-gateway.log`,
 		`exec hermes gateway >> ${VM_GATEWAY_LOG} 2>&1`,
 	].join("\\n");
 	await exec(
@@ -395,8 +416,13 @@ async function startDashboard({ client, machineId }: BootstrapInput): Promise<vo
 		`export HOME=${VM_HOME}`,
 		`export HERMES_HOME=${VM_HERMES_HOME}`,
 		`export VIRTUAL_ENV=${VM_VENV}`,
-		`export PATH=${VM_LOCAL_BIN}:${VM_VENV}/bin:$PATH`,
-		`mkdir -p ${VM_HERMES_HOME}/logs`,
+		`export NPM_CONFIG_PREFIX=${VM_NPM_PREFIX}`,
+		`export NPM_CONFIG_CACHE=${VM_NPM_CACHE}`,
+		`export PLAYWRIGHT_BROWSERS_PATH=${VM_PLAYWRIGHT_BROWSERS}`,
+		`export AGENT_BROWSER_DATA_DIR=${VM_AGENT_BROWSER_HOME}`,
+		`export PATH=${VM_NPM_PREFIX}/bin:${VM_NODE_DIR}/bin:${VM_LOCAL_BIN}:${VM_VENV}/bin:$PATH`,
+		`mkdir -p ${VM_HERMES_HOME}/logs ${VM_MACHINE_HOME}/logs/services`,
+		`ln -sfn ${dashLog} ${VM_MACHINE_HOME}/logs/services/hermes-dashboard.log`,
 		`exec hermes dashboard --host 0.0.0.0 --port ${PORT_DASHBOARD} --no-open --insecure >> ${dashLog} 2>&1`,
 	].join("\\n");
 	await exec(
@@ -446,6 +472,113 @@ async function installNode({ client, machineId }: BootstrapInput): Promise<void>
 		`tar -xJf /tmp/node.tar.xz -C ${VM_NODE_DIR} --strip-components=1 && ` +
 		`rm /tmp/node.tar.xz && ${VM_NODE_DIR}/bin/node --version`;
 	await exec(client, machineId, resolveScript, { timeoutMs: 300_000 });
+}
+
+async function installClosedLoopTools({
+	client,
+	machineId,
+}: BootstrapInput): Promise<void> {
+	await exec(
+		client,
+		machineId,
+		`mkdir -p ${VM_NPM_PREFIX} ${VM_NPM_CACHE} ${VM_PLAYWRIGHT_BROWSERS} ${VM_AGENT_BROWSER_HOME}`,
+	);
+	const hasTools = await check(
+		client,
+		machineId,
+		`${SHELL_ENV} && command -v agent-browser && command -v playwright && command -v httpx && ` +
+			`ls ${VM_PLAYWRIGHT_BROWSERS}/chromium-* >/dev/null 2>&1`,
+	);
+	if (hasTools) {
+		// Browser system libraries live on the resettable root filesystem, so
+		// re-assert them even when the persistent browser cache is already warm.
+		await exec(
+			client,
+			machineId,
+			`${SHELL_ENV} && playwright install-deps chromium 2>&1 | tail -8`,
+			{ timeoutMs: 300_000 },
+		);
+		dim("  closed-loop tools already installed");
+		return;
+	}
+	await exec(
+		client,
+		machineId,
+		`set -o pipefail; ${SHELL_ENV} && ` +
+			`npm install -g --no-audit --no-fund --loglevel=error agent-browser playwright @playwright/mcp 2>&1 | tail -30 && ` +
+			`playwright install --with-deps chromium 2>&1 | tail -20 && ` +
+			`agent-browser install 2>&1 | tail -20 && ` +
+			`uv tool install 'httpx[cli]' 2>&1 | tail -12`,
+		{ timeoutMs: 900_000 },
+	);
+	await exec(
+		client,
+		machineId,
+		`${SHELL_ENV} && command -v agent-browser && playwright --version && httpx --version`,
+	);
+}
+
+async function writeAgentEnvironmentDocs({
+	client,
+	machineId,
+}: BootstrapInput): Promise<void> {
+	const llmTxt = [
+		"Agent Machines runtime context.",
+		"",
+		"Read /.agent/docs/agent-context.md before assuming which tools exist.",
+		"Close the loop yourself: write code, start the service, hit the endpoint, inspect logs, fix, and retry.",
+		"Use browser automation for UI verification, curl/httpx+jq for APIs, sqlite3 for local DBs, and ss/dig/curl -v for network debugging.",
+		"Service logs are available at /.machine/logs/services/ with persistent originals under /home/machine.",
+	].join("\n");
+	const contextMd = [
+		"# Agent Machine Context",
+		"",
+		"This machine is built for closed-loop agent development. Prefer proving behavior over asking the operator to check it.",
+		"",
+		"## Persistent Paths",
+		"",
+		"- `/home/machine` survives sleep/wake. Keep toolchains, caches, repos, and artifacts here.",
+		"- `/.agent` points at `/home/machine/.agent` for machine-readable runtime docs.",
+		"- `/.machine` points at `/home/machine/.machine` for runtime state and compatibility paths.",
+		"- `~/.hermes` stores Hermes config, skills, memory, crons, sessions, and logs.",
+		"- `~/.agent-machines` stores product data such as chats and artifacts.",
+		"",
+		"## Closed-Loop Tools",
+		"",
+		"- Browser/UI: `agent-browser`, `playwright`, and `npx @playwright/mcp` are installed with Chromium cached under `/home/machine/.cache/ms-playwright`.",
+		"- API testing: `curl`, `jq`, and `httpx` are installed. Hit the real endpoint and inspect the actual response.",
+		"- Database inspection: `sqlite3` is installed for local SQLite files and migration checks.",
+		"- Network debugging: `ss`, `dig`, `curl -v`, and `nc` are installed for ports, DNS, and wire-level checks.",
+		"- Test runners: use the repo-native runner first (`node --test`, `npm test`, `pytest`, `go test`, `cargo test`, etc.).",
+		"",
+		"## Service Logs",
+		"",
+		"- Hermes gateway: `~/.hermes/logs/gateway.log` and `/.machine/logs/services/hermes-gateway.log`.",
+		"- Hermes dashboard: `~/.hermes/logs/dashboard.log` and `/.machine/logs/services/hermes-dashboard.log`.",
+		"- OpenClaw gateway, when installed: `~/.openclaw/logs/gateway.log`.",
+		"",
+		"## Default Loop",
+		"",
+		"1. Read the project instructions and repo structure.",
+		"2. Make the smallest viable change.",
+		"3. Start the relevant service or test target.",
+		"4. Exercise it with the right real-world tool: browser, curl/httpx, sqlite3, or test runner.",
+		"5. Read failures and logs directly.",
+		"6. Fix the root cause and repeat until the result is observed working.",
+	].join("\n");
+	const llmB64 = Buffer.from(llmTxt).toString("base64");
+	const contextB64 = Buffer.from(contextMd).toString("base64");
+	await exec(
+		client,
+		machineId,
+		`mkdir -p ${VM_AGENT_DOCS_DIR} ${VM_MACHINE_HOME}/logs/services && ` +
+			`echo ${llmB64} | base64 -d > ${VM_AGENT_HOME}/llm.txt && ` +
+			`echo ${contextB64} | base64 -d > ${VM_AGENT_DOCS_DIR}/agent-context.md && ` +
+			`ln -sfn ${VM_AGENT_HOME} /.agent && ` +
+			`ln -sfn ${VM_MACHINE_HOME} /.machine && ` +
+			`ln -sfn ${VM_GATEWAY_LOG} ${VM_MACHINE_HOME}/logs/services/hermes-gateway.log && ` +
+			`ln -sfn ${VM_HERMES_HOME}/logs/dashboard.log ${VM_MACHINE_HOME}/logs/services/hermes-dashboard.log`,
+	);
 }
 
 async function installCursorBridge(input: BootstrapInput): Promise<void> {
@@ -569,6 +702,12 @@ export async function runBootstrap(input: BootstrapInput): Promise<void> {
 	await phase("Install uv (Python package manager)", () => installUv(input));
 	await phase("Install Hermes Agent (this can take a few minutes)", () => installHermes(input));
 	await phase(`Install Node.js ${NODE_MAJOR}.x (for the Cursor SDK bridge)`, () => installNode(input));
+	await phase("Install closed-loop dev tools (browser, API, DB, network)", () =>
+		installClosedLoopTools(input),
+	);
+	await phase("Write machine context docs (/.agent + /.machine)", () =>
+		writeAgentEnvironmentDocs(input),
+	);
 	await phase("Seed knowledge base (skills, persona, memory)", () => seedKnowledge(input));
 	await phase("Install git-backed reload helper (for dashboard)", () => installGitReload(input));
 	await phase("Build cursor-bridge MCP server (Cursor SDK)", () => installCursorBridge(input));

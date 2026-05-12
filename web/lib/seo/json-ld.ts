@@ -91,7 +91,7 @@ export function buildRootJsonLd(): JsonLdGraph {
 					"Dedalus Machines provider live today",
 					"MachineProvider abstraction for Vercel Sandbox and Fly Machines",
 					"OpenAI-compatible /v1/chat/completions endpoint",
-					"95 SKILL.md skills auto-loaded by intent",
+					"96 SKILL.md skills auto-loaded by intent",
 					"17 service routes across MCP, CLI, plugin skills, and personal skills",
 					"23 built-in agent tools (shell, filesystem, browser, vision, code, memory, schedule, search)",
 					"Optional Cursor SDK delegation for code edits",

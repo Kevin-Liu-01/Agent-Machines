@@ -28,12 +28,27 @@ Plus four MCP tools from `mcp_servers.cursor` (the cursor-bridge to the Cursor T
 - `cursor_list_skills` -- list local skills available for injection into Cursor prompts.
 - `cursor_models` -- list Cursor models the API key can use.
 
+## Closed-loop CLIs (installed at bootstrap)
+
+These are installed globally and live under `/home/machine/.npm-global/bin` and `/home/machine/.local/bin`:
+
+- `agent-browser` -- CLI browser automation with snapshots, ref-based actions, screenshots. Session data at `~/.agent-browser/`.
+- `playwright` -- Chromium cached at `~/.cache/ms-playwright/`. Use for deterministic browser tests, screenshots, and page inspection.
+- `httpx` -- HTTP client for API smoke tests. Installed via `uv tool install`.
+- `curl`, `jq` -- always available. Hit endpoints and parse JSON.
+- `sqlite3` -- inspect local databases, verify migrations.
+- `ss`, `dig`, `nc` -- check listeners (`ss -tlnp`), resolve DNS (`dig`), test connections (`nc`).
+
+Service logs: `/.machine/logs/services/` has symlinks to gateway and dashboard logs. Originals live under `~/.hermes/logs/`.
+Agent docs: `/.agent/llm.txt` and `/.agent/docs/agent-context.md` describe the full tool inventory.
+
 ## Loaded skills
 
 Each lives at `~/.hermes/skills/<name>/SKILL.md`:
 
 - `agent-ethos` -- minimal-fix philosophy
 - `empirical-verification` -- scientific method for code
+- `closed-loop-development` -- use machine tools to verify your own work instead of asking the operator
 - `production-safety` -- never patch prod
 - `git-workflow` -- switch/restore, worktrees, commits
 - `frontend-design-taste` -- anti-slop UI rules
@@ -41,9 +56,10 @@ Each lives at `~/.hermes/skills/<name>/SKILL.md`:
 - `automation-cron` -- schedule recurring agent tasks
 - `security-audit` -- adversarial code review
 - `computer-use` -- browser automation patterns
+- `agent-browser` -- CLI browser automation via agent-browser
 - `plan-mode-review` -- structured review checklist
 - `taste-output` -- never truncate or stub generated code
-- `dedalus-machines` -- how this VM is wired
+- `dedalus-machines` -- how this VM is wired, including closed-loop tool paths
 - `cursor-coding` -- when and how to delegate code work to a Cursor agent via the `cursor_agent` MCP tool
 
 ## Cron automations

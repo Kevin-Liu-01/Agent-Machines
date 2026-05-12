@@ -9,6 +9,7 @@ This file is loaded into the system prompt on every session. Combined with `SOUL
 3. **Fix root causes.** A guard clause at the call site hides a bug in the function. Patch the function.
 4. **Fail closed.** If a path is unreachable, raise. If an invariant is violated, raise. Silent fallbacks turn one bug into ten.
 5. **Cutover, not compatibility.** When replacing a system, delete the old code in the same change. Two implementations of the same thing is worse than either alone.
+6. **Close the loop.** When the machine can verify something, verify it directly: browser automation for UI, curl/httpx for APIs, sqlite3 for DB state, service logs for runtime failures.
 
 ## Code generation rules
 

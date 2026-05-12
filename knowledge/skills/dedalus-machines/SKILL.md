@@ -50,6 +50,16 @@ Per-second usage while awake. Storage charged monthly. Sleep stops the per-secon
 ├── .venv/                      # Python 3.11 venv with Hermes installed
 ├── .uv-cache/                  # uv package cache
 ├── .local/bin/                 # uv binary, hermes symlink
+├── .npm-global/                # global npm packages (agent-browser, playwright, etc.)
+├── .npm-cache/                 # npm cache
+├── .cache/ms-playwright/       # persistent Chromium install for Playwright
+├── .agent-browser/             # agent-browser session data
+├── .agent/                     # machine-readable context (also symlinked at /.agent)
+│   ├── llm.txt                 # one-liner for LLMs to orient themselves
+│   └── docs/
+│       └── agent-context.md    # full closed-loop tool inventory and workflow
+├── .machine/                   # runtime state (also symlinked at /.machine)
+│   └── logs/services/          # symlinks to gateway/dashboard logs
 ├── .hermes/
 │   ├── config.yaml             # provider, model, agent settings
 │   ├── .env                    # API_SERVER_KEY and other secrets
@@ -68,6 +78,20 @@ Per-second usage while awake. Storage charged monthly. Sleep stops the per-secon
 ```
 
 Anything written elsewhere (e.g. `/tmp`, `/etc`) is gone after wake.
+
+## Closed-loop tools
+
+Bootstrap installs these so the agent can verify its own work without asking the operator:
+
+| Category | Tools | Notes |
+|----------|-------|-------|
+| Browser/UI | `agent-browser`, `playwright`, `npx @playwright/mcp` | Chromium cached at `~/.cache/ms-playwright`. Snapshot before refs, re-snapshot after DOM changes. |
+| API testing | `curl`, `jq`, `httpx` | Hit the real endpoint. Parse the real response. |
+| Database | `sqlite3` | Query local DBs, verify migrations, inspect schema. |
+| Network | `ss`, `dig`, `curl -v`, `nc` | Check listeners, resolve DNS, inspect connections. |
+| Test runners | `node --test`, `npm test`, `pytest`, `go test`, `cargo test` | Use the repo-native runner. |
+| Service logs | `/.machine/logs/services/` | Symlinks to gateway and dashboard logs. Originals under `~/.hermes/logs/`. |
+| Agent docs | `/.agent/llm.txt`, `/.agent/docs/agent-context.md` | Read these before assuming which tools exist. |
 
 ## Public surfaces
 
@@ -112,4 +136,4 @@ const p = await client.machines.previews.create({
 
 ## When the user asks me about this VM
 
-Run `hermes doctor` first. Then check the gateway log (`tail ~/.hermes/logs/gateway.log`). Then check port bindings (`ss -tlnp`). Don't speculate -- empirics first.
+Run `hermes doctor` first. Then check the gateway log (`tail ~/.hermes/logs/gateway.log` or `tail /.machine/logs/services/hermes-gateway.log`). Then check port bindings (`ss -tlnp`). Don't speculate -- empirics first. Read `/.agent/docs/agent-context.md` for the full closed-loop tool inventory.

@@ -18,9 +18,15 @@ import {
 } from "@/lib/user-config/schema";
 
 const HOME = "/home/machine";
+const AGENT_HOME = `${HOME}/.agent`;
+const MACHINE_HOME = `${HOME}/.machine`;
 const HERMES_HOME = `${HOME}/.hermes`;
 const APP_HOME = `${HOME}/.agent-machines`;
 const OPENCLAW_HOME = `${HOME}/.openclaw`;
+const NPM_PREFIX = `${HOME}/.npm-global`;
+const NPM_CACHE = `${HOME}/.npm-cache`;
+const PLAYWRIGHT_BROWSERS = `${HOME}/.cache/ms-playwright`;
+const AGENT_BROWSER_HOME = `${HOME}/.agent-browser`;
 const HERMES_PORT = 8642;
 const OPENCLAW_PORT = 18789;
 const CLOUDFLARED_BIN = `${HOME}/.local/bin/cloudflared`;
@@ -124,8 +130,9 @@ function commandFor(
 		case "system-deps":
 			return [
 				"set -e",
-				`mkdir -p ${APP_HOME}/chats ${APP_HOME}/artifacts ${HERMES_HOME}/logs ${OPENCLAW_HOME}/logs`,
-				"command -v curl >/dev/null || (apt-get update -qq && apt-get install -y -qq curl git build-essential ca-certificates)",
+				`mkdir -p ${APP_HOME}/chats ${APP_HOME}/artifacts ${HERMES_HOME}/logs ${OPENCLAW_HOME}/logs ${MACHINE_HOME}/logs/services`,
+				"apt-get update -qq >/dev/null",
+				"apt-get install -y -qq curl git build-essential ca-certificates jq sqlite3 dnsutils iproute2 netcat-openbsd >/dev/null",
 			].join(" && ");
 		case "install-uv":
 			return [
@@ -184,7 +191,32 @@ function commandFor(
 			return `mkdir -p ${HERMES_HOME}/crons && touch ${HERMES_HOME}/crons/.seeded`;
 		case "start-gateway":
 			return agent === "openclaw" ? startOpenClaw() : startHermes();
+		case "install-closed-loop-tools":
+			return installClosedLoopTools();
 	}
+}
+
+function installClosedLoopTools(): string {
+	return [
+		"set -e",
+		`mkdir -p ${NPM_PREFIX} ${NPM_CACHE} ${PLAYWRIGHT_BROWSERS} ${AGENT_BROWSER_HOME} ${AGENT_HOME}/docs ${MACHINE_HOME}/logs/services`,
+		`export HOME=${HOME}`,
+		`export NPM_CONFIG_PREFIX=${NPM_PREFIX}`,
+		`export NPM_CONFIG_CACHE=${NPM_CACHE}`,
+		`export PLAYWRIGHT_BROWSERS_PATH=${PLAYWRIGHT_BROWSERS}`,
+		`export AGENT_BROWSER_DATA_DIR=${AGENT_BROWSER_HOME}`,
+		`export PATH=${NPM_PREFIX}/bin:${HOME}/.local/bin:$PATH`,
+		"npm install -g --no-audit --no-fund --loglevel=error agent-browser playwright @playwright/mcp",
+		"playwright install --with-deps chromium",
+		"agent-browser install",
+		"uv tool install 'httpx[cli]' || python3 -m pip install --user 'httpx[cli]'",
+		`cat > ${AGENT_HOME}/llm.txt <<'EOF'\nAgent Machines runtime context.\n\nRead /.agent/docs/agent-context.md before assuming which tools exist. Close the loop with browser automation, curl/httpx+jq, sqlite3, service logs, and network probes.\nEOF`,
+		`cat > ${AGENT_HOME}/docs/agent-context.md <<'EOF'\n# Agent Machine Context\n\nThis machine is built for closed-loop agent development. Write code, start the service, hit the endpoint, inspect logs, fix, and retry.\n\n## Tools\n\n- Browser/UI: agent-browser, Playwright, and npx @playwright/mcp with Chromium cached under /home/machine/.cache/ms-playwright.\n- API: curl, jq, and httpx.\n- Database: sqlite3.\n- Network: ss, dig, curl -v, and nc.\n- Logs: /.machine/logs/services/ plus runtime originals under /home/machine.\n\nKeep toolchains and caches under /home/machine because the root filesystem can reset on wake.\nEOF`,
+		`ln -sfn ${AGENT_HOME} /.agent`,
+		`ln -sfn ${MACHINE_HOME} /.machine`,
+		`ln -sfn ${HERMES_HOME}/logs/gateway.log ${MACHINE_HOME}/logs/services/hermes-gateway.log`,
+		`ln -sfn ${HERMES_HOME}/logs/dashboard.log ${MACHINE_HOME}/logs/services/hermes-dashboard.log`,
+	].join("\n");
 }
 
 function configureHermes(
@@ -262,7 +294,7 @@ function startHermes(): string {
 		"set -e",
 		`ps -eo pid,cmd | awk '/hermes gateway/ && !/awk/ && !/bash/ {print $1}' | xargs -r kill 2>/dev/null || true`,
 		hermesEnv(),
-		`cat > ${HOME}/start-hermes-gateway.sh <<'EOF'\n#!/usr/bin/env bash\nset -euo pipefail\nexport HOME=${HOME}\nexport HERMES_HOME=${HERMES_HOME}\nexport PATH=${HERMES_HOME}/venv/bin:${HOME}/.local/bin:$PATH\nsource ${HERMES_HOME}/.env\nexec hermes gateway >> ${HERMES_HOME}/logs/gateway.log 2>&1\nEOF`,
+		`cat > ${HOME}/start-hermes-gateway.sh <<'EOF'\n#!/usr/bin/env bash\nset -euo pipefail\nexport HOME=${HOME}\nexport HERMES_HOME=${HERMES_HOME}\nexport NPM_CONFIG_PREFIX=${NPM_PREFIX}\nexport NPM_CONFIG_CACHE=${NPM_CACHE}\nexport PLAYWRIGHT_BROWSERS_PATH=${PLAYWRIGHT_BROWSERS}\nexport AGENT_BROWSER_DATA_DIR=${AGENT_BROWSER_HOME}\nexport PATH=${NPM_PREFIX}/bin:${HERMES_HOME}/venv/bin:${HOME}/.local/bin:$PATH\nmkdir -p ${MACHINE_HOME}/logs/services\nln -sfn ${HERMES_HOME}/logs/gateway.log ${MACHINE_HOME}/logs/services/hermes-gateway.log\nsource ${HERMES_HOME}/.env\nexec hermes gateway >> ${HERMES_HOME}/logs/gateway.log 2>&1\nEOF`,
 		`chmod +x ${HOME}/start-hermes-gateway.sh`,
 		`(setsid ${HOME}/start-hermes-gateway.sh </dev/null &>/dev/null &) && sleep 12`,
 		`ss -tlnp 2>/dev/null | grep ':${HERMES_PORT}'`,
@@ -275,7 +307,7 @@ function startOpenClaw(): string {
 		"set -e",
 		`ps -eo pid,cmd | awk '/openclaw gateway run/ && !/awk/ && !/bash/ {print $1}' | xargs -r kill 2>/dev/null || true`,
 		openClawEnv(),
-		`cat > ${HOME}/start-openclaw-gateway.sh <<'EOF'\n#!/usr/bin/env bash\nset -euo pipefail\nexport HOME=${HOME}\nexport PATH=${HOME}/.npm-global/bin:$PATH\nexport OPENCLAW_STATE_DIR=${OPENCLAW_HOME}\nexport OPENCLAW_NO_RESPAWN=1\nsource ${OPENCLAW_HOME}/.env\nexec openclaw gateway run > ${OPENCLAW_HOME}/logs/gateway.log 2>&1\nEOF`,
+		`cat > ${HOME}/start-openclaw-gateway.sh <<'EOF'\n#!/usr/bin/env bash\nset -euo pipefail\nexport HOME=${HOME}\nexport NPM_CONFIG_PREFIX=${NPM_PREFIX}\nexport NPM_CONFIG_CACHE=${NPM_CACHE}\nexport PLAYWRIGHT_BROWSERS_PATH=${PLAYWRIGHT_BROWSERS}\nexport AGENT_BROWSER_DATA_DIR=${AGENT_BROWSER_HOME}\nexport PATH=${NPM_PREFIX}/bin:${HOME}/.npm-global/bin:$PATH\nexport OPENCLAW_STATE_DIR=${OPENCLAW_HOME}\nexport OPENCLAW_NO_RESPAWN=1\nmkdir -p ${MACHINE_HOME}/logs/services\nln -sfn ${OPENCLAW_HOME}/logs/gateway.log ${MACHINE_HOME}/logs/services/openclaw-gateway.log\nsource ${OPENCLAW_HOME}/.env\nexec openclaw gateway run > ${OPENCLAW_HOME}/logs/gateway.log 2>&1\nEOF`,
 		`chmod +x ${HOME}/start-openclaw-gateway.sh`,
 		`(setsid ${HOME}/start-openclaw-gateway.sh </dev/null &>/dev/null &) && sleep 14`,
 		`ss -tlnp 2>/dev/null | grep ':${OPENCLAW_PORT}'`,
@@ -291,14 +323,22 @@ function hermesEnv(): string {
 	return [
 		`export HOME=${HOME}`,
 		`export HERMES_HOME=${HERMES_HOME}`,
-		`export PATH=${HERMES_HOME}/venv/bin:${HOME}/.local/bin:$PATH`,
+		`export NPM_CONFIG_PREFIX=${NPM_PREFIX}`,
+		`export NPM_CONFIG_CACHE=${NPM_CACHE}`,
+		`export PLAYWRIGHT_BROWSERS_PATH=${PLAYWRIGHT_BROWSERS}`,
+		`export AGENT_BROWSER_DATA_DIR=${AGENT_BROWSER_HOME}`,
+		`export PATH=${NPM_PREFIX}/bin:${HERMES_HOME}/venv/bin:${HOME}/.local/bin:$PATH`,
 	].join(" && ");
 }
 
 function openClawEnv(): string {
 	return [
 		`export HOME=${HOME}`,
-		`export PATH=${HOME}/.npm-global/bin:$PATH`,
+		`export NPM_CONFIG_PREFIX=${NPM_PREFIX}`,
+		`export NPM_CONFIG_CACHE=${NPM_CACHE}`,
+		`export PLAYWRIGHT_BROWSERS_PATH=${PLAYWRIGHT_BROWSERS}`,
+		`export AGENT_BROWSER_DATA_DIR=${AGENT_BROWSER_HOME}`,
+		`export PATH=${NPM_PREFIX}/bin:${HOME}/.npm-global/bin:$PATH`,
 		`export OPENCLAW_STATE_DIR=${OPENCLAW_HOME}`,
 		`export OPENCLAW_NO_RESPAWN=1`,
 	].join(" && ");

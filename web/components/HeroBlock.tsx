@@ -40,7 +40,7 @@ const PROOF_POINTS: ReadonlyArray<{
 	{
 		Icon: IconStack,
 		title: "Bring any agent + tool",
-		body: "Hermes or OpenClaw. 95 skills, 23 built-ins, 17 services. Dedalus live; Sandbox + Fly shaped.",
+		body: "Hermes or OpenClaw. 96 skills, 23 built-ins, 17 services. Dedalus live; Sandbox + Fly shaped.",
 	},
 ];
 

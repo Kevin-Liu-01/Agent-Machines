@@ -139,7 +139,7 @@ export default async function OpengraphImage() {
 				>
 					{[
 						{ label: "23 built-in tools" },
-						{ label: "95 skills" },
+						{ label: "96 skills" },
 						{ label: "17 mcp services" },
 						{ label: "hermes / openclaw" },
 						{ label: "dedalus . sandbox . fly" },

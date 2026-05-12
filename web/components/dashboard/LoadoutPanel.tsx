@@ -10,8 +10,10 @@ import {
 	SkillsByCategory,
 	TaskCard,
 } from "@/components/dashboard/LoadoutCards";
+import { WingBackground } from "@/components/WingBackground";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleHatch } from "@/components/reticle/ReticleHatch";
+import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { cn } from "@/lib/cn";
 import {
@@ -43,10 +45,24 @@ type Props = {
 	activeLoadoutPresetId: string;
 };
 
-type Tab = "all" | "catalog" | "builtin" | "mcp" | "skills" | "services" | "tasks";
+type Tab =
+	| "all"
+	| "presets"
+	| "catalog"
+	| "builtin"
+	| "mcp"
+	| "skills"
+	| "services"
+	| "tasks";
 
 const TABS: ReadonlyArray<{ id: Tab; label: string; count: (c: Props) => number }> = [
 	{ id: "all", label: "All", count: (p) => p.counts.total + p.services.length + p.tasks.length + p.catalog.length },
+	{
+		id: "presets",
+		label: "Sources + presets",
+		count: (p) =>
+			p.loadoutSources.length + p.loadoutPresets.length + p.customLoadout.length,
+	},
 	{ id: "catalog", label: "Available to add", count: (p) => p.catalog.length },
 	{ id: "builtin", label: "Built-in tools", count: (p) => p.builtins.length },
 	{ id: "mcp", label: "MCP servers", count: (p) => p.counts.mcpTools },
@@ -118,6 +134,9 @@ type FilteredLoadout = {
 	services: ServiceEntry[];
 	tasks: TaskEntry[];
 	catalog: TrustedAddOn[];
+	sources: LoadoutSource[];
+	presets: LoadoutPreset[];
+	custom: CustomLoadoutEntry[];
 };
 
 function useFilteredLoadout(source: Props, query: string): FilteredLoadout {
@@ -141,7 +160,19 @@ function useFilteredLoadout(source: Props, query: string): FilteredLoadout {
 		() => source.catalog.filter((item) => isCatalogMatch(item, query)),
 		[source.catalog, query],
 	);
-	return { skills, builtins, services, tasks, catalog };
+	const sources = useMemo(
+		() => source.loadoutSources.filter((item) => isSourceMatch(item, query)),
+		[source.loadoutSources, query],
+	);
+	const presets = useMemo(
+		() => source.loadoutPresets.filter((item) => isPresetMatch(item, query)),
+		[source.loadoutPresets, query],
+	);
+	const custom = useMemo(
+		() => source.customLoadout.filter((item) => isCustomMatch(item, query)),
+		[source.customLoadout, query],
+	);
+	return { skills, builtins, services, tasks, catalog, sources, presets, custom };
 }
 
 function LoadoutSections({
@@ -157,6 +188,7 @@ function LoadoutSections({
 }) {
 	return (
 		<>
+			<SourcePresetSection tab={tab} source={source} query={query} />
 			<BuiltinSection tab={tab} items={filtered.builtins} />
 			<CatalogSection tab={tab} items={filtered.catalog} />
 			<McpSection tab={tab} source={source} query={query} />
@@ -164,6 +196,150 @@ function LoadoutSections({
 			<TaskSection tab={tab} items={filtered.tasks} />
 			<SkillSection tab={tab} items={filtered.skills} />
 		</>
+	);
+}
+
+function SourcePresetSection({
+	tab,
+	source,
+	query,
+}: {
+	tab: Tab;
+	source: Props;
+	query: string;
+}) {
+	if (tab !== "all" && tab !== "presets") return null;
+	const q = query.trim().toLowerCase();
+	const sources = source.loadoutSources.filter((item) => isSourceMatch(item, q));
+	const presets = source.loadoutPresets.filter((item) => isPresetMatch(item, q));
+	const custom = source.customLoadout.filter((item) => isCustomMatch(item, q));
+	if (sources.length === 0 && presets.length === 0 && custom.length === 0) return null;
+	return (
+		<Section
+			kicker={`PRESET CONFIG · ${presets.length} PRESETS . ${sources.length} SOURCES`}
+			title="The bundled stack is one preset, not the ceiling"
+			body="Sources are reputable places an agent can draw from; presets decide which sources, skills, tools, and MCP servers are active for a specific agent profile. The Settings page can add entries or create new presets without changing the codebase."
+		>
+			<div className="grid gap-3 xl:grid-cols-[0.95fr_1.1fr_0.95fr]">
+				<MiniRegistry title="Preset recipes" count={presets.length}>
+					{presets.map((preset) => (
+						<div
+							key={preset.id}
+							className="border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3"
+						>
+							<div className="flex items-center justify-between gap-2">
+								<p className="font-mono text-[11px] text-[var(--ret-text)]">
+									{preset.name}
+								</p>
+								{preset.id === source.activeLoadoutPresetId ? (
+									<ReticleBadge variant="accent" className="text-[9px]">
+										active
+									</ReticleBadge>
+								) : null}
+							</div>
+							<p className="mt-1 text-[11px] leading-relaxed text-[var(--ret-text-dim)]">
+								{preset.description}
+							</p>
+							<div className="mt-2 flex flex-wrap gap-1">
+								{preset.sourceIds.slice(0, 5).map((id) => (
+									<span
+										key={id}
+										className="border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-1.5 py-0.5 font-mono text-[9px] text-[var(--ret-text-muted)]"
+									>
+										{id}
+									</span>
+								))}
+							</div>
+						</div>
+					))}
+				</MiniRegistry>
+				<MiniRegistry title="Source pool" count={sources.length}>
+					{sources.map((item) => (
+						<div
+							key={item.id}
+							className="border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3"
+						>
+							<div className="flex items-center justify-between gap-2">
+								<p className="font-mono text-[11px] text-[var(--ret-text)]">
+									{item.name}
+								</p>
+								<ReticleBadge
+									variant={item.enabled ? "success" : "default"}
+									className="text-[9px]"
+								>
+									{item.enabled ? "enabled" : item.kind}
+								</ReticleBadge>
+							</div>
+							<p className="mt-1 text-[11px] leading-relaxed text-[var(--ret-text-dim)]">
+								{item.description}
+							</p>
+							<p className="mt-2 truncate font-mono text-[10px] text-[var(--ret-text-muted)]">
+								{item.uri ?? "manual entry"}
+							</p>
+						</div>
+					))}
+				</MiniRegistry>
+				<MiniRegistry title="Custom entries" count={custom.length}>
+					{custom.length > 0 ? (
+						custom.map((item) => (
+							<div
+								key={item.id}
+								className="border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3"
+							>
+								<div className="flex items-center justify-between gap-2">
+									<p className="font-mono text-[11px] text-[var(--ret-text)]">
+										{item.name}
+									</p>
+									<ReticleBadge
+										variant={item.enabled ? "accent" : "default"}
+										className="text-[9px]"
+									>
+										{item.kind}
+									</ReticleBadge>
+								</div>
+								<p className="mt-1 text-[11px] leading-relaxed text-[var(--ret-text-dim)]">
+									{item.description}
+								</p>
+								{item.command ? (
+									<p className="mt-2 truncate font-mono text-[10px] text-[var(--ret-text-muted)]">
+										{item.command}
+									</p>
+								) : null}
+							</div>
+						))
+					) : (
+						<div className="border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3 text-[11px] leading-relaxed text-[var(--ret-text-dim)]">
+							No custom entries yet. Add one in Settings, save it, then include
+							its ID in any preset.
+						</div>
+					)}
+				</MiniRegistry>
+			</div>
+		</Section>
+	);
+}
+
+function MiniRegistry({
+	title,
+	count,
+	children,
+}: {
+	title: string;
+	count: number;
+	children: React.ReactNode;
+}) {
+	return (
+		<div className="space-y-2">
+			<div className="flex items-center justify-between">
+				<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+					{title}
+				</p>
+				<span className="font-mono text-[10px] tabular-nums text-[var(--ret-text-muted)]">
+					{count}
+				</span>
+			</div>
+			<div className="grid gap-2">{children}</div>
+		</div>
 	);
 }
 
@@ -291,7 +467,10 @@ function EmptyState({
 		filtered.builtins.length > 0 ||
 		filtered.services.length > 0 ||
 		filtered.tasks.length > 0 ||
-		filtered.catalog.length > 0;
+		filtered.catalog.length > 0 ||
+		filtered.sources.length > 0 ||
+		filtered.presets.length > 0 ||
+		filtered.custom.length > 0;
 	if (hasMatches) return null;
 	return (
 		<ReticleFrame>
@@ -358,6 +537,36 @@ function isCatalogMatch(item: TrustedAddOn, query: string): boolean {
 	);
 }
 
+function isSourceMatch(item: LoadoutSource, query: string): boolean {
+	if (!query) return true;
+	return (
+		item.name.toLowerCase().includes(query) ||
+		item.kind.toLowerCase().includes(query) ||
+		item.description.toLowerCase().includes(query) ||
+		(item.uri ?? "").toLowerCase().includes(query)
+	);
+}
+
+function isPresetMatch(item: LoadoutPreset, query: string): boolean {
+	if (!query) return true;
+	return (
+		item.name.toLowerCase().includes(query) ||
+		item.description.toLowerCase().includes(query) ||
+		item.sourceIds.some((id) => id.toLowerCase().includes(query)) ||
+		item.customEntryIds.some((id) => id.toLowerCase().includes(query))
+	);
+}
+
+function isCustomMatch(item: CustomLoadoutEntry, query: string): boolean {
+	if (!query) return true;
+	return (
+		item.name.toLowerCase().includes(query) ||
+		item.kind.toLowerCase().includes(query) ||
+		item.description.toLowerCase().includes(query) ||
+		(item.command ?? "").toLowerCase().includes(query)
+	);
+}
+
 function CountStrip({ counts }: { counts: LoadoutCounts }) {
 	const items = [
 		{ label: "skills", value: counts.skills },
@@ -399,15 +608,22 @@ function PresetStrip({
 	return (
 		<ReticleFrame>
 			<div className="grid gap-px bg-[var(--ret-border)] lg:grid-cols-[0.9fr_1.2fr_0.9fr]">
-				<div className="bg-[var(--ret-bg)] p-3">
-					<ReticleLabel>ACTIVE PRESET</ReticleLabel>
-					<p className="mt-2 text-base font-semibold tracking-tight text-[var(--ret-text)]">
-						{activePreset?.name ?? "No preset selected"}
-					</p>
-					<p className="mt-1 text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
-						{activePreset?.description ??
-							"Create a preset in Settings to compose sources and custom entries."}
-					</p>
+				<div className="relative overflow-hidden bg-[var(--ret-bg)] p-3">
+					<WingBackground
+						variant="nyx-waves"
+						opacity={{ light: 0.08, dark: 0.2 }}
+						fadeEdges
+					/>
+					<div className="relative z-10">
+						<ReticleLabel>ACTIVE PRESET</ReticleLabel>
+						<p className="mt-2 text-base font-semibold tracking-tight text-[var(--ret-text)]">
+							{activePreset?.name ?? "No preset selected"}
+						</p>
+						<p className="mt-1 text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
+							{activePreset?.description ??
+								"Create a preset in Settings to compose sources and custom entries."}
+						</p>
+					</div>
 				</div>
 				<div className="bg-[var(--ret-bg)] p-3">
 					<ReticleLabel>SOURCES</ReticleLabel>
@@ -428,15 +644,22 @@ function PresetStrip({
 						) : null}
 					</div>
 				</div>
-				<div className="bg-[var(--ret-bg)] p-3">
-					<ReticleLabel>CUSTOM</ReticleLabel>
-					<p className="mt-2 font-mono text-xl tabular-nums text-[var(--ret-text)]">
-						{custom.length}
-					</p>
-					<p className="mt-1 text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
-						User-added skills, MCPs, CLIs, tools, and plugins. Edit in
-						Settings or sync from machine settings.json.
-					</p>
+				<div className="relative overflow-hidden bg-[var(--ret-bg)] p-3">
+					<WingBackground
+						variant="nyx-lines"
+						opacity={{ light: 0.08, dark: 0.2 }}
+						fadeEdges
+					/>
+					<div className="relative z-10">
+						<ReticleLabel>CUSTOM</ReticleLabel>
+						<p className="mt-2 font-mono text-xl tabular-nums text-[var(--ret-text)]">
+							{custom.length}
+						</p>
+						<p className="mt-1 text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
+							User-added skills, MCPs, CLIs, tools, and plugins. Edit in
+							Settings or sync from machine settings.json.
+						</p>
+					</div>
 				</div>
 			</div>
 		</ReticleFrame>

@@ -14,7 +14,7 @@ const STATS: ReadonlyArray<{
 	{ label: "memory", value: "2 GiB", icon: "memory" },
 	{ label: "storage", value: "10 GiB", hint: "persists across sleeps", icon: "filesystem" },
 	{ label: "boot", value: "<30s", hint: "cold . <5s warm", icon: "schedule" },
-	{ label: "skills", value: "95", hint: "bundled + wiki", icon: "memory" },
+	{ label: "skills", value: "96", hint: "bundled + wiki", icon: "memory" },
 	{ label: "fleet", value: "per-account", hint: "Clerk-tied", icon: "delegate" },
 ];
 

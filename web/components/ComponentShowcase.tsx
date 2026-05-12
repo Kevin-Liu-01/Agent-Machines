@@ -24,7 +24,7 @@ const SAMPLE_PROMPTS = [
 
 const CODE_LINES = [
 	{ ts: "12:04:18", level: "info", message: "POST /v1/chat/completions" },
-	{ ts: "12:04:18", level: "info", message: "loaded 95 skills + 10 mcp tools" },
+	{ ts: "12:04:18", level: "info", message: "loaded 96 skills + 10 mcp tools" },
 	{ ts: "12:04:21", level: "info", message: "stream open . tokens=312" },
 	{ ts: "12:04:21", level: "warn", message: "cron next: weekly-skill-audit in 3d" },
 	{ ts: "12:04:23", level: "info", message: "stream done . duration=1832ms" },
