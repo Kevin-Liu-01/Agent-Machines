@@ -143,10 +143,10 @@ function WorkflowRow({ step, index }: { step: Step; index: number }) {
 			<div className="relative min-h-[360px] overflow-hidden bg-[var(--ret-bg-soft)]">
 				<WingBackground
 					variant={index % 2 === 0 ? "nyx-lines" : "nyx-waves"}
-					opacity={{ light: 0.18, dark: 0.32 }}
+					opacity={{ light: 0.26, dark: 0.44 }}
 					fadeEdges
 				/>
-				<div className="ret-material-field absolute inset-0 opacity-65" aria-hidden="true" />
+				<div className="ret-material-field absolute inset-0 opacity-80" aria-hidden="true" />
 				<div className="relative z-10 grid h-full grid-cols-[0.75fr_1fr] gap-px bg-[var(--ret-border)]">
 					<div className="flex flex-col justify-between bg-[var(--ret-bg)]/92 p-4 backdrop-blur-sm">
 						<div className="flex h-16 w-16 items-center justify-center border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] text-[var(--ret-purple)]">

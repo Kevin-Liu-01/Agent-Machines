@@ -5,6 +5,7 @@ import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { ServiceIcon } from "@/components/ServiceIcon";
 import { ToolIcon } from "@/components/ToolIcon";
+import { WingBackground } from "@/components/WingBackground";
 import { listMcpServers } from "@/lib/dashboard/mcps";
 import { listSkills } from "@/lib/dashboard/skills";
 import {
@@ -81,8 +82,10 @@ export function LoadoutPreview() {
 
 			<div className="mt-px grid grid-cols-1 gap-px overflow-hidden border border-[var(--ret-border)] border-t-0 bg-[var(--ret-border)] lg:grid-cols-3">
 				{/* Built-in tools by category */}
-				<div className="space-y-3 bg-[var(--ret-bg)] p-4">
-					<div className="flex items-baseline justify-between">
+				<div className="relative space-y-3 overflow-hidden bg-[var(--ret-bg)] p-4">
+					<WingBackground variant="nyx-lines" opacity={{ light: 0.12, dark: 0.28 }} fadeEdges />
+					<div className="ret-material-field absolute inset-0 opacity-30" aria-hidden="true" />
+					<div className="relative z-10 flex items-baseline justify-between">
 						<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 							built-in tools . {BUILTIN_TOOLS.length}
 						</p>
@@ -97,7 +100,7 @@ export function LoadoutPreview() {
 						className="h-px border-t border-[var(--ret-border)]"
 						pitch={6}
 					/>
-					<ul className="space-y-1.5">
+					<ul className="relative z-10 space-y-1.5">
 						{catEntries.map(([cat, count]) => (
 							<li
 								key={cat}
@@ -120,8 +123,10 @@ export function LoadoutPreview() {
 				</div>
 
 				{/* Services by partner */}
-				<div className="space-y-3 bg-[var(--ret-bg)] p-4">
-					<div className="flex items-baseline justify-between">
+				<div className="relative space-y-3 overflow-hidden bg-[var(--ret-bg)] p-4">
+					<WingBackground variant="nyx-waves" opacity={{ light: 0.12, dark: 0.28 }} fadeEdges />
+					<div className="ret-material-field absolute inset-0 opacity-30" aria-hidden="true" />
+					<div className="relative z-10 flex items-baseline justify-between">
 						<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 							services . {SERVICES.length}
 						</p>
@@ -136,7 +141,7 @@ export function LoadoutPreview() {
 						className="h-px border-t border-[var(--ret-border)]"
 						pitch={6}
 					/>
-					<ul className="grid grid-cols-2 gap-1.5 font-mono text-[11px]">
+					<ul className="relative z-10 grid grid-cols-2 gap-1.5 font-mono text-[11px]">
 						{SERVICES.slice(0, 12).map((s) => (
 							<li
 								key={s.id}
@@ -156,7 +161,7 @@ export function LoadoutPreview() {
 							</li>
 						))}
 					</ul>
-					<div className="flex items-center gap-2 pt-1 font-mono text-[10px] text-[var(--ret-text-muted)]">
+					<div className="relative z-10 flex items-center gap-2 pt-1 font-mono text-[10px] text-[var(--ret-text-muted)]">
 						<span>each ranks</span>
 						<ReticleBadge variant="default" className="text-[10px]">
 							MCP
@@ -173,8 +178,10 @@ export function LoadoutPreview() {
 				</div>
 
 				{/* Task hierarchy */}
-				<div className="space-y-3 bg-[var(--ret-bg)] p-4">
-					<div className="flex items-baseline justify-between">
+				<div className="relative space-y-3 overflow-hidden bg-[var(--ret-bg)] p-4">
+					<WingBackground variant="cloud" opacity={{ light: 0.18, dark: 0.18 }} fadeEdges />
+					<div className="ret-material-field absolute inset-0 opacity-30" aria-hidden="true" />
+					<div className="relative z-10 flex items-baseline justify-between">
 						<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 							tasks . {TASKS.length}
 						</p>
@@ -189,7 +196,7 @@ export function LoadoutPreview() {
 						className="h-px border-t border-[var(--ret-border)]"
 						pitch={6}
 					/>
-					<ul className="space-y-2">
+					<ul className="relative z-10 space-y-2">
 						{featuredTasks.map((t) => (
 							<li
 								key={t.id}

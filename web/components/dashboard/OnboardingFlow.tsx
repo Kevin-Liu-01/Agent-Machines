@@ -29,6 +29,8 @@ import type { SkillSummary } from "@/lib/dashboard/types";
 import {
 	AGENT_LABEL,
 	type AgentKind,
+	type AgentProfile,
+	type LoadoutPreset,
 	type PublicUserConfig,
 	type MachineSpec,
 } from "@/lib/user-config/schema";
@@ -172,9 +174,21 @@ export function OnboardingFlow({
 		setBusy(true);
 		setError(null);
 		try {
+			const selectedSkills = Array.from(skillSel).sort();
+			const selectedTools = Array.from(builtinSel).sort();
+			const selectedMcps = Array.from(mcpSel).sort();
+			const loadoutPatch = buildOnboardingLoadoutPatch({
+				config: initialConfig,
+				agent,
+				selectedSkills,
+				selectedTools,
+				selectedMcps,
+			});
+
 			// Persist agent + key first.
 			const setupBody: Record<string, unknown> = {
 				draftAgentKind: agent,
+				draftProviderKind: "dedalus",
 			};
 			if (dedalusKey.trim()) {
 				setupBody.providerCredentials = {
@@ -191,6 +205,20 @@ export function OnboardingFlow({
 					message?: string;
 				};
 				throw new Error(body.message ?? `setup failed (HTTP ${setupResp.status})`);
+			}
+
+			const settingsResp = await fetch("/api/dashboard/admin/settings", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(loadoutPatch),
+			});
+			if (!settingsResp.ok) {
+				const body = (await settingsResp.json().catch(() => ({}))) as {
+					message?: string;
+				};
+				throw new Error(
+					body.message ?? `loadout save failed (HTTP ${settingsResp.status})`,
+				);
 			}
 
 			// Provision machine.
@@ -222,12 +250,31 @@ export function OnboardingFlow({
 			}
 			setBootMachineId(provBody.machineId);
 			setBootPhase(provBody.phase ?? "accepted");
+
+			const bootResp = await fetch("/api/dashboard/admin/bootstrap", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ machineId: provBody.machineId }),
+			});
+			const bootBody = (await bootResp.json().catch(() => ({}))) as {
+				message?: string;
+				error?: string;
+			};
+			if (!bootResp.ok) {
+				throw new Error(
+					bootBody.message ??
+						bootBody.error ??
+						`bootstrap failed (HTTP ${bootResp.status})`,
+				);
+			}
+			setBootPhase("bootstrapped");
+			setBootDone(true);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "provision failed");
 		} finally {
 			setBusy(false);
 		}
-	}, [agent, dedalusKey]);
+	}, [agent, builtinSel, dedalusKey, initialConfig, mcpSel, skillSel]);
 
 	// Poll machine state once we have an id.
 	useEffect(() => {
@@ -240,10 +287,6 @@ export function OnboardingFlow({
 				const body = (await r.json()) as { phase?: string };
 				if (stopped) return;
 				if (body.phase) setBootPhase(body.phase);
-				if (body.phase === "running") {
-					setBootDone(true);
-					stopped = true;
-				}
 			} catch {
 				// transient -- next tick will retry
 			}
@@ -927,20 +970,20 @@ function BootStep({
 		{ id: "create", label: "Submit machine create", isDone: !!machineId },
 		{ id: "schedule", label: "Dedalus schedules", isDone: phase === "running" || phase === "starting" || phase === "wake_pending" },
 		{ id: "boot", label: "VM boots", isDone: phase === "running" },
-		{ id: "record", label: "Save fleet record", isDone: done },
-		{ id: "agent", label: `CLI bootstraps ${AGENT_LABEL[agent]}`, isDone: false },
+		{ id: "record", label: "Save fleet record + selected loadout", isDone: !!machineId },
+		{ id: "agent", label: `Bootstrap ${AGENT_LABEL[agent]} gateway`, isDone: done },
 	];
 	return (
 		<div className="space-y-5">
 			<div>
 				<ReticleLabel>step 5 . boot</ReticleLabel>
 				<h1 className="ret-display mt-1 text-2xl">
-					{done ? "Machine accepted" : "Creating your machine"}
+					{done ? "Agent gateway ready" : "Creating your machine"}
 				</h1>
 				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
 					{done
 						? "Riding into the dashboard..."
-						: "This creates the provider machine and saves it to your fleet. Then the dashboard can bootstrap Hermes or OpenClaw onto that persistent environment and wire the gateway back into your account."}
+						: "This creates the provider machine, saves your selected loadout, bootstraps Hermes or OpenClaw, and wires the gateway back into your account."}
 				</p>
 			</div>
 
@@ -1020,6 +1063,73 @@ function BootStep({
 			<BootTranscript active={!done} machineId={machineId} maxHeight={280} />
 		</div>
 	);
+}
+
+function buildOnboardingLoadoutPatch({
+	config,
+	agent,
+	selectedSkills,
+	selectedTools,
+	selectedMcps,
+}: {
+	config: PublicUserConfig;
+	agent: AgentKind;
+	selectedSkills: string[];
+	selectedTools: string[];
+	selectedMcps: string[];
+}) {
+	const now = new Date().toISOString();
+	const profileId = `${agent}-default`;
+	const presetId = `onboarding-${agent}`;
+	const existingProfile = config.agentProfiles.find((p) => p.id === profileId);
+	const fallbackProfile = config.agentProfiles.find((p) => p.agentKind === agent);
+	const gatewayProfileId =
+		existingProfile?.gatewayProfileId ??
+		fallbackProfile?.gatewayProfileId ??
+		config.gatewayProfiles[0]?.id ??
+		"dedalus-default";
+	const nextProfile: AgentProfile = {
+		id: existingProfile?.id ?? fallbackProfile?.id ?? profileId,
+		name: existingProfile?.name ?? fallbackProfile?.name ?? `${AGENT_LABEL[agent]} default`,
+		agentKind: agent,
+		gatewayProfileId,
+		model: existingProfile?.model ?? fallbackProfile?.model ?? config.draftModel,
+		enabledSkills: selectedSkills,
+		enabledTools: selectedTools,
+		enabledMcpServers: selectedMcps,
+		environmentProfileId:
+			existingProfile?.environmentProfileId ??
+			fallbackProfile?.environmentProfileId ??
+			null,
+		createdAt: existingProfile?.createdAt ?? fallbackProfile?.createdAt ?? now,
+		updatedAt: now,
+	};
+	const nextPreset: LoadoutPreset = {
+		id: presetId,
+		name: `${AGENT_LABEL[agent]} onboarding loadout`,
+		description:
+			"Skills, built-in tools, and MCP servers selected in the first-run onboarding flow.",
+		sourceIds: ["bundled-skills", "bundled-mcps", "builtin-tools"],
+		customEntryIds: [],
+		enabledSkillIds: selectedSkills,
+		enabledToolIds: selectedTools,
+		enabledMcpServerIds: selectedMcps,
+		createdAt:
+			config.loadoutPresets.find((preset) => preset.id === presetId)?.createdAt ??
+			now,
+		updatedAt: now,
+	};
+	return {
+		agentProfiles: upsertById(config.agentProfiles, nextProfile),
+		loadoutPresets: upsertById(config.loadoutPresets, nextPreset),
+		activeLoadoutPresetId: presetId,
+	};
+}
+
+function upsertById<T extends { id: string }>(items: T[], next: T): T[] {
+	const index = items.findIndex((item) => item.id === next.id);
+	if (index === -1) return [...items, next];
+	return items.map((item) => (item.id === next.id ? next : item));
 }
 
 function RigPreview({

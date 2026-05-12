@@ -14,7 +14,7 @@ Source: <https://github.com/Kevin-Liu-01/agent-machines>
 - **Hermes and OpenClaw are the agent choices.** Hermes is the default runtime for memory, cron, sessions, MCP, skills, and the gateway. `npm run deploy:openclaw` installs OpenClaw on a Dedalus machine.
 - **Cursor is optional.** `cursor-bridge` is one MCP server for code delegation through `@cursor/sdk`. Without `CURSOR_API_KEY`, the machine still has chat, files, browser automation, tools, skills, cron, logs, artifacts, and provider lifecycle controls.
 - **The dashboard is multi-machine.** Clerk private metadata stores provider credentials, machine refs, the active machine id, model choice, and optional Cursor key. Users can keep multiple machines and switch the active one.
-- **Browser provisioning creates the machine record, not the full agent install.** `/dashboard/setup` can save credentials and create a provider machine. Browser-driven bootstrap is not wired yet; use the root CLI deploy path to install Hermes/OpenClaw and then save the gateway URL/key in `/dashboard/machines`.
+- **Browser provisioning creates and bootstraps the Dedalus agent machine.** `/dashboard/setup` can save credentials, create the provider machine, run browser bootstrap, and save the generated gateway URL/key back to the machine record. The CLI deploy path remains useful for local live-fire debugging.
 - **Inference defaults to Dedalus, but the gateway is OpenAI-compatible.** The CLI uses `DEDALUS_CHAT_BASE_URL` with `https://api.dedaluslabs.ai/v1` as the default.
 
 ## Architecture
@@ -215,7 +215,7 @@ Cursor-specific MCP tools:
 
 ## Known constraints
 
-- Browser-driven agent bootstrap is not wired yet. Use the CLI for installing Hermes/OpenClaw.
+- Browser-driven agent bootstrap is wired for Dedalus Machines. Use the CLI only when you need a lower-level live-fire install/debug path.
 - Dedalus is the only live provider implementation today.
 - Vercel Sandbox and Fly are schema/UI/provider stubs.
 - Dedalus previews may require org hostname configuration. The CLI falls back to Cloudflare quick tunnels.

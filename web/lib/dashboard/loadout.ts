@@ -28,6 +28,8 @@
 
 import type { Mark } from "@/components/Logo";
 import type { ServiceSlug } from "@/components/ServiceIcon";
+import type { McpServerWithBrand } from "@/lib/dashboard/mcps";
+import type { SkillSummary } from "@/lib/dashboard/types";
 
 export type AgentSupport = "hermes" | "openclaw" | "both";
 
@@ -1011,6 +1013,126 @@ export const TRUSTED_ADDONS: ReadonlyArray<TrustedAddOn> = [
 	},
 ];
 
+export function buildTrustedAddOnCatalog({
+	skills,
+	mcps,
+	builtins,
+	services,
+	tasks,
+}: {
+	skills: ReadonlyArray<SkillSummary>;
+	mcps: ReadonlyArray<McpServerWithBrand>;
+	builtins: ReadonlyArray<BuiltinTool>;
+	services: ReadonlyArray<ServiceEntry>;
+	tasks: ReadonlyArray<TaskEntry>;
+}): TrustedAddOn[] {
+	const items: TrustedAddOn[] = [...TRUSTED_ADDONS];
+	for (const skill of skills) {
+		items.push({
+			id: `skill-${skill.slug}`,
+			name: skill.name,
+			kind: "skill",
+			provider: `Skill library / ${skill.category}`,
+			description: skill.description,
+			source: `knowledge/skills/${skill.slug}/SKILL.md`,
+			command: null,
+			agent: "both",
+		});
+	}
+	for (const tool of builtins) {
+		items.push({
+			id: `builtin-${tool.name}`,
+			name: tool.title,
+			kind: "tool",
+			provider: tool.provider === "rig" ? "Agent Machines" : tool.provider,
+			description: tool.description,
+			source: `builtin:${tool.name}`,
+			command: tool.name,
+			agent: tool.agent,
+		});
+	}
+	for (const server of mcps) {
+		items.push({
+			id: `mcp-server-${slug(server.name)}`,
+			name: server.name,
+			kind: "mcp",
+			provider: server.source,
+			description: `${server.transport} MCP server exposing ${server.tools.length} callable tools.`,
+			source: server.link ?? server.source,
+			command: null,
+			agent: "both",
+		});
+		for (const tool of server.tools) {
+			items.push({
+				id: `mcp-tool-${slug(server.name)}-${slug(tool.name)}`,
+				name: tool.title,
+				kind: "tool",
+				provider: server.name,
+				description: tool.description,
+				source: `${server.name}:${tool.name}`,
+				command: tool.name,
+				agent: "both",
+			});
+		}
+	}
+	for (const service of services) {
+		for (const iface of service.interfaces) {
+			items.push({
+				id: `service-${service.id}-${iface.rank}-${slug(iface.label)}`,
+				name: `${service.name} / ${iface.label}`,
+				kind: interfaceKindToAddOn(iface.kind),
+				provider: service.name,
+				description: iface.use,
+				source: iface.label,
+				command: iface.kind === "cli" ? iface.label : null,
+				brand: service.brand,
+				agent: "both",
+			});
+		}
+	}
+	for (const task of tasks) {
+		for (const tool of task.tools) {
+			items.push({
+				id: `task-${task.id}-${tool.rank}-${slug(tool.label)}`,
+				name: `${task.name} / ${tool.label}`,
+				kind: tool.skill ? "skill" : "tool",
+				provider: "Task hierarchy",
+				description: tool.use,
+				source: tool.skill ?? tool.label,
+				command: tool.skill ? null : tool.label,
+				brand: tool.brand,
+				agent: "both",
+			});
+		}
+	}
+	return dedupeAddOns(items);
+}
+
+function interfaceKindToAddOn(kind: InterfaceKind): TrustedAddOnKind {
+	if (kind === "mcp") return "mcp";
+	if (kind === "cli") return "cli";
+	if (kind === "plugin-skill") return "plugin";
+	return "skill";
+}
+
+function dedupeAddOns(items: TrustedAddOn[]): TrustedAddOn[] {
+	const seen = new Set<string>();
+	const deduped: TrustedAddOn[] = [];
+	for (const item of items) {
+		if (seen.has(item.id)) continue;
+		seen.add(item.id);
+		deduped.push(item);
+	}
+	return deduped;
+}
+
+function slug(value: string): string {
+	return value
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, "-")
+		.replace(/^-+|-+$/g, "");
+}
+
 /* ------------------------------------------------------------------ */
 /* Aggregate counts                                                    */
 /* ------------------------------------------------------------------ */
@@ -1030,11 +1152,12 @@ export function computeCounts(args: {
 	skills: number;
 	mcpServers: number;
 	mcpTools: number;
+	trustedAddOns?: number;
 }): LoadoutCounts {
 	const builtinTools = BUILTIN_TOOLS.length;
 	const services = SERVICES.length;
 	const tasks = TASKS.length;
-	const trustedAddOns = TRUSTED_ADDONS.length;
+	const trustedAddOns = args.trustedAddOns ?? TRUSTED_ADDONS.length;
 	return {
 		skills: args.skills,
 		mcpServers: args.mcpServers,

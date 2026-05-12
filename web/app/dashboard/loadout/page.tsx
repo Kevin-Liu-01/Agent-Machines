@@ -7,7 +7,7 @@ import {
 	BUILTIN_TOOLS,
 	SERVICES,
 	TASKS,
-	TRUSTED_ADDONS,
+	buildTrustedAddOnCatalog,
 	computeCounts,
 } from "@/lib/dashboard/loadout";
 
@@ -17,11 +17,19 @@ export default async function LoadoutPage() {
 	const config = await getUserConfig();
 	const skills = listSkills();
 	const mcps = listMcpServers();
+	const catalog = buildTrustedAddOnCatalog({
+		skills,
+		mcps,
+		builtins: BUILTIN_TOOLS,
+		services: SERVICES,
+		tasks: TASKS,
+	});
 	const mcpToolCount = mcps.reduce((sum, m) => sum + m.tools.length, 0);
 	const counts = computeCounts({
 		skills: skills.length,
 		mcpServers: mcps.length,
 		mcpTools: mcpToolCount,
+		trustedAddOns: catalog.length,
 	});
 	return (
 		<div className="flex flex-col">
@@ -37,7 +45,7 @@ export default async function LoadoutPage() {
 				builtins={[...BUILTIN_TOOLS]}
 				services={[...SERVICES]}
 				tasks={[...TASKS]}
-				catalog={[...TRUSTED_ADDONS]}
+				catalog={catalog}
 				customLoadout={config.customLoadout}
 				loadoutSources={config.loadoutSources}
 				loadoutPresets={config.loadoutPresets}

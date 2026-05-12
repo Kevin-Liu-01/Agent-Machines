@@ -158,7 +158,8 @@ function commandFor(
 		case "seed-knowledge":
 			return [
 				"set -e",
-				`mkdir -p ${HERMES_HOME}/skills ${HERMES_HOME}/crons`,
+				`mkdir -p ${HERMES_HOME}/skills ${HERMES_HOME}/crons ${APP_HOME}`,
+				`cat > ${APP_HOME}/settings.json <<'EOF'\n${machineSettingsJson(machine, config)}\nEOF`,
 				`test -d ${HERMES_HOME}/skills`,
 			].join(" && ");
 		case "install-git-reload":
@@ -223,6 +224,37 @@ function configureOpenClaw(
 		`openclaw config set env.vars.ANTHROPIC_BASE_URL ${shell("https://api.dedaluslabs.ai/v1")}`,
 		`cat > ${OPENCLAW_HOME}/.env <<EOF\nOPENCLAW_API_KEY=${gatewayKey}\nOPENCLAW_MODEL=${model}\nEOF`,
 	].join(" && ");
+}
+
+function machineSettingsJson(machine: MachineRef, config: UserConfig): string {
+	const agentProfile =
+		config.agentProfiles.find((profile) => profile.id === machine.agentProfileId) ??
+		config.agentProfiles.find((profile) => profile.agentKind === machine.agentKind) ??
+		null;
+	const loadoutPreset =
+		config.loadoutPresets.find(
+			(preset) => preset.id === config.activeLoadoutPresetId,
+		) ??
+		config.loadoutPresets[0] ??
+		null;
+	const sourceIds = new Set(loadoutPreset?.sourceIds ?? []);
+	const customEntryIds = new Set(loadoutPreset?.customEntryIds ?? []);
+	const settings = {
+		version: 1,
+		machineId: machine.id,
+		agentKind: machine.agentKind,
+		model: machine.model,
+		agentProfile,
+		loadoutPreset,
+		loadoutSources: config.loadoutSources.filter((source) =>
+			sourceIds.has(source.id),
+		),
+		customLoadout: config.customLoadout.filter((entry) =>
+			customEntryIds.has(entry.id),
+		),
+		createdAt: new Date().toISOString(),
+	};
+	return JSON.stringify(settings, null, 2);
 }
 
 function startHermes(): string {

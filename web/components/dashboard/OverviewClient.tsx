@@ -455,19 +455,50 @@ function DashboardBento({
 	variant: "cloud" | "nyx-lines" | "nyx-waves";
 }) {
 	return (
-		<div className="relative min-h-[160px] overflow-hidden bg-[var(--ret-bg)] p-4">
+		<div className="relative min-h-[190px] overflow-hidden bg-[var(--ret-bg)] p-4">
 			<WingBackground
 				variant={variant}
-				opacity={{ light: 0.2, dark: 0.34 }}
+				opacity={{ light: 0.26, dark: 0.42 }}
 				fadeEdges
 			/>
-			<div className="relative z-10">
-				<ReticleLabel>{kicker}</ReticleLabel>
-				<h3 className="ret-display mt-3 max-w-[14ch] text-xl">{title}</h3>
-				<p className="mt-3 max-w-[42ch] text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
-					{body}
-				</p>
+			<div className="ret-material-field absolute inset-0 opacity-45" aria-hidden="true" />
+			<div className="relative z-10 grid gap-4 sm:grid-cols-[0.9fr_1.1fr] lg:grid-cols-1 xl:grid-cols-[0.9fr_1.1fr]">
+				<div>
+					<ReticleLabel>{kicker}</ReticleLabel>
+					<h3 className="ret-display mt-3 max-w-[14ch] text-xl">{title}</h3>
+					<p className="mt-3 max-w-[42ch] text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
+						{body}
+					</p>
+				</div>
+				<DashboardMiniDiagram kicker={kicker} />
 			</div>
+		</div>
+	);
+}
+
+function DashboardMiniDiagram({ kicker }: { kicker: string }) {
+	const labels =
+		kicker === "gateway"
+			? ["chat", "gateway", "agent"]
+			: kicker === "storage"
+				? ["chat", "files", "disk"]
+				: ["profile", "runtime", "tools"];
+	return (
+		<div className="grid min-h-[116px] gap-px border border-[var(--ret-border)] bg-[var(--ret-border)]">
+			{labels.map((label, index) => (
+				<div
+					key={label}
+					className="flex items-center justify-between bg-[var(--ret-bg)]/86 px-3 py-2 backdrop-blur-sm"
+				>
+					<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+						0{index + 1}
+					</span>
+					<span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-text)]">
+						{label}
+					</span>
+					<span className="h-1.5 w-1.5 bg-[var(--ret-purple)]" />
+				</div>
+			))}
 		</div>
 	);
 }

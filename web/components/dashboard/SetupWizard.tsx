@@ -79,14 +79,14 @@ const PROVIDERS_DESC: Record<
 		name: "Vercel Sandbox",
 		tagline:
 			"Ephemeral Firecracker sessions from Vercel. Best for short-lived OpenClaw/browser tasks with external storage.",
-		ready: true,
+		ready: false,
 		keyHint: "Vercel API token",
 	},
 	fly: {
 		name: "Fly Machines",
 		tagline:
 			"Fly.io persistent microVMs with volumes. Alternative host for durable Hermes or OpenClaw machines.",
-		ready: true,
+		ready: false,
 		keyHint: "fly_pat_... or FlyV1 ...",
 	},
 };
@@ -166,6 +166,27 @@ export function SetupWizard({ initialConfig, defaults }: Props) {
 			};
 			if (!response.ok) {
 				setError(body.message ?? `provision failed (HTTP ${response.status})`);
+				return;
+			}
+			if (!body.machineId) {
+				setError("provision failed: missing machine id");
+				return;
+			}
+			const bootstrap = await fetch("/api/dashboard/admin/bootstrap", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ machineId: body.machineId }),
+			});
+			const bootstrapBody = (await bootstrap.json().catch(() => ({}))) as {
+				message?: string;
+				error?: string;
+			};
+			if (!bootstrap.ok) {
+				setError(
+					bootstrapBody.message ??
+						bootstrapBody.error ??
+						`bootstrap failed (HTTP ${bootstrap.status})`,
+				);
 				return;
 			}
 			setActiveStep("provisioned");
@@ -643,13 +664,16 @@ function ProviderStep({
 						<button
 							key={kind}
 							type="button"
-							disabled={busy}
-							onClick={() => void onSelect(kind)}
+							disabled={busy || !meta.ready}
+							onClick={() => {
+								if (meta.ready) void onSelect(kind);
+							}}
 							className={cn(
 								"flex flex-col gap-3 border bg-[var(--ret-bg)] p-4 text-left transition-colors",
 								selected
 									? "border-[var(--ret-purple)] bg-[var(--ret-purple-glow)]"
 									: "border-[var(--ret-border)] hover:border-[var(--ret-border-hover)]",
+								!meta.ready && "cursor-not-allowed opacity-60 hover:border-[var(--ret-border)]",
 							)}
 						>
 							<div className="flex items-center justify-between gap-3">
@@ -851,7 +875,7 @@ function ReviewStep({
 	return (
 		<StepShell
 			title="Confirm and provision"
-			description="Provisioning hits the chosen provider and saves the new machine ID into your Clerk metadata. Browser-driven agent bootstrap is not wired yet; finish the install with the matching CLI command after this step."
+			description="Provisioning hits the chosen provider, saves the new machine ID, then runs browser-driven bootstrap so the selected agent gateway is written back to the machine record."
 		>
 			<dl className="grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-2">
 				<Row label="agent" value={config.draftAgentKind} />
@@ -888,9 +912,9 @@ function ReviewStep({
 					disabled={busy || !providerHasKey}
 				>
 					{busy
-						? "Provisioning..."
+						? "Provisioning + bootstrapping..."
 						: providerHasKey
-							? "Provision machine"
+							? "Provision + bootstrap"
 							: `No ${providerKind} key on file`}
 				</ReticleButton>
 			</div>
@@ -935,8 +959,8 @@ function ProvisionedStep({
 	const active = config.machines.find((m) => m.id === config.activeMachineId);
 	return (
 		<StepShell
-			title="Machine provisioned"
-			description="Saved to your Clerk metadata. The dashboard will poll its state. To finish the agent install, run the matching CLI command locally against the new machine ID."
+			title="Machine bootstrapped"
+			description="Saved to your Clerk metadata with a bootstrapped agent gateway URL/key. You can open chat now or manage the machine from fleet controls."
 		>
 			<div className="space-y-3">
 				<dl className="grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-2">
@@ -949,21 +973,10 @@ function ProvisionedStep({
 					<Row label="provider" value={active?.providerKind ?? config.draftProviderKind} />
 					<Row label="total machines" value={String(config.machines.length)} />
 				</dl>
-				<div className="space-y-1.5 border border-dashed border-[var(--ret-border)] bg-[var(--ret-surface)] p-3 font-mono text-[11px] text-[var(--ret-text-dim)]">
-					<p className="text-[var(--ret-text-muted)]">next steps:</p>
-					<p>
-						{`$ HERMES_MACHINE_ID=${active?.id ?? "<id>"} DEDALUS_API_KEY=... npm run deploy`}
-						<span className="ml-2 text-[var(--ret-text-muted)]">
-							(or `npm run deploy:openclaw`)
-						</span>
-					</p>
-					<p className="text-[var(--ret-text-muted)]">
-						after deploy:
-						<span className="ml-2 text-[var(--ret-text)]">
-							save the printed gateway URL + key to /dashboard/machines, then open chat
-						</span>
-					</p>
-				</div>
+				<p className="border border-dashed border-[var(--ret-border)] bg-[var(--ret-surface)] p-3 font-mono text-[11px] text-[var(--ret-text-dim)]">
+					Gateway status is saved on the machine record. If the tunnel expires,
+					open chat and click Bootstrap agent to refresh the gateway URL/key.
+				</p>
 				<div className="flex flex-wrap justify-end gap-2">
 					<ReticleButton variant="secondary" size="sm" onClick={onMachines}>
 						Open machines

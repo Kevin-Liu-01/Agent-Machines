@@ -104,7 +104,7 @@ function StoryPanel({
 				<div className="ret-material-field relative min-h-[360px]">
 					<WingBackground
 						variant={index % 2 === 0 ? "nyx-waves" : "nyx-lines"}
-						opacity={{ light: 0.2, dark: 0.36 }}
+						opacity={{ light: 0.28, dark: 0.48 }}
 						fadeEdges
 					/>
 					<div className="relative z-10 grid h-full grid-cols-[1.08fr_0.92fr] gap-px bg-[var(--ret-border)] p-px">

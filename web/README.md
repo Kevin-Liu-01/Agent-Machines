@@ -11,9 +11,9 @@ The web app does three jobs:
 ## Current status
 
 - Dedalus Machines is the only provider wired end-to-end today.
-- Vercel Sandbox and Fly Machines exist in the provider contract and setup UI, but their provider implementations return `not_supported`.
-- `/dashboard/setup` stores provider credentials and can create a provider machine record.
-- Browser-driven agent bootstrap is not wired yet. Use the root CLI to install Hermes/OpenClaw, then save the gateway URL/key from `/dashboard/machines`.
+- Vercel Sandbox and Fly Machines exist in the provider contract and settings UI, but setup keeps them disabled until their provisioners are production-ready.
+- `/dashboard/setup` stores provider credentials, creates a Dedalus machine, and runs browser bootstrap.
+- Browser-driven agent bootstrap is wired for Dedalus Machines: setup creates the machine, installs Hermes/OpenClaw, starts the gateway, and saves the gateway URL/key.
 - Cursor is optional. `cursor-bridge` only activates when a Cursor API key is present.
 
 ## Quick start

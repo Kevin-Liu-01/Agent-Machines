@@ -1,5 +1,6 @@
 import { Logo, type CompositeMark } from "@/components/Logo";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
+import { WingBackground } from "@/components/WingBackground";
 import { cn } from "@/lib/cn";
 
 type Capability = {
@@ -81,27 +82,36 @@ export function CapabilityGrid() {
 				</p>
 			</div>
 			<div className="mt-4 grid grid-cols-1 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] md:grid-cols-2 lg:grid-cols-4">
-				{CAPABILITIES.map((c) => (
+				{CAPABILITIES.map((c, index) => (
 					<div
 						key={c.title}
 						className={cn(
-							"flex flex-col gap-2 bg-[var(--ret-bg)] p-4",
+							"relative flex min-h-[230px] flex-col gap-2 overflow-hidden bg-[var(--ret-bg)] p-4",
 							"transition-colors duration-150 hover:bg-[var(--ret-surface)]",
 						)}
 					>
-						<div className="flex items-center justify-between gap-2">
+						{index % 2 === 0 ? (
+							<WingBackground
+								variant={index % 4 === 0 ? "nyx-lines" : "nyx-waves"}
+								opacity={{ light: 0.13, dark: 0.26 }}
+								fadeEdges
+							/>
+						) : null}
+						<div className="ret-material-field absolute inset-x-0 bottom-0 h-20 opacity-45" aria-hidden="true" />
+						<div className="relative z-10 flex items-center justify-between gap-2">
 							<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 								{c.kicker}
 							</p>
 							{c.mark ? <Logo mark={c.mark} size={14} /> : null}
 						</div>
-						<h3 className="text-sm font-semibold leading-snug tracking-tight">
+						<MiniGlyph index={index} />
+						<h3 className="relative z-10 text-sm font-semibold leading-snug tracking-tight">
 							{c.title}
 						</h3>
-						<p className="text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
+						<p className="relative z-10 text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
 							{c.body}
 						</p>
-						<div className="mt-auto flex flex-wrap gap-1 pt-1">
+						<div className="relative z-10 mt-auto flex flex-wrap gap-1 pt-1">
 							{c.notes.map((n) => (
 								<span
 									key={n}
@@ -115,5 +125,35 @@ export function CapabilityGrid() {
 				))}
 			</div>
 		</>
+	);
+}
+
+function MiniGlyph({ index }: { index: number }) {
+	const labels = [
+		["disk", "memory", "cron"],
+		["clerk", "fleet", "active"],
+		["sleep", "wake", "bill"],
+		["host", "exec", "disk"],
+		["agent", "gateway", "chat"],
+		["tool", "mcp", "skill"],
+		["intent", "skill", "reload"],
+		["cursor", "agent", "diff"],
+	][index] ?? ["node", "edge", "state"];
+	return (
+		<div className="relative z-10 grid grid-cols-3 gap-px border border-[var(--ret-border)] bg-[var(--ret-border)]">
+			{labels.map((label, i) => (
+				<div
+					key={label}
+					className="min-h-12 bg-[var(--ret-bg)]/88 p-2 backdrop-blur-sm"
+				>
+					<p className="font-mono text-[8px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+						0{i + 1}
+					</p>
+					<p className="mt-2 truncate font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--ret-text)]">
+						{label}
+					</p>
+				</div>
+			))}
+		</div>
 	);
 }

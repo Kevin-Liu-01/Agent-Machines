@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { ToolIcon } from "@/components/ToolIcon";
+import { WingBackground } from "@/components/WingBackground";
 import { cn } from "@/lib/cn";
 
 /**
@@ -54,6 +55,7 @@ export function RuntimeVizGrid() {
 					label="disk"
 					hint="/home/machine . persists"
 					footer="2.1 GiB used . 7.9 GiB free"
+					variant="nyx-lines"
 				>
 					<DiskBar usedPct={21} segments={SEGMENTS} />
 				</RuntimeCard>
@@ -63,6 +65,7 @@ export function RuntimeVizGrid() {
 					label="latency"
 					hint="last 32 chat completions"
 					footer="p50 412ms . p95 1.3s"
+					variant="nyx-waves"
 				>
 					<Sparkline points={LATENCY_POINTS} />
 				</RuntimeCard>
@@ -72,6 +75,7 @@ export function RuntimeVizGrid() {
 					label="awake"
 					hint="last 24h . second-billed"
 					footer="3 wakes . 19m awake"
+					variant="cloud"
 				>
 					<AwakeStrip cells={AWAKE_24H} />
 				</RuntimeCard>
@@ -121,13 +125,24 @@ type RuntimeCardProps = {
 	label: string;
 	hint: string;
 	footer: string;
+	variant?: "cloud" | "nyx-lines" | "nyx-waves";
 	children: React.ReactNode;
 };
 
-function RuntimeCard({ icon, label, hint, footer, children }: RuntimeCardProps) {
+function RuntimeCard({ icon, label, hint, footer, variant, children }: RuntimeCardProps) {
 	return (
-		<div className="flex flex-col bg-[var(--ret-bg)]">
-			<div className="flex items-center gap-2 border-b border-[var(--ret-border)] px-3 py-2">
+		<div className="relative flex flex-col overflow-hidden bg-[var(--ret-bg)]">
+			{variant ? (
+				<>
+					<WingBackground
+						variant={variant}
+						opacity={{ light: 0.14, dark: 0.28 }}
+						fadeEdges
+					/>
+					<div className="ret-material-field absolute inset-0 opacity-35" aria-hidden="true" />
+				</>
+			) : null}
+			<div className="relative z-10 flex items-center gap-2 border-b border-[var(--ret-border)] bg-[var(--ret-bg)]/82 px-3 py-2 backdrop-blur-sm">
 				<ToolIcon
 					name={icon}
 					size={12}
@@ -140,10 +155,10 @@ function RuntimeCard({ icon, label, hint, footer, children }: RuntimeCardProps) 
 					{hint}
 				</span>
 			</div>
-			<div className="flex min-h-[110px] items-center justify-center px-3 py-3">
+			<div className="relative z-10 flex min-h-[110px] items-center justify-center px-3 py-3">
 				{children}
 			</div>
-			<div className="border-t border-[var(--ret-border)] px-3 py-1.5 font-mono text-[10px] tabular-nums text-[var(--ret-text-dim)]">
+			<div className="relative z-10 border-t border-[var(--ret-border)] bg-[var(--ret-bg)]/82 px-3 py-1.5 font-mono text-[10px] tabular-nums text-[var(--ret-text-dim)] backdrop-blur-sm">
 				{footer}
 			</div>
 		</div>
