@@ -125,6 +125,7 @@ export type AiProviderKeys = {
 	openai?: string;
 	openrouter?: string;
 	google?: string;
+	vercelAiGateway?: string;
 	custom?: { url: string; key: string; label?: string };
 };
 
@@ -135,6 +136,7 @@ export const AI_PROVIDER_SLUGS: ReadonlyArray<AiProviderSlug> = [
 	"openai",
 	"openrouter",
 	"google",
+	"vercelAiGateway",
 	"custom",
 ];
 
@@ -268,6 +270,8 @@ export type UserConfig = {
 	machines: MachineRef[];
 	activeMachineId: string | null;
 	cursorApiKey: string | null;
+	/** Cloudflare named tunnel token for stable gateway URLs on a custom domain. */
+	cloudflareTunnelToken: string | null;
 	gatewayProfiles: GatewayProfile[];
 	agentProfiles: AgentProfile[];
 	environmentProfiles: EnvironmentProfile[];
@@ -295,6 +299,17 @@ export const DEFAULT_GATEWAY_PROFILE: GatewayProfile = {
 	kind: "dedalus",
 	model: DEFAULT_MODEL,
 	baseUrl: "https://api.dedaluslabs.ai/v1",
+	apiKey: null,
+	createdAt: DEFAULT_CREATED_AT,
+	updatedAt: DEFAULT_CREATED_AT,
+};
+
+export const VERCEL_AI_GATEWAY_PROFILE: GatewayProfile = {
+	id: "vercel-ai-gateway",
+	name: "Vercel AI Gateway",
+	kind: "vercel-ai-gateway",
+	model: DEFAULT_MODEL,
+	baseUrl: "https://ai-gateway.vercel.sh",
 	apiKey: null,
 	createdAt: DEFAULT_CREATED_AT,
 	updatedAt: DEFAULT_CREATED_AT,
@@ -562,9 +577,10 @@ export const DEFAULT_USER_CONFIG: UserConfig = {
 	providers: {},
 	aiProviderKeys: {},
 	machines: [],
+	cloudflareTunnelToken: null,
 	activeMachineId: null,
 	cursorApiKey: null,
-	gatewayProfiles: [DEFAULT_GATEWAY_PROFILE],
+	gatewayProfiles: [DEFAULT_GATEWAY_PROFILE, VERCEL_AI_GATEWAY_PROFILE],
 	agentProfiles: DEFAULT_AGENT_PROFILES,
 	environmentProfiles: [],
 	bootstrapPresets: DEFAULT_BOOTSTRAP_PRESETS,
@@ -601,6 +617,7 @@ export type PublicUserConfig = Omit<
 	| "aiProviderKeys"
 	| "machines"
 	| "cursorApiKey"
+	| "cloudflareTunnelToken"
 	| "gatewayProfiles"
 	| "environmentProfiles"
 > & {
@@ -610,6 +627,7 @@ export type PublicUserConfig = Omit<
 	gatewayProfiles: Array<Omit<GatewayProfile, "apiKey"> & { hasApiKey: boolean }>;
 	environmentProfiles: Array<Omit<EnvironmentProfile, "vars"> & { varCount: number }>;
 	hasCursorKey: boolean;
+	hasTunnelToken: boolean;
 };
 
 export function toPublicConfig(config: UserConfig): PublicUserConfig {
@@ -634,6 +652,7 @@ export function toPublicConfig(config: UserConfig): PublicUserConfig {
 		openai: { configured: Boolean(ai.openai) },
 		openrouter: { configured: Boolean(ai.openrouter) },
 		google: { configured: Boolean(ai.google) },
+		vercelAiGateway: { configured: Boolean(ai.vercelAiGateway) },
 		custom: { configured: Boolean(ai.custom?.key), label: ai.custom?.label },
 	};
 
@@ -662,6 +681,7 @@ export function toPublicConfig(config: UserConfig): PublicUserConfig {
 		draftSpec: config.draftSpec,
 		draftModel: config.draftModel,
 		hasCursorKey: Boolean(config.cursorApiKey),
+		hasTunnelToken: Boolean(config.cloudflareTunnelToken),
 	};
 }
 

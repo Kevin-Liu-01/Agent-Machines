@@ -119,7 +119,7 @@ export function WorkflowNavigator() {
 				</nav>
 			</div>
 
-			<div className="mt-4 grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)]">
+			<div className="mt-4 grid gap-px overflow-hidden bg-[var(--ret-border)]">
 				{STEPS.map((step, index) => (
 					<WorkflowRow key={step.id} step={step} index={index} />
 				))}

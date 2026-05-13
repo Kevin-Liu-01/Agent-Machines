@@ -15,6 +15,7 @@ import { INITIAL_BOOTSTRAP_STATE, type MachineRef } from "@/lib/user-config/sche
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 type Body = {
 	machineId?: string;
@@ -30,10 +31,25 @@ export async function POST(request: Request): Promise<Response> {
 	const config = await getUserConfig();
 	const machine = resolveMachine(config.machines, body.machineId ?? config.activeMachineId);
 	if (!machine) {
-		return Response.json({ error: "not_found" }, { status: 404 });
+		return Response.json(
+			{ error: "not_found", message: "No machine found. Provision one first via /dashboard/setup." },
+			{ status: 404 },
+		);
 	}
 
-	const provider = getProvider(machine.providerKind, config.providers);
+	let provider: ReturnType<typeof getProvider>;
+	try {
+		provider = getProvider(machine.providerKind, config.providers);
+	} catch (err) {
+		return Response.json(
+			{
+				error: "missing_credentials",
+				message: err instanceof Error ? err.message : "Provider credentials missing.",
+			},
+			{ status: 400 },
+		);
+	}
+
 	await setUserConfig({
 		patchMachine: {
 			id: machine.id,
@@ -63,12 +79,22 @@ export async function POST(request: Request): Promise<Response> {
 		});
 		return Response.json({ ok: true, machineId: machine.id });
 	} catch (err) {
-		return Response.json(
-			{
-				ok: false,
-				error: "bootstrap_failed",
-				message: err instanceof Error ? err.message : "bootstrap failed",
+		const message = err instanceof Error ? err.message : "bootstrap failed";
+		await setUserConfig({
+			patchMachine: {
+				id: machine.id,
+				patch: {
+					bootstrapState: {
+						...INITIAL_BOOTSTRAP_STATE,
+						phase: "failed",
+						finishedAt: new Date().toISOString(),
+						lastError: message,
+					},
+				},
 			},
+		}).catch(() => {});
+		return Response.json(
+			{ ok: false, error: "bootstrap_failed", message },
 			{ status: 502 },
 		);
 	}

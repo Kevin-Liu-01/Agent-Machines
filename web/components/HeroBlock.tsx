@@ -43,7 +43,7 @@ export function HeroBlock() {
 	}
 
 	return (
-		<div className="relative grid items-stretch gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] md:grid-cols-[0.88fr_1.12fr]">
+		<div className="relative grid items-stretch gap-px overflow-hidden bg-[var(--ret-border)] md:grid-cols-[0.88fr_1.12fr]">
 			{/*
 			  Faint wing watermark anchored to the top-right of the hero.
 			  Sits behind everything via z-0 / pointer-events-none -- the
@@ -150,6 +150,13 @@ export function HeroBlock() {
 						</ReticleButton>
 					))}
 				</div>
+
+				{/* Hatch fill: fills remaining vertical space below CTAs */}
+				<div
+					className="mt-4 min-h-[16px] flex-1"
+					style={{ backgroundImage: "repeating-linear-gradient(135deg, var(--ret-rail) 0 1px, transparent 1px 5px)" }}
+					aria-hidden="true"
+				/>
 			</div>
 
 			<div className="relative z-10 flex min-h-[280px] flex-col bg-[var(--ret-bg)]">

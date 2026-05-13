@@ -408,6 +408,51 @@ export class DedalusProvider implements MachineProvider {
 			exitCode,
 		};
 	}
+
+	/**
+	 * Create or reuse a Dedalus preview URL for a port.
+	 * Preview URLs are platform-managed and survive sleep/wake --
+	 * unlike cloudflared quick tunnels which die on sleep.
+	 * Returns null if previews aren't configured for the org.
+	 */
+	async createPreview(
+		machineId: string,
+		port: number,
+	): Promise<string | null> {
+		try {
+			const list = await this.fetch(
+				`/v1/machines/${machineId}/previews`,
+			);
+			if (list.ok) {
+				const body = (await list.json()) as {
+					items?: Array<{ port: number; status: string; url: string }>;
+				};
+				const match = body.items?.find(
+					(p) => p.port === port && p.status === "ready",
+				);
+				if (match?.url) return match.url;
+			}
+
+			const create = await this.fetch(
+				`/v1/machines/${machineId}/previews`,
+				{
+					method: "POST",
+					body: JSON.stringify({
+						port,
+						protocol: "http",
+						visibility: "public",
+					}),
+				},
+			);
+			if (create.ok) {
+				const body = (await create.json()) as { url?: string };
+				if (body.url) return body.url;
+			}
+		} catch {
+			// Previews not available for this org -- fall back to cloudflared.
+		}
+		return null;
+	}
 }
 
 export function _summarize(raw: RawMachine): ProviderMachineSummary {

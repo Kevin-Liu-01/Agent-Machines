@@ -13,7 +13,7 @@ export default async function SetupPage() {
 			<PageHeader
 				kicker="SETUP"
 				title="Provision a persistent agent"
-				description="Bring a provider key, pick Hermes or OpenClaw, size the environment, and provision. Both agents can be bootstrapped from the UI into a durable machine profile; secrets persist in Clerk private metadata."
+				description="Bring a provider key, pick Hermes or OpenClaw, size the environment, and provision. Both agents can be bootstrapped from the UI into a durable machine profile; secrets persist in Clerk private metadata. Claude Code and Codex CLI are also available as task-driven agents."
 			/>
 			<SetupWizard
 				initialConfig={toPublicConfig(config)}

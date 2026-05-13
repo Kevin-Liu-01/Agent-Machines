@@ -47,6 +47,7 @@ type ConfigPatch = {
 	providers?: ProviderCredentials;
 	aiProviderKeys?: AiProviderKeys;
 	cursorApiKey?: string | null;
+	cloudflareTunnelToken?: string | null;
 	gatewayProfiles?: GatewayProfile[];
 	agentProfiles?: AgentProfile[];
 	environmentProfiles?: EnvironmentProfile[];
@@ -186,8 +187,8 @@ export async function setDevUserConfig(
 	}
 
 	const nextAiKeys = patch.aiProviderKeys
-		? { ...current.aiProviderKeys, ...patch.aiProviderKeys }
-		: current.aiProviderKeys;
+		? { ...(current.aiProviderKeys ?? {}), ...patch.aiProviderKeys }
+		: (current.aiProviderKeys ?? {});
 
 	const next: UserConfig = {
 		providers: nextProviders,
@@ -198,6 +199,10 @@ export async function setDevUserConfig(
 			patch.cursorApiKey !== undefined
 				? patch.cursorApiKey
 				: current.cursorApiKey,
+		cloudflareTunnelToken:
+			patch.cloudflareTunnelToken !== undefined
+				? patch.cloudflareTunnelToken
+				: (current.cloudflareTunnelToken ?? null),
 		gatewayProfiles: patch.gatewayProfiles ?? current.gatewayProfiles,
 		agentProfiles: patch.agentProfiles ?? current.agentProfiles,
 		environmentProfiles:

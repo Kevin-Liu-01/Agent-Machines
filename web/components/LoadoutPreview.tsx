@@ -75,14 +75,14 @@ export function LoadoutPreview() {
 				research, and more.
 			</p>
 
-			<div className="mt-4 grid grid-cols-2 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-4">
+			<div className="mt-4 grid grid-cols-2 gap-px overflow-hidden bg-[var(--ret-border)] sm:grid-cols-4">
 				<Tally label="callable tools" value={totalCallable} />
 				<Tally label="skills" value={skills.length} />
 				<Tally label="services" value={SERVICES.length} />
 				<Tally label="task categories" value={TASKS.length} />
 			</div>
 
-			<div className="mt-px grid grid-cols-1 gap-px overflow-hidden border border-[var(--ret-border)] border-t-0 bg-[var(--ret-border)] lg:grid-cols-3">
+			<div className="mt-px grid grid-cols-1 gap-px overflow-hidden bg-[var(--ret-border)] lg:grid-cols-3">
 				{/* Built-in tools by category */}
 				<ReticleFrame corners={false} className="relative space-y-3 overflow-hidden p-4">
 					<WingBackground variant="nyx-lines" opacity={{ light: 0.12, dark: 0.28 }} fadeEdges />
@@ -219,7 +219,7 @@ export function LoadoutPreview() {
 				</ReticleFrame>
 			</div>
 
-			<div className="mt-px grid grid-cols-2 gap-px overflow-hidden border border-[var(--ret-border)] border-t-0 bg-[var(--ret-border)] sm:grid-cols-3 lg:grid-cols-7">
+			<div className="mt-px grid grid-cols-2 gap-px overflow-hidden bg-[var(--ret-border)] sm:grid-cols-3 lg:grid-cols-7">
 				{skillEntries.map(([cat, count]) => (
 					<div
 						key={cat}
@@ -233,7 +233,7 @@ export function LoadoutPreview() {
 				))}
 			</div>
 
-		<div className="mt-px grid grid-cols-1 gap-px overflow-hidden border border-[var(--ret-border)] border-t-0 bg-[var(--ret-border)] md:grid-cols-[1.2fr_0.8fr]">
+		<div className="mt-px grid grid-cols-1 gap-px overflow-hidden bg-[var(--ret-border)] md:grid-cols-[1.2fr_0.8fr]">
 			<div className="relative min-h-[80px] overflow-hidden bg-[var(--ret-bg)] p-4">
 				<WingBackground
 					variant="nyx-lines"

@@ -517,6 +517,19 @@ export const SERVICES: ReadonlyArray<ServiceEntry> = [
 		],
 	},
 	{
+		id: "vercel-ai-gateway",
+		name: "Vercel AI Gateway",
+		tagline: "Unified model routing, provider failover, cost tracking",
+		icon: "delegate",
+		color: "#fff",
+		brand: "vercel",
+		interfaces: [
+			{ rank: 1, kind: "cli", label: "@ai-sdk/gateway", use: "provider/model routing, OIDC auth, 200+ models via one endpoint" },
+			{ rank: 2, kind: "plugin-skill", label: "ai-gateway skill", use: "model routing guidance, provider failover, cost tracking" },
+			{ rank: 3, kind: "plugin-skill", label: "ai-sdk skill", use: "streaming, tool calling, structured output" },
+		],
+	},
+	{
 		id: "browser",
 		name: "Browser",
 		tagline: "Automation, scraping, frontend verification",
@@ -1440,6 +1453,18 @@ export const TRUSTED_ADDONS: ReadonlyArray<TrustedAddOn> = [
 		source: "plugin-clickhouse",
 		command: null,
 		brand: "clickhouse",
+		agent: "both",
+	},
+	{
+		id: "provider-ai-gateway",
+		name: "Vercel AI Gateway",
+		kind: "provider",
+		provider: "Vercel",
+		description:
+			"Unified model routing to 200+ models across OpenAI, Anthropic, Google, Mistral, and more. OIDC auth, provider failover, cost tracking, and rate limit management through one endpoint.",
+		source: "@ai-sdk/gateway",
+		command: "pnpm add @ai-sdk/gateway",
+		brand: "vercel",
 		agent: "both",
 	},
 ];

@@ -56,7 +56,7 @@ const STAGES: ReadonlyArray<Stage> = [
 
 export function StickyRuntimeStory() {
 	return (
-		<section className="grid gap-px border border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[0.72fr_1.28fr]">
+		<section className="grid gap-px bg-[var(--ret-border)] lg:grid-cols-[0.72fr_1.28fr]">
 			<div className="flex flex-col bg-[var(--ret-bg)] p-4 lg:sticky lg:top-[92px] lg:h-[calc(100dvh-120px)]">
 				<ReticleLabel>SCROLL RUNTIME</ReticleLabel>
 				<h2 className="ret-display mt-3 max-w-[13ch] text-3xl md:text-4xl">

@@ -73,6 +73,7 @@ type AiKeysBody = {
 	openai?: string;
 	openrouter?: string;
 	google?: string;
+	vercelAiGateway?: string;
 	custom?: { url?: string; key?: string; label?: string };
 };
 
@@ -167,6 +168,7 @@ export async function POST(request: Request): Promise<Response> {
 		if (k.openai?.trim()) ai.openai = k.openai.trim();
 		if (k.openrouter?.trim()) ai.openrouter = k.openrouter.trim();
 		if (k.google?.trim()) ai.google = k.google.trim();
+		if (k.vercelAiGateway?.trim()) ai.vercelAiGateway = k.vercelAiGateway.trim();
 		if (k.custom?.url?.trim() && k.custom?.key?.trim()) {
 			ai.custom = {
 				url: k.custom.url.trim(),

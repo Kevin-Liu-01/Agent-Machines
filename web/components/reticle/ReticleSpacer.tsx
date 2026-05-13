@@ -1,76 +1,71 @@
+import type { CSSProperties } from "react";
+
 import { cn } from "@/lib/cn";
 
 import { ReticleCross } from "./ReticleCross";
-import { ReticleHatch } from "./ReticleHatch";
 
-/**
- * Section divider used between landing-page chapters. Renders the same
- * pattern that sits above the footer:
- *
- *   - top hairline rule extends edge-to-edge
- *   - corner cross marks pinned to the rail intersections
- *   - 16px diagonal hatch fill
- *   - bottom hairline rule
- *
- * Sits as a sibling between two `<ReticleSection>` blocks (NOT inside
- * one), so the hatch lives in its own row of the page grid and carries
- * the rails through.
- */
 type Props = {
 	className?: string;
+	/** Height of the hatched fill area (only applies when hatch=true). */
 	height?: number;
-	pitch?: number;
 	corners?: boolean;
+	/** Fill the spacer with diagonal hatch. Default false (single hairline). */
+	hatch?: boolean;
 };
 
+const CROSS_LEFT = "calc(50% - var(--ret-content-max) / 2 - 5px)";
+const CROSS_RIGHT = "calc(50% - var(--ret-content-max) / 2 - 5px)";
+
+/**
+ * Section divider. Two modes:
+ *
+ * - `hatch=false` (default): single full-width hairline + cross marks.
+ * - `hatch=true`: two hairlines bounding a hatched strip.
+ */
 export function ReticleSpacer({
 	className,
-	height = 16,
-	pitch = 6,
+	height = 20,
 	corners = true,
+	hatch = false,
 }: Props) {
 	return (
 		<div
 			className={cn(
-				"relative w-full border-t border-b border-[var(--ret-border)]",
+				"relative w-full border-y border-[var(--ret-border)]",
 				className,
 			)}
 			style={{ height: `${height}px` }}
 			aria-hidden="true"
 		>
-			{corners ? (
+			{hatch && (
+				<div
+					className="absolute inset-0 opacity-60"
+					style={{
+						backgroundImage:
+							"repeating-linear-gradient(45deg, var(--ret-rail) 0 1px, transparent 1px 6px)",
+					}}
+				/>
+			)}
+			{corners && (
 				<>
 					<ReticleCross
 						className="absolute z-20"
-						style={{
-							top: "-5px",
-							left: "calc(var(--ret-rail-offset) - 5px)",
-						}}
+						style={{ top: "-5px", left: CROSS_LEFT }}
 					/>
 					<ReticleCross
 						className="absolute z-20"
-						style={{
-							top: "-5px",
-							right: "calc(var(--ret-rail-offset) - 5px)",
-						}}
+						style={{ top: "-5px", right: CROSS_RIGHT }}
 					/>
 					<ReticleCross
 						className="absolute z-20"
-						style={{
-							bottom: "-5px",
-							left: "calc(var(--ret-rail-offset) - 5px)",
-						}}
+						style={{ bottom: "-5px", left: CROSS_LEFT }}
 					/>
 					<ReticleCross
 						className="absolute z-20"
-						style={{
-							bottom: "-5px",
-							right: "calc(var(--ret-rail-offset) - 5px)",
-						}}
+						style={{ bottom: "-5px", right: CROSS_RIGHT }}
 					/>
 				</>
-			) : null}
-			<ReticleHatch className="h-full w-full" pitch={pitch} />
+			)}
 		</div>
 	);
 }

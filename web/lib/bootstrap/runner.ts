@@ -74,7 +74,7 @@ export async function runWebBootstrap({
 			await runPhase(phase, machine, provider, config, apiKey);
 			completed.push(phase);
 		}
-		const apiUrl = await exposeGateway(machine, provider);
+		const apiUrl = await exposeGateway(machine, provider, config);
 		await onState({
 			phase: "succeeded",
 			current: null,
@@ -114,6 +114,46 @@ async function runPhase(
 	}
 }
 
+type UpstreamProvider = { key: string; baseUrl: string };
+
+const DEDALUS_BASE = "https://api.dedaluslabs.ai/v1";
+const ANTHROPIC_BASE = "https://api.anthropic.com/v1";
+const OPENAI_BASE = "https://api.openai.com/v1";
+const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
+const VERCEL_AI_GATEWAY_BASE = "https://ai-gateway.vercel.sh/v1";
+
+/**
+ * Resolve the best upstream LLM API key + base URL for the given agent.
+ * Priority: agent-specific AI provider key > Dedalus (routes all models)
+ * > any available AI provider key > gateway profile > empty (will fail).
+ */
+function resolveUpstream(agent: string, config: UserConfig): UpstreamProvider {
+	const ai = config.aiProviderKeys ?? {};
+	const dedalus = config.providers.dedalus?.apiKey;
+	const dedalusBase = config.providers.dedalus?.baseUrl;
+
+	if (agent === "claude-code" && ai.anthropic) {
+		return { key: ai.anthropic, baseUrl: ANTHROPIC_BASE };
+	}
+	if (agent === "codex" && ai.openai) {
+		return { key: ai.openai, baseUrl: OPENAI_BASE };
+	}
+	if (agent === "openclaw") {
+		if (ai.anthropic) return { key: ai.anthropic, baseUrl: ANTHROPIC_BASE };
+		if (dedalus) return { key: dedalus, baseUrl: dedalusBase ?? DEDALUS_BASE };
+		if (ai.vercelAiGateway) return { key: ai.vercelAiGateway, baseUrl: VERCEL_AI_GATEWAY_BASE };
+		if (ai.openai) return { key: ai.openai, baseUrl: OPENAI_BASE };
+		return { key: "", baseUrl: DEDALUS_BASE };
+	}
+	if (dedalus) return { key: dedalus, baseUrl: dedalusBase ?? DEDALUS_BASE };
+	if (ai.vercelAiGateway) return { key: ai.vercelAiGateway, baseUrl: VERCEL_AI_GATEWAY_BASE };
+	if (ai.anthropic) return { key: ai.anthropic, baseUrl: ANTHROPIC_BASE };
+	if (ai.openai) return { key: ai.openai, baseUrl: OPENAI_BASE };
+	if (ai.openrouter) return { key: ai.openrouter, baseUrl: OPENROUTER_BASE };
+	if (ai.custom?.key) return { key: ai.custom.key, baseUrl: ai.custom.url };
+	return { key: "", baseUrl: DEDALUS_BASE };
+}
+
 function commandFor(
 	phase: BootstrapPhaseId,
 	machine: MachineRef,
@@ -123,7 +163,9 @@ function commandFor(
 	const agent = machine.agentKind;
 	const model = shell(machine.model);
 	const gatewayKey = shell(apiKey);
-	const upstreamApiKey = shell(config.providers.dedalus?.apiKey ?? "");
+	const upstream = resolveUpstream(agent, config);
+	const upstreamApiKey = shell(upstream.key);
+	const upstreamBaseUrl = shell(upstream.baseUrl);
 	const cursorKey = config.cursorApiKey ? shell(config.cursorApiKey) : null;
 
 	switch (phase) {
@@ -182,15 +224,20 @@ function commandFor(
 				: `mkdir -p ${APP_HOME}/cursor && touch ${APP_HOME}/cursor/.disabled`;
 		case "configure-hermes":
 			if (agent === "openclaw") {
-				return configureOpenClaw(model, gatewayKey, upstreamApiKey);
+				return configureOpenClaw(model, gatewayKey, upstreamApiKey, upstreamBaseUrl);
 			}
-			return configureHermes(model, gatewayKey, upstreamApiKey);
+			if (agent === "claude-code" || agent === "codex") {
+				return configureCliAgent(agent, upstreamApiKey);
+			}
+			return configureHermes(model, gatewayKey, upstreamApiKey, upstreamBaseUrl);
 		case "register-cursor-mcp":
 			return `mkdir -p ${HERMES_HOME} && touch ${HERMES_HOME}/mcp-registered`;
 		case "seed-cron-jobs":
 			return `mkdir -p ${HERMES_HOME}/crons && touch ${HERMES_HOME}/crons/.seeded`;
 		case "start-gateway":
-			return agent === "openclaw" ? startOpenClaw() : startHermes();
+			if (agent === "openclaw") return startOpenClaw();
+			if (agent === "claude-code" || agent === "codex") return null;
+			return startHermes();
 		case "install-closed-loop-tools":
 			return installClosedLoopTools();
 	}
@@ -223,12 +270,13 @@ function configureHermes(
 	model: string,
 	gatewayKey: string,
 	upstreamApiKey: string,
+	upstreamBaseUrl: string,
 ): string {
 	return [
 		"set -e",
 		hermesEnv(),
 		`hermes config set model.provider custom`,
-		`hermes config set model.base_url ${shell("https://api.dedaluslabs.ai/v1")}`,
+		`hermes config set model.base_url ${upstreamBaseUrl}`,
 		`hermes config set model.api_key ${upstreamApiKey}`,
 		`hermes config set model.default ${model}`,
 		`hermes config set first_run_complete true`,
@@ -240,6 +288,7 @@ function configureOpenClaw(
 	model: string,
 	gatewayKey: string,
 	upstreamApiKey: string,
+	upstreamBaseUrl: string,
 ): string {
 	return [
 		"set -e",
@@ -253,8 +302,22 @@ function configureOpenClaw(
 		`openclaw config set agent.model ${model}`,
 		`openclaw config set env.vars.ANTHROPIC_API_KEY ${upstreamApiKey}`,
 		`openclaw config set env.vars.OPENAI_API_KEY ${upstreamApiKey}`,
-		`openclaw config set env.vars.ANTHROPIC_BASE_URL ${shell("https://api.dedaluslabs.ai/v1")}`,
+		`openclaw config set env.vars.ANTHROPIC_BASE_URL ${upstreamBaseUrl}`,
 		`cat > ${OPENCLAW_HOME}/.env <<EOF\nOPENCLAW_API_KEY=${gatewayKey}\nOPENCLAW_MODEL=${model}\nEOF`,
+	].join(" && ");
+}
+
+function configureCliAgent(
+	agent: string,
+	upstreamApiKey: string,
+): string {
+	const envVar = agent === "claude-code" ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY";
+	const configDir = agent === "claude-code" ? `${HOME}/.claude` : `${HOME}/.codex`;
+	return [
+		"set -e",
+		`mkdir -p ${configDir} ${APP_HOME}`,
+		`cat > ${APP_HOME}/.agent-env <<EOF\nexport ${envVar}=${upstreamApiKey}\nEOF`,
+		`chmod 600 ${APP_HOME}/.agent-env`,
 	].join(" && ");
 }
 
@@ -347,10 +410,74 @@ function openClawEnv(): string {
 async function exposeGateway(
 	machine: MachineRef,
 	provider: MachineProvider,
+	config: UserConfig,
 ): Promise<string | null> {
+	if (machine.agentKind === "claude-code" || machine.agentKind === "codex") {
+		return null;
+	}
 	const port = machine.agentKind === "openclaw" ? OPENCLAW_PORT : HERMES_PORT;
 	const name = machine.agentKind === "openclaw" ? "openclaw" : "hermes";
 	if (provider.kind !== "dedalus" && provider.kind !== "fly") return null;
+
+	// Priority 1: Named Cloudflare Tunnel (custom domain, survives sleep/wake).
+	// The token comes from the user's config or CLOUDFLARE_TUNNEL_TOKEN env.
+	const tunnelToken = config.cloudflareTunnelToken;
+	if (tunnelToken) {
+		await startNamedTunnel(machine, provider, tunnelToken);
+		// The hostname is configured in Cloudflare dashboard, not here.
+		// Return null so the caller uses the existing machine.apiUrl
+		// (set by the user to their custom domain).
+		return machine.apiUrl ?? null;
+	}
+
+	// Priority 2: Dedalus preview (stable platform URL, survives sleep/wake).
+	if (provider.kind === "dedalus" && "createPreview" in provider) {
+		const dedalus = provider as import("@/lib/providers/dedalus").DedalusProvider;
+		const previewUrl = await dedalus.createPreview(machine.id, port);
+		if (previewUrl) {
+			const normalized = previewUrl.trim().replace(/\/$/, "");
+			return normalized.endsWith("/v1") ? normalized : `${normalized}/v1`;
+		}
+	}
+
+	// Priority 3: Ephemeral cloudflared quick tunnel (URL changes every restart).
+	return exposeViaCloudflared(machine, provider, port, name);
+}
+
+async function startNamedTunnel(
+	machine: MachineRef,
+	provider: MachineProvider,
+	tunnelToken: string,
+): Promise<void> {
+	await ensureCloudflared(machine, provider);
+	const logPath = `${APP_HOME}/cloudflared-named.log`;
+	const pidPath = `${APP_HOME}/cloudflared-named.pid`;
+	const launcher = `${HOME}/start-tunnel-named.sh`;
+	const launcherBody = [
+		"#!/usr/bin/env bash",
+		"set -euo pipefail",
+		`exec ${CLOUDFLARED_BIN} tunnel --no-autoupdate run --token ${tunnelToken} >> ${logPath} 2>&1`,
+	].join("\n");
+	await provider.exec(
+		machine.id,
+		[
+			"set -e",
+			`mkdir -p ${APP_HOME}`,
+			`cat > ${launcher} <<'LAUNCHEOF'\n${launcherBody}\nLAUNCHEOF`,
+			`chmod +x ${launcher}`,
+			`(setsid ${launcher} </dev/null &>/dev/null & echo $! > ${pidPath})`,
+			"sleep 5",
+		].join(" && "),
+		{ timeoutMs: 30_000 },
+	);
+}
+
+async function exposeViaCloudflared(
+	machine: MachineRef,
+	provider: MachineProvider,
+	port: number,
+	name: string,
+): Promise<string> {
 	await ensureCloudflared(machine, provider);
 	const logPath = `${APP_HOME}/cloudflared-${name}.log`;
 	const pidPath = `${APP_HOME}/cloudflared-${name}.pid`;

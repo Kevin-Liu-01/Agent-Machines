@@ -20,6 +20,7 @@ export const AGENTS: ReadonlyArray<AgentMeta> = [
 		providerKeys: ["DEDALUS_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"],
 		providerOptions: [
 			{ key: "DEDALUS_API_KEY", label: "Dedalus Router", hint: "routes 200+ models with one key via api.dedaluslabs.ai/v1" },
+			{ key: "AI_GATEWAY_API_KEY", label: "Vercel AI Gateway", hint: "200+ models, OIDC auth, provider failover -- vercel.com/ai-gateway" },
 			{ key: "OPENAI_API_KEY", label: "OpenAI direct", hint: "platform.openai.com" },
 			{ key: "ANTHROPIC_API_KEY", label: "Anthropic direct", hint: "console.anthropic.com" },
 			{ key: "OPENROUTER_API_KEY", label: "OpenRouter", hint: "gateway to 200+ models" },
@@ -43,6 +44,7 @@ export const AGENTS: ReadonlyArray<AgentMeta> = [
 		providerKeys: ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "DEDALUS_API_KEY"],
 		providerOptions: [
 			{ key: "ANTHROPIC_API_KEY", label: "Anthropic direct", hint: "console.anthropic.com -- default provider" },
+			{ key: "AI_GATEWAY_API_KEY", label: "Vercel AI Gateway", hint: "200+ models, OIDC auth, provider failover -- vercel.com/ai-gateway" },
 			{ key: "OPENAI_API_KEY", label: "OpenAI direct", hint: "platform.openai.com" },
 			{ key: "DEDALUS_API_KEY", label: "Dedalus Router", hint: "set ANTHROPIC_BASE_URL to api.dedaluslabs.ai/v1" },
 			{ key: "OPENROUTER_API_KEY", label: "OpenRouter", hint: "gateway to 200+ models" },

@@ -49,6 +49,7 @@ export function SettingsPanel({ initialConfig }: Props) {
 	const [openaiKey, setOpenaiKey] = useState("");
 	const [openrouterKey, setOpenrouterKey] = useState("");
 	const [googleKey, setGoogleKey] = useState("");
+	const [vercelAiGatewayKey, setVercelAiGatewayKey] = useState("");
 	const [customUrl, setCustomUrl] = useState("");
 	const [customKey, setCustomKey] = useState("");
 	const [customLabel, setCustomLabel] = useState("");
@@ -96,6 +97,7 @@ export function SettingsPanel({ initialConfig }: Props) {
 			if (openaiKey.trim()) aiProviderKeys.openai = openaiKey.trim();
 			if (openrouterKey.trim()) aiProviderKeys.openrouter = openrouterKey.trim();
 			if (googleKey.trim()) aiProviderKeys.google = googleKey.trim();
+			if (vercelAiGatewayKey.trim()) aiProviderKeys.vercelAiGateway = vercelAiGatewayKey.trim();
 			if (customUrl.trim() && customKey.trim()) {
 				aiProviderKeys.custom = {
 					url: customUrl.trim(),
@@ -302,6 +304,14 @@ export function SettingsPanel({ initialConfig }: Props) {
 						configured={config.aiProviders.openrouter.configured}
 						fields={[
 							["API key", openrouterKey, setOpenrouterKey, "sk-or-..."],
+						]}
+					/>
+					<AiProviderBox
+						title="Vercel AI Gateway"
+						hint="Hermes, OpenClaw -- managed gateway"
+						configured={config.aiProviders.vercelAiGateway.configured}
+						fields={[
+							["API key", vercelAiGatewayKey, setVercelAiGatewayKey, "vai-..."],
 						]}
 					/>
 					<AiProviderBox

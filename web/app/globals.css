@@ -76,7 +76,7 @@
 	 * computed once at the page-grid level. Sections use it to position
 	 * corner cross marks exactly where the rails cross the section border.
 	 */
-	--ret-rail-offset: max(0px, calc(50% - var(--ret-content-max) / 2));
+	--ret-rail-offset: 4rem;
 
 	/*
 	 * --font-sans points at Nacelle by default. The `var(--font-nacelle)`
@@ -427,6 +427,17 @@ textarea::placeholder {
 	background-size: 3px 3px;
 	opacity: 0.18;
 	mix-blend-mode: overlay;
+}
+
+@keyframes fadeSlideIn {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
 }
 
 @keyframes ret-panel-in {

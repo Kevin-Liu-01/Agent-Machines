@@ -48,7 +48,7 @@ export function RuntimeVizGrid() {
 				</p>
 			</div>
 
-			<div className="mt-5 grid grid-cols-1 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-2 lg:grid-cols-3">
+			<div className="mt-5 grid grid-cols-1 gap-px overflow-hidden bg-[var(--ret-border)] sm:grid-cols-2 lg:grid-cols-3">
 				<RuntimeCard
 					icon="filesystem"
 					label="disk"

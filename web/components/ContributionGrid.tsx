@@ -188,7 +188,7 @@ function CellSwatch({
 			onFocus={() => onSelect(day)}
 			aria-label={`${day.date}, ${day.events.length} events on ${day.partner}`}
 			className={cn(
-				"relative h-2.5 w-2.5 cursor-pointer border transition-all duration-100",
+				"relative h-3.5 w-3.5 cursor-pointer border transition-all duration-100",
 				active
 					? "z-20 scale-[1.8] border-[var(--ret-text)] outline outline-2 outline-offset-1 outline-[var(--ret-purple)]/70 shadow-[0_0_0_1px_var(--ret-bg)]"
 					: "border-[var(--ret-border)]/50 hover:z-10 hover:scale-[1.5] hover:border-[var(--ret-text)]",
@@ -326,7 +326,8 @@ export function ContributionGrid() {
 	}
 
 	return (
-		<div className="flex h-full flex-col border border-[var(--ret-border)] bg-[var(--ret-bg)]">
+		<div className="flex h-full flex-col bg-[var(--ret-bg)]">
+			{/* Header */}
 			<div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--ret-border)] px-3 py-2">
 				<div className="flex items-center gap-2">
 					<ReticleLabel>ACTIVITY -- 6 MONTHS</ReticleLabel>
@@ -335,7 +336,7 @@ export function ContributionGrid() {
 						<button
 							type="button"
 							onClick={clearFilters}
-							className="group flex items-center gap-1.5 border border-[var(--ret-purple)]/50 bg-[var(--ret-purple-glow)] px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-purple)] transition-colors hover:bg-[var(--ret-purple)]/15"
+							className="group flex items-center gap-1.5 bg-[var(--ret-purple-glow)] px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-purple)] transition-colors hover:bg-[var(--ret-purple)]/15"
 							title="Clear filter"
 						>
 							<span className="h-1.5 w-1.5 animate-pulse bg-[var(--ret-purple)]" />
@@ -351,33 +352,39 @@ export function ContributionGrid() {
 				</p>
 			</div>
 
+			{/* Main body: grid left, day detail right */}
 			<div className="grid flex-1 gap-px bg-[var(--ret-border)] md:grid-cols-[1fr_minmax(0,200px)]">
-				<div className="flex flex-col gap-2.5 bg-[var(--ret-bg)] px-3 py-3">
-					<MonthLabels weeks={weeks} />
-					<div
-						className="grid gap-[1px]"
-						style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }}
-					>
-						{weeks.map((week, weekIdx) => (
-							<div key={`week-${weekIdx}`} className="grid grid-rows-7 gap-[1px]">
-								{Array.from({ length: 7 }).map((_, dayIdx) => {
-									const day = week[dayIdx];
-									if (!day) {
-										return <div key={`empty-${weekIdx}-${dayIdx}`} className="h-2.5 w-2.5" aria-hidden="true" />;
-									}
-									const partnerDim = filter !== "all" && day.partner !== filter;
-									const brandDim = brandFilter !== null && !day.events.some((e) => e.brand === brandFilter);
-									const dimmed = partnerDim || brandDim;
-									return (
-										<div key={day.date} className={cn(dimmed && "opacity-20")}>
-											<CellSwatch day={day} active={day.date === selected.date} onSelect={setSelected} />
-										</div>
-									);
-								})}
-							</div>
-						))}
+				<div className="flex flex-col bg-[var(--ret-bg)]">
+					{/* Cell grid */}
+					<div className="border-b border-[var(--ret-border)] px-3 py-3">
+						<MonthLabels weeks={weeks} />
+						<div
+						className="mt-1 grid gap-0.5"
+						style={{ gridTemplateColumns: `repeat(${weeks.length}, 14px)` }}
+						>
+							{weeks.map((week, weekIdx) => (
+								<div key={`week-${weekIdx}`} className="grid grid-rows-7 gap-0.5">
+									{Array.from({ length: 7 }).map((_, dayIdx) => {
+										const day = week[dayIdx];
+										if (!day) {
+											return <div key={`empty-${weekIdx}-${dayIdx}`} className="h-3.5 w-3.5" aria-hidden="true" />;
+										}
+										const partnerDim = filter !== "all" && day.partner !== filter;
+										const brandDim = brandFilter !== null && !day.events.some((e) => e.brand === brandFilter);
+										const dimmed = partnerDim || brandDim;
+										return (
+											<div key={day.date} className={cn(dimmed && "opacity-20")}>
+												<CellSwatch day={day} active={day.date === selected.date} onSelect={setSelected} />
+											</div>
+										);
+									})}
+								</div>
+							))}
+						</div>
 					</div>
-					<div className="flex flex-col gap-1.5 pt-1">
+
+					{/* Agent filter */}
+					<div className="border-b border-[var(--ret-border)] px-3 py-2.5">
 						<div className="flex items-baseline justify-between gap-2">
 							<p className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
 								<span aria-hidden="true" className="text-[var(--ret-purple)]">{"->"}
@@ -389,7 +396,7 @@ export function ContributionGrid() {
 								{INTENSITY_OPACITY.map((o, idx) => (
 									<span
 										key={idx}
-										className="h-2 w-2 border border-[var(--ret-border)]"
+										className="h-2 w-2"
 										style={{ background: "var(--ret-text)", opacity: o }}
 										aria-hidden="true"
 									/>
@@ -397,7 +404,7 @@ export function ContributionGrid() {
 								<span>more</span>
 							</div>
 						</div>
-						<div className="flex flex-wrap gap-1.5">
+						<div className="mt-2 flex flex-wrap gap-1.5">
 							{ALL_PARTNERS.map((partner) => (
 								<PartnerSwatch
 									key={partner}
@@ -410,8 +417,9 @@ export function ContributionGrid() {
 						</div>
 					</div>
 
+					{/* Service filter */}
 					{brandStats.slugs.length > 0 ? (
-						<div className="flex flex-col gap-1.5 pt-1">
+						<div className="px-3 py-2.5">
 							<div className="flex items-baseline justify-between gap-2">
 								<p className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
 									<span aria-hidden="true" className="text-[var(--ret-purple)]">{"->"}
@@ -428,7 +436,7 @@ export function ContributionGrid() {
 									</button>
 								) : null}
 							</div>
-							<div className="flex flex-wrap gap-1">
+							<div className="mt-2 flex flex-wrap gap-1">
 								{brandStats.slugs.map((slug) => (
 									<BrandChip
 										key={slug}
@@ -442,6 +450,13 @@ export function ContributionGrid() {
 							</div>
 						</div>
 					) : null}
+
+					{/* Hatch fill: fills remaining vertical space */}
+					<div
+						className="min-h-[12px] flex-1"
+						style={{ backgroundImage: "repeating-linear-gradient(135deg, var(--ret-rail) 0 1px, transparent 1px 5px)" }}
+						aria-hidden="true"
+					/>
 				</div>
 
 				<DayDetail day={selected} />
@@ -486,7 +501,7 @@ function DayDetail({ day }: { day: ContributionDay }) {
 					))}
 				</ul>
 			)}
-			<p className="mt-auto border-t border-[var(--ret-border)] pt-3 font-mono text-[10px] leading-relaxed text-[var(--ret-text-muted)]">
+			<p className="mt-auto pt-3 font-mono text-[10px] leading-relaxed text-[var(--ret-text-muted)]">
 				<span className="text-[var(--ret-purple)]">{"->"}</span> each cell is
 				one day this machine was awake. hover to peek, click to pin. nothing
 				lives in RAM that it can&rsquo;t rebuild from{" "}

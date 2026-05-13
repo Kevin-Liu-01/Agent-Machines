@@ -16,7 +16,7 @@ export function FaqSection() {
 				</p>
 			</div>
 
-			<dl className="mt-5 grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)]">
+			<dl className="mt-5 grid gap-px overflow-hidden bg-[var(--ret-border)]">
 				{FAQ.map(({ question, answer }, i) => (
 					<div
 						key={question}

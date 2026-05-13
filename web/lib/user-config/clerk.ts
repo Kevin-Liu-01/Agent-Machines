@@ -462,12 +462,18 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
 
 	const aiProviderKeys: AiProviderKeys = (privateMeta.aiProviderKeys as AiProviderKeys) ?? {};
 
+	const cloudflareTunnelToken =
+		asString(privateMeta.cloudflareTunnelToken) ??
+		process.env.CLOUDFLARE_TUNNEL_TOKEN?.trim() ??
+		null;
+
 	return {
 		providers,
 		aiProviderKeys,
 		machines,
 		activeMachineId,
 		cursorApiKey,
+		cloudflareTunnelToken,
 		gatewayProfiles,
 		agentProfiles,
 		environmentProfiles,
@@ -532,6 +538,7 @@ type ConfigPatch = {
 	providers?: ProviderCredentials;
 	aiProviderKeys?: AiProviderKeys;
 	cursorApiKey?: string | null;
+	cloudflareTunnelToken?: string | null;
 	gatewayProfiles?: GatewayProfile[];
 	agentProfiles?: AgentProfile[];
 	environmentProfiles?: EnvironmentProfile[];
@@ -780,13 +787,14 @@ export async function setUserConfigById(
 	}
 
 	// AI provider keys (privateMetadata.aiProviderKeys).
-	const nextAiKeys: AiProviderKeys = { ...current.aiProviderKeys };
+	const nextAiKeys: AiProviderKeys = { ...(current.aiProviderKeys ?? {}) };
 	if (patch.aiProviderKeys) {
 		const ak = patch.aiProviderKeys;
 		if (ak.anthropic) nextAiKeys.anthropic = ak.anthropic;
 		if (ak.openai) nextAiKeys.openai = ak.openai;
 		if (ak.openrouter) nextAiKeys.openrouter = ak.openrouter;
 		if (ak.google) nextAiKeys.google = ak.google;
+		if (ak.vercelAiGateway) nextAiKeys.vercelAiGateway = ak.vercelAiGateway;
 		if (ak.custom) nextAiKeys.custom = ak.custom;
 	}
 
@@ -831,6 +839,8 @@ export async function setUserConfigById(
 
 	const nextCursor =
 		patch.cursorApiKey !== undefined ? patch.cursorApiKey : current.cursorApiKey;
+	const nextTunnelToken =
+		patch.cloudflareTunnelToken !== undefined ? patch.cloudflareTunnelToken : (current.cloudflareTunnelToken ?? null);
 	const nextGatewayProfiles = patch.gatewayProfiles ?? current.gatewayProfiles;
 	const nextAgentProfiles = patch.agentProfiles ?? current.agentProfiles;
 	const nextEnvironmentProfiles =
@@ -888,6 +898,11 @@ export async function setUserConfigById(
 		delete nextPrivate.cursorApiKey;
 	} else {
 		nextPrivate.cursorApiKey = nextCursor;
+	}
+	if (nextTunnelToken === null) {
+		delete nextPrivate.cloudflareTunnelToken;
+	} else {
+		nextPrivate.cloudflareTunnelToken = nextTunnelToken;
 	}
 	// Drop the legacy single-key field once we've absorbed it.
 	delete nextPrivate.dedalusApiKey;

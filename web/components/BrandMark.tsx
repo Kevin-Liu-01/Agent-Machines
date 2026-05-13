@@ -55,7 +55,7 @@ export function BrandMark({
 				className,
 			)}
 		>
-			<Logo mark="dedalus" size={size} />
+			<Logo mark="dedalus" size={Math.round(size * 1.2)} />
 			<span
 				aria-hidden="true"
 				className="font-mono text-[0.7em] text-[var(--ret-text-muted)]"

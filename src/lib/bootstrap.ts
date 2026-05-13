@@ -156,7 +156,7 @@ async function installHermes({ client, machineId }: BootstrapInput): Promise<voi
 		machineId,
 		`${SHELL_ENV} && uv pip install --python ${VM_VENV}/bin/python ` +
 			`'hermes-agent[web,mcp] @ git+https://github.com/NousResearch/hermes-agent.git@main' ` +
-			`aiohttp 2>&1 | tail -8`,
+			`aiohttp 2>&1 | tail -40`,
 		{ timeoutMs: 900_000 },
 	);
 	await exec(

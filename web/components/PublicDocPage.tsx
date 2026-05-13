@@ -6,6 +6,7 @@ import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { ReticlePageGrid } from "@/components/reticle/ReticlePageGrid";
 import { ReticleSection } from "@/components/reticle/ReticleSection";
+import { ReticleSpacer } from "@/components/reticle/ReticleSpacer";
 import { SITE } from "@/lib/seo/config";
 
 type PublicDocPageProps = {
@@ -30,7 +31,6 @@ export function PublicDocPage({
 			<PublicNavbar githubRepo={SITE.githubRepo} />
 			<main id="top">
 				<ReticleSection
-					borderTop={false}
 					contentClassName="px-6 pt-14 pb-16 md:pt-16 md:pb-20"
 				>
 					<div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -53,7 +53,8 @@ export function PublicDocPage({
 						) : null}
 					</div>
 				</ReticleSection>
-				<ReticleSection borderTop contentClassName="px-6 py-12 md:py-14">
+				<ReticleSpacer />
+				<ReticleSection contentClassName="px-6 py-12 md:py-14">
 					{children}
 				</ReticleSection>
 			</main>

@@ -237,12 +237,13 @@ export function SetupWizard({ initialConfig, defaults }: Props) {
 					config={config}
 					hasOwnerDedalusKey={defaults.hasOwnerDedalusKey}
 					busy={busy}
-					onSave={async (creds, cursorApiKey) => {
+					onSave={async (creds, cursorApiKey, aiProviderKeys) => {
 						const patch: Record<string, unknown> = {
 							setupStep: "agent",
 							providerCredentials: creds,
 						};
 						if (cursorApiKey !== undefined) patch.cursorApiKey = cursorApiKey;
+						if (aiProviderKeys !== undefined) patch.aiProviderKeys = aiProviderKeys;
 						const ok = await submitPatch(patch);
 						if (ok) setActiveStep("agent");
 					}}
@@ -394,6 +395,8 @@ type CredsState = {
 	fly: string;
 	flyOrg: string;
 	cursor: string;
+	anthropic: string;
+	openai: string;
 };
 
 function CredentialsStep({
@@ -412,6 +415,7 @@ function CredentialsStep({
 			fly?: { apiKey: string; orgSlug?: string };
 		},
 		cursorApiKey: string | undefined,
+		aiProviderKeys: Record<string, string> | undefined,
 	) => Promise<void>;
 }) {
 	const [state, setState] = useState<CredsState>({
@@ -421,14 +425,19 @@ function CredentialsStep({
 		fly: "",
 		flyOrg: "",
 		cursor: "",
+		anthropic: "",
+		openai: "",
 	});
 
 	const dedalusOnFile = config.providers.dedalus.configured;
 	const vercelOnFile = config.providers["vercel-sandbox"].configured;
 	const flyOnFile = config.providers.fly.configured;
 	const cursorOnFile = config.hasCursorKey;
+	const anthropicOnFile = config.aiProviders.anthropic.configured;
+	const openaiOnFile = config.aiProviders.openai.configured;
 	const anyConfigured =
-		dedalusOnFile || vercelOnFile || flyOnFile || hasOwnerDedalusKey;
+		dedalusOnFile || vercelOnFile || flyOnFile || hasOwnerDedalusKey ||
+		anthropicOnFile || openaiOnFile;
 
 	function buildPatch() {
 		const creds: Parameters<typeof onSave>[0] = {};
@@ -448,15 +457,23 @@ function CredentialsStep({
 			};
 		}
 		const cursor = state.cursor.trim();
-		return { creds, cursor: cursor.length > 0 ? cursor : undefined };
+		const aiKeys: Record<string, string> = {};
+		if (state.anthropic.trim()) aiKeys.anthropic = state.anthropic.trim();
+		if (state.openai.trim()) aiKeys.openai = state.openai.trim();
+		return {
+			creds,
+			cursor: cursor.length > 0 ? cursor : undefined,
+			aiKeys: Object.keys(aiKeys).length > 0 ? aiKeys : undefined,
+		};
 	}
 
 	return (
 		<StepShell
 			title="Bring API keys for the providers you'll use"
-			description="One per provider. Each is stored in your Clerk private metadata, never exposed to the browser. You can add more later from /dashboard/setup. At least one provider key is required to provision; Cursor is optional and only needed for the cursor-bridge MCP."
+			description="Infrastructure keys provision the machine. AI provider keys power the agent's LLM inference. Each is stored in Clerk private metadata, never exposed to the browser."
 		>
-			<div className="grid gap-4 lg:grid-cols-3">
+			<ReticleLabel>infrastructure providers</ReticleLabel>
+			<div className="mt-2 grid gap-4 lg:grid-cols-3">
 				<KeyField
 					label="Dedalus API key"
 					placeholder="dsk-live-..."
@@ -502,6 +519,36 @@ function CredentialsStep({
 					}}
 				/>
 			</div>
+
+			<ReticleLabel className="mt-5">ai provider keys</ReticleLabel>
+			<p className="mt-1 text-[12px] text-[var(--ret-text-dim)]">
+				Hermes and OpenClaw accept any of these. Claude Code requires Anthropic. Codex requires OpenAI.
+			</p>
+			<div className="mt-2 grid gap-4 lg:grid-cols-2">
+				<KeyField
+					label="Anthropic API key"
+					placeholder="sk-ant-..."
+					value={state.anthropic}
+					onChange={(v) => setState((s) => ({ ...s, anthropic: v }))}
+					hint={
+						anthropicOnFile
+							? "On file. Leave blank to keep."
+							: "For Claude Code, or Hermes/OpenClaw via Anthropic."
+					}
+				/>
+				<KeyField
+					label="OpenAI API key"
+					placeholder="sk-..."
+					value={state.openai}
+					onChange={(v) => setState((s) => ({ ...s, openai: v }))}
+					hint={
+						openaiOnFile
+							? "On file. Leave blank to keep."
+							: "For Codex CLI, or Hermes/OpenClaw via OpenAI."
+					}
+				/>
+			</div>
+
 			<KeyField
 				label="Cursor API key (optional)"
 				placeholder="cursor-..."
@@ -517,7 +564,7 @@ function CredentialsStep({
 				<ReticleButton
 					variant="ghost"
 					size="sm"
-					onClick={() => onSave({}, undefined)}
+					onClick={() => onSave({}, undefined, undefined)}
 					disabled={busy || !anyConfigured}
 				>
 					Skip (use existing)
@@ -527,8 +574,8 @@ function CredentialsStep({
 					size="sm"
 					disabled={busy}
 					onClick={() => {
-						const { creds, cursor } = buildPatch();
-						return onSave(creds, cursor);
+						const { creds, cursor, aiKeys } = buildPatch();
+						return onSave(creds, cursor, aiKeys);
 					}}
 				>
 					{busy ? "Saving..." : "Save and continue"}

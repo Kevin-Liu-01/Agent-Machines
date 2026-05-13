@@ -22,7 +22,7 @@ export function ReticleNavbar({ children, className }: Props) {
 				className,
 			)}
 		>
-			<div className="mx-auto max-w-[var(--ret-content-max)]">{children}</div>
+			<div className="mx-auto w-full max-w-[var(--ret-content-max)]">{children}</div>
 		</nav>
 	);
 }
