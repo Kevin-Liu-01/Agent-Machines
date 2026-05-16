@@ -2,10 +2,10 @@
 
 import { useMemo } from "react";
 
-import { Logo } from "@/components/Logo";
+import { Logo, type Mark } from "@/components/Logo";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
-import { ServiceIcon } from "@/components/ServiceIcon";
+import { ServiceIcon, isServiceSlug } from "@/components/ServiceIcon";
 import { ToolIcon } from "@/components/ToolIcon";
 import {
 	CATEGORY_LABEL,
@@ -20,6 +20,9 @@ import {
 } from "@/lib/dashboard/loadout";
 import type { McpServerWithBrand } from "@/lib/dashboard/mcps";
 import type { SkillSummary } from "@/lib/dashboard/types";
+
+const MARK_SET = new Set<string>(["dedalus", "nous", "cursor", "openclaw", "anthropic", "openai"]);
+function isMark(value: string): value is Mark { return MARK_SET.has(value); }
 
 const AGENT_BADGE: Record<
 	AgentSupport,
@@ -159,7 +162,10 @@ export function McpCard({
 		<ReticleFrame>
 			<div className="flex items-center justify-between gap-2 border-b border-[var(--ret-border)] px-3 py-2">
 				<div className="flex items-center gap-2">
-					{server.brand ? <Logo mark={server.brand} size={14} /> : null}
+					{server.brand ? (
+						isMark(server.brand) ? <Logo mark={server.brand} size={14} /> :
+						isServiceSlug(server.brand) ? <ServiceIcon slug={server.brand} size={14} /> : null
+					) : null}
 					<span className="font-mono text-[12px] text-[var(--ret-text)]">
 						{server.name}
 					</span>

@@ -1,27 +1,17 @@
 import type { SVGProps } from "react";
 
-import { Logo } from "@/components/Logo";
-import { ReticleBadge } from "@/components/reticle/ReticleBadge";
+import { Logo, type Mark } from "@/components/Logo";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
-import { ServiceIcon, type ServiceSlug } from "@/components/ServiceIcon";
-import {
-	WireframeDashboard,
-	WireframeAgent,
-	WireframeLoadout,
-	WireframeHosts,
-	WireframeEnvironment,
-} from "@/components/three";
-import { ToolIcon } from "@/components/ToolIcon";
-import { WingBackground } from "@/components/WingBackground";
+import { WorkflowTabs } from "@/components/WorkflowTabs";
 import { cn } from "@/lib/cn";
-import {
-	BUILTIN_TOOLS,
-	SERVICES,
-	TRUSTED_ADDONS,
-	type ToolCategory,
-} from "@/lib/dashboard/loadout";
-import { listMcpServers } from "@/lib/dashboard/mcps";
-import { listSkills } from "@/lib/dashboard/skills";
+
+/* ------------------------------------------------------------------ */
+/* Data                                                                */
+/* ------------------------------------------------------------------ */
+
+type Bullet = readonly [prefix: string, highlight: string, suffix?: string];
+
+type PoweredByEntry = { name: string; mark: Mark };
 
 type Step = {
 	id: string;
@@ -30,559 +20,563 @@ type Step = {
 	title: string;
 	body: string;
 	Icon: (props: SVGProps<SVGSVGElement>) => React.ReactElement;
-	metrics: Array<[string, string]>;
+	bullets: readonly Bullet[];
+	poweredBy: readonly PoweredByEntry[];
 };
 
 const STEPS: ReadonlyArray<Step> = [
 	{
 		id: "ui",
-		tab: "ui",
-		kicker: "01 / dashboard",
+		tab: "dashboard",
+		kicker: "AGENT MACHINES · DASHBOARD",
 		title: "Configure once, then operate from the fleet view.",
 		body: "Settings, setup, machine lifecycle, terminal, logs, artifacts, and chat all read from the same account configuration instead of one-off wizard state.",
 		Icon: IconPanel,
-		metrics: [
-			["settings", "providers + gateways + profiles"],
-			["actions", "wake . sleep . destroy"],
-			["storage", "/home/machine/.agent-machines"],
+		bullets: [
+			["Configure all ", "settings", " — providers, gateways, and profiles"],
+			["Full machine lifecycle: ", "wake · sleep · destroy"],
+			["Persistent state in ", "/home/machine/.agent-machines"],
 		],
+		poweredBy: [{ name: "Dedalus", mark: "dedalus" }],
 	},
 	{
 		id: "agent",
 		tab: "agent",
-		kicker: "02 / runtime",
+		kicker: "AGENT MACHINES · RUNTIME",
 		title: "Four agents, two operation models, one machine.",
-		body: "Autonomous agents (Hermes, OpenClaw) have built-in drivers that wake up on schedule. Task-driven CLIs (Claude Code, Codex) run per-task but can be automated via headless flags.",
+		body: "Autonomous agents have built-in drivers that wake up on schedule. Task-driven CLIs run per-task but can be automated via headless flags and cron.",
 		Icon: IconAgent,
-		metrics: [
-			["autonomous", "hermes . openclaw"],
-			["task-driven", "claude code . codex"],
-			["profiles", "reusable per account"],
+		bullets: [
+			["Autonomous agents: ", "Hermes · OpenClaw"],
+			["Task-driven CLIs: ", "Claude Code · Codex"],
+			["Reusable per-account ", "agent profiles"],
+		],
+		poweredBy: [
+			{ name: "Nous", mark: "nous" },
+			{ name: "OpenClaw", mark: "openclaw" },
 		],
 	},
 	{
 		id: "tools",
 		tab: "tools + mcps",
-		kicker: "03 / loadout",
-		title: "Skills, MCP servers, CLI tools, and plugins are visible.",
-		body: "Built-ins and custom loadout entries live in the same account settings model so terminal edits can sync back into the dashboard.",
+		kicker: "AGENT MACHINES · LOADOUT",
+		title: "Skills, MCP servers, CLI tools, and plugins — all visible.",
+		body: "Built-ins and custom loadout entries live in the same account settings model so terminal edits sync back into the dashboard.",
 		Icon: IconTools,
-		metrics: [
-			["skills", `${listSkills().length} synced`],
-			["services", `${SERVICES.length} routes`],
-			["custom", "skill . tool . mcp . cli . plugin"],
+		bullets: [
+			["", "96 skills", " synced from the wiki at boot"],
+			["", "17 service", " integrations and routes"],
+			["Custom loadout: ", "skill · tool · mcp · cli · plugin"],
 		],
+		poweredBy: [],
 	},
 	{
 		id: "providers",
 		tab: "providers",
-		kicker: "04 / hosts",
-		title: "Dedalus by default. Fly and Sandbox are explicit hosts.",
+		kicker: "AGENT MACHINES · HOSTS",
+		title: "Dedalus by default. Fly and Sandbox are explicit stubs.",
 		body: "Persistent-machine providers expose disk, wake/sleep, destroy, and exec. Ephemeral sandboxes expose session exec and external storage.",
 		Icon: IconProvider,
-		metrics: [
-			["dedalus", "persistent microVM"],
-			["fly", "app + volume + machine"],
-			["sandbox", "ephemeral session"],
+		bullets: [
+			["", "Dedalus", " — persistent microVM with full disk"],
+			["", "Fly", " — app + volume + machine"],
+			["", "Sandbox", " — ephemeral session execution"],
 		],
+		poweredBy: [{ name: "Dedalus", mark: "dedalus" }],
 	},
 	{
 		id: "env",
-		tab: "vm sandbox env",
-		kicker: "05 / environment",
+		tab: "environment",
+		kicker: "AGENT MACHINES · ENVIRONMENT",
 		title: "Gateway and environment settings follow new machines.",
 		body: "Gateway profiles, env profiles, and bootstrap presets are account-level objects that a new machine can inherit.",
 		Icon: IconEnv,
-		metrics: [
-			["gateway", "dedalus . ai gateway . byo"],
-			["env", "named variable sets"],
-			["bootstrap", "phase tracked"],
+		bullets: [
+			["Gateway modes: ", "dedalus · ai gateway · byo"],
+			["Named variable sets with ", "env profiles"],
+			["Phase-tracked ", "bootstrap", " presets"],
 		],
+		poweredBy: [{ name: "Dedalus", mark: "dedalus" }],
 	},
 ];
+
+const TAB_DATA = STEPS.map((s) => ({
+	id: s.id,
+	tab: s.tab,
+	icon: <s.Icon className="h-3.5 w-3.5" />,
+}));
+
+const STEP_GRADIENTS: ReadonlyArray<string> = [
+	[
+		"radial-gradient(circle at 30% 20%, rgba(139,92,246,0.65) 0%, transparent 50%)",
+		"radial-gradient(circle at 70% 80%, rgba(79,70,229,0.55) 0%, transparent 45%)",
+		"radial-gradient(circle at 85% 25%, rgba(192,132,252,0.4) 0%, transparent 40%)",
+		"#0c0515",
+	].join(", "),
+	[
+		"radial-gradient(circle at 40% 30%, rgba(16,185,129,0.65) 0%, transparent 50%)",
+		"radial-gradient(circle at 75% 70%, rgba(6,182,212,0.55) 0%, transparent 45%)",
+		"radial-gradient(circle at 15% 75%, rgba(52,211,153,0.4) 0%, transparent 40%)",
+		"#020f0a",
+	].join(", "),
+	[
+		"radial-gradient(circle at 50% 25%, rgba(59,130,246,0.65) 0%, transparent 50%)",
+		"radial-gradient(circle at 20% 75%, rgba(99,102,241,0.55) 0%, transparent 45%)",
+		"radial-gradient(circle at 80% 50%, rgba(37,99,235,0.4) 0%, transparent 40%)",
+		"#030815",
+	].join(", "),
+	[
+		"radial-gradient(circle at 60% 40%, rgba(236,72,153,0.65) 0%, transparent 50%)",
+		"radial-gradient(circle at 20% 65%, rgba(168,85,247,0.55) 0%, transparent 45%)",
+		"radial-gradient(circle at 85% 15%, rgba(244,63,94,0.4) 0%, transparent 40%)",
+		"#150510",
+	].join(", "),
+	[
+		"radial-gradient(circle at 35% 30%, rgba(245,158,11,0.65) 0%, transparent 50%)",
+		"radial-gradient(circle at 70% 65%, rgba(249,115,22,0.55) 0%, transparent 45%)",
+		"radial-gradient(circle at 20% 70%, rgba(239,68,68,0.4) 0%, transparent 40%)",
+		"#150a02",
+	].join(", "),
+];
+
+/* ------------------------------------------------------------------ */
+/* Main                                                                */
+/* ------------------------------------------------------------------ */
 
 export function WorkflowNavigator() {
 	return (
 		<section className="relative">
-			<div className="sticky top-[48px] z-30 -mx-3 border-y border-[var(--ret-border)] bg-[var(--ret-bg)]/90 backdrop-blur md:-mx-4">
-				<nav className="mx-auto grid max-w-[var(--ret-content-max)] grid-cols-2 divide-x divide-y divide-[var(--ret-border)] border-x border-[var(--ret-border)] md:grid-cols-5 md:divide-y-0">
-					{STEPS.map((step) => (
-						<a
-							key={step.id}
-							href={`#workflow-${step.id}`}
-							className="group flex items-center justify-between gap-2 px-3 py-2 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)] transition-colors hover:bg-[var(--ret-surface)] hover:text-[var(--ret-text)]"
-						>
-							<span>{step.tab}</span>
-							<span className="h-1 w-1 bg-current opacity-40 transition-opacity group-hover:opacity-100" />
-						</a>
-					))}
-				</nav>
+			<div className="px-4 py-10 text-center md:px-5 md:py-14">
+				<ReticleLabel className="mx-auto">WORKFLOW</ReticleLabel>
+				<h2 className="ret-display mx-auto mt-4 max-w-[24ch] text-2xl md:text-4xl">
+					Everything your machine needs in one tool
+				</h2>
+				<p className="mx-auto mt-4 max-w-[54ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
+					Agent Machines unifies dashboard, agents, tools, providers,
+					and environment into a single, consistent interface.
+				</p>
 			</div>
 
-			<div className="mt-4 grid gap-px overflow-hidden bg-[var(--ret-border)]">
+			<WorkflowTabs steps={TAB_DATA} />
+
+			<div className="divide-y divide-[var(--ret-border)]">
 				{STEPS.map((step, index) => (
-					<WorkflowRow key={step.id} step={step} index={index} />
+					<WorkflowRow
+						key={step.id}
+						step={step}
+						index={index}
+					/>
 				))}
 			</div>
 		</section>
 	);
 }
 
-const WING_VARIANTS: Array<"nyx-waves" | "nyx-lines" | "cloud"> = [
-	"nyx-waves",
-	"nyx-lines",
-	"nyx-waves",
-	"cloud",
-	"nyx-lines",
-];
-
-const WIREFRAMES = [
-	WireframeDashboard,
-	WireframeAgent,
-	WireframeLoadout,
-	WireframeHosts,
-	WireframeEnvironment,
-];
+/* ------------------------------------------------------------------ */
+/* Per-step row                                                        */
+/* ------------------------------------------------------------------ */
 
 function WorkflowRow({ step, index }: { step: Step; index: number }) {
-	const flipped = index % 2 === 1;
-	const WireScene = WIREFRAMES[index];
-
-	const textPanel = (
-		<div
-			className={cn(
-				"flex flex-col justify-between border-b border-[var(--ret-border)] p-4",
-				flipped ? "md:border-l md:border-b-0" : "md:border-r md:border-b-0",
-			)}
-		>
-			<div>
-				<ReticleLabel>{step.kicker}</ReticleLabel>
-				<h3 className="ret-display mt-3 max-w-[16ch] text-2xl md:text-3xl">
-					{step.title}
-				</h3>
-				<p className="mt-3 max-w-[52ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
-					{step.body}
-				</p>
-			</div>
-			<div className="mt-6 grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)]">
-				{step.metrics.map(([label, value]) => (
-					<div key={label} className="flex items-center justify-between gap-4 bg-[var(--ret-bg-soft)] px-3 py-2">
-						<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-							{label}
-						</span>
-						<span className="font-mono text-[10px] text-[var(--ret-text)]">
-							{value}
-						</span>
-					</div>
-				))}
-			</div>
-		</div>
-	);
-
-	const diagramPanel = (
-		<div className="relative min-h-[360px] overflow-hidden bg-[var(--ret-bg-soft)]">
-			<WingBackground
-				variant={WING_VARIANTS[index] ?? "nyx-lines"}
-				opacity={{ light: 0.26, dark: 0.44 }}
-				fadeEdges
-			/>
-			<div className="ret-material-field absolute inset-0 opacity-80" aria-hidden="true" />
-			<div className="relative z-10 grid h-full grid-cols-[0.65fr_1fr] gap-px bg-[var(--ret-border)]">
-				<div className="flex flex-col justify-between bg-[var(--ret-bg)]/92 p-3 backdrop-blur-sm">
-					{WireScene ? <WireScene className="h-full min-h-[180px] w-full" /> : null}
-					<div className="mt-2 space-y-1">
-						<ReticleBadge variant={index === 1 ? "accent" : "default"}>
-							{step.tab}
-						</ReticleBadge>
-						<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-							block {String(index + 1).padStart(2, "0")}
-						</p>
-					</div>
-				</div>
-				<RowDiagram index={index} />
-			</div>
-		</div>
-	);
-
 	return (
 		<div
 			id={`workflow-${step.id}`}
-			className={cn(
-				"grid min-h-[360px] bg-[var(--ret-bg)]",
-				flipped
-					? "md:grid-cols-[1.15fr_0.85fr]"
-					: "md:grid-cols-[0.85fr_1.15fr]",
-			)}
+			className="grid min-h-[480px] scroll-mt-[84px] grid-cols-1 md:grid-cols-2"
 		>
-			{flipped ? (
-				<>
-					{diagramPanel}
-					{textPanel}
-				</>
-			) : (
-				<>
-					{textPanel}
-					{diagramPanel}
-				</>
-			)}
+			{/* Text panel */}
+			<div className="flex flex-col justify-between p-5 md:p-8 lg:p-10">
+				<div>
+					<ReticleLabel>{step.kicker}</ReticleLabel>
+					<h3 className="mt-4 max-w-[18ch] text-xl font-semibold tracking-tight text-[var(--ret-text)] md:text-2xl">
+						{step.title}
+					</h3>
+					<p className="mt-3 max-w-[48ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
+						{step.body}
+					</p>
+
+					<ul className="mt-6 space-y-3">
+						{step.bullets.map(([prefix, highlight, suffix], bi) => (
+							<li
+								key={bi}
+								className="flex items-start gap-2.5 text-[13px] leading-relaxed text-[var(--ret-text)]"
+							>
+								<span className="mt-px shrink-0 font-semibold text-[var(--ret-purple)]">
+									→→
+								</span>
+								<span>
+									{prefix}
+									<code className="rounded bg-[var(--ret-surface)] px-1.5 py-0.5 text-[12px] font-medium text-[var(--ret-purple)]">
+										{highlight}
+									</code>
+									{suffix}
+								</span>
+							</li>
+						))}
+					</ul>
+				</div>
+
+				{step.poweredBy.length > 0 && (
+					<div className="mt-8 flex items-center gap-2.5 pt-2">
+						<span className="text-[11px] text-[var(--ret-text-muted)]">
+							Powered by
+						</span>
+						{step.poweredBy.map((p) => (
+							<span
+								key={p.name}
+								className="inline-flex items-center gap-1.5 rounded-full bg-[var(--ret-surface)] px-2.5 py-1"
+							>
+								<Logo mark={p.mark} size={14} />
+								<span className="text-[11px] font-medium text-[var(--ret-text)]">
+									{p.name}
+								</span>
+							</span>
+						))}
+					</div>
+				)}
+			</div>
+
+			{/* Gradient + terminal panel */}
+			<div
+				className="relative min-h-[420px] overflow-hidden md:min-h-0"
+				style={{ background: STEP_GRADIENTS[index] }}
+			>
+				<div className="absolute inset-3 overflow-hidden rounded-xl border border-white/[0.08] bg-[#0d0d12]/85 backdrop-blur-xl md:inset-5">
+					<div className="flex h-full flex-col p-4 md:p-5">
+						<StepTerminal index={index} />
+					</div>
+				</div>
+			</div>
 		</div>
 	);
 }
 
-function RowDiagram({ index }: { index: number }) {
+/* ------------------------------------------------------------------ */
+/* Terminal blocks                                                     */
+/* ------------------------------------------------------------------ */
+
+function StepTerminal({ index }: { index: number }) {
 	switch (index) {
 		case 0:
-			return <DashboardPanel />;
+			return <DashboardTerminal />;
 		case 1:
-			return <RuntimePanel />;
+			return <AgentTerminal />;
 		case 2:
-			return <LoadoutPanel />;
+			return <ToolsTerminal />;
 		case 3:
-			return <HostsPanel />;
+			return <ProvidersTerminal />;
 		case 4:
-			return <EnvironmentPanel />;
+			return <EnvironmentTerminal />;
 		default:
 			return null;
 	}
 }
 
-/* ------------------------------------------------------------------ */
-/* Row 01: Dashboard -- agent flow diagram                             */
-/* ------------------------------------------------------------------ */
-
-function DashboardPanel() {
+function DashboardTerminal() {
 	return (
-		<div className="flex flex-col justify-between bg-[var(--ret-bg)]/88 p-4 backdrop-blur-sm">
-			<div className="flex items-center gap-1">
-				<Logo mark="dedalus" size={14} />
-				<Logo mark="nous" size={14} />
-			</div>
-			<div className="flex items-center gap-1.5">
-				<FlowBox label="You" accent="var(--ret-text-muted)">
-					<IconUser className="h-4 w-4" />
-				</FlowBox>
-				<FlowArrow />
-				<FlowBox label="Gateway" accent="var(--ret-purple)">
-					<IconGateway className="h-4 w-4" />
-				</FlowBox>
-				<FlowArrow />
-				<FlowBox label="Agent" accent="var(--ret-green)">
-					<Logo mark="agent" size={14} />
-				</FlowBox>
-				<FlowArrow />
-				<FlowBox label="Container" accent="var(--ret-amber)">
-					<IconContainer className="h-4 w-4" />
-				</FlowBox>
-			</div>
-			<div className="grid grid-cols-2 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)]">
-				{(
-					[
-						["settings", "fleet"],
-						["dashboard", "terminal"],
-					] as const
-				)
-					.flat()
-					.map((label) => (
-						<div key={label} className="bg-[var(--ret-bg-soft)] px-2.5 py-2">
-							<span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-text)]">
-								{label}
-							</span>
-						</div>
-					))}
-			</div>
-		</div>
+		<TerminalShell command="dedalus fleet inspect">
+			<TLine dim>Fleet: kevin-fleet</TLine>
+			<TLine dim>Machines: 1 active</TLine>
+			<TSpacer />
+			<TRow label="Machine" value="main-01" />
+			<TRow label="Status" value="awake" success />
+			<TRow label="Provider" value="dedalus (persistent microVM)" />
+			<TRow label="Disk" value="2.1 / 10 GiB" />
+			<TRow label="Last wake" value="12m ago" />
+			<TSpacer />
+			<TRow label="Settings" value="providers + gateways + profiles" />
+			<TRow label="Actions" value="wake · sleep · destroy" />
+			<TRow label="Storage" value="/home/machine/.agent-machines" />
+			<TSpacer />
+			<TLine success>✓ Fleet healthy</TLine>
+		</TerminalShell>
+	);
+}
+
+function AgentTerminal() {
+	return (
+		<TerminalShell command="dedalus agent list">
+			<TLine dim>4 agents configured</TLine>
+			<TSpacer />
+			<THeader cols={["Name", "Mode", "Driver"]} />
+			<TTableRow cols={["Hermes", "autonomous", "memory + cron + MCP"]} />
+			<TTableRow
+				cols={["OpenClaw", "autonomous", "browser + vision"]}
+			/>
+			<TTableRow
+				cols={["Claude Code", "task-driven", "coding + SDK"]}
+			/>
+			<TTableRow
+				cols={["Codex CLI", "task-driven", "sandbox + exec"]}
+			/>
+			<TSpacer />
+			<TLine success>✓ 2 autonomous drivers active</TLine>
+		</TerminalShell>
+	);
+}
+
+function ToolsTerminal() {
+	return (
+		<TerminalShell command="dedalus loadout show">
+			<TLine dim>Loadout: opinionated-default</TLine>
+			<TSpacer />
+			<TRow label="Built-ins" value="23 tools" />
+			<TRow label="Skills" value="96 synced" />
+			<TRow label="MCP servers" value="7 connected (42 tools)" />
+			<TRow label="Services" value="17 routes" />
+			<TSpacer />
+			<TLine dim>
+				Categories: frontend · security · research · design · ops ·
+				content · ...
+			</TLine>
+			<TSpacer />
+			<TLine success>✓ All integrations healthy</TLine>
+		</TerminalShell>
+	);
+}
+
+function ProvidersTerminal() {
+	return (
+		<TerminalShell command="dedalus provider list">
+			<TLine dim>3 providers configured</TLine>
+			<TSpacer />
+			<THeader cols={["Provider", "Type", "Status"]} />
+			<TTableRow cols={["dedalus", "persistent", "● active"]} accent={[false, false, true]} />
+			<TTableRow cols={["fly", "persistent", "○ standby"]} />
+			<TTableRow cols={["sandbox", "ephemeral", "○ standby"]} />
+			<TSpacer />
+			<TLine dim>Filesystem:</TLine>
+			<TLine>{"  "}~/.agent-machines/{"    "}runtime state</TLine>
+			<TLine>{"  "}skills/{"               "}96 SKILL.md files</TLine>
+			<TLine>{"  "}sessions.db{"           "}FTS5 history</TLine>
+			<TSpacer />
+			<TLine success>✓ 1 provider active</TLine>
+		</TerminalShell>
+	);
+}
+
+function EnvironmentTerminal() {
+	return (
+		<TerminalShell command="dedalus env show">
+			<TLine>
+				Gateway:{"   "}
+				<span className="text-[#d2beff]">dedalus</span> (default)
+			</TLine>
+			<TLine>Bootstrap: phase-tracked</TLine>
+			<TSpacer />
+			<THeader cols={["Profile", "Status", "Description"]} />
+			<TTableRow
+				cols={[
+					"Opinionated default",
+					"● active",
+					"bundled skills + tools",
+				]}
+				accent={[false, true, false]}
+			/>
+			<TTableRow
+				cols={[
+					"Frontend design lab",
+					"ready",
+					"taste + Figma + browser",
+				]}
+			/>
+			<TTableRow
+				cols={["Production ops", "ready", "Vercel + Datadog + CI/CD"]}
+			/>
+			<TTableRow
+				cols={[
+					"Research browser",
+					"ready",
+					"search + extraction + reach",
+				]}
+			/>
+			<TSpacer />
+			<TLine success>✓ 4 presets available</TLine>
+		</TerminalShell>
 	);
 }
 
 /* ------------------------------------------------------------------ */
-/* Row 02: Runtime -- gateway + agent split                            */
+/* Terminal primitives                                                  */
 /* ------------------------------------------------------------------ */
 
-function RuntimePanel() {
-	return (
-		<div className="flex flex-col justify-between bg-[var(--ret-bg)]/88 p-4 backdrop-blur-sm">
-			<div className="flex items-center gap-2">
-				<Logo mark="nous" size={14} />
-				<Logo mark="openclaw" size={14} />
-				<Logo mark="anthropic" size={14} />
-				<Logo mark="openai" size={14} />
-			</div>
-			<div className="grid grid-cols-2 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)]">
-				<MiniCell label="Hermes" value="memory + cron + MCP" />
-				<MiniCell label="OpenClaw" value="browser + vision" />
-				<MiniCell label="Claude Code" value="coding + SDK" />
-				<MiniCell label="Codex CLI" value="sandbox + exec" />
-			</div>
-			<div className="grid grid-cols-2 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)]">
-				<div className="bg-[var(--ret-bg-soft)] px-2.5 py-2">
-					<p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-text)]">autonomous</p>
-					<p className="font-mono text-[9px] text-[var(--ret-text-muted)]">hermes . openclaw</p>
-				</div>
-				<div className="bg-[var(--ret-bg-soft)] px-2.5 py-2">
-					<p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-text)]">task-driven</p>
-					<p className="font-mono text-[9px] text-[var(--ret-text-muted)]">claude code . codex</p>
-				</div>
-			</div>
-		</div>
-	);
-}
-
-/* ------------------------------------------------------------------ */
-/* Row 03: Loadout -- brand logos + tallies + skill categories          */
-/* ------------------------------------------------------------------ */
-
-const FEATURED_BRANDS: Array<{ name: string; slug: ServiceSlug }> =
-	TRUSTED_ADDONS.filter((a): a is typeof a & { brand: ServiceSlug } => Boolean(a.brand))
-		.reduce<Array<{ name: string; slug: ServiceSlug }>>((acc, a) => {
-			if (!acc.some((x) => x.slug === a.brand)) acc.push({ name: a.name, slug: a.brand! });
-			return acc;
-		}, [])
-		.slice(0, 18);
-
-function LoadoutPanel() {
-	const skills = listSkills();
-	const mcps = listMcpServers();
-	const mcpToolCount = mcps.reduce((sum, m) => sum + m.tools.length, 0);
-
-	const skillCats = skills.reduce<Record<string, number>>(
-		(acc, s) => ({ ...acc, [s.category]: (acc[s.category] ?? 0) + 1 }),
-		{},
-	);
-
-	return (
-		<div className="flex flex-col gap-2.5 overflow-y-auto bg-[var(--ret-bg)]/88 p-4 backdrop-blur-sm">
-			{/* Tallies */}
-			<div className="grid grid-cols-4 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)]">
-				<CountCell label="built-ins" value={String(BUILTIN_TOOLS.length)} />
-				<CountCell label="skills" value={String(skills.length)} />
-				<CountCell label="MCP tools" value={String(mcpToolCount)} />
-				<CountCell label="services" value={String(SERVICES.length)} />
-			</div>
-
-			{/* Brand logo grid */}
-			<div className="grid grid-cols-6 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)]">
-				{FEATURED_BRANDS.map((b) => (
-					<div
-						key={b.slug}
-						className="flex flex-col items-center justify-center gap-1 bg-[var(--ret-bg-soft)] py-2.5"
-					>
-						<ServiceIcon slug={b.slug} size={18} tone="color" />
-						<span className="font-mono text-[8px] uppercase tracking-[0.12em] text-[var(--ret-text-muted)]">
-							{b.name.split(" ")[0]}
-						</span>
-					</div>
-				))}
-			</div>
-
-			{/* Skill categories */}
-			<div className="flex flex-wrap gap-1">
-				{Object.entries(skillCats)
-					.sort((a, b) => b[1] - a[1])
-					.map(([cat, count]) => (
-						<span
-							key={cat}
-							className="border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-1.5 py-0.5 font-mono text-[9px] text-[var(--ret-text-dim)]"
-						>
-							{cat} <span className="text-[var(--ret-text-muted)]">{count}</span>
-						</span>
-					))}
-			</div>
-		</div>
-	);
-}
-
-/* ------------------------------------------------------------------ */
-/* Row 04: Hosts -- container filesystem + provider marks              */
-/* ------------------------------------------------------------------ */
-
-function HostsPanel() {
-	return (
-		<div className="flex flex-col justify-between bg-[var(--ret-bg)]/88 p-4 backdrop-blur-sm">
-			<div className="flex items-center gap-2">
-				<Logo mark="dedalus" size={14} />
-				<ServiceIcon slug="vercel" size={14} />
-				<span className="font-mono text-[9px] text-[var(--ret-text-muted)]">+ fly</span>
-			</div>
-			<div className="grid grid-cols-3 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)]">
-				{(
-					[
-						["~/.agent-machines/", "runtime state"],
-						["skills/", "SKILL.md files"],
-						["config.toml", "agent config"],
-						["skills/", "96 SKILL.md"],
-						["sessions.db", "FTS5 history"],
-						["crons/", "scheduled tasks"],
-					] as const
-				).map(([label, sub]) => (
-					<div key={`${label}-${sub}`} className="bg-[var(--ret-bg-soft)] px-2.5 py-2">
-						<p className="font-mono text-[10px] text-[var(--ret-text)]">{label}</p>
-						<p className="font-mono text-[8px] text-[var(--ret-text-muted)]">{sub}</p>
-					</div>
-				))}
-			</div>
-			<div className="grid grid-cols-3 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)]">
-				<MiniCell label="Dedalus" value="persistent microVM" />
-				<MiniCell label="Fly" value="app + volume" />
-				<MiniCell label="Sandbox" value="ephemeral session" />
-			</div>
-		</div>
-	);
-}
-
-/* ------------------------------------------------------------------ */
-/* Row 05: Environment -- config flow + preset list                    */
-/* ------------------------------------------------------------------ */
-
-function EnvironmentPanel() {
-	return (
-		<div className="flex flex-col justify-between bg-[var(--ret-bg)]/88 p-4 backdrop-blur-sm">
-			<div className="flex items-center gap-2">
-				<Logo mark="dedalus" size={14} />
-			</div>
-
-			{/* Config flow */}
-			<div className="flex items-center gap-1.5">
-				{(["account", "gateway", "agent", "env", "machine"] as const).map((label, i) => (
-					<span key={label} className="flex items-center gap-1.5">
-						{i > 0 ? (
-							<span className="text-[var(--ret-purple)]">
-								<svg width="10" height="6" viewBox="0 0 10 6" fill="none">
-									<path d="M0 3h7M6 1l2 2-2 2" stroke="currentColor" strokeWidth="1" />
-								</svg>
-							</span>
-						) : null}
-						<span className="border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-[var(--ret-text)]">
-							{label}
-						</span>
-					</span>
-				))}
-			</div>
-
-			{/* Preset list */}
-			<div className="grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)]">
-				{(
-					[
-						["Opinionated default", "active", "bundled skills + tools + MCPs"],
-						["Frontend design lab", "", "taste + Figma + browser"],
-						["Production ops", "", "Vercel + Datadog + CI/CD"],
-						["Research browser", "", "search + extraction + reach"],
-					] as const
-				).map(([name, badge, hint]) => (
-					<div
-						key={name}
-						className="flex items-center justify-between bg-[var(--ret-bg-soft)] px-2.5 py-1.5"
-					>
-						<span className="font-mono text-[10px] text-[var(--ret-text)]">{name}</span>
-						<span className="flex items-center gap-1 font-mono text-[8px] text-[var(--ret-text-muted)]">
-							{badge ? <ReticleBadge variant="accent" className="text-[8px]">{badge}</ReticleBadge> : null}
-							{hint}
-						</span>
-					</div>
-				))}
-			</div>
-		</div>
-	);
-}
-
-/* ------------------------------------------------------------------ */
-/* Shared primitives                                                   */
-/* ------------------------------------------------------------------ */
-
-function FlowBox({
-	label,
-	accent,
+function TerminalShell({
+	command,
 	children,
 }: {
-	label: string;
-	accent: string;
+	command: string;
 	children: React.ReactNode;
 }) {
 	return (
-		<div className="flex flex-1 flex-col items-center gap-1 border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-1.5 py-2">
-			<div style={{ color: accent }}>{children}</div>
-			<p className="font-mono text-[8px] font-semibold text-[var(--ret-text)]">{label}</p>
+		<div className="flex h-full flex-col font-mono text-[11px] leading-[1.8] md:text-[12px]">
+			<div className="flex items-center gap-2 border-b border-white/[0.06] pb-3">
+				<span className="text-white/35">$</span>
+				<span className="font-medium text-white/80">{command}</span>
+			</div>
+			<div className="mt-3 flex-1 space-y-0.5 overflow-auto">
+				{children}
+			</div>
 		</div>
 	);
 }
 
-function FlowArrow() {
+function TLine({
+	dim,
+	success,
+	children,
+}: {
+	dim?: boolean;
+	success?: boolean;
+	children: React.ReactNode;
+}) {
 	return (
-		<div className="flex shrink-0 items-center px-0.5 text-[var(--ret-purple)]">
-			<svg width="12" height="6" viewBox="0 0 12 6" fill="none">
-				<path d="M0 3h9M8 1l2 2-2 2" stroke="currentColor" strokeWidth="1" />
-			</svg>
+		<div
+			className={cn(
+				dim && "text-white/35",
+				success && "text-emerald-400",
+				!dim && !success && "text-white/65",
+			)}
+		>
+			{children}
 		</div>
 	);
 }
 
-function MiniCell({ label, value }: { label: string; value: string }) {
+function TRow({
+	label,
+	value,
+	success,
+}: {
+	label: string;
+	value: string;
+	success?: boolean;
+}) {
 	return (
-		<div className="bg-[var(--ret-bg-soft)] px-2.5 py-2">
-			<p className="font-mono text-[10px] font-semibold text-[var(--ret-text)]">{label}</p>
-			<p className="font-mono text-[8px] text-[var(--ret-text-muted)]">{value}</p>
+		<div className="flex gap-2">
+			<span className="w-28 shrink-0 text-white/35">{label}</span>
+			<span className={success ? "text-emerald-400" : "text-white/70"}>
+				{value}
+			</span>
 		</div>
 	);
 }
 
-function CountCell({ label, value }: { label: string; value: string }) {
+function THeader({ cols }: { cols: string[] }) {
 	return (
-		<div className="bg-[var(--ret-bg-soft)] px-2 py-2 text-center">
-			<p className="font-mono text-sm tabular-nums text-[var(--ret-text)]">{value}</p>
-			<p className="font-mono text-[8px] uppercase tracking-[0.12em] text-[var(--ret-text-muted)]">{label}</p>
+		<div className="flex gap-2 border-b border-white/[0.06] pb-1 text-white/30">
+			{cols.map((c) => (
+				<span key={c} className="flex-1">
+					{c}
+				</span>
+			))}
 		</div>
 	);
+}
+
+function TTableRow({
+	cols,
+	accent,
+}: {
+	cols: string[];
+	accent?: boolean[];
+}) {
+	return (
+		<div className="flex gap-2 text-white/65">
+			{cols.map((c, i) => (
+				<span
+					key={i}
+					className={cn(
+						"flex-1",
+						accent?.[i] && "text-emerald-400",
+					)}
+				>
+					{c}
+				</span>
+			))}
+		</div>
+	);
+}
+
+function TSpacer() {
+	return <div className="h-2" />;
 }
 
 /* ------------------------------------------------------------------ */
-/* Inline icons                                                        */
+/* SVG Icons                                                           */
 /* ------------------------------------------------------------------ */
 
 function IconPanel(props: SVGProps<SVGSVGElement>) {
-	return <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.4" {...props}><rect x="4" y="6" width="24" height="20" /><path d="M4 12h24M11 12v14M15 17h9M15 21h6" /></svg>;
+	return (
+		<svg
+			viewBox="0 0 32 32"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="1.4"
+			{...props}
+		>
+			<rect x="4" y="6" width="24" height="20" />
+			<path d="M4 12h24M11 12v14M15 17h9M15 21h6" />
+		</svg>
+	);
 }
 
 function IconAgent(props: SVGProps<SVGSVGElement>) {
-	return <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.4" {...props}><path d="M16 4l9 5v14l-9 5-9-5V9z" /><path d="M11 14h10M11 18h10M16 4v8M16 20v8" /></svg>;
+	return (
+		<svg
+			viewBox="0 0 32 32"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="1.4"
+			{...props}
+		>
+			<path d="M16 4l9 5v14l-9 5-9-5V9z" />
+			<path d="M11 14h10M11 18h10M16 4v8M16 20v8" />
+		</svg>
+	);
 }
 
 function IconTools(props: SVGProps<SVGSVGElement>) {
-	return <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.4" {...props}><rect x="5" y="5" width="8" height="8" /><rect x="19" y="5" width="8" height="8" /><rect x="5" y="19" width="8" height="8" /><rect x="19" y="19" width="8" height="8" /><path d="M13 9h6M9 13v6M23 13v6M13 23h6" /></svg>;
+	return (
+		<svg
+			viewBox="0 0 32 32"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="1.4"
+			{...props}
+		>
+			<rect x="5" y="5" width="8" height="8" />
+			<rect x="19" y="5" width="8" height="8" />
+			<rect x="5" y="19" width="8" height="8" />
+			<rect x="19" y="19" width="8" height="8" />
+			<path d="M13 9h6M9 13v6M23 13v6M13 23h6" />
+		</svg>
+	);
 }
 
 function IconProvider(props: SVGProps<SVGSVGElement>) {
-	return <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.4" {...props}><path d="M6 9h20v6H6zM6 17h20v6H6z" /><path d="M10 12h3M10 20h3M22 12h2M22 20h2" /></svg>;
+	return (
+		<svg
+			viewBox="0 0 32 32"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="1.4"
+			{...props}
+		>
+			<path d="M6 9h20v6H6zM6 17h20v6H6z" />
+			<path d="M10 12h3M10 20h3M22 12h2M22 20h2" />
+		</svg>
+	);
 }
 
 function IconEnv(props: SVGProps<SVGSVGElement>) {
-	return <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.4" {...props}><path d="M5 8h22v16H5z" /><path d="M9 13h4M9 17h8M9 21h5M21 13l2 2-2 2" /></svg>;
-}
-
-function IconUser(props: SVGProps<SVGSVGElement>) {
 	return (
-		<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" {...props}>
-			<circle cx="10" cy="6" r="3" />
-			<path d="M3 18c0-3.5 3.1-6 7-6s7 2.5 7 6" />
-		</svg>
-	);
-}
-
-function IconGateway(props: SVGProps<SVGSVGElement>) {
-	return (
-		<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" {...props}>
-			<rect x="3" y="4" width="14" height="5" />
-			<rect x="3" y="11" width="14" height="5" />
-			<circle cx="6" cy="6.5" r="0.8" fill="currentColor" />
-			<circle cx="6" cy="13.5" r="0.8" fill="currentColor" />
-			<path d="M10 9v2" />
-		</svg>
-	);
-}
-
-function IconContainer(props: SVGProps<SVGSVGElement>) {
-	return (
-		<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" {...props}>
-			<path d="M10 2l7 4v8l-7 4-7-4V6z" />
-			<path d="M10 10l7-4M10 10v8M10 10L3 6" />
+		<svg
+			viewBox="0 0 32 32"
+			fill="none"
+			stroke="currentColor"
+			strokeWidth="1.4"
+			{...props}
+		>
+			<path d="M5 8h22v16H5z" />
+			<path d="M9 13h4M9 17h8M9 21h5M21 13l2 2-2 2" />
 		</svg>
 	);
 }

@@ -6,7 +6,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { BrandMark } from "@/components/BrandMark";
 import { BootTranscript } from "@/components/dashboard/BootTranscript";
-import { Logo } from "@/components/Logo";
+import { Logo, type Mark } from "@/components/Logo";
+import { ServiceIcon, isServiceSlug } from "@/components/ServiceIcon";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ToolIcon } from "@/components/ToolIcon";
 import { WingBackground } from "@/components/WingBackground";
@@ -28,12 +29,18 @@ import type { McpServerWithBrand } from "@/lib/dashboard/mcps";
 import type { SkillSummary } from "@/lib/dashboard/types";
 import {
 	AGENT_LABEL,
+	PROVIDER_KINDS,
+	PROVIDER_LABEL,
 	type AgentKind,
 	type AgentProfile,
 	type LoadoutPreset,
+	type ProviderKind,
 	type PublicUserConfig,
 	type MachineSpec,
 } from "@/lib/user-config/schema";
+
+const MARK_SET = new Set<string>(["dedalus", "nous", "cursor", "openclaw", "anthropic", "openai"]);
+function isMark(value: string): value is Mark { return MARK_SET.has(value); }
 
 type Defaults = {
 	machineSpec: MachineSpec;
@@ -49,15 +56,64 @@ type Props = {
 	builtins: BuiltinTool[];
 };
 
-type Step = "agent" | "skills" | "tools" | "key" | "boot";
+type Step = "agent" | "skills" | "tools" | "provider" | "key" | "boot";
 
 const STEPS: ReadonlyArray<{ id: Step; label: string; hint: string }> = [
 	{ id: "agent", label: "Agent", hint: "personality" },
 	{ id: "skills", label: "Skills", hint: "auto-loaded knowledge" },
 	{ id: "tools", label: "Tools", hint: "callable surface" },
-	{ id: "key", label: "Key", hint: "Dedalus token" },
+	{ id: "provider", label: "Provider", hint: "where it runs" },
+	{ id: "key", label: "Key", hint: "provider token" },
 	{ id: "boot", label: "Boot", hint: "spin up rig" },
 ];
+
+const PROVIDERS_META: Record<
+	ProviderKind,
+	{
+		name: string;
+		tagline: string;
+		keyLabel: string;
+		keyPlaceholder: string;
+		keyHint: string;
+		secondaryFields?: ReadonlyArray<{
+			label: string;
+			placeholder: string;
+			field: string;
+		}>;
+	}
+> = {
+	dedalus: {
+		name: "Dedalus Machines",
+		tagline:
+			"Firecracker microVMs with sleep/wake, persistent /home/machine, cloudflared previews. The original.",
+		keyLabel: "Dedalus API key",
+		keyPlaceholder: "dsk-live-...",
+		keyHint: "Get one at dedaluslabs.ai/dashboard/api-keys",
+	},
+	"vercel-sandbox": {
+		name: "Vercel Sandbox",
+		tagline:
+			"Ephemeral Firecracker sessions from Vercel. Best for short-lived OpenClaw/browser tasks with external storage.",
+		keyLabel: "Vercel API token",
+		keyPlaceholder: "vercel token",
+		keyHint: "Create a token at vercel.com/account/tokens",
+		secondaryFields: [
+			{ label: "Team ID (optional)", placeholder: "team_...", field: "teamId" },
+			{ label: "Project ID (optional)", placeholder: "prj_...", field: "projectId" },
+		],
+	},
+	fly: {
+		name: "Fly Machines",
+		tagline:
+			"Fly.io persistent microVMs with volumes. Alternative host for durable Hermes or OpenClaw machines.",
+		keyLabel: "Fly.io token",
+		keyPlaceholder: "fly_pat_... or FlyV1 ...",
+		keyHint: "Create a token at fly.io/dashboard/-/tokens",
+		secondaryFields: [
+			{ label: "Org slug (optional)", placeholder: "personal", field: "orgSlug" },
+		],
+	},
+};
 
 const AGENT_DESC: Record<
 	AgentKind,
@@ -141,6 +197,9 @@ export function OnboardingFlow({
 	const [agent, setAgent] = useState<AgentKind>(
 		initialConfig.draftAgentKind ?? "hermes",
 	);
+	const [provider, setProvider] = useState<ProviderKind>(
+		initialConfig.draftProviderKind ?? "dedalus",
+	);
 	const [skillSel, setSkillSel] = useState<Set<string>>(
 		() => new Set(skills.map((s) => s.slug)),
 	);
@@ -150,7 +209,10 @@ export function OnboardingFlow({
 	const [mcpSel, setMcpSel] = useState<Set<string>>(
 		() => new Set(mcps.map((m) => m.name)),
 	);
-	const [dedalusKey, setDedalusKey] = useState("");
+	const [providerKey, setProviderKey] = useState("");
+	const [providerSecondary, setProviderSecondary] = useState<
+		Record<string, string>
+	>({});
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -159,8 +221,8 @@ export function OnboardingFlow({
 	const [bootPhase, setBootPhase] = useState<string | null>(null);
 	const [bootDone, setBootDone] = useState(false);
 
-	const hasKey = initialConfig.providers.dedalus.configured;
-	const ownerKey = defaults.hasOwnerDedalusKey;
+	const hasKey = initialConfig.providers[provider].configured;
+	const ownerKey = provider === "dedalus" && defaults.hasOwnerDedalusKey;
 
 	function next() {
 		const order = STEPS.map((s) => s.id);
@@ -213,15 +275,21 @@ export function OnboardingFlow({
 				selectedMcps,
 			});
 
-			// Persist agent + key first.
+			// Build provider-specific credentials payload.
 			const setupBody: Record<string, unknown> = {
 				draftAgentKind: agent,
-				draftProviderKind: "dedalus",
+				draftProviderKind: provider,
 			};
-			if (dedalusKey.trim()) {
-				setupBody.providerCredentials = {
-					dedalus: { apiKey: dedalusKey.trim() },
-				};
+			if (providerKey.trim()) {
+				const cred: Record<string, unknown> = { apiKey: providerKey.trim() };
+				const meta = PROVIDERS_META[provider];
+				if (meta.secondaryFields) {
+					for (const f of meta.secondaryFields) {
+						const v = providerSecondary[f.field]?.trim();
+						if (v) cred[f.field] = v;
+					}
+				}
+				setupBody.providerCredentials = { [provider]: cred };
 			}
 			const setupResp = await fetch("/api/dashboard/admin/setup", {
 				method: "POST",
@@ -249,12 +317,12 @@ export function OnboardingFlow({
 				);
 			}
 
-			// Provision machine.
+			// Provision machine via the selected provider.
 			const provResp = await fetch("/api/dashboard/admin/provision-machine", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
-					providerKind: "dedalus",
+					providerKind: provider,
 					agentKind: agent,
 				}),
 			});
@@ -302,7 +370,7 @@ export function OnboardingFlow({
 		} finally {
 			setBusy(false);
 		}
-	}, [agent, builtinSel, dedalusKey, initialConfig, mcpSel, skillSel]);
+	}, [agent, builtinSel, initialConfig, mcpSel, provider, providerKey, providerSecondary, skillSel]);
 
 	// Poll machine state once we have an id.
 	useEffect(() => {
@@ -350,7 +418,7 @@ export function OnboardingFlow({
 		void provision();
 	}
 
-	const canProvision = hasKey || ownerKey || dedalusKey.trim().length > 0;
+	const canProvision = hasKey || ownerKey || providerKey.trim().length > 0;
 
 	return (
 		<main className="relative min-h-[100dvh] overflow-hidden bg-[var(--ret-bg)] text-[var(--ret-text)]">
@@ -423,12 +491,30 @@ export function OnboardingFlow({
 								onNext={next}
 							/>
 						) : null}
+						{step === "provider" ? (
+							<ProviderPickStep
+								value={provider}
+								configured={initialConfig.providers}
+								onPick={(p) => {
+									setProvider(p);
+									setProviderKey("");
+									setProviderSecondary({});
+								}}
+								onBack={back}
+								onNext={next}
+							/>
+						) : null}
 						{step === "key" ? (
 							<KeyStep
+								provider={provider}
 								hasKey={hasKey}
 								ownerKey={ownerKey}
-								value={dedalusKey}
-								onChange={setDedalusKey}
+								value={providerKey}
+								onChange={setProviderKey}
+								secondary={providerSecondary}
+								onSecondaryChange={(field, val) =>
+									setProviderSecondary((prev) => ({ ...prev, [field]: val }))
+								}
 								busy={busy}
 								canProvision={canProvision}
 								onBack={back}
@@ -438,6 +524,7 @@ export function OnboardingFlow({
 						{step === "boot" ? (
 							<BootStep
 								agent={agent}
+								provider={provider}
 								machineId={bootMachineId}
 								phase={bootPhase}
 								done={bootDone}
@@ -471,6 +558,7 @@ export function OnboardingFlow({
 					</div>
 					<RigPreview
 						agent={agent}
+						provider={provider}
 						counts={counts}
 						skills={skills.filter((s) => skillSel.has(s.slug))}
 						builtins={builtins.filter((b) => builtinSel.has(b.name))}
@@ -488,7 +576,7 @@ function StepRail({ step }: { step: Step }) {
 	const order = STEPS.map((s) => s.id);
 	const i = order.indexOf(step);
 	return (
-		<ol className="grid grid-cols-5 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)]">
+		<ol className="grid grid-cols-3 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-6">
 			{STEPS.map((s, idx) => {
 				const isActive = idx === i;
 				const isDone = idx < i;
@@ -805,7 +893,10 @@ function ToolsStep({
 								/>
 								<span className="min-w-0 flex-1">
 									<span className="flex items-center gap-1.5">
-										{m.brand ? <Logo mark={m.brand} size={12} /> : null}
+										{m.brand ? (
+											isMark(m.brand) ? <Logo mark={m.brand} size={12} /> :
+											isServiceSlug(m.brand) ? <ServiceIcon slug={m.brand} size={12} /> : null
+										) : null}
 										<span className="font-mono text-[11px] text-[var(--ret-text)]">
 											{m.name}
 										</span>
@@ -898,52 +989,130 @@ function ToolsStep({
 	);
 }
 
+function ProviderPickStep({
+	value,
+	configured,
+	onPick,
+	onBack,
+	onNext,
+}: {
+	value: ProviderKind;
+	configured: Record<ProviderKind, { configured: boolean; scopeHint?: string }>;
+	onPick: (kind: ProviderKind) => void;
+	onBack: () => void;
+	onNext: () => void;
+}) {
+	return (
+		<div className="space-y-5">
+			<div>
+				<ReticleLabel>step 4 . provider</ReticleLabel>
+				<h1 className="ret-display mt-1 text-2xl">
+					Pick where it runs
+				</h1>
+				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
+					The infrastructure provider hosting your agent&rsquo;s microVM.
+					Dedalus is the default and fully wired. Vercel Sandbox and Fly
+					Machines are available as alternative hosts.
+				</p>
+			</div>
+			<div className="grid gap-3 md:grid-cols-3">
+				{PROVIDER_KINDS.map((kind) => {
+					const meta = PROVIDERS_META[kind];
+					const selected = value === kind;
+					const hasCreds = configured[kind].configured;
+					return (
+						<button
+							key={kind}
+							type="button"
+							onClick={() => onPick(kind)}
+							className={cn(
+								"group flex flex-col gap-3 border p-4 text-left transition-colors",
+								selected
+									? "border-[var(--ret-purple)] bg-[var(--ret-purple-glow)]"
+									: "border-[var(--ret-border)] bg-[var(--ret-bg)] hover:border-[var(--ret-border-hover)]",
+							)}
+						>
+							<div className="flex items-center justify-between gap-2">
+								<h2 className="font-mono text-[13px] text-[var(--ret-text)]">
+									{meta.name}
+								</h2>
+								<div className="flex items-center gap-1.5">
+									{hasCreds ? (
+										<ReticleBadge variant="success">key on file</ReticleBadge>
+									) : null}
+									{selected ? (
+										<ReticleBadge variant="accent">selected</ReticleBadge>
+									) : null}
+								</div>
+							</div>
+							<p className="text-[12px] text-[var(--ret-text-dim)]">
+								{meta.tagline}
+							</p>
+							<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+								provider: {kind}
+							</span>
+						</button>
+					);
+				})}
+			</div>
+			<div className="flex items-center justify-between gap-2">
+				<ReticleButton variant="ghost" size="md" onClick={onBack}>
+					{"<- Back"}
+				</ReticleButton>
+				<ReticleButton variant="primary" size="md" onClick={onNext}>
+					Continue {"->"}
+				</ReticleButton>
+			</div>
+		</div>
+	);
+}
+
 function KeyStep({
+	provider,
 	hasKey,
 	ownerKey,
 	value,
 	onChange,
+	secondary,
+	onSecondaryChange,
 	busy,
 	canProvision,
 	onBack,
 	onProvision,
 }: {
+	provider: ProviderKind;
 	hasKey: boolean;
 	ownerKey: boolean;
 	value: string;
 	onChange: (v: string) => void;
+	secondary: Record<string, string>;
+	onSecondaryChange: (field: string, val: string) => void;
 	busy: boolean;
 	canProvision: boolean;
 	onBack: () => void;
 	onProvision: () => void;
 }) {
+	const meta = PROVIDERS_META[provider];
 	return (
 		<div className="space-y-5">
 			<div>
-				<ReticleLabel>step 4 . key</ReticleLabel>
-				<h1 className="ret-display mt-1 text-2xl">Bring a Dedalus key</h1>
+				<ReticleLabel>step 5 . key</ReticleLabel>
+				<h1 className="ret-display mt-1 text-2xl">
+					Bring a {PROVIDER_LABEL[provider]} key
+				</h1>
 				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
-					Get one at{" "}
-					<a
-						href="https://www.dedaluslabs.ai/dashboard/api-keys"
-						target="_blank"
-						rel="noreferrer"
-						className="text-[var(--ret-purple)] underline"
-					>
-						dedaluslabs.ai/dashboard/api-keys
-					</a>
-					. Stored in your Clerk private metadata, never sent to the browser.
-					Same key authenticates inference too -- one key, two endpoints.
+					{meta.keyHint}. Stored in your Clerk private metadata, never
+					sent to the browser.
 				</p>
 			</div>
 			<label className="flex flex-col gap-1.5">
 				<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-					Dedalus API key
+					{meta.keyLabel}
 				</span>
 				<input
 					type="password"
 					autoComplete="off"
-					placeholder="dsk-live-..."
+					placeholder={meta.keyPlaceholder}
 					value={value}
 					onChange={(e) => onChange(e.target.value)}
 					className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-[12px] text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)] focus:border-[var(--ret-purple)] focus:outline-none"
@@ -956,6 +1125,21 @@ function KeyStep({
 							: "Required to provision."}
 				</span>
 			</label>
+			{meta.secondaryFields?.map((f) => (
+				<label key={f.field} className="flex flex-col gap-1.5">
+					<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+						{f.label}
+					</span>
+					<input
+						type="text"
+						autoComplete="off"
+						placeholder={f.placeholder}
+						value={secondary[f.field] ?? ""}
+						onChange={(e) => onSecondaryChange(f.field, e.target.value)}
+						className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-[12px] text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)] focus:border-[var(--ret-purple)] focus:outline-none"
+					/>
+				</label>
+			))}
 			<div className="flex items-center justify-between gap-2">
 				<ReticleButton variant="ghost" size="md" onClick={onBack} disabled={busy}>
 					{"<- Back"}
@@ -979,6 +1163,7 @@ function KeyStep({
 
 function BootStep({
 	agent,
+	provider,
 	machineId,
 	phase,
 	done,
@@ -987,6 +1172,7 @@ function BootStep({
 	onRetry,
 }: {
 	agent: AgentKind;
+	provider: ProviderKind;
 	machineId: string | null;
 	phase: string | null;
 	done: boolean;
@@ -996,7 +1182,7 @@ function BootStep({
 }) {
 	const steps = [
 		{ id: "create", label: "Submit machine create", isDone: !!machineId },
-		{ id: "schedule", label: "Dedalus schedules", isDone: phase === "running" || phase === "starting" || phase === "wake_pending" },
+		{ id: "schedule", label: `${PROVIDER_LABEL[provider]} schedules`, isDone: phase === "running" || phase === "starting" || phase === "wake_pending" },
 		{ id: "boot", label: "VM boots", isDone: phase === "running" },
 		{ id: "record", label: "Save fleet record + selected loadout", isDone: !!machineId },
 		{ id: "agent", label: `Bootstrap ${AGENT_LABEL[agent]} gateway`, isDone: done },
@@ -1004,14 +1190,14 @@ function BootStep({
 	return (
 		<div className="space-y-5">
 			<div>
-				<ReticleLabel>step 5 . boot</ReticleLabel>
+				<ReticleLabel>step 6 . boot</ReticleLabel>
 				<h1 className="ret-display mt-1 text-2xl">
 					{done ? "Agent gateway ready" : "Creating your machine"}
 				</h1>
 				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
 					{done
 						? "Riding into the dashboard..."
-						: "This creates the provider machine, saves your selected loadout, bootstraps Hermes or OpenClaw, and wires the gateway back into your account."}
+						: `This creates a ${PROVIDER_LABEL[provider]} machine, saves your selected loadout, bootstraps ${AGENT_LABEL[agent]}, and wires the gateway back into your account.`}
 				</p>
 			</div>
 
@@ -1162,6 +1348,7 @@ function upsertById<T extends { id: string }>(items: T[], next: T): T[] {
 
 function RigPreview({
 	agent,
+	provider,
 	counts,
 	skills,
 	builtins,
@@ -1170,6 +1357,7 @@ function RigPreview({
 	bootDone,
 }: {
 	agent: AgentKind;
+	provider: ProviderKind;
 	counts: { skills: number; builtins: number; mcps: number; mcpTools: number };
 	skills: SkillSummary[];
 	builtins: BuiltinTool[];
@@ -1207,6 +1395,9 @@ function RigPreview({
 						<p className="font-mono text-[10px] text-[var(--ret-text-muted)]">
 							{meta.tagline}
 						</p>
+						<p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+							on {PROVIDER_LABEL[provider]}
+						</p>
 					</div>
 				</div>
 				<div className="grid grid-cols-2 gap-px bg-[var(--ret-border)]">
@@ -1234,7 +1425,10 @@ function RigPreview({
 							key={m.name}
 							className="flex items-center gap-2 px-4 py-2 font-mono text-[11px]"
 						>
-							{m.brand ? <Logo mark={m.brand} size={12} /> : null}
+							{m.brand ? (
+								isMark(m.brand) ? <Logo mark={m.brand} size={12} /> :
+								isServiceSlug(m.brand) ? <ServiceIcon slug={m.brand} size={12} /> : null
+							) : null}
 							<span className="text-[var(--ret-text)]">{m.name}</span>
 							<span className="text-[var(--ret-text-muted)]">.</span>
 							<span className="text-[var(--ret-text-muted)]">

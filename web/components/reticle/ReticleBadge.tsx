@@ -22,7 +22,7 @@ export function ReticleBadge({ children, variant = "default", className }: Props
 	return (
 		<span
 			className={cn(
-				"inline-flex items-center gap-1.5 border px-2.5 py-0.5 font-mono text-[11px] leading-tight",
+				"inline-flex items-center gap-1.5 border px-2.5 py-0.5 text-[11px] leading-tight",
 				VARIANT[variant],
 				className,
 			)}

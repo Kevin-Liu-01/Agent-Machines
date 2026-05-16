@@ -3,7 +3,7 @@ import { Logo } from "@/components/Logo";
 
 export function Footer() {
 	return (
-		<footer className="relative font-mono text-xs text-[var(--ret-text-muted)]">
+		<footer className="relative text-xs text-[var(--ret-text-muted)]">
 			<div className="mx-auto w-full max-w-[var(--ret-content-max)]">
 				<div className="flex flex-col gap-4 px-6 py-8 md:flex-row md:items-center md:justify-between">
 					<div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-5">

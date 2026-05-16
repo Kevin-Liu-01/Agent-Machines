@@ -56,34 +56,36 @@ const STAGES: ReadonlyArray<Stage> = [
 
 export function StickyRuntimeStory() {
 	return (
-		<section className="grid gap-px bg-[var(--ret-border)] lg:grid-cols-[0.72fr_1.28fr]">
-			<div className="flex flex-col bg-[var(--ret-bg)] p-4 lg:sticky lg:top-[92px] lg:h-[calc(100dvh-120px)]">
-				<ReticleLabel>SCROLL RUNTIME</ReticleLabel>
-				<h2 className="ret-display mt-3 max-w-[13ch] text-3xl md:text-4xl">
-					Watch the agent machine assemble.
-				</h2>
-				<p className="mt-4 max-w-[50ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
-					This section behaves like a locked product diagram: the copy stays
-					stable while each workflow panel slides into place as you scroll.
-					No fake dashboard screenshots, just the actual account {"->"} provider
-					{"->"} agent {"->"} storage {"->"} registry model.
-				</p>
-				<ReticleFrame className="mt-6" corners={false}>
-					<div className="grid gap-px bg-[var(--ret-border)]">
-						{["settings", "provider", "agent", "data", "registry"].map((item, index) => (
-							<div key={item} className="flex items-center justify-between bg-[var(--ret-bg-soft)] px-3 py-2">
-								<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-									{item}
-								</span>
-								<span className="font-mono text-[10px] text-[var(--ret-text)]">
-									{String(index + 1).padStart(2, "0")}
-								</span>
-							</div>
-						))}
+		<section className="mx-auto grid w-full max-w-[var(--ret-content-max)] gap-px bg-[var(--ret-border)] lg:grid-cols-[0.72fr_1.28fr]">
+			<div className="bg-[var(--ret-bg)]">
+				<div className="flex flex-col p-4 lg:sticky lg:top-[92px] lg:h-[calc(100dvh-120px)]">
+					<ReticleLabel>SCROLL RUNTIME</ReticleLabel>
+					<h2 className="ret-display mt-3 max-w-[13ch] text-3xl md:text-4xl">
+						Watch the agent machine assemble.
+					</h2>
+					<p className="mt-4 max-w-[50ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
+						This section behaves like a locked product diagram: the copy stays
+						stable while each workflow panel slides into place as you scroll.
+						No fake dashboard screenshots, just the actual account {"->"} provider
+						{"->"} agent {"->"} storage {"->"} registry model.
+					</p>
+					<ReticleFrame className="mt-6" corners={false}>
+						<div className="grid gap-px bg-[var(--ret-border)]">
+							{["settings", "provider", "agent", "data", "registry"].map((item, index) => (
+								<div key={item} className="flex items-center justify-between bg-[var(--ret-bg-soft)] px-3 py-2">
+									<span className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+										{item}
+									</span>
+									<span className="text-[10px] text-[var(--ret-text)]">
+										{String(index + 1).padStart(2, "0")}
+									</span>
+								</div>
+							))}
+						</div>
+					</ReticleFrame>
+					<div className="mt-4 flex-1">
+						<WireframeMachine className="h-full min-h-[160px] w-full" />
 					</div>
-				</ReticleFrame>
-				<div className="mt-4 flex-1">
-					<WireframeMachine className="h-full min-h-[160px] w-full" />
 				</div>
 			</div>
 			<div className="bg-[var(--ret-bg)]">
@@ -139,7 +141,7 @@ function StageMeta({ index }: { index: number }) {
 			<div className="mt-6 flex items-center gap-2">
 				<Logo mark="dedalus" size={18} />
 				<ServiceIcon slug="vercel" size={16} tone="color" />
-				<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				<span className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					+ fly machines
 				</span>
 			</div>
@@ -152,7 +154,7 @@ function StageMeta({ index }: { index: number }) {
 				<Logo mark="openclaw" size={18} />
 				<Logo mark="anthropic" size={18} />
 				<Logo mark="openai" size={18} />
-				<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				<span className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					same /v1 gateway
 				</span>
 			</div>
@@ -163,7 +165,7 @@ function StageMeta({ index }: { index: number }) {
 			<div className="mt-6">
 				<a
 					href="/dashboard/registry"
-					className="inline-flex items-center gap-2 border border-[var(--ret-purple)]/40 bg-[var(--ret-purple-glow)] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--ret-purple)] transition-colors hover:bg-[var(--ret-purple)]/20"
+					className="inline-flex items-center gap-2 border border-[var(--ret-purple)]/40 bg-[var(--ret-purple-glow)] px-3 py-1.5 text-[10px] uppercase tracking-[0.14em] text-[var(--ret-purple)] transition-colors hover:bg-[var(--ret-purple)]/20"
 				>
 					open registry
 				</a>
@@ -173,7 +175,7 @@ function StageMeta({ index }: { index: number }) {
 	return (
 		<div className="mt-6 flex items-center gap-2">
 			<Logo mark={index === 0 ? "dedalus" : "agent"} size={18} />
-			<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+			<span className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 				persistent agent lane
 			</span>
 		</div>
@@ -209,7 +211,7 @@ function AccountFlowDiagram() {
 			<div className="ret-material-field absolute inset-0 opacity-40" aria-hidden="true" />
 			<div className="relative z-10">
 				<ReticleBadge variant="accent" className="text-[9px]">recipe</ReticleBadge>
-				<p className="mt-2 font-mono text-[10px] text-[var(--ret-text-dim)]">
+				<p className="mt-2 text-[10px] text-[var(--ret-text-dim)]">
 					account settings compose into a machine recipe
 				</p>
 			</div>
@@ -221,7 +223,7 @@ function AccountFlowDiagram() {
 								<svg width="10" height="6" viewBox="0 0 10 6" fill="none"><path d="M0 3h7M6 1l2 2-2 2" stroke="currentColor" strokeWidth="1" /></svg>
 							</span>
 						) : null}
-						<span className="border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1.5 font-mono text-[9px] uppercase tracking-[0.12em] text-[var(--ret-text)]">
+						<span className="border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1.5 text-[9px] uppercase tracking-[0.12em] text-[var(--ret-text)]">
 							{label}
 						</span>
 					</span>
@@ -237,7 +239,7 @@ function AccountFlowDiagram() {
 				).map(([label, sub]) => (
 					<div key={label} className="bg-[var(--ret-bg-soft)] px-2.5 py-2">
 						<p className="font-mono text-[9px] text-[var(--ret-text)]">{label}</p>
-						<p className="font-mono text-[8px] text-[var(--ret-text-muted)]">{sub}</p>
+						<p className="text-[8px] text-[var(--ret-text-muted)]">{sub}</p>
 					</div>
 				))}
 			</div>
@@ -262,11 +264,11 @@ function ProviderComparisonDiagram() {
 				<div key={p.name} className="flex flex-col justify-between bg-[var(--ret-bg)]/90 p-3 backdrop-blur-sm">
 					<div>
 						<div className="mb-2 h-1 w-8" style={{ background: p.accent }} />
-						<p className="font-mono text-[11px] font-semibold text-[var(--ret-text)]">{p.name}</p>
+						<p className="text-[11px] font-semibold text-[var(--ret-text)]">{p.name}</p>
 					</div>
 					<ul className="mt-3 space-y-1.5">
 						{p.caps.map((cap) => (
-							<li key={cap} className="flex items-center gap-1.5 font-mono text-[9px] text-[var(--ret-text-dim)]">
+							<li key={cap} className="flex items-center gap-1.5 text-[9px] text-[var(--ret-text-dim)]">
 								<span className="h-1 w-1 shrink-0" style={{ background: p.accent }} />
 								{cap}
 							</li>
@@ -307,17 +309,17 @@ function AgentSplitDiagram() {
 					<div key={a.name} className="flex flex-col justify-between bg-[var(--ret-bg)]/90 p-3 backdrop-blur-sm">
 						<div className="flex items-center gap-2">
 							<Logo mark={a.mark} size={14} />
-							<span className="font-mono text-[11px] font-semibold text-[var(--ret-text)]">{a.name}</span>
+							<span className="text-[11px] font-semibold text-[var(--ret-text)]">{a.name}</span>
 						</div>
 						<ul className="mt-2 space-y-1">
 							{a.caps.map((cap) => (
-								<li key={cap} className="flex items-center gap-1.5 font-mono text-[9px] text-[var(--ret-text-dim)]">
+								<li key={cap} className="flex items-center gap-1.5 text-[9px] text-[var(--ret-text-dim)]">
 									<span className="h-1 w-1 shrink-0" style={{ background: a.accent }} />
 									{cap}
 								</li>
 							))}
 						</ul>
-						<span className="mt-2 inline-block self-start border border-[var(--ret-border)] px-1 py-0.5 font-mono text-[7px] uppercase tracking-[0.14em] text-[var(--ret-text-muted)]">
+						<span className="mt-2 inline-block self-start border border-[var(--ret-border)] px-1 py-0.5 text-[7px] uppercase tracking-[0.14em] text-[var(--ret-text-muted)]">
 							{a.model}
 						</span>
 					</div>
@@ -325,7 +327,7 @@ function AgentSplitDiagram() {
 			</div>
 			<div className="flex items-center justify-center gap-3 bg-[var(--ret-bg)]/90 px-4 py-3 backdrop-blur-sm">
 				<span className="h-px flex-1 bg-[var(--ret-purple)]/40" />
-				<span className="font-mono text-[10px] text-[var(--ret-text)]">/v1 gateway</span>
+				<span className="text-[10px] text-[var(--ret-text)]">/v1 gateway</span>
 				<span className="h-px flex-1 bg-[var(--ret-purple)]/40" />
 			</div>
 		</div>
@@ -352,7 +354,7 @@ function DashboardConvergenceDiagram() {
 				{DASHBOARD_SURFACES.map((s) => (
 					<div key={s.label} className="flex flex-col items-center justify-center gap-2 bg-[var(--ret-bg)]/90 py-4 backdrop-blur-sm">
 						<ToolIcon name={s.icon} size={18} className="text-[var(--ret-text-muted)]" />
-						<span className="font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--ret-text)]">{s.label}</span>
+						<span className="text-[9px] uppercase tracking-[0.14em] text-[var(--ret-text)]">{s.label}</span>
 					</div>
 				))}
 			</div>
@@ -418,7 +420,7 @@ function RegistryStageContent() {
 						className="flex flex-col items-center gap-1 bg-[var(--ret-bg)]/90 px-2 py-2.5 backdrop-blur-sm"
 					>
 						<ToolIcon name={s.icon} size={14} className="text-[var(--ret-text-muted)]" />
-						<span className="font-mono text-[8px] uppercase tracking-[0.1em] text-[var(--ret-text)]">
+						<span className="text-[8px] uppercase tracking-[0.1em] text-[var(--ret-text)]">
 							{s.label}
 						</span>
 					</div>
@@ -433,7 +435,7 @@ function RegistryStageContent() {
 						className="flex flex-col items-center justify-center gap-1.5 bg-[var(--ret-bg)]/90 py-3 backdrop-blur-sm transition-colors hover:bg-[var(--ret-bg)]"
 					>
 						<ServiceIcon slug={b.slug} size={22} tone="color" />
-						<span className="font-mono text-[8px] uppercase tracking-[0.1em] text-[var(--ret-text)]">
+						<span className="text-[8px] uppercase tracking-[0.1em] text-[var(--ret-text)]">
 							{b.name.split(" ")[0]}
 						</span>
 						<ReticleBadge variant={KIND_BADGE[b.kind]} className="text-[7px]">
@@ -445,7 +447,7 @@ function RegistryStageContent() {
 
 			{/* Install flow */}
 			<div className="flex items-center justify-between bg-[var(--ret-bg)]/90 px-4 py-3 backdrop-blur-sm">
-				<div className="flex items-center gap-2 font-mono text-[9px] text-[var(--ret-text-muted)]">
+				<div className="flex items-center gap-2 text-[9px] text-[var(--ret-text-muted)]">
 					<span>search</span>
 					<span className="text-[var(--ret-green)]">{"→"}</span>
 					<span>add</span>
@@ -454,7 +456,7 @@ function RegistryStageContent() {
 					<span className="text-[var(--ret-green)]">{"→"}</span>
 					<span>install on VM</span>
 				</div>
-				<span className="font-mono text-[9px] text-[var(--ret-text-muted)]">
+				<span className="text-[9px] text-[var(--ret-text-muted)]">
 					{TRUSTED_ADDONS.length} add-ons
 				</span>
 			</div>

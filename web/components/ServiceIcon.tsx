@@ -49,7 +49,16 @@ export type ServiceSlug =
 	| "playcanvas"
 	| "threedotjs"
 	| "typescript"
-	| "tailwindcss";
+	| "tailwindcss"
+	| "neon"
+	| "upstash"
+	| "turso"
+	| "resend"
+	| "notion"
+	| "brave"
+	| "exa"
+	| "grafana"
+	| "sanity";
 
 export const SERVICE_LABEL: Record<ServiceSlug, string> = {
 	vercel: "Vercel",
@@ -80,6 +89,15 @@ export const SERVICE_LABEL: Record<ServiceSlug, string> = {
 	threedotjs: "Three.js",
 	typescript: "TypeScript",
 	tailwindcss: "Tailwind",
+	neon: "Neon",
+	upstash: "Upstash",
+	turso: "Turso",
+	resend: "Resend",
+	notion: "Notion",
+	brave: "Brave",
+	exa: "Exa",
+	grafana: "Grafana",
+	sanity: "Sanity",
 };
 
 const SERVICE_SET = new Set<string>(Object.keys(SERVICE_LABEL));
@@ -98,9 +116,6 @@ export function isServiceSlug(value: string): value is ServiceSlug {
  * Figma, Linear, ...) keep their native palette via `tone="color"`.
  */
 const FORCE_MONO = new Set<ServiceSlug>([
-	// posthog ships its native rainbow palette and reads on both
-	// themes; the rest of the monochrome marks adopt currentColor so
-	// they're black on light surfaces and white on dark surfaces.
 	"vercel", // triangle: black on light, white on dark
 	"github", // near-black octocat
 	"anthropic", // near-black A
@@ -108,6 +123,9 @@ const FORCE_MONO = new Set<ServiceSlug>([
 	"sentry", // #362D59 reads as black on dark mode
 	"threedotjs", // black trefoil
 	"nextdotjs", // black N circle
+	"resend", // black wordmark
+	"notion", // black N mark
+	"exa", // dark purple on dark backgrounds
 ]);
 
 type Props = {

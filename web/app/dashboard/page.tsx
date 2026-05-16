@@ -46,8 +46,8 @@ export default async function OverviewPage() {
 		<div className="flex flex-col">
 			<PageHeader
 				kicker="OVERVIEW"
-				title="Live agent state"
-				description="Machine health, gateway probe, and a tour of what the agent has on disk. Counters are baked at build time. Machine and gateway poll every 5s."
+				title="Fleet overview"
+				description="Fleet-wide health, usage metrics, and gateway probes across all machines. Click into a machine from the Machines page for per-machine live data, chat, terminal, and loadout."
 			/>
 			<OverviewClient
 				counts={{

@@ -225,7 +225,7 @@ function TerminalPanel({ agentId, meta }: { agentId: AgentKind; meta: AgentMeta 
 		<div className="flex h-[420px] flex-col bg-[#0a0a0c]">
 			<div className="flex items-center gap-2 border-b border-[#222] px-4 py-2">
 				<span className="h-2 w-2 rounded-full bg-[var(--ret-green)]" />
-				<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#555]">
+				<span className="text-[9px] uppercase tracking-[0.18em] text-[#555]">
 					{meta.name.toLowerCase()} — terminal
 				</span>
 				<span className="ml-auto font-mono text-[9px] text-[#333]">
@@ -283,7 +283,7 @@ export function AgentCommandToggle() {
 						type="button"
 						onClick={() => setActive(a.id)}
 						className={cn(
-							"flex items-center justify-center gap-1.5 px-2 py-2.5 font-mono text-[10px] uppercase tracking-[0.14em] transition-colors",
+							"flex items-center justify-center gap-1.5 px-2 py-2.5 text-[10px] uppercase tracking-[0.14em] transition-colors",
 							active === a.id
 								? "bg-[var(--ret-surface)] text-[var(--ret-text)]"
 								: "bg-[var(--ret-bg)] text-[var(--ret-text-muted)] hover:bg-[var(--ret-bg-soft)] hover:text-[var(--ret-text)]",
@@ -305,7 +305,7 @@ export function AgentCommandToggle() {
 					<div className="flex items-center justify-between bg-[var(--ret-bg)] px-4 py-3">
 						<div className="flex items-center gap-2">
 							<Logo mark={meta.logoMark} size={16} />
-							<span className="font-mono text-xs font-semibold text-[var(--ret-text)]">
+							<span className="text-xs font-semibold text-[var(--ret-text)]">
 								{meta.name}
 							</span>
 						</div>
@@ -330,9 +330,9 @@ export function AgentCommandToggle() {
 								key={row.label}
 								className="flex items-center justify-between gap-4 bg-[var(--ret-bg)] px-4 py-1.5"
 							>
-								<span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-									{row.label}
-								</span>
+							<span className="shrink-0 text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+								{row.label}
+							</span>
 								<code className="min-w-0 truncate text-right font-mono text-[10px] text-[var(--ret-text)]">
 									{row.value}
 								</code>
@@ -342,7 +342,7 @@ export function AgentCommandToggle() {
 
 					{/* Provider options */}
 					<div className="bg-[var(--ret-bg)] px-4 py-1.5">
-						<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+						<span className="text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 							ai providers
 						</span>
 					</div>
@@ -357,7 +357,7 @@ export function AgentCommandToggle() {
 								) : (
 									<span className="h-1.5 w-1.5 shrink-0 bg-[var(--ret-border)]" />
 								)}
-								<span className="font-mono text-[10px] text-[var(--ret-text)]">
+								<span className="text-[10px] text-[var(--ret-text)]">
 									{opt.label}
 								</span>
 							</div>

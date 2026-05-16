@@ -43,7 +43,7 @@ export async function PublicNavbar({
 		{ href: "/#capabilities", label: "features", icon: IconFeatures },
 		{ href: "/#runtime", label: "live", icon: IconLive },
 		{ href: "/#loadout", label: "tools", icon: IconTools },
-		{ href: "/#components", label: "ui", icon: IconUi },
+		{ href: "/registry", label: "registry", icon: IconTools },
 		{ href: "/#skills", label: "skills", icon: IconSkills },
 		{ href: "/#architecture", label: "stack", icon: IconStack },
 		{ href: "/faq", label: "faq", icon: IconFaq },
@@ -71,7 +71,7 @@ export async function PublicNavbar({
 								key={item.href}
 								href={item.href}
 								className={cn(
-									"flex items-center gap-1.5 px-2.5 py-1 font-mono text-[11px] text-[var(--ret-text-dim)] transition-colors",
+									"flex items-center gap-1.5 px-2.5 py-1 text-[11px] text-[var(--ret-text-dim)] transition-colors",
 									"hover:bg-[var(--ret-surface)] hover:text-[var(--ret-text)]",
 								)}
 							>

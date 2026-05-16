@@ -8,9 +8,9 @@ export default function MachinesPage() {
 	return (
 		<div className="flex flex-col">
 			<PageHeader
-				kicker="MACHINES"
-				title="Your fleet"
-				description="Every machine tied to your account, across providers. Set the active one for chat + dashboard polling. Save the post-bootstrap gateway URL/key here so /dashboard/chat can reach the agent."
+				kicker="FLEET"
+				title="Your machines"
+				description="Every machine tied to your account, across providers. Click a machine to open its dedicated dashboard with live data, chat, terminal, and loadout."
 				right={
 					<ReticleButton
 						as="a"

@@ -91,14 +91,14 @@ const PROVIDERS_DESC: Record<
 		name: "Vercel Sandbox",
 		tagline:
 			"Ephemeral Firecracker sessions from Vercel. Best for short-lived OpenClaw/browser tasks with external storage.",
-		ready: false,
+		ready: true,
 		keyHint: "Vercel API token",
 	},
 	fly: {
 		name: "Fly Machines",
 		tagline:
 			"Fly.io persistent microVMs with volumes. Alternative host for durable Hermes or OpenClaw machines.",
-		ready: false,
+		ready: true,
 		keyHint: "fly_pat_... or FlyV1 ...",
 	},
 };
@@ -712,7 +712,7 @@ function ProviderStep({
 	return (
 		<StepShell
 			title="Pick the provider"
-			description="Where the agent's microVM lives. Dedalus is wired end-to-end today. Vercel Sandbox and Fly accept credentials and feed the same multi-tenant shape, but their provisioners are not wired yet."
+			description="Where the agent's microVM lives. All three providers accept credentials and provision through the same multi-tenant shape. Dedalus is the default with full sleep/wake and persistent disk. Vercel Sandbox runs ephemeral sessions. Fly Machines offers persistent VMs with volumes."
 		>
 			<div className="grid gap-4 md:grid-cols-3">
 				{PROVIDER_KINDS.map((kind) => {

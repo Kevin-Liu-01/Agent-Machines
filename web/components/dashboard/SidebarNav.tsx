@@ -40,26 +40,19 @@ type NavSection = {
 	items: ReadonlyArray<NavItem>;
 };
 
+import type { PublicMachineRef } from "@/lib/user-config/schema";
+
 type Props = {
 	setupComplete: boolean;
+	machines: PublicMachineRef[];
 };
 
-const WORK_ITEMS: ReadonlyArray<NavItem> = [
+const FLEET_OVERVIEW_ITEMS: ReadonlyArray<NavItem> = [
 	{ href: "/dashboard", label: "Overview", icon: IconGrid },
-	{ href: "/dashboard/chat", label: "Chat", icon: IconChat },
-	{ href: "/dashboard/terminal", label: "Terminal", icon: IconTerminal, badge: "new" },
-	{ href: "/dashboard/loadout", label: "Loadout", icon: IconLoadout },
-];
-
-const LIVE_ITEMS: ReadonlyArray<NavItem> = [
-	{ href: "/dashboard/logs", label: "Logs", icon: IconWave, badge: "live" },
-	{ href: "/dashboard/sessions", label: "Sessions", icon: IconRows, badge: "live" },
-	{ href: "/dashboard/cursor", label: "Cursor runs", icon: IconBolt, badge: "live" },
-	{ href: "/dashboard/artifacts", label: "Artifacts", icon: IconBox },
-];
-
-const CONFIG_ITEMS: ReadonlyArray<NavItem> = [
 	{ href: "/dashboard/machines", label: "Machines", icon: IconStack },
+];
+
+const FLEET_CONFIG_ITEMS: ReadonlyArray<NavItem> = [
 	{ href: "/dashboard/settings", label: "Settings", icon: IconKey },
 	{ href: "/dashboard/registry", label: "Registry", icon: IconStore, badge: "new" },
 	{ href: "/dashboard/skills", label: "Skills", icon: IconScroll },
@@ -72,22 +65,77 @@ const SETUP_ITEM: NavItem = {
 	icon: IconKey,
 };
 
-export function SidebarNav({ setupComplete }: Props) {
+function machineWorkItems(base: string): ReadonlyArray<NavItem> {
+	return [
+		{ href: base, label: "Overview", icon: IconGrid },
+		{ href: `${base}/chat`, label: "Chat", icon: IconChat },
+		{ href: `${base}/terminal`, label: "Terminal", icon: IconTerminal, badge: "new" },
+		{ href: `${base}/loadout`, label: "Loadout", icon: IconLoadout },
+	];
+}
+
+function machineLiveItems(base: string): ReadonlyArray<NavItem> {
+	return [
+		{ href: `${base}/logs`, label: "Logs", icon: IconWave, badge: "live" },
+		{ href: `${base}/sessions`, label: "Sessions", icon: IconRows, badge: "live" },
+		{ href: `${base}/cursor`, label: "Cursor runs", icon: IconBolt, badge: "live" },
+		{ href: `${base}/artifacts`, label: "Artifacts", icon: IconBox },
+	];
+}
+
+const MACHINE_PATH_RE = /^\/dashboard\/machines\/([^/]+)/;
+
+export function SidebarNav({ setupComplete, machines }: Props) {
 	const pathname = usePathname();
+	const machineMatch = MACHINE_PATH_RE.exec(pathname);
+
+	if (machineMatch) {
+		const machineId = machineMatch[1];
+		const machine = machines.find((m) => m.id === machineId);
+		const machineName = machine?.name ?? machineId.slice(0, 12);
+		const base = `/dashboard/machines/${machineId}`;
+		const sections: NavSection[] = [
+			{ id: "work", label: "WORK", hint: "what you do", items: machineWorkItems(base) },
+			{ id: "live", label: "LIVE", hint: "what's running", items: machineLiveItems(base) },
+		];
+		return (
+			<nav
+				aria-label="Machine dashboard"
+				className="flex flex-col gap-5 px-3 pb-6 pt-5 text-[13px]"
+			>
+				<Link
+					href="/dashboard/machines"
+					className="group flex items-center gap-2 px-3 pb-1 text-[11px] text-[var(--ret-text-muted)] transition-colors hover:text-[var(--ret-text)]"
+				>
+					<IconBack className="h-3 w-3 shrink-0" />
+					<span className="truncate">Fleet</span>
+				</Link>
+				<div className="px-3">
+					<p
+						className="truncate text-[18px] leading-none tracking-tight text-[var(--ret-text)]"
+						style={{ fontFamily: "var(--font-display-serif)" }}
+					>
+						{machineName}
+					</p>
+					<p className="mt-1 font-mono text-[9px] text-[var(--ret-text-muted)]">
+						{machineId.slice(0, 18)}
+					</p>
+				</div>
+				{sections.map((section) => (
+					<Section key={section.id} section={section} pathname={pathname} />
+				))}
+			</nav>
+		);
+	}
+
 	const setupItem: NavItem = { ...SETUP_ITEM, dot: !setupComplete };
 	const sections: NavSection[] = [
-		{ id: "work", label: "WORK", hint: "what you do", items: WORK_ITEMS },
-		{
-			id: "live",
-			label: "LIVE",
-			hint: "what's running",
-			items: LIVE_ITEMS,
-		},
+		{ id: "work", label: "OVERVIEW", hint: "your fleet", items: FLEET_OVERVIEW_ITEMS },
 		{
 			id: "config",
 			label: "CONFIG",
 			hint: "what you've installed",
-			items: [...CONFIG_ITEMS, setupItem],
+			items: [...FLEET_CONFIG_ITEMS, setupItem],
 		},
 	];
 
@@ -96,13 +144,6 @@ export function SidebarNav({ setupComplete }: Props) {
 			aria-label="Dashboard"
 			className="flex flex-col gap-5 px-3 pb-6 pt-5 text-[13px]"
 		>
-			{/* Brand wordmark + mark, identical to the navbar pattern on
-			    the marketing site. Linking back to "/" matches the same
-			    convention -- click the wordmark to leave the dashboard
-			    and land on the public marketing surface. The serif
-			    italic typeface is the existing display-serif variable
-			    (Instrument Serif italic) so the mark reads as identity,
-			    not as another section label. */}
 			<Link
 				href="/"
 				className="group flex items-center gap-2.5 px-3 pb-1"
@@ -324,6 +365,14 @@ function IconStore(props: SVGProps<SVGSVGElement>) {
 			<path d="M2 6 L2 13 H14 V6" />
 			<path d="M1 3 H15 V6 H1 Z" />
 			<path d="M6 9 H10 V13 H6 Z" />
+		</svg>
+	);
+}
+
+function IconBack(props: SVGProps<SVGSVGElement>) {
+	return (
+		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+			<path d="M10 3 L5 8 L10 13" />
 		</svg>
 	);
 }

@@ -88,12 +88,12 @@ export function LoadoutPreview() {
 					<WingBackground variant="nyx-lines" opacity={{ light: 0.12, dark: 0.28 }} fadeEdges />
 					<div className="ret-material-field absolute inset-0 opacity-30" aria-hidden="true" />
 					<div className="relative z-10 flex items-baseline justify-between">
-						<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+						<p className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 							built-in tools . {BUILTIN_TOOLS.length}
 						</p>
 						<a
 							href="/dashboard/loadout?tab=builtin"
-							className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-purple)] hover:underline"
+							className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-purple)] hover:underline"
 						>
 							view {">"}
 						</a>
@@ -106,7 +106,7 @@ export function LoadoutPreview() {
 						{catEntries.map(([cat, count]) => (
 							<li
 								key={cat}
-								className="flex items-center justify-between gap-2 font-mono text-[11px]"
+								className="flex items-center justify-between gap-2 text-[11px]"
 							>
 								<span className="flex items-center gap-1.5 text-[var(--ret-text)]">
 									<ToolIcon
@@ -116,7 +116,7 @@ export function LoadoutPreview() {
 									/>
 									{CATEGORY_LABEL[cat as ToolCategory] ?? cat}
 								</span>
-								<span className="font-mono tabular-nums text-[var(--ret-text-muted)]">
+								<span className="tabular-nums text-[var(--ret-text-muted)]">
 									{count}
 								</span>
 							</li>
@@ -129,12 +129,12 @@ export function LoadoutPreview() {
 					<WingBackground variant="nyx-waves" opacity={{ light: 0.12, dark: 0.28 }} fadeEdges />
 					<div className="ret-material-field absolute inset-0 opacity-30" aria-hidden="true" />
 					<div className="relative z-10 flex items-baseline justify-between">
-						<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+						<p className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 							services . {SERVICES.length}
 						</p>
 						<a
 							href="/dashboard/loadout?tab=services"
-							className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-purple)] hover:underline"
+							className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-purple)] hover:underline"
 						>
 							view {">"}
 						</a>
@@ -143,7 +143,7 @@ export function LoadoutPreview() {
 						className="h-px border-t border-[var(--ret-border)]"
 						pitch={6}
 					/>
-					<ul className="relative z-10 grid grid-cols-2 gap-1.5 font-mono text-[11px]">
+					<ul className="relative z-10 grid grid-cols-2 gap-1.5 text-[11px]">
 						{SERVICES.slice(0, 12).map((s) => (
 							<li
 								key={s.id}
@@ -163,7 +163,7 @@ export function LoadoutPreview() {
 							</li>
 						))}
 					</ul>
-					<div className="relative z-10 flex items-center gap-2 pt-1 font-mono text-[10px] text-[var(--ret-text-muted)]">
+					<div className="relative z-10 flex items-center gap-2 pt-1 text-[10px] text-[var(--ret-text-muted)]">
 						<span>each ranks</span>
 						<ReticleBadge variant="default" className="text-[10px]">
 							MCP
@@ -184,12 +184,12 @@ export function LoadoutPreview() {
 					<WingBackground variant="cloud" opacity={{ light: 0.18, dark: 0.18 }} fadeEdges />
 					<div className="ret-material-field absolute inset-0 opacity-30" aria-hidden="true" />
 					<div className="relative z-10 flex items-baseline justify-between">
-						<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+						<p className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 							tasks . {TASKS.length}
 						</p>
 						<a
 							href="/dashboard/loadout?tab=tasks"
-							className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-purple)] hover:underline"
+							className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-purple)] hover:underline"
 						>
 							view {">"}
 						</a>
@@ -202,7 +202,7 @@ export function LoadoutPreview() {
 						{featuredTasks.map((t) => (
 							<li
 								key={t.id}
-								className="flex items-baseline gap-1.5 font-mono text-[11px]"
+								className="flex items-baseline gap-1.5 text-[11px]"
 							>
 								<ToolIcon
 									name={t.category}
@@ -223,10 +223,10 @@ export function LoadoutPreview() {
 				{skillEntries.map(([cat, count]) => (
 					<div
 						key={cat}
-						className="flex items-center justify-between gap-2 bg-[var(--ret-bg)] px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]"
+						className="flex items-center justify-between gap-2 bg-[var(--ret-bg)] px-3 py-2 text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]"
 					>
 						<span>skill . {cat}</span>
-						<span className="font-mono tabular-nums text-[var(--ret-text)]">
+						<span className="tabular-nums text-[var(--ret-text)]">
 							{count}
 						</span>
 					</div>
@@ -240,7 +240,7 @@ export function LoadoutPreview() {
 					opacity={{ light: 0.1, dark: 0.24 }}
 					fadeEdges
 				/>
-				<div className="relative z-10 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				<div className="relative z-10 flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					<span>callable by</span>
 					<span className="flex items-center gap-1.5">
 						<Logo mark="nous" size={14} />
@@ -273,7 +273,7 @@ export function LoadoutPreview() {
 					fadeEdges
 				/>
 				<div className="relative z-10">
-					<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+					<p className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 						{TRUSTED_ADDONS.length} trusted add-ons available
 					</p>
 					<p className="mt-1 text-[11px] text-[var(--ret-text-dim)]">
@@ -289,10 +289,10 @@ export function LoadoutPreview() {
 function Tally({ label, value }: { label: string; value: number }) {
 	return (
 		<div className="flex flex-col gap-0.5 bg-[var(--ret-bg)] px-4 py-3">
-			<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+			<p className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 				{label}
 			</p>
-			<p className="font-mono text-base tabular-nums text-[var(--ret-text)]">
+			<p className="text-base tabular-nums text-[var(--ret-text)]">
 				{value}
 			</p>
 		</div>

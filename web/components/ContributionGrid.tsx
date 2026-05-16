@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 
 import { Logo, type Mark } from "@/components/Logo";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
@@ -112,7 +112,7 @@ function BrandChip({
 			onClick={onClick}
 			aria-pressed={active}
 			className={cn(
-				"group flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[10px] transition-all",
+				"group flex items-center gap-1 border px-1.5 py-0.5 text-[10px] transition-all",
 				active
 					? "border-[var(--ret-purple)]/55 bg-[var(--ret-purple-glow)] text-[var(--ret-purple)] shadow-[0_0_10px_var(--ret-purple-glow)]"
 					: "border-dashed border-[var(--ret-border)] bg-[var(--ret-bg-soft)] text-[var(--ret-text-dim)] hover:border-solid hover:border-[var(--ret-purple)]/45 hover:text-[var(--ret-text)]",
@@ -128,7 +128,6 @@ function BrandChip({
 			<span
 				aria-hidden="true"
 				className={cn(
-					"font-mono",
 					active
 						? "text-[var(--ret-purple)]"
 						: "text-[var(--ret-text-muted)] opacity-0 transition-opacity group-hover:opacity-100",
@@ -155,7 +154,7 @@ function EventRow({ event }: { event: ContributionEvent }) {
 	}
 	return (
 		<li className="border-l border-[var(--ret-border)] pl-2">
-			<p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+			<p className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 				{icon()}
 				{KIND_LABEL[event.kind]}
 			</p>
@@ -188,10 +187,10 @@ function CellSwatch({
 			onFocus={() => onSelect(day)}
 			aria-label={`${day.date}, ${day.events.length} events on ${day.partner}`}
 			className={cn(
-				"relative h-3.5 w-3.5 cursor-pointer border transition-all duration-100",
+				"relative box-border h-full min-h-0 w-full shrink-0 cursor-pointer border p-0 leading-none transition-all duration-100",
 				active
-					? "z-20 scale-[1.8] border-[var(--ret-text)] outline outline-2 outline-offset-1 outline-[var(--ret-purple)]/70 shadow-[0_0_0_1px_var(--ret-bg)]"
-					: "border-[var(--ret-border)]/50 hover:z-10 hover:scale-[1.5] hover:border-[var(--ret-text)]",
+					? "z-20 scale-[1.1] border-[var(--ret-text)] outline outline-2 outline-offset-1 outline-[var(--ret-purple)]/70 shadow-[0_0_0_1px_var(--ret-bg)]"
+					: "border-[var(--ret-border)]/50 hover:z-10 hover:scale-[1.1] hover:border-[var(--ret-text)]",
 			)}
 			style={{ background: hue, opacity }}
 		/>
@@ -211,11 +210,11 @@ function MonthLabels({ weeks }: { weeks: ContributionDay[][] }) {
 		return { idx, label: month };
 	});
 	return (
-		<div className="grid" style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }}>
+		<div className="grid gap-[3px]" style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }}>
 			{weeks.map((_, weekIdx) => {
 				const tag = labels.find((l) => l?.idx === weekIdx);
 				return (
-					<div key={weekIdx} className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+					<div key={weekIdx} className="text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 						{tag?.label ?? ""}
 					</div>
 				);
@@ -241,7 +240,7 @@ function PartnerSwatch({
 			onClick={onClick}
 			aria-pressed={active}
 			className={cn(
-				"group flex items-center gap-2 border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] transition-all",
+				"group flex items-center gap-2 border px-2 py-1 text-[10px] uppercase tracking-[0.18em] transition-all",
 				active
 					? "border-[var(--ret-purple)]/55 bg-[var(--ret-purple-glow)] text-[var(--ret-purple)] shadow-[0_0_12px_var(--ret-purple-glow)]"
 					: "border-dashed border-[var(--ret-border)] text-[var(--ret-text-dim)] hover:border-solid hover:border-[var(--ret-purple)]/50 hover:bg-[var(--ret-surface)] hover:text-[var(--ret-text)]",
@@ -255,7 +254,6 @@ function PartnerSwatch({
 			<span
 				aria-hidden="true"
 				className={cn(
-					"font-mono",
 					active ? "text-[var(--ret-purple)]" : "text-[var(--ret-text-muted)] opacity-0 transition-opacity group-hover:opacity-100",
 				)}
 			>
@@ -332,24 +330,25 @@ export function ContributionGrid() {
 				<div className="flex items-center gap-2">
 					<ReticleLabel>ACTIVITY -- 6 MONTHS</ReticleLabel>
 					<ReticleBadge>{totalActive} active days</ReticleBadge>
-					{hasFilter ? (
-						<button
-							type="button"
-							onClick={clearFilters}
-							className="group flex items-center gap-1.5 bg-[var(--ret-purple-glow)] px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-purple)] transition-colors hover:bg-[var(--ret-purple)]/15"
-							title="Clear filter"
-						>
-							<span className="h-1.5 w-1.5 animate-pulse bg-[var(--ret-purple)]" />
-							filtered: {filterLabel}
-							<span aria-hidden="true">x</span>
-						</button>
-					) : null}
 				</div>
-				<p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-					<span aria-hidden="true" className="text-[var(--ret-purple)]">{"->"}
-					</span>
-					tap a cell . click a chip to filter
-				</p>
+				{hasFilter ? (
+					<button
+						type="button"
+						onClick={clearFilters}
+						className="group flex items-center gap-1.5 bg-[var(--ret-purple-glow)] px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-[var(--ret-purple)] transition-colors hover:bg-[var(--ret-purple)]/15"
+						title="Clear filter"
+					>
+						<span className="h-1.5 w-1.5 animate-pulse bg-[var(--ret-purple)]" />
+						filtered: {filterLabel}
+						<span aria-hidden="true">x</span>
+					</button>
+				) : (
+					<p className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+						<span aria-hidden="true" className="text-[var(--ret-purple)]">{"->"}
+						</span>
+						tap a cell . click a chip to filter
+					</p>
+				)}
 			</div>
 
 			{/* Main body: grid left, day detail right */}
@@ -359,39 +358,53 @@ export function ContributionGrid() {
 					<div className="border-b border-[var(--ret-border)] px-3 py-3">
 						<MonthLabels weeks={weeks} />
 						<div
-						className="mt-1 grid gap-0.5"
-						style={{ gridTemplateColumns: `repeat(${weeks.length}, 14px)` }}
+							className="mt-1 grid gap-[3px]"
+							style={{
+								gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))`,
+								gridTemplateRows: "repeat(7, minmax(0, auto))",
+							}}
 						>
-							{weeks.map((week, weekIdx) => (
-								<div key={`week-${weekIdx}`} className="grid grid-rows-7 gap-0.5">
-									{Array.from({ length: 7 }).map((_, dayIdx) => {
-										const day = week[dayIdx];
-										if (!day) {
-											return <div key={`empty-${weekIdx}-${dayIdx}`} className="h-3.5 w-3.5" aria-hidden="true" />;
-										}
-										const partnerDim = filter !== "all" && day.partner !== filter;
-										const brandDim = brandFilter !== null && !day.events.some((e) => e.brand === brandFilter);
-										const dimmed = partnerDim || brandDim;
+							{weeks.flatMap((week, weekIdx) =>
+								Array.from({ length: 7 }, (_, dayIdx) => {
+									const placement: CSSProperties = {
+										gridColumn: weekIdx + 1,
+										gridRow: dayIdx + 1,
+									};
+									const day = week[dayIdx];
+									if (!day) {
 										return (
-											<div key={day.date} className={cn(dimmed && "opacity-20")}>
-												<CellSwatch day={day} active={day.date === selected.date} onSelect={setSelected} />
+											<div
+												key={`empty-${weekIdx}-${dayIdx}`}
+												style={placement}
+												className="aspect-square min-h-0 min-w-0 "
+												aria-hidden="true"
+											>
+												<div className="mt-[0.21rem] aspect-square h-full w-full border border-dashed border-[var(--ret-border)]/30"/>
 											</div>
 										);
-									})}
-								</div>
-							))}
+									}
+									const partnerDim = filter !== "all" && day.partner !== filter;
+									const brandDim = brandFilter !== null && !day.events.some((e) => e.brand === brandFilter);
+									const dimmed = partnerDim || brandDim;
+									return (
+										<div key={day.date} style={placement} className={cn("aspect-square min-h-0 min-w-0", dimmed && "opacity-20")}>
+											<CellSwatch day={day} active={day.date === selected.date} onSelect={setSelected} />
+										</div>
+									);
+								}),
+							)}
 						</div>
 					</div>
 
 					{/* Agent filter */}
 					<div className="border-b border-[var(--ret-border)] px-3 py-2.5">
 						<div className="flex items-baseline justify-between gap-2">
-							<p className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
+							<p className="flex items-center gap-1 text-[9px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
 								<span aria-hidden="true" className="text-[var(--ret-purple)]">{"->"}
 								</span>
 								filter by agent . {ALL_PARTNERS.length}
 							</p>
-							<div className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+							<div className="flex items-center gap-1 text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 								<span>less</span>
 								{INTENSITY_OPACITY.map((o, idx) => (
 									<span
@@ -421,7 +434,7 @@ export function ContributionGrid() {
 					{brandStats.slugs.length > 0 ? (
 						<div className="px-3 py-2.5">
 							<div className="flex items-baseline justify-between gap-2">
-								<p className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
+								<p className="flex items-center gap-1 text-[9px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
 									<span aria-hidden="true" className="text-[var(--ret-purple)]">{"->"}
 									</span>
 									filter by service . {brandStats.slugs.length}
@@ -430,7 +443,7 @@ export function ContributionGrid() {
 									<button
 										type="button"
 										onClick={() => setBrandFilter(null)}
-										className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-purple)] hover:underline"
+										className="text-[9px] uppercase tracking-[0.18em] text-[var(--ret-purple)] hover:underline"
 									>
 										clear filter x
 									</button>
@@ -477,21 +490,21 @@ function DayDetail({ day }: { day: ContributionDay }) {
 	return (
 		<aside className="flex flex-col gap-3 bg-[var(--ret-bg)] px-3 py-3">
 			<div className="flex items-baseline justify-between gap-2">
-				<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				<p className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					{formatted}
 				</p>
 				<PartnerIcon partner={day.partner} size={14} />
 			</div>
 			<div className="flex items-baseline gap-2">
-				<p className="font-mono text-base tabular-nums text-[var(--ret-text)]">
+				<p className="text-base tabular-nums text-[var(--ret-text)]">
 					{day.events.length}
 				</p>
-				<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				<p className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					{day.events.length === 1 ? "event" : "events"}
 				</p>
 			</div>
 			{day.events.length === 0 ? (
-				<p className="font-mono text-[11px] text-[var(--ret-text-dim)]">
+				<p className="text-[11px] text-[var(--ret-text-dim)]">
 					no recorded activity. machine likely asleep.
 				</p>
 			) : (
@@ -501,11 +514,11 @@ function DayDetail({ day }: { day: ContributionDay }) {
 					))}
 				</ul>
 			)}
-			<p className="mt-auto pt-3 font-mono text-[10px] leading-relaxed text-[var(--ret-text-muted)]">
+			<p className="mt-auto pt-3 text-[10px] leading-relaxed text-[var(--ret-text-muted)]">
 				<span className="text-[var(--ret-purple)]">{"->"}</span> each cell is
 				one day this machine was awake. hover to peek, click to pin. nothing
 				lives in RAM that it can&rsquo;t rebuild from{" "}
-				<code className="text-[var(--ret-text-dim)]">/home/machine</code>.
+				<code className="font-mono text-[var(--ret-text-dim)]">/home/machine</code>.
 			</p>
 		</aside>
 	);

@@ -447,25 +447,28 @@ export function generateContributionGrid(
 	endsAt: Date = new Date(),
 ): ContributionDay[][] {
 	const rng = makePrng(SEED);
-	const end = new Date(endsAt);
-	end.setHours(0, 0, 0, 0);
-	end.setDate(end.getDate() + (6 - end.getDay()));
+	const today = new Date(endsAt);
+	today.setHours(0, 0, 0, 0);
 
-	const start = new Date(end);
-	start.setDate(start.getDate() - (totalDays - 1));
+	const rawStart = new Date(today);
+	rawStart.setDate(rawStart.getDate() - totalDays + 1);
+	rawStart.setDate(rawStart.getDate() - rawStart.getDay());
+
+	const calendarDays =
+		Math.floor((today.getTime() - rawStart.getTime()) / 86_400_000) + 1;
 
 	const days: ContributionDay[] = [];
-	for (let i = 0; i < totalDays; i++) {
-		const date = new Date(start);
-		date.setDate(start.getDate() + i);
+	for (let i = 0; i < calendarDays; i++) {
+		const date = new Date(rawStart);
+		date.setDate(rawStart.getDate() + i);
 		const day = date.getDay();
 		const isWeekend = day === 0 || day === 6;
-		const isToday = date.toDateString() === endsAt.toDateString();
+		const isToday = date.toDateString() === today.toDateString();
 
 		const partner = pickPartner(rng);
 		const intensity = intensityFor(rng, isWeekend, isToday);
 		const events = buildDayEvents(rng, partner, intensity);
-		const milestone = pickMilestoneEvent(i, totalDays);
+		const milestone = pickMilestoneEvent(i, calendarDays);
 		if (milestone) events.unshift(milestone);
 
 		days.push({ date: date.toISOString().slice(0, 10), partner, intensity, events });

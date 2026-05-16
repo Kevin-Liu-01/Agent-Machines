@@ -1,9 +1,16 @@
-import { Logo } from "@/components/Logo";
+import { Logo, type Mark } from "@/components/Logo";
+import { ServiceIcon, isServiceSlug } from "@/components/ServiceIcon";
 import type { McpServerWithBrand } from "@/lib/dashboard/mcps";
 
 type Props = {
 	server: McpServerWithBrand;
 };
+
+const MARK_SET = new Set<string>(["dedalus", "nous", "cursor", "openclaw", "anthropic", "openai"]);
+
+function isMark(value: string): value is Mark {
+	return MARK_SET.has(value);
+}
 
 /**
  * Per-MCP-server card. Header row shows the partner mark + their name +
@@ -17,7 +24,11 @@ export function McpServerCard({ server }: Props) {
 				<div className="flex min-w-0 items-center gap-3">
 					{server.brand ? (
 						<span className="grid h-9 w-9 shrink-0 place-items-center border border-[var(--ret-border)] bg-[var(--ret-surface)]">
-							<Logo mark={server.brand} size={20} />
+							{isMark(server.brand) ? (
+								<Logo mark={server.brand} size={20} />
+							) : isServiceSlug(server.brand) ? (
+								<ServiceIcon slug={server.brand} size={20} />
+							) : null}
 						</span>
 					) : null}
 					<div className="min-w-0">

@@ -51,7 +51,7 @@ export function ReticleHRule({ children, className, variant = "cross" }: Props) 
 				role="separator"
 				aria-label={typeof children === "string" ? children : undefined}
 				className={cn(
-					"flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]",
+					"flex items-center gap-3 text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]",
 					className,
 				)}
 			>

@@ -8,11 +8,13 @@ import { BrandMark } from "@/components/BrandMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
+import { usePathname } from "next/navigation";
+
 import type {
 	GatewaySummary,
 	MachineSummary,
 } from "@/lib/dashboard/types";
-import type { AgentKind } from "@/lib/user-config/schema";
+import type { AgentKind, PublicMachineRef } from "@/lib/user-config/schema";
 
 import { AgentSwitcher } from "./AgentSwitcher";
 import { MachineSwitcher } from "./MachineSwitcher";
@@ -20,10 +22,12 @@ import { StatusPill } from "./StatusPill";
 
 const POLL_MS = 5000;
 const CLERK_READY = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+const MACHINE_PATH_RE = /^\/dashboard\/machines\/([^/]+)/;
 
 type Props = {
 	agentKind: AgentKind;
 	activeMachineId?: string;
+	machines?: PublicMachineRef[];
 };
 
 type State = {
@@ -38,7 +42,12 @@ type State = {
  * cheap endpoints every five seconds; pauses while the tab is hidden so
  * we don't burn budget on a backgrounded laptop.
  */
-export function StatusHeader({ agentKind, activeMachineId }: Props) {
+export function StatusHeader({ agentKind, activeMachineId, machines }: Props) {
+	const pathname = usePathname();
+	const machineMatch = MACHINE_PATH_RE.exec(pathname);
+	const machine = machineMatch
+		? machines?.find((m) => m.id === machineMatch[1])
+		: undefined;
 	const [state, setState] = useState<State>({
 		machine: null,
 		gateway: null,
@@ -105,8 +114,23 @@ export function StatusHeader({ agentKind, activeMachineId }: Props) {
 					</span>
 				</Link>
 				<span className="text-[var(--ret-text-muted)]">/</span>
+				{machine ? (
+					<>
+						<Link
+							href="/dashboard/machines"
+							className="hidden text-[11px] text-[var(--ret-text-muted)] transition-colors hover:text-[var(--ret-text)] md:inline"
+						>
+							fleet
+						</Link>
+						<span className="hidden text-[var(--ret-text-muted)] md:inline">/</span>
+						<span className="hidden font-mono text-[11px] text-[var(--ret-text)] md:inline truncate max-w-[120px]">
+							{machine.name}
+						</span>
+						<span className="text-[var(--ret-text-muted)]">/</span>
+					</>
+				) : null}
 				<StatusPill phase={machinePhase} />
-				{state.machine ? (
+				{!machine && state.machine ? (
 					<span className="hidden font-mono text-[11px] text-[var(--ret-text-muted)] md:inline">
 						{state.machine.machineId.slice(0, 18)}
 					</span>

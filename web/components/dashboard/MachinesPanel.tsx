@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { Logo } from "@/components/Logo";
@@ -251,6 +252,7 @@ function MachineCard({
 	onToggleEdit: () => void;
 	onSavedEdit: () => void;
 }) {
+	const router = useRouter();
 	const stateName = machine.live.ok ? machine.live.state : "unknown";
 	const stateTone = STATE_TONE[stateName] ?? "muted";
 	const stateLabel = STATE_LABEL[stateName] ?? stateName;
@@ -259,9 +261,25 @@ function MachineCard({
 	const isActualError = stateName === "error";
 	const memGib = (machine.spec.memoryMib / 1024).toFixed(1);
 	const providerLogo = PROVIDER_LOGO[machine.providerKind];
+
+	function handleDrillIn() {
+		if (!machine.archived) {
+			router.push(`/dashboard/machines/${machine.id}`);
+		}
+	}
+
 	return (
 		<ReticleFrame>
-			<div className="flex items-center justify-between border-b border-[var(--ret-border)] px-4 py-2 text-[11px]">
+			<div
+				role={machine.archived ? undefined : "link"}
+				tabIndex={machine.archived ? undefined : 0}
+				onClick={handleDrillIn}
+				onKeyDown={(e) => { if (e.key === "Enter") handleDrillIn(); }}
+				className={cn(
+					"flex items-center justify-between border-b border-[var(--ret-border)] px-4 py-2 text-[11px]",
+					!machine.archived && "cursor-pointer transition-colors hover:bg-[var(--ret-surface)]",
+				)}
+			>
 				<div className="flex items-center gap-2 min-w-0">
 					{providerLogo ? <Logo mark={providerLogo} size={14} /> : null}
 					<span className="truncate font-mono text-[12px] text-[var(--ret-text)]">
@@ -341,15 +359,19 @@ function MachineCard({
 						)}
 					</span>
 					<div className="flex items-center gap-1">
-						<ReticleButton variant="ghost" size="sm" onClick={onToggleEdit}>
-							Edit gateway
+						{!machine.archived ? (
+							<ReticleButton
+								as="a"
+								href={`/dashboard/machines/${machine.id}`}
+								variant="ghost"
+								size="sm"
+							>
+								Open
+							</ReticleButton>
+						) : null}
+						<ReticleButton variant="ghost" size="sm" onClick={(e: React.MouseEvent) => { e.stopPropagation(); onToggleEdit(); }}>
+							Edit
 						</ReticleButton>
-						{/* The full transition set lives in MachineActions
-						    so /dashboard/machines, FleetMonitor, and the
-						    header MachineSwitcher all expose the same
-						    surface. `allowDestroy` is on here because this
-						    page is the explicit "manage fleet" surface;
-						    other lists keep destroy behind archive. */}
 						<MachineActions
 							machineId={machine.id}
 							state={stateName as MachineActionState}

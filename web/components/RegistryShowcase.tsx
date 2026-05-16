@@ -37,7 +37,7 @@ const KIND_BADGE: Record<TrustedAddOnKind, "default" | "accent" | "success" | "w
 
 const FEATURED: ShowcaseItem[] = TRUSTED_ADDONS
 	.filter((a) => a.brand)
-	.slice(0, 18)
+	.slice(0, 30)
 	.map((a) => ({
 		name: a.name,
 		kind: a.kind,
@@ -47,10 +47,10 @@ const FEATURED: ShowcaseItem[] = TRUSTED_ADDONS
 	}));
 
 const SOURCES = [
-	{ label: "skills.sh", count: "900K+ installs", icon: "memory" as ToolCategory },
-	{ label: "MCP Registry", count: "50+ servers", icon: "delegate" as ToolCategory },
+	{ label: "skills.sh", count: "34K+ skills", icon: "memory" as ToolCategory },
+	{ label: "MCP Registry", count: "200+ servers", icon: "delegate" as ToolCategory },
 	{ label: "npm", count: "2M+ packages", icon: "shell" as ToolCategory },
-	{ label: "Cursor Plugins", count: "skill packs", icon: "code" as ToolCategory },
+	{ label: "Cursor Plugins", count: "50+ plugins", icon: "code" as ToolCategory },
 	{ label: "GitHub Repos", count: "any owner/repo", icon: "search" as ToolCategory },
 	{ label: "URL Manifests", count: "JSON / YAML", icon: "filesystem" as ToolCategory },
 ];
@@ -72,11 +72,11 @@ export function RegistryShowcase() {
 				</div>
 				<ReticleButton
 					as="a"
-					href="/dashboard/registry"
+					href="/registry"
 					variant="secondary"
 					size="sm"
 				>
-					Open registry
+					Browse registry
 				</ReticleButton>
 			</div>
 

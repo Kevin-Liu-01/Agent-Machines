@@ -43,7 +43,7 @@ export function RuntimeVizGrid() {
 						What you watch on the dashboard.
 					</h2>
 				</div>
-				<p className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)] md:block">
+				<p className="hidden text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)] md:block">
 					6 panels . live every 5s
 				</p>
 			</div>
@@ -107,7 +107,7 @@ export function RuntimeVizGrid() {
 				</RuntimeCard>
 			</div>
 
-			<p className="mt-3 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+			<p className="mt-3 text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 				every panel above is rendered from the same /api endpoints the
 				dashboard polls
 			</p>
@@ -147,17 +147,17 @@ function RuntimeCard({ icon, label, hint, footer, variant, children }: RuntimeCa
 					size={12}
 					className="text-[var(--ret-text-muted)]"
 				/>
-				<span className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--ret-text)]">
+				<span className="text-[11px] uppercase tracking-[0.18em] text-[var(--ret-text)]">
 					{label}
 				</span>
-				<span className="ml-auto truncate font-mono text-[10px] text-[var(--ret-text-muted)]">
+				<span className="ml-auto truncate text-[10px] text-[var(--ret-text-muted)]">
 					{hint}
 				</span>
 			</div>
 			<div className="relative z-10 flex min-h-[110px] items-center justify-center px-3 py-3">
 				{children}
 			</div>
-			<div className="relative z-10 border-t border-[var(--ret-border)] bg-[var(--ret-bg)]/82 px-3 py-1.5 font-mono text-[10px] tabular-nums text-[var(--ret-text-dim)] backdrop-blur-sm">
+			<div className="relative z-10 border-t border-[var(--ret-border)] bg-[var(--ret-bg)]/82 px-3 py-1.5 text-[10px] tabular-nums text-[var(--ret-text-dim)] backdrop-blur-sm">
 				{footer}
 			</div>
 		</div>
@@ -210,7 +210,7 @@ function DiskBar({
 					style={{ background: "var(--ret-bg-soft)" }}
 				/>
 			</div>
-			<div className="flex flex-wrap gap-x-2 gap-y-0.5 font-mono text-[9px] uppercase tracking-[0.15em] text-[var(--ret-text-muted)]">
+			<div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] uppercase tracking-[0.15em] text-[var(--ret-text-muted)]">
 				{segments.map((s, i) => (
 					<span key={s.label} className="inline-flex items-center gap-1">
 						<span
@@ -306,7 +306,7 @@ function AwakeStrip({ cells }: { cells: ReadonlyArray<0 | 1> }) {
 					/>
 				))}
 			</div>
-			<div className="flex justify-between font-mono text-[9px] uppercase tracking-[0.15em] text-[var(--ret-text-muted)]">
+			<div className="flex justify-between text-[9px] uppercase tracking-[0.15em] text-[var(--ret-text-muted)]">
 				<span>00:00</span>
 				<span>06:00</span>
 				<span>12:00</span>
@@ -341,7 +341,7 @@ function StackedBar({
 					/>
 				))}
 			</div>
-			<div className="flex justify-between font-mono text-[9px] uppercase tracking-[0.15em] text-[var(--ret-text-muted)]">
+			<div className="flex justify-between text-[9px] uppercase tracking-[0.15em] text-[var(--ret-text-muted)]">
 				{segments.map((s) => (
 					<span key={s.label} className="inline-flex items-center gap-1">
 						<span className="h-1.5 w-1.5" style={{ background: s.color }} />
@@ -430,7 +430,7 @@ function Dial({ fraction }: { fraction: number }) {
 				/>
 				<circle cx={cx} cy={cy} r="1.5" fill="var(--ret-text-muted)" />
 			</svg>
-			<div className="flex flex-col font-mono text-[10px] tabular-nums">
+			<div className="flex flex-col text-[10px] tabular-nums">
 				<span className="text-base text-[var(--ret-text)]">3d 04h</span>
 				<span className="text-[var(--ret-text-muted)]">until next fire</span>
 			</div>

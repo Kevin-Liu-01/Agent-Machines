@@ -508,3 +508,48 @@ textarea::placeholder {
 	max-height: 18px;
 	width: auto;
 }
+
+/* ── Fleet demo: wire pulse dots ── */
+@keyframes fleet-wire-travel {
+	0% {
+		top: -2px;
+		opacity: 0;
+	}
+	10% {
+		opacity: 1;
+	}
+	90% {
+		opacity: 1;
+	}
+	100% {
+		top: calc(100% + 2px);
+		opacity: 0;
+	}
+}
+
+.fleet-wire-dot {
+	animation: fleet-wire-travel 2s ease-in-out infinite;
+	animation-delay: var(--wire-delay, 0s);
+}
+
+/* ── Fleet demo: hatch strip pulse sweep ── */
+@keyframes fleet-pulse-sweep {
+	0% {
+		background-position: -30% 0;
+		opacity: 0;
+	}
+	20% {
+		opacity: 0.6;
+	}
+	80% {
+		opacity: 0.6;
+	}
+	100% {
+		background-position: 130% 0;
+		opacity: 0;
+	}
+}
+
+.fleet-pulse-sweep {
+	animation: fleet-pulse-sweep 2.4s ease-in-out infinite;
+}

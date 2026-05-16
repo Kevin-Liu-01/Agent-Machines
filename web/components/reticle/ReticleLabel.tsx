@@ -12,7 +12,7 @@ export function ReticleLabel({ children, className }: Props) {
 	return (
 		<p
 			className={cn(
-				"font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]",
+				"text-[11px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]",
 				className,
 			)}
 		>

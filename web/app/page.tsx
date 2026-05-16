@@ -1,4 +1,6 @@
 import { AgentCommandToggle } from "@/components/AgentCommandToggle";
+import { ContributionGrid } from "@/components/ContributionGrid";
+import { FleetDemo } from "@/components/FleetDemo";
 import { RuntimeVizGrid } from "@/components/RuntimeVizGrid";
 import { FaqSection } from "@/components/FaqSection";
 import { Footer } from "@/components/Footer";
@@ -20,8 +22,20 @@ export default function HomePage() {
 			<PublicNavbar githubRepo="Kevin-Liu-01/agent-machines" />
 
 			<main id="top">
-				<ReticleSection contentClassName="">
+				<ReticleSection contentClassName="" background="wing-nyx-waves">
 					<HeroBlock />
+				</ReticleSection>
+
+				<ReticleSpacer />
+
+				<ReticleSection contentClassName="" background="wing-cloud">
+					<FleetDemo />
+				</ReticleSection>
+
+				<ReticleSpacer />
+
+				<ReticleSection contentClassName="" background="wing-nyx-waves">
+					<ContributionGrid />
 				</ReticleSection>
 
 				<ReticleSpacer hatch />
@@ -70,9 +84,11 @@ export default function HomePage() {
 
 				<ReticleSpacer />
 
-				<ReticleSection id="scroll-story" contentClassName="">
-					<StickyRuntimeStory />
-				</ReticleSection>
+				<section id="scroll-story" className="relative">
+					<div className="relative z-10 mx-auto w-full bg-[var(--ret-bg)]">
+						<StickyRuntimeStory />
+					</div>
+				</section>
 
 				<ReticleSpacer />
 

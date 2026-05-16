@@ -6,6 +6,8 @@
  * that can be added to the user's loadout.
  */
 
+import type { ServiceSlug } from "@/components/ServiceIcon";
+
 import { cacheGet, cacheKey, cacheSet } from "./cache";
 import type { RegistryAdapter, RegistryItem, RegistrySearchOptions } from "./types";
 
@@ -77,6 +79,42 @@ export function parseScanOutput(stdout: string): PluginSkillEntry[] {
 		.filter((e): e is PluginSkillEntry => e !== null);
 }
 
+function seedPlugin(slug: string, name: string, description: string, brand: ServiceSlug | null): RegistryItem {
+	return {
+		id: `cursor-plugin:${slug}`,
+		name,
+		kind: "plugin",
+		description,
+		provider: "Cursor Marketplace",
+		source: "cursor-plugins",
+		installCommand: null,
+		logoUrl: null,
+		brand,
+		stars: null,
+		version: null,
+		homepage: "https://cursor.com/marketplace",
+		installed: false,
+	};
+}
+
+const SEED: RegistryItem[] = [
+	seedPlugin("vercel", "Vercel", "28 skills for Next.js, AI SDK, caching, deployments, functions, and storage.", "vercel"),
+	seedPlugin("stripe", "Stripe", "Best practices for payments, Connect platforms, subscriptions, and API upgrades.", "stripe"),
+	seedPlugin("supabase", "Supabase", "Database, auth, Edge Functions, RLS policies, and SSR integration skills.", "supabase"),
+	seedPlugin("figma", "Figma", "Read design files, Code Connect mapping, diagram generation, and library building.", "figma"),
+	seedPlugin("firebase", "Firebase", "Auth, Firestore, App Hosting, Genkit AI, and Data Connect skills.", "firebase"),
+	seedPlugin("datadog", "Datadog", "MCP server setup, configuration management, and toolset administration.", "datadog"),
+	seedPlugin("sanity", "Sanity", "Content modeling, GROQ queries, Visual Editing, SEO, and experimentation.", null),
+	seedPlugin("clickhouse", "ClickHouse", "28 query optimization and schema best-practice rules for ClickHouse.", "clickhouse"),
+	seedPlugin("linear", "Linear", "Issue tracking, project management, cycles, and workflow automation.", "linear"),
+	seedPlugin("slack", "Slack", "Channel messaging, workspace search, threads, and notification management.", "slack"),
+	seedPlugin("shopify", "Shopify", "Admin API, Hydrogen storefronts, Liquid templates, Polaris UI, and checkout.", "shopify"),
+	seedPlugin("posthog", "PostHog", "Product analytics, feature flags, experiments, session replays, and LLM tracing.", "posthog"),
+	seedPlugin("sentry", "Sentry", "Error tracking, performance monitoring, alerts, and SDK setup for 15+ platforms.", "sentry"),
+	seedPlugin("clerk", "Clerk", "Authentication, user management, organizations, webhooks, and Next.js middleware.", "clerk"),
+	seedPlugin("grafana", "Grafana", "Dashboard queries, alert management, log exploration, and observability tooling.", "grafana"),
+];
+
 export const cursorPluginsAdapter: RegistryAdapter = {
 	id: "cursor-plugins",
 	label: "Cursor Plugins",
@@ -85,7 +123,16 @@ export const cursorPluginsAdapter: RegistryAdapter = {
 		const cached = cacheGet<RegistryItem[]>(key);
 		if (cached) return cached;
 
-		if (!scanResults) return [];
+		if (!scanResults) {
+			if (!opts.query) return SEED;
+			const q = opts.query.toLowerCase();
+			return SEED.filter(
+				(s) =>
+					s.name.toLowerCase().includes(q) ||
+					s.description.toLowerCase().includes(q) ||
+					(s.brand?.toLowerCase().includes(q) ?? false),
+			);
+		}
 
 		let items = scanResults.map(normalize);
 		if (opts.query) {
