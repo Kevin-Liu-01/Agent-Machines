@@ -37,26 +37,41 @@ export function ReticlePageGrid({
 	return (
 		<PageGridContext.Provider value={true}>
 			<div
-				className={cn("relative min-h-[100dvh] bg-[var(--ret-bg)]", className)}
+				className={cn("relative min-h-[100dvh] overflow-x-hidden bg-[var(--ret-bg)]", className)}
 				style={style}
 			>
-				{/* Left margin hatch: fixed 4rem, hugs the left edge of the content area */}
+				{/* Left margin hatch: hugs the content edge */}
 				<div
 					aria-hidden="true"
 					className="pointer-events-none absolute top-0 bottom-0 z-[2] w-[var(--ret-rail-offset)] border-x border-[var(--ret-border)]"
 					style={{
-						right: "calc(var(--ret-content-max) + var(--ret-rail-offset))",
 						left: "calc(50% - var(--ret-content-max) / 2 - var(--ret-rail-offset))",
 						backgroundImage: MARGIN_HATCH,
 					}}
 				/>
-				{/* Right margin hatch: fixed 4rem, hugs the right edge of the content area */}
+				{/* Left gutter: empty strip outside the margin */}
+				<div
+					aria-hidden="true"
+					className="pointer-events-none absolute top-0 bottom-0 z-[2] w-[var(--ret-rail-offset)] border-l border-[var(--ret-border)]"
+					style={{
+						left: "calc(50% - var(--ret-content-max) / 2 - var(--ret-rail-offset) * 2)",
+					}}
+				/>
+				{/* Right margin hatch: hugs the content edge */}
 				<div
 					aria-hidden="true"
 					className="pointer-events-none absolute top-0 bottom-0 z-[2] w-[var(--ret-rail-offset)] border-x border-[var(--ret-border)]"
 					style={{
 						left: "calc(50% + var(--ret-content-max) / 2)",
 						backgroundImage: MARGIN_HATCH,
+					}}
+				/>
+				{/* Right gutter: empty strip outside the margin */}
+				<div
+					aria-hidden="true"
+					className="pointer-events-none absolute top-0 bottom-0 z-[2] w-[var(--ret-rail-offset)] border-r border-[var(--ret-border)]"
+					style={{
+						left: "calc(50% + var(--ret-content-max) / 2 + var(--ret-rail-offset))",
 					}}
 				/>
 

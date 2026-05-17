@@ -22,13 +22,13 @@ export default function HomePage() {
 			<PublicNavbar githubRepo="Kevin-Liu-01/agent-machines" />
 
 			<main id="top">
-				<ReticleSection contentClassName="" background="wing-nyx-waves">
+				<ReticleSection contentClassName="" >
 					<HeroBlock />
 				</ReticleSection>
 
 				<ReticleSpacer />
 
-				<ReticleSection contentClassName="" background="wing-cloud">
+				<ReticleSection contentClassName="" >
 					<FleetDemo />
 				</ReticleSection>
 

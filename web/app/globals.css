@@ -34,6 +34,7 @@
 	color-scheme: light;
 
 	--ret-bg: #ffffff;
+	--ret-bg-mid: #f7f7f8;
 	--ret-bg-soft: #f0f0f2;
 	--ret-surface: #f5f5f5;
 	--ret-surface-hover: #ebebeb;
@@ -98,6 +99,7 @@
 	color-scheme: dark;
 
 	--ret-bg: #09090b;
+	--ret-bg-mid: #0d0d0f;
 	--ret-bg-soft: #111113;
 	--ret-surface: #111113;
 	--ret-surface-hover: #1a1a1e;
@@ -128,6 +130,7 @@
 		color-scheme: dark;
 
 		--ret-bg: #09090b;
+		--ret-bg-mid: #0d0d0f;
 		--ret-bg-soft: #111113;
 		--ret-surface: #111113;
 		--ret-surface-hover: #1a1a1e;
@@ -552,4 +555,30 @@ textarea::placeholder {
 
 .fleet-pulse-sweep {
 	animation: fleet-pulse-sweep 2.4s ease-in-out infinite;
+}
+
+/* ── Hero 3D viewport: glitch flash on agent switch ── */
+@keyframes hero-glitch-flash {
+	0% {
+		opacity: 0.15;
+	}
+	15% {
+		opacity: 0;
+	}
+	30% {
+		opacity: 0.1;
+	}
+	50% {
+		opacity: 0;
+	}
+	70% {
+		opacity: 0.05;
+	}
+	100% {
+		opacity: 0;
+	}
+}
+
+.hero-glitch-flash {
+	animation: hero-glitch-flash 0.4s ease-out forwards;
 }

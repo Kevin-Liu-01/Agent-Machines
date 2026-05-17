@@ -1,0 +1,142 @@
+---
+description: Reticle grid layout pattern — structural grid, hairline borders, margins, gutters, and rounded cards in cells. Apply when building or editing any page-level section grid in the Agent Machines landing page.
+globs:
+  - web/components/HeroBlock.tsx
+  - web/components/FleetDemo.tsx
+  - web/components/reticle/*.tsx
+  - web/app/page.tsx
+---
+
+# Reticle Grid Pattern
+
+The canonical layout system for Agent Machines landing sections. Every section
+is a structural grid of hoverable cells with hairline borders, rounded cards
+inside cells, full-width separator lines, and hatched margins.
+
+## Page-level structure
+
+```
+[outer] [gutter 4rem] [hatch margin 4rem] [content max-w] [hatch margin 4rem] [gutter 4rem] [outer]
+```
+
+- **Content**: centered, capped at `--ret-content-max` (1200px).
+- **Margins**: `--ret-rail-offset` (4rem) wide, filled with 45deg hatch
+  (`repeating-linear-gradient(45deg, var(--ret-rail) 0 1px, transparent 1px 6px)`).
+- **Gutters**: same width as margins, empty, bordered on their inner edge.
+- Page root has `overflow-x-hidden` to clip full-bleed hairlines.
+
+## Grid construction
+
+Sections use CSS Grid with a narrow auto-width left column + N equal columns:
+
+```tsx
+<div className="grid grid-cols-4 auto-rows-auto md:grid-cols-[auto_repeat(8,1fr)]">
+```
+
+- Column 1 (`auto`): narrow rail for navigation/tool icons.
+- Columns 2–9 (`1fr` each): content cells.
+- Mobile collapses to `grid-cols-4`, hiding rail and rightmost cells.
+
+## Cell anatomy
+
+Every cell uses the `Cell` component:
+
+```tsx
+<Cell action="..." agent={agent} hue={hue} className="..." hoverVisual={...}>
+  {children}
+</Cell>
+```
+
+- **Borders**: `border-b border-r border-[var(--ret-border)]` — hairline on
+  bottom and right. Last column in a row gets `!border-r-0`. Last row gets
+  `!border-b-0`. This prevents doubled borders at edges.
+- **Hover**: every cell (including empty ones) has a hover overlay with:
+  - A visual effect (`HoverHatch`, `HoverGlow`, `HoverPulseGrid`,
+    `HoverScene`, `HoverGradient`).
+  - An agent action label (logo + monospaced text + pulsing dot) in the
+    bottom-left corner, colored in the active agent's hue.
+
+## Cards inside cells
+
+Content cells contain a rounded card with padding:
+
+```tsx
+<Cell ...>
+  <div className="h-full p-1.5">
+    <div className="h-full rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)]">
+      {/* content */}
+    </div>
+  </div>
+</Cell>
+```
+
+- Padding: `p-1.5` (6px) around the card.
+- Card: `rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)]`.
+- 3D viewports use `bg-[var(--ret-bg-soft)]` and add corner cross marks.
+- Empty decorative cells also get cards (empty `<div />` with the same classes).
+
+## Full-width hairlines
+
+For section-spanning horizontal lines (like above/below the heading band),
+use absolute-positioned divs inside a cell:
+
+```tsx
+<div
+  className="pointer-events-none absolute top-0 z-30 h-px"
+  style={{ left: "-50vw", width: "200vw", background: "var(--ret-border)" }}
+/>
+```
+
+- `200vw` width + `left: -50vw` guarantees full coverage regardless of cell
+  position.
+- Cells adjacent to these lines must remove their own `border-b` or
+  `border-t` with `!border-b-0` / `!border-t-0` to prevent doubling.
+
+## Border deduplication rules
+
+| Position | Rule |
+|---|---|
+| Last column in row | `!border-r-0` |
+| Last row in grid | `!border-b-0` |
+| Adjacent to full-bleed hairline | Remove the matching `border-t` or `border-b` |
+| Row-spanning cells | Remove borders on sides that overlap with neighbor cells |
+
+## Hover visual primitives
+
+| Name | Effect |
+|---|---|
+| `HoverHatch` | Repeating diagonal lines (configurable angle) |
+| `HoverGlow` | Radial gradient from center |
+| `HoverGradient` | Directional gradient from corner |
+| `HoverPulseGrid` | Dot grid + glowing pulsing orb |
+| `HoverScene` | Full 3D wireframe scene filling the cell |
+
+All hover effects are tinted in the active agent's hue so they change color
+when the agent cycles.
+
+## Agent rail
+
+The left column contains contextual content:
+
+- **Tool cluster cells** (rows without the heading): show a category label +
+  2×2 grid of `ServiceIcon` logos (e.g. Automate, Code, Data, Observe).
+- **Agent selector** (rows aligned with the heading): a flex column of 5
+  agent cards inside a single row-spanning cell. Each agent card is
+  `rounded-lg border` with colored border + tinted bg when active.
+
+## Color system
+
+All colors use `var(--ret-*)` tokens. Agent-specific colors come from
+`AGENT_HUE` and are applied via inline `style` (not Tailwind classes) since
+they're dynamic per-agent values. Never hardcode hex values for borders or
+backgrounds — always use the token or the hue variable.
+
+## Do NOT
+
+- Use `border-dashed` — all borders are solid hairlines.
+- Add padding to the grid container — cells fill edge-to-edge.
+- Use `overflow-hidden` on the hero wrapper (breaks full-bleed lines).
+- Mix `style={{}}` with Tailwind for static values — use Tailwind for static,
+  `style` only for dynamic agent hue colors.
+- Create cells without hover behavior — every cell, even empty ones, must
+  have a `hoverVisual` and an `action` string.

@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { type ReactNode, useEffect, useState, type SVGProps } from "react";
+import { type ReactNode, useEffect, useRef, useState, type SVGProps } from "react";
 
 import { SignedIn, SignedOut } from "@/components/AuthSwitch";
 import {
@@ -10,6 +10,7 @@ import {
 } from "@/components/HeroAgentPortrait";
 import { Logo, type CompositeMark } from "@/components/Logo";
 import { ServiceIcon } from "@/components/ServiceIcon";
+import { ToolIcon } from "@/components/ToolIcon";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
@@ -34,6 +35,10 @@ const WireframeMachineScene = dynamic(
 );
 const WireframeDashboardScene = dynamic(
 	() => import("@/components/three").then((m) => m.WireframeDashboard),
+	{ ssr: false, loading: () => null },
+);
+const WireframeLoadoutScene = dynamic(
+	() => import("@/components/three").then((m) => m.WireframeLoadout),
 	{ ssr: false, loading: () => null },
 );
 const WireframeHostsScene = dynamic(
@@ -122,6 +127,20 @@ function AnimatedWord({ word, hue }: { word: string; hue: string }) {
 
 /* ── Grid cell with hover visuals ── */
 
+type CellAgent = {
+	mark: CompositeMark;
+	label: string;
+	hue: string;
+};
+
+const CELL_AGENTS: CellAgent[] = [
+	{ mark: "nous", label: "Hermes", hue: "#7c8cf8" },
+	{ mark: "openclaw", label: "OpenClaw", hue: "#e5443b" },
+	{ mark: "anthropic", label: "Claude", hue: "#d4a574" },
+	{ mark: "openai", label: "Codex", hue: "#4ae0a0" },
+	{ mark: "cursor", label: "Cursor", hue: "#f5c542" },
+];
+
 function Cell({
 	action,
 	agent,
@@ -130,6 +149,10 @@ function Cell({
 	className,
 	hoverVisual,
 	noLabel,
+	cellAgent,
+	tool,
+	toolIcon,
+	serviceIcon,
 }: {
 	action: string;
 	agent: HeroAgent;
@@ -138,30 +161,41 @@ function Cell({
 	className?: string;
 	hoverVisual?: ReactNode;
 	noLabel?: boolean;
+	cellAgent?: CellAgent;
+	tool?: string;
+	toolIcon?: React.ComponentProps<typeof ToolIcon>["name"];
+	serviceIcon?: React.ComponentProps<typeof ServiceIcon>["slug"];
 }) {
+	const ca = cellAgent ?? CELL_AGENTS[0];
 	return (
 		<div
 			className={`group/cell relative border-b border-r border-[var(--ret-border)] transition-colors duration-200 ${className ?? ""}`}
 		>
 			{children}
-			<div className="pointer-events-none absolute inset-0 z-20 opacity-0 transition-opacity duration-200 group-hover/cell:opacity-100">
-				{hoverVisual ?? (
-					<div className="absolute inset-0" style={{ background: `${hue}08` }} />
+			<div className="pointer-events-none absolute inset-[6px] z-20 rounded-lg opacity-0 transition-opacity duration-200 group-hover/cell:opacity-100" style={{ background: `${ca.hue}0a` }}>
+				{hoverVisual && (
+					<div className="absolute inset-0 overflow-hidden rounded-lg">
+						{hoverVisual}
+					</div>
 				)}
 				{!noLabel && (
-					<div
-						className="absolute bottom-1.5 left-1.5 flex max-w-[calc(100%-12px)] items-center gap-1.5 border px-1.5 py-0.5"
-						style={{ borderColor: `${hue}44`, background: "var(--ret-bg)" }}
-					>
-						<Logo mark={AGENT_MARK[agent]} size={9} />
-						<span className="truncate font-mono text-[8px]" style={{ color: hue }}>
+					<>
+						<span
+							className="absolute right-1.5 top-1.5 h-1 w-1 animate-pulse rounded-full"
+							style={{ background: ca.hue, boxShadow: `0 0 4px ${ca.hue}` }}
+						/>
+						<div className="absolute bottom-1.5 left-1.5 flex items-center gap-1">
+							<Logo mark={ca.mark} size={14} />
+							{serviceIcon && <ServiceIcon slug={serviceIcon} size={13} tone="mono" />}
+							{toolIcon && <ToolIcon name={toolIcon} size={13} />}
+						</div>
+						<span
+							className="absolute bottom-1.5 right-1.5 max-w-[60%] truncate text-right font-mono text-[8px] leading-tight"
+							style={{ color: ca.hue }}
+						>
 							{action}
 						</span>
-						<span
-							className="h-1 w-1 shrink-0 animate-pulse rounded-full"
-							style={{ background: hue }}
-						/>
-					</div>
+					</>
 				)}
 			</div>
 		</div>
@@ -236,12 +270,13 @@ const RAIL_AGENTS: ReadonlyArray<{
 	mark: CompositeMark;
 	label: string;
 	id: HeroAgent | null;
+	word: string;
 }> = [
-	{ mark: "nous", label: "Hermes", id: "hermes" },
-	{ mark: "openclaw", label: "OpenClaw", id: "openclaw" },
-	{ mark: "anthropic", label: "Claude", id: "claude-code" },
-	{ mark: "openai", label: "Codex", id: "codex" },
-	{ mark: "cursor", label: "Cursor", id: null },
+	{ mark: "nous", label: "Hermes", id: "hermes", word: "Persistent" },
+	{ mark: "openclaw", label: "OpenClaw", id: "openclaw", word: "Autonomous" },
+	{ mark: "anthropic", label: "Claude", id: "claude-code", word: "Stateful" },
+	{ mark: "openai", label: "Codex", id: "codex", word: "Sandboxed" },
+	{ mark: "cursor", label: "Cursor", id: null, word: "Integrated" },
 ];
 
 function agentRailCell(
@@ -288,25 +323,50 @@ function agentRailCell(
 
 /* ── Main component ── */
 
+const ALL_WORDS = RAIL_AGENTS.map((a) => a.word);
+
 export function HeroBlock() {
 	const [agent, setAgent] = useState<HeroAgent>("hermes");
-	const capabilities = AGENT_CAPABILITIES[agent];
-	const hue = AGENT_HUE[agent];
-	const Scene = AGENT_SCENE[agent];
+	const [wordIndex, setWordIndex] = useState(0);
+	const [glitching, setGlitching] = useState(false);
+	const prevWord = useRef(wordIndex);
+	const activeWord = ALL_WORDS[wordIndex];
+	const activeRail = RAIL_AGENTS[wordIndex];
+	const isCursor = activeRail.id === null;
+	const capabilities = isCursor ? ["IDE", "rules", "MCP", "agents"] : AGENT_CAPABILITIES[agent];
+	const hue = isCursor ? "var(--ret-purple)" : AGENT_HUE[agent];
+	const Scene = isCursor ? WireframeDashboardScene : AGENT_SCENE[agent];
 
-	/* Auto-cycle agents every 6s when idle */
+	function selectRailIndex(idx: number) {
+		setWordIndex(idx);
+		const rail = RAIL_AGENTS[idx];
+		if (rail.id) setAgent(rail.id);
+	}
+
+	useEffect(() => {
+		if (prevWord.current !== wordIndex) {
+			prevWord.current = wordIndex;
+			setGlitching(true);
+			const t = setTimeout(() => setGlitching(false), 400);
+			return () => clearTimeout(t);
+		}
+	}, [wordIndex]);
+
+	/* Auto-cycle through all 5 (including Cursor) every 6s */
 	useEffect(() => {
 		const id = setInterval(() => {
-			setAgent((cur) => {
-				const idx = HERO_AGENTS.indexOf(cur);
-				return HERO_AGENTS[(idx + 1) % HERO_AGENTS.length];
+			setWordIndex((cur) => {
+				const next = (cur + 1) % RAIL_AGENTS.length;
+				const rail = RAIL_AGENTS[next];
+				if (rail.id) setAgent(rail.id);
+				return next;
 			});
 		}, 6000);
 		return () => clearInterval(id);
 	}, []);
 
 	return (
-		<div className="relative overflow-hidden">
+		<div className="relative">
 			{/* ── Announcement banner ── */}
 			<a
 				href="https://dedaluslabs.ai"
@@ -329,10 +389,10 @@ export function HeroBlock() {
 			</a>
 
 			{/* ── Single unified grid: col 1 = rail, cols 2-8 = content ── */}
-			<div className="grid grid-cols-4 auto-rows-auto md:grid-cols-[auto_repeat(7,1fr)]">
+			<div className="grid grid-cols-4 auto-rows-auto md:grid-cols-[4.5rem_repeat(7,1fr)_4.5rem]">
 
 				{/* ═══ Row 1: Automation tools | Kicker + empty ═══ */}
-				<Cell action="loading cron drivers..." agent={agent} hue={hue} className="hidden md:flex md:items-center md:justify-center" hoverVisual={<HoverGlow color={hue} />}>
+				<Cell action="loading cron drivers..." agent={agent} hue={hue} className="hidden !border-b-0 md:flex md:items-center md:justify-center" hoverVisual={<HoverGlow color={hue} />}>
 					<div className="flex flex-col items-center gap-1.5 px-3 py-3">
 						<span className="text-[7px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">Automate</span>
 						<div className="grid grid-cols-2 gap-1">
@@ -343,46 +403,63 @@ export function HeroBlock() {
 						</div>
 					</div>
 				</Cell>
-				<Cell action="reading project metadata..." agent={agent} hue={hue} className="col-span-3" hoverVisual={<HoverGradient color={hue} />}>
+				<Cell action="reading project metadata..." agent={agent} hue={hue} className="col-span-3 !border-b-0 flex items-center" hoverVisual={<HoverGradient color={hue} />}>
 					<div className="flex flex-wrap items-center gap-2 px-5 py-4">
 						<ReticleLabel>DEVELOPED BY</ReticleLabel>
 						<ReticleBadge variant="accent">KEVIN LIU</ReticleBadge>
 						<ReticleBadge>DEDALUS LABS</ReticleBadge>
 					</div>
 				</Cell>
-				<Cell action="scanning org graph..." agent={agent} hue={hue} className="hidden md:block" hoverVisual={<HoverHatch color={hue} />} />
-				<Cell action="resolving license..." agent={agent} hue={hue} className="hidden md:block" hoverVisual={<HoverPulseGrid color={hue} />} />
-				<Cell action="checking version..." agent={agent} hue={hue} className="hidden md:block" hoverVisual={<HoverGlow color={hue} />}>
+				<Cell action="git push origin main" agent={agent} hue={hue} className="hidden !border-b-0 md:block" hoverVisual={<HoverHatch color={hue} />} cellAgent={CELL_AGENTS[2]} toolIcon="shell">
+					<div className="h-full p-1.5">
+						<div className="relative h-full overflow-hidden rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)]">
+							<div className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-8 dark:opacity-5" style={{ backgroundImage: "url(/brand/bg-cloud-lines.png)" }} />
+						</div>
+					</div>
+				</Cell>
+				<Cell action="reviewing PR #412" agent={agent} hue={hue} className="hidden !border-b-0 md:block" hoverVisual={<HoverPulseGrid color={hue} />} cellAgent={CELL_AGENTS[3]} serviceIcon="github">
+					<div className="h-full p-1.5">
+						<div className="relative h-full overflow-hidden rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)]">
+							<div className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-8 dark:opacity-5" style={{ backgroundImage: "url(/brand/bg-cloud-lines.png)" }} />
+						</div>
+					</div>
+				</Cell>
+				<Cell action="checking version..." agent={agent} hue={hue} className="hidden !border-b-0 md:block" hoverVisual={<HoverGlow color={hue} />}>
 					<div className="flex h-full items-center justify-center gap-1.5 px-2 py-3">
 						<span className="text-[8px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">VER</span>
 						<span className="font-mono text-[9px] text-[var(--ret-text-dim)]">0.1.0</span>
 					</div>
 				</Cell>
-				<Cell action="polling status..." agent={agent} hue={hue} className="hidden md:block" hoverVisual={<HoverHatch color={hue} angle={45} />}>
+				<Cell action="polling status..." agent={agent} hue={hue} className="hidden !border-b-0 md:block" hoverVisual={<HoverHatch color={hue} angle={45} />}>
 					<div className="flex h-full items-center justify-center gap-1.5 px-2 py-3">
 						<span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--ret-green)]" />
 						<ReticleBadge variant="success" className="!py-0 !text-[7px]">LIVE</ReticleBadge>
 					</div>
 				</Cell>
+				<Cell action="" agent={agent} hue={hue} className="hidden !border-b-0 !border-r-0 md:block" hoverVisual={<HoverScene Scene={WireframeLoadoutScene} />} noLabel>
+					<div className="h-full p-1.5">
+						<div className="relative h-full overflow-hidden rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)]">
+							<div className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-8 dark:opacity-5" style={{ backgroundImage: "url(/brand/bg-cloud-lines.png)" }} />
+						</div>
+					</div>
+				</Cell>
 
-				{/* ═══ Rows 2-3: 5 agents stacked in col 1 | Heading + 3D ═══ */}
-				<div
-					className="hidden border-b border-r border-[var(--ret-border)] md:block"
-					style={{ gridColumn: "1", gridRow: "2 / 4" }}
-				>
-					<div className="flex h-full flex-col">
-						{RAIL_AGENTS.map((a) => {
-							const isSelectable = a.id !== null;
-							const active = isSelectable && agent === a.id;
+				{/* ═══ Rows 2-3: agents | heading | 3D | empty ═══ */}
+				<div className="hidden border-r border-[var(--ret-border)] md:block md:row-span-2">
+					<div className="flex h-full flex-col gap-1.5 p-1.5">
+						{RAIL_AGENTS.map((a, idx) => {
+							const active = wordIndex === idx;
 							const agentHue = a.id ? AGENT_HUE[a.id] : "var(--ret-purple)";
 							return (
 								<button
 									key={a.label}
 									type="button"
-									onClick={() => isSelectable && a.id && setAgent(a.id)}
-									className="flex flex-1 flex-col items-center justify-center gap-0.5 border-b border-[var(--ret-border)] px-3 transition-colors last:border-b-0 hover:bg-[var(--ret-surface)]"
+									onClick={() => selectRailIndex(idx)}
+									className="flex flex-1 flex-col items-center justify-center gap-0.5 rounded-lg border border-[var(--ret-border)] px-3 py-1 transition-all hover:bg-[var(--ret-surface)]"
 									style={{
-										borderLeft: active ? `2px solid ${agentHue}` : "2px solid transparent",
+										borderColor: active ? agentHue : undefined,
+										background: active ? `${agentHue}08` : undefined,
+										boxShadow: active ? `0 0 12px ${agentHue}15` : undefined,
 									}}
 								>
 									<Logo mark={a.mark} size={15} />
@@ -398,18 +475,24 @@ export function HeroBlock() {
 					</div>
 				</div>
 
+				{/* Heading card */}
 				<Cell
 					action="generating copy variant..."
 					agent={agent} hue={hue}
-					className="col-span-4 md:col-span-5 md:row-span-2 !border-r-0"
+					className="relative col-span-4 md:col-span-5 md:row-span-2 !border-t-0 !border-b-0"
 					hoverVisual={<HoverGlow color={hue} />}
 				>
-					<div className="h-full border-r border-[var(--ret-border)] bg-[var(--ret-border)]">
-						<div className="h-full rounded-3xl bg-[var(--ret-bg)]">
-							<div className="px-6 py-10 md:px-10 md:py-16">
+					{/* Full-bleed top hairline */}
+					<div
+						className="pointer-events-none absolute top-0 z-30 h-px"
+						style={{ left: "-50vw", width: "200vw", background: "var(--ret-border)" }}
+					/>
+					<div className="h-full p-1.5">
+						<div className="h-full rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)]">
+							<div className="px-6 py-8 md:px-10 md:py-14">
 								<h1 className="ret-display text-[clamp(2rem,5.5vw,4.5rem)] leading-[0.95] tracking-tight">
 									<span className="block whitespace-nowrap">
-										<AnimatedWord word={AGENT_WORD[agent]} hue={hue} />
+										<AnimatedWord word={activeWord} hue={hue} />
 										{" "}Machines
 									</span>
 									<span className="block text-[var(--ret-text-muted)]">
@@ -419,22 +502,83 @@ export function HeroBlock() {
 							</div>
 						</div>
 					</div>
+					{/* Full-bleed bottom hairline */}
+					<div
+						className="pointer-events-none absolute bottom-0 z-30 h-px"
+						style={{ left: "-50vw", width: "200vw", background: "var(--ret-border)" }}
+					/>
 				</Cell>
+
+				{/* 3D model card */}
 				<Cell
 					action="rendering wireframe..."
 					agent={agent} hue={hue}
-					className="hidden bg-[var(--ret-bg-soft)] md:col-span-2 md:row-span-2 md:block"
+					className="hidden md:col-span-2 md:row-span-2 md:block !border-t-0 !border-b-0"
 					hoverVisual={<HoverGlow color={hue} />}
+					noLabel
 				>
-					<div className="relative h-full min-h-[200px]">
-						<Scene className="h-full w-full" />
-						<span className="pointer-events-none absolute left-2 top-2 h-2 w-2 border-l border-t border-[var(--ret-cross)]" />
-						<span className="pointer-events-none absolute right-2 top-2 h-2 w-2 border-r border-t border-[var(--ret-cross)]" />
-						<span className="pointer-events-none absolute bottom-2 left-2 h-2 w-2 border-b border-l border-[var(--ret-cross)]" />
-						<span className="pointer-events-none absolute bottom-2 right-2 h-2 w-2 border-b border-r border-[var(--ret-cross)]" />
-						<span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 text-[7px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
-							RUNNING {AGENT_LABEL[agent]}
-						</span>
+					<div className="h-full p-1.5">
+						<div className="relative h-full overflow-hidden rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg-soft)]">
+							<Scene className="h-full w-full" />
+							{/* Glitch overlay */}
+							<div
+								className="pointer-events-none absolute inset-0 z-10 transition-opacity duration-100"
+								style={{ opacity: glitching ? 1 : 0 }}
+							>
+								<div
+									className="absolute inset-0"
+									style={{
+										backgroundImage: `repeating-linear-gradient(0deg, transparent 0 2px, ${hue}15 2px 3px)`,
+										backgroundSize: "100% 3px",
+									}}
+								/>
+								<div
+									className="absolute inset-0"
+									style={{
+										background: `linear-gradient(180deg, transparent 20%, ${hue}20 22%, transparent 24%, transparent 55%, ${hue}18 57%, transparent 59%, transparent 80%, ${hue}15 82%, transparent 84%)`,
+									}}
+								/>
+								<div
+									className="absolute left-0 right-0 h-px"
+									style={{ top: "30%", background: hue, boxShadow: `0 0 8px ${hue}` }}
+								/>
+								<div
+									className="absolute left-0 right-0 h-px"
+									style={{ top: "65%", background: hue, opacity: 0.6, boxShadow: `0 0 4px ${hue}` }}
+								/>
+								<div
+									className="absolute h-3 w-full"
+									style={{
+										top: "45%",
+										background: `repeating-linear-gradient(90deg, ${hue}10 0 4px, transparent 4px 8px, ${hue}08 8px 10px, transparent 10px 16px)`,
+									}}
+								/>
+								<div
+									className="absolute inset-0 hero-glitch-flash"
+									style={{ background: hue }}
+								/>
+							</div>
+							<span className="pointer-events-none absolute left-2 top-2 h-2 w-2 border-l border-t border-[var(--ret-cross)]" />
+							<span className="pointer-events-none absolute right-2 top-2 h-2 w-2 border-r border-t border-[var(--ret-cross)]" />
+							<span className="pointer-events-none absolute bottom-2 left-2 h-2 w-2 border-b border-l border-[var(--ret-cross)]" />
+							<span className="pointer-events-none absolute bottom-2 right-2 h-2 w-2 border-b border-r border-[var(--ret-cross)]" />
+							<span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 text-[7px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
+								{AGENT_LABEL[agent]}
+							</span>
+						</div>
+					</div>
+				</Cell>
+				{/* 2 cells to right of 3D model (one per grid row) */}
+				<Cell action="" agent={agent} hue={hue} className="hidden md:block !border-t-0 !border-r-0" hoverVisual={<HoverScene Scene={WireframeHostsScene} />} noLabel>
+					<div className="h-full p-1.5">
+						<div className="relative h-full overflow-hidden rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)]">
+							<div className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-8 dark:opacity-5" style={{ backgroundImage: "url(/brand/bg-cloud-lines.png)" }} />
+						</div>
+					</div>
+				</Cell>
+				<Cell action="" agent={agent} hue={hue} className="hidden md:block !border-b-0 !border-r-0" hoverVisual={<HoverScene Scene={WireframeEnvironmentScene} />} noLabel>
+					<div className="h-full p-1.5">
+						<div className="h-full rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg-mid)]" />
 					</div>
 				</Cell>
 
@@ -478,6 +622,11 @@ export function HeroBlock() {
 						<span className="mt-1 text-[13px] font-medium tabular-nums text-[var(--ret-text-dim)]">disk + mem</span>
 					</div>
 				</Cell>
+				<Cell action="" agent={agent} hue={hue} className="hidden !border-r-0 md:block" hoverVisual={<HoverScene Scene={WireframeDashboardScene} />} noLabel>
+					<div className="h-full p-1.5">
+						<div className="h-full rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg-soft)]" />
+					</div>
+				</Cell>
 
 				{/* ═══ Row 5: Data tools | Capabilities + empty ═══ */}
 				<Cell action="mounting data stores..." agent={agent} hue={hue} className="hidden md:flex md:items-center md:justify-center" hoverVisual={<HoverGlow color={hue} />}>
@@ -491,7 +640,7 @@ export function HeroBlock() {
 						</div>
 					</div>
 				</Cell>
-				<Cell action="indexing tool capabilities..." agent={agent} hue={hue} className="col-span-3" hoverVisual={<HoverHatch color={hue} angle={90} />}>
+				<Cell action="indexing tool capabilities..." agent={agent} hue={hue} className="col-span-3 flex items-center" hoverVisual={<HoverHatch color={hue} angle={90} />}>
 					<div className="flex flex-wrap items-center gap-1.5 px-5 py-3">
 						{capabilities.map((cap) => (
 							<span
@@ -505,13 +654,48 @@ export function HeroBlock() {
 						))}
 					</div>
 				</Cell>
-				<Cell action="loading MCP servers..." agent={agent} hue={hue} hoverVisual={<HoverGlow color={hue} />} />
-				<Cell action="resolving providers..." agent={agent} hue={hue} className="hidden md:block" hoverVisual={<HoverScene Scene={WireframeHostsScene} />} />
-				<Cell action="syncing dotfiles..." agent={agent} hue={hue} className="hidden md:block" hoverVisual={<HoverHatch color={hue} angle={135} />} />
-				<Cell action="warming sandbox..." agent={agent} hue={hue} className="hidden md:block" hoverVisual={<HoverScene Scene={WireframeEnvironmentScene} />} />
+				<Cell action="screenshot captured" agent={agent} hue={hue} hoverVisual={<HoverGlow color={hue} />} cellAgent={CELL_AGENTS[1]} toolIcon="vision">
+					<div className="h-full p-1.5">
+						<div className="relative h-full overflow-hidden rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)]">
+							<div className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-8 dark:opacity-5" style={{ backgroundImage: "url(/brand/bg-cloud-lines.png)" }} />
+						</div>
+					</div>
+				</Cell>
+				<Cell action="navigating to form" agent={agent} hue={hue} className="hidden md:block" hoverVisual={<HoverScene Scene={WireframeHostsScene} />} cellAgent={CELL_AGENTS[1]} toolIcon="browser">
+					<div className="h-full p-1.5">
+						<div className="relative h-full overflow-hidden rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)]">
+							<div className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-8 dark:opacity-5" style={{ backgroundImage: "url(/brand/bg-cloud-lines.png)" }} />
+						</div>
+					</div>
+				</Cell>
+				<Cell action="4,281 memories" agent={agent} hue={hue} className="hidden md:block" hoverVisual={<HoverHatch color={hue} angle={135} />} cellAgent={CELL_AGENTS[0]} toolIcon="memory">
+					<div className="h-full p-1.5">
+						<div className="h-full rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg-mid)]" />
+					</div>
+				</Cell>
+				<Cell action="cron: in 12m" agent={agent} hue={hue} className="hidden md:block" hoverVisual={<HoverScene Scene={WireframeEnvironmentScene} />} cellAgent={CELL_AGENTS[0]} toolIcon="schedule">
+					<div className="h-full p-1.5">
+						<div className="relative h-full overflow-hidden rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg-soft)]">
+							<div
+								className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-15 dark:opacity-10"
+								style={{ backgroundImage: "url(/brand/bg-cloud-lines.png)" }}
+							/>
+						</div>
+					</div>
+				</Cell>
+				<Cell action="" agent={agent} hue={hue} className="hidden !border-r-0 md:block" hoverVisual={<HoverScene Scene={WireframeLoadoutScene} />} noLabel>
+					<div className="h-full p-1.5">
+						<div className="relative h-full overflow-hidden rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg-soft)]">
+							<div
+								className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-15 dark:opacity-10"
+								style={{ backgroundImage: "url(/brand/bg-cloud-lines.png)" }}
+							/>
+						</div>
+					</div>
+				</Cell>
 
 				{/* ═══ Row 6: Observe tools | CTAs + empty ═══ */}
-				<Cell action="wiring observability..." agent={agent} hue={hue} className="hidden md:flex md:items-center md:justify-center" hoverVisual={<HoverPulseGrid color={hue} />}>
+				<Cell action="wiring observability..." agent={agent} hue={hue} className="hidden !border-b-0 md:flex md:items-center md:justify-center" hoverVisual={<HoverPulseGrid color={hue} />}>
 					<div className="flex flex-col items-center gap-1.5 px-3 py-3">
 						<span className="text-[7px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">Observe</span>
 						<div className="grid grid-cols-2 gap-1">
@@ -522,8 +706,8 @@ export function HeroBlock() {
 						</div>
 					</div>
 				</Cell>
-				<Cell action="routing to dashboard..." agent={agent} hue={hue} className="col-span-3" hoverVisual={<HoverGlow color={hue} />}>
-					<div className="flex flex-wrap items-center gap-2.5 px-5 py-5">
+				<Cell action="routing to dashboard..." agent={agent} hue={hue} className="col-span-3 !border-b-0" hoverVisual={<HoverGlow color={hue} />}>
+					<div className="flex items-center gap-2.5 px-5 py-5">
 						<SignedIn>
 							<ReticleButton as="a" href="/dashboard" variant="primary" size="md">
 								<IconArrowRight className="h-3.5 w-3.5" />
@@ -541,17 +725,56 @@ export function HeroBlock() {
 							href="https://github.com/Kevin-Liu-01/agent-machines"
 							target="_blank"
 							variant="secondary"
-							size="sm"
+							size="md"
 						>
-							<ServiceIcon slug="github" size={13} tone="mono" />
+							<ServiceIcon slug="github" size={14} tone="mono" />
 							GitHub
 						</ReticleButton>
 					</div>
 				</Cell>
-				<Cell action="allocating vCPU..." agent={agent} hue={hue} hoverVisual={<HoverGradient color={hue} />} />
-				<Cell action="initializing fs..." agent={agent} hue={hue} className="hidden md:block" hoverVisual={<HoverPulseGrid color={hue} />} />
-				<Cell action="connecting gateway..." agent={agent} hue={hue} className="hidden md:block" hoverVisual={<HoverHatch color={hue} />} />
-				<Cell action="compiling schema..." agent={agent} hue={hue} className="hidden md:block" hoverVisual={<HoverGradient color={hue} />} />
+				<Cell action="sandbox: pass" agent={agent} hue={hue} className="!border-b-0" hoverVisual={<HoverGradient color={hue} />} cellAgent={CELL_AGENTS[3]} toolIcon="shell">
+					<div className="h-full p-1.5">
+						<div className="relative h-full overflow-hidden rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)]">
+							<div className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-8 dark:opacity-5" style={{ backgroundImage: "url(/brand/bg-cloud-lines.png)" }} />
+						</div>
+					</div>
+				</Cell>
+				<Cell action="editing fixtures" agent={agent} hue={hue} className="hidden !border-b-0 md:block" hoverVisual={<HoverPulseGrid color={hue} />} cellAgent={CELL_AGENTS[2]} toolIcon="filesystem">
+					<div className="h-full p-1.5">
+						<div className="relative h-full overflow-hidden rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)]">
+							<div className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-8 dark:opacity-5" style={{ backgroundImage: "url(/brand/bg-cloud-lines.png)" }} />
+						</div>
+					</div>
+				</Cell>
+				<Cell action="filling form fields" agent={agent} hue={hue} className="hidden !border-b-0 md:block" hoverVisual={<HoverHatch color={hue} />} cellAgent={CELL_AGENTS[1]} toolIcon="browser">
+					<div className="h-full p-1.5">
+						<div className="h-full rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg-mid)]" />
+					</div>
+				</Cell>
+				<Cell action="applying rules" agent={agent} hue={hue} className="hidden !border-b-0 md:block" hoverVisual={<HoverGradient color={hue} />} cellAgent={CELL_AGENTS[4]} toolIcon="skill">
+					<div className="h-full p-1.5">
+						<div className="relative h-full overflow-hidden rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg-soft)]">
+							<div
+								className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-15 dark:opacity-10"
+								style={{ backgroundImage: "url(/brand/bg-cloud-lines.png)" }}
+							/>
+						</div>
+					</div>
+				</Cell>
+				<Cell action="" agent={agent} hue={hue} className="hidden !border-b-0 !border-r-0 md:block" hoverVisual={<HoverScene Scene={WireframeHostsScene} />} noLabel>
+					<div className="h-full p-1.5">
+						<div className="relative h-full overflow-hidden rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg-soft)]">
+							<div
+								className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-15 dark:opacity-10"
+								style={{ backgroundImage: "url(/brand/bg-cloud-lines.png)" }}
+							/>
+							<div
+								className="absolute inset-0 hidden bg-cover bg-center bg-no-repeat opacity-10 dark:block"
+								style={{ backgroundImage: "url(/brand/bg-nyx-lines.png)" }}
+							/>
+						</div>
+					</div>
+				</Cell>
 
 			</div>
 		</div>
