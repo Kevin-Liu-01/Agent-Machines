@@ -84,12 +84,12 @@ The `-g` flag installs globally (user-level), `-y` skips confirmation prompts.
 
 ## Kevin's Installed Skills
 
-Skills live at `~/.cursor/skills/<name>/SKILL.md` for Cursor and
-`~/.codex/skills/<name>/SKILL.md` for Codex.
+Skills live at `skills/personal/<name>/SKILL.md` for Cursor (loaded through the
+`~/.cursor/skills` symlink) and `~/.codex/skills/<name>/SKILL.md` for Codex.
 
-When installing new skills, always install to `~/.cursor/skills/` to match
-Kevin's established pattern. After install, update the wiki if the skill
-represents a new capability worth documenting.
+When installing new Cursor skills, install through Cursor normally, then make
+sure the committed source lands under `skills/personal/`. After install, update
+the wiki if the skill represents a new capability worth documenting.
 
 ## Common Skill Categories
 
@@ -108,7 +108,7 @@ represents a new capability worth documenting.
 
 1. Acknowledge no existing skill was found
 2. Offer to help with the task directly
-3. If it's a recurring need, suggest creating a custom skill at `~/.cursor/skills/`
+3. If it's a recurring need, suggest creating a custom skill at `skills/personal/`
 
 ## Related Skills
 

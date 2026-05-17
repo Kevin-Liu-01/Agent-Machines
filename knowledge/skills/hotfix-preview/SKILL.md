@@ -1,6 +1,6 @@
 ---
 name: hotfix-preview
-description: Cherry-pick a commit from dev onto preview without a PR. Use for urgent fixes that can't wait for a full promote cycle.
+description: Cherry-pick a commit from dev onto preview without a PR. Use when you need to cherry-pick a fix to preview without a PR, or for urgent fixes that can't wait for a full promote cycle.
 argument-hint: "[<commit-sha>] — defaults to dev HEAD"
 ---
 

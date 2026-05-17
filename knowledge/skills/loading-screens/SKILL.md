@@ -15,7 +15,7 @@ layout preservation. Never a blank screen.
 
 ## Wiki reference
 
-Read `~/Documents/GitHub/my-wiki/wiki/design/loading-screens.md` for the full
+Read `~/Documents/GitHub/kevin-wiki/wiki/design/loading-screens.md` for the full
 design rationale, anti-patterns, and loading screen hierarchy.
 
 ## Component

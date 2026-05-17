@@ -40,8 +40,8 @@ VISUAL_DENSITY:   4  (1=Art Gallery, 10=Cockpit)
 
 ## Before Generating UI
 
-1. Read `~/Documents/GitHub/my-wiki/wiki/design/design-system.md` for current tokens
-2. Read `~/Documents/GitHub/my-wiki/wiki/design/aesthetic-systems.md` for archetypes
+1. Read `~/Documents/GitHub/kevin-wiki/wiki/design/design-system.md` for current tokens
+2. Read `~/Documents/GitHub/kevin-wiki/wiki/design/aesthetic-systems.md` for archetypes
 3. Choose an archetype (see below) before writing any component code
 4. Lock the six style variables
 5. If in a Sigil project: read `.cursor/rules/taste-enforcement.mdc`

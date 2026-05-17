@@ -2,7 +2,7 @@
   "name": "agent-machines",
   "version": "0.2.0",
   "private": true,
-  "description": "A persistent machine for your agent. One stateful microVM per Clerk account; chat history, files, learned skills, and cron all live on /home/machine. Hermes or OpenClaw, any provider key (Dedalus / Vercel Sandbox / Fly), 96 skills + 17 MCP services.",
+  "description": "A persistent machine for your agent. One stateful microVM per Clerk account; chat history, files, learned skills, and cron all live on /home/machine. Hermes or OpenClaw, any provider key (Dedalus / Vercel Sandbox / Fly), 155 skills + 17 MCP services.",
   "type": "module",
   "scripts": {
     "deploy": "tsx src/cli.ts deploy",

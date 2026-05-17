@@ -1,6 +1,6 @@
 ---
 name: design-taste-frontend
-description: Senior UI/UX Engineer. Architect digital interfaces overriding default LLM biases. Enforces metric-based rules, strict component architecture, CSS hardware acceleration, and balanced design engineering.
+description: Senior UI/UX Engineer. Architect digital interfaces overriding default LLM biases. Enforces metric-based rules, strict component architecture, CSS hardware acceleration, and balanced design engineering. Use when the user says "UI architecture", "metric-based rules", "component architecture", "override LLM defaults", or needs a baseline design-engineering skill with variance/motion/density dials.
 ---
 
 # High-Agency Frontend Skill

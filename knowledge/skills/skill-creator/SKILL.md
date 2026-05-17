@@ -13,7 +13,7 @@ Before creating any skill:
 
 1. **Check the wiki.** Read `wiki/_index.md` and search for pages related to the skill's domain. Existing wiki pages contain Kevin's compiled knowledge and preferences.
 2. **Check skills.sh.** Use the `find-skills` skill to search for existing upstream skills. Prefer adapting an upstream skill over building from scratch.
-3. **Check installed skills.** Scan `~/.cursor/skills/` for overlap. Don't create a skill that duplicates an existing one.
+3. **Check installed skills.** Scan `skills/personal/`, `skills/claude/`, and `skills/dedalus/` for overlap. Don't create a skill that duplicates an existing one.
 
 After creating a skill:
 
@@ -40,7 +40,7 @@ After creating a skill:
 
 ### 3. Write the SKILL.md
 
-Install to `~/.cursor/skills/<name>/SKILL.md`. Required structure:
+Install Cursor/personal skills to `skills/personal/<name>/SKILL.md` (loaded through the `~/.cursor/skills` symlink). Required structure:
 
 ```yaml
 ---

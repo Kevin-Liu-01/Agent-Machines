@@ -1,10 +1,7 @@
 ---
 name: cross-modal-review
 version: 1.0.0
-description: |
-  Quality gate via a second AI model. Adapted from GBrain's cross-modal-review
-  (Garry Tan, github.com/garrytan/gbrain). Spawn a different model to review
-  work before committing. Grades against the originating skill's Contract.
+description: Quality gate via a second AI model. Spawn a different model to review work before committing. Grades against the originating skill's Contract. Use when you want a second opinion from a different model, or the user says "second opinion", "cross-modal review", "double check this", or "get another perspective".
 triggers:
   - "second opinion"
   - "cross-modal review"
@@ -19,9 +16,8 @@ mutating: false
 
 # Cross-Modal Review — Second Opinion Quality Gate
 
-Adapted from GBrain by Garry Tan. Send work to a different AI model for
-independent review. The reviewer grades against the originating skill's
-Contract section — checking promises, not vibes.
+Send work to a different AI model for independent review. The reviewer grades
+against the originating skill's Contract section — checking promises, not vibes.
 
 ## Contract
 
@@ -44,7 +40,7 @@ Identify what needs review:
 ### Phase 2: Load the Contract
 
 Read the originating skill's Contract section. This is the grading rubric.
-Example: if the output came from `code-review`, load `code-review/SKILL.md`
+Example: if the output came from `gstack-review`, load `gstack-review/SKILL.md`
 and extract the Contract section.
 
 If no originating skill (ad-hoc work), construct a minimal contract:

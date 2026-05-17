@@ -39,14 +39,14 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, "..");
 const SKILLS_DEST = join(REPO_ROOT, "knowledge", "skills");
 
-const WIKI_ROOT = join(homedir(), "Documents", "GitHub", "my-wiki");
+const WIKI_ROOT = join(homedir(), "Documents", "GitHub", "kevin-wiki");
 const SOURCES = [
 	{
-		root: join(WIKI_ROOT, "config", "cursor", "skills"),
-		label: "cursor",
+		root: join(WIKI_ROOT, "skills", "personal"),
+		label: "personal",
 	},
 	{
-		root: join(WIKI_ROOT, "config", "dedalus", "claude-skills"),
+		root: join(WIKI_ROOT, "skills", "dedalus"),
 		label: "dedalus",
 	},
 ];

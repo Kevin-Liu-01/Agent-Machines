@@ -109,6 +109,7 @@ npm run destroy -- --yes   # permanent delete
 npm run shell              # print the dedalus ssh invocation
 npm run reload             # re-upload knowledge/ into ~/.hermes
 npm run reset              # clear Hermes sessions/state, preserve skills/crons/env
+npm run doctor             # health check: machine phase, ports, MCP, skills, crons
 npm run gc                 # destroy every machine on the org
 ```
 
@@ -206,7 +207,7 @@ The loadout has three layers:
 - **Built-ins:** terminal, filesystem, search, browser automation, screenshots, vision, image generation, TTS, Python execution, subagent delegation, cron, skills, memory, and session search.
 - **MCP/services:** cursor-bridge plus service routes for Vercel, Stripe, Supabase, Clerk, Firebase, Figma, PostHog, Sentry, Datadog, Linear, Slack, Shopify, ClickHouse, GitHub, AWS, Cloudflare, browser automation, and model providers.
 - **Closed-loop CLIs:** `agent-browser`, `playwright`, `npx @playwright/mcp`, `curl`, `jq`, `httpx`, `sqlite3`, `ss`, `dig`, and `nc` are installed during bootstrap so the agent can verify UI, API, DB, logs, and network behavior directly.
-- **Skills:** 96 `SKILL.md` files loaded by intent for behavior, workflows, reviews, design, security, provider usage, and automation.
+- **Skills:** 155 `SKILL.md` files loaded by intent for behavior, workflows, reviews, design, security, provider usage, and automation.
 
 Cursor-specific MCP tools:
 

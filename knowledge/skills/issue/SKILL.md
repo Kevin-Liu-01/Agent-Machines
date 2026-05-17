@@ -1,6 +1,6 @@
 ---
 name: issue
-description: Create a GitHub issue using the Dedalus issue templates (bug, feature, question). Injects branch and commit context automatically, prompts for Linear link.
+description: Create a GitHub issue using the Dedalus issue templates (bug, feature, question). Injects branch and commit context automatically, prompts for Linear link. Use when creating a GitHub issue using Dedalus templates, or the user says "file an issue", "create issue", "open a bug", or "report a feature request".
 allowed-tools: Bash(git *), Bash(gh *), Read
 argument-hint: "<bug|feature|question> <title> [--linear <url>]"
 ---
