@@ -166,9 +166,15 @@ export function FleetMonitor() {
 				setSpawn({
 					phase: "ok",
 					machineId: body.machineId,
-					message: body.message ?? "Provisioned.",
+					message: body.message ?? "Provisioned. Bootstrapping...",
 				});
 				await refresh();
+				// Trigger bootstrap in background after provision
+				fetch("/api/dashboard/admin/bootstrap", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ machineId: body.machineId }),
+				}).then(() => refresh()).catch(() => {});
 				// Stay on the form briefly so the success message is
 				// visible, then collapse it.
 				window.setTimeout(() => {

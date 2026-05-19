@@ -632,7 +632,25 @@ function QuickProvisionForm({
 			if (!response.ok) {
 				throw new Error((data.message as string) ?? (data.error as string) ?? `HTTP ${response.status}`);
 			}
-			setResult(`Provisioned: ${data.machineId as string} (${data.state as string})`);
+			const machineId = data.machineId as string;
+			setResult(`Provisioned: ${machineId} -- bootstrapping...`);
+
+			// Trigger bootstrap automatically after provision
+			try {
+				const bootResp = await fetch("/api/dashboard/admin/bootstrap", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ machineId }),
+				});
+				if (bootResp.ok) {
+					setResult(`Provisioned + bootstrapped: ${machineId}`);
+				} else {
+					const bootData = (await bootResp.json().catch(() => ({}))) as { message?: string };
+					setResult(`Provisioned: ${machineId} (bootstrap: ${bootData.message ?? `HTTP ${bootResp.status}`})`);
+				}
+			} catch {
+				setResult(`Provisioned: ${machineId} (bootstrap pending)`);
+			}
 			setTimeout(onDone, 1500);
 		} catch (e) {
 			setErr(e instanceof Error ? e.message : "provision failed");

@@ -113,15 +113,15 @@ export default function MachineOverviewPage() {
 	}, [machineId, chartDays]);
 
 	const cpuBuckets = useMemo(
-		() => usageData?.resources.cpu.buckets.map((b) => ({ date: b.date, value: b.vcpuSeconds / 3600 })) ?? [],
+		() => usageData?.resources?.cpu?.buckets?.map((b) => ({ date: b.date, value: b.vcpuSeconds / 3600 })) ?? [],
 		[usageData],
 	);
 	const memBuckets = useMemo(
-		() => usageData?.resources.memory.buckets.map((b) => ({ date: b.date, value: b.gibSeconds / 3600 })) ?? [],
+		() => usageData?.resources?.memory?.buckets?.map((b) => ({ date: b.date, value: b.gibSeconds / 3600 })) ?? [],
 		[usageData],
 	);
 	const storageBuckets = useMemo(
-		() => usageData?.resources.storage.buckets.map((b) => ({ date: b.date, value: b.gibHours })) ?? [],
+		() => usageData?.resources?.storage?.buckets?.map((b) => ({ date: b.date, value: b.gibHours })) ?? [],
 		[usageData],
 	);
 
