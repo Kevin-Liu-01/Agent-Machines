@@ -24,7 +24,7 @@
 import { clerkClient } from "@clerk/nextjs/server";
 
 import { listMachines, seedMachinesFromClerk, upsertMachine, patchMachine as sbPatchMachine, archiveMachine as sbArchiveMachine, deleteMachine as sbDeleteMachine } from "@/lib/supabase/machines";
-import { ensureUser } from "@/lib/supabase/users";
+import { ensureUser, getUserConfig as sbGetUserConfig, updateUserConfigColumns, type UserRow } from "@/lib/supabase/users";
 
 import { getDevUserConfig, setDevUserConfig } from "./dev-store";
 import { getEffectiveUserId, isDevUserId } from "./identity";
@@ -514,23 +514,104 @@ export async function getUserConfig(): Promise<UserConfig> {
 	return getUserConfigById(userId);
 }
 
+/**
+ * Build a UserConfig by merging Supabase config columns with Clerk secrets.
+ * If the Supabase row has non-empty config arrays we use those; otherwise
+ * we fall back to Clerk publicMetadata (first-read backward compat).
+ */
+function buildConfigFromSupabase(
+	sbRow: UserRow,
+	privateMeta: RawPrivate,
+	publicMeta: RawPublic,
+): UserConfig {
+	const base = buildConfig(publicMeta, privateMeta);
+
+	const gatewayApiKeys =
+		(privateMeta.gatewayApiKeys as Record<string, string> | undefined) ?? {};
+	const environmentProfileVars =
+		(privateMeta.environmentProfileVars as
+			| Record<string, Record<string, string>>
+			| undefined) ?? {};
+
+	const hasSupabaseConfig =
+		(Array.isArray(sbRow.agent_profiles) && sbRow.agent_profiles.length > 0) ||
+		(Array.isArray(sbRow.gateway_profiles) && sbRow.gateway_profiles.length > 0) ||
+		(Array.isArray(sbRow.loadout_presets) && sbRow.loadout_presets.length > 0);
+
+	if (hasSupabaseConfig) {
+		const sbAgentProfiles = Array.isArray(sbRow.agent_profiles)
+			? sbRow.agent_profiles
+					.map((entry) => asAgentProfile(entry))
+					.filter((entry): entry is AgentProfile => entry !== null)
+			: [];
+		const sbGatewayProfiles = Array.isArray(sbRow.gateway_profiles)
+			? sbRow.gateway_profiles
+					.map((entry) => asGatewayProfile(entry, gatewayApiKeys))
+					.filter((entry): entry is GatewayProfile => entry !== null)
+			: [];
+		const sbEnvironmentProfiles = Array.isArray(sbRow.environment_profiles)
+			? sbRow.environment_profiles
+					.map((entry) => asEnvironmentProfile(entry, environmentProfileVars))
+					.filter((entry): entry is EnvironmentProfile => entry !== null)
+			: [];
+		const sbBootstrapPresets = Array.isArray(sbRow.bootstrap_presets)
+			? sbRow.bootstrap_presets
+					.map((entry) => asBootstrapPreset(entry))
+					.filter((entry): entry is BootstrapPreset => entry !== null)
+			: [];
+		const sbCustomLoadout = Array.isArray(sbRow.custom_loadout)
+			? sbRow.custom_loadout
+					.map((entry) => asCustomLoadoutEntry(entry))
+					.filter((entry): entry is CustomLoadoutEntry => entry !== null)
+			: [];
+		const sbLoadoutSources = Array.isArray(sbRow.loadout_sources)
+			? sbRow.loadout_sources
+					.map((entry) => asLoadoutSource(entry))
+					.filter((entry): entry is LoadoutSource => entry !== null)
+			: [];
+		const sbLoadoutPresets = Array.isArray(sbRow.loadout_presets)
+			? sbRow.loadout_presets
+					.map((entry) => asLoadoutPreset(entry))
+					.filter((entry): entry is LoadoutPreset => entry !== null)
+			: [];
+
+		if (sbAgentProfiles.length > 0) base.agentProfiles = sbAgentProfiles;
+		if (sbGatewayProfiles.length > 0) base.gatewayProfiles = sbGatewayProfiles;
+		if (sbEnvironmentProfiles.length > 0) base.environmentProfiles = sbEnvironmentProfiles;
+		if (sbBootstrapPresets.length > 0) base.bootstrapPresets = sbBootstrapPresets;
+		if (sbCustomLoadout.length > 0) base.customLoadout = sbCustomLoadout;
+		if (sbLoadoutSources.length > 0) base.loadoutSources = sbLoadoutSources;
+		if (sbLoadoutPresets.length > 0) base.loadoutPresets = sbLoadoutPresets;
+
+		base.activeLoadoutPresetId =
+			sbRow.active_loadout_preset_id ??
+			base.loadoutPresets[0]?.id ??
+			DEFAULT_USER_CONFIG.activeLoadoutPresetId;
+	}
+
+	return base;
+}
+
 export async function getUserConfigById(userId: string): Promise<UserConfig> {
 	if (isDevUserId(userId)) return getDevUserConfig();
 	const client = await clerkClient();
 	const user = await client.users.getUser(userId);
 	const publicMeta = (user.publicMetadata ?? {}) as RawPublic;
 	const privateMeta = (user.privateMetadata ?? {}) as RawPrivate;
-	const config = buildConfig(publicMeta, privateMeta);
 
-	if (!process.env.NEXT_PUBLIC_SUPABASE_URL) return config;
+	if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+		return buildConfig(publicMeta, privateMeta);
+	}
 
 	try {
-		await ensureUser(userId, user.emailAddresses?.[0]?.emailAddress);
+		const sbUser = await ensureUser(userId, user.emailAddresses?.[0]?.emailAddress);
+		const config = buildConfigFromSupabase(sbUser, privateMeta, publicMeta);
+
+		const machineApiKeys =
+			(privateMeta.machineApiKeys as Record<string, string> | undefined) ?? {};
 		const sbMachines = await listMachines(userId);
 
 		if (sbMachines.length > 0) {
-			const machineApiKeys =
-				(privateMeta.machineApiKeys as Record<string, string> | undefined) ?? {};
 			config.machines = sbMachines.map((m) => ({
 				...m,
 				apiKey: m.apiKey ?? machineApiKeys[m.id] ?? null,
@@ -540,11 +621,10 @@ export async function getUserConfigById(userId: string): Promise<UserConfig> {
 		}
 
 		config.metricsEnabled = true;
+		return config;
 	} catch {
-		// Supabase unavailable -- fall back to Clerk-only machines
+		return buildConfig(publicMeta, privateMeta);
 	}
-
-	return config;
 }
 
 /* ------------------------------------------------------------------ */
@@ -780,8 +860,6 @@ export async function setUserConfigById(
 	userId: string,
 	patch: ConfigPatch,
 ): Promise<UserConfig> {
-	// Dev bypass: persist to the file-backed store. Same patch shape,
-	// same UserConfig output -- callers stay store-agnostic.
 	if (isDevUserId(userId)) return setDevUserConfig(patch);
 	const client = await clerkClient();
 	const user = await client.users.getUser(userId);
@@ -790,7 +868,8 @@ export async function setUserConfigById(
 
 	const current = buildConfig(existingPublic, existingPrivate);
 
-	// Providers (privateMetadata.providers).
+	// --- Merge patch into current state ---
+
 	const nextProviders: ProviderCredentials = { ...current.providers };
 	if (patch.providers) {
 		for (const kind of Object.keys(patch.providers) as ProviderKind[]) {
@@ -804,7 +883,6 @@ export async function setUserConfigById(
 		}
 	}
 
-	// AI provider keys (privateMetadata.aiProviderKeys).
 	const nextAiKeys: AiProviderKeys = { ...(current.aiProviderKeys ?? {}) };
 	if (patch.aiProviderKeys) {
 		const ak = patch.aiProviderKeys;
@@ -816,7 +894,6 @@ export async function setUserConfigById(
 		if (ak.custom) nextAiKeys.custom = ak.custom;
 	}
 
-	// Machines (publicMetadata.machines + privateMetadata.machineApiKeys).
 	let nextMachines: MachineRef[] = [...current.machines];
 	if (patch.upsertMachine) {
 		const upsert = patch.upsertMachine;
@@ -883,33 +960,9 @@ export async function setUserConfigById(
 	const nextDraftSpec = patch.draftSpec ?? current.draftSpec;
 	const nextDraftModel = patch.draftModel ?? current.draftModel;
 
-	// Clerk publicMetadata has an 8KB limit. Compact large arrays in
-	// agentProfiles and loadoutPresets to ["*"] (meaning "all bundled")
-	// to stay under the cap. The dashboard resolves "*" at read time.
-	const compactProfiles = nextAgentProfiles.map((p) => ({
-		...p,
-		enabledSkills: p.enabledSkills.length > 20 ? ["*"] : p.enabledSkills,
-		enabledTools: p.enabledTools.length > 20 ? ["*"] : p.enabledTools,
-		enabledMcpServers: p.enabledMcpServers.length > 20 ? ["*"] : p.enabledMcpServers,
-	}));
-	const compactPresets = nextLoadoutPresets.map((p) => ({
-		...p,
-		enabledSkillIds: p.enabledSkillIds.length > 20 ? ["*"] : p.enabledSkillIds,
-		enabledToolIds: p.enabledToolIds.length > 20 ? ["*"] : p.enabledToolIds,
-		enabledMcpServerIds: p.enabledMcpServerIds.length > 20 ? ["*"] : p.enabledMcpServerIds,
-	}));
+	// --- Clerk: secrets in privateMetadata, minimal scalars in publicMetadata ---
 
 	const nextPublic: RawPublic = {
-		...existingPublic,
-		machines: publicShape(nextMachines),
-		gatewayProfiles: publicGatewayShape(nextGatewayProfiles),
-		agentProfiles: compactProfiles,
-		environmentProfiles: publicEnvironmentShape(nextEnvironmentProfiles),
-		bootstrapPresets: nextBootstrapPresets,
-		customLoadout: nextCustomLoadout,
-		loadoutSources: nextLoadoutSources,
-		loadoutPresets: compactPresets,
-		activeLoadoutPresetId: nextActiveLoadoutPresetId,
 		activeMachineId: nextActive,
 		setupStep: nextStep,
 		draftAgentKind: nextDraftAgent,
@@ -917,14 +970,6 @@ export async function setUserConfigById(
 		draftSpec: nextDraftSpec,
 		draftModel: nextDraftModel,
 	};
-	// Tear down legacy single-machine fields once we've migrated them
-	// into machines[]. Leave keys we don't own untouched.
-	delete nextPublic.machineId;
-	delete nextPublic.apiUrl;
-	delete nextPublic.machineSpec;
-	delete nextPublic.model;
-	delete nextPublic.agentKind;
-	delete nextPublic.providerKind;
 
 	const nextPrivate: RawPrivate = {
 		...existingPrivate,
@@ -944,7 +989,6 @@ export async function setUserConfigById(
 	} else {
 		nextPrivate.cloudflareTunnelToken = nextTunnelToken;
 	}
-	// Drop the legacy single-key field once we've absorbed it.
 	delete nextPrivate.dedalusApiKey;
 	delete nextPrivate.apiKey;
 
@@ -953,8 +997,29 @@ export async function setUserConfigById(
 		privateMetadata: nextPrivate,
 	});
 
+	// --- Supabase: config arrays + machines ---
+
 	if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
 		try {
+			await ensureUser(userId, user.emailAddresses?.[0]?.emailAddress);
+
+			await updateUserConfigColumns(userId, {
+				agent_profiles: nextAgentProfiles as unknown[],
+				gateway_profiles: publicGatewayShape(nextGatewayProfiles) as unknown[],
+				environment_profiles: publicEnvironmentShape(nextEnvironmentProfiles) as unknown[],
+				bootstrap_presets: nextBootstrapPresets as unknown[],
+				custom_loadout: nextCustomLoadout as unknown[],
+				loadout_sources: nextLoadoutSources as unknown[],
+				loadout_presets: nextLoadoutPresets as unknown[],
+				active_loadout_preset_id: nextActiveLoadoutPresetId,
+				active_machine_id: nextActive ?? undefined,
+				setup_step: nextStep,
+				draft_agent_kind: nextDraftAgent,
+				draft_provider_kind: nextDraftProvider,
+				draft_model: nextDraftModel,
+				draft_spec: nextDraftSpec as Record<string, unknown>,
+			});
+
 			if (patch.upsertMachine) {
 				await upsertMachine(userId, patch.upsertMachine);
 			}
@@ -970,16 +1035,25 @@ export async function setUserConfigById(
 			if (patch.unarchiveMachine) {
 				await sbPatchMachine(userId, patch.unarchiveMachine, { archived: false });
 			}
-			if (patch.activeMachineId !== undefined) {
-				const { updateUser } = await import("@/lib/supabase/users");
-				await updateUser(userId, { active_machine_id: patch.activeMachineId ?? undefined });
-			}
 		} catch {
-			// Supabase write failed -- Clerk is still the source of truth
+			// Supabase write failed -- Clerk metadata already persisted above
 		}
 	}
 
-	return buildConfig(nextPublic, nextPrivate);
+	// Reconstruct final config from the merged values
+	const finalPublic: RawPublic = {
+		...nextPublic,
+		machines: publicShape(nextMachines),
+		gatewayProfiles: publicGatewayShape(nextGatewayProfiles),
+		agentProfiles: nextAgentProfiles,
+		environmentProfiles: publicEnvironmentShape(nextEnvironmentProfiles),
+		bootstrapPresets: nextBootstrapPresets,
+		customLoadout: nextCustomLoadout,
+		loadoutSources: nextLoadoutSources,
+		loadoutPresets: nextLoadoutPresets,
+		activeLoadoutPresetId: nextActiveLoadoutPresetId,
+	};
+	return buildConfig(finalPublic, nextPrivate);
 }
 
 /* ------------------------------------------------------------------ */

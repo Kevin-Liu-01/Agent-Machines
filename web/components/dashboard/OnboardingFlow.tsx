@@ -107,6 +107,23 @@ const PROVIDERS_META: Record<
 	},
 };
 
+const COMPARISON_ROWS: ReadonlyArray<{
+	label: string;
+	dedalus: string;
+	e2b: string;
+	sprites: string;
+}> = [
+	{ label: "Type", dedalus: "Persistent VM", e2b: "Pausable sandbox", sprites: "Persistent sandbox" },
+	{ label: "OS", dedalus: "Ubuntu", e2b: "Debian 12", sprites: "Linux (Fly.io)" },
+	{ label: "Sleep / wake", dedalus: "Manual", e2b: "Pause / resume", sprites: "Auto-sleep / auto-wake" },
+	{ label: "Cold start", dedalus: "~30s", e2b: "Instant", sprites: "~5s" },
+	{ label: "Storage", dedalus: "Persistent disk", e2b: "Persists across pause", sprites: "Persistent ext4" },
+	{ label: "Public URLs", dedalus: "Preview URLs", e2b: "Per-port host", sprites: "Per-sprite URL" },
+	{ label: "Snapshots", dedalus: "\u2014", e2b: "Full snapshots", sprites: "~300ms checkpoints" },
+	{ label: "Max lifetime", dedalus: "Unlimited", e2b: "24h (Pro) / 1h", sprites: "Unlimited" },
+	{ label: "Best for", dedalus: "Production agents", e2b: "Fast iteration", sprites: "Always-on services" },
+];
+
 const AGENT_DESC: Record<
 	AgentKind,
 	{
@@ -978,6 +995,68 @@ function ToolsStep({
 	);
 }
 
+function ProviderComparison({ selected }: { selected: ProviderKind }) {
+	const COLS: ReadonlyArray<{ key: keyof (typeof COMPARISON_ROWS)[number]; label: string }> = [
+		{ key: "dedalus", label: "Dedalus" },
+		{ key: "e2b", label: "E2B" },
+		{ key: "sprites", label: "Sprites" },
+	];
+
+	return (
+		<ReticleFrame>
+			<div className="border-b border-[var(--ret-border)] px-4 py-2">
+				<ReticleLabel>compare</ReticleLabel>
+			</div>
+			<div className="overflow-x-auto">
+				<table className="w-full text-[12px]">
+					<thead>
+						<tr className="border-b border-[var(--ret-border)]">
+							<th className="px-3 py-2 text-left font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+								Feature
+							</th>
+							{COLS.map((col) => (
+								<th
+									key={col.key}
+									className={cn(
+										"px-3 py-2 text-left font-mono text-[10px] uppercase tracking-[0.18em]",
+										selected === col.key
+											? "bg-[var(--ret-purple-glow)] text-[var(--ret-purple)]"
+											: "text-[var(--ret-text-muted)]",
+									)}
+								>
+									{col.label}
+								</th>
+							))}
+						</tr>
+					</thead>
+					<tbody>
+						{COMPARISON_ROWS.map((row) => (
+							<tr key={row.label} className="border-b border-[var(--ret-border)] last:border-b-0">
+								<td className="whitespace-nowrap px-3 py-1.5 text-[var(--ret-text-muted)]">
+									{row.label}
+								</td>
+								{COLS.map((col) => (
+									<td
+										key={col.key}
+										className={cn(
+											"px-3 py-1.5",
+											selected === col.key
+												? "bg-[var(--ret-purple-glow)] text-[var(--ret-text)]"
+												: "text-[var(--ret-text-dim)]",
+										)}
+									>
+										<span className="font-mono text-[11px]">{row[col.key]}</span>
+									</td>
+								))}
+							</tr>
+						))}
+					</tbody>
+				</table>
+			</div>
+		</ReticleFrame>
+	);
+}
+
 function ProviderPickStep({
 	value,
 	configured,
@@ -1044,6 +1123,7 @@ function ProviderPickStep({
 					);
 				})}
 			</div>
+			<ProviderComparison selected={value} />
 			<div className="flex items-center justify-between gap-2">
 				<ReticleButton variant="ghost" size="md" onClick={onBack}>
 					← Back
