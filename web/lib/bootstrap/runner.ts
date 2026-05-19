@@ -168,14 +168,30 @@ function commandFor(
 	const upstreamBaseUrl = shell(upstream.baseUrl);
 	const cursorKey = config.cursorApiKey ? shell(config.cursorApiKey) : null;
 
+	const providerKind = machine.providerKind;
+	const isE2B = providerKind === "e2b";
+	const isSprites = providerKind === "sprites";
+	// E2B runs as non-root `user` with sudo; Sprites/Dedalus run as root.
+	const sudo = isE2B ? "sudo " : "";
+
 	switch (phase) {
 		case "system-deps":
+			if (isE2B) {
+				// E2B has Python 3.11, Node 20, git, curl pre-installed.
+				// Just create directories and install missing tools.
+				return [
+					"set -e",
+					`mkdir -p ${APP_HOME}/chats ${APP_HOME}/artifacts ${HERMES_HOME}/logs ${OPENCLAW_HOME}/logs ${MACHINE_HOME}/logs/services`,
+					`${sudo}apt-get update -qq >/dev/null 2>&1 || true`,
+					`${sudo}apt-get install -y -qq jq sqlite3 >/dev/null 2>&1 || true`,
+				].join(" && ");
+			}
 			return [
 				"set -e",
 				`mkdir -p ${APP_HOME}/chats ${APP_HOME}/artifacts ${HERMES_HOME}/logs ${OPENCLAW_HOME}/logs ${MACHINE_HOME}/logs/services`,
 				'for i in $(seq 1 30); do fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; echo "waiting for dpkg lock ($i/30)..."; sleep 2; done',
-				"apt-get update -qq >/dev/null",
-				"apt-get install -y -qq curl git build-essential ca-certificates jq sqlite3 dnsutils iproute2 netcat-openbsd >/dev/null",
+				`${sudo}apt-get update -qq >/dev/null`,
+				`${sudo}apt-get install -y -qq curl git build-essential ca-certificates jq sqlite3 dnsutils iproute2 netcat-openbsd >/dev/null`,
 			].join(" && ");
 		case "install-uv":
 			return [
@@ -188,19 +204,33 @@ function commandFor(
 				? `mkdir -p ${HERMES_HOME}/skills ${HERMES_HOME}/crons ${HERMES_HOME}/logs`
 				: null;
 		case "install-hermes":
-			return agent === "hermes"
-				? [
-						"set -e",
-						`export HOME=${HOME}`,
-						`export PATH=${HOME}/.local/bin:$PATH`,
-						'for i in $(seq 1 30); do fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; echo "waiting for dpkg lock ($i/30)..."; sleep 2; done',
-						`apt-get update -qq >/dev/null && apt-get install -y -qq python3-venv python3-pip >/dev/null`,
-						`rm -rf ${HERMES_HOME}/venv && python3 -m venv ${HERMES_HOME}/venv`,
-						`${HERMES_HOME}/venv/bin/python -m pip install --upgrade pip`,
-						`${HERMES_HOME}/venv/bin/pip install 'hermes-agent[web,mcp] @ git+https://github.com/NousResearch/hermes-agent.git@main'`,
-					].join(" && ")
-				: null;
+			if (agent !== "hermes") return null;
+			if (isE2B) {
+				// E2B has Python 3.11 pre-installed. Use it directly.
+				return [
+					"set -e",
+					`export HOME=${HOME}`,
+					`export PATH=${HOME}/.local/bin:$PATH`,
+					`python3 -m venv ${HERMES_HOME}/venv`,
+					`${HERMES_HOME}/venv/bin/python -m pip install --upgrade pip`,
+					`${HERMES_HOME}/venv/bin/pip install 'hermes-agent[web,mcp] @ git+https://github.com/NousResearch/hermes-agent.git@main'`,
+				].join(" && ");
+			}
+			return [
+				"set -e",
+				`export HOME=${HOME}`,
+				`export PATH=${HOME}/.local/bin:$PATH`,
+				'for i in $(seq 1 30); do fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; echo "waiting for dpkg lock ($i/30)..."; sleep 2; done',
+				`${sudo}apt-get update -qq >/dev/null && ${sudo}apt-get install -y -qq python3-venv python3-pip >/dev/null`,
+				`rm -rf ${HERMES_HOME}/venv && python3 -m venv ${HERMES_HOME}/venv`,
+				`${HERMES_HOME}/venv/bin/python -m pip install --upgrade pip`,
+				`${HERMES_HOME}/venv/bin/pip install 'hermes-agent[web,mcp] @ git+https://github.com/NousResearch/hermes-agent.git@main'`,
+			].join(" && ");
 		case "install-node":
+			if (isE2B) {
+				// E2B has Node 20 pre-installed.
+				return "set -e && node --version";
+			}
 			return [
 				"set -e",
 				'for i in $(seq 1 30); do fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; echo "waiting for dpkg lock ($i/30)..."; sleep 2; done',
@@ -242,11 +272,12 @@ function commandFor(
 			if (agent === "claude-code" || agent === "codex") return null;
 			return startHermes();
 		case "install-closed-loop-tools":
-			return installClosedLoopTools();
+			return installClosedLoopTools(isE2B);
 	}
 }
 
-function installClosedLoopTools(): string {
+function installClosedLoopTools(isE2B = false): string {
+	const sudo = isE2B ? "sudo " : "";
 	return [
 		"set -e",
 		`mkdir -p ${NPM_PREFIX} ${NPM_CACHE} ${PLAYWRIGHT_BROWSERS} ${AGENT_BROWSER_HOME} ${AGENT_HOME}/docs ${MACHINE_HOME}/logs/services`,
@@ -256,17 +287,21 @@ function installClosedLoopTools(): string {
 		`export PLAYWRIGHT_BROWSERS_PATH=${PLAYWRIGHT_BROWSERS}`,
 		`export AGENT_BROWSER_DATA_DIR=${AGENT_BROWSER_HOME}`,
 		`export PATH=${NPM_PREFIX}/bin:${HOME}/.local/bin:$PATH`,
-		"npm install -g --no-audit --no-fund --loglevel=error agent-browser playwright @playwright/mcp",
-		'for i in $(seq 1 30); do fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; echo "waiting for dpkg lock ($i/30)..."; sleep 2; done',
-		"playwright install --with-deps chromium",
-		"agent-browser install",
-		"uv tool install 'httpx[cli]' || python3 -m pip install --user 'httpx[cli]'",
+		`${sudo}npm install -g --no-audit --no-fund --loglevel=error agent-browser playwright @playwright/mcp`,
+		...(isE2B
+			? [`${sudo}npx playwright install --with-deps chromium`]
+			: [
+					'for i in $(seq 1 30); do fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; echo "waiting for dpkg lock ($i/30)..."; sleep 2; done',
+					"playwright install --with-deps chromium",
+				]),
+		"agent-browser install || true",
+		"uv tool install 'httpx[cli]' || python3 -m pip install --user 'httpx[cli]' || true",
 		`cat > ${AGENT_HOME}/llm.txt <<'EOF'\nAgent Machines runtime context.\n\nRead /.agent/docs/agent-context.md before assuming which tools exist. Close the loop with browser automation, curl/httpx+jq, sqlite3, service logs, and network probes.\nEOF`,
 		`cat > ${AGENT_HOME}/docs/agent-context.md <<'EOF'\n# Agent Machine Context\n\nThis machine is built for closed-loop agent development. Write code, start the service, hit the endpoint, inspect logs, fix, and retry.\n\n## Tools\n\n- Browser/UI: agent-browser, Playwright, and npx @playwright/mcp with Chromium cached under /home/machine/.cache/ms-playwright.\n- API: curl, jq, and httpx.\n- Database: sqlite3.\n- Network: ss, dig, curl -v, and nc.\n- Logs: /.machine/logs/services/ plus runtime originals under /home/machine.\n\nKeep toolchains and caches under /home/machine because the root filesystem can reset on wake.\nEOF`,
-		`ln -sfn ${AGENT_HOME} /.agent`,
-		`ln -sfn ${MACHINE_HOME} /.machine`,
-		`ln -sfn ${HERMES_HOME}/logs/gateway.log ${MACHINE_HOME}/logs/services/hermes-gateway.log`,
-		`ln -sfn ${HERMES_HOME}/logs/dashboard.log ${MACHINE_HOME}/logs/services/hermes-dashboard.log`,
+		`${sudo}ln -sfn ${AGENT_HOME} /.agent || true`,
+		`${sudo}ln -sfn ${MACHINE_HOME} /.machine || true`,
+		`ln -sfn ${HERMES_HOME}/logs/gateway.log ${MACHINE_HOME}/logs/services/hermes-gateway.log || true`,
+		`ln -sfn ${HERMES_HOME}/logs/dashboard.log ${MACHINE_HOME}/logs/services/hermes-dashboard.log || true`,
 	].join("\n");
 }
 
