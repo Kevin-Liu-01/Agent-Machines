@@ -28,9 +28,8 @@ export default function TermsPage() {
 						current status
 					</p>
 					<p>
-						Dedalus Machines is wired today. Vercel Sandbox and Fly Machines
-						are represented by the provider contract, but provisioning is not
-						yet live.
+						Dedalus Machines is wired today. E2B Sandbox and Fly Machines
+						are available as alternative providers.
 					</p>
 				</div>
 			}

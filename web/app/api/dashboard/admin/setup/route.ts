@@ -65,7 +65,6 @@ function asSpec(value: unknown): MachineSpec | null {
 
 type CredsBody = {
 	dedalus?: { apiKey?: string };
-	"vercel-sandbox"?: { apiKey?: string; teamId?: string };
 	fly?: { apiKey?: string; orgSlug?: string };
 };
 
@@ -104,11 +103,6 @@ function validateCreds(input: CredsBody): {
 			};
 		}
 		if (k) out.dedalus = { apiKey: k };
-	}
-	if (input["vercel-sandbox"]) {
-		const k = (input["vercel-sandbox"].apiKey ?? "").trim();
-		const team = (input["vercel-sandbox"].teamId ?? "").trim() || undefined;
-		if (k) out["vercel-sandbox"] = { apiKey: k, teamId: team };
 	}
 	if (input.fly) {
 		const k = (input.fly.apiKey ?? "").trim();

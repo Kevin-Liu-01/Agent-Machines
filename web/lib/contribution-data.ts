@@ -113,7 +113,7 @@ const SKILLS: ReadonlyArray<SkillEntry> = [
 	{ name: "ai-sdk", brand: "vercel" },
 	{ name: "ai-gateway", brand: "vercel" },
 	{ name: "vercel-functions", brand: "vercel" },
-	{ name: "vercel-sandbox", brand: "vercel" },
+	{ name: "e2b-sandbox", brand: "vercel" },
 	{ name: "next-cache-components", brand: "nextdotjs" },
 	{ name: "next-upgrade", brand: "nextdotjs" },
 	{ name: "react-best-practices", brand: "react" },

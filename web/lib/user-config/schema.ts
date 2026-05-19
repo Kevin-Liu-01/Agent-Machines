@@ -6,7 +6,7 @@
  * in `privateMetadata`; everything client-readable lives in
  * `publicMetadata`.
  *
- * The shape supports multiple providers (Dedalus, Vercel Sandbox, Fly)
+ * The shape supports multiple providers (Dedalus, E2B, Fly)
  * and multiple machines per user. Each machine has its own provider,
  * agent kind, spec, and (after install) gateway URL + bearer. The user
  * picks one as `activeMachineId` -- that's the one the chat surface
@@ -22,12 +22,11 @@ export type AgentKind = "hermes" | "openclaw" | "claude-code" | "codex";
 export const AGENT_KINDS: ReadonlyArray<AgentKind> = ["hermes", "openclaw", "claude-code", "codex"];
 
 /** Where the agent's VM lives. */
-export type ProviderKind = "dedalus" | "vercel-sandbox" | "fly" | "e2b";
+export type ProviderKind = "dedalus" | "fly" | "e2b";
 
 export const PROVIDER_KINDS: ReadonlyArray<ProviderKind> = [
 	"dedalus",
 	"e2b",
-	"vercel-sandbox",
 	"fly",
 ];
 
@@ -110,7 +109,6 @@ export const SETUP_STEPS: ReadonlyArray<SetupStep> = [
  */
 export type ProviderCredentials = {
 	dedalus?: { apiKey: string; baseUrl?: string };
-	"vercel-sandbox"?: { apiKey: string; teamId?: string; projectId?: string };
 	fly?: { apiKey: string; orgSlug?: string };
 	e2b?: { apiKey: string };
 };
@@ -637,10 +635,6 @@ export function toPublicConfig(config: UserConfig): PublicUserConfig {
 	const providers: Record<ProviderKind, PublicProviderStatus> = {
 		dedalus: { configured: Boolean(config.providers.dedalus?.apiKey) },
 		e2b: { configured: Boolean(config.providers.e2b?.apiKey) },
-		"vercel-sandbox": {
-			configured: Boolean(config.providers["vercel-sandbox"]?.apiKey),
-			scopeHint: config.providers["vercel-sandbox"]?.teamId,
-		},
 		fly: {
 			configured: Boolean(config.providers.fly?.apiKey),
 			scopeHint: config.providers.fly?.orgSlug,
@@ -705,7 +699,6 @@ export function isProvisioned(config: UserConfig): boolean {
 export const PROVIDER_LABEL: Record<ProviderKind, string> = {
 	dedalus: "Dedalus",
 	e2b: "E2B Sandbox",
-	"vercel-sandbox": "Vercel Sandbox",
 	fly: "Fly Machines",
 };
 

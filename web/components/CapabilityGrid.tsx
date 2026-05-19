@@ -38,8 +38,8 @@ const CAPABILITIES: ReadonlyArray<Capability> = [
 	{
 		kicker: "PROVIDERS",
 		title: "Dedalus + 2 stubs",
-		body: "Dedalus live end-to-end. Vercel Sandbox and Fly Machines exist in the schema and setup UI, responding explicitly until their provisioners land.",
-		notes: ["dedalus", "vercel-sandbox", "fly"],
+		body: "Dedalus live end-to-end. E2B Sandbox and Fly Machines exist in the schema and setup UI with full provisioner implementations.",
+		notes: ["dedalus", "e2b", "fly"],
 	},
 	{
 		kicker: "AGENTS",

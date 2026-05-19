@@ -89,18 +89,6 @@ const PROVIDERS_META: Record<
 		keyPlaceholder: "dsk-live-...",
 		keyHint: "Get one at dedaluslabs.ai/dashboard/api-keys",
 	},
-	"vercel-sandbox": {
-		name: "Vercel Sandbox",
-		tagline:
-			"Ephemeral Firecracker sessions from Vercel. Best for short-lived OpenClaw/browser tasks with external storage.",
-		keyLabel: "Vercel API token",
-		keyPlaceholder: "vercel token",
-		keyHint: "Create a token at vercel.com/account/tokens",
-		secondaryFields: [
-			{ label: "Team ID (optional)", placeholder: "team_...", field: "teamId" },
-			{ label: "Project ID (optional)", placeholder: "prj_...", field: "projectId" },
-		],
-	},
 	fly: {
 		name: "Fly Machines",
 		tagline:
@@ -1012,7 +1000,7 @@ function ProviderPickStep({
 				</h1>
 				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
 					The infrastructure provider hosting your agent&rsquo;s VM.
-					Dedalus is the default and fully wired. Vercel Sandbox and Fly
+					Dedalus is the default and fully wired. E2B Sandbox and Fly
 					Machines are available as alternative hosts.
 				</p>
 			</div>

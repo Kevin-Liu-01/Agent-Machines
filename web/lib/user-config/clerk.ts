@@ -60,7 +60,6 @@ import {
 const KNOWN_AGENTS: ReadonlySet<AgentKind> = new Set(["hermes", "openclaw"]);
 const KNOWN_PROVIDERS: ReadonlySet<ProviderKind> = new Set([
 	"dedalus",
-	"vercel-sandbox",
 	"fly",
 	"e2b",
 ]);
@@ -312,13 +311,6 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
 		providers.dedalus = {
 			apiKey: privateProviders.dedalus.apiKey,
 			baseUrl: privateProviders.dedalus.baseUrl,
-		};
-	}
-	if (privateProviders["vercel-sandbox"]?.apiKey) {
-		providers["vercel-sandbox"] = {
-			apiKey: privateProviders["vercel-sandbox"].apiKey,
-			teamId: privateProviders["vercel-sandbox"].teamId,
-			projectId: privateProviders["vercel-sandbox"].projectId,
 		};
 	}
 	if (privateProviders.fly?.apiKey) {
@@ -984,7 +976,7 @@ export async function setUserConfigById(
 /**
  * Resolve the env-shape needed to talk to a specific machine's
  * Dedalus host. Only Dedalus machines have a Dedalus API call surface;
- * Vercel Sandbox + Fly use their own SDKs so this throws if you call
+ * E2B + Fly use their own SDKs so this throws if you call
  * it on a non-Dedalus machine. The caller picks the right API per kind.
  */
 export async function getDedalusEnvForMachine(machine: MachineRef): Promise<{

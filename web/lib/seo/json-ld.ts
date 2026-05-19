@@ -89,7 +89,7 @@ export function buildRootJsonLd(): JsonLdGraph {
 					"Stateful filesystem at /home/machine",
 					"Hermes and OpenClaw agent runtimes",
 					"Dedalus Machines provider live today",
-					"MachineProvider abstraction for Vercel Sandbox and Fly Machines",
+					"MachineProvider abstraction for E2B Sandbox and Fly Machines",
 					"OpenAI-compatible /v1/chat/completions endpoint",
 					"96 SKILL.md skills auto-loaded by intent",
 					"17 service routes across MCP, CLI, plugin skills, and personal skills",

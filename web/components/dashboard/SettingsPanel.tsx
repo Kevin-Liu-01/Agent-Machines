@@ -39,9 +39,6 @@ export function SettingsPanel({ initialConfig }: Props) {
 	const [config, setConfig] = useState(initialConfig);
 	const [dedalusKey, setDedalusKey] = useState("");
 	const [dedalusBaseUrl, setDedalusBaseUrl] = useState("");
-	const [vercelKey, setVercelKey] = useState("");
-	const [vercelTeamId, setVercelTeamId] = useState("");
-	const [vercelProjectId, setVercelProjectId] = useState("");
 	const [flyKey, setFlyKey] = useState("");
 	const [flyOrgSlug, setFlyOrgSlug] = useState("");
 	const [e2bKey, setE2bKey] = useState("");
@@ -78,13 +75,6 @@ export function SettingsPanel({ initialConfig }: Props) {
 				providers.dedalus = {
 					apiKey: dedalusKey.trim(),
 					baseUrl: dedalusBaseUrl.trim() || undefined,
-				};
-			}
-			if (vercelKey.trim() || vercelTeamId.trim() || vercelProjectId.trim()) {
-				providers["vercel-sandbox"] = {
-					apiKey: vercelKey.trim(),
-					teamId: vercelTeamId.trim() || undefined,
-					projectId: vercelProjectId.trim() || undefined,
 				};
 			}
 		if (flyKey.trim() || flyOrgSlug.trim()) {
@@ -238,15 +228,6 @@ export function SettingsPanel({ initialConfig }: Props) {
 					configured={config.providers.e2b.configured}
 					fields={[
 						["API key", e2bKey, setE2bKey, "e2b_..."],
-					]}
-				/>
-				<ProviderBox
-					title="Vercel Sandbox"
-					configured={config.providers["vercel-sandbox"].configured}
-					fields={[
-						["API token", vercelKey, setVercelKey, "vercel token"],
-						["Team ID", vercelTeamId, setVercelTeamId, "team_..."],
-						["Project ID", vercelProjectId, setVercelProjectId, "prj_..."],
 					]}
 				/>
 				<ProviderBox

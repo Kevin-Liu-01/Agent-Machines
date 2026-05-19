@@ -27,7 +27,7 @@ const STAGES: ReadonlyArray<Stage> = [
 	{
 		kicker: "stage 02",
 		title: "The runtime router chooses the host shape.",
-		body: "Dedalus and Fly are persistent machine lanes. Vercel Sandbox is an ephemeral session lane with external storage. The UI only shows lifecycle actions that lane can actually do.",
+		body: "Dedalus and Fly are persistent machine lanes. E2B Sandbox supports pause/resume with snapshots. The UI only shows lifecycle actions that lane can actually do.",
 		nodes: ["provider", "capability", "host"],
 		accent: "var(--ret-green)",
 	},

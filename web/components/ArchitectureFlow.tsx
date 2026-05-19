@@ -368,15 +368,15 @@ const INITIAL_NODES: Node<NodeData>[] = [
 		position: { x: TRIPLE_X.left, y: Y.providers },
 		data: {
 			eyebrow: "provider",
-			title: "Vercel Sandbox",
-			subtitle: "ephemeral Firecracker session",
-			body: "Ephemeral execution provider via @vercel/sandbox. No fake sleep/wake or persistent disk; chats and artifacts use the account external-storage path.",
+			title: "E2B Sandbox",
+			subtitle: "persistent Linux sandbox",
+			body: "Full Linux sandboxes via E2B with pause/resume, snapshots, and public URLs. Best for stable agent work with fast cold starts.",
 			bullets: [
-				"create / exec / stop",
+				"create / pause / resume / exec",
 				"snapshot-ready bootstrap",
-				"external storage",
+				"public URLs",
 			],
-			services: ["vercel"],
+			services: [],
 			tone: "provider",
 			size: "md",
 			status: "live",
@@ -979,7 +979,7 @@ export function ArchitectureFlow() {
 				<MachineNote
 					label="providers"
 					value="dedalus + 2 stubs"
-					body="Dedalus is live. Vercel Sandbox + Fly Machines accept credentials."
+					body="Dedalus is live. E2B Sandbox + Fly Machines accept credentials."
 				/>
 				<MachineNote
 					label="loadout"

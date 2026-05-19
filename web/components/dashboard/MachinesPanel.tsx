@@ -76,7 +76,6 @@ const PROVIDER_LOGO: Record<ProviderKind, "dedalus" | "nous" | "cursor" | null> 
 	{
 		dedalus: "dedalus",
 		e2b: null,
-		"vercel-sandbox": null,
 		fly: null,
 	};
 

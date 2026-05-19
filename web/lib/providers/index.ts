@@ -16,7 +16,6 @@ import { DedalusProvider } from "./dedalus";
 import { E2BProvider } from "./e2b";
 import { FlyProvider } from "./fly";
 import { MachineProviderError, type MachineProvider } from "./types";
-import { VercelSandboxProvider } from "./vercel-sandbox";
 
 export function getProvider(
 	kind: ProviderKind,
@@ -44,17 +43,6 @@ export function getProvider(
 				);
 			}
 			return new E2BProvider(creds);
-		}
-		case "vercel-sandbox": {
-			const creds = credentials["vercel-sandbox"];
-			if (!creds?.apiKey) {
-				throw new MachineProviderError(
-					"vercel-sandbox",
-					"missing_credentials",
-					"No Vercel API token on file. Add one via /dashboard/setup step 1.",
-				);
-			}
-			return new VercelSandboxProvider(creds);
 		}
 		case "fly": {
 			const creds = credentials.fly;

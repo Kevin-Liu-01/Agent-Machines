@@ -14,7 +14,7 @@ export const SITE = {
 	wordmark: "agent-machines",
 	url: "https://www.agent-machines.dev",
 	description:
-		"A persistent machine for your agent. One stateful Linux VM per Clerk account; chat history, files, learned skills, and cron live on /home/machine. Hermes or OpenClaw, Dedalus Machines today, provider abstraction for Vercel Sandbox and Fly, 96 skills, 23 built-ins, and 17 service routes.",
+		"A persistent machine for your agent. One stateful Linux VM per Clerk account; chat history, files, learned skills, and cron live on /home/machine. Hermes or OpenClaw, Dedalus Machines today, provider abstraction for E2B and Fly, 96 skills, 23 built-ins, and 17 service routes.",
 	tagline: "A persistent machine for your agent",
 	ogImage: "/og.png",
 	twitterHandle: "@kevin_liu_01",
@@ -76,7 +76,7 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "Which providers can host the machine?",
 		answer:
-			"Dedalus Machines is wired end-to-end today. The MachineProvider abstraction, setup UI, and user config schema also include Vercel Sandbox and Fly Machines, but those provisioners currently return explicit not-supported responses until their provider implementations land.",
+			"Dedalus Machines is wired end-to-end today. The MachineProvider abstraction, setup UI, and user config schema also include E2B Sandbox and Fly Machines as alternative providers.",
 	},
 	{
 		question: "How do I get my own machine today?",

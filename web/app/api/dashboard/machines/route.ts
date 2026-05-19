@@ -3,9 +3,8 @@
  *
  * Returns the user's full machine list with live state per machine
  * (where the provider is reachable). Dedalus machines are polled via
- * the Dedalus REST API; Vercel Sandbox / Fly machines are returned
- * with their stored state (those providers are PR4 stubs and we don't
- * yet have a reliable state probe for them).
+ * the Dedalus REST API; E2B / Fly machines are returned with their
+ * stored state from each provider's SDK.
  *
  * The dashboard's machines page polls this endpoint every 5s. Cheap
  * because we batch all live calls in parallel.

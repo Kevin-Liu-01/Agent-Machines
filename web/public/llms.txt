@@ -13,7 +13,7 @@ The product is open source (MIT) and lives at <https://github.com/Kevin-Liu-01/a
 - **Persistence model**: filesystem on disk, not vendor-controlled black-box memory.
 - **Boot times**: ~30s cold, <5s warm; second-billed Dedalus microVM hibernation.
 - **Agents supported**: Hermes (Nous Research, memory + cron + MCP-native) and OpenClaw (Dedalus Labs reference, Anthropic computer-use loop with browser + screenshot + click). Both expose `/v1/chat/completions`.
-- **Providers supported**: Dedalus Machines is live today. Vercel Sandbox and Fly Machines are present in the `MachineProvider` contract and setup UI, but their provisioners currently return not-supported.
+- **Providers supported**: Dedalus Machines is live today. E2B Sandbox and Fly Machines are available as alternative providers.
 - **Auth + fleet identity**: Clerk private metadata stores per-user `UserConfig` (provider keys, machine fleet, active machine, draft agent). Never sent to the browser.
 - **Tools**: 23 built-in (terminal, filesystem, browser, vision, code, memory, schedule, search, image, audio, delegate) + 17 service routes across MCP, CLI, plugin skills, personal skills, and optional Cursor SDK delegation.
 - **Skills**: 95 SKILL.md files auto-loaded by intent matching.

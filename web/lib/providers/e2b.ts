@@ -2,9 +2,9 @@
  * E2B Sandbox provider.
  *
  * Wraps the E2B SDK (`e2b` package) to provision, pause/resume, and
- * exec against E2B cloud sandboxes. Unlike Vercel Sandbox these are
- * persistent across pause/resume cycles and support snapshots for
- * cross-session restoration.
+ * exec against E2B cloud sandboxes. These are persistent across
+ * pause/resume cycles and support snapshots for cross-session
+ * restoration.
  *
  * State mapping:
  *   "running"  -> ready

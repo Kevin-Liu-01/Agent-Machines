@@ -1252,18 +1252,6 @@ export const TRUSTED_ADDONS: ReadonlyArray<TrustedAddOn> = [
 
 	},
 	{
-		id: "provider-vercel-sandbox",
-		name: "Vercel Sandbox",
-		kind: "provider",
-		provider: "Vercel",
-		description:
-			"Ephemeral VM sessions for safe code execution, browser automation, and temporary agent runs.",
-		source: "@vercel/sandbox",
-		command: null,
-		brand: "vercel",
-
-	},
-	{
 		id: "provider-fly-machines",
 		name: "Fly Machines",
 		kind: "provider",
