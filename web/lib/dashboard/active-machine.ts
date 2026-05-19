@@ -57,13 +57,14 @@ export async function sleepActiveMachine(): Promise<MachineSummary> {
 
 function toMachineSummary(summary: ProviderMachineSummary): MachineSummary {
 	const phase = toPhase(summary);
+	const spec = summary.spec ?? { vcpu: 1, memoryMib: 2048, storageGib: 10 };
 	return {
 		machineId: summary.id,
 		phase,
 		desired: toDesired(summary),
-		vcpu: summary.spec.vcpu,
-		memoryMib: summary.spec.memoryMib,
-		storageGib: summary.spec.storageGib,
+		vcpu: spec.vcpu ?? 1,
+		memoryMib: spec.memoryMib ?? 2048,
+		storageGib: spec.storageGib ?? 10,
 		createdAt: summary.createdAt ?? new Date(0).toISOString(),
 		configuredAt: null,
 		reason: summary.lastError,

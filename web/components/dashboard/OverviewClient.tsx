@@ -75,7 +75,7 @@ export function OverviewClient({ counts, agentKind, model }: Props) {
 		return `${seconds}s ago`;
 	}, [stamp]);
 
-	const memoryGib = machine.machine
+	const memoryGib = machine.machine?.memoryMib
 		? (machine.machine.memoryMib / 1024).toFixed(1)
 		: "--";
 	const latencyTone =
@@ -230,12 +230,14 @@ export function OverviewClient({ counts, agentKind, model }: Props) {
 						/>
 					}
 					value={
-						machine.machine
+						machine.machine?.vcpu != null
 							? `${machine.machine.vcpu}v . ${memoryGib}G`
 							: "--"
 					}
 					hint={
-						machine.machine ? `${machine.machine.storageGib} GiB storage` : "..."
+						machine.machine?.storageGib != null
+							? `${machine.machine.storageGib} GiB storage`
+							: "..."
 					}
 				/>
 				<MetricCard

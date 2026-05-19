@@ -214,10 +214,11 @@ function IdentityCell({
 	const label = AGENT_LABEL[agentKind];
 	const source = AGENT_SOURCE[agentKind];
 	const mark = AGENT_MARK[agentKind];
-	const vcpu = machineSummary?.vcpu;
-	const memoryGib = machineSummary
-		? Math.round(machineSummary.memoryMib / 1024)
-		: null;
+	const vcpu = machineSummary?.vcpu ?? null;
+	const memoryGib =
+		machineSummary?.memoryMib != null
+			? Math.round(machineSummary.memoryMib / 1024)
+			: null;
 	const spec = vcpu && memoryGib ? `microVM . ${vcpu}v . ${memoryGib} GiB` : "microVM";
 	const modelLabel = model ?? "—";
 	return (
