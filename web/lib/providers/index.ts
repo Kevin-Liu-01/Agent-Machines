@@ -13,6 +13,7 @@ import type {
 } from "@/lib/user-config/schema";
 
 import { DedalusProvider } from "./dedalus";
+import { E2BProvider } from "./e2b";
 import { FlyProvider } from "./fly";
 import { MachineProviderError, type MachineProvider } from "./types";
 import { VercelSandboxProvider } from "./vercel-sandbox";
@@ -32,6 +33,17 @@ export function getProvider(
 				);
 			}
 			return new DedalusProvider(creds);
+		}
+		case "e2b": {
+			const creds = credentials.e2b;
+			if (!creds?.apiKey) {
+				throw new MachineProviderError(
+					"e2b",
+					"missing_credentials",
+					"No E2B API key on file. Add one via /dashboard/setup or get one at e2b.dev/dashboard.",
+				);
+			}
+			return new E2BProvider(creds);
 		}
 		case "vercel-sandbox": {
 			const creds = credentials["vercel-sandbox"];

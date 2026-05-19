@@ -62,6 +62,7 @@ const KNOWN_PROVIDERS: ReadonlySet<ProviderKind> = new Set([
 	"dedalus",
 	"vercel-sandbox",
 	"fly",
+	"e2b",
 ]);
 const KNOWN_GATEWAYS: ReadonlySet<GatewayKind> = new Set([
 	"dedalus",
@@ -325,6 +326,9 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
 			apiKey: privateProviders.fly.apiKey,
 			orgSlug: privateProviders.fly.orgSlug,
 		};
+	}
+	if (privateProviders.e2b?.apiKey) {
+		providers.e2b = { apiKey: privateProviders.e2b.apiKey };
 	}
 	// Legacy single-key field.
 	const legacyDedalusKey = asString(privateMeta.dedalusApiKey);

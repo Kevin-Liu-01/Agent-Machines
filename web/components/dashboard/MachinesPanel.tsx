@@ -19,6 +19,7 @@ import { cn } from "@/lib/cn";
 import type { ProviderCapabilities } from "@/lib/providers";
 import {
 	AGENT_LABEL,
+	PROVIDER_KINDS,
 	PROVIDER_LABEL,
 	type AgentKind,
 	type MachineSpec,
@@ -74,6 +75,7 @@ const STATE_LABEL: Record<string, string> = {
 const PROVIDER_LOGO: Record<ProviderKind, "dedalus" | "nous" | "cursor" | null> =
 	{
 		dedalus: "dedalus",
+		e2b: null,
 		"vercel-sandbox": null,
 		fly: null,
 	};
@@ -658,15 +660,15 @@ function QuickProvisionForm({
 						<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 							Provider
 						</span>
-						<select
-							value={providerKind}
-							onChange={(e) => setProviderKind(e.target.value as ProviderKind)}
-							className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-[12px] text-[var(--ret-text)] focus:border-[var(--ret-purple)] focus:outline-none"
-						>
-							{(["dedalus", "vercel-sandbox", "fly"] as const).map((p) => (
-								<option key={p} value={p}>{PROVIDER_LABEL[p]}</option>
-							))}
-						</select>
+					<select
+						value={providerKind}
+						onChange={(e) => setProviderKind(e.target.value as ProviderKind)}
+						className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-[12px] text-[var(--ret-text)] focus:border-[var(--ret-purple)] focus:outline-none"
+					>
+						{PROVIDER_KINDS.map((p) => (
+							<option key={p} value={p}>{PROVIDER_LABEL[p]}</option>
+						))}
+					</select>
 					</label>
 					<label className="flex flex-col gap-1.5">
 						<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">

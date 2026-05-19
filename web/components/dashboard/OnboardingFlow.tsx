@@ -112,6 +112,14 @@ const PROVIDERS_META: Record<
 			{ label: "Org slug (optional)", placeholder: "personal", field: "orgSlug" },
 		],
 	},
+	e2b: {
+		name: "E2B Sandbox",
+		tagline:
+			"Full Linux sandboxes with pause/resume, snapshots, and public URLs. Best for stable agent work with fast cold starts.",
+		keyLabel: "E2B API key",
+		keyPlaceholder: "e2b_...",
+		keyHint: "Get one at e2b.dev/dashboard",
+	},
 };
 
 const AGENT_DESC: Record<

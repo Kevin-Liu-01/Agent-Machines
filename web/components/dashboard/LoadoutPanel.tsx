@@ -349,8 +349,8 @@ function BuiltinSection({ tab, items }: { tab: Tab; items: BuiltinTool[] }) {
 	return (
 		<Section
 			kicker={`BUILT-IN TOOLS · ${items.length}`}
-			title="Native tools the agent calls without going through MCP"
-			body="Ship with the Hermes / OpenClaw install itself. The agent invokes these in a single turn -- no MCP roundtrip, no auth handshake, just a function call into the runtime."
+			title="Every tool is always available to every agent"
+			body="The rig guarantees every built-in tool to every agent -- Hermes, OpenClaw, Claude Code, and Codex all get the same 22 tools. Badges show which agents ship a tool natively vs. which get it from the rig infrastructure. No per-agent restrictions, no MCP roundtrip."
 		>
 			<div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
 				{items.map((item) => (

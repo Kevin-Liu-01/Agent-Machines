@@ -44,6 +44,7 @@ export function SettingsPanel({ initialConfig }: Props) {
 	const [vercelProjectId, setVercelProjectId] = useState("");
 	const [flyKey, setFlyKey] = useState("");
 	const [flyOrgSlug, setFlyOrgSlug] = useState("");
+	const [e2bKey, setE2bKey] = useState("");
 	const [cursorApiKey, setCursorApiKey] = useState("");
 	const [anthropicKey, setAnthropicKey] = useState("");
 	const [openaiKey, setOpenaiKey] = useState("");
@@ -86,13 +87,16 @@ export function SettingsPanel({ initialConfig }: Props) {
 					projectId: vercelProjectId.trim() || undefined,
 				};
 			}
-			if (flyKey.trim() || flyOrgSlug.trim()) {
-				providers.fly = {
-					apiKey: flyKey.trim(),
-					orgSlug: flyOrgSlug.trim() || undefined,
-				};
-			}
-			const aiProviderKeys: Record<string, unknown> = {};
+		if (flyKey.trim() || flyOrgSlug.trim()) {
+			providers.fly = {
+				apiKey: flyKey.trim(),
+				orgSlug: flyOrgSlug.trim() || undefined,
+			};
+		}
+		if (e2bKey.trim()) {
+			providers.e2b = { apiKey: e2bKey.trim() };
+		}
+		const aiProviderKeys: Record<string, unknown> = {};
 			if (anthropicKey.trim()) aiProviderKeys.anthropic = anthropicKey.trim();
 			if (openaiKey.trim()) aiProviderKeys.openai = openaiKey.trim();
 			if (openrouterKey.trim()) aiProviderKeys.openrouter = openrouterKey.trim();
@@ -220,33 +224,40 @@ export function SettingsPanel({ initialConfig }: Props) {
 				title="Provider credentials"
 				description="Blank fields preserve existing secrets. Fill only what you want to add or rotate."
 			>
-				<div className="grid gap-px bg-[var(--ret-border)] md:grid-cols-3">
-					<ProviderBox
-						title="Dedalus"
-						configured={config.providers.dedalus.configured}
-						fields={[
-							["API key", dedalusKey, setDedalusKey, "dsk-live-..."],
-							["Base URL", dedalusBaseUrl, setDedalusBaseUrl, "https://dcs.dedaluslabs.ai"],
-						]}
-					/>
-					<ProviderBox
-						title="Vercel Sandbox"
-						configured={config.providers["vercel-sandbox"].configured}
-						fields={[
-							["API token", vercelKey, setVercelKey, "vercel token"],
-							["Team ID", vercelTeamId, setVercelTeamId, "team_..."],
-							["Project ID", vercelProjectId, setVercelProjectId, "prj_..."],
-						]}
-					/>
-					<ProviderBox
-						title="Fly Machines"
-						configured={config.providers.fly.configured}
-						fields={[
-							["API token", flyKey, setFlyKey, "FlyV1 ..."],
-							["Org slug", flyOrgSlug, setFlyOrgSlug, "personal"],
-						]}
-					/>
-				</div>
+			<div className="grid gap-px bg-[var(--ret-border)] md:grid-cols-2 lg:grid-cols-4">
+				<ProviderBox
+					title="Dedalus"
+					configured={config.providers.dedalus.configured}
+					fields={[
+						["API key", dedalusKey, setDedalusKey, "dsk-live-..."],
+						["Base URL", dedalusBaseUrl, setDedalusBaseUrl, "https://dcs.dedaluslabs.ai"],
+					]}
+				/>
+				<ProviderBox
+					title="E2B Sandbox"
+					configured={config.providers.e2b.configured}
+					fields={[
+						["API key", e2bKey, setE2bKey, "e2b_..."],
+					]}
+				/>
+				<ProviderBox
+					title="Vercel Sandbox"
+					configured={config.providers["vercel-sandbox"].configured}
+					fields={[
+						["API token", vercelKey, setVercelKey, "vercel token"],
+						["Team ID", vercelTeamId, setVercelTeamId, "team_..."],
+						["Project ID", vercelProjectId, setVercelProjectId, "prj_..."],
+					]}
+				/>
+				<ProviderBox
+					title="Fly Machines"
+					configured={config.providers.fly.configured}
+					fields={[
+						["API token", flyKey, setFlyKey, "FlyV1 ..."],
+						["Org slug", flyOrgSlug, setFlyOrgSlug, "personal"],
+					]}
+				/>
+			</div>
 				<label className="mt-3 block font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					Cursor API key
 					<input

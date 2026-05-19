@@ -421,7 +421,19 @@ async function exposeGateway(
 	}
 	const port = machine.agentKind === "openclaw" ? OPENCLAW_PORT : HERMES_PORT;
 	const name = machine.agentKind === "openclaw" ? "openclaw" : "hermes";
-	if (provider.kind !== "dedalus" && provider.kind !== "fly") return null;
+	if (provider.kind === "e2b") {
+		const e2bProvider = provider as import("@/lib/providers/e2b").E2BProvider;
+		const url = await e2bProvider.getPublicUrl(machine.id, port);
+		return url ? (url.endsWith("/v1") ? url : `${url}/v1`) : null;
+	}
+
+	if (provider.kind === "fly") {
+		const flyProvider = provider as import("@/lib/providers/fly").FlyProvider;
+		const url = await flyProvider.getPublicUrl(machine.id, port);
+		return url ? (url.endsWith("/v1") ? url : `${url}/v1`) : null;
+	}
+
+	if (provider.kind !== "dedalus") return null;
 
 	// Priority 1: Named Cloudflare Tunnel (custom domain, survives sleep/wake).
 	// The token comes from the user's config or CLOUDFLARE_TUNNEL_TOKEN env.

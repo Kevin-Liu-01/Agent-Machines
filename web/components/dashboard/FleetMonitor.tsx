@@ -81,6 +81,7 @@ const STATE_TONE: Record<string, "ok" | "warn" | "info" | "muted"> = {
 
 const PROVIDER_MARK: Record<ProviderKind, "dedalus" | null> = {
 	dedalus: "dedalus",
+	e2b: null,
 	"vercel-sandbox": null,
 	fly: null,
 };
@@ -553,12 +554,12 @@ function SpinUpForm({
 				<Field label="provider">
 					<Choice
 						value={provider}
-						options={PROVIDER_KINDS.map((k) => ({
-							value: k,
-							label: PROVIDER_LABEL[k],
-							disabled: k !== "dedalus", // others are stubs today
-						}))}
-						onChange={(v) => setProvider(v as ProviderKind)}
+					options={PROVIDER_KINDS.map((k) => ({
+						value: k,
+						label: PROVIDER_LABEL[k],
+						disabled: false,
+					}))}
+					onChange={(v) => setProvider(v as ProviderKind)}
 					/>
 				</Field>
 				<Field label="spec">

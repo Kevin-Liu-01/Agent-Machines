@@ -140,7 +140,16 @@ export class FlyProvider implements MachineProvider {
 						...(input.env ?? {}),
 					},
 					mounts: [{ volume: volume.id, path: "/home/machine" }],
-					services: [],
+					services: [
+						{
+							ports: [
+								{ port: 443, handlers: ["tls", "http"] },
+								{ port: 80, handlers: ["http"] },
+							],
+							internal_port: 8642,
+							protocol: "tcp",
+						},
+					],
 					auto_destroy: false,
 				},
 			}),
@@ -149,6 +158,20 @@ export class FlyProvider implements MachineProvider {
 			throw await this.error("provision", response);
 		}
 		const machine = (await response.json()) as FlyMachine;
+
+		try {
+			await this.fetch(`/apps/${appName}/ips`, {
+				method: "POST",
+				body: JSON.stringify({ type: "shared_v4" }),
+			});
+			await this.fetch(`/apps/${appName}/ips`, {
+				method: "POST",
+				body: JSON.stringify({ type: "v6" }),
+			});
+		} catch {
+			// IP allocation failure is non-fatal -- machine still works via exec
+		}
+
 		return {
 			id: `${appName}:${machine.id}`,
 			state: mapState(machine.state),
@@ -201,11 +224,69 @@ export class FlyProvider implements MachineProvider {
 		}
 	}
 	async exec(
-		_machineId: string,
-		_command: string,
-		_options?: ExecOptions,
+		compositeId: string,
+		command: string,
+		options?: ExecOptions,
 	): Promise<ExecResult> {
-		throw NOT_YET("exec");
+		const { appName, machineId } = splitId(compositeId);
+		const timeoutSec = Math.ceil((options?.timeoutMs ?? 30_000) / 1000);
+
+		const summary = await this.state(compositeId);
+		if (summary.state === "sleeping" || summary.state === "destroyed") {
+			await this.wake(compositeId);
+			for (let i = 0; i < 30; i++) {
+				await new Promise((r) => setTimeout(r, 2_000));
+				const s = await this.state(compositeId);
+				if (s.state === "ready") break;
+			}
+		}
+
+		const response = await this.fetch(
+			`/apps/${appName}/machines/${machineId}/exec`,
+			{
+				method: "POST",
+				body: JSON.stringify({
+					cmd: ["/bin/bash", "-c", command],
+					timeout: timeoutSec,
+				}),
+			},
+		);
+
+		if (!response.ok) {
+			const text = await response.text();
+			throw new MachineProviderError(
+				"fly",
+				response.status >= 500 ? "transient" : "fatal",
+				`fly exec ${response.status}: ${text.slice(0, 200)}`,
+			);
+		}
+
+		const body = await response.json();
+		const stdout =
+			typeof body.stdout === "string"
+				? body.stdout.length > 0
+					? Buffer.from(body.stdout, "base64").toString()
+					: ""
+				: (body.output ?? "");
+		const stderr =
+			typeof body.stderr === "string"
+				? body.stderr.length > 0
+					? Buffer.from(body.stderr, "base64").toString()
+					: ""
+				: "";
+		const exitCode =
+			typeof body.exit_code === "number"
+				? body.exit_code
+				: typeof body.exitCode === "number"
+					? body.exitCode
+					: 0;
+
+		return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode };
+	}
+
+	async getPublicUrl(compositeId: string, _port: number): Promise<string | null> {
+		const { appName } = splitId(compositeId);
+		return `https://${appName}.fly.dev`;
 	}
 
 	private async ensureApp(appName: string): Promise<void> {

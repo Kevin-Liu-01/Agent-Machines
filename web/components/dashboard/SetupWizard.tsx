@@ -101,6 +101,13 @@ const PROVIDERS_DESC: Record<
 		ready: true,
 		keyHint: "fly_pat_... or FlyV1 ...",
 	},
+	e2b: {
+		name: "E2B Sandbox",
+		tagline:
+			"Full Linux sandboxes with pause/resume, snapshots, and public URLs. Best for stable agent work with fast cold starts.",
+		ready: true,
+		keyHint: "e2b_...",
+	},
 };
 
 export function SetupWizard({ initialConfig, defaults }: Props) {
@@ -394,6 +401,7 @@ type CredsState = {
 	vercelSandboxTeam: string;
 	fly: string;
 	flyOrg: string;
+	e2b: string;
 	cursor: string;
 	anthropic: string;
 	openai: string;
@@ -413,6 +421,7 @@ function CredentialsStep({
 			dedalus?: { apiKey: string };
 			"vercel-sandbox"?: { apiKey: string; teamId?: string };
 			fly?: { apiKey: string; orgSlug?: string };
+			e2b?: { apiKey: string };
 		},
 		cursorApiKey: string | undefined,
 		aiProviderKeys: Record<string, string> | undefined,
@@ -424,6 +433,7 @@ function CredentialsStep({
 		vercelSandboxTeam: "",
 		fly: "",
 		flyOrg: "",
+		e2b: "",
 		cursor: "",
 		anthropic: "",
 		openai: "",
@@ -432,11 +442,12 @@ function CredentialsStep({
 	const dedalusOnFile = config.providers.dedalus.configured;
 	const vercelOnFile = config.providers["vercel-sandbox"].configured;
 	const flyOnFile = config.providers.fly.configured;
+	const e2bOnFile = config.providers.e2b.configured;
 	const cursorOnFile = config.hasCursorKey;
 	const anthropicOnFile = config.aiProviders.anthropic.configured;
 	const openaiOnFile = config.aiProviders.openai.configured;
 	const anyConfigured =
-		dedalusOnFile || vercelOnFile || flyOnFile || hasOwnerDedalusKey ||
+		dedalusOnFile || vercelOnFile || flyOnFile || e2bOnFile || hasOwnerDedalusKey ||
 		anthropicOnFile || openaiOnFile;
 
 	function buildPatch() {
@@ -456,6 +467,9 @@ function CredentialsStep({
 				orgSlug: state.flyOrg.trim() || undefined,
 			};
 		}
+		if (state.e2b.trim()) {
+			creds.e2b = { apiKey: state.e2b.trim() };
+		}
 		const cursor = state.cursor.trim();
 		const aiKeys: Record<string, string> = {};
 		if (state.anthropic.trim()) aiKeys.anthropic = state.anthropic.trim();
@@ -473,7 +487,7 @@ function CredentialsStep({
 			description="Infrastructure keys provision the machine. AI provider keys power the agent's LLM inference. Each is stored in Clerk private metadata, never exposed to the browser."
 		>
 			<ReticleLabel>infrastructure providers</ReticleLabel>
-			<div className="mt-2 grid gap-4 lg:grid-cols-3">
+			<div className="mt-2 grid gap-4 lg:grid-cols-2">
 				<KeyField
 					label="Dedalus API key"
 					placeholder="dsk-live-..."
@@ -488,12 +502,21 @@ function CredentialsStep({
 					}
 				/>
 				<KeyField
+					label="E2B API key"
+					placeholder="e2b_..."
+					value={state.e2b}
+					onChange={(v) => setState((s) => ({ ...s, e2b: v }))}
+					hint={
+						e2bOnFile ? "On file. Leave blank to keep." : "Get one at e2b.dev/dashboard."
+					}
+				/>
+				<KeyField
 					label="Vercel API token"
 					placeholder="Vercel API token"
 					value={state.vercelSandbox}
 					onChange={(v) => setState((s) => ({ ...s, vercelSandbox: v }))}
 					hint={
-						vercelOnFile ? "On file. Leave blank to keep." : "Optional. Provisioner not wired yet."
+						vercelOnFile ? "On file. Leave blank to keep." : "Optional. For Vercel Sandbox provider."
 					}
 					secondary={{
 						label: "Vercel team id (optional)",
@@ -509,7 +532,7 @@ function CredentialsStep({
 					value={state.fly}
 					onChange={(v) => setState((s) => ({ ...s, fly: v }))}
 					hint={
-						flyOnFile ? "On file. Leave blank to keep." : "Optional. Provisioner not wired yet."
+						flyOnFile ? "On file. Leave blank to keep." : "Optional. For Fly Machines provider."
 					}
 					secondary={{
 						label: "Fly org slug (optional)",
