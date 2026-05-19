@@ -139,36 +139,30 @@ export class SpritesProvider implements MachineProvider {
 	async exec(
 		spriteName: string,
 		command: string,
-		options?: ExecOptions,
+		_options?: ExecOptions,
 	): Promise<ExecResult> {
-		const response = await this.fetch(`/sprites/${spriteName}/exec`, {
-			method: "POST",
-			body: JSON.stringify({ command }),
-			signal: options?.timeoutMs
-				? AbortSignal.timeout(options.timeoutMs)
-				: undefined,
-		});
-
-		if (!response.ok) {
-			const text = await response.text();
+		// Sprites exec is WebSocket-based, not REST. Use the @fly/sprites
+		// SDK which handles the binary WS protocol automatically.
+		try {
+			const { SpritesClient } = await import("@fly/sprites");
+			const client = new SpritesClient(this.apiKey);
+			const sprite = client.sprite(spriteName);
+			const result = await sprite.exec(command);
+			const stdout = result.stdout ? String(result.stdout) : "";
+			const stderr = result.stderr ? String(result.stderr) : "";
+			return {
+				stdout: stdout.trim(),
+				stderr: stderr.trim(),
+				exitCode: result.exitCode ?? 0,
+			};
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
 			throw new MachineProviderError(
 				"sprites",
-				response.status >= 500 ? "transient" : "fatal",
-				`sprites exec ${response.status}: ${text.slice(0, 200)}`,
+				message.includes("404") ? "fatal" : "transient",
+				`sprites exec failed: ${message.slice(0, 200)}`,
 			);
 		}
-
-		const body = (await response.json()) as ExecResponse;
-		const stdout = body.stdout ?? body.output ?? "";
-		const stderr = body.stderr ?? "";
-		const exitCode =
-			typeof body.exit_code === "number"
-				? body.exit_code
-				: typeof body.exitCode === "number"
-					? body.exitCode
-					: 0;
-
-		return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode };
 	}
 
 	async getPublicUrl(spriteName: string, _port: number): Promise<string | null> {
