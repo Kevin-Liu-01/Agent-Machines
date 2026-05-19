@@ -155,7 +155,18 @@ export class SpritesProvider implements MachineProvider {
 				stderr: stderr.trim(),
 				exitCode: result.exitCode ?? 0,
 			};
-		} catch (err) {
+		} catch (err: unknown) {
+			// The SDK throws ExecError on non-zero exit codes, but the
+			// error.result still contains stdout/stderr/exitCode. Extract
+			// it so callers get the actual command output.
+			const execResult = (err as { result?: { stdout?: unknown; stderr?: unknown; exitCode?: number } }).result;
+			if (execResult && typeof execResult.exitCode === "number") {
+				return {
+					stdout: execResult.stdout ? String(execResult.stdout).trim() : "",
+					stderr: execResult.stderr ? String(execResult.stderr).trim() : "",
+					exitCode: execResult.exitCode,
+				};
+			}
 			const message = err instanceof Error ? err.message : String(err);
 			throw new MachineProviderError(
 				"sprites",
