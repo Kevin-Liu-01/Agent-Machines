@@ -72,11 +72,11 @@ const STATE_LABEL: Record<string, string> = {
 	unknown: "unknown",
 };
 
-const PROVIDER_LOGO: Record<ProviderKind, "dedalus" | "nous" | "cursor" | null> =
+const PROVIDER_LOGO: Record<ProviderKind, "dedalus" | "nous" | "cursor" | "e2b" | "sprites" | null> =
 	{
 		dedalus: "dedalus",
-		e2b: null,
-		sprites: null,
+		e2b: "e2b",
+		sprites: "sprites",
 	};
 
 export function MachinesPanel() {

@@ -58,7 +58,9 @@ export type ServiceSlug =
 	| "brave"
 	| "exa"
 	| "grafana"
-	| "sanity";
+	| "sanity"
+	| "e2b"
+	| "sprites";
 
 export const SERVICE_LABEL: Record<ServiceSlug, string> = {
 	vercel: "Vercel",
@@ -98,6 +100,8 @@ export const SERVICE_LABEL: Record<ServiceSlug, string> = {
 	exa: "Exa",
 	grafana: "Grafana",
 	sanity: "Sanity",
+	e2b: "E2B",
+	sprites: "Sprites",
 };
 
 const SERVICE_SET = new Set<string>(Object.keys(SERVICE_LABEL));

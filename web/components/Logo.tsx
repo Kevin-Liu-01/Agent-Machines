@@ -2,7 +2,7 @@ import Image from "next/image";
 
 import { cn } from "@/lib/cn";
 
-export type Mark = "dedalus" | "nous" | "cursor" | "openclaw" | "anthropic" | "openai";
+export type Mark = "dedalus" | "nous" | "cursor" | "openclaw" | "anthropic" | "openai" | "e2b" | "sprites";
 
 /**
  * Pseudo-mark for "either agent". Wherever a UI surface represents the
@@ -56,6 +56,14 @@ const NATIVE_SRC: Record<Mark, { light: string; dark: string }> = {
 		light: "/brand/services/openai.svg",
 		dark: "/brand/services/openai.svg",
 	},
+	e2b: {
+		light: "/brand/services/e2b.svg",
+		dark: "/brand/services/e2b.svg",
+	},
+	sprites: {
+		light: "/brand/services/sprites.svg",
+		dark: "/brand/services/sprites.svg",
+	},
 };
 
 const MASK_SRC: Record<Mark, string> = {
@@ -65,6 +73,8 @@ const MASK_SRC: Record<Mark, string> = {
 	openclaw: "/brand/openclaw-mark.svg",
 	anthropic: "/brand/services/anthropic.svg",
 	openai: "/brand/services/openai.svg",
+	e2b: "/brand/services/e2b.svg",
+	sprites: "/brand/services/sprites.svg",
 };
 
 const DEFAULT_TONE: Record<Mark, NonNullable<Props["tone"]>> = {
@@ -74,6 +84,8 @@ const DEFAULT_TONE: Record<Mark, NonNullable<Props["tone"]>> = {
 	openclaw: "currentColor",
 	anthropic: "currentColor",
 	openai: "currentColor",
+	e2b: "native",
+	sprites: "native",
 };
 
 const ARIA_LABEL: Record<Mark, string> = {
@@ -83,6 +95,8 @@ const ARIA_LABEL: Record<Mark, string> = {
 	openclaw: "OpenClaw",
 	anthropic: "Anthropic",
 	openai: "OpenAI",
+	e2b: "E2B",
+	sprites: "Sprites",
 };
 
 /**

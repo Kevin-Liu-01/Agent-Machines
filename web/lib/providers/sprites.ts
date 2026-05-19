@@ -45,10 +45,13 @@ type ExecResponse = {
 function mapState(status: string | undefined): ProviderMachineSummary["state"] {
 	switch (status) {
 		case "running":
-			return "ready";
 		case "warm":
 		case "cold":
-			return "sleeping";
+			// Sprites auto-wake on exec/HTTP, so warm and cold are
+			// effectively "ready" from the dashboard's perspective.
+			// Mapping them to "ready" prevents isMachineRunning from
+			// blocking exec calls that would auto-wake the sprite.
+			return "ready";
 		default:
 			return "unknown";
 	}

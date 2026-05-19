@@ -29,6 +29,8 @@ const PARTNER_HUE: Record<PartnerKey, string> = {
 	openclaw: "#e87c4f",
 	anthropic: "#d4a574",
 	openai: "#4ae0a0",
+	e2b: "#FF8800",
+	sprites: "#7C3AED",
 	"claude-code": "#d4a574",
 	codex: "#4ae0a0",
 };
@@ -40,6 +42,8 @@ const PARTNER_LABEL: Record<PartnerKey, string> = {
 	openclaw: "openclaw",
 	anthropic: "anthropic",
 	openai: "openai",
+	e2b: "e2b",
+	sprites: "sprites",
 	"claude-code": "claude code",
 	codex: "codex cli",
 };
@@ -281,6 +285,8 @@ export function ContributionGrid() {
 			openclaw: 0,
 			anthropic: 0,
 			openai: 0,
+			e2b: 0,
+			sprites: 0,
 			"claude-code": 0,
 			codex: 0,
 		};
