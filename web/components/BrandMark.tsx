@@ -1,4 +1,6 @@
-import { Logo } from "@/components/Logo";
+"use client";
+
+import { AnimatedBrandMark } from "@/components/AnimatedBrandMark";
 import { cn } from "@/lib/cn";
 import type { AgentKind } from "@/lib/user-config/schema";
 
@@ -10,42 +12,24 @@ type Props = {
 	withLabel?: boolean;
 	gap?: "tight" | "default";
 	/**
-	 * Agent variant of the lockup. Defaults to `"both"` -- the public
-	 * surface should advertise that the rig supports both agents. The
-	 * dashboard StatusHeader passes the *active* agent (`hermes` or
-	 * `openclaw`) so the lockup tracks the live machine.
-	 *
-	 *   - "hermes"   -> Agent Machines mark x Nous mark
-	 *   - "openclaw" -> Agent Machines mark x OpenClaw mark
-	 *   - "both"     -> Agent Machines mark x Nous mark + OpenClaw mark
-	 *
-	 * The Agent Machines mark is always present as the runtime host;
-	 * the right side identifies the agent personality (or personalities,
-	 * in `both` mode).
+	 * Reserved for surfaces that pin a single agent in copy; the lockup
+	 * always cycles partner marks at cruise speed (no intro spin).
 	 */
 	agent?: Variant;
-};
-
-const SECONDARY_MARK: Record<AgentKind, "nous" | "openclaw" | "anthropic" | "openai"> = {
-	hermes: "nous",
-	openclaw: "openclaw",
-	"claude-code": "anthropic",
-	codex: "openai",
+	/** @deprecated Use AnimatedBrandMark `intro` directly. Lockups never spin fast on mount. */
+	intro?: boolean;
 };
 
 /**
- * Lockup of the Agent Machines mark x the agent's mark separated by a thin "x".
- * Used in the public landing navbar, the dashboard status header, and
- * the sign-in card so the collaboration is the first thing a visitor sees:
- * agent-machines is the binding between the VM runtime and an agent
- * personality (Hermes by default, OpenClaw as an alternative).
+ * Lockup of the Agent Machines mark × rotating partner marks separated by "×".
+ * Delegates to AnimatedBrandMark at normal cruise speed (no initial fast spin).
  */
 export function BrandMark({
 	size = 22,
 	className,
 	withLabel = true,
 	gap = "default",
-	agent = "both",
+	intro = false,
 }: Props) {
 	return (
 		<span
@@ -55,32 +39,7 @@ export function BrandMark({
 				className,
 			)}
 		>
-			<Logo mark="am" size={Math.round(size * 1.2)} />
-			<span
-				aria-hidden="true"
-				className="font-mono text-[0.7em] text-[var(--ret-text-muted)]"
-			>
-				{"\u00d7"}
-			</span>
-			{agent === "both" ? (
-				<span
-					className={cn(
-						"inline-flex items-center",
-						gap === "tight" ? "gap-1" : "gap-1.5",
-					)}
-				>
-					<Logo mark="nous" size={size} />
-					<span
-						aria-hidden="true"
-						className="font-mono text-[0.6em] text-[var(--ret-text-muted)]"
-					>
-						{"/"}
-					</span>
-					<Logo mark="openclaw" size={size} />
-				</span>
-			) : (
-				<Logo mark={SECONDARY_MARK[agent]} size={size} />
-			)}
+			<AnimatedBrandMark size={size} gap={gap} intro={intro} />
 			{withLabel ? <span className="text-sm">agent-machines</span> : null}
 		</span>
 	);

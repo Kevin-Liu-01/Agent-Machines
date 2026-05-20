@@ -16,11 +16,21 @@ const AGENTS: { mark: Mark; label: string }[] = [
 type Props = {
 	size?: number;
 	className?: string;
+	gap?: "tight" | "default";
+	/** Fast initial carousel on mount (navbar hero moment). Off by default. */
+	intro?: boolean;
 };
 
-export function AnimatedBrandMark({ size = 20, className }: Props) {
+export function AnimatedBrandMark({
+	size = 20,
+	className,
+	gap = "default",
+	intro = false,
+}: Props) {
 	const [activeIdx, setActiveIdx] = useState(0);
-	const [phase, setPhase] = useState<"spin" | "settle" | "cruise">("spin");
+	const [phase, setPhase] = useState<"spin" | "settle" | "cruise">(
+		intro ? "spin" : "cruise",
+	);
 	const [hovered, setHovered] = useState(false);
 	const spinCount = useRef(0);
 	const timerRef = useRef<ReturnType<typeof setTimeout>>(null);
@@ -29,6 +39,11 @@ export function AnimatedBrandMark({ size = 20, className }: Props) {
 		if (timerRef.current) clearTimeout(timerRef.current);
 
 		function tick() {
+			if (!intro && phase === "spin") {
+				setPhase("cruise");
+				timerRef.current = setTimeout(tick, hovered ? 700 : 5000);
+				return;
+			}
 			if (phase === "spin") {
 				setActiveIdx((i) => (i + 1) % AGENTS.length);
 				spinCount.current += 1;
@@ -52,7 +67,7 @@ export function AnimatedBrandMark({ size = 20, className }: Props) {
 		return () => {
 			if (timerRef.current) clearTimeout(timerRef.current);
 		};
-	}, [phase, hovered]);
+	}, [phase, hovered, intro]);
 
 	const dur = phase === "spin"
 		? `${200 + spinCount.current * 20}ms`
@@ -66,7 +81,11 @@ export function AnimatedBrandMark({ size = 20, className }: Props) {
 
 	return (
 		<span
-			className={cn("inline-flex items-center gap-2.5", className)}
+			className={cn(
+				"inline-flex items-center",
+				gap === "tight" ? "gap-1.5" : "gap-2.5",
+				className,
+			)}
 			onMouseEnter={() => setHovered(true)}
 			onMouseLeave={() => setHovered(false)}
 		>
