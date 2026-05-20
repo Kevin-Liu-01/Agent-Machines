@@ -15,6 +15,7 @@ import type {
 	LogLine,
 	LogsPayload,
 } from "@/lib/dashboard/types";
+import { isDemoMode, loadDemoHandlers } from "@/lib/demo/runtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,6 +54,13 @@ export async function GET(request: Request): Promise<Response> {
 	}
 
 	const url = new URL(request.url);
+	if (isDemoMode()) {
+		const { demoLogsResponse } = await loadDemoHandlers();
+		const cron = url.searchParams.get("source") === "cron";
+		const machineId = url.searchParams.get("machineId") ?? undefined;
+		return demoLogsResponse(machineId, cron);
+	}
+
 	const requested = Number(url.searchParams.get("n") ?? DEFAULT_N);
 	const tailLines = Number.isFinite(requested)
 		? Math.min(MAX_N, Math.max(20, Math.floor(requested)))

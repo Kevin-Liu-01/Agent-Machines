@@ -375,6 +375,8 @@ export type ChatProps = {
 	onTurnComplete?: (final: Message[]) => void;
 	disabled?: boolean;
 	disabledReason?: string;
+	machineId?: string | null;
+	starterPrompts?: ReadonlyArray<{ label: string; prompt: string }>;
 };
 
 export function Chat({
@@ -383,6 +385,8 @@ export function Chat({
 	onTurnComplete,
 	disabled,
 	disabledReason,
+	machineId,
+	starterPrompts,
 }: ChatProps) {
 	const [input, setInput] = useState("");
 	const [state, setState] = useState<StreamState>("idle");
@@ -457,7 +461,10 @@ export function Chat({
 				const response = await fetch("/api/chat", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ messages: upstream }),
+					body: JSON.stringify({
+						messages: upstream,
+						...(machineId ? { machineId } : {}),
+					}),
 					signal: ctrl.signal,
 				});
 
@@ -534,7 +541,7 @@ export function Chat({
 				abortRef.current = null;
 			}
 		},
-		[disabled, onMessagesChange, onTurnComplete, state],
+		[disabled, machineId, onMessagesChange, onTurnComplete, state],
 	);
 
 	const stop = useCallback(() => {
@@ -628,7 +635,12 @@ export function Chat({
 							{effectiveDisabledReason}
 						</div>
 					) : null}
-					{showStarters ? <StarterGrid onPick={send} /> : null}
+					{showStarters ? (
+						<StarterGrid
+							prompts={starterPrompts ?? STARTER_PROMPTS}
+							onPick={send}
+						/>
+					) : null}
 					{messages.map((m, i) => (
 						<MessageRow
 							key={m.id}
@@ -683,10 +695,16 @@ export function Chat({
 
 /* ─── Sub-components ─────────────────────────────────────────────────── */
 
-function StarterGrid({ onPick }: { onPick: (prompt: string) => void }) {
+function StarterGrid({
+	prompts,
+	onPick,
+}: {
+	prompts: ReadonlyArray<{ label: string; prompt: string }>;
+	onPick: (prompt: string) => void;
+}) {
 	return (
 		<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-			{STARTER_PROMPTS.map((s) => (
+			{prompts.map((s) => (
 				<button
 					key={s.label}
 					onClick={() => onPick(s.prompt)}

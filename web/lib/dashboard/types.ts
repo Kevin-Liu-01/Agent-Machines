@@ -86,6 +86,36 @@ export type CronSummary = {
 	skills: string[];
 };
 
+export type CronTrailStep = {
+	at: string;
+	phase: string;
+	detail: string;
+	status: "ok" | "warn" | "error" | "info";
+};
+
+export type CronDiffHunk = {
+	file: string;
+	patch: string;
+};
+
+export type CronRunDetail = {
+	name: string;
+	schedule: string;
+	lastRunAt: string;
+	status: "success" | "running" | "failed";
+	costUsd: number;
+	summary: string;
+	machineId: string;
+	machineName: string;
+	sessionId: string | null;
+	artifactPath: string | null;
+	prompt: string;
+	skills: string[];
+	logs: Array<{ at: string | null; level: string; message: string }>;
+	trail: CronTrailStep[];
+	diffs: CronDiffHunk[];
+};
+
 /**
  * Either a successful read of on-VM data, or a typed reason we couldn't
  * read it. Routes return one of these so the UI can render a helpful

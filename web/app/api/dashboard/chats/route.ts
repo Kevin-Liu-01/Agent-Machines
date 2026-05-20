@@ -23,6 +23,7 @@ import {
 	type ChatRecord,
 } from "@/lib/storage/machine-chats";
 import { withActiveMachine } from "@/lib/storage/machine-fs";
+import { isDemoMode, loadDemoHandlers } from "@/lib/demo/runtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,6 +33,11 @@ export async function GET(request: Request): Promise<Response> {
 	const userId = await getEffectiveUserId();
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
+	}
+	if (isDemoMode()) {
+		const { demoChatsResponse } = await loadDemoHandlers();
+		const machineId = new URL(request.url).searchParams.get("machineId") ?? undefined;
+		return demoChatsResponse(machineId);
 	}
 	const machineId = new URL(request.url).searchParams.get("machineId") ?? undefined;
 	const handle = await withActiveMachine(machineId);
@@ -64,6 +70,23 @@ export async function POST(request: Request): Promise<Response> {
 		body = (await request.json()) as ChatRecord;
 	} catch {
 		return Response.json({ error: "invalid_json" }, { status: 400 });
+	}
+	if (isDemoMode()) {
+		if (!body.id || typeof body.id !== "string") {
+			return Response.json({ error: "id_required" }, { status: 422 });
+		}
+		if (!Array.isArray(body.messages)) {
+			return Response.json({ error: "messages_required" }, { status: 422 });
+		}
+		const { demoChatSaveResponse } = await loadDemoHandlers();
+		const now = new Date().toISOString();
+		return demoChatSaveResponse({
+			...body,
+			updatedAt: now,
+			createdAt: body.createdAt || now,
+			messageCount: body.messages.length,
+			title: (body.title || derivedTitle(body.messages)).slice(0, 120),
+		});
 	}
 	const machineId = (body as Record<string, unknown>).machineId as string | undefined;
 	const handle = await withActiveMachine(machineId);
@@ -103,13 +126,18 @@ export async function DELETE(request: Request): Promise<Response> {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}
 	const url = new URL(request.url);
+	const id = url.searchParams.get("id");
+	if (isDemoMode()) {
+		if (!id) return Response.json({ error: "id_required" }, { status: 422 });
+		const { demoChatDeleteResponse } = await loadDemoHandlers();
+		return demoChatDeleteResponse(id);
+	}
 	const machineId = url.searchParams.get("machineId") ?? undefined;
+	if (!id) return Response.json({ error: "id_required" }, { status: 422 });
 	const handle = await withActiveMachine(machineId);
 	if ("ok" in handle) {
 		return Response.json(handle, { status: 503 });
 	}
-	const id = url.searchParams.get("id");
-	if (!id) return Response.json({ error: "id_required" }, { status: 422 });
 	try {
 		await deleteChat(id);
 		return Response.json({ ok: true });

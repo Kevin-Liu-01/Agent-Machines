@@ -6,7 +6,7 @@ type Props = {
 	server: McpServerWithBrand;
 };
 
-const MARK_SET = new Set<string>(["dedalus", "nous", "cursor", "openclaw", "anthropic", "openai"]);
+const MARK_SET = new Set<string>(["am", "nous", "cursor", "openclaw", "anthropic", "openai"]);
 
 function isMark(value: string): value is Mark {
 	return MARK_SET.has(value);

@@ -2,7 +2,7 @@ import { Logo } from "@/components/Logo";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 
 type StackEntry = {
-	mark: "dedalus" | "agent" | "cursor";
+	mark: "am" | "agent" | "cursor";
 	name: string;
 	role: string;
 	tag: string;
@@ -19,7 +19,7 @@ type StackEntry = {
 
 const STACK: ReadonlyArray<StackEntry> = [
 	{
-		mark: "dedalus",
+		mark: "am",
 		name: "Dedalus Machines",
 		role: "the runtime layer",
 		href: "https://docs.dedaluslabs.ai/dcs",

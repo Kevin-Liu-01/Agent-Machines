@@ -32,7 +32,7 @@ const CAPABILITIES: ReadonlyArray<Capability> = [
 		title: "Sleep / wake by second",
 		body: "Dedalus VMs hibernate idle, wake on first prompt -- <30s cold, <5s warm. Billed by the second. Wake-on-read wired into chat and dashboard.",
 		notes: ["VM", "wake-on-read", "second-billed"],
-		mark: "dedalus",
+		mark: "am",
 		nyx: "nyx-lines",
 	},
 	{

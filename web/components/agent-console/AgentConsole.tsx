@@ -201,7 +201,10 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 			const response = await fetch("/api/chat", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ messages: upstream }),
+				body: JSON.stringify({
+					messages: upstream,
+					...(activeMachineId ? { machineId: activeMachineId } : {}),
+				}),
 				signal: ctrl.signal,
 			});
 

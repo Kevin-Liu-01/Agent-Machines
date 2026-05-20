@@ -1,0 +1,1223 @@
+{
+  "version": 1,
+  "fleet": {
+    "activeMachineId": "demo-fullstack",
+    "gateway": {
+      "ok": true,
+      "status": 200,
+      "model": "anthropic/claude-sonnet-4-6",
+      "apiHost": "demo.agent-machines.dev",
+      "latencyMs": 42,
+      "modelCount": 200
+    },
+    "metricsSummary": {
+      "ok": true,
+      "running": 4,
+      "sleeping": 1,
+      "failed": 0,
+      "totalMachines": 5,
+      "lastCollectedAt": "2026-05-20T17:32:26.249Z"
+    },
+    "usage": {
+      "ok": true,
+      "periodHours": 168,
+      "totalComputeHours": 12.4,
+      "totalCostUsd": 4.87,
+      "byMachine": [
+        {
+          "machineId": "demo-fullstack",
+          "name": "full-stack-dev",
+          "hours": 5.2,
+          "costUsd": 2.1
+        },
+        {
+          "machineId": "demo-code-review",
+          "name": "code-review",
+          "hours": 3.1,
+          "costUsd": 1.24
+        },
+        {
+          "machineId": "demo-research",
+          "name": "research",
+          "hours": 2.4,
+          "costUsd": 0.96
+        },
+        {
+          "machineId": "demo-ops",
+          "name": "ops",
+          "hours": 1.7,
+          "costUsd": 0.57
+        }
+      ]
+    },
+    "cronRuns": [
+      {
+        "name": "hourly-health-check",
+        "schedule": "every 1h",
+        "lastRunAt": "2026-05-20T03:12:18.000Z",
+        "status": "success",
+        "costUsd": 0.04,
+        "summary": "Found broken /api/health — opened GitHub issue #847"
+      },
+      {
+        "name": "daily-wiki-digest",
+        "schedule": "0 9 * * *",
+        "lastRunAt": "2026-05-20T09:00:12.000Z",
+        "status": "success",
+        "costUsd": 0.02,
+        "summary": "5 bullets consolidated to MEMORY.md"
+      },
+      {
+        "name": "weekly-skill-audit",
+        "schedule": "0 4 * * mon",
+        "lastRunAt": "2026-05-19T04:00:45.000Z",
+        "status": "success",
+        "costUsd": 0.11,
+        "summary": "3 stale skills flagged for refresh"
+      },
+      {
+        "name": "nightly-memory-consolidation",
+        "schedule": "0 3 * * *",
+        "lastRunAt": "2026-05-20T03:00:30.000Z",
+        "status": "success",
+        "costUsd": 0.03,
+        "summary": "MEMORY.md reorganized — 2.1KB saved"
+      }
+    ],
+    "cronDetails": {
+      "hourly-health-check": {
+        "name": "hourly-health-check",
+        "schedule": "every 1h",
+        "lastRunAt": "2026-05-20T03:12:18.000Z",
+        "status": "success",
+        "costUsd": 0.04,
+        "summary": "Found broken /api/health — opened GitHub issue #847",
+        "machineId": "demo-ops",
+        "machineName": "ops",
+        "sessionId": "sess-cron-health",
+        "artifactPath": "~/.agent-machines/artifacts/cron-hourly-health-check.log",
+        "prompt": "Run a runtime health check; summarize unhealthy items in 3 lines or fewer; reply OK if clean.",
+        "skills": [
+          "dedalus-machines"
+        ],
+        "trail": [
+          {
+            "at": "2026-05-20T03:12:01.000Z",
+            "phase": "wake",
+            "detail": "Cron fired — waking machine demo-ops from sleep",
+            "status": "info"
+          },
+          {
+            "at": "2026-05-20T03:12:03.000Z",
+            "phase": "loadout",
+            "detail": "Loaded skill dedalus-machines",
+            "status": "ok"
+          },
+          {
+            "at": "2026-05-20T03:12:05.000Z",
+            "phase": "probe",
+            "detail": "GET http://localhost:3210/api/health",
+            "status": "info"
+          },
+          {
+            "at": "2026-05-20T03:12:08.000Z",
+            "phase": "finding",
+            "detail": "502 Bad Gateway — endpoint regression detected",
+            "status": "warn"
+          },
+          {
+            "at": "2026-05-20T03:12:10.000Z",
+            "phase": "delegate",
+            "detail": "cursor_agent — investigate /api/health regression",
+            "status": "info"
+          },
+          {
+            "at": "2026-05-20T03:12:14.000Z",
+            "phase": "github",
+            "detail": "Opened issue #847 — API health check failing on /api/health",
+            "status": "ok"
+          },
+          {
+            "at": "2026-05-20T03:12:18.000Z",
+            "phase": "sleep",
+            "detail": "Run complete — machine returned to sleep ($0.04)",
+            "status": "ok"
+          }
+        ],
+        "logs": [
+          {
+            "at": "2026-05-20T03:12:01.000Z",
+            "level": "info",
+            "message": "[cron] hourly-health-check triggered — waking machine demo-ops"
+          },
+          {
+            "at": "2026-05-20T03:12:03.000Z",
+            "level": "info",
+            "message": "skill loaded: dedalus-machines"
+          },
+          {
+            "at": "2026-05-20T03:12:05.000Z",
+            "level": "info",
+            "message": "GET /api/health → upstream http://127.0.0.1:3210/api/health"
+          },
+          {
+            "at": "2026-05-20T03:12:08.000Z",
+            "level": "warn",
+            "message": "GET /api/health returned 502 — endpoint regression detected"
+          },
+          {
+            "at": "2026-05-20T03:12:10.000Z",
+            "level": "info",
+            "message": "cursor_agent run-health-fix started (52s)"
+          },
+          {
+            "at": "2026-05-20T03:12:14.000Z",
+            "level": "info",
+            "message": "opened issue #847 — API health check failing on /api/health"
+          },
+          {
+            "at": "2026-05-20T03:12:18.000Z",
+            "level": "info",
+            "message": "run complete — cost $0.04 — machine returned to sleep"
+          }
+        ],
+        "diffs": [
+          {
+            "file": "artifacts/cron-hourly-health-check.log",
+            "patch": "--- /dev/null\n+++ artifacts/cron-hourly-health-check.log\n@@ -0,0 +1,5 @@\n+[2026-05-20T03:12:01Z] cron hourly-health-check start\n+[2026-05-20T03:12:08Z] WARN health probe failed: HTTP 502\n+[2026-05-20T03:12:14Z] github issue #847 opened\n+[2026-05-20T03:12:18Z] run ok cost=$0.04\n"
+          }
+        ]
+      },
+      "daily-wiki-digest": {
+        "name": "daily-wiki-digest",
+        "schedule": "0 9 * * *",
+        "lastRunAt": "2026-05-20T09:00:12.000Z",
+        "status": "success",
+        "costUsd": 0.02,
+        "summary": "5 bullets consolidated to MEMORY.md",
+        "machineId": "demo-research",
+        "machineName": "research",
+        "sessionId": "sess-wiki-digest",
+        "artifactPath": "~/.agent-machines/artifacts/wiki-digest-2026-05-20.md",
+        "prompt": "Summarize the most important context to keep in active memory today in <=5 bullets.",
+        "skills": [
+          "agent-ethos"
+        ],
+        "trail": [
+          {
+            "at": "2026-05-20T09:00:01.000Z",
+            "phase": "wake",
+            "detail": "Cron fired on demo-research",
+            "status": "info"
+          },
+          {
+            "at": "2026-05-20T09:00:15.000Z",
+            "phase": "fetch",
+            "detail": "agent-reach — 12 bookmark pages fetched",
+            "status": "ok"
+          },
+          {
+            "at": "2026-05-20T09:00:45.000Z",
+            "phase": "summarize",
+            "detail": "Distilled 5 bullets for active memory",
+            "status": "ok"
+          },
+          {
+            "at": "2026-05-20T09:02:10.000Z",
+            "phase": "write",
+            "detail": "Merged bullets into MEMORY.md",
+            "status": "ok"
+          },
+          {
+            "at": "2026-05-20T09:03:20.000Z",
+            "phase": "delegate",
+            "detail": "cursor_agent — update wiki/_index.md cross-links",
+            "status": "info"
+          },
+          {
+            "at": "2026-05-20T09:04:12.000Z",
+            "phase": "artifact",
+            "detail": "Wrote artifacts/wiki-digest-2026-05-20.md",
+            "status": "ok"
+          }
+        ],
+        "logs": [
+          {
+            "at": "2026-05-20T09:00:01.000Z",
+            "level": "info",
+            "message": "[cron] daily-wiki-digest triggered"
+          },
+          {
+            "at": "2026-05-20T09:00:45.000Z",
+            "level": "info",
+            "message": "agent-reach: fetched 12 bookmark pages"
+          },
+          {
+            "at": "2026-05-20T09:02:10.000Z",
+            "level": "info",
+            "message": "consolidated 5 bullets into MEMORY.md"
+          },
+          {
+            "at": "2026-05-20T09:04:12.000Z",
+            "level": "info",
+            "message": "wrote artifacts/wiki-digest-2026-05-20.md"
+          }
+        ],
+        "diffs": [
+          {
+            "file": "MEMORY.md",
+            "patch": "--- a/MEMORY.md\n+++ b/MEMORY.md\n@@ -12,6 +12,11 @@\n ## Active context\n - Agent Machines recording build ships for YC\n - Dedalus machine provisioning unreliable — scripted dashboard fallback\n+- Bookmark absorption: 12 pages synced from X bookmarks run\n+- New wiki cross-links: agent-operations-hub, demo-mode patterns\n+- Cron panel drill-down: trail + log + diff per schedule\n+- OpenClaw on sprites for ops machine — health check owner\n+- MEMORY consolidation saved 2.1KB in nightly run\n"
+          },
+          {
+            "file": "artifacts/wiki-digest-2026-05-20.md",
+            "patch": "--- /dev/null\n+++ artifacts/wiki-digest-2026-05-20.md\n@@ -0,0 +1,8 @@\n+# Daily wiki digest — 2026-05-20\n+\n+1. Dashboard narratives wired across WORK + LIVE sections\n+2. Security audit skill saved on full-stack-dev machine\n+3. PR #412 auth middleware review queued on code-review\n+4. Hourly health check flagged /api/health 502 → issue #847\n+5. Weekly skill audit: 3 stale skills flagged for refresh\n"
+          }
+        ]
+      },
+      "weekly-skill-audit": {
+        "name": "weekly-skill-audit",
+        "schedule": "0 4 * * mon",
+        "lastRunAt": "2026-05-19T04:00:45.000Z",
+        "status": "success",
+        "costUsd": 0.11,
+        "summary": "3 stale skills flagged for refresh",
+        "machineId": "demo-fullstack",
+        "machineName": "full-stack-dev",
+        "sessionId": null,
+        "artifactPath": "~/.agent-machines/artifacts/skill-audit-2026-05-19.json",
+        "prompt": "Audit ~/.agent-machines/skills for stale, drifted, or duplicated entries. Output JSON.",
+        "skills": [
+          "plan-mode-review"
+        ],
+        "trail": [
+          {
+            "at": "2026-05-19T04:00:01.000Z",
+            "phase": "wake",
+            "detail": "Weekly audit on demo-fullstack",
+            "status": "info"
+          },
+          {
+            "at": "2026-05-19T04:00:12.000Z",
+            "phase": "scan",
+            "detail": "Scanned 156 skills under ~/.agent-machines/skills",
+            "status": "ok"
+          },
+          {
+            "at": "2026-05-19T04:00:28.000Z",
+            "phase": "compare",
+            "detail": "Diffed SKILL.md mtime vs last invocation",
+            "status": "info"
+          },
+          {
+            "at": "2026-05-19T04:00:38.000Z",
+            "phase": "finding",
+            "detail": "3 stale: old-eslint-patterns, beta-stripe-hooks, legacy-playwright",
+            "status": "warn"
+          },
+          {
+            "at": "2026-05-19T04:00:45.000Z",
+            "phase": "report",
+            "detail": "Wrote artifacts/skill-audit-2026-05-19.json",
+            "status": "ok"
+          }
+        ],
+        "logs": [
+          {
+            "at": "2026-05-19T04:00:01.000Z",
+            "level": "info",
+            "message": "[cron] weekly-skill-audit triggered"
+          },
+          {
+            "at": "2026-05-19T04:00:12.000Z",
+            "level": "info",
+            "message": "scan complete — 156 skills indexed"
+          },
+          {
+            "at": "2026-05-19T04:00:38.000Z",
+            "level": "warn",
+            "message": "stale: old-eslint-patterns (142d since use)"
+          },
+          {
+            "at": "2026-05-19T04:00:38.000Z",
+            "level": "warn",
+            "message": "stale: beta-stripe-hooks (89d since use)"
+          },
+          {
+            "at": "2026-05-19T04:00:38.000Z",
+            "level": "warn",
+            "message": "stale: legacy-playwright (67d since use)"
+          },
+          {
+            "at": "2026-05-19T04:00:45.000Z",
+            "level": "info",
+            "message": "report written — 3 flagged for refresh"
+          }
+        ],
+        "diffs": [
+          {
+            "file": "artifacts/skill-audit-2026-05-19.json",
+            "patch": "--- /dev/null\n+++ artifacts/skill-audit-2026-05-19.json\n@@ -0,0 +1,22 @@\n+{\n+  \"scanned\": 156,\n+  \"stale\": [\n+    {\n+      \"slug\": \"old-eslint-patterns\",\n+      \"daysSinceUse\": 142,\n+      \"recommendation\": \"archive or merge into ultracite\"\n+    },\n+    {\n+      \"slug\": \"beta-stripe-hooks\",\n+      \"daysSinceUse\": 89,\n+      \"recommendation\": \"refresh against stripe-webhook-hardening\"\n+    },\n+    {\n+      \"slug\": \"legacy-playwright\",\n+      \"daysSinceUse\": 67,\n+      \"recommendation\": \"replace with browser-harness patterns\"\n+    }\n+  ]\n+}\n"
+          }
+        ]
+      },
+      "nightly-memory-consolidation": {
+        "name": "nightly-memory-consolidation",
+        "schedule": "0 3 * * *",
+        "lastRunAt": "2026-05-20T03:00:30.000Z",
+        "status": "success",
+        "costUsd": 0.03,
+        "summary": "MEMORY.md reorganized — 2.1KB saved",
+        "machineId": "demo-research",
+        "machineName": "research",
+        "sessionId": null,
+        "artifactPath": "~/.agent-machines/MEMORY.md",
+        "prompt": "Consolidate MEMORY.md and USER.md within size limits. Reorganize, do not invent.",
+        "skills": [
+          "agent-ethos"
+        ],
+        "trail": [
+          {
+            "at": "2026-05-20T03:00:01.000Z",
+            "phase": "wake",
+            "detail": "Nightly consolidation on demo-research",
+            "status": "info"
+          },
+          {
+            "at": "2026-05-20T03:00:08.000Z",
+            "phase": "read",
+            "detail": "Loaded MEMORY.md (4.8KB) and USER.md (1.2KB)",
+            "status": "ok"
+          },
+          {
+            "at": "2026-05-20T03:00:18.000Z",
+            "phase": "dedupe",
+            "detail": "Removed 4 duplicate bullets, merged 2 sections",
+            "status": "ok"
+          },
+          {
+            "at": "2026-05-20T03:00:25.000Z",
+            "phase": "compress",
+            "detail": "Reordered by recency — 2.1KB saved",
+            "status": "ok"
+          },
+          {
+            "at": "2026-05-20T03:00:30.000Z",
+            "phase": "write",
+            "detail": "MEMORY.md written (2.7KB final)",
+            "status": "ok"
+          }
+        ],
+        "logs": [
+          {
+            "at": "2026-05-20T03:00:01.000Z",
+            "level": "info",
+            "message": "[cron] nightly-memory-consolidation triggered"
+          },
+          {
+            "at": "2026-05-20T03:00:08.000Z",
+            "level": "info",
+            "message": "read MEMORY.md (4915 bytes) USER.md (1180 bytes)"
+          },
+          {
+            "at": "2026-05-20T03:00:18.000Z",
+            "level": "info",
+            "message": "dedupe: removed 4 duplicate bullets"
+          },
+          {
+            "at": "2026-05-20T03:00:25.000Z",
+            "level": "info",
+            "message": "compress: 2150 bytes saved"
+          },
+          {
+            "at": "2026-05-20T03:00:30.000Z",
+            "level": "info",
+            "message": "write complete — MEMORY.md now 2765 bytes"
+          }
+        ],
+        "diffs": [
+          {
+            "file": "MEMORY.md",
+            "patch": "--- a/MEMORY.md\n+++ b/MEMORY.md\n@@ -1,18 +1,12 @@\n # MEMORY\n \n-## Misc notes (unsorted)\n-- cron health check found 502 on /api/health\n-- remember to refresh stripe webhook skill\n-- wiki digest ran at 9am\n-- security audit saved as skill\n-- PR 412 review pending\n-\n ## Active context\n - Agent Machines recording build ships for YC\n - Dedalus machine provisioning unreliable — scripted dashboard fallback\n+- Cron health check: issue #847 open on /api/health\n+- Security audit skill: security-audit-repo on full-stack-dev\n \n-## Archive\n-- old onboarding flow notes (deprecated)\n+## Scheduled work\n+- hourly-health-check → demo-ops\n+- daily-wiki-digest → demo-research\n"
+          }
+        ]
+      }
+    },
+    "machines": [
+      {
+        "id": "demo-fullstack",
+        "name": "full-stack-dev",
+        "providerKind": "dedalus",
+        "agentKind": "hermes",
+        "model": "anthropic/claude-sonnet-4-6",
+        "spec": {
+          "vcpu": 1,
+          "memoryMib": 2048,
+          "storageGib": 10
+        },
+        "createdAtDaysAgo": 13,
+        "live": {
+          "state": "ready",
+          "rawPhase": "running"
+        }
+      },
+      {
+        "id": "demo-code-review",
+        "name": "code-review",
+        "providerKind": "dedalus",
+        "agentKind": "claude-code",
+        "model": "anthropic/claude-sonnet-4-6",
+        "spec": {
+          "vcpu": 1,
+          "memoryMib": 2048,
+          "storageGib": 10
+        },
+        "createdAtDaysAgo": 9,
+        "live": {
+          "state": "ready",
+          "rawPhase": "running"
+        }
+      },
+      {
+        "id": "demo-research",
+        "name": "research",
+        "providerKind": "e2b",
+        "agentKind": "hermes",
+        "model": "anthropic/claude-sonnet-4-6",
+        "spec": {
+          "vcpu": 1,
+          "memoryMib": 2048,
+          "storageGib": 10
+        },
+        "createdAtDaysAgo": 6,
+        "live": {
+          "state": "ready",
+          "rawPhase": "running"
+        }
+      },
+      {
+        "id": "demo-ops",
+        "name": "ops",
+        "providerKind": "sprites",
+        "agentKind": "openclaw",
+        "model": "anthropic/claude-sonnet-4-6",
+        "spec": {
+          "vcpu": 1,
+          "memoryMib": 2048,
+          "storageGib": 10
+        },
+        "createdAtDaysAgo": 3,
+        "live": {
+          "state": "ready",
+          "rawPhase": "running"
+        }
+      }
+    ],
+    "providers": {
+      "dedalus": {
+        "apiKey": "demo-dedalus-key"
+      },
+      "e2b": {
+        "apiKey": "demo-e2b-key"
+      },
+      "sprites": {
+        "apiKey": "demo-sprites-key"
+      }
+    }
+  },
+  "machines": {
+    "demo-fullstack": {
+      "headline": "Security audit on repo",
+      "starterPrompts": [
+        {
+          "label": "Security audit",
+          "prompt": "Run a security audit on this repo"
+        },
+        {
+          "label": "Save as skill",
+          "prompt": "Save this audit pattern as a skill"
+        }
+      ],
+      "chats": [
+        {
+          "id": "chat-security-audit",
+          "title": "Security audit on repo",
+          "machineId": "demo-fullstack",
+          "model": "anthropic/claude-sonnet-4-6",
+          "createdAt": "2026-05-20T14:20:00.000Z",
+          "updatedAt": "2026-05-20T14:22:00.000Z",
+          "messageCount": 4,
+          "messages": [
+            {
+              "id": "csa-u1",
+              "role": "user",
+              "content": "Run a security audit on this repo with deepsec",
+              "createdAt": 1779286805000
+            },
+            {
+              "id": "csa-a1",
+              "role": "assistant",
+              "content": "## Security audit complete\n\n**12 findings** (2 high, 4 medium, 6 low)\n\n- HIGH: Missing rate limit on `/api/chat`\n- HIGH: Raw error bodies returned to client\n- MEDIUM: CSP headers not set on dashboard\n\nFull report saved to `artifacts/security-audit.md`.",
+              "createdAt": 1779286920000,
+              "durationMs": 115000
+            }
+          ]
+        },
+        {
+          "id": "chat-save-skill",
+          "title": "Save audit pattern as skill",
+          "machineId": "demo-fullstack",
+          "model": "anthropic/claude-sonnet-4-6",
+          "createdAt": "2026-05-20T14:23:00.000Z",
+          "updatedAt": "2026-05-20T14:24:30.000Z",
+          "messageCount": 3,
+          "messages": [
+            {
+              "id": "css-u1",
+              "role": "user",
+              "content": "Save the audit pattern as a reusable skill",
+              "createdAt": 1779286990000
+            },
+            {
+              "id": "css-a1",
+              "role": "assistant",
+              "content": "Saved **security-audit-repo** as a reusable skill.\n\n```yaml\nname: security-audit-repo\nversion: 1.0.0\ntriggers: [security audit, deepsec]\n```\n\nSkills library now at **156** procedures.",
+              "createdAt": 1779287070000,
+              "durationMs": 80000
+            }
+          ]
+        }
+      ],
+      "sessions": {
+        "sessions": [
+          {
+            "id": "sess-security-audit",
+            "preview": "security audit — deepsec — 12 findings",
+            "updatedAt": "2026-05-20T14:22:00.000Z",
+            "bytes": 245760
+          },
+          {
+            "id": "sess-save-skill",
+            "preview": "saved skill security-audit-repo",
+            "updatedAt": "2026-05-20T14:24:30.000Z",
+            "bytes": 52400
+          }
+        ],
+        "totalSessions": 2,
+        "totalBytes": 298160,
+        "dbPath": "~/.agent-machines/sessions/"
+      },
+      "logs": {
+        "lines": [
+          {
+            "at": "2026-05-20T14:20:01.000Z",
+            "level": "info",
+            "source": "gateway",
+            "message": "POST /v1/chat/completions — stream open"
+          },
+          {
+            "at": "2026-05-20T14:20:03.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "tool load_skill deepsec — 28 rules loaded"
+          },
+          {
+            "at": "2026-05-20T14:20:08.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "tool browser_navigate http://localhost:3210/dashboard — 200 OK"
+          },
+          {
+            "at": "2026-05-20T14:20:15.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "tool terminal_exec npx deepsec --limit 50 ./web"
+          },
+          {
+            "at": "2026-05-20T14:21:42.000Z",
+            "level": "warn",
+            "source": "agent",
+            "message": "deepsec: 12 findings (2 high, 4 medium, 6 low)"
+          },
+          {
+            "at": "2026-05-20T14:22:00.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "wrote artifacts/security-audit.md"
+          },
+          {
+            "at": "2026-05-20T14:24:30.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "wrote knowledge/skills/custom/security-audit-repo/SKILL.md"
+          }
+        ],
+        "files": [
+          {
+            "path": "~/.agent-machines/logs/gateway.log",
+            "bytes": 8192
+          },
+          {
+            "path": "~/.agent-machines/logs/agent.log",
+            "bytes": 12288
+          }
+        ],
+        "tailLines": 20
+      },
+      "cursor": {
+        "runs": [
+          {
+            "loggedAt": "2026-05-20T14:21:10.000Z",
+            "kind": "one_shot",
+            "agentId": "cursor-7f2a",
+            "runId": "run-rate-limit",
+            "status": "completed",
+            "durationMs": 84200,
+            "model": "claude-sonnet-4-6",
+            "workingDir": "/home/machine/Agent-Machines/web",
+            "loadedSkills": [
+              "security-best-practices"
+            ],
+            "prompt": "Add rate limiting middleware to web/app/api/chat/route.ts",
+            "finalText": "Added sliding-window rate limiter — 60 req/min per IP."
+          },
+          {
+            "loggedAt": "2026-05-20T14:21:55.000Z",
+            "kind": "one_shot",
+            "agentId": "cursor-7f2a",
+            "runId": "run-csp",
+            "status": "completed",
+            "durationMs": 41300,
+            "model": "claude-sonnet-4-6",
+            "workingDir": "/home/machine/Agent-Machines/web",
+            "loadedSkills": [],
+            "prompt": "Add CSP headers to dashboard layout",
+            "finalText": "Content-Security-Policy added to app/dashboard/layout.tsx."
+          }
+        ],
+        "totalRuns": 2,
+        "logPath": "~/.agent-machines/cursor-runs.jsonl"
+      },
+      "artifacts": [
+        {
+          "id": "art-audit-md",
+          "name": "security-audit.md",
+          "mime": "text/markdown",
+          "bytes": 18432,
+          "chatId": "chat-security-audit",
+          "createdAt": "2026-05-20T14:22:00.000Z"
+        },
+        {
+          "id": "art-findings-json",
+          "name": "deepsec-findings.json",
+          "mime": "application/json",
+          "bytes": 4096,
+          "chatId": "chat-security-audit",
+          "createdAt": "2026-05-20T14:21:42.000Z"
+        }
+      ],
+      "exec": {
+        "defaultStdout": "$ npx deepsec --limit 50 ./web\nScanning web/ … 847 files\n12 findings (2 high, 4 medium, 6 low)\nReport: artifacts/security-audit.md\n"
+      },
+      "usage": {
+        "scale": 0.7714285714285715,
+        "transitions": [
+          {
+            "label": "Machine provisioned",
+            "timestamp": "2026-05-07T16:00:00.000Z"
+          },
+          {
+            "label": "Bootstrap succeeded — gateway online",
+            "timestamp": "2026-05-07T16:00:30.000Z"
+          },
+          {
+            "label": "Security audit completed — 12 findings",
+            "timestamp": "2026-05-20T14:22:00.000Z"
+          },
+          {
+            "label": "Skill security-audit-repo saved",
+            "timestamp": "2026-05-20T14:24:30.000Z"
+          }
+        ],
+        "bucketDays": 7
+      },
+      "machineSummary": {
+        "phase": "running",
+        "desired": "running",
+        "vcpu": 1,
+        "memoryMib": 2048,
+        "storageGib": 10
+      }
+    },
+    "demo-code-review": {
+      "headline": "PR #412 auth middleware review",
+      "starterPrompts": [
+        {
+          "label": "Review PR #412",
+          "prompt": "Review PR #412 — auth middleware changes"
+        }
+      ],
+      "chats": [
+        {
+          "id": "chat-pr-412",
+          "title": "Review PR #412 — auth middleware",
+          "machineId": "demo-code-review",
+          "model": "anthropic/claude-sonnet-4-6",
+          "createdAt": "2026-05-20T11:05:00.000Z",
+          "updatedAt": "2026-05-20T11:18:00.000Z",
+          "messageCount": 6,
+          "messages": [
+            {
+              "id": "cp4-u1",
+              "role": "user",
+              "content": "Review PR #412 — auth middleware changes",
+              "createdAt": 1779188700000
+            },
+            {
+              "id": "cp4-a1",
+              "role": "assistant",
+              "content": "## PR #412 review\n\n**3 suggestions** posted:\n\n- Add token expiry validation before decode\n- Surface auth errors without leaking stack traces\n- Expand test coverage for edge cases\n\nReview saved to `artifacts/pr-412-review.md`.",
+              "createdAt": 1779188880000,
+              "durationMs": 180000
+            }
+          ]
+        }
+      ],
+      "sessions": {
+        "sessions": [
+          {
+            "id": "sess-pr-412",
+            "preview": "PR #412 review — 3 suggestions",
+            "updatedAt": "2026-05-20T11:18:00.000Z",
+            "bytes": 198400
+          },
+          {
+            "id": "sess-lint-fix",
+            "preview": "eslint autofix — 14 files",
+            "updatedAt": "2026-05-19T16:40:00.000Z",
+            "bytes": 76800
+          }
+        ],
+        "totalSessions": 2,
+        "totalBytes": 275200,
+        "dbPath": "~/.agent-machines/sessions/"
+      },
+      "logs": {
+        "lines": [
+          {
+            "at": "2026-05-20T11:05:02.000Z",
+            "level": "info",
+            "source": "gateway",
+            "message": "claude-code session started"
+          },
+          {
+            "at": "2026-05-20T11:06:14.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "read_file web/lib/auth/middleware.ts — 142 lines"
+          },
+          {
+            "at": "2026-05-20T11:08:30.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "cursor_agent spawned — add unit tests for auth middleware"
+          },
+          {
+            "at": "2026-05-20T11:15:22.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "review complete — 3 suggestions posted to PR #412"
+          },
+          {
+            "at": "2026-05-20T11:18:00.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "wrote artifacts/pr-412-review.md"
+          }
+        ],
+        "files": [
+          {
+            "path": "~/.agent-machines/logs/claude-code.log",
+            "bytes": 6144
+          }
+        ],
+        "tailLines": 20
+      },
+      "cursor": {
+        "runs": [
+          {
+            "loggedAt": "2026-05-20T11:08:30.000Z",
+            "kind": "one_shot",
+            "agentId": "cursor-9b1c",
+            "runId": "run-auth-tests",
+            "status": "completed",
+            "durationMs": 412000,
+            "model": "claude-sonnet-4-6",
+            "workingDir": "/home/machine/Agent-Machines/web",
+            "loadedSkills": [
+              "test-writing"
+            ],
+            "prompt": "Add unit tests for web/lib/auth/middleware.ts",
+            "finalText": "Added 8 tests — all passing."
+          },
+          {
+            "loggedAt": "2026-05-19T16:35:00.000Z",
+            "kind": "one_shot",
+            "agentId": "cursor-9b1c",
+            "runId": "run-eslint",
+            "status": "completed",
+            "durationMs": 128000,
+            "model": "claude-sonnet-4-6",
+            "workingDir": "/home/machine/Agent-Machines/web",
+            "loadedSkills": [],
+            "prompt": "Fix eslint warnings in web/components",
+            "finalText": "Autofixed 14 files."
+          }
+        ],
+        "totalRuns": 2,
+        "logPath": "~/.agent-machines/cursor-runs.jsonl"
+      },
+      "artifacts": [
+        {
+          "id": "art-pr-412",
+          "name": "pr-412-review.md",
+          "mime": "text/markdown",
+          "bytes": 9216,
+          "chatId": "chat-pr-412",
+          "createdAt": "2026-05-20T11:18:00.000Z"
+        }
+      ],
+      "exec": {
+        "defaultStdout": "$ gh pr view 412 --comments\nReview: 3 suggestions — token expiry check, error surface, test coverage\n"
+      },
+      "usage": {
+        "scale": 0.5785714285714286,
+        "transitions": [
+          {
+            "label": "Machine provisioned",
+            "timestamp": "2026-05-11T16:00:00.000Z"
+          },
+          {
+            "label": "Bootstrap succeeded",
+            "timestamp": "2026-05-11T16:00:30.000Z"
+          },
+          {
+            "label": "PR #412 review posted",
+            "timestamp": "2026-05-20T11:18:00.000Z"
+          }
+        ],
+        "bucketDays": 7
+      },
+      "machineSummary": {
+        "phase": "running",
+        "desired": "running",
+        "vcpu": 1,
+        "memoryMib": 2048,
+        "storageGib": 10
+      }
+    },
+    "demo-research": {
+      "headline": "Wiki digest and bookmark absorption",
+      "starterPrompts": [
+        {
+          "label": "Wiki digest",
+          "prompt": "Run the daily wiki digest and update MEMORY.md"
+        }
+      ],
+      "chats": [
+        {
+          "id": "chat-wiki-digest",
+          "title": "Daily wiki digest",
+          "machineId": "demo-research",
+          "model": "anthropic/claude-sonnet-4-6",
+          "createdAt": "2026-05-20T09:00:00.000Z",
+          "updatedAt": "2026-05-20T09:04:12.000Z",
+          "messageCount": 5,
+          "messages": [
+            {
+              "id": "cwd-u1",
+              "role": "user",
+              "content": "Consolidate today's wiki bookmarks into MEMORY.md",
+              "createdAt": 1779264000000
+            },
+            {
+              "id": "cwd-a1",
+              "role": "assistant",
+              "content": "## Daily wiki digest\n\n**5 bullets** merged into MEMORY.md.\n\nFull digest: `artifacts/wiki-digest-2026-05-20.md`.\n\nCross-links added to `wiki/_index.md`.",
+              "createdAt": 1779264180000,
+              "durationMs": 95000
+            }
+          ]
+        }
+      ],
+      "sessions": {
+        "sessions": [
+          {
+            "id": "sess-wiki-digest",
+            "preview": "daily-wiki-digest — 5 bullets to MEMORY.md",
+            "updatedAt": "2026-05-20T09:04:12.000Z",
+            "bytes": 112640
+          },
+          {
+            "id": "sess-bookmark-scan",
+            "preview": "bookmark absorption — 12 pages synced",
+            "updatedAt": "2026-05-19T22:30:00.000Z",
+            "bytes": 204800
+          }
+        ],
+        "totalSessions": 2,
+        "totalBytes": 317440,
+        "dbPath": "~/.agent-machines/sessions/"
+      },
+      "logs": {
+        "lines": [
+          {
+            "at": "2026-05-20T09:00:01.000Z",
+            "level": "info",
+            "source": "cron",
+            "message": "daily-wiki-digest triggered"
+          },
+          {
+            "at": "2026-05-20T09:00:45.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "agent-reach: fetched 12 bookmark pages"
+          },
+          {
+            "at": "2026-05-20T09:02:10.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "consolidated 5 bullets into MEMORY.md"
+          },
+          {
+            "at": "2026-05-20T09:04:12.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "wrote artifacts/wiki-digest-2026-05-20.md"
+          }
+        ],
+        "files": [
+          {
+            "path": "~/.agent-machines/logs/cron-daily-wiki-digest.log",
+            "bytes": 3072
+          }
+        ],
+        "tailLines": 20
+      },
+      "cursor": {
+        "runs": [
+          {
+            "loggedAt": "2026-05-20T09:03:20.000Z",
+            "kind": "one_shot",
+            "agentId": "cursor-3d8e",
+            "runId": "run-wiki-index",
+            "status": "completed",
+            "durationMs": 67500,
+            "model": "claude-sonnet-4-6",
+            "workingDir": "/home/machine/kevin-wiki",
+            "loadedSkills": [
+              "wiki-doctor"
+            ],
+            "prompt": "Update wiki/_index.md with 3 new pages from bookmark absorption",
+            "finalText": "Index updated — 3 cross-links added."
+          }
+        ],
+        "totalRuns": 1,
+        "logPath": "~/.agent-machines/cursor-runs.jsonl"
+      },
+      "artifacts": [
+        {
+          "id": "art-memory",
+          "name": "MEMORY.md",
+          "mime": "text/markdown",
+          "bytes": 8192,
+          "chatId": "chat-wiki-digest",
+          "createdAt": "2026-05-20T09:02:10.000Z"
+        },
+        {
+          "id": "art-wiki-digest",
+          "name": "wiki-digest-2026-05-20.md",
+          "mime": "text/markdown",
+          "bytes": 6144,
+          "chatId": "chat-wiki-digest",
+          "createdAt": "2026-05-20T09:04:12.000Z"
+        }
+      ],
+      "exec": {
+        "defaultStdout": "$ cat ~/.agent-machines/MEMORY.md | wc -l\n142\n$ ls artifacts/\nMEMORY.md  wiki-digest-2026-05-20.md\n"
+      },
+      "usage": {
+        "scale": 0.45,
+        "transitions": [
+          {
+            "label": "Machine provisioned",
+            "timestamp": "2026-05-14T16:00:00.000Z"
+          },
+          {
+            "label": "Bootstrap succeeded",
+            "timestamp": "2026-05-14T16:00:30.000Z"
+          },
+          {
+            "label": "Daily wiki digest completed",
+            "timestamp": "2026-05-20T09:04:12.000Z"
+          }
+        ],
+        "bucketDays": 7
+      },
+      "machineSummary": {
+        "phase": "running",
+        "desired": "running",
+        "vcpu": 1,
+        "memoryMib": 2048,
+        "storageGib": 10
+      }
+    },
+    "demo-ops": {
+      "headline": "Hourly health check — API regression",
+      "starterPrompts": [
+        {
+          "label": "Health check",
+          "prompt": "Summarize the last hourly health check run"
+        }
+      ],
+      "chats": [
+        {
+          "id": "chat-cron-health",
+          "title": "Hourly health check summary",
+          "machineId": "demo-ops",
+          "model": "anthropic/claude-sonnet-4-6",
+          "createdAt": "2026-05-20T03:12:00.000Z",
+          "updatedAt": "2026-05-20T03:12:18.000Z",
+          "messageCount": 2,
+          "messages": [
+            {
+              "id": "cch-u1",
+              "role": "user",
+              "content": "Run hourly health check and open an issue if anything fails",
+              "createdAt": 1779246720000
+            },
+            {
+              "id": "cch-a1",
+              "role": "assistant",
+              "content": "## Hourly health check\n\n`GET /api/health` returned **502**.\n\nOpened GitHub issue **#847**. Run cost: **$0.04**.\n\nLog: `artifacts/cron-hourly-health-check.log`.",
+              "createdAt": 1779246840000,
+              "durationMs": 120000
+            }
+          ]
+        }
+      ],
+      "sessions": {
+        "sessions": [
+          {
+            "id": "sess-cron-health",
+            "preview": "cron: hourly-health-check — API regression",
+            "updatedAt": "2026-05-20T03:12:18.000Z",
+            "bytes": 89120
+          }
+        ],
+        "totalSessions": 1,
+        "totalBytes": 89120,
+        "dbPath": "~/.agent-machines/sessions/"
+      },
+      "logs": {
+        "lines": [
+          {
+            "at": "2026-05-20T03:12:01.000Z",
+            "level": "info",
+            "source": "cron",
+            "message": "hourly-health-check triggered — waking machine"
+          },
+          {
+            "at": "2026-05-20T03:12:03.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "skill loaded: dedalus-machines"
+          },
+          {
+            "at": "2026-05-20T03:12:08.000Z",
+            "level": "warn",
+            "source": "agent",
+            "message": "GET /api/health returned 502 — endpoint regression detected"
+          },
+          {
+            "at": "2026-05-20T03:12:14.000Z",
+            "level": "info",
+            "source": "github",
+            "message": "opened issue #847 — API health check failing on /api/health"
+          },
+          {
+            "at": "2026-05-20T03:12:18.000Z",
+            "level": "info",
+            "source": "cron",
+            "message": "run complete — cost $0.04 — machine returned to sleep"
+          }
+        ],
+        "files": [
+          {
+            "path": "~/.agent-machines/logs/cron-hourly-health-check.log",
+            "bytes": 4096
+          }
+        ],
+        "tailLines": 5
+      },
+      "cursor": {
+        "runs": [
+          {
+            "loggedAt": "2026-05-20T03:12:10.000Z",
+            "kind": "one_shot",
+            "agentId": "cursor-ops-1",
+            "runId": "run-health-fix",
+            "status": "completed",
+            "durationMs": 52000,
+            "model": "claude-sonnet-4-6",
+            "workingDir": "/home/machine/Agent-Machines/web",
+            "loadedSkills": [
+              "gstack-qa"
+            ],
+            "prompt": "Investigate GET /api/health 502 regression",
+            "finalText": "Root cause: upstream timeout — opened GitHub issue #847."
+          }
+        ],
+        "totalRuns": 1,
+        "logPath": "~/.agent-machines/cursor-runs.jsonl"
+      },
+      "artifacts": [
+        {
+          "id": "art-health-log",
+          "name": "cron-hourly-health-check.log",
+          "mime": "text/plain",
+          "bytes": 4096,
+          "chatId": "chat-cron-health",
+          "createdAt": "2026-05-20T03:12:18.000Z"
+        }
+      ],
+      "exec": {
+        "defaultStdout": "$ curl -s -o /dev/null -w '%{http_code}' localhost:3210/api/health\n502\n$ gh issue view 847 --json title\n{\"title\":\"API health check failing on /api/health\"}\n"
+      },
+      "usage": {
+        "scale": 0.2571428571428571,
+        "transitions": [
+          {
+            "label": "Machine provisioned",
+            "timestamp": "2026-05-17T16:00:00.000Z"
+          },
+          {
+            "label": "Bootstrap succeeded",
+            "timestamp": "2026-05-17T16:00:30.000Z"
+          },
+          {
+            "label": "Hourly health check — issue #847 opened",
+            "timestamp": "2026-05-20T03:12:18.000Z"
+          }
+        ],
+        "bucketDays": 7
+      },
+      "machineSummary": {
+        "phase": "running",
+        "desired": "running",
+        "vcpu": 1,
+        "memoryMib": 2048,
+        "storageGib": 10
+      }
+    }
+  }
+}

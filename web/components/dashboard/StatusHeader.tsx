@@ -8,6 +8,7 @@ import { BrandMark } from "@/components/BrandMark";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
+import { withMachineId } from "@/lib/demo/api-url";
 import { usePathname } from "next/navigation";
 
 import type {
@@ -45,9 +46,10 @@ type State = {
 export function StatusHeader({ agentKind, activeMachineId, machines }: Props) {
 	const pathname = usePathname();
 	const machineMatch = MACHINE_PATH_RE.exec(pathname);
-	const machine = machineMatch
+	const urlMachine = machineMatch
 		? machines?.find((m) => m.id === machineMatch[1])
 		: undefined;
+	const scopedMachineId = urlMachine?.id ?? activeMachineId ?? null;
 	const [state, setState] = useState<State>({
 		machine: null,
 		gateway: null,
@@ -60,7 +62,9 @@ export function StatusHeader({ agentKind, activeMachineId, machines }: Props) {
 		async function tick() {
 			try {
 				const [m, g] = await Promise.all([
-					fetch("/api/dashboard/machine", { cache: "no-store" }).then((r) =>
+					fetch(withMachineId("/api/dashboard/machine", scopedMachineId), {
+						cache: "no-store",
+					}).then((r) =>
 						r.ok ? (r.json() as Promise<MachineSummary>) : null,
 					),
 					fetch("/api/dashboard/gateway", { cache: "no-store" }).then((r) =>
@@ -90,7 +94,7 @@ export function StatusHeader({ agentKind, activeMachineId, machines }: Props) {
 			window.clearInterval(interval);
 			document.removeEventListener("visibilitychange", onVisible);
 		};
-	}, []);
+	}, [scopedMachineId]);
 
 	const machinePhase = state.machine?.phase ?? "loading";
 	const gateway = state.gateway;
@@ -114,7 +118,7 @@ export function StatusHeader({ agentKind, activeMachineId, machines }: Props) {
 					</span>
 				</Link>
 				<span className="text-[var(--ret-text-muted)]">/</span>
-				{machine ? (
+				{urlMachine ? (
 					<>
 						<Link
 							href="/dashboard/machines"
@@ -124,13 +128,13 @@ export function StatusHeader({ agentKind, activeMachineId, machines }: Props) {
 						</Link>
 						<span className="hidden text-[var(--ret-text-muted)] md:inline">/</span>
 						<span className="hidden font-mono text-[11px] text-[var(--ret-text)] md:inline truncate max-w-[120px]">
-							{machine.name}
+							{urlMachine.name}
 						</span>
 						<span className="text-[var(--ret-text-muted)]">/</span>
 					</>
 				) : null}
 				<StatusPill phase={machinePhase} />
-				{!machine && state.machine ? (
+				{!urlMachine && state.machine ? (
 					<span className="hidden font-mono text-[11px] text-[var(--ret-text-muted)] md:inline">
 						{state.machine.machineId.slice(0, 18)}
 					</span>

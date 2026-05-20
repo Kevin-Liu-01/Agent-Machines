@@ -28,6 +28,7 @@ import { ensureUser, getUserConfig as sbGetUserConfig, updateUserConfigColumns, 
 
 import { getDevUserConfig, setDevUserConfig } from "./dev-store";
 import { getEffectiveUserId, isDevUserId } from "./identity";
+import { isDemoMode } from "@/lib/demo/mode";
 import {
 	BOOTSTRAP_PHASES,
 	DEFAULT_MACHINE_SPEC,
@@ -593,6 +594,10 @@ function buildConfigFromSupabase(
 }
 
 export async function getUserConfigById(userId: string): Promise<UserConfig> {
+	if (isDemoMode()) {
+		const { getDemoUserConfig } = await import("@/lib/demo/state");
+		return getDemoUserConfig();
+	}
 	if (isDevUserId(userId)) return getDevUserConfig();
 	const client = await clerkClient();
 	const user = await client.users.getUser(userId);
@@ -871,6 +876,10 @@ export async function setUserConfigById(
 	userId: string,
 	patch: ConfigPatch,
 ): Promise<UserConfig> {
+	if (isDemoMode()) {
+		const { applyDemoConfigPatch } = await import("@/lib/demo/state");
+		return applyDemoConfigPatch(patch);
+	}
 	if (isDevUserId(userId)) return setDevUserConfig(patch);
 	const client = await clerkClient();
 	const user = await client.users.getUser(userId);

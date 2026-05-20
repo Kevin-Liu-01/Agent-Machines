@@ -20,6 +20,7 @@ export default async function OverviewPage() {
 	let needsOnboarding = false;
 	let agentKind: AgentKind = "hermes";
 	let model: string | null = null;
+	let activeMachineId: string | null = null;
 	try {
 		const config = await getUserConfig();
 		needsOnboarding = !config.machines.some((m) => !m.archived);
@@ -31,6 +32,7 @@ export default async function OverviewPage() {
 			agentKind = config.draftAgentKind;
 			model = config.draftModel ?? null;
 		}
+		activeMachineId = config.activeMachineId;
 	} catch {
 		// Auth / config probe failed -- the layout will surface the right
 		// error; render the degraded overview below.
@@ -58,6 +60,7 @@ export default async function OverviewPage() {
 				}}
 				agentKind={agentKind}
 				model={model}
+				activeMachineId={activeMachineId}
 			/>
 		</div>
 	);

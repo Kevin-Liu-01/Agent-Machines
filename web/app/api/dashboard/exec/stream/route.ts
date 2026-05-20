@@ -16,6 +16,7 @@
  */
 
 import { execOnMachine, isMachineRunning } from "@/lib/dashboard/exec";
+import { isDemoMode, loadDemoHandlers } from "@/lib/demo/runtime";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 export const runtime = "nodejs";
@@ -60,6 +61,11 @@ export async function POST(request: Request): Promise<Response> {
 
 	const timeoutMs = clampTimeout(body.timeoutMs);
 	const machineId = body.machineId ?? undefined;
+
+	if (isDemoMode()) {
+		const { demoExecStreamResponse } = await loadDemoHandlers();
+		return demoExecStreamResponse({ command, machineId });
+	}
 
 	if (!(await isMachineRunning(machineId))) {
 		return Response.json(

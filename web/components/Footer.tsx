@@ -17,7 +17,7 @@ export function Footer() {
 								rel="noreferrer"
 								className="inline-flex items-center gap-1 hover:text-[var(--ret-text)]"
 							>
-								<Logo mark="dedalus" size={14} />
+								<Logo mark="am" size={14} />
 								<span>Dedalus</span>
 							</a>
 							<span>+</span>

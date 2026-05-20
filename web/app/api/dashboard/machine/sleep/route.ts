@@ -13,6 +13,7 @@
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import { sleepActiveMachine } from "@/lib/dashboard/active-machine";
+import { isDemoMode, loadDemoHandlers } from "@/lib/demo/runtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,6 +24,10 @@ export async function POST(): Promise<Response> {
 		const userId = await getEffectiveUserId();
 		if (!userId) {
 			return Response.json({ error: "unauthorized" }, { status: 401 });
+		}
+		if (isDemoMode()) {
+			const { demoWakeSleepResponse } = await loadDemoHandlers();
+			return demoWakeSleepResponse();
 		}
 		const summary = await sleepActiveMachine();
 		return Response.json(summary, {

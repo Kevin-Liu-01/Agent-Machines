@@ -38,7 +38,7 @@ import {
 	type MachineSpec,
 } from "@/lib/user-config/schema";
 
-const MARK_SET = new Set<string>(["dedalus", "nous", "cursor", "openclaw", "anthropic", "openai"]);
+const MARK_SET = new Set<string>(["am", "nous", "cursor", "openclaw", "anthropic", "openai"]);
 function isMark(value: string): value is Mark { return MARK_SET.has(value); }
 
 type Defaults = {
@@ -551,22 +551,9 @@ export function OnboardingFlow({
 				<aside className="relative hidden overflow-hidden bg-[var(--ret-bg-soft)] lg:block">
 					<div
 						aria-hidden="true"
-						className="pointer-events-none absolute -right-16 -top-16 h-[420px] w-[420px] opacity-[0.07] dark:opacity-[0.10]"
+						className="pointer-events-none absolute -right-8 -top-8 flex h-[420px] w-[420px] items-start justify-end opacity-[0.07] dark:opacity-[0.10]"
 					>
-						<Image
-							src="/brand/wing-mark.png"
-							alt=""
-							fill
-							sizes="420px"
-							className="object-contain object-right-top dark:hidden"
-						/>
-						<Image
-							src="/brand/wing-mark-dark.png"
-							alt=""
-							fill
-							sizes="420px"
-							className="hidden object-contain object-right-top dark:block"
-						/>
+						<Logo mark="am" size={360} tone="auto" />
 					</div>
 					<RigPreview
 						agent={agent}

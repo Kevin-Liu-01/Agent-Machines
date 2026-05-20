@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { cn } from "@/lib/cn";
+import { withMachineId } from "@/lib/demo/api-url";
 import type {
 	GatewaySummary,
 	LiveDataEnvelope,
@@ -103,7 +104,7 @@ const PHASE_LABEL: Record<string, string> = {
 	unknown: "Unknown",
 };
 
-export function FleetMetrics() {
+export function FleetMetrics({ activeMachineId }: { activeMachineId?: string | null }) {
 	const [machines, setMachines] = useState<LiveMachine[]>([]);
 	const [logs, setLogs] = useState<LogLine[]>([]);
 	const [latencyHistory, setLatencyHistory] = useState<LatencySample[]>([]);
@@ -123,7 +124,9 @@ export function FleetMetrics() {
 					: fetch("/api/dashboard/gateway", { cache: "no-store" }).catch(() => null),
 				logsDeadRef.current
 					? Promise.resolve(null)
-					: fetch("/api/dashboard/logs?n=500", { cache: "no-store" }).catch(() => null),
+					: fetch(withMachineId("/api/dashboard/logs?n=500", activeMachineId), {
+							cache: "no-store",
+						}).catch(() => null),
 			]);
 
 			if (gatewayRaw?.status === 404) gatewayDeadRef.current = true;
@@ -186,7 +189,7 @@ export function FleetMetrics() {
 		} catch {
 			// transient -- next tick will retry
 		}
-	}, []);
+	}, [activeMachineId]);
 
 	useEffect(() => {
 		void tick();

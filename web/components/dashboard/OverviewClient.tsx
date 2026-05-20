@@ -32,18 +32,12 @@ type CountInfo = { skills: number; mcps: number; tools: number; crons: number };
 type Props = {
 	counts: CountInfo;
 	agentKind: import("@/lib/user-config/schema").AgentKind;
-	/** Model slug from the active machine record. Falls back to the
-	 *  gateway probe's reported model when null. */
 	model: string | null;
+	activeMachineId: string | null;
 };
 
-/**
- * Client-side overview body. Owns machine state via `useMachineControl`
- * (auto-wakes a sleeping machine on first load, exposes wake / sleep
- * actions) and polls the gateway probe alongside it.
- */
-export function OverviewClient({ counts, agentKind, model }: Props) {
-	const machine = useMachineControl();
+export function OverviewClient({ counts, agentKind, model, activeMachineId }: Props) {
+	const machine = useMachineControl(activeMachineId);
 	const [gateway, setGateway] = useState<GatewaySummary | null>(null);
 	const [stamp, setStamp] = useState<number | null>(null);
 
@@ -107,7 +101,7 @@ export function OverviewClient({ counts, agentKind, model }: Props) {
 				<FleetMonitor />
 				<ReticleFrame className="p-6">
 					<div className="flex flex-col items-center gap-4 py-8 text-center">
-						<Logo mark="dedalus" size={28} />
+						<Logo mark="am" size={28} />
 						<h2 className="ret-display text-lg">No active machine</h2>
 						<p className="max-w-[48ch] text-[13px] text-[var(--ret-text-dim)]">
 							No machine is provisioned on this account. Use the fleet monitor
@@ -146,7 +140,7 @@ export function OverviewClient({ counts, agentKind, model }: Props) {
 			  operator a "everything at a glance" view of fleet
 			  health before drilling into any single machine.
 			*/}
-			<FleetMetrics />
+			<FleetMetrics activeMachineId={activeMachineId} />
 
 			<section className="grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[1fr_1fr_1fr]">
 				<DashboardBento
@@ -197,7 +191,7 @@ export function OverviewClient({ counts, agentKind, model }: Props) {
 			<section className="grid grid-cols-2 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] md:grid-cols-3 xl:grid-cols-6">
 				<MetricCard
 					label="machine"
-					icon={<Logo mark="dedalus" size={11} />}
+					icon={<Logo mark="am" size={11} />}
 					value={<StatusPill phase={phase} className="text-[11px] px-2 py-0.5" />}
 					hint={
 						machine.machine
@@ -305,9 +299,10 @@ export function OverviewClient({ counts, agentKind, model }: Props) {
 				agentKind={agentKind}
 				modelOverride={model}
 				machineSummary={machine.machine}
+				activeMachineId={activeMachineId}
 			/>
 
-			<MetricsChartPanel />
+			<MetricsChartPanel activeMachineId={activeMachineId} />
 
 			<ReloadKnowledge machinePhase={phase} />
 

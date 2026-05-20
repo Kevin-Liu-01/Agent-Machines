@@ -20,9 +20,10 @@ import {
 	type PartnerKey,
 } from "@/lib/contribution-data";
 
-const PARTNER_MARKS = new Set<Mark>(["dedalus", "nous", "cursor", "openclaw"]);
+const PARTNER_MARKS = new Set<Mark>(["am", "nous", "cursor", "openclaw"]);
 
 const PARTNER_HUE: Record<PartnerKey, string> = {
+	am: "var(--ret-purple)",
 	dedalus: "var(--ret-purple)",
 	nous: "#7c8cf8",
 	cursor: "#f5c542",
@@ -36,6 +37,7 @@ const PARTNER_HUE: Record<PartnerKey, string> = {
 };
 
 const PARTNER_LABEL: Record<PartnerKey, string> = {
+	am: "agent-machines",
 	dedalus: "dedalus",
 	nous: "nous",
 	cursor: "cursor",
@@ -49,8 +51,9 @@ const PARTNER_LABEL: Record<PartnerKey, string> = {
 };
 
 const LOGO_PARTNERS = new Set<PartnerKey>(["dedalus", "nous", "cursor", "openclaw"]);
-const LOGO_MARK: Record<string, Mark> = {
-	dedalus: "dedalus",
+const LOGO_MARK: Partial<Record<PartnerKey, Mark>> = {
+	dedalus: "am",
+	am: "am",
 	nous: "nous",
 	cursor: "cursor",
 	openclaw: "openclaw",
@@ -279,6 +282,7 @@ export function ContributionGrid() {
 
 	const partnerCounts = useMemo(() => {
 		const counts: Record<PartnerKey, number> = {
+			am: 0,
 			dedalus: 0,
 			nous: 0,
 			cursor: 0,

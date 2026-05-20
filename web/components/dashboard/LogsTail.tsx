@@ -66,7 +66,7 @@ export function LogsTail() {
 			stopped = true;
 			window.clearInterval(interval);
 		};
-	}, []);
+	}, [machineId]);
 
 	useEffect(() => {
 		if (!follow) return;

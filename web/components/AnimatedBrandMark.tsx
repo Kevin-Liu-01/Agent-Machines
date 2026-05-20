@@ -70,7 +70,7 @@ export function AnimatedBrandMark({ size = 20, className }: Props) {
 			onMouseEnter={() => setHovered(true)}
 			onMouseLeave={() => setHovered(false)}
 		>
-			<Logo mark="dedalus" size={Math.round(size * 1.2)} />
+			<Logo mark="am" size={Math.round(size * 1.2)} />
 			<span className="font-mono text-[0.7em] text-[var(--ret-text-muted)]">
 				{"\u00d7"}
 			</span>

@@ -512,8 +512,14 @@ export function HeroBlock() {
 				<Cell action="reading project metadata..." agent={agent} hue={hue} className="col-span-3 !border-b-0 flex items-center" hoverVisual={<HoverGradient color={hue} />}>
 					<div className="flex flex-wrap items-center gap-2 px-5 py-4">
 						<ReticleLabel>DEVELOPED BY</ReticleLabel>
-						<ReticleBadge variant="accent">KEVIN LIU</ReticleBadge>
-						<ReticleBadge>DEDALUS LABS</ReticleBadge>
+						<a
+							href="https://kevin-liu.tech"
+							target="_blank"
+							rel="noreferrer"
+							className="inline-flex transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-purple)]"
+						>
+							<ReticleBadge variant="accent">KEVIN LIU</ReticleBadge>
+						</a>
 					</div>
 				</Cell>
 				<Cell action="git push origin main" agent={agent} hue={hue} className="hidden !border-b-0 md:block" hoverVisual={<HoverHatch color={hue} />} cellAgent={CELL_AGENTS[2]} toolIcon="shell">

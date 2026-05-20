@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { MachineSummary } from "@/lib/dashboard/types";
+import { withMachineId } from "@/lib/demo/api-url";
+import { isDemoModePublic } from "@/lib/demo/mode";
 
 const POLL_RUNNING_MS = 5000;
 const POLL_TRANSITION_MS = 2000;
@@ -33,7 +35,9 @@ export type ControlState = {
  * clicks Sleep we don't auto-wake again -- otherwise the dashboard
  * would fight the user's intent every poll.
  */
-export function useMachineControl(): ControlState & {
+export function useMachineControl(
+	activeMachineId?: string | null,
+): ControlState & {
 	wake: () => Promise<void>;
 	sleep: () => Promise<void>;
 } {
@@ -50,7 +54,9 @@ export function useMachineControl(): ControlState & {
 	const stoppedRef = useRef(false);
 
 	const fetchSummary = useCallback(async (): Promise<MachineSummary | null> => {
-		const response = await fetch("/api/dashboard/machine", { cache: "no-store" });
+		const response = await fetch(withMachineId("/api/dashboard/machine", activeMachineId), {
+			cache: "no-store",
+		});
 		if (response.status === 404) {
 			stoppedRef.current = true;
 			setState((prev) => ({ ...prev, error: "not_provisioned", machine: null, pending: null, notProvisioned: true }));
@@ -58,7 +64,7 @@ export function useMachineControl(): ControlState & {
 		}
 		if (!response.ok) return null;
 		return (await response.json()) as MachineSummary;
-	}, []);
+	}, [activeMachineId]);
 
 	const submitTransition = useCallback(
 		async (kind: "wake" | "sleep") => {
@@ -96,6 +102,13 @@ export function useMachineControl(): ControlState & {
 
 	useEffect(() => {
 		stoppedRef.current = false;
+		setState({
+			machine: null,
+			error: null,
+			pending: null,
+			autoWokeOnce: false,
+			notProvisioned: false,
+		});
 		let timer: number | null = null;
 
 		const tick = async () => {
@@ -109,6 +122,7 @@ export function useMachineControl(): ControlState & {
 				const phase = summary?.phase;
 
 				if (
+					!isDemoModePublic() &&
 					!prev.autoWokeOnce &&
 					!userSleptRef.current &&
 					phase === "sleeping"
@@ -147,9 +161,8 @@ export function useMachineControl(): ControlState & {
 			stoppedRef.current = true;
 			if (timer !== null) window.clearTimeout(timer);
 		};
-		// fetchSummary + wake are stable callbacks; effect runs once on mount.
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []);
+		// Refetch when the active machine changes (demo switcher / router.refresh).
+	}, [activeMachineId, fetchSummary, wake]);
 
 	return { ...state, wake, sleep };
 }

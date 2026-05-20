@@ -52,7 +52,7 @@ const SPECS: ReadonlyArray<{
 ];
 
 type StackIcon =
-	| { kind: "logo"; mark: "dedalus" | "cursor" | "nous" | "openclaw" }
+	| { kind: "logo"; mark: "am" | "cursor" | "nous" | "openclaw" }
 	| { kind: "service"; slug: ServiceSlug };
 
 type ServiceEntry = {
@@ -82,7 +82,7 @@ const FEATURES: ReadonlyArray<Feature> = [
 		services: [
 			{
 				id: "dedalus",
-				icon: { kind: "logo", mark: "dedalus" },
+				icon: { kind: "logo", mark: "am" },
 				name: "Dedalus Machines",
 				role: "Persistent VMs that sleep on idle and wake on demand",
 				href: "https://docs.dedaluslabs.ai/dcs",

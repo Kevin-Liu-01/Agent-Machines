@@ -222,8 +222,8 @@ export function ShowcaseAttribution() {
 		<div className="mt-5 flex flex-wrap items-center gap-3 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 			<span>built with</span>
 			<span className="flex items-center gap-1.5">
-				<Logo mark="dedalus" size={14} />
-				dedalus
+				<Logo mark="am" size={14} />
+				am
 			</span>
 			<span>+</span>
 			<span className="flex items-center gap-1.5">

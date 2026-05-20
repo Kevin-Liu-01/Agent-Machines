@@ -166,7 +166,7 @@ function GatewayDiagram() {
 				<Logo mark="nous" size={14} />
 				<Logo mark="openclaw" size={14} />
 				<ServiceIcon slug="cloudflare" size={14} />
-				<Logo mark="dedalus" size={14} />
+				<Logo mark="am" size={14} />
 			</div>
 		</div>
 	);

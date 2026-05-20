@@ -13,6 +13,7 @@ import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/cn";
+import { isDemoModePublic } from "@/lib/demo/mode";
 import type { ProviderCapabilities } from "@/lib/providers";
 import {
 	AGENT_KINDS,
@@ -79,8 +80,8 @@ const STATE_TONE: Record<string, "ok" | "warn" | "info" | "muted"> = {
 	unknown: "muted",
 };
 
-const PROVIDER_MARK: Record<ProviderKind, "dedalus" | "e2b" | "sprites" | null> = {
-	dedalus: "dedalus",
+const PROVIDER_MARK: Record<ProviderKind, "am" | "e2b" | "sprites" | null> = {
+	dedalus: "am",
 	e2b: "e2b",
 	sprites: "sprites",
 };
@@ -139,6 +140,9 @@ export function FleetMonitor() {
 				provider: input.provider,
 			});
 			try {
+				if (isDemoModePublic()) {
+					await new Promise((r) => setTimeout(r, 1200));
+				}
 				const response = await fetch(
 					"/api/dashboard/admin/provision-machine",
 					{
@@ -169,6 +173,11 @@ export function FleetMonitor() {
 					message: body.message ?? "Provisioned. Bootstrapping...",
 				});
 				await refresh();
+				if (isDemoModePublic()) {
+					for (const delay of [800, 1600, 2400, 3200, 4000]) {
+						window.setTimeout(() => void refresh(), delay);
+					}
+				}
 				// Trigger bootstrap in background after provision
 				fetch("/api/dashboard/admin/bootstrap", {
 					method: "POST",
@@ -180,7 +189,7 @@ export function FleetMonitor() {
 				window.setTimeout(() => {
 					setShowForm(false);
 					setSpawn({ phase: "idle" });
-				}, 2200);
+				}, isDemoModePublic() ? 4200 : 2200);
 			} catch (err) {
 				setSpawn({
 					phase: "error",

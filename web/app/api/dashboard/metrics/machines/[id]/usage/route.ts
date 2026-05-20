@@ -2,6 +2,7 @@ import { type NextRequest } from "next/server";
 
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 import { supabaseAdmin } from "@/lib/supabase/client";
+import { isDemoMode, loadDemoHandlers } from "@/lib/demo/runtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,6 +15,16 @@ export async function GET(
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
 	const { id: machineId } = await params;
+	const days = Math.min(
+		90,
+		Math.max(1, Number(_request.nextUrl.searchParams.get("days") ?? 7)),
+	);
+
+	if (isDemoMode()) {
+		const { demoMachineUsageResponse } = await loadDemoHandlers();
+		return demoMachineUsageResponse(machineId, days);
+	}
+
 	const sb = supabaseAdmin();
 
 	const [dailyRes, metricsRes, transitionsRes] = await Promise.all([

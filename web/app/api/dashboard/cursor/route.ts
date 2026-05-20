@@ -19,6 +19,8 @@ import type {
 	LiveDataEnvelope,
 } from "@/lib/dashboard/types";
 
+import { isDemoMode, loadDemoHandlers } from "@/lib/demo/runtime";
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -57,6 +59,19 @@ export async function GET(request: Request): Promise<Response> {
 	}
 
 	const machineId = new URL(request.url).searchParams.get("machineId") ?? undefined;
+
+	if (isDemoMode()) {
+		const demo = await loadDemoHandlers();
+		if (!demo.isDemoMachineReady(machineId)) {
+			const envelope: LiveDataEnvelope<CursorRunsPayload> = {
+				ok: false,
+				reason: "machine_offline",
+				message: "Machine is starting. Refresh in a few seconds.",
+			};
+			return Response.json(envelope);
+		}
+		return demo.demoCursorResponse(machineId);
+	}
 
 	if (!(await isMachineRunning(machineId))) {
 		const envelope: LiveDataEnvelope<CursorRunsPayload> = {

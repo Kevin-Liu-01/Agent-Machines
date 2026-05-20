@@ -15,13 +15,13 @@ type Props = {
 	 * dashboard StatusHeader passes the *active* agent (`hermes` or
 	 * `openclaw`) so the lockup tracks the live machine.
 	 *
-	 *   - "hermes"   -> Dedalus mark x Nous mark
-	 *   - "openclaw" -> Dedalus mark x OpenClaw mark
-	 *   - "both"     -> Dedalus mark x Nous mark + OpenClaw mark
+	 *   - "hermes"   -> Agent Machines mark x Nous mark
+	 *   - "openclaw" -> Agent Machines mark x OpenClaw mark
+	 *   - "both"     -> Agent Machines mark x Nous mark + OpenClaw mark
 	 *
-	 * The Dedalus mark is always present because Dedalus runs the
-	 * machine; the right side identifies the agent personality (or
-	 * personalities, in `both` mode).
+	 * The Agent Machines mark is always present as the runtime host;
+	 * the right side identifies the agent personality (or personalities,
+	 * in `both` mode).
 	 */
 	agent?: Variant;
 };
@@ -34,11 +34,11 @@ const SECONDARY_MARK: Record<AgentKind, "nous" | "openclaw" | "anthropic" | "ope
 };
 
 /**
- * Lockup of the Dedalus mark x the agent's mark separated by a thin "x".
+ * Lockup of the Agent Machines mark x the agent's mark separated by a thin "x".
  * Used in the public landing navbar, the dashboard status header, and
  * the sign-in card so the collaboration is the first thing a visitor sees:
- * agent-machines is the binding between Dedalus's VM runtime and an
- * agent personality (Hermes by default, OpenClaw as an alternative).
+ * agent-machines is the binding between the VM runtime and an agent
+ * personality (Hermes by default, OpenClaw as an alternative).
  */
 export function BrandMark({
 	size = 22,
@@ -55,7 +55,7 @@ export function BrandMark({
 				className,
 			)}
 		>
-			<Logo mark="dedalus" size={Math.round(size * 1.2)} />
+			<Logo mark="am" size={Math.round(size * 1.2)} />
 			<span
 				aria-hidden="true"
 				className="font-mono text-[0.7em] text-[var(--ret-text-muted)]"

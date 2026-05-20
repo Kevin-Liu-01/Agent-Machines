@@ -59,6 +59,7 @@ const FLEET_CONFIG_ITEMS: ReadonlyArray<NavItem> = [
 	{ href: "/dashboard/registry", label: "Registry", icon: IconStore, badge: "new" },
 	{ href: "/dashboard/skills", label: "Skills", icon: IconScroll },
 	{ href: "/dashboard/mcps", label: "MCPs", icon: IconPlug },
+	{ href: "/dashboard/cron", label: "Cron", icon: IconClock },
 ];
 
 const SETUP_ITEM: NavItem = {
@@ -330,6 +331,15 @@ function IconBolt(props: SVGProps<SVGSVGElement>) {
 	return (
 		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" {...props}>
 			<path d="M9 2 L4 9 h4 l-1 5 l5 -7 h-4 z" />
+		</svg>
+	);
+}
+
+function IconClock(props: SVGProps<SVGSVGElement>) {
+	return (
+		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
+			<circle cx="8" cy="8" r="5.5" />
+			<path d="M8 5v3.5l2 1.5" />
 		</svg>
 	);
 }

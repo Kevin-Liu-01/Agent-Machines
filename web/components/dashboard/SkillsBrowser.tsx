@@ -16,7 +16,7 @@ import type { SkillSummary } from "@/lib/dashboard/types";
  */
 const SKILL_BRAND: Record<string, Mark> = {
 	"cursor-coding": "cursor",
-	"dedalus-machines": "dedalus",
+	"dedalus-machines": "am",
 };
 
 /**

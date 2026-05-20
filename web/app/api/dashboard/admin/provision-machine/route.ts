@@ -33,6 +33,7 @@ import {
 	type MachineSpec,
 	type ProviderKind,
 } from "@/lib/user-config/schema";
+import { isDemoMode, loadDemoHandlers } from "@/lib/demo/runtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -85,6 +86,11 @@ export async function POST(request: Request): Promise<Response> {
 		body = (parsed ?? {}) as Body;
 	} catch {
 		body = {};
+	}
+
+	if (isDemoMode()) {
+		const { demoProvisionResponse } = await loadDemoHandlers();
+		return demoProvisionResponse(body);
 	}
 
 	let config: Awaited<ReturnType<typeof getUserConfig>>;

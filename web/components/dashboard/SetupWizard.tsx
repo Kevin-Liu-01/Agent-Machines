@@ -10,6 +10,7 @@ import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { cn } from "@/lib/cn";
+import { isDemoModePublic } from "@/lib/demo/mode";
 import {
 	AGENT_KINDS,
 	DEFAULT_MACHINE_SPEC,
@@ -48,7 +49,7 @@ const STEPS: ReadonlyArray<StepDef> = [
 
 const AGENTS_DESC: Record<
 	AgentKind,
-	{ name: string; tagline: string; logo: "nous" | "dedalus" | "anthropic" | "openai" }
+	{ name: string; tagline: string; logo: "nous" | "am" | "anthropic" | "openai" }
 > = {
 	hermes: {
 		name: "Hermes",
@@ -161,6 +162,9 @@ export function SetupWizard({ initialConfig, defaults }: Props) {
 		setBusy(true);
 		setError(null);
 		try {
+			if (isDemoModePublic()) {
+				await new Promise((resolve) => setTimeout(resolve, 2800));
+			}
 			const response = await fetch(
 				"/api/dashboard/admin/provision-machine",
 				{

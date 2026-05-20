@@ -74,6 +74,8 @@ export const DashboardBarChart = memo(function DashboardBarChart({
 					tickLine={false}
 					axisLine={false}
 					tickFormatter={yFormatter}
+					allowDecimals={false}
+					domain={[0, (max: number) => Math.max(max, 1)]}
 				/>
 				<Tooltip
 					cursor={{ fill: "var(--ret-bg-soft)", opacity: 0.5 }}
@@ -88,7 +90,8 @@ export const DashboardBarChart = memo(function DashboardBarChart({
 				labelFormatter={(label) => xFormatter ? xFormatter(String(label)) : String(label)}
 				formatter={(value: unknown) => {
 					const v = Number(value);
-					return yFormatter ? [yFormatter(v), dataKey] : [v, dataKey];
+					const label = yFormatter ? yFormatter(v) : String(v);
+					return [label, "created"];
 				}}
 				/>
 				<Bar

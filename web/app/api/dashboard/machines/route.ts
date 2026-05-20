@@ -12,6 +12,7 @@
 
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
+import { isDemoMode, loadDemoHandlers } from "@/lib/demo/runtime";
 import {
 	MachineProviderError,
 	getProvider,
@@ -41,6 +42,11 @@ export async function GET(): Promise<Response> {
 	const userId = await getEffectiveUserId();
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
+	}
+
+	if (isDemoMode()) {
+		const { demoMachinesResponse } = await loadDemoHandlers();
+		return demoMachinesResponse();
 	}
 
 	const config = await getUserConfig();

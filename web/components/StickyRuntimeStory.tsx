@@ -139,7 +139,7 @@ function StageMeta({ index }: { index: number }) {
 	if (index === 1) {
 		return (
 			<div className="mt-6 flex items-center gap-2">
-				<Logo mark="dedalus" size={18} />
+				<Logo mark="am" size={18} />
 				<ServiceIcon slug="vercel" size={16} tone="color" />
 				<span className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					+ fly machines
@@ -174,7 +174,7 @@ function StageMeta({ index }: { index: number }) {
 	}
 	return (
 		<div className="mt-6 flex items-center gap-2">
-			<Logo mark={index === 0 ? "dedalus" : "agent"} size={18} />
+			<Logo mark={index === 0 ? "am" : "agent"} size={18} />
 			<span className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 				persistent agent lane
 			</span>
@@ -275,7 +275,7 @@ function ProviderComparisonDiagram() {
 						))}
 					</ul>
 					<div className="mt-3">
-						{p.name === "Dedalus" ? <Logo mark="dedalus" size={14} /> : null}
+						{p.name === "Dedalus" ? <Logo mark="am" size={14} /> : null}
 						{p.name === "Sandbox" ? <ServiceIcon slug="vercel" size={14} /> : null}
 					</div>
 				</div>

@@ -37,7 +37,7 @@ const STEPS: ReadonlyArray<Step> = [
 			["Full machine lifecycle: ", "wake · sleep · destroy"],
 			["Persistent state in ", "/home/machine/.agent-machines"],
 		],
-		poweredBy: [{ name: "Dedalus", mark: "dedalus" }],
+		poweredBy: [{ name: "Dedalus", mark: "am" }],
 	},
 	{
 		id: "agent",
@@ -82,7 +82,7 @@ const STEPS: ReadonlyArray<Step> = [
 			["", "Fly", " — app + volume + machine"],
 			["", "Sandbox", " — ephemeral session execution"],
 		],
-		poweredBy: [{ name: "Dedalus", mark: "dedalus" }],
+		poweredBy: [{ name: "Dedalus", mark: "am" }],
 	},
 	{
 		id: "env",
@@ -96,7 +96,7 @@ const STEPS: ReadonlyArray<Step> = [
 			["Named variable sets with ", "env profiles"],
 			["Phase-tracked ", "bootstrap", " presets"],
 		],
-		poweredBy: [{ name: "Dedalus", mark: "dedalus" }],
+		poweredBy: [{ name: "Dedalus", mark: "am" }],
 	},
 ];
 

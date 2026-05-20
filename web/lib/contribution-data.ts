@@ -17,11 +17,11 @@ export type ContributionEvent = {
 		| "codegen";
 	label: string;
 	detail?: string;
-	brand?: ServiceSlug | "dedalus" | "nous" | "cursor" | "openclaw";
+	brand?: ServiceSlug | "am" | "nous" | "cursor" | "openclaw";
 	category?: ToolCategory;
 };
 
-export type PartnerKey = Mark | "claude-code" | "codex";
+export type PartnerKey = Mark | "dedalus" | "claude-code" | "codex";
 
 export type ContributionDay = {
 	date: string;
@@ -388,14 +388,14 @@ function buildDayEvents(
 					kind: "wake",
 					label: "machine woke",
 					detail: `${(rng() * 4 + 1.5).toFixed(1)}s . tunnel reused`,
-					brand: "dedalus",
+					brand: "am",
 				});
 			} else if (r < 0.7) {
 				events.push({
 					kind: "sleep",
 					label: "machine slept",
 					detail: `${Math.floor(rng() * 60 + 4)} min idle`,
-					brand: "dedalus",
+					brand: "am",
 				});
 			} else {
 				events.push({

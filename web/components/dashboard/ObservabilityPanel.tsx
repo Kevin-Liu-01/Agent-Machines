@@ -8,6 +8,7 @@ import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { cn } from "@/lib/cn";
 import { formatAge, formatBytes } from "@/lib/dashboard/format";
+import { withMachineId } from "@/lib/demo/api-url";
 import type {
 	CursorRunsPayload,
 	GatewaySummary,
@@ -68,12 +69,14 @@ type Props = {
 	agentKind: AgentKind;
 	modelOverride: string | null;
 	machineSummary: MachineSummary | null;
+	activeMachineId?: string | null;
 };
 
 export function ObservabilityPanel({
 	agentKind,
 	modelOverride,
 	machineSummary,
+	activeMachineId,
 }: Props) {
 	const [state, setState] = useState<ObservabilityState>({
 		gateway: null,
@@ -93,9 +96,15 @@ export function ObservabilityPanel({
 			try {
 				const [gwRes, logsRes, cursorRes, sessionsRes] = await Promise.all([
 					fetch("/api/dashboard/gateway", { cache: "no-store" }).catch(() => null),
-					fetch("/api/dashboard/logs?n=40", { cache: "no-store" }).catch(() => null),
-					fetch("/api/dashboard/cursor", { cache: "no-store" }).catch(() => null),
-					fetch("/api/dashboard/sessions", { cache: "no-store" }).catch(() => null),
+					fetch(withMachineId("/api/dashboard/logs?n=40", activeMachineId), {
+						cache: "no-store",
+					}).catch(() => null),
+					fetch(withMachineId("/api/dashboard/cursor", activeMachineId), {
+						cache: "no-store",
+					}).catch(() => null),
+					fetch(withMachineId("/api/dashboard/sessions", activeMachineId), {
+						cache: "no-store",
+					}).catch(() => null),
 				]);
 				if (stopped) return;
 
@@ -157,7 +166,7 @@ export function ObservabilityPanel({
 			stopped = true;
 			window.clearInterval(interval);
 		};
-	}, []);
+	}, [activeMachineId]);
 
 	return (
 		<div className="space-y-px">

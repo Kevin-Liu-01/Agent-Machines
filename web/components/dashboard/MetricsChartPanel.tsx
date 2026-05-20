@@ -20,6 +20,7 @@ import {
 } from "recharts";
 
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
+import { withMachineId } from "@/lib/demo/api-url";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import type {
 	GatewaySummary,
@@ -79,13 +80,11 @@ const AGENT_COLORS: Record<string, string> = {
 };
 
 type Props = {
-	/** Optional: when caller already polls these endpoints, pass the
-	 *  callback to wire shared cadence. Today nobody does, so the
-	 *  component polls itself on a 7s tick gated to tab visibility. */
 	pollMs?: number;
+	activeMachineId?: string | null;
 };
 
-export function MetricsChartPanel({ pollMs = POLL_MS }: Props) {
+export function MetricsChartPanel({ pollMs = POLL_MS, activeMachineId }: Props) {
 	const [gateway, setGateway] = useState<GatewaySummary | null>(null);
 	const [logs, setLogs] = useState<LogsPayload | null>(null);
 	const latencyRef = useRef<LatencySample[]>([]);
@@ -99,7 +98,9 @@ export function MetricsChartPanel({ pollMs = POLL_MS }: Props) {
 			try {
 				const [gwRes, logsRawRes] = await Promise.all([
 					fetch("/api/dashboard/gateway", { cache: "no-store" }).catch(() => null),
-					fetch("/api/dashboard/logs?n=200", { cache: "no-store" }).catch(() => null),
+					fetch(withMachineId("/api/dashboard/logs?n=200", activeMachineId), {
+						cache: "no-store",
+					}).catch(() => null),
 				]);
 				if (stopped) return;
 
@@ -141,7 +142,7 @@ export function MetricsChartPanel({ pollMs = POLL_MS }: Props) {
 			stopped = true;
 			window.clearInterval(interval);
 		};
-	}, [pollMs]);
+	}, [pollMs, activeMachineId]);
 
 	const latencyStats = useMemo(() => stats(latencyHistory), [latencyHistory]);
 	const buckets = useMemo(

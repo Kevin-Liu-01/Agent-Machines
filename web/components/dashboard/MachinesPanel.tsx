@@ -16,6 +16,7 @@ import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/cn";
+import { isDemoModePublic } from "@/lib/demo/mode";
 import type { ProviderCapabilities } from "@/lib/providers";
 import {
 	AGENT_LABEL,
@@ -72,9 +73,9 @@ const STATE_LABEL: Record<string, string> = {
 	unknown: "unknown",
 };
 
-const PROVIDER_LOGO: Record<ProviderKind, "dedalus" | "nous" | "cursor" | "e2b" | "sprites" | null> =
+const PROVIDER_LOGO: Record<ProviderKind, "am" | "nous" | "cursor" | "e2b" | "sprites" | null> =
 	{
-		dedalus: "dedalus",
+		dedalus: "am",
 		e2b: "e2b",
 		sprites: "sprites",
 	};
@@ -182,6 +183,7 @@ export function MachinesPanel() {
 
 			{showProvision ? (
 				<QuickProvisionForm
+					onRefresh={refresh}
 					onDone={() => {
 						setShowProvision(false);
 						void refresh();
@@ -590,9 +592,11 @@ function EditPanel({
 }
 
 function QuickProvisionForm({
+	onRefresh,
 	onDone,
 	onCancel,
 }: {
+	onRefresh: () => Promise<void>;
 	onDone: () => void;
 	onCancel: () => void;
 }) {
@@ -612,6 +616,9 @@ function QuickProvisionForm({
 		setErr(null);
 		setResult(null);
 		try {
+			if (isDemoModePublic()) {
+				await new Promise((r) => setTimeout(r, 1200));
+			}
 			const body = {
 				providerKind,
 				agentKind,
@@ -634,6 +641,7 @@ function QuickProvisionForm({
 			}
 			const machineId = data.machineId as string;
 			setResult(`Provisioned: ${machineId} -- bootstrapping...`);
+			void onRefresh();
 
 			// Trigger bootstrap automatically after provision
 			try {
@@ -651,7 +659,15 @@ function QuickProvisionForm({
 			} catch {
 				setResult(`Provisioned: ${machineId} (bootstrap pending)`);
 			}
-			setTimeout(onDone, 1500);
+
+			if (isDemoModePublic()) {
+				for (const delay of [800, 1600, 2400, 3200, 4000]) {
+					window.setTimeout(() => void onRefresh(), delay);
+				}
+				window.setTimeout(onDone, 4200);
+			} else {
+				window.setTimeout(onDone, 1500);
+			}
 		} catch (e) {
 			setErr(e instanceof Error ? e.message : "provision failed");
 		} finally {

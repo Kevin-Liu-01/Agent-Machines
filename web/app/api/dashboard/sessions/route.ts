@@ -17,6 +17,7 @@ import type {
 	SessionRecord,
 	SessionsPayload,
 } from "@/lib/dashboard/types";
+import { isDemoMode, loadDemoHandlers } from "@/lib/demo/runtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -61,6 +62,12 @@ export async function GET(request: Request): Promise<Response> {
 	const userId = await getEffectiveUserId();
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
+	}
+
+	if (isDemoMode()) {
+		const { demoSessionsResponse } = await loadDemoHandlers();
+		const machineId = new URL(request.url).searchParams.get("machineId") ?? undefined;
+		return demoSessionsResponse(machineId);
 	}
 
 	const machineId = new URL(request.url).searchParams.get("machineId") ?? undefined;
