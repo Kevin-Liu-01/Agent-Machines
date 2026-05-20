@@ -616,6 +616,17 @@ export async function getUserConfigById(userId: string): Promise<UserConfig> {
 				...m,
 				apiKey: m.apiKey ?? machineApiKeys[m.id] ?? null,
 			}));
+			// Re-validate activeMachineId against the Supabase machines list.
+			// The initial validation in buildConfig used Clerk's stale machines
+			// array which may not include newly provisioned machines.
+			if (config.activeMachineId && !config.machines.some((m) => m.id === config.activeMachineId)) {
+				const live = config.machines.find((m) => !m.archived);
+				config.activeMachineId = live?.id ?? null;
+			}
+			if (!config.activeMachineId) {
+				const live = config.machines.find((m) => !m.archived);
+				config.activeMachineId = live?.id ?? null;
+			}
 		} else if (config.machines.length > 0) {
 			await seedMachinesFromClerk(userId, config.machines);
 		}
