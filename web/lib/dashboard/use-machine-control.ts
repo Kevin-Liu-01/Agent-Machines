@@ -19,6 +19,7 @@ export type ControlState = {
 	error: string | null;
 	pending: "wake" | "sleep" | null;
 	autoWokeOnce: boolean;
+	notProvisioned: boolean;
 };
 
 /**
@@ -41,6 +42,7 @@ export function useMachineControl(): ControlState & {
 		error: null,
 		pending: null,
 		autoWokeOnce: false,
+		notProvisioned: false,
 	});
 	const stateRef = useRef(state);
 	stateRef.current = state;
@@ -51,7 +53,7 @@ export function useMachineControl(): ControlState & {
 		const response = await fetch("/api/dashboard/machine", { cache: "no-store" });
 		if (response.status === 404) {
 			stoppedRef.current = true;
-			setState((prev) => ({ ...prev, error: "not_provisioned", machine: null, pending: null }));
+			setState((prev) => ({ ...prev, error: "not_provisioned", machine: null, pending: null, notProvisioned: true }));
 			return null;
 		}
 		if (!response.ok) return null;

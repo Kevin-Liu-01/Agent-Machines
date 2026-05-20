@@ -48,6 +48,8 @@ export function OverviewClient({ counts, agentKind, model }: Props) {
 	const [stamp, setStamp] = useState<number | null>(null);
 
 	useEffect(() => {
+		if (machine.notProvisioned) return;
+
 		let stopped = false;
 		let interval: number;
 		async function tick() {
@@ -70,7 +72,7 @@ export function OverviewClient({ counts, agentKind, model }: Props) {
 			stopped = true;
 			window.clearInterval(interval);
 		};
-	}, []);
+	}, [machine.notProvisioned]);
 
 	const phase = machine.machine?.phase ?? "loading";
 	const desired = machine.machine?.desired ?? "unknown";
@@ -98,6 +100,32 @@ export function OverviewClient({ counts, agentKind, model }: Props) {
 		phase === "placement_pending" ||
 		phase === "accepted" ||
 		phase === "failed";
+
+	if (machine.notProvisioned) {
+		return (
+			<DashboardPageBody>
+				<FleetMonitor />
+				<ReticleFrame className="p-6">
+					<div className="flex flex-col items-center gap-4 py-8 text-center">
+						<Logo mark="dedalus" size={28} />
+						<h2 className="ret-display text-lg">No active machine</h2>
+						<p className="max-w-[48ch] text-[13px] text-[var(--ret-text-dim)]">
+							No machine is provisioned on this account. Use the fleet monitor
+							above to provision a new one, or destroy any stale machines and
+							retry.
+						</p>
+						<ReticleButton
+							variant="primary"
+							size="sm"
+							onClick={() => window.location.reload()}
+						>
+							Retry
+						</ReticleButton>
+					</div>
+				</ReticleFrame>
+			</DashboardPageBody>
+		);
+	}
 
 	return (
 		<DashboardPageBody>
@@ -398,6 +426,8 @@ function MachineControlBar({
 		message = "container is running. you can chat, schedule crons, delegate code work.";
 	} else if (isSleeping) {
 		message = "container is asleep. tap wake to bring it back.";
+	} else if (phase === "failed") {
+		message = "bootstrap failed. destroy the machine and provision a fresh one.";
 	} else if (phase === "loading") {
 		message = "checking container status...";
 	} else {

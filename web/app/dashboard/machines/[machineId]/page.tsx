@@ -66,7 +66,13 @@ export default function MachineOverviewPage() {
 				const res = await fetch(`/api/dashboard/machines/${encodeURIComponent(machineId)}`, {
 					cache: "no-store",
 				});
-				if (!res.ok || stopped) return;
+				if (stopped) return;
+				if (res.status === 404) {
+					stopped = true;
+					window.clearInterval(id);
+					return;
+				}
+				if (!res.ok) return;
 				const data = (await res.json()) as MachineRouteResponse;
 				const live =
 					data.ok && data.live && typeof data.live === "object" ? data.live : null;
@@ -207,30 +213,30 @@ export default function MachineOverviewPage() {
 						/>
 					</div>
 					<div className="divide-y divide-[var(--ret-border)]">
-						<UsageChartRow
-							title="CPU"
-							total={usageData ? (usageData.resources.cpu.totalVcpuSeconds / 3600).toFixed(1) : "–"}
-							unit="vCPU-hrs"
-							data={cpuBuckets}
-							color="var(--ret-purple)"
-							loading={usageLoading}
-						/>
-						<UsageChartRow
-							title="Memory"
-							total={usageData ? (usageData.resources.memory.totalGibSeconds / 3600).toFixed(1) : "–"}
-							unit="GB-hrs"
-							data={memBuckets}
-							color="var(--ret-amber)"
-							loading={usageLoading}
-						/>
-						<UsageChartRow
-							title="Storage"
-							total={usageData ? usageData.resources.storage.totalGibHours.toFixed(1) : "–"}
-							unit="GB-hrs"
-							data={storageBuckets}
-							color="var(--ret-red)"
-							loading={usageLoading}
-						/>
+					<UsageChartRow
+						title="CPU"
+						total={usageData?.resources?.cpu?.totalVcpuSeconds != null ? (usageData.resources.cpu.totalVcpuSeconds / 3600).toFixed(1) : "–"}
+						unit="vCPU-hrs"
+						data={cpuBuckets}
+						color="var(--ret-purple)"
+						loading={usageLoading}
+					/>
+					<UsageChartRow
+						title="Memory"
+						total={usageData?.resources?.memory?.totalGibSeconds != null ? (usageData.resources.memory.totalGibSeconds / 3600).toFixed(1) : "–"}
+						unit="GB-hrs"
+						data={memBuckets}
+						color="var(--ret-amber)"
+						loading={usageLoading}
+					/>
+					<UsageChartRow
+						title="Storage"
+						total={usageData?.resources?.storage?.totalGibHours != null ? (usageData.resources.storage.totalGibHours).toFixed(1) : "–"}
+						unit="GB-hrs"
+						data={storageBuckets}
+						color="var(--ret-red)"
+						loading={usageLoading}
+					/>
 					</div>
 				</ReticleFrame>
 
@@ -248,7 +254,7 @@ export default function MachineOverviewPage() {
 									<Skeleton key={i} className="h-8 w-full" />
 								))}
 							</div>
-						) : !usageData?.transitions.length ? (
+						) : !usageData?.transitions?.length ? (
 							<p className="py-4 text-center text-[12px] text-[var(--ret-text-muted)]">
 								No recorded transitions.
 							</p>
