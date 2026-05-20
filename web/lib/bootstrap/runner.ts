@@ -131,6 +131,13 @@ async function runPhase(
 	apiKey: string,
 	paths: BootstrapPaths,
 ): Promise<void> {
+	const isSandbox = machine.providerKind === "e2b" || machine.providerKind === "sprites";
+
+	if (phase === "start-gateway" && isSandbox) {
+		await startGatewaySandbox(machine, provider, paths);
+		return;
+	}
+
 	const command = commandFor(phase, machine, config, apiKey, paths);
 	if (command === null) return;
 	const result = await provider.exec(machine.id, command, { timeoutMs: 900_000 });
@@ -298,7 +305,7 @@ function commandFor(
 		case "start-gateway":
 			if (agent === "openclaw") return startOpenClaw(p);
 			if (agent === "claude-code" || agent === "codex") return null;
-			return startHermes(p, isSandbox);
+			return startHermes(p);
 		case "install-closed-loop-tools":
 			return installClosedLoopTools(p, isSandbox);
 	}
@@ -331,6 +338,91 @@ function installClosedLoopTools(p: BootstrapPaths, isSandbox = false): string {
 		`ln -sfn ${p.HERMES_HOME}/logs/gateway.log ${p.MACHINE_HOME}/logs/services/hermes-gateway.log || true`,
 		`ln -sfn ${p.HERMES_HOME}/logs/dashboard.log ${p.MACHINE_HOME}/logs/services/hermes-dashboard.log || true`,
 	].join("\n");
+}
+
+type GatewayConfig = {
+	port: number;
+	killPattern: string;
+	envSetup: string;
+	envFile: string;
+	logFile: string;
+	startCmd: string;
+};
+
+function gatewayConfigFor(machine: MachineRef, paths: BootstrapPaths): GatewayConfig {
+	if (machine.agentKind === "openclaw") {
+		return {
+			port: OPENCLAW_PORT,
+			killPattern: "openclaw gateway run",
+			envSetup: openClawEnv(paths),
+			envFile: `${paths.OPENCLAW_HOME}/.env`,
+			logFile: `${paths.OPENCLAW_HOME}/logs/gateway.log`,
+			startCmd: "openclaw gateway run",
+		};
+	}
+	return {
+		port: machine.providerKind === "sprites" ? 8080 : HERMES_PORT,
+		killPattern: "hermes gateway",
+		envSetup: hermesEnv(paths),
+		envFile: `${paths.HERMES_HOME}/.env`,
+		logFile: `${paths.HERMES_HOME}/logs/gateway.log`,
+		startCmd: "hermes gateway",
+	};
+}
+
+async function startGatewaySandbox(
+	machine: MachineRef,
+	provider: MachineProvider,
+	paths: BootstrapPaths,
+): Promise<void> {
+	if (machine.agentKind === "claude-code" || machine.agentKind === "codex") return;
+
+	const gw = gatewayConfigFor(machine, paths);
+
+	// 1. Kill existing gateway
+	await provider.exec(machine.id, [
+		"set -e",
+		gw.envSetup,
+		`ps -eo pid,cmd 2>/dev/null | awk '/${gw.killPattern}/ && !/awk/ {print \\$1}' | xargs -r kill 2>/dev/null || true`,
+		"sleep 1",
+		`mkdir -p ${paths.MACHINE_HOME}/logs/services`,
+	].join(" && "), { timeoutMs: 10_000 });
+
+	// 2. Start gateway in background — use the SDK's native background mode
+	// when available (E2B), fall back to & disown (Sprites)
+	const gatewayCmd = [
+		gw.envSetup,
+		`source ${gw.envFile}`,
+		`${gw.startCmd} >> ${gw.logFile} 2>&1`,
+	].join(" && ");
+
+	if (provider.execBackground) {
+		await provider.execBackground(machine.id, gatewayCmd);
+	} else {
+		await provider.exec(machine.id,
+			`${gatewayCmd} </dev/null & disown`,
+			{ timeoutMs: 5_000 },
+		).catch(() => {});
+	}
+
+	// 3. Poll for readiness instead of blind sleep
+	const MAX_POLLS = 45;
+	for (let i = 0; i < MAX_POLLS; i++) {
+		const probe = await provider.exec(machine.id,
+			`ss -ltn 2>/dev/null | grep -q ":${gw.port}" && echo ready || echo waiting`,
+			{ timeoutMs: 5_000 },
+		);
+		if (probe.stdout.trim() === "ready") return;
+		await new Promise(resolve => setTimeout(resolve, 1_000));
+	}
+
+	const log = await provider.exec(machine.id,
+		`tail -20 ${gw.logFile} 2>/dev/null || echo "no log"`,
+		{ timeoutMs: 5_000 },
+	);
+	throw new Error(
+		`Gateway did not start on :${gw.port} after ${MAX_POLLS}s. Log:\n${log.stdout.slice(-300)}`,
+	);
 }
 
 function configureHermes(
@@ -423,24 +515,7 @@ function machineSettingsJson(machine: MachineRef, config: UserConfig): string {
 	return JSON.stringify(settings, null, 2);
 }
 
-function startHermes(p: BootstrapPaths, isSandbox = false): string {
-	if (isSandbox) {
-		// E2B/Sprites: commands.run waits for ALL child processes.
-		// Use `& disown` to fully detach the gateway from the shell session.
-		// The port comes from $API_SERVER_PORT in the .env we wrote earlier.
-		return [
-			"set -e",
-			hermesEnv(p),
-			`source ${p.HERMES_HOME}/.env`,
-			`ps -eo pid,cmd 2>/dev/null | awk '/hermes gateway/ && !/awk/ {print \\$1}' | xargs -r kill 2>/dev/null || true`,
-			"sleep 1",
-			`mkdir -p ${p.MACHINE_HOME}/logs/services`,
-			`hermes gateway >> ${p.HERMES_HOME}/logs/gateway.log 2>&1 </dev/null & disown`,
-			"sleep 15",
-			`ss -tlnp 2>/dev/null | grep \":$API_SERVER_PORT\" || (tail -20 ${p.HERMES_HOME}/logs/gateway.log && exit 1)`,
-			`echo gateway:$API_SERVER_PORT`,
-		].join(" && ");
-	}
+function startHermes(p: BootstrapPaths): string {
 	const script = [
 		"#!/usr/bin/env bash",
 		"set -euo pipefail",

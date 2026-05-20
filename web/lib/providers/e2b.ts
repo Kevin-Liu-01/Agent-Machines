@@ -218,6 +218,22 @@ export class E2BProvider implements MachineProvider {
 		}
 	}
 
+	async execBackground(machineId: string, command: string): Promise<void> {
+		try {
+			const Sandbox = await getSandbox();
+			const sandbox = await Sandbox.connect(machineId, { apiKey: this.apiKey });
+			await sandbox.commands.run(`bash -lc ${JSON.stringify(command)}`, {
+				background: true,
+			});
+		} catch (err) {
+			throw new MachineProviderError(
+				"e2b",
+				classifyError(err),
+				`e2b execBackground failed on ${machineId}: ${err instanceof Error ? err.message : String(err)}`,
+			);
+		}
+	}
+
 	async getPublicUrl(sandboxId: string, port: number): Promise<string> {
 		try {
 			const Sandbox = await getSandbox();

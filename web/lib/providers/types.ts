@@ -108,4 +108,5 @@ export type MachineProvider = {
 	sleep(machineId: string): Promise<ProviderMachineSummary>;
 	destroy(machineId: string): Promise<void>;
 	exec(machineId: string, command: string, options?: ExecOptions): Promise<ExecResult>;
+	execBackground?(machineId: string, command: string): Promise<void>;
 };
