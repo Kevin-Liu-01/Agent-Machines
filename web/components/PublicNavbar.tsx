@@ -2,7 +2,7 @@ import { UserButton } from "@clerk/nextjs";
 import type { SVGProps } from "react";
 
 import { SignedIn, SignedOut } from "@/components/AuthSwitch";
-import { BrandMark } from "@/components/BrandMark";
+import { BrandHomeLockup } from "@/components/BrandHomeLockup";
 import { GitHubStarLink } from "@/components/GitHubStarLink";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleNavbar } from "@/components/reticle/ReticleNavbar";
@@ -51,15 +51,7 @@ export async function PublicNavbar({
 	return (
 		<ReticleNavbar>
 			<div className="flex h-12 items-center justify-between gap-4 px-5">
-				<a href="/" className="group flex items-center gap-2.5">
-					<BrandMark size={20} withLabel={false} />
-					<span
-						className="text-[20px] leading-none tracking-tight text-[var(--ret-text)] transition-colors group-hover:text-[var(--ret-purple)]"
-						style={{ fontFamily: "var(--font-display-serif)" }}
-					>
-						agent-machines
-					</span>
-				</a>
+				<BrandHomeLockup density="navbar" />
 				<nav
 					aria-label="Sections"
 					className="hidden items-center gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] md:flex"

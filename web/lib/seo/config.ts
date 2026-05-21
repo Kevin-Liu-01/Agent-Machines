@@ -1,3 +1,6 @@
+import { HARNESS_SUMMARY, HARNESS_TOOLS_ANSWER, PRODUCT } from "@/lib/platform/harness";
+import { RUNTIME } from "@/lib/platform/runtime";
+
 /**
  * Single source of truth for site-level SEO/GEO/AEO data. Used by
  * `app/layout.tsx` (metadata + JSON-LD), `app/sitemap.ts`, `app/robots.ts`,
@@ -9,12 +12,15 @@
  * resolve relative paths.
  */
 
+/** Em dash separator for `<title>` and OG alt text — not `--`. */
+export const TITLE_SEPARATOR = " — ";
+
 export const SITE = {
 	name: "Agent Machines",
 	wordmark: "agent-machines",
 	url: "https://www.agent-machines.dev",
 	description:
-		"A persistent machine for your agent. One stateful Linux VM per Clerk account; chat history, files, learned skills, and cron live on /home/machine. Hermes or OpenClaw, Dedalus Machines today, provider abstraction for E2B and Fly, 96 skills, 23 built-ins, and 17 service routes.",
+		`${PRODUCT.oneLiner} Hermes, OpenClaw, Claude Code, or Codex on Dedalus, E2B, or Sprites. ${HARNESS_SUMMARY}.`,
 	tagline: "A persistent machine for your agent",
 	ogImage: "/og.png",
 	twitterHandle: "@kevin_liu_01",
@@ -61,7 +67,7 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "What is Agent Machines?",
 		answer:
-			"Agent Machines is a per-account runtime for persistent agents. Each signed-in user can keep machines with durable Linux filesystems under /home/machine, so chats, working files, artifacts, learned skills, and cron schedules survive sleep and wake cycles.",
+			"Agent Machines deploys persistent agents as a single combined primitive: an agent with a home, skills, services, memory, scheduling, and observability on any container substrate. The dashboard lets humans provision and watch; the MCP/CLI surface (roadmap) lets other agents orchestrate fleets programmatically.",
 	},
 	{
 		question: "How is this different from a regular chatbot?",
@@ -71,12 +77,12 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "Which agents can I run?",
 		answer:
-			"Hermes and OpenClaw are the two agent runtimes represented in the app. Hermes is the default memory, cron, sessions, and MCP-native runtime. OpenClaw is the computer-use runtime with browser, screenshot, click, shell, and file operations. Both sit behind the same machine/gateway concept.",
+			"Hermes, OpenClaw, Claude Code, and Codex are supported. Hermes is the default memory, cron, sessions, and MCP-native runtime. OpenClaw is the computer-use runtime. Claude Code and Codex are task-driven CLIs. All persist state under ~/.agent-machines/.",
 	},
 	{
 		question: "Which providers can host the machine?",
 		answer:
-			"Dedalus Machines is wired end-to-end today. The MachineProvider abstraction, setup UI, and user config schema also include E2B Sandbox and Fly Machines as alternative providers.",
+			"Dedalus Machines, E2B Sandbox, and Sprites.dev are live provider implementations. Each exposes provision, exec, public URL, and bootstrap through the same MachineProvider abstraction.",
 	},
 	{
 		question: "How do I get my own machine today?",
@@ -85,8 +91,7 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	},
 	{
 		question: "What tools and skills come pre-installed?",
-		answer:
-			"The public loadout tracks 23 built-in tools, 17 service routes, and 96 SKILL.md files. The surface includes terminal, filesystem, browser automation, web search, vision, image generation, code execution, cron, memory, sessions, closed-loop CLIs (agent-browser, Playwright, curl, jq, httpx, sqlite3, ss, dig), Vercel, Stripe, Supabase, Linear, GitHub, Slack, PostHog, Sentry, Clerk, Firebase, Figma, Shopify, ClickHouse, Datadog, AWS, Cloudflare, and model providers.",
+		answer: HARNESS_TOOLS_ANSWER,
 	},
 	{
 		question: "Is Cursor required?",

@@ -9,6 +9,13 @@ import {
 	MachineActions,
 	type MachineState as MachineActionState,
 } from "@/components/dashboard/MachineActions";
+import {
+	headerControlKicker,
+	headerControlTrigger,
+	headerControlValue,
+	headerPopover,
+	headerPopoverTitle,
+} from "@/lib/dashboard/header-chrome";
 import { cn } from "@/lib/cn";
 import {
 	AGENT_LABEL,
@@ -160,25 +167,21 @@ export function MachineSwitcher() {
 				onClick={() => setOpen((v) => !v)}
 				aria-haspopup="listbox"
 				aria-expanded={open}
-				className={cn(
-					"flex items-center gap-2 border bg-[var(--ret-bg)] px-2.5 py-1 font-mono text-[11px] transition-colors",
-					"border-[var(--ret-border)] hover:border-[var(--ret-purple)]/50 hover:text-[var(--ret-text)]",
-					open && "border-[var(--ret-purple)]/60 text-[var(--ret-text)]",
-				)}
+				className={headerControlTrigger(open)}
 				title={
 					active
 						? `Active: ${active.name}. Click to switch machine.`
 						: "Pick a machine"
 				}
 			>
-				<span className="text-[9px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
-					machine
-				</span>
-				<span className="hidden max-w-[140px] truncate text-[var(--ret-text)] md:inline">
+				<span className={headerControlKicker}>Machine</span>
+				<span className={cn(headerControlValue, "hidden max-w-[140px] md:inline")}>
 					{active?.name ?? "none"}
 				</span>
 				{active ? (
-					<StateDot state={active.live.ok ? active.live.state : "unknown"} />
+					<StateDot
+						state={active.live.ok ? active.live.state : "unknown"}
+					/>
 				) : null}
 				<svg
 					viewBox="0 0 12 12"
@@ -200,9 +203,14 @@ export function MachineSwitcher() {
 				<div
 					ref={popoverRef}
 					role="listbox"
-					className="absolute right-0 top-full z-50 mt-1 w-[320px] border border-[var(--ret-border)] bg-[var(--ret-bg)] shadow-[0_18px_44px_rgba(0,0,0,0.22)]"
+					className={cn(headerPopover, "mt-1 w-[320px]")}
 				>
-					<header className="flex items-center justify-between border-b border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+					<header
+						className={cn(
+							headerPopoverTitle,
+							"flex items-center justify-between uppercase tracking-[0.12em]",
+						)}
+					>
 						<span>fleet</span>
 						<span>{machines.length} total</span>
 					</header>
@@ -244,7 +252,7 @@ export function MachineSwitcher() {
 										disabled={pendingId === machine.id || isActive}
 										className="flex w-full items-start gap-2 text-left disabled:cursor-default"
 									>
-										<StateDot state={stateName} />
+										<StateDot state={stateName} className="mt-1" />
 										<div className="min-w-0 flex-1">
 											<p className="flex items-center gap-1.5 font-mono text-[12px] text-[var(--ret-text)]">
 												<span className="truncate">{machine.name}</span>
@@ -312,7 +320,13 @@ export function MachineSwitcher() {
 	);
 }
 
-function StateDot({ state }: { state: string }) {
+function StateDot({
+	state,
+	className,
+}: {
+	state: string;
+	className?: string;
+}) {
 	const tone = STATE_TONE[state] ?? "muted";
 	const cls =
 		tone === "ok"
@@ -325,7 +339,7 @@ function StateDot({ state }: { state: string }) {
 	return (
 		<span
 			aria-hidden="true"
-			className={cn("mt-1 inline-block h-1.5 w-1.5 shrink-0", cls)}
+			className={cn("block h-1.5 w-1.5 shrink-0", cls, className)}
 		/>
 	);
 }

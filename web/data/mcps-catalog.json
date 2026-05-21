@@ -1,0 +1,373 @@
+{
+  "version": "1.0.0",
+  "updated": "2026-05-20",
+  "summary": {
+    "coreServers": 2,
+    "bundledServers": 26,
+    "ideServers": 4,
+    "builtinToolGroups": 1,
+    "skillCount": 161,
+    "providers": ["dedalus", "e2b", "sprites"],
+    "agentKinds": ["hermes", "openclaw", "claude-code", "codex"],
+    "aiProviders": ["anthropic", "openai", "openrouter", "google", "vercelAiGateway", "custom", "dedalus"]
+  },
+  "servers": [
+    {
+      "id": "playwright",
+      "name": "playwright",
+      "tier": "core",
+      "transport": "stdio",
+      "owner": "Microsoft",
+      "link": "https://playwright.dev/docs/mcp",
+      "install": { "type": "npm-global", "package": "@playwright/mcp" },
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp"],
+      "env": {},
+      "requiredEnv": [],
+      "toolCount": 20
+    },
+    {
+      "id": "cursor",
+      "name": "cursor-bridge",
+      "tier": "core",
+      "transport": "stdio",
+      "owner": "Cursor",
+      "link": "https://cursor.com/docs/sdk/typescript",
+      "install": { "type": "local-build", "path": "mcp/cursor-bridge" },
+      "command": "node",
+      "args": ["{{VM_BRIDGE_DIR}}/dist/server.js"],
+      "env": { "HERMES_HOME": "{{VM_HERMES_HOME}}", "PATH": "{{VM_NODE_BIN}}:/usr/local/bin:/usr/bin:/bin" },
+      "requiredEnv": ["CURSOR_API_KEY"],
+      "tools": ["cursor_agent", "cursor_resume", "cursor_list_skills", "cursor_models"],
+      "toolCount": 4
+    },
+    {
+      "id": "hermes-builtins",
+      "name": "hermes-builtins",
+      "tier": "reference",
+      "transport": "native",
+      "owner": "Nous Research",
+      "link": "https://github.com/NousResearch/hermes-agent",
+      "tools": [
+        "terminal", "read_file", "write_file", "patch", "search",
+        "web_search", "web_extract", "browser_*", "vision_analyze",
+        "image_generate", "tts", "execute_code", "delegate_task",
+        "cronjob", "skills_list", "skill_view", "memory", "session_search"
+      ],
+      "toolCount": 22
+    },
+    {
+      "id": "vercel",
+      "name": "vercel",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Vercel",
+      "installCommand": "npx -y @vercel/mcp-server",
+      "requiredEnv": ["VERCEL_TOKEN"],
+      "toolCount": 8
+    },
+    {
+      "id": "stripe",
+      "name": "stripe",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Stripe",
+      "installCommand": "npx -y @stripe/mcp-server",
+      "requiredEnv": ["STRIPE_SECRET_KEY"],
+      "toolCount": 8
+    },
+    {
+      "id": "supabase",
+      "name": "supabase",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Supabase",
+      "installCommand": "npx -y @supabase/mcp-server",
+      "requiredEnv": ["SUPABASE_ACCESS_TOKEN"],
+      "toolCount": 7
+    },
+    {
+      "id": "clerk",
+      "name": "clerk",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Clerk",
+      "installCommand": "npx -y @clerk/mcp-server",
+      "requiredEnv": ["CLERK_SECRET_KEY"],
+      "toolCount": 6
+    },
+    {
+      "id": "firebase",
+      "name": "firebase",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Google",
+      "installCommand": "npx -y firebase-tools mcp",
+      "requiredEnv": ["FIREBASE_TOKEN"],
+      "toolCount": 15
+    },
+    {
+      "id": "figma",
+      "name": "figma",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Figma",
+      "installCommand": "npx -y @figma/mcp-server",
+      "requiredEnv": ["FIGMA_ACCESS_TOKEN"],
+      "toolCount": 8
+    },
+    {
+      "id": "posthog",
+      "name": "posthog",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "PostHog",
+      "installCommand": "npx -y @posthog/mcp-server",
+      "requiredEnv": ["POSTHOG_API_KEY"],
+      "toolCount": 6
+    },
+    {
+      "id": "sentry",
+      "name": "sentry",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Sentry",
+      "installCommand": "npx -y @sentry/mcp-server",
+      "requiredEnv": ["SENTRY_AUTH_TOKEN"],
+      "toolCount": 6
+    },
+    {
+      "id": "datadog",
+      "name": "datadog",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Datadog",
+      "installCommand": "npx -y @datadog/mcp-server",
+      "requiredEnv": ["DD_API_KEY", "DD_APP_KEY"],
+      "toolCount": 6
+    },
+    {
+      "id": "linear",
+      "name": "linear",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Linear",
+      "installCommand": "npx -y @linear/mcp-server",
+      "requiredEnv": ["LINEAR_API_KEY"],
+      "toolCount": 6
+    },
+    {
+      "id": "slack",
+      "name": "slack",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Slack",
+      "installCommand": "npx -y @modelcontextprotocol/server-slack",
+      "requiredEnv": ["SLACK_BOT_TOKEN", "SLACK_TEAM_ID"],
+      "toolCount": 5
+    },
+    {
+      "id": "sanity",
+      "name": "sanity",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Sanity",
+      "installCommand": "npx -y @sanity/mcp-server",
+      "requiredEnv": ["SANITY_API_TOKEN"],
+      "toolCount": 6
+    },
+    {
+      "id": "clickhouse",
+      "name": "clickhouse",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "ClickHouse",
+      "installCommand": "npx -y @clickhouse/mcp-server",
+      "requiredEnv": ["CLICKHOUSE_HOST"],
+      "toolCount": 5
+    },
+    {
+      "id": "neon",
+      "name": "neon",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Neon",
+      "installCommand": "npx -y @neondatabase/mcp-server-neon",
+      "requiredEnv": ["NEON_API_KEY"],
+      "toolCount": 6
+    },
+    {
+      "id": "upstash",
+      "name": "upstash",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Upstash",
+      "installCommand": "npx -y @upstash/mcp-server",
+      "requiredEnv": ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"],
+      "toolCount": 7
+    },
+    {
+      "id": "turso",
+      "name": "turso",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Turso",
+      "installCommand": "npx -y @tursodatabase/mcp-server",
+      "requiredEnv": ["TURSO_API_TOKEN"],
+      "toolCount": 5
+    },
+    {
+      "id": "resend",
+      "name": "resend",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Resend",
+      "installCommand": "npx -y resend-mcp",
+      "requiredEnv": ["RESEND_API_KEY"],
+      "toolCount": 6
+    },
+    {
+      "id": "notion",
+      "name": "notion",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Notion",
+      "installCommand": "npx -y @notionhq/mcp-server",
+      "requiredEnv": ["NOTION_API_KEY"],
+      "toolCount": 6
+    },
+    {
+      "id": "brave-search",
+      "name": "brave-search",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Brave",
+      "installCommand": "npx -y @modelcontextprotocol/server-brave-search",
+      "requiredEnv": ["BRAVE_API_KEY"],
+      "toolCount": 2
+    },
+    {
+      "id": "exa",
+      "name": "exa",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Exa",
+      "installCommand": "npx -y exa-mcp-server",
+      "requiredEnv": ["EXA_API_KEY"],
+      "toolCount": 3
+    },
+    {
+      "id": "memory",
+      "name": "memory",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Anthropic",
+      "installCommand": "npx -y @modelcontextprotocol/server-memory",
+      "requiredEnv": [],
+      "toolCount": 6
+    },
+    {
+      "id": "cloudflare-workers",
+      "name": "cloudflare-workers",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Cloudflare",
+      "installCommand": "npx -y @cloudflare/mcp-server-cloudflare",
+      "requiredEnv": ["CLOUDFLARE_API_TOKEN"],
+      "toolCount": 7
+    },
+    {
+      "id": "grafana",
+      "name": "grafana",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Grafana Labs",
+      "installCommand": "npx -y grafana-mcp-server",
+      "requiredEnv": ["GRAFANA_URL", "GRAFANA_API_KEY"],
+      "toolCount": 6
+    },
+    {
+      "id": "github",
+      "name": "github",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "GitHub",
+      "installCommand": "npx -y @modelcontextprotocol/server-github",
+      "requiredEnv": ["GITHUB_PERSONAL_ACCESS_TOKEN"],
+      "toolCount": 8
+    },
+    {
+      "id": "filesystem",
+      "name": "filesystem",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "MCP",
+      "installCommand": "npx -y @modelcontextprotocol/server-filesystem /home/machine",
+      "requiredEnv": [],
+      "toolCount": 6
+    },
+    {
+      "id": "fetch",
+      "name": "fetch",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "MCP",
+      "installCommand": "npx -y @modelcontextprotocol/server-fetch",
+      "requiredEnv": [],
+      "toolCount": 1
+    },
+    {
+      "id": "git",
+      "name": "git",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "MCP",
+      "installCommand": "npx -y @modelcontextprotocol/server-git",
+      "requiredEnv": [],
+      "toolCount": 8
+    },
+    {
+      "id": "sqlite",
+      "name": "sqlite",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "MCP",
+      "installCommand": "npx -y @modelcontextprotocol/server-sqlite",
+      "requiredEnv": [],
+      "toolCount": 4
+    },
+    {
+      "id": "chrome-devtools",
+      "name": "chrome-devtools",
+      "tier": "ide",
+      "transport": "stdio",
+      "owner": "Google",
+      "link": "https://chromedevtools.github.io/devtools-protocol/",
+      "toolCount": 19
+    },
+    {
+      "id": "gitlens",
+      "name": "gitlens",
+      "tier": "ide",
+      "transport": "stdio",
+      "owner": "GitKraken",
+      "toolCount": 21
+    },
+    {
+      "id": "cursor-ide-browser",
+      "name": "cursor-ide-browser",
+      "tier": "ide",
+      "transport": "stdio",
+      "owner": "Cursor",
+      "toolCount": 25
+    },
+    {
+      "id": "cursor-app-control",
+      "name": "cursor-app-control",
+      "tier": "ide",
+      "transport": "stdio",
+      "owner": "Cursor",
+      "toolCount": 2
+    }
+  ]
+}

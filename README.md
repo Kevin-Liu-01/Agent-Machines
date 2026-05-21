@@ -9,13 +9,12 @@ Source: <https://github.com/Kevin-Liu-01/agent-machines>
 
 ## Where the project is right now
 
-- **Dedalus Machines is the live provider.** The CLI can provision/wake/sleep/destroy a Dedalus microVM, bootstrap Hermes, expose the gateway, and reload skills.
-- **Vercel Sandbox and Fly are shaped, not live.** They exist in `MachineProvider`, Clerk user config, setup UI, and machine records. Their provider classes currently return explicit `not_supported` errors.
-- **Hermes and OpenClaw are the agent choices.** Hermes is the default runtime for memory, cron, sessions, MCP, skills, and the gateway. `npm run deploy:openclaw` installs OpenClaw on a Dedalus machine.
-- **Cursor is optional.** `cursor-bridge` is one MCP server for code delegation through `@cursor/sdk`. Without `CURSOR_API_KEY`, the machine still has chat, files, browser automation, closed-loop tools, skills, cron, logs, artifacts, and provider lifecycle controls.
-- **The dashboard is multi-machine.** Clerk private metadata stores provider credentials, machine refs, the active machine id, model choice, and optional Cursor key. Users can keep multiple machines and switch the active one.
-- **Browser provisioning creates and bootstraps the Dedalus agent machine.** `/dashboard/setup` can save credentials, create the provider machine, run browser bootstrap, and save the generated gateway URL/key back to the machine record. The CLI deploy path remains useful for local live-fire debugging.
-- **Inference defaults to Dedalus, but the gateway is OpenAI-compatible.** The CLI uses `DEDALUS_CHAT_BASE_URL` with `https://api.dedaluslabs.ai/v1` as the default.
+- **Three live VM providers.** Dedalus Machines (microVM), E2B Sandbox, and Sprites.dev each implement `MachineProvider` with provision, exec, wake/sleep (where supported), and public URL exposure.
+- **Four agent runtimes.** Hermes (default), OpenClaw, Claude Code, and Codex CLI. Hermes/OpenClaw expose OpenAI-compatible gateways; Claude/Codex use direct API keys.
+- **Browser provisioning is live.** `/dashboard/setup` saves credentials, creates the machine, runs bootstrap phases, and stores gateway URL/key on the machine record. CLI deploy remains the live-fire debug path for Dedalus.
+- **161 skills + MCP catalog.** `knowledge/skills/` and `knowledge/mcps/catalog.json` sync to `~/.agent-machines/` at deploy/reload. Dashboard loadout mirrors built-ins, 30+ MCP servers, and service routing.
+- **Cursor is optional.** `cursor-bridge` registers when `CURSOR_API_KEY` is set. Playwright MCP registers on every Hermes machine.
+- **Inference defaults to Dedalus** but supports Anthropic, OpenAI, OpenRouter, Google, Vercel AI Gateway, or any OpenAI-compatible endpoint.
 
 ## Architecture
 
@@ -33,10 +32,9 @@ MachineProvider ------------------------------ Dedalus Machines
   |
   |-- :8642 agent gateway        OpenAI-compatible /v1
   |-- ~/.agent-machines/         app data: chats, artifacts, indexes
-  |-- ~/.hermes/                 Hermes runtime: skills, crons, sessions, logs
-  |-- ~/.openclaw/               OpenClaw runtime when installed
-  |-- /home/machine/hermes-machines/
-  |     git checkout used by reload-from-git.sh
+  |-- ~/.agent-machines/         runtime root: skills, mcps, config, crons, sessions, logs
+  |-- /home/machine/agent-machines/
+  |     git checkout for reload-from-git.sh
   |
   |-- built-ins                  terminal, filesystem, browser, vision, cron
   |-- closed-loop CLIs           agent-browser, Playwright, curl, jq, httpx, sqlite3, ss, dig
@@ -50,10 +48,9 @@ OpenAI-compatible model endpoint
 
 Path names that matter, because yes, the naming goblin is real:
 
-- `/home/machine/.agent-machines/` is product data owned by this app.
-- `/home/machine/.hermes/` is Hermes runtime state.
-- `/home/machine/.openclaw/` is OpenClaw runtime state.
-- `/home/machine/hermes-machines/` is the git checkout used for knowledge reloads.
+- `/home/machine/.agent-machines/` is the unified runtime root (skills, config, mcps, logs, chats, artifacts).
+- `/home/machine/.openclaw/` is OpenClaw runtime state when that agent is selected.
+- `/home/machine/agent-machines/` is the git checkout for knowledge reloads.
 - `/home/machine/.agent/` is machine-readable context, also exposed as `/.agent`.
 - `/home/machine/.machine/logs/services/` is the stable service-log path, also exposed as `/.machine/logs/services`.
 - This repo is the control plane. It is not the Hermes agent package.
@@ -107,7 +104,7 @@ npm run wake               # resume a sleeping machine
 npm run sleep              # pause compute, preserve disk
 npm run destroy -- --yes   # permanent delete
 npm run shell              # print the dedalus ssh invocation
-npm run reload             # re-upload knowledge/ into ~/.hermes
+npm run reload             # re-upload knowledge/ into ~/.agent-machines
 npm run reset              # clear Hermes sessions/state, preserve skills/crons/env
 npm run doctor             # health check: machine phase, ports, MCP, skills, crons
 npm run gc                 # destroy every machine on the org
@@ -186,7 +183,7 @@ Web app:
 
 ## What ships into the machine
 
-`knowledge/` is copied into `~/.hermes/` during deploy and reload.
+`knowledge/` is copied into `~/.agent-machines/` during deploy and reload.
 
 ```txt
 knowledge/
@@ -195,6 +192,7 @@ knowledge/
   USER.md
   MEMORY.md
   crons/seed.json
+  mcps/catalog.json      MCP registry (core + bundled + ide tiers)
   skills/<name>/SKILL.md
 ```
 
@@ -204,10 +202,10 @@ The web build also syncs this library into `web/data/skills.json` so `/dashboard
 
 The loadout has three layers:
 
-- **Built-ins:** terminal, filesystem, search, browser automation, screenshots, vision, image generation, TTS, Python execution, subagent delegation, cron, skills, memory, and session search.
-- **MCP/services:** cursor-bridge plus service routes for Vercel, Stripe, Supabase, Clerk, Firebase, Figma, PostHog, Sentry, Datadog, Linear, Slack, Shopify, ClickHouse, GitHub, AWS, Cloudflare, browser automation, and model providers.
-- **Closed-loop CLIs:** `agent-browser`, `playwright`, `npx @playwright/mcp`, `curl`, `jq`, `httpx`, `sqlite3`, `ss`, `dig`, and `nc` are installed during bootstrap so the agent can verify UI, API, DB, logs, and network behavior directly.
-- **Skills:** 155 `SKILL.md` files loaded by intent for behavior, workflows, reviews, design, security, provider usage, and automation.
+- **Built-ins:** 22 tools -- terminal, filesystem, search, browser, vision, image, TTS, Python execution, subagents, cron, skills, memory, session search.
+- **MCP:** playwright + cursor-bridge (core); 26+ bundled SaaS/data servers when credentials exist (Vercel, Stripe, Supabase, Clerk, Firebase, Figma, PostHog, Sentry, Datadog, Linear, Slack, Neon, Upstash, Turso, Resend, Notion, Brave, Exa, Memory, Cloudflare, Grafana, GitHub, filesystem, fetch, git, sqlite). Catalog at `knowledge/mcps/catalog.json`.
+- **Closed-loop CLIs:** agent-browser, playwright, @playwright/mcp, curl, jq, httpx, sqlite3, ss, dig, nc.
+- **Skills:** 161 `SKILL.md` files loaded on demand.
 
 Cursor-specific MCP tools:
 
@@ -220,22 +218,22 @@ Cursor-specific MCP tools:
 
 ## Known constraints
 
-- Browser-driven agent bootstrap is wired for Dedalus Machines. Use the CLI only when you need a lower-level live-fire install/debug path.
-- Dedalus is the only live provider implementation today.
-- Vercel Sandbox and Fly are schema/UI/provider stubs.
-- Dedalus previews may require org hostname configuration. The CLI falls back to Cloudflare quick tunnels.
-- `hermes-agent` is installed from GitHub, not PyPI.
-- Hermes reads config on gateway start. Restart the gateway after config changes.
-- The MCP subprocess needs an absolute Node path on the VM.
-- The root filesystem is small. Toolchains and caches must live under `/home/machine`.
+- Browser bootstrap git-clones knowledge on first run; CLI `deploy` tarballs local `knowledge/` (includes uncommitted edits).
+- cursor-bridge full build requires CLI deploy with local `mcp/cursor-bridge` upload; web bootstrap registers MCP when key exists but may need redeploy for bridge binary.
+- Dedalus previews may require org hostname configuration. Fallback: Cloudflare quick tunnels.
+- `hermes-agent` installs from GitHub, not PyPI.
+- Hermes reads config on gateway start. Restart after config/MCP changes.
+- MCP subprocesses need absolute node/npx paths under `/home/machine`.
+- Root filesystem is small on Dedalus. Toolchains and caches must live under the persistent home volume.
 
 ## Repository layout
 
 ```txt
 agent-machines/
   src/                     CLI commands and machine bootstrap
-  knowledge/               skills, memory, persona, cron seed
+  knowledge/               skills, mcps catalog, memory, persona, cron seed
   mcp/cursor-bridge/       Node MCP server wrapping @cursor/sdk
+  scripts/                 sync-from-wiki, knowledge manifest, machine gc
   web/                     Next.js public site and dashboard
 ```
 

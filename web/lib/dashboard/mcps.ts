@@ -1,8 +1,7 @@
 /**
  * Static MCP registry. The dashboard reads from this list to render the
  * MCPs page. The source of truth on the live machine is
- * `~/.agent-machines/config.toml` -- this file is the marketing-friendly
- * reflection showing expected tool catalogs after auth/config.
+ * `~/.agent-machines/config.yaml` plus `~/.agent-machines/mcps/catalog.json`.
  *
  * Keep tool descriptions short (1 sentence) and agent-oriented.
  */

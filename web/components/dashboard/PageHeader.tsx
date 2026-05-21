@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import { BrandMark } from "@/components/BrandMark";
 import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 
@@ -15,17 +14,12 @@ type Props = {
  * Page header used on every dashboard route. Hatch strip at the bottom
  * replaces a plain border-b -- it reads as an actual end-of-header
  * marker, not just a thin line that could be mistaken for any other
- * border on the page. A muted BrandMark sits on the right when no
- * other action is supplied.
+ * border on the page.
  *
  * Typography:
  *   - kicker: ReticleLabel (mono uppercase tracked) -- structural marker
  *   - title:  ret-display (Nacelle SemiBold, tight) -- the primary heading
  *   - description: Nacelle (sans) at body weight -- prose, not metadata
- *
- * The description used to be `font-mono` which made every dashboard
- * page header read as code commentary. Sans body copy gives it the
- * editorial tone the marketing site already has.
  */
 export function PageHeader({ kicker, title, description, right }: Props) {
 	return (
@@ -40,16 +34,9 @@ export function PageHeader({ kicker, title, description, right }: Props) {
 						</p>
 					) : null}
 				</div>
-				<div className="flex shrink-0 items-center gap-2">
-					{right ?? (
-						<BrandMark
-							size={16}
-							gap="tight"
-							withLabel={false}
-							className="opacity-60 hover:opacity-100 transition-opacity"
-						/>
-					)}
-				</div>
+				{right ? (
+					<div className="flex shrink-0 items-center gap-2">{right}</div>
+				) : null}
 			</div>
 			<ReticleHatch className="h-1.5 border-t border-[var(--ret-border)]" pitch={6} />
 		</header>

@@ -15,6 +15,7 @@ import { APP_DATA_ROOT, readTextFile } from "@/lib/storage/machine-fs";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 import {
+	DEFAULT_MODEL,
 	toPublicConfig,
 	type AgentProfile,
 	type AiProviderKeys,
@@ -156,7 +157,7 @@ function mergeGatewayProfile(
 		id,
 		name: partial.name ?? existing?.name ?? id,
 		kind: partial.kind ?? existing?.kind ?? "openai-compatible",
-		model: partial.model ?? existing?.model ?? "anthropic/claude-sonnet-4-6",
+		model: partial.model ?? existing?.model ?? DEFAULT_MODEL,
 		baseUrl: partial.baseUrl ?? existing?.baseUrl ?? null,
 		apiKey: partial.apiKey ?? existing?.apiKey ?? null,
 		createdAt: partial.createdAt ?? existing?.createdAt ?? now,

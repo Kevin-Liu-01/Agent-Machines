@@ -136,7 +136,7 @@ const FEATURES: ReadonlyArray<Feature> = [
 		assembly: "logos",
 		Icon: IconToolStack,
 		title: "Bring any agent + tool",
-		body: "Hermes or OpenClaw. 96 skills, 23 built-ins, 17 services. Dedalus live; Sandbox + Fly shaped.",
+		body: "Hermes, OpenClaw, Claude Code, or Codex. 161 skills, 22 built-ins, 35 MCP catalog. Dedalus, E2B, and Sprites live.",
 		services: [
 			{
 				id: "hermes",

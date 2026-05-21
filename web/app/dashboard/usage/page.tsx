@@ -13,60 +13,22 @@ import {
 	TimeRangeSelector,
 	RANGE_OPTIONS_USAGE,
 } from "@/components/dashboard/TimeRangeSelector";
+import {
+	avgPerDay,
+	cpuChartBuckets,
+	fmtActiveTime,
+	fmtUsageHours,
+	memoryChartBuckets,
+	normalizeUsagePayload,
+	storageChartBuckets,
+	type NormalizedUsage,
+} from "@/lib/dashboard/usage-metrics";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { cn } from "@/lib/cn";
-
-type Bucket = { date: string; [key: string]: unknown };
-
-type UsageResponse = {
-	ok: true;
-	days: number;
-	resources: {
-		cpu: {
-			totalVcpuSeconds: number;
-			buckets: Array<{ date: string; vcpuSeconds: number }>;
-		};
-		memory: {
-			totalGibSeconds: number;
-			buckets: Array<{ date: string; gibSeconds: number }>;
-		};
-		storage: {
-			totalGibHours: number;
-			buckets: Array<{ date: string; gibHours: number }>;
-		};
-	};
-	machineBreakdown: Array<{
-		machineId: string;
-		vcpu: number;
-		memoryMib: number;
-		awakeSeconds: number;
-		cpuVcpuSeconds: number;
-	}>;
-	totalCostMillicents: number;
-	totalCostFormatted: string;
-};
-
-function fmtHours(seconds: number): string {
-	const h = seconds / 3600;
-	return h >= 10 ? h.toFixed(0) : h.toFixed(1);
-}
-
-function fmtActiveTime(seconds: number): string {
-	if (seconds < 60) return `${Math.round(seconds)}s`;
-	if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
-	return `${(seconds / 3600).toFixed(1)}h`;
-}
-
-function avgPerDay(total: number, days: number): string {
-	if (days <= 0) return "0";
-	const avg = total / days;
-	return avg >= 10 ? avg.toFixed(0) : avg.toFixed(1);
-}
 
 export default function UsagePage() {
 	const [days, setDays] = useState(7);
-	const [data, setData] = useState<UsageResponse | null>(null);
+	const [data, setData] = useState<NormalizedUsage | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
@@ -79,14 +41,15 @@ export default function UsagePage() {
 					`/api/dashboard/metrics/usage?days=${days}`,
 					{ cache: "no-store" },
 				);
-				if (!res.ok || stopped) {
+				if (!res.ok) {
 					if (!stopped) setError(`HTTP ${res.status}`);
 					return;
 				}
-				const json = (await res.json()) as UsageResponse;
+				const json: unknown = await res.json();
+				const normalized = normalizeUsagePayload(json, days);
 				if (!stopped) {
-					setData(json);
-					setError(null);
+					setData(normalized);
+					setError(normalized ? null : "Invalid usage payload");
 				}
 			} catch {
 				if (!stopped) setError("Failed to fetch usage data");
@@ -100,37 +63,28 @@ export default function UsagePage() {
 		};
 	}, [days]);
 
-	const cpuHours = data ? fmtHours(data.resources.cpu.totalVcpuSeconds) : "–";
-	const memHours = data
-		? fmtHours(data.resources.memory.totalGibSeconds)
+	const resources = data?.resources;
+	const cpuHours = resources
+		? fmtUsageHours(resources.cpu.total)
 		: "–";
-	const storageHours = data
-		? data.resources.storage.totalGibHours.toFixed(1)
+	const memHours = resources
+		? fmtUsageHours(resources.memory.total)
+		: "–";
+	const storageHours = resources
+		? resources.storage.total.toFixed(1)
 		: "–";
 
 	const cpuBuckets = useMemo(
-		() =>
-			data?.resources.cpu.buckets.map((b) => ({
-				date: b.date,
-				value: b.vcpuSeconds / 3600,
-			})) ?? [],
-		[data],
+		() => (resources ? cpuChartBuckets(resources) : []),
+		[resources],
 	);
 	const memBuckets = useMemo(
-		() =>
-			data?.resources.memory.buckets.map((b) => ({
-				date: b.date,
-				value: b.gibSeconds / 3600,
-			})) ?? [],
-		[data],
+		() => (resources ? memoryChartBuckets(resources) : []),
+		[resources],
 	);
 	const storageBuckets = useMemo(
-		() =>
-			data?.resources.storage.buckets.map((b) => ({
-				date: b.date,
-				value: b.gibHours,
-			})) ?? [],
-		[data],
+		() => (resources ? storageChartBuckets(resources) : []),
+		[resources],
 	);
 
 	return (
@@ -156,7 +110,6 @@ export default function UsagePage() {
 					</ReticleFrame>
 				) : null}
 
-				{/* ── B) Resource stat cards ── */}
 				<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 					{loading ? (
 						<>
@@ -190,14 +143,13 @@ export default function UsagePage() {
 					)}
 				</div>
 
-				{/* ── C) Resource utilization charts ── */}
 				<ReticleFrame>
 					<div className="divide-y divide-[var(--ret-border)]">
 						<ResourceChartRow
 							title="CPU"
 							total={cpuHours}
 							unit="vCPU-hrs"
-							avgLabel={`${data ? avgPerDay(data.resources.cpu.totalVcpuSeconds / 3600, days) : "–"} avg/day`}
+							avgLabel={`${resources ? avgPerDay(resources.cpu.total / 3600, days) : "–"} avg/day`}
 							data={cpuBuckets}
 							color="var(--ret-purple)"
 							loading={loading}
@@ -206,7 +158,7 @@ export default function UsagePage() {
 							title="Memory"
 							total={memHours}
 							unit="GB-hrs"
-							avgLabel={`${data ? avgPerDay(data.resources.memory.totalGibSeconds / 3600, days) : "–"} avg/day`}
+							avgLabel={`${resources ? avgPerDay(resources.memory.total / 3600, days) : "–"} avg/day`}
 							data={memBuckets}
 							color="var(--ret-amber)"
 							loading={loading}
@@ -215,7 +167,7 @@ export default function UsagePage() {
 							title="Storage"
 							total={storageHours}
 							unit="GB-hrs"
-							avgLabel={`${data ? avgPerDay(data.resources.storage.totalGibHours, days) : "–"} avg/day`}
+							avgLabel={`${resources ? avgPerDay(resources.storage.total, days) : "–"} avg/day`}
 							data={storageBuckets}
 							color="var(--ret-red)"
 							loading={loading}
@@ -223,7 +175,6 @@ export default function UsagePage() {
 					</div>
 				</ReticleFrame>
 
-				{/* ── D) Per-machine usage table ── */}
 				<ReticleFrame>
 					<div className="border-b border-[var(--ret-border)] px-4 py-3">
 						<h2 className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
@@ -275,10 +226,16 @@ export default function UsagePage() {
 												{row.machineId.slice(0, 20)}
 											</td>
 											<td className="px-4 py-2.5 text-[11px] text-[var(--ret-text-dim)]">
-												{row.vcpu} vCPU
+												{row.vcpu != null
+													? `${row.vcpu} vCPU`
+													: `${fmtUsageHours(row.cpuVcpuSeconds)} vCPU-hrs`}
 											</td>
 											<td className="hidden px-4 py-2.5 text-[11px] text-[var(--ret-text-dim)] sm:table-cell">
-												{(row.memoryMib / 1024).toFixed(1)} GiB
+												{row.memoryMib != null
+													? `${(row.memoryMib / 1024).toFixed(1)} GiB`
+													: row.memoryGibSeconds
+														? `${(row.memoryGibSeconds / 3600).toFixed(1)} GB-hrs`
+														: "–"}
 											</td>
 											<td className="hidden px-4 py-2.5 text-[11px] text-[var(--ret-text-muted)] md:table-cell">
 												–

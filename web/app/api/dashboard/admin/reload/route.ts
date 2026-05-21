@@ -1,11 +1,9 @@
 /**
  * POST /api/dashboard/admin/reload
  *
- * Runs `~/.agent-machines/scripts/reload-from-git.sh` on the live
- * machine via Dedalus exec. The script does a shallow git fetch + reset
- * on the agent-machines repo checkout under /home/machine/ and re-syncs
- * `knowledge/skills`, `knowledge/crons`, and the persona files into
- * `~/.agent-machines/`.
+ * Runs `~/.agent-machines/scripts/reload-from-git.sh` on the live machine via
+ * provider exec. The script git-pulls the repo checkout and re-syncs knowledge
+ * into `~/.agent-machines/`.
  *
  * This is the "edit on GitHub, click reload, agent picks it up" flow --
  * the persistence story for skills, crons, MEMORY.md, USER.md, etc.

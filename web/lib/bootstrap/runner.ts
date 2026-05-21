@@ -10,6 +10,13 @@
 
 import type { MachineProvider } from "@/lib/providers";
 import {
+	buildMcpRegisterShell,
+	buildWebReloadScript,
+	REPO_BRANCH,
+	REPO_CLONE_URL,
+} from "@/lib/bootstrap/reload-script";
+import { migrateLegacyPathsShell } from "@/lib/platform/runtime";
+import {
 	BOOTSTRAP_PHASES,
 	type BootstrapPhaseId,
 	type BootstrapState,
@@ -41,7 +48,7 @@ function pathsFor(providerKind: ProviderKind): BootstrapPaths {
 		HOME,
 		AGENT_HOME: `${HOME}/.agent`,
 		MACHINE_HOME: `${HOME}/.machine`,
-		HERMES_HOME: `${HOME}/.hermes`,
+		HERMES_HOME: `${HOME}/.agent-machines`,
 		APP_HOME: `${HOME}/.agent-machines`,
 		OPENCLAW_HOME: `${HOME}/.openclaw`,
 		NPM_PREFIX: `${HOME}/.npm-global`,
@@ -212,9 +219,11 @@ function commandFor(
 
 	switch (phase) {
 		case "system-deps":
+			const migrate = migrateLegacyPathsShell(p.HOME, p.APP_HOME);
 			if (isSandbox) {
 				return [
 					"set -e",
+					migrate,
 					`mkdir -p ${p.APP_HOME}/chats ${p.APP_HOME}/artifacts ${p.HERMES_HOME}/logs ${p.OPENCLAW_HOME}/logs ${p.MACHINE_HOME}/logs/services`,
 					`${sudo}apt-get update -qq >/dev/null 2>&1 || true`,
 					`${sudo}apt-get install -y -qq jq sqlite3 >/dev/null 2>&1 || true`,
@@ -222,6 +231,7 @@ function commandFor(
 			}
 			return [
 				"set -e",
+				migrate,
 				`mkdir -p ${p.APP_HOME}/chats ${p.APP_HOME}/artifacts ${p.HERMES_HOME}/logs ${p.OPENCLAW_HOME}/logs ${p.MACHINE_HOME}/logs/services`,
 				'for i in $(seq 1 30); do fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; echo "waiting for dpkg lock ($i/30)..."; sleep 2; done',
 				`${sudo}apt-get update -qq >/dev/null`,
@@ -272,17 +282,26 @@ function commandFor(
 		case "seed-knowledge":
 			return [
 				"set -e",
-				`mkdir -p ${p.HERMES_HOME}/skills ${p.HERMES_HOME}/crons ${p.APP_HOME}`,
+				`mkdir -p ${p.HERMES_HOME}/skills ${p.HERMES_HOME}/crons ${p.HERMES_HOME}/mcps ${p.APP_HOME}`,
 				`cat > ${p.APP_HOME}/settings.json <<'EOF'\n${machineSettingsJson(machine, config)}\nEOF`,
-				`test -d ${p.HERMES_HOME}/skills`,
 			].join(" && ");
-		case "install-git-reload":
+		case "install-git-reload": {
+			const reloadBody = buildWebReloadScript(p.HOME, p.APP_HOME);
+			const repoDir = `${p.HOME}/agent-machines`;
+			const legacyRepo = `${p.HOME}/hermes-machines`;
 			return [
 				"set -e",
-				`mkdir -p ${p.HERMES_HOME}/scripts`,
-				`cat > ${p.HERMES_HOME}/scripts/reload-from-git.sh <<'EOF'\n#!/usr/bin/env bash\nset -euo pipefail\necho '[reload] browser bootstrap placeholder: git reload installed'\nEOF`,
+				`if [ ! -d ${repoDir}/.git ]; then ` +
+					`if [ -d ${legacyRepo}/.git ]; then ln -sfn ${legacyRepo} ${repoDir}; ` +
+					`else git clone --depth 1 --branch ${REPO_BRANCH} ${REPO_CLONE_URL} ${repoDir}; fi; ` +
+					`else cd ${repoDir} && git fetch --depth 1 origin ${REPO_BRANCH} && git reset --hard origin/${REPO_BRANCH}; fi`,
+				`mkdir -p ${p.HERMES_HOME}/scripts ${p.APP_HOME}/scripts`,
+				`cat > ${p.HERMES_HOME}/scripts/reload-from-git.sh <<'EOF'\n${reloadBody}\nEOF`,
 				`chmod +x ${p.HERMES_HOME}/scripts/reload-from-git.sh`,
+				`ln -sfn ${p.HERMES_HOME}/scripts/reload-from-git.sh ${p.APP_HOME}/scripts/reload-from-git.sh`,
+				`${p.HERMES_HOME}/scripts/reload-from-git.sh`,
 			].join(" && ");
+		}
 		case "install-cursor-bridge":
 			return cursorKey
 				? `mkdir -p ${p.APP_HOME}/cursor && printf %s ${cursorKey} > ${p.APP_HOME}/cursor/.configured`
@@ -299,7 +318,9 @@ function commandFor(
 			return configureHermes(model, gatewayKey, upstreamApiKey, upstreamBaseUrl, p, gwPort);
 		}
 		case "register-cursor-mcp":
-			return `mkdir -p ${p.HERMES_HOME} && touch ${p.HERMES_HOME}/mcp-registered`;
+			return agent === "hermes" || agent === "openclaw"
+				? buildMcpRegisterShell(p.APP_HOME, p.HOME, Boolean(cursorKey))
+				: null;
 		case "seed-cron-jobs":
 			return `mkdir -p ${p.HERMES_HOME}/crons && touch ${p.HERMES_HOME}/crons/.seeded`;
 		case "start-gateway":
@@ -335,8 +356,8 @@ function installClosedLoopTools(p: BootstrapPaths, isSandbox = false): string {
 		`cat > ${p.AGENT_HOME}/docs/agent-context.md <<'EOF'\n# Agent Machine Context\n\nThis machine is built for closed-loop agent development. Write code, start the service, hit the endpoint, inspect logs, fix, and retry.\n\n## Tools\n\n- Browser/UI: agent-browser, Playwright, and npx @playwright/mcp with Chromium cached under ${p.HOME}/.cache/ms-playwright.\n- API: curl, jq, and httpx.\n- Database: sqlite3.\n- Network: ss, dig, curl -v, and nc.\n- Logs: /.machine/logs/services/ plus runtime originals under ${p.HOME}.\n\nKeep toolchains and caches under ${p.HOME} because the root filesystem can reset on wake.\nEOF`,
 		`${sudo}ln -sfn ${p.AGENT_HOME} /.agent || true`,
 		`${sudo}ln -sfn ${p.MACHINE_HOME} /.machine || true`,
-		`ln -sfn ${p.HERMES_HOME}/logs/gateway.log ${p.MACHINE_HOME}/logs/services/hermes-gateway.log || true`,
-		`ln -sfn ${p.HERMES_HOME}/logs/dashboard.log ${p.MACHINE_HOME}/logs/services/hermes-dashboard.log || true`,
+				`ln -sfn ${p.APP_HOME}/logs/gateway.log ${p.MACHINE_HOME}/logs/services/agent-gateway.log || true`,
+		`ln -sfn ${p.APP_HOME}/logs/dashboard.log ${p.MACHINE_HOME}/logs/services/agent-dashboard.log || true`,
 	].join("\n");
 }
 

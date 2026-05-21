@@ -4,6 +4,7 @@ import { cn } from "@/lib/cn";
 
 export type Mark =
 	| "am"
+	| "dedalus"
 	| "nous"
 	| "cursor"
 	| "openclaw"
@@ -27,7 +28,7 @@ type Props = {
 	className?: string;
 	/**
 	 * "auto" -- pick a recoloring strategy per mark:
-	 *   am      -> light/dark image swap (mark SVG or baked logo PNG)
+	 *   am, dedalus -> light/dark image swap (mark SVG or baked logo PNG)
 	 *   nous    -> CSS mask + currentColor (true monochrome adoption)
 	 *   cursor  -> light/dark image swap (Cursor ships their own variants)
 	 *
@@ -43,6 +44,10 @@ const NATIVE_SRC: Record<Mark, { light: string; dark: string }> = {
 	am: {
 		light: "/brand/agent-machines-mark-dark.svg",
 		dark: "/brand/agent-machines-mark.svg",
+	},
+	dedalus: {
+		light: "/brand/dedalus-logo-dark.svg",
+		dark: "/brand/dedalus-logo.svg",
 	},
 	nous: {
 		light: "/brand/nous-mark.svg",
@@ -76,6 +81,7 @@ const NATIVE_SRC: Record<Mark, { light: string; dark: string }> = {
 
 const MASK_SRC: Record<Mark, string> = {
 	am: "/brand/agent-machines-mark-mask.svg",
+	dedalus: "/brand/dedalus-mark-black.svg",
 	nous: "/brand/nous-mark.svg",
 	cursor: "/brand/cursor-mark.svg",
 	openclaw: "/brand/openclaw-mark.svg",
@@ -87,6 +93,7 @@ const MASK_SRC: Record<Mark, string> = {
 
 const DEFAULT_TONE: Record<Mark, NonNullable<Props["tone"]>> = {
 	am: "auto",
+	dedalus: "auto",
 	nous: "currentColor",
 	cursor: "auto",
 	openclaw: "currentColor",
@@ -98,6 +105,7 @@ const DEFAULT_TONE: Record<Mark, NonNullable<Props["tone"]>> = {
 
 const ARIA_LABEL: Record<Mark, string> = {
 	am: "Agent Machines",
+	dedalus: "Dedalus Labs",
 	nous: "Nous Research",
 	cursor: "Cursor",
 	openclaw: "OpenClaw",

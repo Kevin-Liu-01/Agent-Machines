@@ -21,9 +21,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-const HERMES_HOME = process.env.HERMES_HOME ?? `${process.env.HOME}/.hermes`;
-const SKILLS_DIR = `${HERMES_HOME}/skills`;
-const RUN_LOG_PATH = `${HERMES_HOME}/cursor-runs.jsonl`;
+const RUNTIME_HOME = process.env.HERMES_HOME ?? `${process.env.HOME}/.agent-machines`;
+const SKILLS_DIR = `${RUNTIME_HOME}/skills`;
+const RUN_LOG_PATH = `${RUNTIME_HOME}/cursor-runs.jsonl`;
 const DEFAULT_MODEL = "composer-2";
 
 /**
@@ -52,7 +52,7 @@ function readApiKey(): string {
 	const key = process.env.CURSOR_API_KEY?.trim();
 	if (!key) {
 		throw new Error(
-			"CURSOR_API_KEY is not set. Add it to ~/.hermes/.env (cursor.com/dashboard/integrations) and restart the gateway.",
+			"CURSOR_API_KEY is not set. Add it to ~/.agent-machines/.env (cursor.com/dashboard/integrations) and restart the gateway.",
 		);
 	}
 	return key;
@@ -321,7 +321,7 @@ server.registerTool(
 				.array(z.string())
 				.optional()
 				.describe(
-					"Names of Hermes skills (folders in ~/.hermes/skills) whose SKILL.md should be injected as .cursor/rules for this run. Empty = no injection.",
+					"Names of Agent Machines skills (folders in ~/.agent-machines/skills) whose SKILL.md should be injected as .cursor/rules for this run. Empty = no injection.",
 				),
 		},
 	},
@@ -392,9 +392,9 @@ server.registerTool(
 server.registerTool(
 	"cursor_list_skills",
 	{
-		title: "List Hermes skills available for cursor_agent injection",
+		title: "List Agent Machines skills available for cursor_agent injection",
 		description:
-			"Returns the local skills under ~/.hermes/skills with their descriptions. Useful before calling cursor_agent so you know which skill names to pass to load_skills.",
+			"Returns the local skills under ~/.agent-machines/skills with their descriptions. Useful before calling cursor_agent so you know which skill names to pass to load_skills.",
 		inputSchema: {},
 	},
 	async () => {

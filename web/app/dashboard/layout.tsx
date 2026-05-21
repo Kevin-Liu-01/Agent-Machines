@@ -11,7 +11,7 @@ import {
 } from "@/lib/user-config/schema";
 
 export const metadata = {
-	title: "Dashboard -- Agent Machines",
+	title: "Dashboard",
 };
 
 /**

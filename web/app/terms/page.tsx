@@ -28,8 +28,8 @@ export default function TermsPage() {
 						current status
 					</p>
 					<p>
-						Dedalus Machines is wired today. E2B Sandbox and Fly Machines
-						are available as alternative providers.
+						Dedalus Machines, E2B Sandbox, and Sprites.dev are live
+						provider implementations.
 					</p>
 				</div>
 			}
@@ -44,7 +44,7 @@ export default function TermsPage() {
 					<p>
 						The project is open source under the MIT license. Hosted usage may
 						depend on third-party services, including Clerk, Vercel, Dedalus,
-						Cloudflare, Cursor, Fly, and model providers.
+						Cloudflare, Cursor, E2B, Sprites, and model providers.
 					</p>
 				</DocSection>
 

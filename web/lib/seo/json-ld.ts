@@ -1,3 +1,5 @@
+import { HARNESS } from "@/lib/platform/harness";
+
 import { FAQ, SITE } from "./config";
 
 /**
@@ -85,20 +87,21 @@ export function buildRootJsonLd(): JsonLdGraph {
 				description: SITE.description,
 				url: SITE.url,
 				featureList: [
-					"Per-account persistent Linux VM",
-					"Stateful filesystem at /home/machine",
-					"Hermes and OpenClaw agent runtimes",
-					"Dedalus Machines provider live today",
-					"MachineProvider abstraction for E2B Sandbox and Fly Machines",
+					"Persistent agent-on-a-machine combined primitive",
+					"Stateful filesystem at /home/machine/.agent-machines",
+					"Hermes, OpenClaw, Claude Code, and Codex agent runtimes",
+					"Dedalus Machines, E2B Sandbox, and Sprites.dev providers",
+					"Registry-driven harness: skills, service routes, MCP, CLIs, task routes",
 					"OpenAI-compatible /v1/chat/completions endpoint",
-					"96 SKILL.md skills auto-loaded by intent",
-					"17 service routes across MCP, CLI, plugin skills, and personal skills",
-					"23 built-in agent tools (shell, filesystem, browser, vision, code, memory, schedule, search)",
-					"Optional Cursor SDK delegation for code edits",
+					`${HARNESS.skillCount} SKILL.md skills in the protocol library`,
+					`${HARNESS.serviceRouteCount} ranked service routes (MCP → CLI → skills)`,
+					`${HARNESS.mcpServerCount} MCP catalog servers (${HARNESS.mcpTiers.core} core + ${HARNESS.mcpTiers.bundled} bundled)`,
+					`${HARNESS.cliCount}+ closed-loop CLIs for verification`,
+					`${HARNESS.nativeToolMin}–${HARNESS.nativeToolMax} agent-native tools depending on runtime`,
+					"Optional Cursor SDK delegation via cursor-bridge",
+					"Visual observation: sessions, tool calls, logs, cost attribution",
 					"Sleep / wake lifecycle with persistent disk",
-					"Clerk-tied private metadata for fleet identity",
-					"FTS5 search across all prior conversations",
-					"Cron scheduling that wakes the VM on tick",
+					"Programmatic MCP/CLI orchestration surface (roadmap)",
 				],
 				offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
 				author: { "@id": ID.person },

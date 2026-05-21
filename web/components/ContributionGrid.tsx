@@ -20,7 +20,7 @@ import {
 	type PartnerKey,
 } from "@/lib/contribution-data";
 
-const PARTNER_MARKS = new Set<Mark>(["am", "nous", "cursor", "openclaw"]);
+const PARTNER_MARKS = new Set<Mark>(["am", "dedalus", "nous", "cursor", "openclaw"]);
 
 const PARTNER_HUE: Record<PartnerKey, string> = {
 	am: "var(--ret-purple)",
@@ -52,7 +52,7 @@ const PARTNER_LABEL: Record<PartnerKey, string> = {
 
 const LOGO_PARTNERS = new Set<PartnerKey>(["dedalus", "nous", "cursor", "openclaw"]);
 const LOGO_MARK: Partial<Record<PartnerKey, Mark>> = {
-	dedalus: "am",
+	dedalus: "dedalus",
 	am: "am",
 	nous: "nous",
 	cursor: "cursor",

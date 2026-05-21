@@ -42,7 +42,7 @@ export const DEFAULT_MACHINE_SPEC: MachineSpec = {
 	storageGib: 10,
 };
 
-export const DEFAULT_MODEL = "anthropic/claude-sonnet-4-6";
+export const DEFAULT_MODEL = "anthropic/claude-opus-4-7";
 
 /**
  * Bootstrap phases the wizard executes after a machine is provisioned.
@@ -373,7 +373,7 @@ export const DEFAULT_LOADOUT_SOURCES: LoadoutSource[] = [
 		id: "bundled-skills",
 		name: "Bundled SKILL.md library",
 		kind: "bundled",
-		description: "The curated 96-skill wiki-derived library shipped in knowledge/skills.",
+		description: "The curated 161-skill wiki-derived library shipped in knowledge/skills.",
 		uri: "knowledge/skills",
 		enabled: true,
 		createdAt: DEFAULT_CREATED_AT,

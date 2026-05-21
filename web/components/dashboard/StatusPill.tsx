@@ -45,7 +45,7 @@ export function StatusPill({ phase, className }: Props) {
 	return (
 		<span
 			className={cn(
-				"inline-flex items-center gap-2 border px-2.5 py-1 font-mono text-[11px] leading-tight",
+				"inline-flex items-center gap-1.5 border px-2 py-0.5 text-[11px] leading-tight",
 				style,
 				className,
 			)}

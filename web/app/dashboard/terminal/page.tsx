@@ -4,7 +4,7 @@ import { TerminalPanel } from "@/components/dashboard/TerminalPanel";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-	title: "Terminal -- Agent Machines",
+	title: "Terminal",
 };
 
 /**

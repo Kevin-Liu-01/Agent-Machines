@@ -2,6 +2,7 @@ import { Logo, type CompositeMark } from "@/components/Logo";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { WingBackground } from "@/components/WingBackground";
 import { cn } from "@/lib/cn";
+import { HARNESS, PRODUCT } from "@/lib/platform/harness";
 
 type Capability = {
 	kicker: string;
@@ -14,10 +15,10 @@ type Capability = {
 
 const CAPABILITIES: ReadonlyArray<Capability> = [
 	{
-		kicker: "STATE",
-		title: "Disk persists across sleeps",
-		body: "Chat history, files, MEMORY.md, the FTS5 sessions DB, cron schedules, Python venv, skills -- all on /home/machine. The VM hibernates; the disk is the source of truth.",
-		notes: ["/home/machine", "MEMORY.md", "FTS5"],
+		kicker: "PRIMITIVE",
+		title: "Agent + machine, one unit",
+		body: PRODUCT.oneLiner,
+		notes: ["combined primitive", "not bare VM", "not framework-only"],
 		mark: "agent",
 		nyx: "nyx-waves",
 	},
@@ -37,35 +38,42 @@ const CAPABILITIES: ReadonlyArray<Capability> = [
 	},
 	{
 		kicker: "PROVIDERS",
-		title: "Dedalus + 2 stubs",
-		body: "Dedalus live end-to-end. E2B Sandbox and Fly Machines exist in the schema and setup UI with full provisioner implementations.",
-		notes: ["dedalus", "e2b", "fly"],
+		title: "Three live hosts",
+		body: "Dedalus Machines, E2B Sandbox, and Sprites.dev each implement provision, exec, wake/sleep (where supported), and public URL through the same MachineProvider interface.",
+		notes: ["dedalus", "e2b", "sprites"],
 	},
 	{
 		kicker: "AGENTS",
-		title: "Hermes or OpenClaw",
-		body: "Two agents, same /v1 endpoint. Hermes: memory + cron + MCP. OpenClaw: Anthropic computer-use + browser + screenshot. Swap from the navbar.",
+		title: "Four agent runtimes",
+		body: "Hermes, OpenClaw, Claude Code, or Codex on the same machine. Hermes/OpenClaw expose /v1; all persist under ~/.agent-machines/.",
 		notes: ["/v1/chat", "swap any time"],
 		mark: "agent",
 	},
 	{
-		kicker: "TOOLS",
-		title: "23 built-ins + 17 services",
-		body: "Terminal, fs, web search, browser, vision, codegen, subagent. Plus closed-loop CLIs for browser, API, DB, logs, and network verification.",
-		notes: ["terminal", "browser_*", "curl/httpx", "sqlite3"],
+		kicker: "HARNESS",
+		title: "Registry-driven loadout",
+		body: `${HARNESS.serviceRouteCount} service routes, ${HARNESS.mcpServerCount} MCP servers, ${HARNESS.cliCount}+ CLIs, ${HARNESS.taskRouteCount} task routes — ranked like tool-hierarchy.mdc. Native tool count varies by agent runtime (${HARNESS.nativeToolMin}–${HARNESS.nativeToolMax}).`,
+		notes: ["MCP → CLI → skill", "catalog.json", "loadout.ts"],
 		mark: "agent",
 		nyx: "nyx-waves",
 	},
 	{
 		kicker: "KNOWLEDGE",
-		title: "96-skill library",
+		title: `${HARNESS.skillCount}-skill protocol`,
 		body: "SKILL.md docs auto-loaded by intent. Drop a folder into knowledge/skills/, click Reload on the dashboard, the VM git-pulls -- no CLI.",
 		notes: ["agent-ethos", "deepsec", "Reload"],
 	},
 	{
+		kicker: "OBSERVE",
+		title: "Watch every decision",
+		body: "Sessions, tool calls, skill invocations, logs, cost — the observation layer that turns a black-box agent into something you can orchestrate. Built because benchmarking substrates wasn't enough; seeing agents work is the feature.",
+		notes: ["sessions", "tool calls", "cost"],
+		mark: "am",
+	},
+	{
 		kicker: "DELEGATION",
 		title: "Cursor is optional",
-		body: "Hermes can hand code work to Cursor SDK through cursor_agent. Without CURSOR_API_KEY, the machine still works: chat, tools, skills, cron, browser, files.",
+		body: "The agent can hand code work to Cursor SDK through cursor_agent. Without CURSOR_API_KEY, the machine still works: chat, tools, skills, cron, browser, files.",
 		notes: ["cursor_agent", "optional"],
 		mark: "cursor",
 		nyx: "nyx-lines",

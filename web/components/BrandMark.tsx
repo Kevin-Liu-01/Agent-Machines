@@ -40,7 +40,9 @@ export function BrandMark({
 			)}
 		>
 			<AnimatedBrandMark size={size} gap={gap} intro={intro} />
-			{withLabel ? <span className="text-sm">agent-machines</span> : null}
+			{withLabel ? (
+				<span className="whitespace-nowrap text-sm">agent-machines</span>
+			) : null}
 		</span>
 	);
 }

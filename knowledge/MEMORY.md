@@ -1,67 +1,49 @@
 # Memory
 
+## Product (read VISION.md)
+
+Agent Machines = **persistent agent-on-a-machine** — the combined primitive (agent + home + skills + services + scheduling + observation). Not Hermes. Not a bare container.
+
+Two audiences: humans (dashboard) → agents (MCP/CLI orchestration endgame).
+
 ## Environment
 
-- I run inside a Dedalus Machine. Persistent state lives at `/home/machine`. Root filesystem resets on wake; never put real work there.
-- LLM provider is `openai`-compatible at `https://api.dedaluslabs.ai/v1`, routed by Dedalus to 200+ models. The `DEDALUS_API_KEY` is the only credential needed for inference.
-- API server is exposed on port `8642` and reachable from the public internet via a Dedalus preview URL or a Cloudflare quick tunnel. The bearer token lives in `~/.agent-machines/.env` as `API_SERVER_KEY`.
-- Web dashboard runs on port `9119` when started.
-- The `cursor-bridge` MCP server runs as a child process of the gateway and exposes `cursor_*` tools backed by the Cursor TypeScript SDK.
+- I run on an **Agent Machine** — persistent Linux. Dedalus: `/home/machine`; E2B: `/home/user`; Sprites: `/home/sprite`.
+- **Runtime root:** `~/.agent-machines` — skills, config, mcps, crons, sessions, logs, chats, artifacts.
+- **Providers:** Dedalus Machines, E2B Sandbox, Sprites.dev.
+- **Agent runtimes:** Hermes, OpenClaw, Claude Code, Codex CLI (native tool sets differ per runtime).
+- **Inference:** `https://api.dedaluslabs.ai/v1` default; 200+ models via Dedalus router.
+- **Gateway:** `:8642` (Hermes) or `:18789` (OpenClaw). Bearer: `API_SERVER_KEY` in `~/.agent-machines/.env`.
+- **Control plane:** agent-machines.dev dashboard + CLI + (future) Agent Machines MCP server.
 
-## Conventions I follow (apply to my own outputs)
+## Harness (registry-driven — not one static tool count)
 
-- ASCII over Unicode lookalikes (`->` not `→`, `>=` not `≥`).
-- No emoji in code, comments, docs, commits.
-- Conventional Commits (`type(scope): description`); never use "and" in a commit message.
-- 70-line functions, 500-line files, 200-LOC PRs.
-- `git switch` over `git checkout`. `--force-with-lease` over `--force`.
-- Production DBs/infra are sacred. No `DROP INDEX`, `ALTER TABLE`, manual SSM edits, dashboard SQL.
+Aligned with wiki `tool-hierarchy.mdc`:
 
-## Tools available
+1. **Skills** — `~/.agent-machines/skills/<name>/SKILL.md` from `knowledge/skills/`
+2. **Service routes** — MCP → CLI → plugin/personal skill per vendor (dashboard loadout)
+3. **MCP servers** — `~/.agent-machines/mcps/catalog.json` → `config.yaml` mcp_servers
+4. **CLIs** — agent-browser, Playwright, gh, curl, httpx, jq, sqlite3, ss, dig, nc, …
+5. **Agent-native tools** — vary by runtime (Hermes richest: terminal, fs, browser, vision, cron, memory, delegate, …)
+6. **Task routes** — browser automation, QA, security, design review, research, SEO, …
 
-`terminal`, `read_file`, `write_file`, `patch`, `search`, `web_search`, `web_extract`, `browser_*` (Playwright), `vision_analyze`, `image_generate` (FAL), `tts`, `skills_list`/`skill_view`, `memory`, `session_search`, `cronjob`, `delegate_task`, `execute_code` (Python sandbox).
+## MCP
 
-Plus four MCP tools from `mcp_servers.cursor` (the cursor-bridge to the Cursor TypeScript SDK):
+**Core:** playwright, cursor-bridge (when `CURSOR_API_KEY`).
 
-- `cursor_agent` -- spawn a Cursor coding agent against a working directory. Full file/terminal access, full codebase semantic search, the same agent that runs in the Cursor IDE. Use when the operator asks for real code work.
-- `cursor_resume` -- continue a previous Cursor agent conversation by ID.
-- `cursor_list_skills` -- list local skills available for injection into Cursor prompts.
-- `cursor_models` -- list Cursor models the API key can use.
+**Bundled (credential-gated):** Vercel, Stripe, Supabase, Clerk, Firebase, Figma, PostHog, Sentry, Datadog, Linear, Slack, GitHub, Cloudflare, AWS, Shopify, ClickHouse, and more in catalog.
 
-## Closed-loop CLIs (installed at bootstrap)
+## Conventions I follow
 
-These are installed globally and live under `/home/machine/.npm-global/bin` and `/home/machine/.local/bin`:
+- ASCII over Unicode lookalikes; no emoji in code/docs/commits.
+- Conventional Commits; `git switch`; production infra is sacred.
 
-- `agent-browser` -- CLI browser automation with snapshots, ref-based actions, screenshots. Session data at `~/.agent-browser/`.
-- `playwright` -- Chromium cached at `~/.cache/ms-playwright/`. Use for deterministic browser tests, screenshots, and page inspection.
-- `httpx` -- HTTP client for API smoke tests. Installed via `uv tool install`.
-- `curl`, `jq` -- always available. Hit endpoints and parse JSON.
-- `sqlite3` -- inspect local databases, verify migrations.
-- `ss`, `dig`, `nc` -- check listeners (`ss -tlnp`), resolve DNS (`dig`), test connections (`nc`).
+## Reload
 
-Service logs: `/.machine/logs/services/` has symlinks to gateway and dashboard logs. Originals live under `~/.agent-machines/logs/`.
-Agent docs: `/.agent/llm.txt` and `/.agent/docs/agent-context.md` describe the full tool inventory.
+`~/.agent-machines/scripts/reload-from-git.sh` — git-pulls `agent-machines` repo, syncs knowledge.
 
-## Loaded skills
+## Cron
 
-Each lives at `~/.agent-machines/skills/<name>/SKILL.md`:
+Pre-seeded from `knowledge/crons/seed.json`.
 
-- `agent-ethos` -- minimal-fix philosophy
-- `empirical-verification` -- scientific method for code
-- `closed-loop-development` -- use machine tools to verify your own work instead of asking the operator
-- `production-safety` -- never patch prod
-- `git-workflow` -- switch/restore, worktrees, commits
-- `frontend-design-taste` -- anti-slop UI rules
-- `reticle-design-system` -- a reference design system, swap for your own
-- `automation-cron` -- schedule recurring agent tasks
-- `security-audit` -- adversarial code review
-- `computer-use` -- browser automation patterns
-- `agent-browser` -- CLI browser automation via agent-browser
-- `plan-mode-review` -- structured review checklist
-- `taste-output` -- never truncate or stub generated code
-- `dedalus-machines` -- how this VM is wired, including closed-loop tool paths
-- `cursor-coding` -- when and how to delegate code work to a Cursor agent via the `cursor_agent` MCP tool
-
-## Cron automations
-
-Pre-seeded. Includes hourly health check, daily digest, weekly skill audit, nightly memory consolidation.
+Logs: `~/.agent-machines/logs/`. Docs: `/.agent/docs/agent-context.md`.

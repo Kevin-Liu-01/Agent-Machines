@@ -3,14 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "predev": "node scripts/sync-skills.mjs",
-    "prebuild": "node scripts/sync-skills.mjs",
+    "predev": "node scripts/sync-data.mjs",
+    "prebuild": "node scripts/sync-data.mjs",
     "dev": "next dev -p 3210",
     "dev:demo": "DASHBOARD_DEMO_MODE=1 NEXT_PUBLIC_DASHBOARD_DEMO_MODE=1 ALLOW_DEV_AUTH=1 next dev -p 3210",
     "build": "next build",
     "start": "next start -p 3210",
-    "typecheck": "node scripts/sync-skills.mjs && tsc --noEmit",
+    "typecheck": "node scripts/sync-data.mjs && tsc --noEmit",
     "sync-skills": "node scripts/sync-skills.mjs",
+    "sync-mcp-catalog": "node scripts/sync-mcp-catalog.mjs",
+    "sync-data": "node scripts/sync-data.mjs",
     "export-brand": "node scripts/export-brand-assets.mjs"
   },
   "dependencies": {

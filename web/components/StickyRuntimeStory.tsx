@@ -27,7 +27,7 @@ const STAGES: ReadonlyArray<Stage> = [
 	{
 		kicker: "stage 02",
 		title: "The runtime router chooses the host shape.",
-		body: "Dedalus and Fly are persistent machine lanes. E2B Sandbox supports pause/resume with snapshots. The UI only shows lifecycle actions that lane can actually do.",
+		body: "Dedalus and E2B are persistent machine lanes. Sprites.dev adds another live host with public URL proxy. The UI only shows lifecycle actions that lane can actually do.",
 		nodes: ["provider", "capability", "host"],
 		accent: "var(--ret-green)",
 	},
@@ -142,7 +142,7 @@ function StageMeta({ index }: { index: number }) {
 				<Logo mark="am" size={18} />
 				<ServiceIcon slug="vercel" size={16} tone="color" />
 				<span className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-					+ fly machines
+					+ e2b + sprites
 				</span>
 			</div>
 		);
@@ -275,7 +275,7 @@ function ProviderComparisonDiagram() {
 						))}
 					</ul>
 					<div className="mt-3">
-						{p.name === "Dedalus" ? <Logo mark="am" size={14} /> : null}
+						{p.name === "Dedalus" ? <Logo mark="dedalus" size={14} /> : null}
 						{p.name === "Sandbox" ? <ServiceIcon slug="vercel" size={14} /> : null}
 					</div>
 				</div>

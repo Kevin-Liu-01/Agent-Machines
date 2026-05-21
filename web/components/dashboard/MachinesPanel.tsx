@@ -20,6 +20,7 @@ import { isDemoModePublic } from "@/lib/demo/mode";
 import type { ProviderCapabilities } from "@/lib/providers";
 import {
 	AGENT_LABEL,
+	DEFAULT_MODEL,
 	PROVIDER_KINDS,
 	PROVIDER_LABEL,
 	type AgentKind,
@@ -73,9 +74,9 @@ const STATE_LABEL: Record<string, string> = {
 	unknown: "unknown",
 };
 
-const PROVIDER_LOGO: Record<ProviderKind, "am" | "nous" | "cursor" | "e2b" | "sprites" | null> =
+const PROVIDER_LOGO: Record<ProviderKind, "dedalus" | "nous" | "cursor" | "e2b" | "sprites" | null> =
 	{
-		dedalus: "am",
+		dedalus: "dedalus",
 		e2b: "e2b",
 		sprites: "sprites",
 	};
@@ -602,7 +603,7 @@ function QuickProvisionForm({
 }) {
 	const [providerKind, setProviderKind] = useState<ProviderKind>("dedalus");
 	const [agentKind, setAgentKind] = useState<AgentKind>("hermes");
-	const [model, setModel] = useState("anthropic/claude-sonnet-4-6");
+	const [model, setModel] = useState(DEFAULT_MODEL);
 	const [name, setName] = useState("");
 	const [vcpu, setVcpu] = useState("1");
 	const [memoryMib, setMemoryMib] = useState("2048");
@@ -720,7 +721,7 @@ function QuickProvisionForm({
 					<EditField label="name" value={name} onChange={setName} placeholder="my-agent" />
 				</div>
 				<div className="grid gap-3 md:grid-cols-4">
-					<EditField label="model" value={model} onChange={setModel} placeholder="anthropic/claude-sonnet-4-6" colSpan />
+					<EditField label="model" value={model} onChange={setModel} placeholder={DEFAULT_MODEL} colSpan />
 					<EditField label="vCPU" value={vcpu} onChange={setVcpu} placeholder="1" />
 					<EditField label="RAM (MiB)" value={memoryMib} onChange={setMemoryMib} placeholder="2048" />
 					<EditField label="Disk (GiB)" value={storageGib} onChange={setStorageGib} placeholder="10" />

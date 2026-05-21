@@ -21,7 +21,7 @@
  *      interfaces (MCP, CLI, plugin skills) so the agent picks the
  *      right one for the job.
  *
- * Plus skills (in `skills.ts`) -- 96 SKILL.md files that load on
+ * Plus skills (in `skills.ts`) -- 161 SKILL.md files that load on
  * demand to nudge the agent's behavior on a specific task type.
  */
 
@@ -74,9 +74,9 @@ export type BuiltinTool = {
 };
 
 /**
- * Native tools the running agent can invoke without going through an
- * MCP server. The rig provides every tool to every agent -- no
- * per-agent restrictions.
+ * Native tools exposed on the rig surface. Agent runtimes ship different
+ * native sets (see AGENTS[].nativeToolNames); the loadout UI shows which
+ * agents declare each tool natively vs via the shared rig extension.
  */
 export const BUILTIN_TOOLS: ReadonlyArray<BuiltinTool> = [
 	{
@@ -277,9 +277,8 @@ export type AgentToolBadge = {
 };
 
 /**
- * For a given built-in tool, returns which agents ship it natively and
- * which get it from the rig. Every agent always has every tool -- this
- * is purely informational for the loadout UI.
+ * For a given built-in tool, returns which agents ship it natively vs
+ * via the rig extension layer.
  */
 export function getAgentSupportForTool(toolName: string): AgentToolBadge[] {
 	return AGENTS.map((agent) => ({
@@ -1252,15 +1251,14 @@ export const TRUSTED_ADDONS: ReadonlyArray<TrustedAddOn> = [
 
 	},
 	{
-		id: "provider-fly-machines",
-		name: "Fly Machines",
+		id: "provider-sprites-dev",
+		name: "Sprites.dev",
 		kind: "provider",
-		provider: "Fly.io",
+		provider: "Sprites",
 		description:
-			"Persistent app-scoped machines with volumes, useful when users want an alternative long-lived runtime.",
-		source: "Fly Machines API",
-		command: "flyctl",
-
+			"Sprites.dev compute with public URL proxy. Live MachineProvider alongside Dedalus and E2B.",
+		source: "sprites.dev",
+		command: null,
 	},
 	{
 		id: "cli-agent-browser",

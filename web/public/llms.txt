@@ -1,40 +1,41 @@
 # Agent Machines
 
-> A persistent machine for your agent. One stateful microVM per Clerk account; chat history, files, learned skills, and cron schedules all live on /home/machine and survive every sleep cycle.
+> Persistent AI agents as a one-click primitive. Deploy the combined unit: agent + home + skills + services + memory + scheduling + observation — on any container substrate.
 
 ## Summary
 
-Agent Machines provisions a per-account Linux microVM where the agent stores everything to disk under `/home/machine/.agent-machines/`: chat `.jsonl` files, USER.md, MEMORY.md, an FTS5 sessions database, cron schedules, the Python venv, and learned skills. The same machine wakes on every device the user signs in from with Clerk.
+Agent Machines provisions a per-account Linux machine where everything persists to disk under `/home/machine/.agent-machines/`. The product is the **combined primitive** — not a bare container, not a framework-only layer, not a memory bolt-on.
 
-The product is open source (MIT) and lives at <https://github.com/Kevin-Liu-01/agent-machines>.
+Humans use the dashboard to provision, watch, and customize. The endgame is programmatic control: an MCP server and CLI so head agents spin up, route, observe, and tear down worker machines.
+
+Open source (MIT): <https://github.com/Kevin-Liu-01/agent-machines>
 
 ## Core facts
 
-- **Persistence model**: filesystem on disk, not vendor-controlled black-box memory.
-- **Boot times**: ~30s cold, <5s warm; second-billed Dedalus microVM hibernation.
-- **Agents supported**: Hermes (Nous Research, memory + cron + MCP-native) and OpenClaw (Dedalus Labs reference, Anthropic computer-use loop with browser + screenshot + click). Both expose `/v1/chat/completions`.
-- **Providers supported**: Dedalus Machines is live today. E2B Sandbox and Fly Machines are available as alternative providers.
-- **Auth + fleet identity**: Clerk private metadata stores per-user `UserConfig` (provider keys, machine fleet, active machine, draft agent). Never sent to the browser.
-- **Tools**: 23 built-in (terminal, filesystem, browser, vision, code, memory, schedule, search, image, audio, delegate) + 17 service routes across MCP, CLI, plugin skills, personal skills, and optional Cursor SDK delegation.
-- **Skills**: 95 SKILL.md files auto-loaded by intent matching.
-- **MCP integrations**: Vercel, Stripe, Supabase, Linear, GitHub, Slack, PostHog, Sentry, Clerk, Firebase, Figma, Shopify, ClickHouse, Datadog, AWS, Cloudflare, Anthropic, OpenAI.
-- **Inference**: Dedalus is the default OpenAI-compatible endpoint. The CLI can point `DEDALUS_CHAT_BASE_URL` at another compatible `/v1` endpoint.
+- **Primitive**: persistent agent-on-a-machine with harness, not VM-only hosting.
+- **Persistence**: real filesystem at `~/.agent-machines/` — chats, MEMORY.md, FTS5 sessions, cron, skills, MCP config, logs.
+- **Agents**: Hermes, OpenClaw, Claude Code, Codex CLI — native tool sets differ per runtime.
+- **Providers**: Dedalus Machines, E2B Sandbox, Sprites.dev (interchangeable substrate).
+- **Harness** (registry-driven — counts from `web/lib/platform/harness.ts` + loadout):
+  - **161** SKILL.md skills
+  - **27** ranked service routes (MCP → CLI → skills per vendor)
+  - **35** MCP catalog servers (2 core · 28 bundled · 4 IDE · 1 reference)
+  - **23+** closed-loop CLIs
+  - **9–23** agent-native tools (Hermes 23 · OpenClaw 18 · Claude Code 11 · Codex 9)
+  - **12** task-route categories
+  - **113** trusted-addons registry entries (skills, MCPs, CLIs, plugins, sources)
+- **Observation**: sessions, tool calls, skill invocations, logs, cost — orchestrate what you can see.
+- **Programmatic surface (roadmap)**: Agent Machines MCP + CLI for agent-to-agent fleet orchestration.
 
 ## Important pages
 
-- [Landing](https://www.agent-machines.dev/) -- product overview, hero, capabilities, runtime visualization grid, loadout preview, components showcase, skills manifest, architecture flow.
-- [FAQ](https://www.agent-machines.dev/faq) -- current product answers, including provider status, path boundaries, tools, and machine data.
-- [Terms](https://www.agent-machines.dev/terms) -- terms of service.
-- [Privacy](https://www.agent-machines.dev/privacy) -- privacy policy and data boundary notes.
-- [Sign in](https://www.agent-machines.dev/sign-in) -- Clerk-managed allowlist; sign in to provision a machine.
-- [Onboarding](https://www.agent-machines.dev/onboarding) -- 5-step wizard (agent / skills / tools / key / boot) for first-time users.
-- [GitHub](https://github.com/Kevin-Liu-01/agent-machines) -- source code, MIT license.
-- [Hermes](https://github.com/NousResearch/hermes-agent) -- the Nous Research Hermes agent.
-- [OpenClaw](https://github.com/openclaw/openclaw) -- the OpenClaw computer-use agent.
-- [Dedalus Machines](https://docs.dedaluslabs.ai/dcs) -- the default microVM provider.
-- [Cursor SDK](https://cursor.com/docs/sdk/typescript) -- the codework delegation surface.
+- [Landing](https://www.agent-machines.dev/)
+- [FAQ](https://www.agent-machines.dev/faq)
+- [GitHub](https://github.com/Kevin-Liu-01/agent-machines)
+- [Hermes agent runtime](https://github.com/NousResearch/hermes-agent) (optional runtime, not the product)
+- [OpenClaw](https://github.com/openclaw/openclaw)
+- [Dedalus Machines](https://docs.dedaluslabs.ai/dcs)
 
-## Optional
+## Design
 
-- Reticle / Sigil design system: structural-visibility aesthetic with hairline rules, margin hatching, cross marks at rail intersections, all rendered in Nacelle (sans) + Geist Mono (mono) + Instrument Serif italic (wordmark only).
-- The agent's ranking of which interface to use per service is documented in `tool-hierarchy.mdc` (mirrored on the public Loadout page).
+Reticle/Sigil UI. Service/task rankings mirror kevin-wiki `tool-hierarchy.mdc`.

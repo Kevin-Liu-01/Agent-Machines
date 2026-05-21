@@ -4,6 +4,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { Logo } from "@/components/Logo";
+import {
+	headerControlKicker,
+	headerControlTrigger,
+	headerControlValue,
+	headerPopover,
+	headerPopoverTitle,
+} from "@/lib/dashboard/header-chrome";
 import { cn } from "@/lib/cn";
 import { AGENT_KINDS, type AgentKind } from "@/lib/user-config/schema";
 
@@ -130,29 +137,22 @@ export function AgentSwitcher({ value, activeMachineId }: Props) {
 			<button
 				type="button"
 				onClick={() => setOpen((prev) => !prev)}
-				className={cn(
-					"flex items-center gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] px-2.5 py-1 transition-colors",
-					"hover:border-[var(--ret-purple)]/50 hover:bg-[var(--ret-surface)]",
-					open ? "border-[var(--ret-purple)]/50 bg-[var(--ret-surface)]" : "",
-				)}
+				className={headerControlTrigger(open)}
 				aria-haspopup="listbox"
 				aria-expanded={open}
 				title="Switch agent (Hermes <-> OpenClaw)"
 			>
-				<span className="hidden font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)] md:inline">
-					agent
+				<span className={cn(headerControlKicker, "hidden md:inline")}>
+					Agent
 				</span>
 				<Logo mark={MARK[value]} size={14} />
-				<span className="font-mono text-[11px] text-[var(--ret-text)]">
-					{LABEL[value]}
-				</span>
+				<span className={headerControlValue}>{LABEL[value]}</span>
 				<span
 					className={cn(
-						"flex items-center gap-0.5 font-mono text-[9px] uppercase tracking-[0.18em]",
-						"text-[var(--ret-purple)]",
+						"flex items-center gap-0.5 text-[10px] font-medium text-[var(--ret-purple)]",
 					)}
 				>
-					<span>swap</span>
+					<span className="hidden sm:inline">Swap</span>
 					<svg
 						viewBox="0 0 10 10"
 						className={cn(
@@ -168,10 +168,10 @@ export function AgentSwitcher({ value, activeMachineId }: Props) {
 			{open ? (
 				<ul
 					role="listbox"
-					className="absolute right-0 top-[calc(100%+6px)] z-50 w-72 border border-[var(--ret-border)] bg-[var(--ret-bg)] shadow-[0_8px_32px_rgba(0,0,0,0.45)]"
+					className={cn(headerPopover, "w-72")}
 				>
-					<li className="border-b border-[var(--ret-border)] bg-[var(--ret-surface)] px-3 py-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-						pick an agent
+					<li className={cn(headerPopoverTitle, "list-none uppercase tracking-[0.12em]")}>
+						Pick an agent
 					</li>
 					{AGENT_KINDS.map((kind) => {
 						const selected = kind === value;

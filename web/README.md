@@ -1,6 +1,6 @@
 # Agent Machines Web
 
-Next.js 15 + Tailwind v4 public site and Clerk-gated dashboard for `agent-machines`.
+Next.js 15 + Tailwind v4 public site and Clerk-gated dashboard for **Agent Machines**.
 
 The web app does three jobs:
 
@@ -10,11 +10,12 @@ The web app does three jobs:
 
 ## Current status
 
-- Dedalus Machines is the only provider wired end-to-end today.
-- E2B Sandbox and Fly Machines are available as alternative providers alongside Dedalus.
-- `/dashboard/setup` stores provider credentials, creates a Dedalus machine, and runs browser bootstrap.
-- Browser-driven agent bootstrap is wired for Dedalus Machines: setup creates the machine, installs Hermes/OpenClaw, starts the gateway, and saves the gateway URL/key.
+- **Three live VM providers:** Dedalus Machines, E2B Sandbox, and Sprites.dev — each implements `MachineProvider`.
+- **Four agent runtimes:** Hermes (default), OpenClaw, Claude Code, Codex CLI.
+- `/dashboard/setup` stores provider credentials, creates a machine, and runs browser bootstrap into `~/.agent-machines/`.
 - Cursor is optional. `cursor-bridge` only activates when a Cursor API key is present.
+
+Canonical paths and loadout counts live in `lib/platform/runtime.ts` — keep aligned with `../src/lib/constants.ts`.
 
 ## Quick start
 
@@ -34,14 +35,14 @@ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=...
 CLERK_SECRET_KEY=...
 ```
 
-Optional owner fallback env vars:
+Optional owner fallback env vars (legacy `HERMES_*` names still accepted):
 
 ```txt
 DEDALUS_API_KEY=...
-HERMES_MACHINE_ID=...
-HERMES_API_URL=...
-HERMES_API_KEY=...
-HERMES_MODEL=anthropic/claude-sonnet-4-6
+AGENT_MACHINE_ID=...
+AGENT_API_URL=...
+AGENT_API_KEY=...
+AGENT_MODEL=anthropic/claude-sonnet-4-6
 ```
 
 ## Scripts
@@ -75,8 +76,8 @@ npm run sync-skills  # regenerate data/skills.json from ../knowledge/skills
 | `/dashboard/loadout` | built-ins, service hierarchy, task hierarchy |
 | `/dashboard/skills` | synced SKILL.md library |
 | `/dashboard/mcps` | MCP servers and tools |
-| `/dashboard/sessions` | Hermes session DB inventory |
-| `/dashboard/logs` | gateway log tail |
+| `/dashboard/sessions` | agent session DB inventory |
+| `/dashboard/logs` | gateway log tail from `~/.agent-machines/logs/` |
 | `/dashboard/cursor` | cursor-bridge run history |
 | `/dashboard/artifacts` | machine artifact storage |
 
@@ -90,21 +91,19 @@ npm run sync-skills  # regenerate data/skills.json from ../knowledge/skills
 ## Important files
 
 ```txt
+lib/platform/runtime.ts              canonical paths + loadout counts (sync with src/)
 app/page.tsx                         public landing
-app/faq/page.tsx                     FAQ page
-app/terms/page.tsx                   terms page
-app/privacy/page.tsx                 privacy page
 app/api/chat/route.ts                server-side SSE chat proxy
 app/api/dashboard/*                  authenticated dashboard APIs
 components/ArchitectureFlow.tsx      interactive architecture map
-components/PublicDocPage.tsx         shared public docs shell
-components/dashboard/*               dashboard panels
+lib/bootstrap/runner.ts              browser bootstrap (mirrors src/lib/bootstrap.ts)
 lib/user-config/*                    Clerk-backed user config
 lib/providers/*                      MachineProvider implementations
 lib/dashboard/loadout.ts             tool/service/task registry
 lib/seo/config.ts                    site metadata and FAQ source
+public/llms.txt                      AI crawler summary (keep aligned with seo/config)
 ```
 
 ## Design notes
 
-The UI uses the Reticle/Sigil system: visible rails, hairline borders, hatching, cross marks, Nacelle for UI text, Geist Mono for machine data, and Instrument Serif only for the wordmark. Keep public copy direct and operational. If a provider is shaped but not wired, say that plainly.
+The UI uses the Reticle/Sigil system: visible rails, hairline borders, hatching, cross marks, Nacelle for UI text, Geist Mono for machine data, and Instrument Serif only for the wordmark. Keep public copy direct and operational.

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType, SVGProps } from "react";
 
-import { BrandMark } from "@/components/BrandMark";
 import { cn } from "@/lib/cn";
 
 /**
@@ -105,7 +104,7 @@ export function SidebarNav({ setupComplete, machines }: Props) {
 		return (
 			<nav
 				aria-label="Machine dashboard"
-				className="flex flex-col gap-5 px-3 pb-6 pt-5 text-[13px]"
+				className="flex flex-col gap-5 px-3 pb-6 pt-4 text-[13px]"
 			>
 				<Link
 					href="/dashboard/machines"
@@ -146,21 +145,8 @@ export function SidebarNav({ setupComplete, machines }: Props) {
 	return (
 		<nav
 			aria-label="Dashboard"
-			className="flex flex-col gap-5 px-3 pb-6 pt-5 text-[13px]"
+			className="flex flex-col gap-5 px-3 pb-6 pt-4 text-[13px]"
 		>
-			<Link
-				href="/"
-				className="group flex items-center gap-2.5 px-3 pb-1"
-				aria-label="agent-machines (back to home)"
-			>
-				<BrandMark size={22} gap="tight" withLabel={false} />
-				<span
-					className="text-[20px] leading-none tracking-tight text-[var(--ret-text)] transition-colors group-hover:text-[var(--ret-purple)]"
-					style={{ fontFamily: "var(--font-display-serif)" }}
-				>
-					agent-machines
-				</span>
-			</Link>
 			{sections.map((section) => (
 				<Section key={section.id} section={section} pathname={pathname} />
 			))}

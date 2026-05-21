@@ -54,7 +54,7 @@ export async function status(): Promise<void> {
 		const skills = await execOut(
 			client,
 			state.machineId,
-			`${SHELL_ENV} && ls -1 ~/.hermes/skills/ 2>/dev/null | wc -l`,
+			`${SHELL_ENV} && ls -1 ~/.agent-machines/skills/ 2>/dev/null | wc -l`,
 		);
 		info(`skills:       ${skills.trim()} loaded`);
 		const crons = await execOut(

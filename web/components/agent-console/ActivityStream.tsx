@@ -360,7 +360,7 @@ function EventTimeline({
 function EmptyState({ onPick }: { onPick: (text: string) => void }) {
 	const starters = [
 		{ label: "Introduce yourself", prompt: "Introduce yourself. What skills, tools, and MCP servers do you have loaded?" },
-		{ label: "Show skills", prompt: "List every skill installed in ~/.hermes/skills/. One-line description each." },
+		{ label: "Show skills", prompt: "List every skill installed in ~/.agent-machines/skills/. One-line description each." },
 		{ label: "Spawn a Cursor agent", prompt: "In /home/machine/work, scaffold a TypeScript project. Use cursor_agent with load_skills=['taste-output']." },
 		{ label: "Schedule a briefing", prompt: "Schedule a daily 8am cron that summarizes overnight repo changes into ~/briefing.md." },
 	];

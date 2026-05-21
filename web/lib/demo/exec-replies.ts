@@ -136,7 +136,7 @@ function formatSettings(machine: MachineRef | undefined): string {
 		{
 			activeMachineId: machine?.id ?? "demo-fullstack",
 			agentKind: machine?.agentKind ?? "hermes",
-			model: machine?.model ?? "anthropic/claude-sonnet-4-6",
+			model: machine?.model ?? "anthropic/claude-opus-4-7",
 			gatewayUrl: "http://127.0.0.1:8642/v1",
 			syncedAt: new Date().toISOString(),
 		},
@@ -203,6 +203,7 @@ function formatModels(): string {
 		{
 			object: "list",
 			data: [
+				{ id: "anthropic/claude-opus-4-7", object: "model" },
 				{ id: "anthropic/claude-sonnet-4-6", object: "model" },
 				{ id: "anthropic/claude-opus-4-6", object: "model" },
 				{ id: "openai/gpt-4.1", object: "model" },

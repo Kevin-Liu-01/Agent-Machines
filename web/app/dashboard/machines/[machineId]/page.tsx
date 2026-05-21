@@ -20,6 +20,13 @@ import {
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { Skeleton } from "@/components/ui/Skeleton";
+import {
+	cpuChartBuckets,
+	memoryChartBuckets,
+	normalizeMachineUsagePayload,
+	storageChartBuckets,
+	type NormalizedMachineUsage,
+} from "@/lib/dashboard/usage-metrics";
 import { cn } from "@/lib/cn";
 import { AGENT_LABEL, PROVIDER_LABEL } from "@/lib/user-config/schema";
 
@@ -41,21 +48,11 @@ type MachineRouteResponse =
 	  }
 	| { ok?: false; error?: string };
 
-type MachineUsageResponse = {
-	ok: true;
-	resources: {
-		cpu: { totalVcpuSeconds: number; buckets: Array<{ date: string; vcpuSeconds: number }> };
-		memory: { totalGibSeconds: number; buckets: Array<{ date: string; gibSeconds: number }> };
-		storage: { totalGibHours: number; buckets: Array<{ date: string; gibHours: number }> };
-	};
-	transitions: Array<{ label: string; timestamp: string }>;
-};
-
 export default function MachineOverviewPage() {
 	const { machineId, machine, isActive } = useMachineContext();
 	const [status, setStatus] = useState<MachineStatus | null>(null);
 	const [loading, setLoading] = useState(true);
-	const [usageData, setUsageData] = useState<MachineUsageResponse | null>(null);
+	const [usageData, setUsageData] = useState<NormalizedMachineUsage | null>(null);
 	const [usageLoading, setUsageLoading] = useState(true);
 	const [chartDays, setChartDays] = useState(7);
 
@@ -106,8 +103,12 @@ export default function MachineOverviewPage() {
 					{ cache: "no-store" },
 				);
 				if (!res.ok || stopped) return;
-				const json = (await res.json()) as MachineUsageResponse;
-				if (!stopped) setUsageData(json);
+				const json: unknown = await res.json();
+				if (!stopped) {
+					setUsageData(
+						normalizeMachineUsagePayload(json, chartDays, machineId),
+					);
+				}
 			} catch {
 				/* ignore */
 			} finally {
@@ -118,17 +119,18 @@ export default function MachineOverviewPage() {
 		return () => { stopped = true; };
 	}, [machineId, chartDays]);
 
+	const usageResources = usageData?.resources;
 	const cpuBuckets = useMemo(
-		() => usageData?.resources?.cpu?.buckets?.map((b) => ({ date: b.date, value: b.vcpuSeconds / 3600 })) ?? [],
-		[usageData],
+		() => (usageResources ? cpuChartBuckets(usageResources) : []),
+		[usageResources],
 	);
 	const memBuckets = useMemo(
-		() => usageData?.resources?.memory?.buckets?.map((b) => ({ date: b.date, value: b.gibSeconds / 3600 })) ?? [],
-		[usageData],
+		() => (usageResources ? memoryChartBuckets(usageResources) : []),
+		[usageResources],
 	);
 	const storageBuckets = useMemo(
-		() => usageData?.resources?.storage?.buckets?.map((b) => ({ date: b.date, value: b.gibHours })) ?? [],
-		[usageData],
+		() => (usageResources ? storageChartBuckets(usageResources) : []),
+		[usageResources],
 	);
 
 	if (!machine) return null;
@@ -215,7 +217,11 @@ export default function MachineOverviewPage() {
 					<div className="divide-y divide-[var(--ret-border)]">
 					<UsageChartRow
 						title="CPU"
-						total={usageData?.resources?.cpu?.totalVcpuSeconds != null ? (usageData.resources.cpu.totalVcpuSeconds / 3600).toFixed(1) : "–"}
+						total={
+							usageResources
+								? (usageResources.cpu.total / 3600).toFixed(1)
+								: "–"
+						}
 						unit="vCPU-hrs"
 						data={cpuBuckets}
 						color="var(--ret-purple)"
@@ -223,7 +229,11 @@ export default function MachineOverviewPage() {
 					/>
 					<UsageChartRow
 						title="Memory"
-						total={usageData?.resources?.memory?.totalGibSeconds != null ? (usageData.resources.memory.totalGibSeconds / 3600).toFixed(1) : "–"}
+						total={
+							usageResources
+								? (usageResources.memory.total / 3600).toFixed(1)
+								: "–"
+						}
 						unit="GB-hrs"
 						data={memBuckets}
 						color="var(--ret-amber)"
@@ -231,7 +241,11 @@ export default function MachineOverviewPage() {
 					/>
 					<UsageChartRow
 						title="Storage"
-						total={usageData?.resources?.storage?.totalGibHours != null ? (usageData.resources.storage.totalGibHours).toFixed(1) : "–"}
+						total={
+							usageResources
+								? usageResources.storage.total.toFixed(1)
+								: "–"
+						}
 						unit="GB-hrs"
 						data={storageBuckets}
 						color="var(--ret-red)"

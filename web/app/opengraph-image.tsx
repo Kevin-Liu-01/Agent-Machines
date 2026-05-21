@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 
-import { SITE } from "@/lib/seo/config";
+import { HARNESS, HARNESS_SUMMARY } from "@/lib/platform/harness";
+import { SITE, TITLE_SEPARATOR } from "@/lib/seo/config";
 
 /**
  * Dynamic OG image rendered with `next/og` -- evaluated at build time
@@ -16,7 +17,7 @@ import { SITE } from "@/lib/seo/config";
  */
 
 export const runtime = "edge";
-export const alt = `${SITE.name} -- ${SITE.tagline}`;
+export const alt = `${SITE.name}${TITLE_SEPARATOR}${SITE.tagline}`;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -138,11 +139,11 @@ export default async function OpengraphImage() {
 					}}
 				>
 					{[
-						{ label: "23 built-in tools" },
-						{ label: "96 skills" },
-						{ label: "17 mcp services" },
-						{ label: "hermes / openclaw" },
-						{ label: "dedalus . sandbox . fly" },
+						{ label: `${HARNESS.skillCount} skills` },
+						{ label: `${HARNESS.serviceRouteCount} service routes` },
+						{ label: `${HARNESS.cliCount}+ CLIs` },
+						{ label: `${HARNESS.mcpServerCount} MCP servers` },
+						{ label: "combined primitive" },
 					].map((f) => (
 						<div
 							key={f.label}

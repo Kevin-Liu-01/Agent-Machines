@@ -41,7 +41,7 @@ const BENTOS: ReadonlyArray<BentoItem> = [
 	},
 	{
 		kicker: "04 / loadout",
-		title: "96 skills, 23 tools, 17 services",
+		title: "161 skills, 22 tools, 30+ MCPs",
 		body: "Built-in tools fire in one turn. MCP servers auto-spawn at boot. Service entries rank MCP > CLI > skills per platform.",
 		span: "normal",
 		variant: "nyx-lines",

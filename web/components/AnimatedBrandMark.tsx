@@ -77,7 +77,7 @@ export function AnimatedBrandMark({
 				? "300ms"
 				: "500ms";
 
-	const h = size + 8;
+	const h = size + (gap === "tight" ? 6 : 8);
 
 	return (
 		<span

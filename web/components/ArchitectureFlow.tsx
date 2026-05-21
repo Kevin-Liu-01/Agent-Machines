@@ -23,6 +23,7 @@ import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { ServiceIcon, type ServiceSlug } from "@/components/ServiceIcon";
 import { cn } from "@/lib/cn";
+import { HARNESS, HARNESS_SUMMARY } from "@/lib/platform/harness";
 
 /* ------------------------------------------------------------------ *
  * Layout philosophy                                                   *
@@ -396,25 +397,25 @@ const INITIAL_NODES: Node<NodeData>[] = [
 				"state / exec / destroy",
 				"second-billed VM",
 			],
-			mark: "am",
+			mark: "dedalus",
 			tone: "provider",
 			size: "md",
 			status: "live",
 		},
 	},
 	{
-		id: "provider-fly",
+		id: "provider-sprites",
 		type: "box",
 		position: { x: TRIPLE_X.right, y: Y.providers },
 		data: {
 			eyebrow: "provider",
-			title: "Fly Machines",
-			subtitle: "regional VM",
-			body: "Persistent Firecracker host through machines.dev. Uses app + volume + machine resources; IDs are encoded as app:machine.",
+			title: "Sprites.dev",
+			subtitle: "Sprites compute",
+			body: "Sprites.dev hosts with public URL proxy on port 8080. Bootstrap installs agents into ~/.agent-machines/ on the sprite filesystem.",
 			bullets: [
-				"app + volume create",
-				"start / stop / destroy",
-				"persistent volume",
+				"create / exec / destroy",
+				"public URL proxy",
+				"persistent sprite disk",
 			],
 			tone: "provider",
 			size: "md",
@@ -584,9 +585,9 @@ const INITIAL_NODES: Node<NodeData>[] = [
 		position: { x: COL.c0, y: Y.tools },
 		data: {
 			eyebrow: "tool surface",
-			title: "23 built-in tools",
-			subtitle: "agent calls these directly",
-			body: "Terminal, filesystem, browser (Playwright), vision, image generation, code execution, web search, memory, schedule, subagent delegation.",
+			title: "Agent-native tools",
+			subtitle: "varies by runtime",
+			body: `Hermes ${HARNESS.nativeToolsByAgent.hermes}, OpenClaw ${HARNESS.nativeToolsByAgent.openclaw}, Claude Code ${HARNESS.nativeToolsByAgent["claude-code"]}, Codex ${HARNESS.nativeToolsByAgent.codex}. Rig extends every runtime with shared browser, cron, and skill surfaces.`,
 			bullets: [
 				"terminal . fs_read/write",
 				"browser_* . vision",
@@ -602,9 +603,9 @@ const INITIAL_NODES: Node<NodeData>[] = [
 		position: { x: COL.c1, y: Y.tools },
 		data: {
 			eyebrow: "tool surface",
-			title: "17 MCP services",
-			subtitle: "branded tool integrations",
-			body: "Each service mounts as an MCP server with its own tool catalog. The agent picks a service interface (MCP > CLI > skill) per service.",
+			title: `${HARNESS.serviceRouteCount} service routes`,
+			subtitle: "ranked interfaces per vendor",
+			body: "Each service entry ranks MCP → CLI → plugin skill → personal skill. Mirrors kevin-wiki tool-hierarchy. Credential-gated MCPs register from mcps/catalog.json.",
 			bullets: [
 				"Vercel . Stripe . Supabase",
 				"Linear . GitHub . Slack . Sentry",
@@ -621,7 +622,7 @@ const INITIAL_NODES: Node<NodeData>[] = [
 		position: { x: COL.c2, y: Y.tools },
 		data: {
 			eyebrow: "behavior packs",
-			title: "96 SKILL.md files",
+			title: `${HARNESS.skillCount} SKILL.md files`,
 			subtitle: "load on demand by intent",
 			body: "Behavior packs that activate when a prompt matches the skill description. Reload from GitHub via the dashboard.",
 			bullets: [
@@ -668,7 +669,7 @@ const INITIAL_NODES: Node<NodeData>[] = [
 				"model slug per machine",
 				"swap base_url to switch",
 			],
-			mark: "am",
+			mark: "dedalus",
 			tone: "router",
 			size: "lg",
 		},
@@ -750,9 +751,9 @@ const EDGES: Edge[] = [
 		label: "active",
 	},
 	{
-		id: "e-fleet-fly",
+		id: "e-fleet-sprites",
 		source: "fleet",
-		target: "provider-fly",
+		target: "provider-sprites",
 		label: "alt",
 	},
 	// Dedalus -> machine (live spine)
@@ -978,13 +979,13 @@ export function ArchitectureFlow() {
 				/>
 				<MachineNote
 					label="providers"
-					value="dedalus + 2 stubs"
-					body="Dedalus is live. E2B Sandbox + Fly Machines accept credentials."
+					value="three live hosts"
+					body="Dedalus Machines, E2B Sandbox, and Sprites.dev — same MachineProvider interface."
 				/>
 				<MachineNote
 					label="loadout"
-					value="more than cursor"
-					body="23 built-ins + 17 service MCPs + 96 skills + optional cursor."
+					value="registry-driven"
+					body={`${HARNESS_SUMMARY} — counts from loadout + catalog, not static marketing.`}
 				/>
 			</div>
 

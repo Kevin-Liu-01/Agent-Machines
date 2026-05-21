@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 
+import { BrandHomeLockup } from "@/components/BrandHomeLockup";
 import { ReticleHatch } from "@/components/reticle/ReticleHatch";
+import { DASHBOARD_SHELL_HEADER_ROW } from "@/lib/dashboard/shell-chrome";
+import { cn } from "@/lib/cn";
 import type { PublicUserConfig } from "@/lib/user-config/schema";
 
 import { SidebarNav } from "./SidebarNav";
@@ -19,7 +22,17 @@ export function DashboardShell({ children, config }: Props) {
 	return (
 		<div className="relative grid min-h-[100dvh] bg-[var(--ret-bg-soft)] lg:grid-cols-[220px_1fr]">
 			<aside className="relative z-10 hidden border-r border-[var(--ret-border)] bg-[var(--ret-bg)] lg:flex lg:flex-col">
-				<SidebarNav setupComplete={setupComplete} machines={config.machines} />
+				<div
+					className={cn(
+						DASHBOARD_SHELL_HEADER_ROW,
+						"bg-[var(--ret-bg)] px-3",
+					)}
+				>
+					<BrandHomeLockup density="sidebar" className="w-full" />
+				</div>
+				<div className="min-h-0 flex-1 overflow-y-auto">
+					<SidebarNav setupComplete={setupComplete} machines={config.machines} />
+				</div>
 				<div className="mt-auto border-t border-[var(--ret-border)]">
 					<ReticleHatch className="h-24" pitch={6} />
 				</div>

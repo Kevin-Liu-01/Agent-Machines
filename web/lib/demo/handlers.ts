@@ -20,7 +20,7 @@ import {
 	saveDemoChat,
 } from "./chat-records";
 import { createDemoExecStream, resolveDemoExec } from "./exec-replies";
-import { DEMO_GATEWAY, DEMO_METRICS_SUMMARY, DEMO_USAGE } from "./fixtures";
+import { DEMO_GATEWAY, DEMO_METRICS_SUMMARY } from "./fixtures";
 import { getCronRunDetail } from "./cron-details";
 import { createDemoChatResponse } from "./chat-stream";
 import {
@@ -213,6 +213,7 @@ export function demoMachineUsageResponse(
 	const slice = Math.min(days, usage.resources.cpu.buckets.length);
 	return Response.json({
 		...usage,
+		days,
 		resources: {
 			cpu: {
 				totalVcpuSeconds: usage.resources.cpu.buckets
@@ -323,8 +324,93 @@ export function demoMetricsSummaryResponse(): Response {
 	});
 }
 
-export function demoUsageResponse(): Response {
-	return Response.json(DEMO_USAGE);
+export function demoUsageResponse(days = 7): Response {
+	const machines = allDemoMachines();
+	const dailyMap = new Map<
+		string,
+		{ vcpuSeconds: number; gibSeconds: number; gibHours: number }
+	>();
+	const machineBreakdown: Array<{
+		machineId: string;
+		vcpu: number;
+		memoryMib: number;
+		awakeSeconds: number;
+		cpuVcpuSeconds: number;
+		memoryGibSeconds: number;
+	}> = [];
+
+	let totalCostMillicents = 0;
+
+	for (const machine of machines) {
+		const narrative = getMachineNarrative(machine.id);
+		const usage = narrative.usage;
+		const slice = Math.min(days, usage.resources.cpu.buckets.length);
+		const cpuBuckets = usage.resources.cpu.buckets.slice(-slice);
+		const memBuckets = usage.resources.memory.buckets.slice(-slice);
+		const storageBuckets = usage.resources.storage.buckets.slice(-slice);
+
+		let machineCpu = 0;
+		let machineMem = 0;
+		for (let i = 0; i < slice; i++) {
+			const cpu = cpuBuckets[i];
+			const mem = memBuckets[i];
+			if (!cpu || !mem) continue;
+			machineCpu += cpu.vcpuSeconds;
+			machineMem += mem.gibSeconds;
+			const existing = dailyMap.get(cpu.date) ?? {
+				vcpuSeconds: 0,
+				gibSeconds: 0,
+				gibHours: 0,
+			};
+			existing.vcpuSeconds += cpu.vcpuSeconds;
+			existing.gibSeconds += mem.gibSeconds;
+			existing.gibHours += storageBuckets[i]?.gibHours ?? 0;
+			dailyMap.set(cpu.date, existing);
+		}
+
+		machineBreakdown.push({
+			machineId: machine.id,
+			vcpu: machine.spec.vcpu,
+			memoryMib: machine.spec.memoryMib,
+			awakeSeconds: Math.round(machineCpu * 0.85),
+			cpuVcpuSeconds: machineCpu,
+			memoryGibSeconds: machineMem,
+		});
+		totalCostMillicents += Math.round(machineCpu * 0.0028);
+	}
+
+	const resources = {
+		cpu: {
+			totalVcpuSeconds: 0,
+			buckets: [] as Array<{ date: string; vcpuSeconds: number }>,
+		},
+		memory: {
+			totalGibSeconds: 0,
+			buckets: [] as Array<{ date: string; gibSeconds: number }>,
+		},
+		storage: {
+			totalGibHours: 0,
+			buckets: [] as Array<{ date: string; gibHours: number }>,
+		},
+	};
+
+	for (const [date, totals] of dailyMap) {
+		resources.cpu.buckets.push({ date, vcpuSeconds: totals.vcpuSeconds });
+		resources.memory.buckets.push({ date, gibSeconds: totals.gibSeconds });
+		resources.storage.buckets.push({ date, gibHours: totals.gibHours });
+		resources.cpu.totalVcpuSeconds += totals.vcpuSeconds;
+		resources.memory.totalGibSeconds += totals.gibSeconds;
+		resources.storage.totalGibHours += totals.gibHours;
+	}
+
+	return Response.json({
+		ok: true,
+		days,
+		resources,
+		machineBreakdown,
+		totalCostMillicents,
+		totalCostFormatted: `$${(totalCostMillicents / 100_000).toFixed(2)}`,
+	});
 }
 
 export function demoExecResponse(options: {

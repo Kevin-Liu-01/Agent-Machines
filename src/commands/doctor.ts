@@ -588,10 +588,10 @@ async function checkVmPersistence(
 
 	const dirs = [
 		[VM_HOME, "/home/machine"],
-		[VM_HERMES_HOME, "~/.hermes"],
-		[`${VM_HERMES_HOME}/skills`, "~/.hermes/skills"],
-		[`${VM_HERMES_HOME}/logs`, "~/.hermes/logs"],
-		[`${VM_HERMES_HOME}/crons`, "~/.hermes/crons"],
+		[VM_HERMES_HOME, "~/.agent-machines"],
+		[`${VM_HERMES_HOME}/skills`, "~/.agent-machines/skills"],
+		[`${VM_HERMES_HOME}/logs`, "~/.agent-machines/logs"],
+		[`${VM_HERMES_HOME}/crons`, "~/.agent-machines/crons"],
 		[VM_AGENT_HOME, "~/.agent"],
 		[VM_AGENT_DOCS_DIR, "~/.agent/docs"],
 		[VM_MACHINE_HOME, "~/.machine"],

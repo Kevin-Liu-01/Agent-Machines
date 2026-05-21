@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import { AddSkillPanel } from "@/components/dashboard/AddSkillPanel";
 import { Logo, type Mark } from "@/components/Logo";
 import { ToolIcon } from "@/components/ToolIcon";
 import { cn } from "@/lib/cn";
 import type { ToolCategory } from "@/lib/dashboard/loadout";
 import type { SkillSummary } from "@/lib/dashboard/types";
+import type { CustomLoadoutEntry } from "@/lib/user-config/schema";
 
 /**
  * Skill slugs that map to a partner whose logo we should attribute on the
@@ -16,7 +19,7 @@ import type { SkillSummary } from "@/lib/dashboard/types";
  */
 const SKILL_BRAND: Record<string, Mark> = {
 	"cursor-coding": "cursor",
-	"dedalus-machines": "am",
+	"dedalus-machines": "dedalus",
 };
 
 /**
@@ -36,11 +39,19 @@ const SKILL_CATEGORY_ICON: Record<string, ToolCategory> = {
 };
 
 const ALL = "all";
+const CUSTOM = "custom";
 
 type Props = {
 	skills: SkillSummary[];
 	categories: string[];
+	customSkills?: CustomLoadoutEntry[];
 };
+
+function customSkillSlug(entry: CustomLoadoutEntry): string {
+	const prefix = "custom-skill:custom/";
+	if (entry.id.startsWith(prefix)) return entry.id.slice(prefix.length);
+	return entry.id.replace(/^custom-skill:/, "");
+}
 
 /**
  * Card grid + category filter chips. Filtering is local state; we already
@@ -48,40 +59,63 @@ type Props = {
  * is intentionally omitted in PR1 -- with 13 skills the chips alone are
  * enough; revisit when the library grows beyond ~30.
  */
-export function SkillsBrowser({ skills, categories }: Props) {
+export function SkillsBrowser({ skills, categories, customSkills = [] }: Props) {
+	const router = useRouter();
 	const [active, setActive] = useState<string>(ALL);
+	const userSkills = useMemo(
+		() => customSkills.filter((entry) => entry.kind === "skill" && entry.enabled),
+		[customSkills],
+	);
 	const visible = useMemo(() => {
+		if (active === CUSTOM) return [];
 		if (active === ALL) return skills;
 		return skills.filter((s) => s.category === active);
 	}, [skills, active]);
 
 	return (
-		<div className="px-6 py-6">
-			<div className="flex flex-wrap items-center gap-2">
-				<Chip
-					label={`all (${skills.length})`}
-					active={active === ALL}
-					onClick={() => setActive(ALL)}
-				/>
-				{categories.map((c) => {
-					const count = skills.filter((s) => s.category === c).length;
-					return (
+		<>
+			<AddSkillPanel
+				customSkills={userSkills}
+				onAdded={() => router.refresh()}
+			/>
+			<div className="px-6 py-6">
+				<div className="flex flex-wrap items-center gap-2">
+					<Chip
+						label={`all (${skills.length + userSkills.length})`}
+						active={active === ALL}
+						onClick={() => setActive(ALL)}
+					/>
+					{userSkills.length > 0 ? (
 						<Chip
-							key={c}
-							label={`${c} (${count})`}
-							active={active === c}
-							onClick={() => setActive(c)}
+							label={`custom (${userSkills.length})`}
+							active={active === CUSTOM}
+							onClick={() => setActive(CUSTOM)}
 						/>
-					);
-				})}
-			</div>
+					) : null}
+					{categories.map((c) => {
+						const count = skills.filter((s) => s.category === c).length;
+						return (
+							<Chip
+								key={c}
+								label={`${c} (${count})`}
+								active={active === c}
+								onClick={() => setActive(c)}
+							/>
+						);
+					})}
+				</div>
 
-			<div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-				{visible.map((skill) => (
-					<SkillCard key={skill.slug} skill={skill} />
-				))}
+				<div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+					{active !== CUSTOM
+						? visible.map((skill) => <SkillCard key={skill.slug} skill={skill} />)
+						: null}
+					{(active === ALL || active === CUSTOM) &&
+						userSkills.map((entry) => (
+							<CustomSkillCard key={entry.id} entry={entry} />
+						))}
+				</div>
 			</div>
-		</div>
+		</>
 	);
 }
 
@@ -107,6 +141,29 @@ function Chip({
 		>
 			{label}
 		</button>
+	);
+}
+
+function CustomSkillCard({ entry }: { entry: CustomLoadoutEntry }) {
+	const slug = customSkillSlug(entry);
+	return (
+		<div className="flex h-full flex-col border border-[var(--ret-border)] bg-[var(--ret-bg)] p-5">
+			<div className="flex items-start justify-between gap-3">
+				<div className="flex min-w-0 items-center gap-2">
+					<ToolIcon name="memory" size={14} className="text-[var(--ret-text-muted)]" />
+					<p className="font-mono text-sm text-[var(--ret-purple)]">{slug}</p>
+				</div>
+				<span className="border border-[var(--ret-purple)]/30 bg-[var(--ret-purple-glow)] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-purple)]">
+					custom
+				</span>
+			</div>
+			<p className="mt-3 line-clamp-3 text-sm text-[var(--ret-text-dim)]">
+				{entry.description}
+			</p>
+			<div className="mt-auto pt-4 font-mono text-[10px] text-[var(--ret-text-muted)]">
+				{entry.command ?? `~/.agent-machines/skills/custom/${slug}/SKILL.md`}
+			</div>
+		</div>
 	);
 }
 

@@ -3,7 +3,7 @@ import { Footer } from "@/components/Footer";
 import { PublicRegistryBrowser } from "@/components/PublicRegistryBrowser";
 
 export const metadata = {
-	title: "Registry — Agent Machines",
+	title: "Registry",
 	description: "Browse 1000+ skills, MCPs, CLI tools, and plugins for your agent machine.",
 };
 

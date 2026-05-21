@@ -1,17 +1,10 @@
 /**
  * Bootstrap a fresh (or freshly woken) Dedalus machine into a fully configured
- * Hermes Agent. Each function is idempotent and short-circuits if the work is
- * already done, so re-running `npm run deploy` is cheap and safe.
+ * Agent Machines runtime. Each function is idempotent and short-circuits if
+ * the work is already done, so re-running `npm run deploy` is cheap and safe.
  *
- * Phases (in order):
- *   1. systemDeps      -- apt: curl, git, build-essential, ca-certs
- *   2. installUv       -- uv into /home/machine/.local/bin
- *   3. installHermes   -- Python 3.11 venv + `uv pip install hermes-agent`
- *   4. seedKnowledge   -- tarball the local knowledge/ folder into ~/.hermes/
- *   5. configureHermes -- set provider, model, API server, knowledge paths
- *   6. seedCronJobs    -- create the scheduled automations from knowledge/crons
- *   7. startGateway    -- `hermes gateway` in setsid background, binds 8642
- *   8. startDashboard  -- `hermes web` in setsid background, binds 9119
+ * Runtime root: ~/.agent-machines (HERMES_HOME env points here for the Hermes
+ * agent package). Legacy ~/.hermes is migrated once and symlinked.
  */
 
 import { resolve } from "node:path";
@@ -31,6 +24,7 @@ import {
 	VM_AGENT_DOCS_DIR,
 	VM_AGENT_HOME,
 	VM_AGENT_BROWSER_HOME,
+	VM_APP_HOME,
 	VM_BRIDGE_DIR,
 	VM_DEPLOY_MARKER,
 	VM_GATEWAY_LOG,
@@ -49,7 +43,10 @@ import {
 } from "./constants.js";
 import type { Config } from "./env.js";
 import { check, exec, execOut } from "./exec.js";
+import { loadMcpCatalog } from "./mcp-catalog.js";
+import { buildMcpRegisterScript, defaultMcpRegisterContext } from "./mcp-register.js";
 import { phase, dim } from "./progress.js";
+import { buildReloadScript } from "./reload-script.js";
 import { uploadKnowledge } from "./upload.js";
 
 export type BootstrapInput = {
@@ -60,6 +57,23 @@ export type BootstrapInput = {
 	repoRoot: string;
 	cursorApiKey: string | null;
 };
+
+async function migrateLegacyPaths({ client, machineId }: BootstrapInput): Promise<void> {
+	await exec(
+		client,
+		machineId,
+		[
+			`mkdir -p ${VM_APP_HOME}/logs ${VM_APP_HOME}/skills ${VM_APP_HOME}/scripts`,
+			`if [ -d ${VM_HOME}/.hermes ] && [ ! -f ${VM_APP_HOME}/.migrated-from-hermes ]; then`,
+			`  (command -v rsync >/dev/null && rsync -a ${VM_HOME}/.hermes/ ${VM_APP_HOME}/) || cp -a ${VM_HOME}/.hermes/. ${VM_APP_HOME}/ || true`,
+			`  touch ${VM_APP_HOME}/.migrated-from-hermes`,
+			`fi`,
+			`ln -sfn ${VM_APP_HOME} ${VM_HOME}/.hermes`,
+			`if [ -d ${VM_HOME}/hermes-machines/.git ] && [ ! -e ${VM_REPO_DIR} ]; then ln -sfn ${VM_HOME}/hermes-machines ${VM_REPO_DIR}; fi`,
+		].join(" && "),
+	);
+	dim("  runtime root ~/.agent-machines (legacy ~/.hermes symlinked)");
+}
 
 async function systemDeps({ client, machineId }: BootstrapInput): Promise<void> {
 	// `/home/machine` should pre-exist on Dedalus dev machines, but a fresh
@@ -174,7 +188,7 @@ async function seedKnowledge({
 	await exec(
 		client,
 		machineId,
-		`mkdir -p ${VM_HERMES_HOME}/skills ${VM_HERMES_HOME}/cron ${VM_HERMES_HOME}/logs`,
+		`mkdir -p ${VM_HERMES_HOME}/skills ${VM_HERMES_HOME}/cron ${VM_HERMES_HOME}/logs ${VM_HERMES_HOME}/mcps`,
 	);
 	const localKnowledge = resolve(repoRoot, "knowledge");
 	const result = await uploadKnowledge(
@@ -209,51 +223,12 @@ async function installGitReload(input: BootstrapInput): Promise<void> {
 	);
 	dim(`  cloned ${REPO_CLONE_URL} -> ${VM_REPO_DIR}`);
 
-	// Drop the reload script. Using rsync makes the copy idempotent and
-	// preserves attributes; --delete keeps removed skills from lingering.
-	const script = [
-		"#!/usr/bin/env bash",
-		"# Refresh ~/.hermes/{skills,crons,SOUL.md,USER.md,MEMORY.md,AGENTS.md}",
-		"# from the latest commit on origin/main of the agent-machines repo.",
-		"# Invoked by the dashboard's /api/dashboard/admin/reload route.",
-		"set -euo pipefail",
-		`REPO_DIR=${VM_REPO_DIR}`,
-		`HERMES=${VM_HERMES_HOME}`,
-		"if ! command -v rsync >/dev/null 2>&1; then",
-		'  echo "rsync not installed; falling back to cp -r" >&2',
-		"  USE_CP=1",
-		"else",
-		"  USE_CP=0",
-		"fi",
-		'echo "[reload] git fetch + reset"',
-		`cd "$REPO_DIR"`,
-		`git fetch --depth 1 origin ${REPO_BRANCH}`,
-		`git reset --hard origin/${REPO_BRANCH}`,
-		'echo "[reload] sync skills + crons + persona files"',
-		'mkdir -p "$HERMES/skills" "$HERMES/crons"',
-		'if [ "$USE_CP" -eq 0 ]; then',
-		'  rsync -a --delete "$REPO_DIR/knowledge/skills/" "$HERMES/skills/"',
-		'  rsync -a "$REPO_DIR/knowledge/crons/" "$HERMES/crons/" || true',
-		"else",
-		'  rm -rf "$HERMES/skills" && cp -r "$REPO_DIR/knowledge/skills" "$HERMES/skills"',
-		'  cp -r "$REPO_DIR/knowledge/crons/." "$HERMES/crons/" 2>/dev/null || true',
-		"fi",
-		'for f in SOUL.md USER.md MEMORY.md AGENTS.md; do',
-		'  if [ -f "$REPO_DIR/knowledge/$f" ]; then',
-		'    cp "$REPO_DIR/knowledge/$f" "$HERMES/$f"',
-		"  fi",
-		"done",
-		'echo "[reload] done at $(date -Iseconds)"',
-		"echo \"[reload] HEAD: $(git rev-parse --short HEAD)\"",
-		'date -Iseconds > "$HERMES/.last-reload"',
-		"git rev-parse HEAD > \"$HERMES/.last-reload-sha\"",
-	].join("\n");
-
+	const script = buildReloadScript();
 	const scriptB64 = Buffer.from(script).toString("base64");
 	await exec(
 		client,
 		machineId,
-		`mkdir -p ${VM_HERMES_HOME}/scripts && ` +
+		`mkdir -p ${VM_APP_HOME}/scripts && ` +
 			`echo ${scriptB64} | base64 -d > ${VM_RELOAD_SCRIPT} && ` +
 			`chmod +x ${VM_RELOAD_SCRIPT}`,
 	);
@@ -537,38 +512,50 @@ async function writeAgentEnvironmentDocs({
 	const contextMd = [
 		"# Agent Machine Context",
 		"",
-		"This machine is built for closed-loop agent development. Prefer proving behavior over asking the operator to check it.",
+		"Agent Machines: a persistent Linux rig for Hermes, OpenClaw, Claude Code, or Codex. Providers: Dedalus Machines, E2B Sandbox, Sprites.",
 		"",
 		"## Persistent Paths",
 		"",
-		"- `/home/machine` survives sleep/wake. Keep toolchains, caches, repos, and artifacts here.",
-		"- `/.agent` points at `/home/machine/.agent` for machine-readable runtime docs.",
-		"- `/.machine` points at `/home/machine/.machine` for runtime state and compatibility paths.",
-		"- `~/.hermes` stores Hermes config, skills, memory, crons, sessions, and logs.",
-		"- `~/.agent-machines` stores product data such as chats and artifacts.",
+		"- `/home/machine` survives sleep/wake on Dedalus; E2B/Sprites use their own home paths but same layout.",
+		"- `/.agent` -> `~/.agent` machine-readable docs (this file).",
+		"- `/.machine` -> `~/.machine` runtime state and service log symlinks.",
+		"- `~/.agent-machines` runtime root: config, 161 skills, MCP catalog, crons, sessions, logs, chats, artifacts.",
+		"- `HERMES_HOME` env var points at the same directory (required by the Hermes agent package).",
+		"- `~/.openclaw` when OpenClaw is the selected agent runtime.",
+		"- `/home/machine/agent-machines` git checkout for dashboard Reload (legacy: hermes-machines).",
 		"",
-		"## Closed-Loop Tools",
+		"## Built-in Agent Tools (22)",
 		"",
-		"- Browser/UI: `agent-browser`, `playwright`, and `npx @playwright/mcp` are installed with Chromium cached under `/home/machine/.cache/ms-playwright`.",
-		"- API testing: `curl`, `jq`, and `httpx` are installed. Hit the real endpoint and inspect the actual response.",
-		"- Database inspection: `sqlite3` is installed for local SQLite files and migration checks.",
-		"- Network debugging: `ss`, `dig`, `curl -v`, and `nc` are installed for ports, DNS, and wire-level checks.",
-		"- Test runners: use the repo-native runner first (`node --test`, `npm test`, `pytest`, `go test`, `cargo test`, etc.).",
+		"terminal, read_file, write_file, patch, search, web_search, web_extract, browser_*, vision_analyze,",
+		"image_generate, tts, execute_code, delegate_task, cronjob, skills_list, skill_view, memory, session_search, computer_use.",
 		"",
-		"## Service Logs",
+		"## MCP Servers",
 		"",
-		"- Hermes gateway: `~/.hermes/logs/gateway.log` and `/.machine/logs/services/hermes-gateway.log`.",
-		"- Hermes dashboard: `~/.hermes/logs/dashboard.log` and `/.machine/logs/services/hermes-dashboard.log`.",
-		"- OpenClaw gateway, when installed: `~/.openclaw/logs/gateway.log`.",
+		"Catalog: `~/.agent-machines/mcps/catalog.json`. Active servers in `~/.agent-machines/config.yaml` under `mcp_servers`.",
+		"Core: playwright (@playwright/mcp), cursor-bridge (cursor_agent/resume/list_skills/models when CURSOR_API_KEY set).",
+		"Bundled (register when credentials exist): Vercel, Stripe, Supabase, Clerk, Firebase, Figma, PostHog, Sentry,",
+		"Datadog, Linear, Slack, Sanity, ClickHouse, Neon, Upstash, Turso, Resend, Notion, Brave, Exa, Memory, Cloudflare, Grafana, GitHub.",
+		"",
+		"## Closed-Loop CLIs",
+		"",
+		"- Browser: agent-browser, playwright, npx @playwright/mcp (Chromium at ~/.cache/ms-playwright).",
+		"- API: curl, jq, httpx.",
+		"- DB: sqlite3.",
+		"- Network: ss, dig, nc.",
+		"",
+		"## Inference",
+		"",
+		"OpenAI-compatible gateway on :8642 (Hermes) or :18789 (OpenClaw). Default upstream: https://api.dedaluslabs.ai/v1 (200+ models).",
+		"Also supports direct Anthropic, OpenAI, OpenRouter, Google, Vercel AI Gateway, or custom base URL.",
 		"",
 		"## Default Loop",
 		"",
-		"1. Read the project instructions and repo structure.",
-		"2. Make the smallest viable change.",
-		"3. Start the relevant service or test target.",
-		"4. Exercise it with the right real-world tool: browser, curl/httpx, sqlite3, or test runner.",
-		"5. Read failures and logs directly.",
-		"6. Fix the root cause and repeat until the result is observed working.",
+		"1. Read AGENTS.md, MEMORY.md, and project instructions.",
+		"2. Smallest viable change.",
+		"3. Start service or test target.",
+		"4. Verify with browser, curl/httpx, sqlite3, or test runner.",
+		"5. Read logs at /.machine/logs/services/.",
+		"6. Fix root cause; repeat.",
 	].join("\n");
 	const llmB64 = Buffer.from(llmTxt).toString("base64");
 	const contextB64 = Buffer.from(contextMd).toString("base64");
@@ -580,8 +567,8 @@ async function writeAgentEnvironmentDocs({
 			`echo ${contextB64} | base64 -d > ${VM_AGENT_DOCS_DIR}/agent-context.md && ` +
 			`ln -sfn ${VM_AGENT_HOME} /.agent && ` +
 			`ln -sfn ${VM_MACHINE_HOME} /.machine && ` +
-			`ln -sfn ${VM_GATEWAY_LOG} ${VM_MACHINE_HOME}/logs/services/hermes-gateway.log && ` +
-			`ln -sfn ${VM_HERMES_HOME}/logs/dashboard.log ${VM_MACHINE_HOME}/logs/services/hermes-dashboard.log`,
+			`ln -sfn ${VM_GATEWAY_LOG} ${VM_MACHINE_HOME}/logs/services/agent-gateway.log && ` +
+			`ln -sfn ${VM_APP_HOME}/logs/dashboard.log ${VM_MACHINE_HOME}/logs/services/agent-dashboard.log`,
 	);
 }
 
@@ -646,47 +633,25 @@ async function installCursorBridge(input: BootstrapInput): Promise<void> {
 	}
 }
 
-async function registerCursorMcp(input: BootstrapInput): Promise<void> {
-	const { client, machineId, cursorApiKey } = input;
-	if (!cursorApiKey) {
-		dim("  CURSOR_API_KEY not set; skipping cursor MCP registration");
-		return;
-	}
-	// Hermes reads ~/.hermes/config.yaml at startup. We yaml-rewrite the file
-	// in place via a Python helper that we write to disk first -- inlining it
-	// via `python3 -c` and `printf '%b'` collides with the bash single-quote
-	// boundary because the Python uses single-quoted literals too.
-	const scriptPath = `${VM_HERMES_HOME}/.register-cursor-mcp.py`;
-	const scriptBody = [
-		"import yaml, os",
-		`p = ${JSON.stringify(`${VM_HERMES_HOME}/config.yaml`)}`,
-		"data = yaml.safe_load(open(p).read()) if os.path.exists(p) else {}",
-		"data.setdefault(\"mcp_servers\", {})",
-		"data[\"mcp_servers\"][\"cursor\"] = {",
-		// Absolute node path -- the gateway subprocess inherits a minimal
-		// PATH that doesn't include /home/machine/node/bin, so `command: node`
-		// would 'No such file or directory' even though the binary exists.
-		`    \"command\": ${JSON.stringify(`${VM_NODE_DIR}/bin/node`)},`,
-		`    \"args\": [${JSON.stringify(`${VM_BRIDGE_DIR}/dist/server.js`)}],`,
-		"    \"env\": {",
-		`        \"HERMES_HOME\": ${JSON.stringify(VM_HERMES_HOME)},`,
-		`        \"PATH\": ${JSON.stringify(`${VM_NODE_DIR}/bin:/usr/local/bin:/usr/bin:/bin`)},`,
-		"    },",
-		"    \"timeout\": 600,",
-		"}",
-		"open(p, \"w\").write(yaml.safe_dump(data, sort_keys=False))",
-		"print(\"ok\")",
-	].join("\\n");
+async function registerMcpServers(input: BootstrapInput): Promise<void> {
+	const { client, machineId, cursorApiKey, repoRoot } = input;
+	const catalog = loadMcpCatalog(repoRoot);
+	const ctx = defaultMcpRegisterContext();
+	const scriptPath = `${VM_HERMES_HOME}/.register-mcp-servers.py`;
+	const scriptBody = buildMcpRegisterScript(catalog.servers, ctx);
+	const scriptB64 = Buffer.from(scriptBody).toString("base64");
 	await exec(
 		client,
 		machineId,
-		`printf '%b' '${scriptBody}' > ${scriptPath}`,
+		`echo ${scriptB64} | base64 -d > ${scriptPath}`,
 	);
-	await exec(client, machineId, `${SHELL_ENV} && python3 ${scriptPath}`);
+	const stdout = await execOut(
+		client,
+		machineId,
+		`${SHELL_ENV} && python3 ${scriptPath}`,
+	);
+	if (stdout) dim(`  ${stdout.split("\n")[0]}`);
 
-	// Set CURSOR_API_KEY in ~/.hermes/.env so the bridge subprocess inherits
-	// it. We grep+rewrite the file rather than appending to keep the .env
-	// idempotent across re-deploys.
 	if (cursorApiKey) {
 		const line = `CURSOR_API_KEY=${cursorApiKey}`;
 		await exec(
@@ -698,6 +663,8 @@ async function registerCursorMcp(input: BootstrapInput): Promise<void> {
 				`mv ${VM_HERMES_HOME}/.env.tmp ${VM_HERMES_HOME}/.env && ` +
 				`chmod 600 ${VM_HERMES_HOME}/.env`,
 		);
+	} else {
+		dim("  CURSOR_API_KEY not set; cursor-bridge registers only when key is present");
 	}
 }
 
@@ -739,6 +706,9 @@ async function configureAutosleep({
 }
 
 export async function runBootstrap(input: BootstrapInput): Promise<void> {
+	await phase("Migrate legacy paths (~/.hermes -> ~/.agent-machines)", () =>
+		migrateLegacyPaths(input),
+	);
 	await phase("Install system deps (curl, git, build-essential)", () => systemDeps(input));
 	await phase("Install uv (Python package manager)", () => installUv(input));
 	await phase("Install Hermes Agent (this can take a few minutes)", () => installHermes(input));
@@ -753,7 +723,9 @@ export async function runBootstrap(input: BootstrapInput): Promise<void> {
 	await phase("Install git-backed reload helper (for dashboard)", () => installGitReload(input));
 	await phase("Build cursor-bridge MCP server (Cursor SDK)", () => installCursorBridge(input));
 	await phase("Configure Hermes (provider, model, API server, memory)", () => configureHermes(input));
-	await phase("Register cursor-bridge in mcp_servers + .env", () => registerCursorMcp(input));
+	await phase("Register MCP servers (playwright, cursor, credential-gated bundled)", () =>
+		registerMcpServers(input),
+	);
 	await phase("Seed scheduled cron automations", () => seedCronJobs(input));
 	await phase(`Start gateway + API server on :${PORT_API}`, () => startGateway(input));
 	await phase(`Start web dashboard on :${PORT_DASHBOARD}`, () => startDashboard(input));

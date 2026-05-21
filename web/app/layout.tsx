@@ -4,7 +4,7 @@ import localFont from "next/font/local";
 import { Instrument_Serif } from "next/font/google";
 import type { ReactNode } from "react";
 
-import { SITE } from "@/lib/seo/config";
+import { SITE, TITLE_SEPARATOR } from "@/lib/seo/config";
 import { buildRootJsonLd } from "@/lib/seo/json-ld";
 
 import "./globals.css";
@@ -43,8 +43,8 @@ const instrumentSerif = Instrument_Serif({
 export const metadata: Metadata = {
 	metadataBase: new URL(SITE.url),
 	title: {
-		default: `${SITE.name} -- ${SITE.tagline}`,
-		template: `%s -- ${SITE.name}`,
+		default: `${SITE.name}${TITLE_SEPARATOR}${SITE.tagline}`,
+		template: `%s${TITLE_SEPARATOR}${SITE.name}`,
 	},
 	description: SITE.description,
 	applicationName: SITE.name,

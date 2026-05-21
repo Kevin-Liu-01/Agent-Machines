@@ -4,6 +4,7 @@ import { Logo, type Mark } from "@/components/Logo";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { WorkflowTabs } from "@/components/WorkflowTabs";
 import { cn } from "@/lib/cn";
+import { HARNESS } from "@/lib/platform/harness";
 
 /* ------------------------------------------------------------------ */
 /* Data                                                                */
@@ -37,7 +38,7 @@ const STEPS: ReadonlyArray<Step> = [
 			["Full machine lifecycle: ", "wake · sleep · destroy"],
 			["Persistent state in ", "/home/machine/.agent-machines"],
 		],
-		poweredBy: [{ name: "Dedalus", mark: "am" }],
+		poweredBy: [{ name: "Dedalus", mark: "dedalus" }],
 	},
 	{
 		id: "agent",
@@ -64,8 +65,9 @@ const STEPS: ReadonlyArray<Step> = [
 		body: "Built-ins and custom loadout entries live in the same account settings model so terminal edits sync back into the dashboard.",
 		Icon: IconTools,
 		bullets: [
-			["", "96 skills", " synced from the wiki at boot"],
-			["", "17 service", " integrations and routes"],
+			["", `${HARNESS.skillCount} skills`, " in SKILL.md protocol"],
+			["", `${HARNESS.serviceRouteCount} service routes`, " · MCP → CLI → skills"],
+			["", `${HARNESS.cliCount}+ CLIs`, " · closed-loop verification"],
 			["Custom loadout: ", "skill · tool · mcp · cli · plugin"],
 		],
 		poweredBy: [],
@@ -74,15 +76,15 @@ const STEPS: ReadonlyArray<Step> = [
 		id: "providers",
 		tab: "providers",
 		kicker: "AGENT MACHINES · HOSTS",
-		title: "Dedalus by default. Fly and Sandbox are explicit stubs.",
-		body: "Persistent-machine providers expose disk, wake/sleep, destroy, and exec. Ephemeral sandboxes expose session exec and external storage.",
+		title: "Dedalus, E2B, and Sprites are live.",
+		body: "Persistent-machine providers expose disk, wake/sleep, destroy, and exec. Each maps to the same bootstrap and dashboard surfaces.",
 		Icon: IconProvider,
 		bullets: [
-			["", "Dedalus", " — persistent VM with full disk"],
-			["", "Fly", " — app + volume + machine"],
-			["", "Sandbox", " — ephemeral session execution"],
+			["", "Dedalus", " — persistent microVM with full disk"],
+			["", "E2B", " — sandbox with pause/resume"],
+			["", "Sprites", " — Sprites.dev compute"],
 		],
-		poweredBy: [{ name: "Dedalus", mark: "am" }],
+		poweredBy: [{ name: "Dedalus", mark: "dedalus" }],
 	},
 	{
 		id: "env",
@@ -96,7 +98,7 @@ const STEPS: ReadonlyArray<Step> = [
 			["Named variable sets with ", "env profiles"],
 			["Phase-tracked ", "bootstrap", " presets"],
 		],
-		poweredBy: [{ name: "Dedalus", mark: "am" }],
+		poweredBy: [{ name: "Dedalus", mark: "dedalus" }],
 	},
 ];
 

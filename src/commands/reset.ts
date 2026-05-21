@@ -7,18 +7,18 @@
  * the next request replays the corrupt state and Anthropic rejects it).
  *
  * What gets wiped:
- *   - ~/.hermes/sessions/        (FTS5 conversation history)
- *   - ~/.hermes/state.db*        (agent state)
- *   - ~/.hermes/response_store.db*  (response cache)
- *   - ~/.hermes/kanban.db*       (kanban dispatcher state)
- *   - ~/.hermes/gateway_state.json, gateway.lock, gateway.pid
+ *   - ~/.agent-machines/sessions/        (FTS5 conversation history)
+ *   - ~/.agent-machines/state.db*        (agent state)
+ *   - ~/.agent-machines/response_store.db*  (response cache)
+ *   - ~/.agent-machines/kanban.db*       (kanban dispatcher state)
+ *   - ~/.agent-machines/gateway_state.json, gateway.lock, gateway.pid
  *
  * What survives:
  *   - SOUL.md / USER.md / MEMORY.md / AGENTS.md
- *   - ~/.hermes/skills/
- *   - ~/.hermes/cron/  (scheduled jobs persist)
- *   - ~/.hermes/.env   (API_SERVER_KEY, CURSOR_API_KEY, ...)
- *   - ~/.hermes/config.yaml
+ *   - ~/.agent-machines/skills/
+ *   - ~/.agent-machines/cron/  (scheduled jobs persist)
+ *   - ~/.agent-machines/.env   (API_SERVER_KEY, CURSOR_API_KEY, ...)
+ *   - ~/.agent-machines/config.yaml
  *
  * Then the gateway is force-restarted so the running process doesn't keep
  * a stale in-memory copy of the wiped state. The cloudflared tunnels keep

@@ -7,7 +7,7 @@
  * data model normalizes across runtimes.
  *
  * Data sources per agent:
- *   Hermes:     ~/.hermes/ (config.yaml, SOUL.md, MEMORY.md, USER.md, skills/, cron/, profiles/)
+ *   Hermes:     ~/.agent-machines/ (config.yaml, SOUL.md, MEMORY.md, USER.md, skills/, cron/, profiles/)
  *   OpenClaw:   ~/.openclaw/ (AGENTS.md, SOUL.md, IDENTITY.md, USER.md, MEMORY.md, memory/, skills/, sessions/)
  *   Claude Code: ~/.claude/ + project CLAUDE.md
  *   Codex CLI:  ~/.codex/config.toml
@@ -117,16 +117,19 @@ export type HermesProfile = AgentProfile;
 export const INTROSPECTION_COMMAND = `
 set -e
 
+runtime="${HOME}/.agent-machines"
+if [ ! -d "$runtime" ] && [ -d ${HOME}/.hermes ]; then runtime="${HOME}/.hermes"; fi
+
 echo "===DETECT==="
 agent="unknown"
 agent_version=""
 agent_model=""
 config_path=""
 
-if command -v hermes >/dev/null 2>&1 && [ -d ${HOME}/.hermes ]; then
+if command -v hermes >/dev/null 2>&1 && [ -d "$runtime" ]; then
   agent="hermes"
   agent_version=$(hermes --version 2>/dev/null | head -1 || echo "")
-  config_path="${HOME}/.hermes/config.yaml"
+  config_path="$runtime/config.yaml"
   if [ -f "$config_path" ]; then agent_model=$(grep -m1 'default:' "$config_path" 2>/dev/null | awk '{print $2}'); fi
 elif [ -d ${HOME}/.openclaw ] && (command -v openclaw >/dev/null 2>&1 || [ -f ${HOME}/.openclaw/config.json ]); then
   agent="openclaw"
@@ -148,7 +151,7 @@ echo "config=$config_path"
 
 echo "===IDENTITY==="
 for f in SOUL.md AGENTS.md IDENTITY.md TOOLS.md HEARTBEAT.md CLAUDE.md; do
-  for d in ${HOME}/.hermes ${HOME}/.openclaw ${HOME}/.openclaw/workspace ${HOME}/.claude ${HOME}; do
+  for d in "$runtime" ${HOME}/.openclaw ${HOME}/.openclaw/workspace ${HOME}/.claude ${HOME}; do
     if [ -f "$d/$f" ]; then
       chars=$(wc -c < "$d/$f")
       echo "file=$f|path=$d/$f|chars=$chars"
@@ -159,7 +162,7 @@ done
 
 echo "===MEMORY==="
 for f in MEMORY.md USER.md; do
-  for d in ${HOME}/.hermes ${HOME}/.hermes/memories ${HOME}/.openclaw ${HOME}/.openclaw/workspace; do
+  for d in "$runtime" "$runtime/memories" ${HOME}/.openclaw ${HOME}/.openclaw/workspace; do
     if [ -f "$d/$f" ]; then
       chars=$(wc -c < "$d/$f")
       echo "file=$f|path=$d/$f|chars=$chars"
@@ -175,7 +178,7 @@ fi
 
 echo "===SKILLS==="
 skills_dir=""
-if [ -d ${HOME}/.hermes/skills ]; then skills_dir="${HOME}/.hermes/skills"; fi
+if [ -d "$runtime/skills" ]; then skills_dir="$runtime/skills"; fi
 if [ -d ${HOME}/.openclaw/skills ]; then skills_dir="${HOME}/.openclaw/skills"; fi
 if [ -n "$skills_dir" ]; then
   total=$(find "$skills_dir" -maxdepth 2 -name 'SKILL.md' 2>/dev/null | wc -l)
@@ -195,7 +198,7 @@ fi
 
 echo "===CURATOR==="
 last_curator=""
-if [ -f ${HOME}/.hermes/skills/.curator-last-run ]; then last_curator=$(cat ${HOME}/.hermes/skills/.curator-last-run); fi
+if [ -f "$runtime/skills/.curator-last-run" ]; then last_curator=$(cat "$runtime/skills/.curator-last-run"); fi
 echo "available=$([ -n "$last_curator" ] || [ "$agent" = "hermes" ] && echo 1 || echo 0)"
 echo "last_run=$last_curator"
 
@@ -204,16 +207,16 @@ gepa_available=0
 gepa_last=""
 gepa_optimized=0
 if [ -d ${HOME}/hermes-agent-self-evolution ] || command -v gepa >/dev/null 2>&1; then gepa_available=1; fi
-if [ -f ${HOME}/.hermes/.gepa-last-run ]; then gepa_last=$(cat ${HOME}/.hermes/.gepa-last-run); fi
-if [ -f ${HOME}/.hermes/.gepa-optimized-count ]; then gepa_optimized=$(cat ${HOME}/.hermes/.gepa-optimized-count); fi
+if [ -f "$runtime/.gepa-last-run" ]; then gepa_last=$(cat "$runtime/.gepa-last-run"); fi
+if [ -f "$runtime/.gepa-optimized-count" ]; then gepa_optimized=$(cat "$runtime/.gepa-optimized-count"); fi
 echo "available=$gepa_available"
 echo "last_run=$gepa_last"
 echo "optimized=$gepa_optimized"
 
 echo "===PROFILES==="
 # Hermes profiles
-if [ -d ${HOME}/.hermes/profiles ]; then
-  for pd in ${HOME}/.hermes/profiles/*/; do
+if [ -d "$runtime/profiles" ]; then
+  for pd in "$runtime/profiles"/*/; do
     [ ! -d "$pd" ] && continue
     pn=$(basename "$pd")
     pm=""; if [ -f "$pd/config.yaml" ]; then pm=$(grep -m1 'default:' "$pd/config.yaml" 2>/dev/null | awk '{print $2}'); fi
@@ -248,13 +251,13 @@ echo "profiles_done"
 
 echo "===SESSIONS==="
 sess_total=0; sess_transcripts=0
-for d in ${HOME}/.hermes/sessions ${HOME}/.openclaw/agents/*/sessions ${HOME}/.agent-machines/sessions; do
+for d in "$runtime/sessions" ${HOME}/.openclaw/agents/*/sessions ${HOME}/.agent-machines/sessions; do
   if [ -d "$d" ]; then
     c=$(find "$d" -name '*.db' -o -name '*.jsonl' 2>/dev/null | wc -l)
     sess_total=$((sess_total + c))
   fi
 done
-if [ -f ${HOME}/.hermes/state.db ]; then sess_transcripts=1; fi
+if [ -f "$runtime/state.db" ]; then sess_transcripts=1; fi
 echo "total=$sess_total"
 echo "transcripts=$sess_transcripts"
 

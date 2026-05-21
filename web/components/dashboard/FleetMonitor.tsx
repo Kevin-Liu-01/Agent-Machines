@@ -80,8 +80,8 @@ const STATE_TONE: Record<string, "ok" | "warn" | "info" | "muted"> = {
 	unknown: "muted",
 };
 
-const PROVIDER_MARK: Record<ProviderKind, "am" | "e2b" | "sprites" | null> = {
-	dedalus: "am",
+const PROVIDER_MARK: Record<ProviderKind, "dedalus" | "e2b" | "sprites" | null> = {
+	dedalus: "dedalus",
 	e2b: "e2b",
 	sprites: "sprites",
 };

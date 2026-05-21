@@ -4,9 +4,11 @@ import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import { BrandMark } from "@/components/BrandMark";
+import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
+import { DASHBOARD_SHELL_HEADER_ROW } from "@/lib/dashboard/shell-chrome";
+import { headerDivider } from "@/lib/dashboard/header-chrome";
 import { cn } from "@/lib/cn";
 import { withMachineId } from "@/lib/demo/api-url";
 import { usePathname } from "next/navigation";
@@ -19,6 +21,7 @@ import type { AgentKind, PublicMachineRef } from "@/lib/user-config/schema";
 
 import { AgentSwitcher } from "./AgentSwitcher";
 import { MachineSwitcher } from "./MachineSwitcher";
+import { ModelSwitcher } from "./ModelSwitcher";
 import { StatusPill } from "./StatusPill";
 
 const POLL_MS = 5000;
@@ -38,10 +41,9 @@ type State = {
 };
 
 /**
- * Top bar for /dashboard/*. Shows the live machine pill, gateway latency,
- * model id, the agent switcher, and the Clerk user menu. Polls the two
- * cheap endpoints every five seconds; pauses while the tab is hidden so
- * we don't burn budget on a backgrounded laptop.
+ * Top bar for /dashboard/*. Brand lockup lives in the sidebar (lg+); here
+ * we show breadcrumbs, status, and controls. Polls machine + gateway every
+ * five seconds; pauses while the tab is hidden.
  */
 export function StatusHeader({ agentKind, activeMachineId, machines }: Props) {
 	const pathname = usePathname();
@@ -102,49 +104,55 @@ export function StatusHeader({ agentKind, activeMachineId, machines }: Props) {
 	return (
 		<header
 			className={cn(
-				"sticky top-0 z-40 flex items-center justify-between gap-4",
-				"border-b border-[var(--ret-border)] bg-[var(--ret-bg)]/85 px-5 py-3",
-				"backdrop-blur-md",
+				DASHBOARD_SHELL_HEADER_ROW,
+				"sticky top-0 z-40 justify-between gap-3",
+				"bg-[var(--ret-bg)]/90 px-4 backdrop-blur-md md:px-5",
 			)}
 		>
-			<div className="flex items-center gap-3 min-w-0">
-				<Link href="/" className="group flex items-center gap-2.5">
-					<BrandMark agent={agentKind} size={20} gap="tight" withLabel={false} />
-					<span
-						className="hidden text-[18px] leading-none tracking-tight text-[var(--ret-text)] transition-colors group-hover:text-[var(--ret-purple)] md:inline"
-						style={{ fontFamily: "var(--font-display-serif)" }}
-					>
-						agent-machines
-					</span>
+			<div className="flex min-w-0 flex-1 items-center gap-3">
+				<Link
+					href="/"
+					className="shrink-0 transition-opacity hover:opacity-80 lg:hidden"
+					aria-label="agent-machines home"
+				>
+					<Logo mark="am" size={20} />
 				</Link>
-				<span className="text-[var(--ret-text-muted)]">/</span>
-				{urlMachine ? (
-					<>
-						<Link
-							href="/dashboard/machines"
-							className="hidden text-[11px] text-[var(--ret-text-muted)] transition-colors hover:text-[var(--ret-text)] md:inline"
-						>
-							fleet
-						</Link>
-						<span className="hidden text-[var(--ret-text-muted)] md:inline">/</span>
-						<span className="hidden font-mono text-[11px] text-[var(--ret-text)] md:inline truncate max-w-[120px]">
-							{urlMachine.name}
-						</span>
-						<span className="text-[var(--ret-text-muted)]">/</span>
-					</>
-				) : null}
-				<StatusPill phase={machinePhase} />
-				{!urlMachine && state.machine ? (
-					<span className="hidden font-mono text-[11px] text-[var(--ret-text-muted)] md:inline">
-						{state.machine.machineId.slice(0, 18)}
-					</span>
-				) : null}
+				<nav
+					aria-label="Dashboard location"
+					className="flex min-w-0 items-center gap-2 text-[13px] text-[var(--ret-text-dim)]"
+				>
+					{urlMachine ? (
+						<>
+							<Link
+								href="/dashboard/machines"
+								className="text-[var(--ret-text-muted)] transition-colors hover:text-[var(--ret-text)]"
+							>
+								Fleet
+							</Link>
+							<span className="text-[var(--ret-text-muted)]" aria-hidden>
+								/
+							</span>
+							<span className="truncate font-medium text-[var(--ret-text)] max-w-[140px] md:max-w-[220px]">
+								{urlMachine.name}
+							</span>
+						</>
+					) : (
+						<FleetBreadcrumb pathname={pathname} />
+					)}
+				</nav>
+				<StatusPill
+					phase={machinePhase}
+					className="shrink-0 text-[12px] font-medium"
+				/>
 			</div>
 
-			<div className="flex items-center gap-3">
-				<GatewayBadge data={gateway} />
+			<div className="flex shrink-0 items-center gap-2">
+				<GatewayStrip data={gateway} />
+				<span className={headerDivider} aria-hidden />
+				<ModelSwitcher activeMachineId={scopedMachineId} />
 				<MachineSwitcher />
 				<AgentSwitcher value={agentKind} activeMachineId={activeMachineId} />
+				<span className={headerDivider} aria-hidden />
 				<ThemeToggle />
 				{CLERK_READY ? (
 					<UserButton
@@ -160,36 +168,72 @@ export function StatusHeader({ agentKind, activeMachineId, machines }: Props) {
 	);
 }
 
-function GatewayBadge({ data }: { data: GatewaySummary | null }) {
+const FLEET_CRUMB: Record<string, string> = {
+	"/dashboard": "Overview",
+	"/dashboard/machines": "Machines",
+	"/dashboard/containers": "Containers",
+	"/dashboard/usage": "Usage",
+	"/dashboard/settings": "Settings",
+	"/dashboard/registry": "Registry",
+	"/dashboard/skills": "Skills",
+	"/dashboard/mcps": "MCPs",
+	"/dashboard/cron": "Cron",
+	"/dashboard/setup": "Setup",
+};
+
+function FleetBreadcrumb({ pathname }: { pathname: string }) {
+	const label = FLEET_CRUMB[pathname];
+	if (label) {
+		return (
+			<span className="font-medium text-[var(--ret-text)]">{label}</span>
+		);
+	}
+	return (
+		<>
+			<Link
+				href="/dashboard"
+				className="text-[var(--ret-text-muted)] transition-colors hover:text-[var(--ret-text)]"
+			>
+				Fleet
+			</Link>
+			<span className="text-[var(--ret-text-muted)]" aria-hidden>
+				/
+			</span>
+			<span className="truncate font-medium text-[var(--ret-text)]">
+				{pathname.split("/").pop()}
+			</span>
+		</>
+	);
+}
+
+function GatewayStrip({ data }: { data: GatewaySummary | null }) {
 	if (!data) {
 		return (
 			<BrailleSpinner
 				name="orbit"
 				label="gateway"
-				className="text-[11px] text-[var(--ret-text-muted)]"
+				className="hidden text-[11px] text-[var(--ret-text-muted)] md:inline-flex"
 			/>
 		);
 	}
 	const ok = data.ok;
 	return (
-		<div className="hidden items-center gap-3 font-mono text-[11px] md:flex">
+		<div
+			className="hidden items-center gap-2 text-[12px] text-[var(--ret-text-muted)] md:flex"
+			title={data.apiHost}
+		>
 			<span
 				className={cn(
-					"inline-flex items-center gap-1.5 border px-2 py-0.5",
-					ok
-						? "border-[var(--ret-green)]/40 bg-[var(--ret-green)]/10 text-[var(--ret-green)]"
-						: "border-[var(--ret-red)]/40 bg-[var(--ret-red)]/10 text-[var(--ret-red)]",
+					"h-1.5 w-1.5 shrink-0",
+					ok ? "bg-[var(--ret-green)]" : "bg-[var(--ret-red)]",
 				)}
-			>
-				<span className="h-1 w-1 bg-current" />
-				gateway {ok ? "ok" : "down"}
+				aria-hidden
+			/>
+			<span className={ok ? "text-[var(--ret-text)]" : "text-[var(--ret-red)]"}>
+				Gateway
 			</span>
 			<span className="text-[var(--ret-text-muted)]">
-				{data.latencyMs}
-				<span className="ml-0.5 text-[var(--ret-text-muted)]/70">ms</span>
-			</span>
-			<span className="text-[var(--ret-text-muted)] truncate max-w-[180px]">
-				{data.model}
+				{ok ? `${data.latencyMs} ms` : "offline"}
 			</span>
 		</div>
 	);
