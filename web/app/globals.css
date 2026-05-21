@@ -486,6 +486,21 @@ textarea::placeholder {
 :root[data-theme="dark"] .cl-socialButtonsProviderIcon__apple svg {
 	filter: invert(1) brightness(1.6) saturate(0);
 }
+
+/* Clerk v7 renders X as a background-image on the icon span (not img/svg).
+ * GitHub uses -webkit-mask + currentColor and already adapts; X stays black
+ * on dark surfaces. Re-render it as a mask tinted with our text token. */
+.dark .cl-socialButtonsProviderIcon__x,
+.dark .cl-socialButtonsProviderIcon__x_twitter,
+:root[data-theme="dark"] .cl-socialButtonsProviderIcon__x,
+:root[data-theme="dark"] .cl-socialButtonsProviderIcon__x_twitter {
+	background-image: none !important;
+	background-color: var(--ret-text);
+	-webkit-mask: url("https://img.clerk.com/static/x.svg") center / contain
+		no-repeat;
+	mask: url("https://img.clerk.com/static/x.svg") center / contain no-repeat;
+}
+
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme="light"])
 		.cl-socialButtonsProviderIcon__github img,
@@ -500,6 +515,15 @@ textarea::placeholder {
 	:root:not([data-theme="light"]) .cl-socialButtonsProviderIcon__apple img,
 	:root:not([data-theme="light"]) .cl-socialButtonsProviderIcon__apple svg {
 		filter: invert(1) brightness(1.6) saturate(0);
+	}
+
+	:root:not([data-theme="light"]) .cl-socialButtonsProviderIcon__x,
+	:root:not([data-theme="light"]) .cl-socialButtonsProviderIcon__x_twitter {
+		background-image: none !important;
+		background-color: var(--ret-text);
+		-webkit-mask: url("https://img.clerk.com/static/x.svg") center / contain
+			no-repeat;
+		mask: url("https://img.clerk.com/static/x.svg") center / contain no-repeat;
 	}
 }
 

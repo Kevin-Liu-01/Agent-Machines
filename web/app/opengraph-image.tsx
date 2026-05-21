@@ -1,7 +1,6 @@
 import { ImageResponse } from "next/og";
 
-import { HARNESS, HARNESS_SUMMARY } from "@/lib/platform/harness";
-import { SITE, TITLE_SEPARATOR } from "@/lib/seo/config";
+import { HARNESS_COUNTS } from "@/lib/platform/harness-counts";
 
 /**
  * Dynamic OG image rendered with `next/og` -- evaluated at build time
@@ -17,7 +16,7 @@ import { SITE, TITLE_SEPARATOR } from "@/lib/seo/config";
  */
 
 export const runtime = "edge";
-export const alt = `${SITE.name}${TITLE_SEPARATOR}${SITE.tagline}`;
+export const alt = "Agent Machines — A persistent machine for your agent";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -139,10 +138,10 @@ export default async function OpengraphImage() {
 					}}
 				>
 					{[
-						{ label: `${HARNESS.skillCount} skills` },
-						{ label: `${HARNESS.serviceRouteCount} service routes` },
-						{ label: `${HARNESS.cliCount}+ CLIs` },
-						{ label: `${HARNESS.mcpServerCount} MCP servers` },
+						{ label: `${HARNESS_COUNTS.skillCount} skills` },
+						{ label: `${HARNESS_COUNTS.serviceRouteCount} service routes` },
+						{ label: `${HARNESS_COUNTS.cliCount}+ CLIs` },
+						{ label: `${HARNESS_COUNTS.mcpServerCount} MCP servers` },
 						{ label: "combined primitive" },
 					].map((f) => (
 						<div

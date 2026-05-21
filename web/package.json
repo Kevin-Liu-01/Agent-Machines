@@ -12,6 +12,7 @@
     "typecheck": "node scripts/sync-data.mjs && tsc --noEmit",
     "sync-skills": "node scripts/sync-skills.mjs",
     "sync-mcp-catalog": "node scripts/sync-mcp-catalog.mjs",
+    "sync-harness-counts": "node scripts/sync-harness-counts.mjs",
     "sync-data": "node scripts/sync-data.mjs",
     "export-brand": "node scripts/export-brand-assets.mjs"
   },

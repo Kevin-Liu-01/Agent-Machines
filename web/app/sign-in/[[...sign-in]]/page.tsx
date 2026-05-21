@@ -67,6 +67,8 @@ export default function SignInPage() {
 							elements: {
 								rootBox: "w-full",
 								card: "w-full border border-[var(--ret-border)] bg-[var(--ret-surface)] shadow-none rounded-none",
+								logoBox: { display: "none" },
+								logoImage: { display: "none" },
 								headerTitle: "hidden",
 								headerSubtitle: "hidden",
 								// OAuth row
