@@ -6,8 +6,6 @@
 
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
-import { isDemoMode, loadDemoHandlers } from "@/lib/demo/runtime";
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -21,11 +19,6 @@ export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
 
 	const { name } = await ctx.params;
 	const decoded = decodeURIComponent(name);
-
-	if (isDemoMode()) {
-		const { demoCronDetailResponse } = await loadDemoHandlers();
-		return demoCronDetailResponse(decoded);
-	}
 
 	return Response.json({
 		ok: true,

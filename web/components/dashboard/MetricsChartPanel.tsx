@@ -20,7 +20,7 @@ import {
 } from "recharts";
 
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
-import { withMachineId } from "@/lib/demo/api-url";
+import { withMachineId } from "@/lib/dashboard/api-url";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import type {
 	GatewaySummary,

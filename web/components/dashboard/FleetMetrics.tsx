@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { cn } from "@/lib/cn";
-import { withMachineId } from "@/lib/demo/api-url";
+import { withMachineId } from "@/lib/dashboard/api-url";
 import type {
 	GatewaySummary,
 	LiveDataEnvelope,

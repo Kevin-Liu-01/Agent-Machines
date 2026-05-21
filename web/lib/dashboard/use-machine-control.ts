@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { MachineSummary } from "@/lib/dashboard/types";
-import { withMachineId } from "@/lib/demo/api-url";
-import { isDemoModePublic } from "@/lib/demo/mode";
+import { withMachineId } from "@/lib/dashboard/api-url";
 
 const POLL_RUNNING_MS = 5000;
 const POLL_TRANSITION_MS = 2000;
@@ -122,7 +121,6 @@ export function useMachineControl(
 				const phase = summary?.phase;
 
 				if (
-					!isDemoModePublic() &&
 					!prev.autoWokeOnce &&
 					!userSleptRef.current &&
 					phase === "sleeping"

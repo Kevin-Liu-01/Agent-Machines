@@ -31,7 +31,6 @@ import {
 	type ProviderKind,
 	type SetupStep,
 } from "@/lib/user-config/schema";
-import { isDemoMode, loadDemoHandlers } from "@/lib/demo/runtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -121,10 +120,6 @@ export async function GET(): Promise<Response> {
 	const userId = await getEffectiveUserId();
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
-	}
-	if (isDemoMode()) {
-		const { demoSetupGetResponse } = await loadDemoHandlers();
-		return demoSetupGetResponse();
 	}
 	try {
 		const config = await getUserConfig();

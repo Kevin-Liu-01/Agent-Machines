@@ -14,8 +14,6 @@ import type { NextRequest } from "next/server";
 
 import type { ChatRequestBody } from "@/lib/types";
 import { resolveGatewayForUser } from "@/lib/gateway/resolver";
-import { isDemoMode, loadDemoHandlers } from "@/lib/demo/runtime";
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -34,11 +32,6 @@ export async function POST(request: NextRequest): Promise<Response> {
 
 	if (!Array.isArray(body.messages) || body.messages.length === 0) {
 		return Response.json({ error: "messages_required" }, { status: 422 });
-	}
-
-	if (isDemoMode()) {
-		const { demoChatPostResponse } = await loadDemoHandlers();
-		return demoChatPostResponse(body.messages, body.machineId);
 	}
 
 	let env: Awaited<ReturnType<typeof resolveGatewayForUser>>;

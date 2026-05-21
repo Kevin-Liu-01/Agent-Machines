@@ -14,7 +14,6 @@ import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import type { GatewaySummary } from "@/lib/dashboard/types";
 import { resolveGatewayForUser } from "@/lib/gateway/resolver";
-import { isDemoMode, loadDemoHandlers } from "@/lib/demo/runtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,11 +23,6 @@ export async function GET(request: Request): Promise<Response> {
 	const userId = await getEffectiveUserId();
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
-	}
-
-	if (isDemoMode()) {
-		const { demoGatewayResponse } = await loadDemoHandlers();
-		return demoGatewayResponse();
 	}
 
 	const machineId = new URL(request.url).searchParams.get("machineId") ?? undefined;

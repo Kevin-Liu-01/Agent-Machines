@@ -10,7 +10,7 @@ import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { DASHBOARD_SHELL_HEADER_ROW } from "@/lib/dashboard/shell-chrome";
 import { headerDivider } from "@/lib/dashboard/header-chrome";
 import { cn } from "@/lib/cn";
-import { withMachineId } from "@/lib/demo/api-url";
+import { withMachineId } from "@/lib/dashboard/api-url";
 import { usePathname } from "next/navigation";
 
 import type {

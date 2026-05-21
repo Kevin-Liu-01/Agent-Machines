@@ -1318,7 +1318,8 @@ function BootStep({
 
 			{machineId ? (
 				<p className="font-mono text-[10px] text-[var(--ret-text-muted)]">
-					machine id . <span className="text-[var(--ret-text)]">{machineId}</span>
+					machine id .{" "}
+					<span className="text-[var(--ret-text)]">{machineId}</span>
 				</p>
 			) : (
 				<p className="text-[10px] text-[var(--ret-text-muted)]">

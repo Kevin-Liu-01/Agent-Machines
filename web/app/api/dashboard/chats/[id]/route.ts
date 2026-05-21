@@ -9,7 +9,6 @@ import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import { deleteChat, loadChat } from "@/lib/storage/machine-chats";
 import { withActiveMachine } from "@/lib/storage/machine-fs";
-import { isDemoMode, loadDemoHandlers } from "@/lib/demo/runtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,10 +19,6 @@ export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
 	const userId = await getEffectiveUserId();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 	const { id } = await ctx.params;
-	if (isDemoMode()) {
-		const { demoChatLoadResponse } = await loadDemoHandlers();
-		return demoChatLoadResponse(id);
-	}
 	const handle = await withActiveMachine();
 	if ("ok" in handle) {
 		return Response.json(handle, { status: 503 });
@@ -45,10 +40,6 @@ export async function DELETE(_req: Request, ctx: Ctx): Promise<Response> {
 	const userId = await getEffectiveUserId();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 	const { id } = await ctx.params;
-	if (isDemoMode()) {
-		const { demoChatDeleteResponse } = await loadDemoHandlers();
-		return demoChatDeleteResponse(id);
-	}
 	const handle = await withActiveMachine();
 	if ("ok" in handle) {
 		return Response.json(handle, { status: 503 });

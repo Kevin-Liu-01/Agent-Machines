@@ -11,7 +11,6 @@ import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import { MachineProviderError, getProvider } from "@/lib/providers";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
-import { isDemoMode, loadDemoHandlers } from "@/lib/demo/runtime";
 import {
 	AGENT_KINDS,
 	type AgentKind,
@@ -46,10 +45,6 @@ export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
 	const userId = await getEffectiveUserId();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 	const { id } = await ctx.params;
-	if (isDemoMode()) {
-		const { demoMachineDetailResponse } = await loadDemoHandlers();
-		return demoMachineDetailResponse(id);
-	}
 	const machine = await find(id);
 	if (!machine) return Response.json({ error: "not_found" }, { status: 404 });
 	const config = await getUserConfig();

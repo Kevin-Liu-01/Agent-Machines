@@ -11,8 +11,6 @@ import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleHatch } from "@/components/reticle/ReticleHatch";
-import { STARTER_PROMPTS_BY_MACHINE } from "@/lib/demo/starter-prompts";
-import { isDemoModePublic } from "@/lib/demo/mode";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/cn";
@@ -402,11 +400,6 @@ export function ChatShell({ activeMachineId, model }: Props) {
 					onTurnComplete={persistTurn}
 					disabled={!activeMachineId || !machineState.ok}
 					machineId={activeMachineId}
-					starterPrompts={
-						isDemoModePublic() && activeMachineId
-							? STARTER_PROMPTS_BY_MACHINE[activeMachineId]
-							: undefined
-					}
 					disabledReason={
 						!activeMachineId
 							? "No active machine. Pick or provision one in /dashboard/machines."

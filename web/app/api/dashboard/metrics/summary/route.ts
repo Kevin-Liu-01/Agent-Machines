@@ -2,7 +2,6 @@ import { type NextRequest } from "next/server";
 
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 import { supabaseAdmin } from "@/lib/supabase/client";
-import { isDemoMode, loadDemoHandlers } from "@/lib/demo/runtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,11 +9,6 @@ export const dynamic = "force-dynamic";
 export async function GET(_request: NextRequest) {
 	const userId = await getEffectiveUserId();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
-
-	if (isDemoMode()) {
-		const { demoMetricsSummaryResponse } = await loadDemoHandlers();
-		return demoMetricsSummaryResponse();
-	}
 
 	const sb = supabaseAdmin();
 

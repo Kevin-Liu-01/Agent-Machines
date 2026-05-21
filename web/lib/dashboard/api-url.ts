@@ -1,4 +1,4 @@
-/** Append machineId query param for demo-scoped dashboard API calls. */
+/** Append machineId query param for machine-scoped dashboard API calls. */
 export function withMachineId(path: string, machineId?: string | null): string {
 	if (!machineId) return path;
 	const sep = path.includes("?") ? "&" : "?";

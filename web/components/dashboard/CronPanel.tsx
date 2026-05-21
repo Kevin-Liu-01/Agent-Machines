@@ -11,13 +11,12 @@ import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
-import type { CronRunDetail, CronSummary } from "@/lib/dashboard/types";
-import type { DemoCronRun } from "@/lib/demo/fixtures";
+import type { CronRunDetail, CronRunSummary, CronSummary } from "@/lib/dashboard/types";
 
 type Payload = {
 	ok: boolean;
 	scheduled: CronSummary[];
-	runs: DemoCronRun[];
+	runs: CronRunSummary[];
 };
 
 type DetailTab = "trail" | "log" | "diff";

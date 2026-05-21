@@ -28,7 +28,6 @@ import { ensureUser, getUserConfig as sbGetUserConfig, updateUserConfigColumns, 
 
 import { getDevUserConfig, setDevUserConfig } from "./dev-store";
 import { getEffectiveUserId, isDevUserId } from "./identity";
-import { isDemoMode } from "@/lib/demo/mode";
 import {
 	BOOTSTRAP_PHASES,
 	DEFAULT_MACHINE_SPEC,
@@ -594,12 +593,6 @@ function buildConfigFromSupabase(
 }
 
 export async function getUserConfigById(userId: string): Promise<UserConfig> {
-	if (isDemoMode()) {
-		const persist = await import("@/lib/demo/demo-fleet-persist");
-		await persist.hydrateDemoFleetFromCookie();
-		const state = await import("@/lib/demo/state");
-		return state.getDemoUserConfig();
-	}
 	if (isDevUserId(userId)) return getDevUserConfig();
 	const client = await clerkClient();
 	const user = await client.users.getUser(userId);
@@ -878,14 +871,6 @@ export async function setUserConfigById(
 	userId: string,
 	patch: ConfigPatch,
 ): Promise<UserConfig> {
-	if (isDemoMode()) {
-		const persist = await import("@/lib/demo/demo-fleet-persist");
-		await persist.hydrateDemoFleetFromCookie();
-		const state = await import("@/lib/demo/state");
-		const next = state.applyDemoConfigPatch(patch);
-		await persist.persistDemoFleetToCookie();
-		return next;
-	}
 	if (isDevUserId(userId)) return setDevUserConfig(patch);
 	const client = await clerkClient();
 	const user = await client.users.getUser(userId);

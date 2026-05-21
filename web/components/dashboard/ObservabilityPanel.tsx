@@ -8,7 +8,7 @@ import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { cn } from "@/lib/cn";
 import { formatAge, formatBytes } from "@/lib/dashboard/format";
-import { withMachineId } from "@/lib/demo/api-url";
+import { withMachineId } from "@/lib/dashboard/api-url";
 import type {
 	CursorRunsPayload,
 	GatewaySummary,

@@ -10,7 +10,6 @@ import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { cn } from "@/lib/cn";
-import { isDemoModePublic } from "@/lib/demo/mode";
 import {
 	AGENT_KINDS,
 	DEFAULT_MACHINE_SPEC,
@@ -162,9 +161,6 @@ export function SetupWizard({ initialConfig, defaults }: Props) {
 		setBusy(true);
 		setError(null);
 		try {
-			if (isDemoModePublic()) {
-				await new Promise((resolve) => setTimeout(resolve, 2800));
-			}
 			const response = await fetch(
 				"/api/dashboard/admin/provision-machine",
 				{
@@ -1006,7 +1002,13 @@ function ProvisionedStep({
 				<dl className="grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-2">
 					<Row
 						label="active machine id"
-						value={active?.id ?? config.activeMachineId ?? "--"}
+						value={
+							active?.id
+								? active.id
+								: config.activeMachineId
+									? config.activeMachineId
+									: "--"
+						}
 						tone="ok"
 					/>
 					<Row label="agent" value={active?.agentKind ?? config.draftAgentKind} />

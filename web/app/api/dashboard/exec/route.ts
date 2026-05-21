@@ -21,7 +21,6 @@
 
 import { execOnMachine, isMachineRunning } from "@/lib/dashboard/exec";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
-import { isDemoMode, loadDemoHandlers } from "@/lib/demo/runtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -93,15 +92,6 @@ export async function POST(request: Request): Promise<Response> {
 	const userId = await getEffectiveUserId();
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
-	}
-
-	if (isDemoMode()) {
-		const { demoExecResponse } = await loadDemoHandlers();
-		const body = (await request.json().catch(() => ({}))) as ExecRequestBody;
-		return demoExecResponse({
-			machineId: body.machineId,
-			command: typeof body.command === "string" ? body.command : "",
-		});
 	}
 
 	const body = (await request.json().catch(() => ({}))) as ExecRequestBody;
