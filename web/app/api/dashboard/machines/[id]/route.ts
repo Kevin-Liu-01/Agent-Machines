@@ -48,7 +48,7 @@ export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
 	const { id } = await ctx.params;
 	if (isDemoMode()) {
 		const { demoMachineDetailResponse } = await loadDemoHandlers();
-		return demoMachineDetailResponse(id);
+		return await demoMachineDetailResponse(id);
 	}
 	const machine = await find(id);
 	if (!machine) return Response.json({ error: "not_found" }, { status: 404 });

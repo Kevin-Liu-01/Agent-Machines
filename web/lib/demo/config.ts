@@ -230,6 +230,9 @@ function usageForMachine(
 	transitions: DemoMachineUsage["transitions"],
 	bucketDays = 7,
 ): DemoMachineUsage {
+	if (scale <= 0 && transitions.length === 0) {
+		return emptyUsageForMachine(machineId);
+	}
 	const buckets = Array.from({ length: bucketDays }, (_, i) => {
 		const d = new Date();
 		d.setDate(d.getDate() - (bucketDays - 1 - i));
@@ -266,50 +269,84 @@ function usageForMachine(
 	};
 }
 
+export function isDemoSeedMachineId(machineId: string): boolean {
+	return machineId in CONFIG.machines;
+}
+
+function emptyUsageForMachine(machineId: string): DemoMachineUsage {
+	return {
+		ok: true,
+		machineId,
+		resources: {
+			cpu: { totalVcpuSeconds: 0, buckets: [] },
+			memory: { totalGibSeconds: 0, buckets: [] },
+			storage: { totalGibHours: 0, buckets: [] },
+		},
+		transitions: [],
+	};
+}
+
+function countUserMessages(machineId: string, bundle: JsonMachineBundle): number {
+	let count = 0;
+	for (const record of savedChats.values()) {
+		if (record.machineId !== machineId) continue;
+		count += record.messages.filter(
+			(m) => m.role === "user" && String(m.content).trim().length > 0,
+		).length;
+	}
+	for (const chat of bundle.chats) {
+		if (deletedChatIds.has(chat.id)) continue;
+		count += chat.messages.filter(
+			(m) => m.role === "user" && String(m.content).trim().length > 0,
+		).length;
+	}
+	return count;
+}
+
+/** Provisioned demo machines stay idle until the user sends at least one chat message. */
+export function demoMachineHasConversationActivity(
+	machineId: string,
+	bundle?: JsonMachineBundle,
+	machine?: MachineRef,
+): boolean {
+	if (isDemoSeedMachineId(machineId)) return true;
+	return countUserMessages(machineId, bundle ?? getMachineBundle(machineId, machine)) > 0;
+}
+
+function resolveDemoUsage(machineId: string, bundle: JsonMachineBundle): DemoMachineUsage {
+	if (isDemoSeedMachineId(machineId)) {
+		return usageForMachine(
+			machineId,
+			bundle.usage.scale,
+			bundle.usage.transitions,
+			bundle.usage.bucketDays ?? 7,
+		);
+	}
+	if (!demoMachineHasConversationActivity(machineId, bundle)) {
+		return emptyUsageForMachine(machineId);
+	}
+	const userMessages = countUserMessages(machineId, bundle);
+	const scale = Math.min(0.45, 0.1 + userMessages * 0.05);
+	const bucketDays = Math.min(7, Math.max(1, Math.ceil(userMessages / 2)));
+	const ts = new Date().toISOString();
+	return usageForMachine(
+		machineId,
+		scale,
+		[{ label: "Agent conversation started", timestamp: ts }],
+		bucketDays,
+	);
+}
+
 function genericBundle(machine: MachineRef): JsonMachineBundle {
-	const now = new Date().toISOString();
-	const chatId = `chat-${machine.id.slice(-6)}`;
 	const narrative = provisionNarrativeFor(machine);
 	return {
 		headline: narrative.headline,
 		starterPrompts: [...narrative.starterPrompts],
-		chats: [
-			{
-				id: chatId,
-				title: `Welcome — ${machine.name}`,
-				machineId: machine.id,
-				model: machine.model,
-				createdAt: now,
-				updatedAt: now,
-				messageCount: 2,
-				messages: [
-					{
-						id: `msg-${chatId}-u`,
-						role: "user",
-						content: "What can this agent do?",
-						createdAt: Date.now(),
-					},
-					{
-						id: `msg-${chatId}-a`,
-						role: "assistant",
-						content: narrative.welcomeChat,
-						createdAt: Date.now() + 1200,
-						durationMs: 1200,
-					},
-				],
-			},
-		],
+		chats: [],
 		sessions: {
-			sessions: [
-				{
-					id: `sess-${machine.id.slice(-6)}`,
-					preview: `${machine.agentKind} session — ${machine.name}`,
-					updatedAt: now,
-					bytes: 32_768,
-				},
-			],
-			totalSessions: 1,
-			totalBytes: 32_768,
+			sessions: [],
+			totalSessions: 0,
+			totalBytes: 0,
 			dbPath: "~/.agent-machines/sessions/",
 		},
 		logs: {
@@ -321,11 +358,8 @@ function genericBundle(machine: MachineRef): JsonMachineBundle {
 		artifacts: [],
 		exec: { defaultStdout: `$ hostname\n${machine.name}\n$ pwd\n/home/machine\n` },
 		usage: {
-			scale: 0.3,
-			transitions: [
-				{ label: "Machine provisioned", timestamp: machine.createdAt },
-				{ label: "Bootstrap running", timestamp: now },
-			],
+			scale: 0,
+			transitions: [],
 			bucketDays: 7,
 		},
 		machineSummary: {
@@ -350,12 +384,7 @@ function bundleToNarrative(machineId: string, bundle: JsonMachineBundle): Machin
 		artifacts: bundle.artifacts,
 		execStdout: bundle.exec.defaultStdout,
 		execCommands: bundle.exec.commands ?? {},
-		usage: usageForMachine(
-			machineId,
-			bundle.usage.scale,
-			bundle.usage.transitions,
-			bundle.usage.bucketDays ?? 7,
-		),
+		usage: resolveDemoUsage(machineId, bundle),
 		starterPrompts: bundle.starterPrompts,
 	};
 }
@@ -467,6 +496,8 @@ export function getDemoMachineSummary(
 	const bundle = getMachineBundle(machineId, machine);
 	const createdAt = machine?.createdAt ?? demoCreatedAtForMachine(machineId);
 	const configuredAt = new Date(new Date(createdAt).getTime() + 30_000).toISOString();
+	const hasActivity = demoMachineHasConversationActivity(machineId, bundle, machine);
+	const lastProgressAt = hasActivity ? new Date().toISOString() : configuredAt;
 	return {
 		machineId,
 		phase: bundle.machineSummary.phase,
@@ -479,7 +510,7 @@ export function getDemoMachineSummary(
 		reason: null,
 		statusReason: bundle.machineSummary.phase,
 		lastTransitionAt: configuredAt,
-		lastProgressAt: new Date().toISOString(),
+		lastProgressAt,
 	};
 }
 

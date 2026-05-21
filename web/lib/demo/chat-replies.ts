@@ -210,6 +210,12 @@ function formatArtifacts(narrative: MachineNarrative): string {
 
 function formatUsage(narrative: MachineNarrative): string {
 	const { cpu, memory, storage } = narrative.usage.resources;
+	if (cpu.buckets.length === 0 && narrative.usage.transitions.length === 0) {
+		return (
+			`No usage recorded on **${narrative.machineId}** yet. ` +
+			`CPU, memory, and cost metrics appear after you start a conversation.`
+		);
+	}
 	const recent = cpu.buckets.slice(-3);
 	const bucketLines = recent
 		.map((b) => `- ${b.date}: ${Math.round(b.vcpuSeconds / 3600)} vCPU·h`)

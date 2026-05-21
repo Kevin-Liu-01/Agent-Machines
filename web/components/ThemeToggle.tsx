@@ -3,23 +3,16 @@
 import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/cn";
+import { writeThemeCookie } from "@/lib/theme/client";
+import { isThemePreference, THEME_STORAGE_KEY, type ThemePreference } from "@/lib/theme/constants";
 
 /**
  * Three-state theme toggle: light / dark / system.
  *
- * Writes `data-theme="light"`, `data-theme="dark"`, or removes the
- * attribute (system-follows) on the `<html>` element. Persists the
- * choice in `localStorage["agent-machines.theme"]` so subsequent
- * visits boot in the right palette.
- *
- * Pair with the boot script in `app/layout.tsx` (`<script>` injected
- * before `<body>`) so the data-theme attribute is set before first
- * paint -- otherwise the page flashes the system theme for one frame.
+ * Persists to localStorage (client) and an httpOnly-safe mirror cookie
+ * (via document.cookie) so the root layout can SSR the correct palette
+ * without injecting executable <script> tags — React 19 rejects those.
  */
-
-type Theme = "light" | "dark" | "system";
-
-const STORAGE_KEY = "agent-machines.theme";
 
 function IconSun(props: React.SVGProps<SVGSVGElement>) {
 	return (
@@ -48,7 +41,7 @@ function IconMonitor(props: React.SVGProps<SVGSVGElement>) {
 }
 
 const THEMES: ReadonlyArray<{
-	id: Theme;
+	id: ThemePreference;
 	label: string;
 	Icon: (p: React.SVGProps<SVGSVGElement>) => React.ReactElement;
 }> = [
@@ -57,10 +50,10 @@ const THEMES: ReadonlyArray<{
 	{ id: "system", label: "system", Icon: IconMonitor },
 ];
 
-function readStored(): Theme {
+function readStored(): ThemePreference {
 	if (typeof window === "undefined") return "system";
-	const v = window.localStorage.getItem(STORAGE_KEY);
-	if (v === "light" || v === "dark" || v === "system") return v;
+	const v = window.localStorage.getItem(THEME_STORAGE_KEY);
+	if (v && isThemePreference(v)) return v;
 	return "system";
 }
 
@@ -69,19 +62,7 @@ function systemPrefersDark(): boolean {
 	return window.matchMedia("(prefers-color-scheme: dark)").matches;
 }
 
-/**
- * Apply the resolved theme to <html>. We toggle BOTH:
- *
- *   - `class="dark"` -- drives Tailwind's `dark:` variant (registered
- *     in globals.css as a class-based variant).
- *   - `data-theme="dark"|"light"` -- drives the CSS variable token
- *     swap in globals.css. `system` removes the attribute so the
- *     `prefers-color-scheme: dark` media query takes over for tokens.
- *
- * Tokens and Tailwind utilities now flip together regardless of
- * whether the resolution came from the toggle or the system.
- */
-function applyTheme(theme: Theme) {
+function applyTheme(theme: ThemePreference) {
 	if (typeof document === "undefined") return;
 	const root = document.documentElement;
 	const isDark =
@@ -94,22 +75,27 @@ function applyTheme(theme: Theme) {
 	}
 }
 
+function persistTheme(theme: ThemePreference) {
+	writeThemeCookie(theme);
+	try {
+		window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+	} catch {
+		// storage disabled — cookie mirror still helps the next SSR pass
+	}
+}
+
 export function ThemeToggle({ className }: { className?: string }) {
-	const [theme, setTheme] = useState<Theme>("system");
+	const [theme, setTheme] = useState<ThemePreference>("system");
 	const [mounted, setMounted] = useState(false);
 
 	useEffect(() => {
 		setMounted(true);
 		const stored = readStored();
 		setTheme(stored);
-		// Re-apply on mount so the class lands even when SSR didn't
-		// pre-set it (matches the boot script logic for the system case).
+		persistTheme(stored);
 		applyTheme(stored);
 	}, []);
 
-	// When the user is on "system", track OS preference changes live so
-	// the page flips alongside the system without requiring a toggle
-	// click.
 	useEffect(() => {
 		if (theme !== "system") return;
 		const mq = window.matchMedia("(prefers-color-scheme: dark)");
@@ -118,18 +104,12 @@ export function ThemeToggle({ className }: { className?: string }) {
 		return () => mq.removeEventListener("change", onChange);
 	}, [theme]);
 
-	function pick(next: Theme) {
+	function pick(next: ThemePreference) {
 		setTheme(next);
 		applyTheme(next);
-		try {
-			window.localStorage.setItem(STORAGE_KEY, next);
-		} catch {
-			// storage disabled -- live with the in-memory state
-		}
+		persistTheme(next);
 	}
 
-	// Until mounted, render a neutral placeholder so SSR matches the
-	// pre-hydration markup and we don't trigger a hydration warning.
 	const active = mounted ? theme : "system";
 
 	return (

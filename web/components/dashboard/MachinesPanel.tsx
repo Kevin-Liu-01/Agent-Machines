@@ -12,7 +12,7 @@ import { fetchLogTail, headlineFromLogs, isFleetLogsLoaded, shouldFetchFleetLogs
 import { useFleetLoadout } from "@/lib/fleet/use-fleet-loadout";
 import { toFleetStreamCard } from "@/lib/fleet/view-model";
 import { cn } from "@/lib/cn";
-import { isDemoModePublic } from "@/lib/demo/mode";
+import { formatDemoSandboxId, isDemoModePublic } from "@/lib/demo/mode";
 import type { ProviderCapabilities } from "@/lib/providers";
 import {
 	AGENT_LABEL,
@@ -425,7 +425,8 @@ function QuickProvisionForm({
 				throw new Error((data.message as string) ?? (data.error as string) ?? `HTTP ${response.status}`);
 			}
 			const machineId = data.machineId as string;
-			setResult(`Provisioned: ${machineId} -- bootstrapping...`);
+			const displayId = isDemoModePublic() ? formatDemoSandboxId(machineId) : machineId;
+			setResult(`Provisioned: ${displayId} -- bootstrapping...`);
 			void onRefresh();
 
 			// Trigger bootstrap automatically after provision
@@ -436,13 +437,13 @@ function QuickProvisionForm({
 					body: JSON.stringify({ machineId }),
 				});
 				if (bootResp.ok) {
-					setResult(`Provisioned + bootstrapped: ${machineId}`);
+					setResult(`Provisioned + bootstrapped: ${displayId}`);
 				} else {
 					const bootData = (await bootResp.json().catch(() => ({}))) as { message?: string };
-					setResult(`Provisioned: ${machineId} (bootstrap: ${bootData.message ?? `HTTP ${bootResp.status}`})`);
+					setResult(`Provisioned: ${displayId} (bootstrap: ${bootData.message ?? `HTTP ${bootResp.status}`})`);
 				}
 			} catch {
-				setResult(`Provisioned: ${machineId} (bootstrap pending)`);
+				setResult(`Provisioned: ${displayId} (bootstrap pending)`);
 			}
 
 			if (isDemoModePublic()) {

@@ -11,3 +11,11 @@ export function isDemoMode(): boolean {
 export function isDemoModePublic(): boolean {
 	return process.env.NEXT_PUBLIC_DASHBOARD_DEMO_MODE === "1";
 }
+
+const EPHEMERAL_DEMO_ID = /^demo-[0-9a-f]{8}$/i;
+
+/** Hide internal demo- prefix on ephemeral sandbox ids (creation UI, toasts). */
+export function formatDemoSandboxId(id: string): string {
+	if (EPHEMERAL_DEMO_ID.test(id)) return id.slice("demo-".length);
+	return id;
+}

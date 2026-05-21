@@ -31,6 +31,7 @@ import {
 import { isDemoMode } from "./mode";
 import {
 	allDemoMachines,
+	allDemoMachinesIncludingArchived,
 	applyDemoConfigPatch,
 	finishDemoBootstrap,
 	getDemoRuntimeLogs,
@@ -55,39 +56,48 @@ export function isDemoMachineReady(machineId?: string | null): boolean {
 	return resolveDemoLiveState(id).state === "ready";
 }
 
-export function demoMachinesResponse(activeMachineId?: string | null): Response {
+export async function demoMachinesResponse(activeMachineId?: string | null): Promise<Response> {
+	const { hydrateDemoFleetFromCookie, buildDemoFleetSnapshotForCookie, demoJsonResponse } =
+		await import("./demo-fleet-persist");
+	await hydrateDemoFleetFromCookie();
 	const config = getDemoUserConfig();
 	const machines = allDemoMachines();
 	const active = activeMachineId ?? config.activeMachineId ?? machines[0]?.id ?? null;
-	return Response.json({
-		ok: true,
-		activeMachineId: active,
-		machines: machines.map((m) => ({
-			id: m.id,
-			providerKind: m.providerKind,
-			providerLabel: PROVIDER_LABEL[m.providerKind],
-			capabilities: DEMO_CAPABILITIES,
-			agentKind: m.agentKind,
-			name: m.name,
-			spec: m.spec,
-			model: m.model,
-			agentProfileId: m.agentProfileId,
-			gatewayProfileId: m.gatewayProfileId,
-			environmentProfileId: m.environmentProfileId,
-			bootstrapPresetId: m.bootstrapPresetId,
-			createdAt: m.createdAt,
-			apiUrl: m.apiUrl,
-			bootstrapState: m.bootstrapState,
-			archived: m.archived,
-			hasApiKey: true,
-			live: { ok: true, ...resolveDemoLiveState(m.id) },
-		})),
-	});
+	const snapshot = buildDemoFleetSnapshotForCookie();
+	return demoJsonResponse(
+		{
+			ok: true,
+			activeMachineId: active,
+			machines: machines.map((m) => ({
+				id: m.id,
+				providerKind: m.providerKind,
+				providerLabel: PROVIDER_LABEL[m.providerKind],
+				capabilities: DEMO_CAPABILITIES,
+				agentKind: m.agentKind,
+				name: m.name,
+				spec: m.spec,
+				model: m.model,
+				agentProfileId: m.agentProfileId,
+				gatewayProfileId: m.gatewayProfileId,
+				environmentProfileId: m.environmentProfileId,
+				bootstrapPresetId: m.bootstrapPresetId,
+				createdAt: m.createdAt,
+				apiUrl: m.apiUrl,
+				bootstrapState: m.bootstrapState,
+				archived: m.archived,
+				hasApiKey: true,
+				live: { ok: true, ...resolveDemoLiveState(m.id) },
+			})),
+		},
+		snapshot,
+	);
 }
 
-export function demoMachineSummaryResponse(machineId?: string | null): Response {
+export async function demoMachineSummaryResponse(machineId?: string | null): Promise<Response> {
+	const { hydrateDemoFleetFromCookie } = await import("./demo-fleet-persist");
+	await hydrateDemoFleetFromCookie();
 	const id = resolveDemoMachineId(machineId);
-	const machine = allDemoMachines().find((m) => m.id === id);
+	const machine = allDemoMachinesIncludingArchived().find((m) => m.id === id);
 	const live = resolveDemoLiveState(id);
 	const summary = getDemoMachineSummary(id, machine);
 	return Response.json(
@@ -253,7 +263,9 @@ export function demoChatPostResponse(
 	return createDemoChatResponse(messages, machineId);
 }
 
-export function demoMachineDetailResponse(machineId: string): Response {
+export async function demoMachineDetailResponse(machineId: string): Promise<Response> {
+	const { hydrateDemoFleetFromCookie } = await import("./demo-fleet-persist");
+	await hydrateDemoFleetFromCookie();
 	const config = getDemoUserConfig();
 	const machine = config.machines.find((m) => m.id === machineId);
 	if (!machine) {
@@ -281,16 +293,23 @@ export async function demoProvisionResponse(body: {
 	};
 	const ref = provisionDemoMachine({ ...body, spec });
 	const live = resolveDemoLiveState(ref.id);
-	const { persistDemoFleetToCookie } = await import("./demo-fleet-persist");
-	await persistDemoFleetToCookie();
-	return Response.json({
-		ok: true,
-		machineId: ref.id,
-		phase: live.rawPhase,
-		state: live.state,
-		message:
-			"Persistent agent provisioned — 155 skills, 17 MCP services, and full harness deploying in ~30s.",
-	});
+	const {
+		buildDemoFleetSnapshotForCookie,
+		demoJsonResponse,
+		persistDemoFleetToCookie,
+	} = await import("./demo-fleet-persist");
+	const snapshot = (await persistDemoFleetToCookie()) ?? buildDemoFleetSnapshotForCookie();
+	return demoJsonResponse(
+		{
+			ok: true,
+			machineId: ref.id,
+			phase: live.rawPhase,
+			state: live.state,
+			message:
+				"Persistent agent provisioned — 155 skills, 17 MCP services, and full harness deploying in ~30s.",
+		},
+		snapshot,
+	);
 }
 
 export async function demoBootstrapResponseAsync(machineId?: string): Promise<Response> {
@@ -313,20 +332,24 @@ export async function demoBootstrapResponseAsync(machineId?: string): Promise<Re
 			},
 		},
 	});
-	const { persistDemoFleetToCookie } = await import("./demo-fleet-persist");
-	await persistDemoFleetToCookie();
-	return Response.json({
-		ok: true,
-		machineId: id,
-		phase: "running",
-		message: "Harness online — gateway, skills, MCP integrations, and cron scheduler ready.",
-	});
+	const { buildDemoFleetSnapshotForCookie, demoJsonResponse, persistDemoFleetToCookie } =
+		await import("./demo-fleet-persist");
+	const snapshot = (await persistDemoFleetToCookie()) ?? buildDemoFleetSnapshotForCookie();
+	return demoJsonResponse(
+		{
+			ok: true,
+			machineId: id,
+			phase: "running",
+			message: "Harness online — gateway, skills, MCP integrations, and cron scheduler ready.",
+		},
+		snapshot,
+	);
 }
 
 /** @deprecated Use demoBootstrapResponseAsync — kept as alias for existing imports. */
 export const demoBootstrapResponse = demoBootstrapResponseAsync;
 
-export function demoWakeSleepResponse(machineId?: string | null): Response {
+export async function demoWakeSleepResponse(machineId?: string | null): Promise<Response> {
 	return demoMachineSummaryResponse(machineId);
 }
 

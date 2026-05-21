@@ -30,6 +30,19 @@ const BOOTSTRAP_SUCCEEDED = {
 /** How long a freshly provisioned machine stays in `starting` before `ready`. */
 const PROVISION_BOOT_MS = 3200;
 
+/** Dev/test provision names that should not persist in the demo fleet cookie. */
+const JUNK_DEMO_MACHINE_NAME =
+	/^(bulk|fresh-test|bulk0final|no-cookie-test|test-|tmp-|scratch-)/i;
+
+function isJunkDemoMachineName(name: string | undefined): boolean {
+	const normalized = (name ?? "").trim();
+	return normalized.length > 0 && JUNK_DEMO_MACHINE_NAME.test(normalized);
+}
+
+function isJunkDemoMachine(ref: MachineRef): boolean {
+	return isJunkDemoMachineName(ref.name);
+}
+
 export type DemoProvisionRequest = {
 	name?: string;
 	providerKind?: ProviderKind;
@@ -129,7 +142,7 @@ export function resolveDemoLiveState(machineId: string): DemoLiveState {
 }
 
 export function provisionDemoMachine(req: DemoProvisionRequest = {}): MachineRef {
-	const id = `demo-${randomUUID().slice(0, 8)}`;
+	const id = randomUUID().slice(0, 8);
 	const now = new Date().toISOString();
 	const ref: MachineRef = {
 		id,
@@ -236,6 +249,50 @@ export function resetDemoState(): void {
 	liveStatesSeeded = false;
 	seedLiveStates();
 	liveStatesSeeded = true;
+}
+
+/** Drop accumulated dev/test provisions (bulk*, fresh-test, etc.) from memory. */
+export function pruneJunkDemoExtraMachines(): boolean {
+	const removeIds = extraMachines
+		.filter((m) => isJunkDemoMachine(m))
+		.map((m) => m.id);
+	if (removeIds.length === 0) return false;
+
+	for (const id of removeIds) {
+		const idx = extraMachines.findIndex((m) => m.id === id);
+		if (idx >= 0) extraMachines.splice(idx, 1);
+		machinePatches.delete(id);
+		liveById.delete(id);
+		runtimeLogsByMachine.delete(id);
+	}
+
+	if (demoActiveMachineId && removeIds.includes(demoActiveMachineId)) {
+		demoActiveMachineId = getDemoSeedMachines()[0]?.id ?? null;
+	}
+
+	return true;
+}
+
+export function sanitizeDemoFleetSnapshot(
+	snapshot: DemoFleetSnapshot,
+): DemoFleetSnapshot {
+	const extraMachines = snapshot.extraMachines.filter((m) => !isJunkDemoMachine(m));
+	const keptIds = new Set(extraMachines.map((m) => m.id));
+	const live: DemoFleetSnapshot["live"] = {};
+	for (const id of keptIds) {
+		const entry = snapshot.live[id];
+		if (entry) live[id] = entry;
+	}
+
+	let activeMachineId = snapshot.activeMachineId;
+	const activeWasJunk = snapshot.extraMachines.some(
+		(m) => m.id === activeMachineId && isJunkDemoMachine(m),
+	);
+	if (activeWasJunk) {
+		activeMachineId = getDemoSeedMachines()[0]?.id ?? extraMachines[0]?.id ?? null;
+	}
+
+	return { activeMachineId, extraMachines, live };
 }
 
 export function buildDemoFleetSnapshot(): DemoFleetSnapshot {

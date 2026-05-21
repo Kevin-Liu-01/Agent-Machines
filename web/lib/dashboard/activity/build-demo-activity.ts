@@ -1,6 +1,11 @@
 import type { Mark } from "@/components/Logo";
-import { getMachineNarrative } from "@/lib/demo/config";
-import { allDemoMachines } from "@/lib/demo/state";
+import {
+	demoMachineHasConversationActivity,
+	getMachineNarrative,
+	isDemoSeedMachineId,
+	listDemoChatSummaries,
+} from "@/lib/demo/config";
+import { allDemoMachines, getDemoRuntimeLogs } from "@/lib/demo/state";
 import { AGENT_HUE } from "@/lib/fleet/agent-styling";
 import { agentLogoMark } from "@/lib/fleet/logos";
 import type { AgentKind, ProviderKind } from "@/lib/user-config/schema";
@@ -126,14 +131,27 @@ export function buildDemoActivityPayload(): ActivityPayload {
 	}
 
 	for (const machine of machines) {
-		const narrative = getMachineNarrative(machine.id);
+		const narrative = getMachineNarrative(machine.id, machine);
+		const isSeed = isDemoSeedMachineId(machine.id);
+		const runtimeLogs = getDemoRuntimeLogs(machine.id);
+		const hasConversation = demoMachineHasConversationActivity(
+			machine.id,
+			undefined,
+			machine,
+		);
+		const hasActivity =
+			isSeed || hasConversation || runtimeLogs.length > 0 || narrative.logs.lines.length > 0;
+
+		if (!hasActivity) continue;
+
 		const agentKind = machine.agentKind;
 		const providerKind = machine.providerKind;
 
 		const created = new Date(machine.createdAt);
 		const createdKey = dateKey(startOfDay(created));
 
-		for (const line of narrative.logs.lines) {
+		const allLogLines = [...narrative.logs.lines, ...runtimeLogs];
+		for (const line of allLogLines) {
 			if (!line.at) continue;
 			const key = dateKey(startOfDay(new Date(line.at)));
 			const day = ensureDay(dayMap, key);
@@ -159,34 +177,69 @@ export function buildDemoActivityPayload(): ActivityPayload {
 			}
 		}
 
-		for (const t of narrative.usage.transitions) {
-			const key = dateKey(startOfDay(new Date(t.timestamp)));
-			const day = ensureDay(dayMap, key);
-			bumpDay(day, agentKind, providerKind, [], 1);
-			addEvent(day, {
-				at: t.timestamp,
-				kind: t.label.toLowerCase().includes("provision") ? "deploy" : "agent",
-				title: t.label,
-				subtitle: machine.name,
-				agentKind,
-			});
-		}
-
-		let cursor = new Date(seedStart);
-		while (cursor <= end) {
-			const key = dateKey(cursor);
-			if (key < createdKey) {
-				cursor.setDate(cursor.getDate() + 1);
-				continue;
-			}
-			const noise = seededNoise(machine.id, cursor.getTime());
-			if (noise > 0.42) {
+		if (hasConversation) {
+			for (const chat of listDemoChatSummaries(machine.id, machine)) {
+				if (chat.messageCount <= 0) continue;
+				const at = chat.updatedAt ?? chat.createdAt;
+				if (!at) continue;
+				const key = dateKey(startOfDay(new Date(at)));
 				const day = ensureDay(dayMap, key);
-				bumpDay(day, agentKind, providerKind, [], noise > 0.78 ? 2 : 1);
+				bumpDay(day, agentKind, providerKind, [], 1);
+				addEvent(day, {
+					at,
+					kind: "agent",
+					title: chat.title || "Agent conversation",
+					subtitle: machine.name,
+					agentKind,
+				});
 				agentCounts.set(agentKind, (agentCounts.get(agentKind) ?? 0) + 1);
 				agentCounts.set(providerKind, (agentCounts.get(providerKind) ?? 0) + 1);
 			}
-			cursor.setDate(cursor.getDate() + 1);
+		}
+
+		if (isSeed) {
+			for (const t of narrative.usage.transitions) {
+				const key = dateKey(startOfDay(new Date(t.timestamp)));
+				const day = ensureDay(dayMap, key);
+				bumpDay(day, agentKind, providerKind, [], 1);
+				addEvent(day, {
+					at: t.timestamp,
+					kind: t.label.toLowerCase().includes("provision") ? "deploy" : "agent",
+					title: t.label,
+					subtitle: machine.name,
+					agentKind,
+				});
+			}
+
+			let cursor = new Date(seedStart);
+			while (cursor <= end) {
+				const key = dateKey(cursor);
+				if (key < createdKey) {
+					cursor.setDate(cursor.getDate() + 1);
+					continue;
+				}
+				const noise = seededNoise(machine.id, cursor.getTime());
+				if (noise > 0.42) {
+					const day = ensureDay(dayMap, key);
+					bumpDay(day, agentKind, providerKind, [], noise > 0.78 ? 2 : 1);
+					agentCounts.set(agentKind, (agentCounts.get(agentKind) ?? 0) + 1);
+					agentCounts.set(providerKind, (agentCounts.get(providerKind) ?? 0) + 1);
+				}
+				cursor.setDate(cursor.getDate() + 1);
+			}
+		} else if (hasConversation) {
+			for (const t of narrative.usage.transitions) {
+				const key = dateKey(startOfDay(new Date(t.timestamp)));
+				const day = ensureDay(dayMap, key);
+				bumpDay(day, agentKind, providerKind, [], 1);
+				addEvent(day, {
+					at: t.timestamp,
+					kind: "agent",
+					title: t.label,
+					subtitle: machine.name,
+					agentKind,
+				});
+			}
 		}
 	}
 

@@ -30,7 +30,7 @@ export async function GET(request: Request): Promise<Response> {
 		if (isDemoMode()) {
 			const { demoMachineSummaryResponse } = await loadDemoHandlers();
 			const machineId = new URL(request.url).searchParams.get("machineId") ?? undefined;
-			return demoMachineSummaryResponse(machineId);
+			return await demoMachineSummaryResponse(machineId);
 		}
 		const summary = await fetchActiveMachineSummary();
 		return Response.json(summary, {

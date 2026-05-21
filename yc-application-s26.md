@@ -349,13 +349,28 @@ is an insertion point."
 [1:45 - 2:10] Fleet — specialized agents, one pane of glass.
 4 machines. Switch active. Substrate is implementation detail.
 
-[2:10 - 2:35] Endgame — agents provisioning agents.
-Terminal / spin-up. Head agent provisions review + deploy machines.
-"Control plane is the moat."
+[2:05 - 2:35] The road ahead — and why it's hard.
+Fleet card gateway row or observability panel. Narrate — do NOT demo live
+agent-to-agent provisioning.
+
+"Today a human provisions from this dashboard. The endgame — what we're
+building toward — is a head agent over MCP: spin up review + deploy workers,
+route a PR, tear down when idle. We're not showing that live yet."
+
+"Cycles went to the unsexy layer first: substrate abstraction (Dedalus,
+E2B, Sprites), gateway auth off the model path (scoped tokens, rotation,
+sleep/wake without losing /home/machine), streaming every tool call for
+audit. Security and observability are the product — not bolt-ons."
+
+"When agents provision agents through the same control plane, the platform
+self-scales. Same gateway boundary. Same skill protocol. That's the moat."
 
 [2:35 - 3:00] Pull back — full instrument panel.
-Activity, telemetry, fleet, gateway. "Persistent agents as a one-click primitive.
-For humans today. For agents tomorrow. agent-machines.dev."
+Activity, telemetry, fleet, cron, cost by machine.
+
+"Persistent agents as a one-click primitive. 161 skills. 30 MCP servers.
+Any substrate. Full observability. Built for humans who need trust today —
+with the API surface agents will run on tomorrow. agent-machines.dev."
 ```
 
 ---

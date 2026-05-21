@@ -10,7 +10,7 @@ import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { cn } from "@/lib/cn";
-import { isDemoModePublic } from "@/lib/demo/mode";
+import { formatDemoSandboxId, isDemoModePublic } from "@/lib/demo/mode";
 import {
 	AGENT_KINDS,
 	DEFAULT_MACHINE_SPEC,
@@ -1006,7 +1006,13 @@ function ProvisionedStep({
 				<dl className="grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-2">
 					<Row
 						label="active machine id"
-						value={active?.id ?? config.activeMachineId ?? "--"}
+						value={
+							active?.id
+								? formatDemoSandboxId(active.id)
+								: config.activeMachineId
+									? formatDemoSandboxId(config.activeMachineId)
+									: "--"
+						}
 						tone="ok"
 					/>
 					<Row label="agent" value={active?.agentKind ?? config.draftAgentKind} />

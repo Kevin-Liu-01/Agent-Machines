@@ -46,7 +46,7 @@ export async function GET(): Promise<Response> {
 
 	if (isDemoMode()) {
 		const { demoMachinesResponse } = await loadDemoHandlers();
-		return demoMachinesResponse();
+		return await demoMachinesResponse();
 	}
 
 	const config = await getUserConfig();

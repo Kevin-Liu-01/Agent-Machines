@@ -13,7 +13,7 @@ import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/cn";
-import { isDemoModePublic } from "@/lib/demo/mode";
+import { formatDemoSandboxId, isDemoModePublic } from "@/lib/demo/mode";
 import type { ProviderCapabilities } from "@/lib/providers";
 import {
 	AGENT_KINDS,
@@ -606,7 +606,7 @@ function SpinUpForm({
 				<div className="flex items-center gap-2">
 					{result.phase === "ok" ? (
 						<ReticleBadge variant="success">
-							ok . {result.machineId.slice(0, 14)}...
+							ok . {formatDemoSandboxId(result.machineId).slice(0, 14)}...
 						</ReticleBadge>
 					) : null}
 					{result.phase === "error" ? (

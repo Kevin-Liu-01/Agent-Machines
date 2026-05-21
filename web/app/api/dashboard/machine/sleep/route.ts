@@ -27,7 +27,7 @@ export async function POST(): Promise<Response> {
 		}
 		if (isDemoMode()) {
 			const { demoWakeSleepResponse } = await loadDemoHandlers();
-			return demoWakeSleepResponse();
+			return await demoWakeSleepResponse();
 		}
 		const summary = await sleepActiveMachine();
 		return Response.json(summary, {
