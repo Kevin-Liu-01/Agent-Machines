@@ -52,6 +52,7 @@ type MachineInput = {
 	spec: MachineSpec;
 	model: string;
 	createdAt: string;
+	archived?: boolean;
 	live:
 		| { ok: true; state: string; rawPhase: string; lastError: string | null }
 		| { ok: false; reason: string };
@@ -83,6 +84,12 @@ function idleTail(state: string, lastAt: string | null): string[] {
 	return ["waiting for prompt…"];
 }
 
+function emptyLogLines(state: string, archived?: boolean): string[] {
+	if (archived) return ["archived — no live activity"];
+	if (state === "sleeping") return ["sleeping — state persisted to /home/machine"];
+	return ["no logs yet"];
+}
+
 function buildActivityLines(
 	headline: string | null,
 	logMsgs: string[],
@@ -102,12 +109,23 @@ export function buildTerminalLines(
 	headline: string | null,
 ): { lines: string[]; lastActivityAt: string | null; streamActive: boolean } {
 	const state = machine.live.ok ? machine.live.state : "unknown";
-	const streamActive = state === "ready" || state === "starting";
 
 	if (!machine.live.ok) {
 		return {
-			lines: [`probe failed: ${machine.live.reason}`, ...idleTail("error", null)],
+			lines: ["probe unreachable — see status below"],
 			lastActivityAt: null,
+			streamActive: false,
+		};
+	}
+
+	if (machine.archived) {
+		const logMsgs = activityLogMessages(logLines);
+		return {
+			lines:
+				logMsgs.length > 0
+					? [...logMsgs.slice(-8), "archived — no live activity"]
+					: emptyLogLines(state, true),
+			lastActivityAt: logLines.length > 0 ? logLines[logLines.length - 1].at : null,
 			streamActive: false,
 		};
 	}
@@ -115,6 +133,14 @@ export function buildTerminalLines(
 	const logMsgs = activityLogMessages(logLines);
 	const lastActivityAt =
 		logLines.length > 0 ? logLines[logLines.length - 1].at : null;
+
+	if (logMsgs.length === 0) {
+		return {
+			lines: emptyLogLines(state, machine.archived),
+			lastActivityAt: null,
+			streamActive: false,
+		};
+	}
 
 	if (state === "starting") {
 		return {

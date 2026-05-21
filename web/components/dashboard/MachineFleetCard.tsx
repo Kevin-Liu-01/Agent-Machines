@@ -5,6 +5,7 @@ import { useMemo } from "react";
 
 import { Logo, type Mark } from "@/components/Logo";
 import { FleetLiveTerminal } from "@/components/fleet/FleetLiveTerminal";
+import { shouldFetchFleetLogs } from "@/lib/fleet/fetch-log-tail";
 import {
 	agentLogoMark,
 	machineLogoMark,
@@ -420,7 +421,7 @@ export function MachineFleetCard({
 							color={color}
 							delaySec={delaySec}
 							streamActive={card.streamActive}
-							loading={!logsLoaded}
+							loading={shouldFetchFleetLogs(machine) && !logsLoaded}
 						/>
 					</div>
 				</button>

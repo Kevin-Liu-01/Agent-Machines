@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { LogLine } from "@/lib/dashboard/types";
-import { fetchLogTail, headlineFromLogs } from "@/lib/fleet/fetch-log-tail";
+import { fetchLogTail, headlineFromLogs, isFleetLogsLoaded, shouldFetchFleetLogs } from "@/lib/fleet/fetch-log-tail";
 import { toFleetStreamCard, type FleetStreamCardModel } from "@/lib/fleet/view-model";
 import type { AgentKind, MachineSpec, ProviderKind } from "@/lib/user-config/schema";
 
@@ -59,7 +59,16 @@ export function useFleetActivity(): FleetActivityState & { refresh: () => Promis
 			setActiveMachineId(body.activeMachineId);
 			setError(null);
 
-			const ready = visible.filter((m) => m.live.ok && m.live.state !== "destroyed");
+			setLogsFetched((prev) => ({
+				...prev,
+				...Object.fromEntries(
+					body.machines
+						.filter((m) => !shouldFetchFleetLogs(m))
+						.map((m) => [m.id, true]),
+				),
+			}));
+
+			const ready = body.machines.filter(shouldFetchFleetLogs);
 			const pairs = await Promise.all(
 				ready.map(async (m) => [m.id, await fetchLogTail(m.id)] as const),
 			);
@@ -90,7 +99,7 @@ export function useFleetActivity(): FleetActivityState & { refresh: () => Promis
 				return toFleetStreamCard(machine, logs, {
 					active: machine.id === activeMachineId,
 					headline: headlineFromLogs(logs),
-					logsLoaded: logsFetched[machine.id] ?? false,
+					logsLoaded: isFleetLogsLoaded(machine, logsFetched),
 				});
 			}),
 		[machines, logsById, logsFetched, activeMachineId],

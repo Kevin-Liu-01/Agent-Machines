@@ -307,15 +307,28 @@ function machineHelp(): string {
 
 function machineFallback(narrative: MachineNarrative, userMessage: string): string {
 	const short = normalize(userMessage).length <= 24;
+	const lastRun = narrative.headline;
+	const nextSteps: Record<string, string> = {
+		"demo-fullstack":
+			'Say **"run a security audit"**, or ask for **logs** / **cursor runs** from the last audit.',
+		"demo-code-review":
+			'Say **"review PR 412"**, or ask for **logs** / **cursor runs** from the last review.',
+		"demo-research":
+			'Say **"run the wiki digest"**, or ask for **artifacts** / **sessions** from the last pass.',
+		"demo-ops":
+			'Say **"run the health check"**, or ask for **logs** / **cron** output from the last run.',
+	};
+	const hint =
+		nextSteps[narrative.machineId] ??
+		'Ask for **logs**, **cursor runs**, **sessions**, or **artifacts** — or tell me what you want done next.';
+
 	if (short) {
 		return (
-			`Not sure I follow "${userMessage}" — try **logs**, **cursor runs**, **sessions**, or **artifacts**. ` +
-			`Last run here was **${narrative.headline}**.`
+			`Not sure I follow "${userMessage}". Last run here was **${lastRun}**.\n\n${hint}`
 		);
 	}
 	return (
-		`I don't have a scripted flow for that, but here's what's on this machine: **${narrative.headline}**.\n\n` +
-		`Try "show cursor runs" or "logs" for the details from that session.`
+		`Got it. Last run on this machine was **${lastRun}**.\n\n${hint}`
 	);
 }
 

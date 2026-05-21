@@ -129,18 +129,21 @@ export function demoLogsResponse(
 	const id = resolveDemoMachineId(machineId);
 	const narrative = getMachineNarrative(id);
 	const runtime = getDemoRuntimeLogs(id);
-	const lines = cron
+	const base = cron
 		? narrative.logs.lines.filter((l) => l.source === "cron")
-		: [
-				{
-					at: new Date().toISOString(),
-					level: "info" as const,
-					source: "gateway",
-					message: `gateway healthy — ${narrative.headline}`,
-				},
-				...narrative.logs.lines,
-				...runtime,
-			];
+		: [...narrative.logs.lines, ...runtime];
+	const lines =
+		base.length === 0
+			? []
+			: [
+					{
+						at: new Date().toISOString(),
+						level: "info" as const,
+						source: "gateway",
+						message: `gateway healthy — ${narrative.headline}`,
+					},
+					...base,
+				];
 	return Response.json({
 		ok: true,
 		data: { ...narrative.logs, lines, tailLines: lines.length },

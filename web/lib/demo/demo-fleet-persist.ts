@@ -11,11 +11,7 @@ import {
 	writeDemoFleetSnapshot,
 } from "./session-store";
 
-let hydratedFromCookie = false;
-
 export async function hydrateDemoFleetFromCookie(): Promise<void> {
-	if (hydratedFromCookie) return;
-	hydratedFromCookie = true;
 	const snapshot = await readDemoFleetSnapshot();
 	if (!snapshot) return;
 	applyDemoFleetSnapshot(snapshot);
@@ -27,6 +23,5 @@ export async function persistDemoFleetToCookie(): Promise<void> {
 
 export async function resetDemoFleet(): Promise<void> {
 	resetDemoState();
-	hydratedFromCookie = false;
 	await clearDemoFleetSnapshot();
 }

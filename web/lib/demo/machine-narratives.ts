@@ -12,12 +12,15 @@ import type { AgentKind } from "@/lib/user-config/schema";
 
 import {
 	getDemoSeedActiveMachineId,
-	getDemoSeedMachines,
 	getMachineNarrative as resolveNarrative,
 	type DemoMachineUsage,
 	type MachineNarrative,
 } from "./config";
 import { resolveDemoExec } from "./exec-replies";
+import {
+	allDemoMachinesIncludingArchived,
+	getDemoActiveMachineId,
+} from "./state";
 
 export type DemoChatRecord = MachineNarrative["chats"][number];
 
@@ -25,22 +28,27 @@ export type DemoArtifact = MachineNarrative["artifacts"][number];
 
 export type { DemoMachineUsage, MachineNarrative } from "./config";
 
-function seedDemoMachines() {
-	return getDemoSeedMachines();
-}
-
 export function resolveDemoMachineId(machineId?: string | null): string {
-	const machines = seedDemoMachines();
-	if (machineId && machines.some((m) => m.id === machineId)) {
+	const fleet = allDemoMachinesIncludingArchived();
+	if (machineId && fleet.some((m) => m.id === machineId)) {
 		return machineId;
 	}
-	return getDemoSeedActiveMachineId() ?? machines[0]?.id ?? "demo-fullstack";
+	return (
+		getDemoActiveMachineId() ??
+		getDemoSeedActiveMachineId() ??
+		fleet[0]?.id ??
+		"demo-fullstack"
+	);
 }
 
 export function getMachineNarrative(machineId?: string | null): MachineNarrative {
 	const id = resolveDemoMachineId(machineId);
-	const machine = seedDemoMachines().find((m) => m.id === id);
+	const machine = fleetMachineById(id);
 	return resolveNarrative(id, machine);
+}
+
+function fleetMachineById(id: string) {
+	return allDemoMachinesIncludingArchived().find((m) => m.id === id);
 }
 
 export function demoExecStdout(
@@ -52,7 +60,7 @@ export function demoExecStdout(
 }
 
 export function agentKindForDemoMachine(machineId: string): AgentKind {
-	return seedDemoMachines().find((m) => m.id === machineId)?.agentKind ?? "hermes";
+	return fleetMachineById(machineId)?.agentKind ?? "hermes";
 }
 
 export { STARTER_PROMPTS_BY_MACHINE } from "./starter-prompts";

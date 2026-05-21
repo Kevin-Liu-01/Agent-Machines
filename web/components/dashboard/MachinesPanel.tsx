@@ -8,7 +8,7 @@ import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import type { LogLine } from "@/lib/dashboard/types";
-import { fetchLogTail, headlineFromLogs } from "@/lib/fleet/fetch-log-tail";
+import { fetchLogTail, headlineFromLogs, isFleetLogsLoaded, shouldFetchFleetLogs } from "@/lib/fleet/fetch-log-tail";
 import { useFleetLoadout } from "@/lib/fleet/use-fleet-loadout";
 import { toFleetStreamCard } from "@/lib/fleet/view-model";
 import { cn } from "@/lib/cn";
@@ -73,9 +73,16 @@ export function MachinesPanel() {
 			setData(payload);
 			setError(null);
 
-			const pollable = payload.machines.filter(
-				(m) => !m.archived && m.live.ok && m.live.state !== "destroyed",
-			);
+			setLogsFetched((prev) => ({
+				...prev,
+				...Object.fromEntries(
+					payload.machines
+						.filter((m) => !shouldFetchFleetLogs(m))
+						.map((m) => [m.id, true]),
+				),
+			}));
+
+			const pollable = payload.machines.filter(shouldFetchFleetLogs);
 			const pairs = await Promise.all(
 				pollable.map(async (m) => [m.id, await fetchLogTail(m.id)] as const),
 			);
@@ -113,7 +120,7 @@ export function MachinesPanel() {
 				toFleetStreamCard(machine, logs, {
 					active: machine.id === activeMachineId,
 					headline: headlineFromLogs(logs),
-					logsLoaded: logsFetched[machine.id] ?? false,
+					logsLoaded: isFleetLogsLoaded(machine, logsFetched),
 				}),
 			);
 		}
@@ -198,7 +205,7 @@ export function MachinesPanel() {
 								loadout={loadout}
 								active={machine.id === activeMachineId}
 								delaySec={idx * 0.65}
-								logsLoaded={logsFetched[machine.id] ?? false}
+								logsLoaded={isFleetLogsLoaded(machine, logsFetched)}
 								editing={editing === machine.id}
 								onChange={refresh}
 								onToggleEdit={() =>
@@ -232,7 +239,7 @@ export function MachinesPanel() {
 									loadout={loadout}
 									active={false}
 									delaySec={idx * 0.15}
-									logsLoaded={logsFetched[machine.id] ?? false}
+									logsLoaded={isFleetLogsLoaded(machine, logsFetched)}
 									editing={editing === machine.id}
 									onChange={refresh}
 									onToggleEdit={() => setEditing(machine.id)}

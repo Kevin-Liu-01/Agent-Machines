@@ -313,21 +313,8 @@ function genericBundle(machine: MachineRef): JsonMachineBundle {
 			dbPath: "~/.agent-machines/sessions/",
 		},
 		logs: {
-			lines: [
-				{
-					at: now,
-					level: "info",
-					source: "gateway",
-					message: `gateway healthy — ${machine.agentKind} ready`,
-				},
-				{
-					at: now,
-					level: "info",
-					source: "agent",
-					message: `machine ${machine.name} online`,
-				},
-			],
-			files: [{ path: "~/.agent-machines/logs/gateway.log", bytes: 2048 }],
+			lines: [],
+			files: [],
 			tailLines: 20,
 		},
 		cursor: { runs: [], totalRuns: 0, logPath: "~/.agent-machines/cursor-runs.jsonl" },
