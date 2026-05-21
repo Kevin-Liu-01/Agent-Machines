@@ -6,6 +6,7 @@ import { DASHBOARD_SHELL_HEADER_ROW } from "@/lib/dashboard/shell-chrome";
 import { cn } from "@/lib/cn";
 import type { PublicUserConfig } from "@/lib/user-config/schema";
 
+import { DashboardReticleProvider } from "./DashboardReticleProvider";
 import { SidebarNav } from "./SidebarNav";
 import { StatusHeader } from "./StatusHeader";
 
@@ -20,8 +21,9 @@ export function DashboardShell({ children, config }: Props) {
 	const setupComplete = config.machines.some((m) => !m.archived);
 
 	return (
+		<DashboardReticleProvider>
 		<div className="relative grid min-h-[100dvh] bg-[var(--ret-bg-soft)] lg:grid-cols-[220px_1fr]">
-			<aside className="relative z-10 hidden border-r border-[var(--ret-border)] bg-[var(--ret-bg)] lg:flex lg:flex-col">
+			<aside className="sticky top-0 z-10 hidden h-[100dvh] self-start border-r border-[var(--ret-border)] bg-[var(--ret-bg)] lg:flex lg:flex-col">
 				<div
 					className={cn(
 						DASHBOARD_SHELL_HEADER_ROW,
@@ -42,5 +44,6 @@ export function DashboardShell({ children, config }: Props) {
 				<main className="flex-1">{children}</main>
 			</div>
 		</div>
+		</DashboardReticleProvider>
 	);
 }

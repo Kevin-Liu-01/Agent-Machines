@@ -55,6 +55,7 @@
 	--ret-purple: #aaa5e6;
 	--ret-purple-muted: rgba(170, 165, 230, 0.14);
 	--ret-purple-glow: rgba(170, 165, 230, 0.1);
+	--ret-accent: var(--ret-purple);
 	--ret-green: #22c55e;
 	--ret-amber: #f59e0b;
 	--ret-red: #ef4444;
@@ -120,6 +121,7 @@
 	--ret-purple: #d2beff;
 	--ret-purple-muted: rgba(210, 190, 255, 0.15);
 	--ret-purple-glow: rgba(210, 190, 255, 0.08);
+	--ret-accent: var(--ret-purple);
 	--ret-green: #4ade80;
 	--ret-amber: #fbbf24;
 	--ret-red: #f87171;
@@ -151,6 +153,7 @@
 		--ret-purple: #d2beff;
 		--ret-purple-muted: rgba(210, 190, 255, 0.15);
 		--ret-purple-glow: rgba(210, 190, 255, 0.08);
+		--ret-accent: var(--ret-purple);
 		--ret-green: #4ade80;
 		--ret-amber: #fbbf24;
 		--ret-red: #f87171;
@@ -579,6 +582,24 @@ textarea::placeholder {
 
 .fleet-pulse-sweep {
 	animation: fleet-pulse-sweep 2.4s ease-in-out infinite;
+}
+
+.fleet-terminal-scroll {
+	scrollbar-width: thin;
+	scrollbar-color: color-mix(in oklab, var(--ret-text-muted) 45%, transparent) transparent;
+}
+
+.fleet-terminal-scroll::-webkit-scrollbar {
+	width: 4px;
+}
+
+.fleet-terminal-scroll::-webkit-scrollbar-thumb {
+	background: color-mix(in oklab, var(--ret-text-muted) 45%, transparent);
+	border-radius: 2px;
+}
+
+.fleet-terminal-scroll::-webkit-scrollbar-track {
+	background: transparent;
 }
 
 /* ── Hero 3D viewport: glitch flash on agent switch ── */

@@ -11,13 +11,13 @@ import type {
 import type { AgentKind } from "@/lib/user-config/schema";
 
 import {
+	getDemoSeedActiveMachineId,
+	getDemoSeedMachines,
 	getMachineNarrative as resolveNarrative,
-	getStarterPromptsForMachine,
-	demoExecStdout as execStdout,
 	type DemoMachineUsage,
 	type MachineNarrative,
 } from "./config";
-import { allDemoMachines, getDemoActiveMachineId } from "./state";
+import { resolveDemoExec } from "./exec-replies";
 
 export type DemoChatRecord = MachineNarrative["chats"][number];
 
@@ -25,16 +25,21 @@ export type DemoArtifact = MachineNarrative["artifacts"][number];
 
 export type { DemoMachineUsage, MachineNarrative } from "./config";
 
+function seedDemoMachines() {
+	return getDemoSeedMachines();
+}
+
 export function resolveDemoMachineId(machineId?: string | null): string {
-	if (machineId && allDemoMachines().some((m) => m.id === machineId)) {
+	const machines = seedDemoMachines();
+	if (machineId && machines.some((m) => m.id === machineId)) {
 		return machineId;
 	}
-	return getDemoActiveMachineId() ?? "demo-fullstack";
+	return getDemoSeedActiveMachineId() ?? machines[0]?.id ?? "demo-fullstack";
 }
 
 export function getMachineNarrative(machineId?: string | null): MachineNarrative {
 	const id = resolveDemoMachineId(machineId);
-	const machine = allDemoMachines().find((m) => m.id === id);
+	const machine = seedDemoMachines().find((m) => m.id === id);
 	return resolveNarrative(id, machine);
 }
 
@@ -43,22 +48,14 @@ export function demoExecStdout(
 	command: string,
 ): string {
 	const id = resolveDemoMachineId(machineId);
-	const machine = allDemoMachines().find((m) => m.id === id);
-	return execStdout(id, command, machine);
+	return resolveDemoExec(command, id).stdout;
 }
 
 export function agentKindForDemoMachine(machineId: string): AgentKind {
-	return allDemoMachines().find((m) => m.id === machineId)?.agentKind ?? "hermes";
+	return seedDemoMachines().find((m) => m.id === machineId)?.agentKind ?? "hermes";
 }
 
-export const STARTER_PROMPTS_BY_MACHINE: Record<
-	string,
-	ReadonlyArray<{ label: string; prompt: string }>
-> = new Proxy({} as Record<string, ReadonlyArray<{ label: string; prompt: string }>>, {
-	get(_target, prop: string) {
-		return getStarterPromptsForMachine(prop);
-	},
-});
+export { STARTER_PROMPTS_BY_MACHINE } from "./starter-prompts";
 
 // Re-export payload types used by handlers
 export type { LogLine, LogsPayload, SessionsPayload, CursorRunsPayload };

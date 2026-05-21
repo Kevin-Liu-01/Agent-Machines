@@ -25,6 +25,7 @@ import {
 
 import rawConfig from "./demo-config.json";
 import { demoCreatedAtForMachine, demoDaysAgo } from "./dates";
+import { provisionNarrativeFor } from "./provision-narrative";
 
 export type DemoMachineUsage = {
 	ok: true;
@@ -268,24 +269,32 @@ function usageForMachine(
 function genericBundle(machine: MachineRef): JsonMachineBundle {
 	const now = new Date().toISOString();
 	const chatId = `chat-${machine.id.slice(-6)}`;
+	const narrative = provisionNarrativeFor(machine);
 	return {
-		headline: `${machine.name} — active session`,
-		starterPrompts: [],
+		headline: narrative.headline,
+		starterPrompts: [...narrative.starterPrompts],
 		chats: [
 			{
 				id: chatId,
-				title: `Session on ${machine.name}`,
+				title: `Welcome — ${machine.name}`,
 				machineId: machine.id,
 				model: machine.model,
 				createdAt: now,
 				updatedAt: now,
-				messageCount: 1,
+				messageCount: 2,
 				messages: [
 					{
-						id: `msg-${chatId}`,
+						id: `msg-${chatId}-u`,
 						role: "user",
-						content: `Check status on ${machine.name}`,
+						content: "What can this agent do?",
 						createdAt: Date.now(),
+					},
+					{
+						id: `msg-${chatId}-a`,
+						role: "assistant",
+						content: narrative.welcomeChat,
+						createdAt: Date.now() + 1200,
+						durationMs: 1200,
 					},
 				],
 			},
@@ -454,29 +463,8 @@ export function deleteDemoChat(chatId: string): void {
 }
 
 /* ------------------------------------------------------------------ */
-/* Exec stdout routing                                                 */
+/* Exec stdout routing — see exec-replies.ts                           */
 /* ------------------------------------------------------------------ */
-
-type ExecRepliesModule = typeof import("./exec-replies");
-
-let execRepliesModule: ExecRepliesModule | null = null;
-
-function loadExecReplies(): ExecRepliesModule {
-	if (!execRepliesModule) {
-		// Lazy require breaks config → exec-replies → state → config cycle at init.
-		execRepliesModule = require("./exec-replies") as ExecRepliesModule;
-	}
-	return execRepliesModule;
-}
-
-export function demoExecStdout(
-	machineId: string,
-	command: string,
-	machine?: MachineRef,
-): string {
-	void machine;
-	return loadExecReplies().resolveDemoExec(command, machineId).stdout;
-}
 
 export function getStarterPromptsForMachine(machineId: string): ReadonlyArray<{
 	label: string;

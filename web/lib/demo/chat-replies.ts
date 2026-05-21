@@ -23,6 +23,8 @@ export type DemoChatIntent =
 	| "pr_review"
 	| "wiki_digest"
 	| "ops_health"
+	| "product_pitch"
+	| "show_harness"
 	| "fallback";
 
 const GREETING_RE =
@@ -65,6 +67,21 @@ function mentionsHelp(text: string): boolean {
 	return /^(help|\?)$/i.test(text) || /\bwhat can you\b/i.test(text);
 }
 
+function mentionsProductPitch(text: string): boolean {
+	return (
+		/\b(agent machines|control plane|persistent agent|what is this|plain english)\b/i.test(text) ||
+		/\bexplain\b.*\b(agent|machine|product|platform)\b/i.test(text) ||
+		/\bwhy (is this|agent machines)\b/i.test(text)
+	);
+}
+
+function mentionsHarness(text: string): boolean {
+	return (
+		/\b(skills|mcp|harness|tools)\b/i.test(text) &&
+		/\b(list|show|what)\b/i.test(text)
+	);
+}
+
 export function detectDemoChatIntent(message: string, machineId?: string): DemoChatIntent {
 	const text = normalize(message);
 	const lower = text.toLowerCase();
@@ -73,6 +90,8 @@ export function detectDemoChatIntent(message: string, machineId?: string): DemoC
 	if (GREETING_RE.test(text)) return "greeting";
 	if (ACK_RE.test(text)) return "ack";
 	if (mentionsHelp(text)) return "help";
+	if (mentionsProductPitch(text)) return "product_pitch";
+	if (mentionsHarness(text)) return "show_harness";
 
 	if (mentionsCursor(text)) return "show_cursor";
 	if (mentionsLogs(text)) return "show_logs";
@@ -220,11 +239,35 @@ function machineGreeting(narrative: MachineNarrative): string {
 		"demo-ops":
 			"Last thing here was the **hourly health check** — `/api/health` returned 502, issue **#847** opened.",
 	};
-	const lead = hints[narrative.machineId] ?? `Working on **${narrative.headline}**.`;
+	const lead =
+		hints[narrative.machineId] ??
+		`**${narrative.headline}** — full harness deployed (skills, MCP, cron, observation). No SSH required.`;
 	return (
 		`Hey — **${narrative.machineId.replace("demo-", "")}** is up.\n\n` +
 		`${lead}\n\n` +
-		`Say things like "show cursor runs", "logs", "sessions", or "artifacts" and I'll pull the live data.`
+		`Ask "explain Agent Machines in plain English", "show the harness", or say **logs** / **cursor runs**.`
+	);
+}
+
+function productPitch(): string {
+	return (
+		"**Agent Machines** ships the combined primitive the Bay is missing: a persistent **agent on a machine**, not a bare container and not a stateless framework.\n\n" +
+		"- **Humans first:** visual dashboard — provision, watch tool calls, schedule cron, customize skills. Built for people who are not sysadmins.\n" +
+		"- **Agents second (endgame):** MCP + CLI so a head agent provisions specialized workers and routes tasks across a fleet.\n" +
+		"- **Market:** agent infra heading toward **$47B+** by 2028; control planes capture **10–30%** of spend — and enterprise vendors are still selling black-box UI, not true persistence.\n\n" +
+		"You are looking at the layer that gives containers their primary use case: **persistent agents that work while you sleep.**"
+	);
+}
+
+function harnessSummary(): string {
+	return (
+		"**Harness on this machine (demo):**\n\n" +
+		"- **155** community skills (SKILL.md protocol)\n" +
+		"- **17** MCP service integrations (Vercel, Stripe, Supabase, GitHub, …)\n" +
+		"- **10+** closed-loop CLIs + browser automation + Cursor bridge\n" +
+		"- **Cron** — agents run at 3am without a human prompt (see Cron panel)\n" +
+		"- **Observation** — every tool call, skill, and dollar visible here\n\n" +
+		"Switch machines in the fleet panel to see specialized agents (code review, research, ops)."
 	);
 }
 
@@ -303,6 +346,10 @@ export function buildDemoChatReply(
 			return machineSummary(narrative);
 		case "help":
 			return machineHelp();
+		case "product_pitch":
+			return productPitch();
+		case "show_harness":
+			return harnessSummary();
 		case "fallback":
 			return machineFallback(narrative, userMessage);
 		default:

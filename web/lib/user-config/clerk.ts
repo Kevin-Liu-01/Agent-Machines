@@ -595,8 +595,10 @@ function buildConfigFromSupabase(
 
 export async function getUserConfigById(userId: string): Promise<UserConfig> {
 	if (isDemoMode()) {
-		const { getDemoUserConfig } = await import("@/lib/demo/state");
-		return getDemoUserConfig();
+		const persist = await import("@/lib/demo/demo-fleet-persist");
+		await persist.hydrateDemoFleetFromCookie();
+		const state = await import("@/lib/demo/state");
+		return state.getDemoUserConfig();
 	}
 	if (isDevUserId(userId)) return getDevUserConfig();
 	const client = await clerkClient();
@@ -877,8 +879,12 @@ export async function setUserConfigById(
 	patch: ConfigPatch,
 ): Promise<UserConfig> {
 	if (isDemoMode()) {
-		const { applyDemoConfigPatch } = await import("@/lib/demo/state");
-		return applyDemoConfigPatch(patch);
+		const persist = await import("@/lib/demo/demo-fleet-persist");
+		await persist.hydrateDemoFleetFromCookie();
+		const state = await import("@/lib/demo/state");
+		const next = state.applyDemoConfigPatch(patch);
+		await persist.persistDemoFleetToCookie();
+		return next;
 	}
 	if (isDevUserId(userId)) return setDevUserConfig(patch);
 	const client = await clerkClient();

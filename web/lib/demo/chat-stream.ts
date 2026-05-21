@@ -10,6 +10,28 @@ import {
 	type DemoChatIntent,
 } from "./chat-replies";
 import { resolveDemoMachineId } from "./machine-narratives";
+import { appendDemoRuntimeLog } from "./state";
+
+const CHAT_RUNTIME_LOGS: Partial<Record<DemoChatIntent, string[]>> = {
+	security_audit: [
+		"POST /v1/chat/completions — stream open",
+		"tool load_skill deepsec — 28 rules loaded",
+		"tool terminal_exec npx deepsec --limit 50 ./web",
+		"deepsec: 12 findings (2 high, 4 medium, 6 low)",
+		"wrote artifacts/security-audit.md",
+	],
+	save_skill: [
+		"POST /v1/chat/completions — stream open",
+		"wrote knowledge/skills/custom/security-audit-repo/SKILL.md",
+	],
+	pr_review: [
+		"read_file web/lib/auth/middleware.ts — 142 lines",
+		"cursor_agent spawned — add unit tests for auth middleware",
+		"review complete — 3 suggestions posted to PR #412",
+	],
+	product_pitch: ["identity: Agent Machines — persistent agents as a primitive"],
+	show_harness: ["loaded dashboard harness — 155 skills, 17 MCP services"],
+};
 
 function sseBlock(event: string | undefined, data: unknown): string {
 	const lines = event ? [`event: ${event}`] : [];
@@ -249,9 +271,17 @@ export function createDemoChatResponse(
 	const stream = new ReadableStream({
 		async start(controller) {
 			const encoder = new TextEncoder();
+			const id = resolveDemoMachineId(machineId);
+			const intent = detectDemoChatIntent(text, id);
 			try {
 				for await (const chunk of pickScript(text, machineId)) {
 					controller.enqueue(encoder.encode(chunk));
+				}
+				const runtimeLines = CHAT_RUNTIME_LOGS[intent];
+				if (runtimeLines) {
+					for (const message of runtimeLines) {
+						appendDemoRuntimeLog(id, message);
+					}
 				}
 			} catch {
 				controller.enqueue(encoder.encode(sseBlock(undefined, "[DONE]")));

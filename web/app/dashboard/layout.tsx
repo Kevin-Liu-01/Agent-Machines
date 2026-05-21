@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
 import { AutoWake } from "@/components/dashboard/AutoWake";
-import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { BetaBanner } from "@/components/dashboard/BetaBanner";
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { getUserConfig } from "@/lib/user-config/clerk";
 import {
 	DEFAULT_USER_CONFIG,

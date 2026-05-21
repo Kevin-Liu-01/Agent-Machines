@@ -16,6 +16,8 @@ import {
 	type UserConfig,
 } from "@/lib/user-config/schema";
 
+import type { LogLine } from "@/lib/dashboard/types";
+
 import { getDemoSeedMachines, getDemoProvidersConfig, resetDemoConfigSession } from "./config";
 
 const BOOTSTRAP_SUCCEEDED = {
@@ -36,17 +38,16 @@ export type DemoProvisionRequest = {
 	spec?: MachineSpec;
 };
 
-export type DemoLiveState = {
-	state: string;
-	rawPhase: string;
-	lastError: string | null;
-};
+import type { DemoLiveState } from "./demo-types";
+
+export type { DemoLiveState } from "./demo-types";
 
 type LiveEntry = DemoLiveState & { provisionedAt?: number };
 
 const extraMachines: MachineRef[] = [];
 const machinePatches = new Map<string, Partial<MachineRef>>();
 const liveById = new Map<string, LiveEntry>();
+const runtimeLogsByMachine = new Map<string, LogLine[]>();
 let demoActiveMachineId: string | null = null;
 
 let liveStatesSeeded = false;
@@ -229,6 +230,7 @@ export function resetDemoState(): void {
 	extraMachines.length = 0;
 	machinePatches.clear();
 	liveById.clear();
+	runtimeLogsByMachine.clear();
 	demoActiveMachineId = null;
 	resetDemoConfigSession();
 	liveStatesSeeded = false;
@@ -236,19 +238,69 @@ export function resetDemoState(): void {
 	liveStatesSeeded = true;
 }
 
+export function buildDemoFleetSnapshot(): DemoFleetSnapshot {
+	const live: Record<string, LiveEntry> = {};
+	for (const machine of extraMachines) {
+		const entry = liveById.get(machine.id);
+		if (entry) live[machine.id] = entry;
+	}
+	return {
+		extraMachines: extraMachines.map((m) => ({ ...m })),
+		activeMachineId: demoActiveMachineId,
+		live,
+	};
+}
+
+export function applyDemoFleetSnapshot(snapshot: DemoFleetSnapshot): void {
+	for (const machine of snapshot.extraMachines) {
+		const idx = extraMachines.findIndex((m) => m.id === machine.id);
+		if (idx >= 0) extraMachines[idx] = machine;
+		else extraMachines.unshift(machine);
+	}
+	if (snapshot.activeMachineId) {
+		demoActiveMachineId = snapshot.activeMachineId;
+	}
+	for (const [id, live] of Object.entries(snapshot.live)) {
+		liveById.set(id, live);
+	}
+	ensureLiveStatesSeeded();
+}
+
+export function appendDemoRuntimeLog(
+	machineId: string,
+	message: string,
+	source = "agent",
+): void {
+	const list = runtimeLogsByMachine.get(machineId) ?? [];
+	list.push({
+		at: new Date().toISOString(),
+		level: "info",
+		source,
+		message,
+	});
+	runtimeLogsByMachine.set(machineId, list.slice(-16));
+}
+
+export function getDemoRuntimeLogs(machineId: string): LogLine[] {
+	return runtimeLogsByMachine.get(machineId) ?? [];
+}
+
 /** Mark bootstrap complete for a machine that was mid-provision. */
 export function finishDemoBootstrap(machineId: string): void {
-	const entry = liveById.get(machineId);
-	if (entry?.provisionedAt !== undefined) {
-		liveById.set(machineId, {
-			state: "ready",
-			rawPhase: "running",
-			lastError: null,
-			provisionedAt: entry.provisionedAt,
-		});
-	}
+	liveById.set(machineId, {
+		state: "ready",
+		rawPhase: "running",
+		lastError: null,
+	});
 	const inExtra = extraMachines.find((m) => m.id === machineId);
 	if (inExtra) {
-		inExtra.bootstrapState = { ...BOOTSTRAP_SUCCEEDED };
+		const now = new Date().toISOString();
+		inExtra.bootstrapState = {
+			...BOOTSTRAP_SUCCEEDED,
+			startedAt: inExtra.bootstrapState.startedAt ?? now,
+			finishedAt: now,
+		};
 	}
 }
+
+import type { DemoFleetSnapshot } from "./demo-types";

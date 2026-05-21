@@ -15,7 +15,7 @@ type Props = {
  * Shared empty / offline / config-missing state. Hatched header strip
  * gives the box visible texture without resorting to an illustration --
  * the agent is doing nothing, so the surface looks like nothing is
- * there. Corner crosses come for free from ReticleFrame.
+ * there. Dashboard frames omit Reticle corner crosses via shell context.
  */
 export function EmptyState({ title, description, hint, action }: Props) {
 	return (

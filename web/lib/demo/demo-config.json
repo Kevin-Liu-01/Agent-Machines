@@ -611,44 +611,80 @@
           {
             "at": "2026-05-20T14:20:01.000Z",
             "level": "info",
-            "source": "gateway",
-            "message": "POST /v1/chat/completions — stream open"
+            "source": "session",
+            "message": "session resumed — chat-security-audit (4 msgs, 142KB context)"
           },
           {
-            "at": "2026-05-20T14:20:03.000Z",
+            "at": "2026-05-20T14:20:02.000Z",
             "level": "info",
             "source": "agent",
-            "message": "tool load_skill deepsec — 28 rules loaded"
+            "message": "load_skill deepsec — 28 rules armed"
+          },
+          {
+            "at": "2026-05-20T14:20:04.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "grep attack surface — 847 files under ./web"
           },
           {
             "at": "2026-05-20T14:20:08.000Z",
             "level": "info",
             "source": "agent",
-            "message": "tool browser_navigate http://localhost:3210/dashboard — 200 OK"
+            "message": "browser_navigate /dashboard — auth session verified (200)"
           },
           {
             "at": "2026-05-20T14:20:15.000Z",
             "level": "info",
             "source": "agent",
-            "message": "tool terminal_exec npx deepsec --limit 50 ./web"
+            "message": "terminal_exec deepsec --limit 50 ./web — pass 1/3 scanning"
+          },
+          {
+            "at": "2026-05-20T14:20:52.000Z",
+            "level": "warn",
+            "source": "agent",
+            "message": "finding HIGH — /api/chat missing rate limit (route.ts:44)"
+          },
+          {
+            "at": "2026-05-20T14:21:08.000Z",
+            "level": "warn",
+            "source": "agent",
+            "message": "finding HIGH — raw error bodies returned to client"
+          },
+          {
+            "at": "2026-05-20T14:21:10.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "delegate cursor_agent — add sliding-window rate limiter"
           },
           {
             "at": "2026-05-20T14:21:42.000Z",
             "level": "warn",
             "source": "agent",
-            "message": "deepsec: 12 findings (2 high, 4 medium, 6 low)"
+            "message": "deepsec pass 2/3 — 12 findings (2H · 4M · 6L)"
+          },
+          {
+            "at": "2026-05-20T14:21:55.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "delegate cursor_agent — CSP headers on dashboard layout"
           },
           {
             "at": "2026-05-20T14:22:00.000Z",
             "level": "info",
             "source": "agent",
-            "message": "wrote artifacts/security-audit.md"
+            "message": "write artifacts/security-audit.md — 18KB"
+          },
+          {
+            "at": "2026-05-20T14:24:28.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "write knowledge/skills/custom/security-audit-repo/SKILL.md"
           },
           {
             "at": "2026-05-20T14:24:30.000Z",
             "level": "info",
             "source": "agent",
-            "message": "wrote knowledge/skills/custom/security-audit-repo/SKILL.md"
+            "message": "skills library 156 → 157 procedures"
           }
         ],
         "files": [
@@ -806,32 +842,56 @@
           {
             "at": "2026-05-20T11:05:02.000Z",
             "level": "info",
-            "source": "gateway",
-            "message": "claude-code session started"
+            "source": "session",
+            "message": "session open — PR #412 auth middleware (6 files changed)"
+          },
+          {
+            "at": "2026-05-20T11:05:14.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "gh pr checkout 412 — branch feat/auth-middleware"
           },
           {
             "at": "2026-05-20T11:06:14.000Z",
             "level": "info",
             "source": "agent",
-            "message": "read_file web/lib/auth/middleware.ts — 142 lines"
+            "message": "read middleware.ts — 142 lines, 3 export surfaces"
+          },
+          {
+            "at": "2026-05-20T11:07:02.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "grep validateToken — 11 call sites across API routes"
           },
           {
             "at": "2026-05-20T11:08:30.000Z",
             "level": "info",
             "source": "agent",
-            "message": "cursor_agent spawned — add unit tests for auth middleware"
+            "message": "spawn cursor_agent — unit tests for token expiry edge cases"
+          },
+          {
+            "at": "2026-05-20T11:14:48.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "test suite — 8 added, 8 passing (412ms)"
           },
           {
             "at": "2026-05-20T11:15:22.000Z",
             "level": "info",
             "source": "agent",
-            "message": "review complete — 3 suggestions posted to PR #412"
+            "message": "review posted — 3 suggestions on PR #412"
+          },
+          {
+            "at": "2026-05-20T11:16:10.000Z",
+            "level": "warn",
+            "source": "agent",
+            "message": "finding — auth errors may leak stack traces to client"
           },
           {
             "at": "2026-05-20T11:18:00.000Z",
             "level": "info",
             "source": "agent",
-            "message": "wrote artifacts/pr-412-review.md"
+            "message": "write artifacts/pr-412-review.md — 9KB"
           }
         ],
         "files": [
@@ -974,25 +1034,49 @@
             "at": "2026-05-20T09:00:01.000Z",
             "level": "info",
             "source": "cron",
-            "message": "daily-wiki-digest triggered"
+            "message": "[cron] daily-wiki-digest triggered on demo-research"
+          },
+          {
+            "at": "2026-05-20T09:00:12.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "agent-reach scan — 12 X bookmarks queued"
+          },
+          {
+            "at": "2026-05-20T09:00:28.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "absorb karpathy/llm-wiki — dedicated page + cross-links"
           },
           {
             "at": "2026-05-20T09:00:45.000Z",
             "level": "info",
             "source": "agent",
-            "message": "agent-reach: fetched 12 bookmark pages"
+            "message": "absorb cursor/orchestrate — added to wiki/tools"
+          },
+          {
+            "at": "2026-05-20T09:01:30.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "distill 5 bullets for active memory"
           },
           {
             "at": "2026-05-20T09:02:10.000Z",
             "level": "info",
             "source": "agent",
-            "message": "consolidated 5 bullets into MEMORY.md"
+            "message": "merge into MEMORY.md — 2765 bytes final"
+          },
+          {
+            "at": "2026-05-20T09:03:20.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "delegate cursor_agent — wiki/_index.md cross-links (3 pages)"
           },
           {
             "at": "2026-05-20T09:04:12.000Z",
             "level": "info",
             "source": "agent",
-            "message": "wrote artifacts/wiki-digest-2026-05-20.md"
+            "message": "write artifacts/wiki-digest-2026-05-20.md — 6KB"
           }
         ],
         "files": [
@@ -1124,31 +1208,55 @@
             "at": "2026-05-20T03:12:01.000Z",
             "level": "info",
             "source": "cron",
-            "message": "hourly-health-check triggered — waking machine"
+            "message": "[cron] hourly-health-check fired — wake from sleep"
           },
           {
             "at": "2026-05-20T03:12:03.000Z",
             "level": "info",
             "source": "agent",
-            "message": "skill loaded: dedalus-machines"
+            "message": "load_skill dedalus-machines"
+          },
+          {
+            "at": "2026-05-20T03:12:05.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "probe GET /api/health → upstream http://127.0.0.1:3210"
           },
           {
             "at": "2026-05-20T03:12:08.000Z",
             "level": "warn",
             "source": "agent",
-            "message": "GET /api/health returned 502 — endpoint regression detected"
+            "message": "502 Bad Gateway — regression detected (was 200 @ 02:12)"
+          },
+          {
+            "at": "2026-05-20T03:12:10.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "spawn cursor_agent — investigate /api/health timeout"
+          },
+          {
+            "at": "2026-05-20T03:12:12.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "root cause — upstream timeout on health handler (52s)"
           },
           {
             "at": "2026-05-20T03:12:14.000Z",
             "level": "info",
             "source": "github",
-            "message": "opened issue #847 — API health check failing on /api/health"
+            "message": "gh issue create #847 — /api/health failing in prod"
+          },
+          {
+            "at": "2026-05-20T03:12:16.000Z",
+            "level": "info",
+            "source": "agent",
+            "message": "write artifacts/cron-hourly-health-check.log"
           },
           {
             "at": "2026-05-20T03:12:18.000Z",
             "level": "info",
             "source": "cron",
-            "message": "run complete — cost $0.04 — machine returned to sleep"
+            "message": "run complete — $0.04 — machine returned to sleep"
           }
         ],
         "files": [

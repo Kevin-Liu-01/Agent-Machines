@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 
 import { DEMO_CRON_RUNS, DEMO_GATEWAY, DEMO_METRICS_SUMMARY, DEMO_USAGE } from "../lib/demo/fixtures";
 import { listCronDetailNames, getCronRunDetail } from "../lib/demo/cron-details";
-import { STARTER_PROMPTS_BY_MACHINE } from "../lib/demo/machine-narratives";
+import { STARTER_PROMPTS_BY_MACHINE } from "../lib/demo/starter-prompts";
 import { allDemoMachines, getDemoActiveMachineId } from "../lib/demo/state";
 import { getMachineNarrative } from "../lib/demo/machine-narratives";
 import { loadDemoChat } from "../lib/demo/chat-records";

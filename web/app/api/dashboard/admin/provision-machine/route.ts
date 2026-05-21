@@ -90,7 +90,7 @@ export async function POST(request: Request): Promise<Response> {
 
 	if (isDemoMode()) {
 		const { demoProvisionResponse } = await loadDemoHandlers();
-		return demoProvisionResponse(body);
+		return await demoProvisionResponse(body);
 	}
 
 	let config: Awaited<ReturnType<typeof getUserConfig>>;

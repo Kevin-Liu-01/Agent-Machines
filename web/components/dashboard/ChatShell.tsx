@@ -11,7 +11,7 @@ import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleHatch } from "@/components/reticle/ReticleHatch";
-import { STARTER_PROMPTS_BY_MACHINE } from "@/lib/demo/machine-narratives";
+import { STARTER_PROMPTS_BY_MACHINE } from "@/lib/demo/starter-prompts";
 import { isDemoModePublic } from "@/lib/demo/mode";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { Skeleton } from "@/components/ui/Skeleton";

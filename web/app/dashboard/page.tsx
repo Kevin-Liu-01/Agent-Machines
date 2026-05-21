@@ -6,10 +6,7 @@ import { listCrons } from "@/lib/dashboard/crons";
 import { listMcpServers } from "@/lib/dashboard/mcps";
 import { listSkills } from "@/lib/dashboard/skills";
 import { getUserConfig } from "@/lib/user-config/clerk";
-import {
-	activeMachine,
-	type AgentKind,
-} from "@/lib/user-config/schema";
+import { activeMachine } from "@/lib/user-config/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -18,12 +15,13 @@ export default async function OverviewPage() {
 	// they ever see the busy dashboard. After provisioning, they're
 	// redirected back here for the live machine view.
 	let needsOnboarding = false;
-	let agentKind: AgentKind = "hermes";
-	let model: string | null = null;
 	let activeMachineId: string | null = null;
+	let agentKind: import("@/lib/user-config/schema").AgentKind = "hermes";
+	let model: string | null = null;
 	try {
 		const config = await getUserConfig();
 		needsOnboarding = !config.machines.some((m) => !m.archived);
+		activeMachineId = config.activeMachineId;
 		const active = activeMachine(config);
 		if (active) {
 			agentKind = active.agentKind;
@@ -32,7 +30,6 @@ export default async function OverviewPage() {
 			agentKind = config.draftAgentKind;
 			model = config.draftModel ?? null;
 		}
-		activeMachineId = config.activeMachineId;
 	} catch {
 		// Auth / config probe failed -- the layout will surface the right
 		// error; render the degraded overview below.
@@ -48,8 +45,8 @@ export default async function OverviewPage() {
 		<div className="flex flex-col">
 			<PageHeader
 				kicker="OVERVIEW"
-				title="Fleet overview"
-				description="Fleet-wide health, usage metrics, and gateway probes across all machines. Click into a machine from the Machines page for per-machine live data, chat, terminal, and loadout."
+				title="Activity"
+				description="Machine wake time, agent work, and service touchpoints — filterable by time range, agent, and service."
 			/>
 			<OverviewClient
 				counts={{

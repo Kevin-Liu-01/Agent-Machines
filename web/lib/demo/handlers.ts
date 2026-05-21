@@ -3,6 +3,7 @@
  */
 
 import type { ProviderCapabilities } from "@/lib/providers";
+import { buildDemoActivityPayload } from "@/lib/dashboard/activity/build-demo-activity";
 import {
 	DEFAULT_MACHINE_SPEC,
 	type MachineSpec,
@@ -31,6 +32,8 @@ import { isDemoMode } from "./mode";
 import {
 	allDemoMachines,
 	applyDemoConfigPatch,
+	finishDemoBootstrap,
+	getDemoRuntimeLogs,
 	getDemoUserConfig,
 	provisionDemoMachine,
 	resolveDemoLiveState,
@@ -123,7 +126,9 @@ export function demoLogsResponse(
 	machineId?: string | null,
 	cron = false,
 ): Response {
-	const narrative = getMachineNarrative(machineId);
+	const id = resolveDemoMachineId(machineId);
+	const narrative = getMachineNarrative(id);
+	const runtime = getDemoRuntimeLogs(id);
 	const lines = cron
 		? narrative.logs.lines.filter((l) => l.source === "cron")
 		: [
@@ -134,6 +139,7 @@ export function demoLogsResponse(
 					message: `gateway healthy — ${narrative.headline}`,
 				},
 				...narrative.logs.lines,
+				...runtime,
 			];
 	return Response.json({
 		ok: true,
@@ -258,13 +264,13 @@ export function demoMachineDetailResponse(machineId: string): Response {
 	});
 }
 
-export function demoProvisionResponse(body: {
+export async function demoProvisionResponse(body: {
 	name?: string;
 	providerKind?: "dedalus" | "e2b" | "sprites";
 	agentKind?: "hermes" | "openclaw" | "claude-code" | "codex";
 	model?: string;
 	spec?: Partial<MachineSpec>;
-}): Response {
+}): Promise<Response> {
 	const spec: MachineSpec = {
 		vcpu: body.spec?.vcpu ?? DEFAULT_MACHINE_SPEC.vcpu,
 		memoryMib: body.spec?.memoryMib ?? DEFAULT_MACHINE_SPEC.memoryMib,
@@ -272,42 +278,50 @@ export function demoProvisionResponse(body: {
 	};
 	const ref = provisionDemoMachine({ ...body, spec });
 	const live = resolveDemoLiveState(ref.id);
+	const { persistDemoFleetToCookie } = await import("./demo-fleet-persist");
+	await persistDemoFleetToCookie();
 	return Response.json({
 		ok: true,
 		machineId: ref.id,
 		phase: live.rawPhase,
 		state: live.state,
 		message:
-			"Machine accepted. Run browser bootstrap from the dashboard to install the selected agent runtime.",
+			"Persistent agent provisioned — 155 skills, 17 MCP services, and full harness deploying in ~30s.",
 	});
 }
 
-export function demoBootstrapResponse(machineId?: string): Response {
+export async function demoBootstrapResponseAsync(machineId?: string): Promise<Response> {
 	const config = getDemoUserConfig();
 	const id = machineId ?? config.activeMachineId ?? "demo-fullstack";
 	const now = new Date().toISOString();
+	finishDemoBootstrap(id);
 	applyDemoConfigPatch({
 		patchMachine: {
 			id,
 			patch: {
 				bootstrapState: {
-					phase: "running",
+					phase: "succeeded",
 					current: "start-gateway",
-					completed: ["system-deps", "install-uv", "clone-hermes"],
+					completed: ["system-deps", "install-uv", "clone-hermes", "seed-knowledge", "start-gateway"],
 					startedAt: now,
-					finishedAt: null,
+					finishedAt: now,
 					lastError: null,
 				},
 			},
 		},
 	});
+	const { persistDemoFleetToCookie } = await import("./demo-fleet-persist");
+	await persistDemoFleetToCookie();
 	return Response.json({
 		ok: true,
 		machineId: id,
 		phase: "running",
-		message: "Bootstrap started — installing agent runtime.",
+		message: "Harness online — gateway, skills, MCP integrations, and cron scheduler ready.",
 	});
 }
+
+/** @deprecated Use demoBootstrapResponseAsync — kept as alias for existing imports. */
+export const demoBootstrapResponse = demoBootstrapResponseAsync;
 
 export function demoWakeSleepResponse(machineId?: string | null): Response {
 	return demoMachineSummaryResponse(machineId);
@@ -321,6 +335,12 @@ export function demoMetricsSummaryResponse(): Response {
 		running,
 		totalMachines: machines.length,
 		lastCollectedAt: new Date().toISOString(),
+	});
+}
+
+export function demoActivityResponse(): Response {
+	return Response.json(buildDemoActivityPayload(), {
+		headers: { "Cache-Control": "no-store" },
 	});
 }
 

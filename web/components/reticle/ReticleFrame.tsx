@@ -4,6 +4,7 @@ import type { CSSProperties, ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 
+import { useReticleFrameCornersDefault } from "./ReticleFrameContext";
 import { ReticleCross } from "./ReticleCross";
 
 type Props = {
@@ -41,9 +42,11 @@ export function ReticleFrame({
 	className,
 	style,
 	crossOffset = 10,
-	corners = true,
+	corners,
 	as: Tag = "div",
 }: Props) {
+	const cornersDefault = useReticleFrameCornersDefault();
+	const showCorners = corners ?? cornersDefault ?? true;
 	const off = `-${crossOffset}px`;
 	return (
 		<Tag
@@ -53,7 +56,7 @@ export function ReticleFrame({
 			)}
 			style={style}
 		>
-			{corners ? (
+			{showCorners ? (
 				<>
 					<ReticleCross className="absolute" style={{ top: off, left: off }} />
 					<ReticleCross className="absolute" style={{ top: off, right: off }} />

@@ -10,7 +10,7 @@ export default function MachinesPage() {
 			<PageHeader
 				kicker="FLEET"
 				title="Your machines"
-				description="Every machine tied to your account, across providers. Click a machine to open its dedicated dashboard with live data, chat, terminal, and loadout."
+				description="Live fleet activity across every machine. Click a card to drill into chat, terminal, logs, and loadout."
 				right={
 					<ReticleButton
 						as="a"

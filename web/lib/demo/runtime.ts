@@ -12,6 +12,8 @@ let handlersModule: DemoHandlersModule | null = null;
 /** Load demo API handlers once; no-op cost when demo mode is off. */
 export async function loadDemoHandlers(): Promise<DemoHandlersModule> {
 	if (!handlersModule) {
+		const { hydrateDemoFleetFromCookie } = await import("./demo-fleet-persist");
+		await hydrateDemoFleetFromCookie();
 		handlersModule = await import("./handlers");
 	}
 	return handlersModule;

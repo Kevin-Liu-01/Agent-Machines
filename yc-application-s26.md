@@ -307,84 +307,55 @@ deck -- something live. Thank you for your time."
 
 ---
 
-## Demo Video Script (3 minutes)
+## Demo Video Script (3 minutes) — control plane edition
+
+**ICP:** Founder / PM / ops lead (non-terminal). **Subtext:** Engineers who've hit the session/container wall.
 
 ```
-[0:00 - 0:12] Cold open. No preamble.
+[0:00 - 0:15] Cold open — the primitive, not the chatbot.
 Screen: agent-machines.dev/dashboard/setup.
-Pick template: "Full-stack dev agent." Pick substrate: Dedalus.
-Click Provision. Timer starts. Machine boots. 30 seconds.
-"That's a persistent agent with 155 skills, 17 MCP services, 10 CLIs, 
-15 built-in tools, browser automation, cron, and a Cursor bridge. 
-One click."
+"No preamble. Most AI products give you a chat window. We give you a computer
+that stays on — with an agent already installed, already wired to your tools."
 
-[0:12 - 0:35] Observation. The thing that makes this different.
-Chat: "Run a security audit on this repo."
-Agent starts working. Dashboard shows everything live: which skill 
-loaded (deepsec), each tool call as it happens (browser open, terminal 
-exec, file read), tokens consumed, cost in real-time.
-"This is not a black box. You see every decision. Every tool call. 
-Every dollar spent. I built this observation layer first, to benchmark 
-agents across container providers. Turns out watching agents work is 
-the feature people actually want."
+Pick template: Full-stack dev agent. Substrate: Dedalus. Click Provision. ~30s.
+"One click: persistent agent machine — 161 skills, 30 MCP servers, browser
+automation, cron, live gateway. Survives when you close the tab."
 
-[0:35 - 0:55] Skill protocol. Show the novel thing.
-Agent finishes the audit. Results are structured.
-Chat: "Save this audit pattern as a skill."
-Agent writes a SKILL.md. Show the file: structured, versioned, clear.
-Skills browser: 156 skills now. One more than five minutes ago.
-"Every complex task compounds into a reusable procedure. This is the 
-core invention. After six months you have hundreds of custom skills. 
-You can't move those to ChatGPT. That's the lock-in."
+[WHY OP] Chat resets. Cron can't run in a tab. Procedures aren't on disk.
+Persistent agent-container = disk + process + schedule + identity in one unit.
 
-[0:55 - 1:15] Insertion layers. Show customization is real.
-Skills browser: click "Add skill." Paste a custom SKILL.md. Live.
-MCP panel: Vercel, Stripe, Supabase connected. Click "Add service."
-Configure Datadog in 10 seconds.
-"155 skills, 17 MCP services, 10 CLIs, 15 built-in tools out of the 
-box. But everything is an insertion point. Your skills. Your services. 
-Your CLIs. Your governance."
+[TECH] Hard part isn't the LLM — it's the control plane: bootstrap on any
+substrate, gateway auth off the model path, sleep/wake without losing
+/home/machine, streaming every tool call to a dashboard humans trust.
 
-[1:15 - 1:40] Cron. Agents that work at 3am.
-Cron panel: four automations running.
-Pull up the most recent cron execution log. Agent woke the machine 
-from sleep at 3:12am, ran a health check, found a broken API endpoint, 
-opened a GitHub issue with reproduction steps, machine went back to 
-sleep. Total cost: $0.04.
-"Nobody prompted this agent. It ran on schedule, found a real bug, 
-filed a real issue, and went back to sleep."
+[0:15 - 0:40] Observation — control plane is the product.
+/dashboard activity heatmap → tap a day. /dashboard/chat: security audit.
+Live: deepsec skill, browser, terminal, tokens, cost.
+"Non-technical users get a flight recorder. Engineers get the harness we
+used to benchmark Dedalus, E2B, Sprites."
 
-[1:40 - 2:05] Fleet. Multiple machines, specialized agents.
-Machines panel: three machines running.
-  - code-review: 47 skills, connected to GitHub + Linear
-  - research: 31 skills, connected to browser + web search
-  - ops: 22 skills, connected to Vercel + Datadog + Slack
-Switch active machine. Each has its own session history, skill set,
-cron schedule. Different substrates shown.
-"Nobody wants one agent that does everything. You want specialized 
-agents with their own skills and services. The dashboard manages the 
-fleet. The container underneath is an implementation detail."
+[0:40 - 1:00] Skill protocol — procedures become assets.
+Save audit as skill → SKILL.md → /dashboard/skills (161).
+"Can't export that to ChatGPT. Intentional."
 
-[2:05 - 2:35] The endgame. Agents provisioning agents.
-Switch to terminal view. A head agent is running.
-Head agent: "I need a code review agent and a staging deploy agent. 
-Provision both, route this PR through code review first, then deploy 
-if it passes."
-Dashboard: two new machines appear. Status goes from provisioning to 
-running. Code review agent processes the PR. Passes. Deploy agent 
-picks it up. Deploys to staging. Results flow back to the head agent.
-Both machines sleep.
-"This is where it goes. An MCP server so agents provision and 
-coordinate other agents. The platform becomes self-scaling. Agents 
-create demand for more agents."
+[1:00 - 1:20] Insertion layers — your stack.
+Loadout + MCPs (Vercel, Stripe, Datadog). "161 out of the box; everything
+is an insertion point."
 
-[2:35 - 3:00] Pull back to the full dashboard.
-All five machines visible. Skill counts ticking. Sessions streaming.
-Cron jobs scheduled. Cost dashboard showing spend by machine.
-"Persistent agents as a one-click primitive.
-155 skills. 17 MCP services. 10 CLIs. Any substrate.
-For humans today. For agents tomorrow.
-agent-machines.dev."
+[1:20 - 1:45] Cron — agents at 3am.
+4 schedules. nightly-memory-consolidation: wake, run, sleep, $0.04.
+"AI employee, not assistant."
+
+[1:45 - 2:10] Fleet — specialized agents, one pane of glass.
+4 machines. Switch active. Substrate is implementation detail.
+
+[2:10 - 2:35] Endgame — agents provisioning agents.
+Terminal / spin-up. Head agent provisions review + deploy machines.
+"Control plane is the moat."
+
+[2:35 - 3:00] Pull back — full instrument panel.
+Activity, telemetry, fleet, gateway. "Persistent agents as a one-click primitive.
+For humans today. For agents tomorrow. agent-machines.dev."
 ```
 
 ---

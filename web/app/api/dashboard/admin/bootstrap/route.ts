@@ -31,8 +31,8 @@ export async function POST(request: Request): Promise<Response> {
 	const body = (await request.json().catch(() => ({}))) as Body;
 
 	if (isDemoMode()) {
-		const { demoBootstrapResponse } = await loadDemoHandlers();
-		return demoBootstrapResponse(body.machineId);
+		const { demoBootstrapResponseAsync } = await loadDemoHandlers();
+		return demoBootstrapResponseAsync(body.machineId);
 	}
 
 	let config: Awaited<ReturnType<typeof getUserConfig>>;
