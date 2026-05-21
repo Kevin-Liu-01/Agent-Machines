@@ -21,7 +21,6 @@ import type {
 import type { LogLine } from "@/lib/dashboard/types";
 import { fetchLogTail } from "@/lib/fleet/fetch-log-tail";
 import { cn } from "@/lib/cn";
-import { isDemoModePublic } from "@/lib/demo/mode";
 import type { AgentKind, ProviderKind } from "@/lib/user-config/schema";
 
 const POLL_MS = 12_000;
@@ -123,7 +122,7 @@ export function ActivityOverviewPanel() {
 				? ((await activityRes.json()) as ActivityPayload)
 				: null;
 
-			if (!isDemoModePublic() && machinesRes.ok && base) {
+			if (machinesRes.ok && base) {
 				const machinesBody = (await machinesRes.json()) as {
 					machines: LiveMachine[];
 				};

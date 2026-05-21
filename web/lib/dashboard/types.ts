@@ -86,6 +86,15 @@ export type CronSummary = {
 	skills: string[];
 };
 
+export type CronRunSummary = {
+	name: string;
+	schedule: string;
+	lastRunAt: string;
+	status: "success" | "running" | "failed";
+	costUsd: number;
+	summary: string;
+};
+
 export type CronTrailStep = {
 	at: string;
 	phase: string;

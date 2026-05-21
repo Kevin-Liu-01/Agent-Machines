@@ -6,7 +6,6 @@ import {
 } from "@/lib/dashboard/usage-metrics";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 import { supabaseAdmin } from "@/lib/supabase/client";
-import { isDemoMode, loadDemoHandlers } from "@/lib/demo/runtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,11 +18,6 @@ export async function GET(request: NextRequest) {
 		90,
 		Math.max(1, Number(request.nextUrl.searchParams.get("days") ?? 7)),
 	);
-
-	if (isDemoMode()) {
-		const { demoUsageResponse } = await loadDemoHandlers();
-		return demoUsageResponse(days);
-	}
 
 	const cutoff = new Date();
 	cutoff.setDate(cutoff.getDate() - days);

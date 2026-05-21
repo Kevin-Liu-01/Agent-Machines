@@ -18,7 +18,6 @@ import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
-import { formatDemoSandboxId } from "@/lib/demo/mode";
 import {
 	BUILTIN_TOOLS,
 	CATEGORY_LABEL,
@@ -1320,7 +1319,7 @@ function BootStep({
 			{machineId ? (
 				<p className="font-mono text-[10px] text-[var(--ret-text-muted)]">
 					machine id .{" "}
-					<span className="text-[var(--ret-text)]">{formatDemoSandboxId(machineId)}</span>
+					<span className="text-[var(--ret-text)]">{machineId}</span>
 				</p>
 			) : (
 				<p className="text-[10px] text-[var(--ret-text-muted)]">

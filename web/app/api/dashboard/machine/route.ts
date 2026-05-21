@@ -15,8 +15,6 @@
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import { fetchActiveMachineSummary } from "@/lib/dashboard/active-machine";
-import { isDemoMode, loadDemoHandlers } from "@/lib/demo/runtime";
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -26,11 +24,6 @@ export async function GET(request: Request): Promise<Response> {
 		const userId = await getEffectiveUserId();
 		if (!userId) {
 			return Response.json({ error: "unauthorized" }, { status: 401 });
-		}
-		if (isDemoMode()) {
-			const { demoMachineSummaryResponse } = await loadDemoHandlers();
-			const machineId = new URL(request.url).searchParams.get("machineId") ?? undefined;
-			return await demoMachineSummaryResponse(machineId);
 		}
 		const summary = await fetchActiveMachineSummary();
 		return Response.json(summary, {

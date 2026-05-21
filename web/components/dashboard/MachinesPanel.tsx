@@ -12,7 +12,6 @@ import { fetchLogTail, headlineFromLogs, isFleetLogsLoaded, shouldFetchFleetLogs
 import { useFleetLoadout } from "@/lib/fleet/use-fleet-loadout";
 import { toFleetStreamCard } from "@/lib/fleet/view-model";
 import { cn } from "@/lib/cn";
-import { formatDemoSandboxId, isDemoModePublic } from "@/lib/demo/mode";
 import type { ProviderCapabilities } from "@/lib/providers";
 import {
 	AGENT_LABEL,
@@ -401,9 +400,6 @@ function QuickProvisionForm({
 		setErr(null);
 		setResult(null);
 		try {
-			if (isDemoModePublic()) {
-				await new Promise((r) => setTimeout(r, 1200));
-			}
 			const body = {
 				providerKind,
 				agentKind,
@@ -425,7 +421,7 @@ function QuickProvisionForm({
 				throw new Error((data.message as string) ?? (data.error as string) ?? `HTTP ${response.status}`);
 			}
 			const machineId = data.machineId as string;
-			const displayId = isDemoModePublic() ? formatDemoSandboxId(machineId) : machineId;
+			const displayId = machineId;
 			setResult(`Provisioned: ${displayId} -- bootstrapping...`);
 			void onRefresh();
 
@@ -446,14 +442,7 @@ function QuickProvisionForm({
 				setResult(`Provisioned: ${displayId} (bootstrap pending)`);
 			}
 
-			if (isDemoModePublic()) {
-				for (const delay of [800, 1600, 2400, 3200, 4000]) {
-					window.setTimeout(() => void onRefresh(), delay);
-				}
-				window.setTimeout(onDone, 4200);
-			} else {
-				window.setTimeout(onDone, 1500);
-			}
+			window.setTimeout(onDone, 1500);
 		} catch (e) {
 			setErr(e instanceof Error ? e.message : "provision failed");
 		} finally {

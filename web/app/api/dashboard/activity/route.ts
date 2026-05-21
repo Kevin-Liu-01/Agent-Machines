@@ -1,11 +1,9 @@
 import { type NextRequest } from "next/server";
 
-import { buildDemoActivityPayload } from "@/lib/dashboard/activity/build-demo-activity";
 import { buildLiveActivityPayload } from "@/lib/dashboard/activity/build-live-activity";
 import { getUserConfig } from "@/lib/user-config/clerk";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 import { supabaseAdmin } from "@/lib/supabase/client";
-import { isDemoMode, loadDemoHandlers } from "@/lib/demo/runtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,11 +11,6 @@ export const dynamic = "force-dynamic";
 export async function GET(_request: NextRequest) {
 	const userId = await getEffectiveUserId();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
-
-	if (isDemoMode()) {
-		const { demoActivityResponse } = await loadDemoHandlers();
-		return demoActivityResponse();
-	}
 
 	const config = await getUserConfig();
 	const machines = config.machines

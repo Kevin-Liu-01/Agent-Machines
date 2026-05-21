@@ -18,8 +18,6 @@ import {
 } from "@/lib/storage/machine-artifacts";
 import { withActiveMachine } from "@/lib/storage/machine-fs";
 
-import { isDemoMode, loadDemoHandlers } from "@/lib/demo/runtime";
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -30,20 +28,6 @@ export async function GET(request: Request): Promise<Response> {
 	const userId = await getEffectiveUserId();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 	const machineId = new URL(request.url).searchParams.get("machineId") ?? undefined;
-
-	if (isDemoMode()) {
-		const demo = await loadDemoHandlers();
-		if (!demo.isDemoMachineReady(machineId)) {
-			return Response.json({
-				ok: false,
-				reason: "machine_starting",
-				message: "Machine is starting. Artifacts will appear once the runtime is online.",
-				machineId: machineId ?? undefined,
-				artifacts: [],
-			});
-		}
-		return demo.demoArtifactsResponse(machineId);
-	}
 
 	const handle = await withActiveMachine(machineId);
 	if ("ok" in handle) {
