@@ -15,6 +15,11 @@ import {
 	REPO_BRANCH,
 	REPO_CLONE_URL,
 } from "@/lib/bootstrap/reload-script";
+import {
+	ensureGatewayRunning,
+	installGatewayUnitCommand,
+	waitForGatewayUrl,
+} from "@/lib/bootstrap/gateway-lifecycle";
 import { migrateLegacyPathsShell } from "@/lib/platform/runtime";
 import {
 	BOOTSTRAP_PHASES,
@@ -107,7 +112,7 @@ export async function runWebBootstrap({
 			await runPhase(phase, machine, provider, config, apiKey, paths);
 			completed.push(phase);
 		}
-		const apiUrl = await exposeGateway(machine, provider, config, paths);
+		const apiUrl = await exposeGateway(machine, provider, config, paths, apiKey);
 		await onState({
 			phase: "succeeded",
 			current: null,
@@ -326,7 +331,7 @@ function commandFor(
 		case "start-gateway":
 			if (agent === "openclaw") return startOpenClaw(p);
 			if (agent === "claude-code" || agent === "codex") return null;
-			return startHermes(p);
+			return startHermes(p, machine);
 		case "install-closed-loop-tools":
 			return installClosedLoopTools(p, isSandbox);
 	}
@@ -536,7 +541,8 @@ function machineSettingsJson(machine: MachineRef, config: UserConfig): string {
 	return JSON.stringify(settings, null, 2);
 }
 
-function startHermes(p: BootstrapPaths): string {
+function startHermes(p: BootstrapPaths, machine: MachineRef): string {
+	const hermesBin = `${p.HERMES_HOME}/venv/bin/hermes`;
 	const script = [
 		"#!/usr/bin/env bash",
 		"set -euo pipefail",
@@ -550,18 +556,29 @@ function startHermes(p: BootstrapPaths): string {
 		`mkdir -p ${p.MACHINE_HOME}/logs/services`,
 		`ln -sfn ${p.HERMES_HOME}/logs/gateway.log ${p.MACHINE_HOME}/logs/services/hermes-gateway.log`,
 		`source ${p.HERMES_HOME}/.env`,
-		`exec hermes gateway >> ${p.HERMES_HOME}/logs/gateway.log 2>&1`,
+		`exec ${hermesBin} gateway >> ${p.HERMES_HOME}/logs/gateway.log 2>&1`,
 	].join("\n");
+	const gatewayPaths = {
+		HOME: p.HOME,
+		HERMES_HOME: p.HERMES_HOME,
+		OPENCLAW_HOME: p.OPENCLAW_HOME,
+		NPM_PREFIX: p.NPM_PREFIX,
+		NPM_CACHE: p.NPM_CACHE,
+		PLAYWRIGHT_BROWSERS: p.PLAYWRIGHT_BROWSERS,
+		AGENT_BROWSER_HOME: p.AGENT_BROWSER_HOME,
+		MACHINE_HOME: p.MACHINE_HOME,
+	};
 	return [
 		"set -e",
 		`ps -eo pid,cmd | awk '/hermes gateway/ && !/awk/ && !/bash/ {print $1}' | xargs -r kill 2>/dev/null || true`,
 		hermesEnv(p),
 		`cat > ${p.HOME}/start-hermes-gateway.sh <<'EOF'\n${script}\nEOF`,
 		`chmod +x ${p.HOME}/start-hermes-gateway.sh`,
-		`(setsid ${p.HOME}/start-hermes-gateway.sh </dev/null &>/dev/null &) && sleep 12`,
+		installGatewayUnitCommand(machine, gatewayPaths),
+		"sleep 12",
 		`ss -tlnp 2>/dev/null | grep ':${HERMES_PORT}'`,
 		`echo gateway:${HERMES_PORT}`,
-	].join(" && ");
+	].join("\n");
 }
 
 function startOpenClaw(p: BootstrapPaths): string {
@@ -627,6 +644,7 @@ async function exposeGateway(
 	provider: MachineProvider,
 	config: UserConfig,
 	p: BootstrapPaths,
+	apiKey: string,
 ): Promise<string | null> {
 	if (machine.agentKind === "claude-code" || machine.agentKind === "codex") {
 		return null;
@@ -650,7 +668,9 @@ async function exposeGateway(
 	const tunnelToken = config.cloudflareTunnelToken;
 	if (tunnelToken) {
 		await startNamedTunnel(machine, provider, tunnelToken, p);
-		return machine.apiUrl ?? null;
+		const apiUrl = machine.apiUrl ?? null;
+		if (apiUrl) await waitForGatewayUrl(apiUrl, apiKey);
+		return apiUrl;
 	}
 
 	if (provider.kind === "dedalus" && "createPreview" in provider) {
@@ -658,11 +678,15 @@ async function exposeGateway(
 		const previewUrl = await dedalus.createPreview(machine.id, port);
 		if (previewUrl) {
 			const normalized = previewUrl.trim().replace(/\/$/, "");
-			return normalized.endsWith("/v1") ? normalized : `${normalized}/v1`;
+			const apiUrl = normalized.endsWith("/v1") ? normalized : `${normalized}/v1`;
+			await waitForGatewayUrl(apiUrl, apiKey);
+			return apiUrl;
 		}
 	}
 
-	return exposeViaCloudflared(machine, provider, port, name, p);
+	const apiUrl = await exposeViaCloudflared(machine, provider, port, name, p);
+	await waitForGatewayUrl(apiUrl, apiKey);
+	return apiUrl;
 }
 
 async function startNamedTunnel(

@@ -14,7 +14,7 @@
 
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
-import { fetchActiveMachineSummary } from "@/lib/dashboard/active-machine";
+import { fetchMachineSummary } from "@/lib/dashboard/active-machine";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -25,7 +25,9 @@ export async function GET(request: Request): Promise<Response> {
 		if (!userId) {
 			return Response.json({ error: "unauthorized" }, { status: 401 });
 		}
-		const summary = await fetchActiveMachineSummary();
+		const machineId =
+			new URL(request.url).searchParams.get("machineId") ?? undefined;
+		const summary = await fetchMachineSummary(machineId);
 		return Response.json(summary, {
 			headers: { "Cache-Control": "no-store" },
 		});

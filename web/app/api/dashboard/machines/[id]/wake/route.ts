@@ -15,7 +15,8 @@
 
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
-import { MachineProviderError, getProvider } from "@/lib/providers";
+import { ensureGatewayRunning } from "@/lib/bootstrap/gateway-lifecycle";
+import { getProvider, MachineProviderError } from "@/lib/providers";
 import { getUserConfig } from "@/lib/user-config/clerk";
 
 export const runtime = "nodejs";
@@ -40,6 +41,19 @@ export async function POST(_req: Request, ctx: Ctx): Promise<Response> {
 	try {
 		const provider = getProvider(machine.providerKind, config.providers);
 		const summary = await provider.wake(machine.id);
+		if (
+			summary.state === "ready" &&
+			machine.bootstrapState.phase === "succeeded" &&
+			machine.agentKind !== "claude-code" &&
+			machine.agentKind !== "codex"
+		) {
+			await ensureGatewayRunning(machine, provider).catch((err) => {
+				console.warn(
+					`[wake] gateway restart skipped for ${machine.id}:`,
+					err instanceof Error ? err.message : err,
+				);
+			});
+		}
 		return Response.json(
 			{ ok: true, summary },
 			{ headers: { "Cache-Control": "no-store" } },

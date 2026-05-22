@@ -69,7 +69,9 @@ export function StatusHeader({ agentKind, activeMachineId, machines }: Props) {
 					}).then((r) =>
 						r.ok ? (r.json() as Promise<MachineSummary>) : null,
 					),
-					fetch("/api/dashboard/gateway", { cache: "no-store" }).then((r) =>
+					fetch(withMachineId("/api/dashboard/gateway", scopedMachineId), {
+						cache: "no-store",
+					}).then((r) =>
 						r.ok ? (r.json() as Promise<GatewaySummary>) : null,
 					),
 				]);
@@ -151,7 +153,7 @@ export function StatusHeader({ agentKind, activeMachineId, machines }: Props) {
 				<span className={headerDivider} aria-hidden />
 				<ModelSwitcher activeMachineId={scopedMachineId} />
 				<MachineSwitcher />
-				<AgentSwitcher value={agentKind} activeMachineId={activeMachineId} />
+				<AgentSwitcher value={agentKind} activeMachineId={scopedMachineId ?? undefined} />
 				<span className={headerDivider} aria-hidden />
 				<ThemeToggle />
 				{CLERK_READY ? (

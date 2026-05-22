@@ -13,6 +13,7 @@ import {
 	providerLogoMark,
 } from "@/lib/fleet/logos";
 import { MetaGlyph, type MetaGlyphKind } from "@/lib/fleet/meta-icons";
+import { BootstrapPhaseBadge } from "@/components/dashboard/BootstrapPhaseBadge";
 import {
 	MachineActions,
 	type MachineState as MachineActionState,
@@ -30,6 +31,7 @@ import type { ProviderCapabilities } from "@/lib/providers";
 import {
 	AGENT_LABEL,
 	type AgentKind,
+	type BootstrapState,
 	type MachineSpec,
 	type ProviderKind,
 } from "@/lib/user-config/schema";
@@ -47,6 +49,7 @@ type LiveMachine = {
 	hasApiKey: boolean;
 	archived?: boolean;
 	capabilities: ProviderCapabilities | null;
+	bootstrapState: BootstrapState;
 	live:
 		| { ok: true; state: string; rawPhase: string; lastError: string | null }
 		| { ok: false; reason: string };
@@ -219,11 +222,13 @@ export function MachineFleetCard({
 	card,
 	loadout,
 	active,
+	focused = false,
 	delaySec = 0,
 	editing,
 	onChange,
 	onToggleEdit,
 	onSavedEdit,
+	onInteract,
 	EditPanel,
 	logsLoaded,
 }: {
@@ -231,12 +236,14 @@ export function MachineFleetCard({
 	card: FleetStreamCardModel;
 	loadout: FleetLoadoutSnapshot | null;
 	active: boolean;
+	focused?: boolean;
 	delaySec?: number;
 	logsLoaded: boolean;
 	editing: boolean;
 	onChange: () => Promise<void>;
 	onToggleEdit: () => void;
 	onSavedEdit: () => void;
+	onInteract?: () => void;
 	EditPanel: React.ComponentType<{
 		machineId: string;
 		name: string;
@@ -300,9 +307,11 @@ export function MachineFleetCard({
 		<article
 			className={cn(
 				"group flex flex-col border bg-[var(--ret-bg)] transition-[border-color] duration-200",
-				active
-					? "border-[var(--ret-purple)]/22"
-					: "border-[var(--ret-border)] hover:border-[var(--ret-border-hover)]",
+				focused
+					? "border-[var(--ret-accent)]/50 ring-1 ring-[var(--ret-accent)]/20"
+					: active
+						? "border-[var(--ret-purple)]/22"
+						: "border-[var(--ret-border)] hover:border-[var(--ret-border-hover)]",
 				machine.archived && "opacity-75",
 			)}
 		>
@@ -328,6 +337,7 @@ export function MachineFleetCard({
 					</ReticleBadge>
 				) : null}
 				<StateBadge tone={stateTone}>{stateLabel}</StateBadge>
+				<BootstrapPhaseBadge state={machine.bootstrapState} />
 				<span className="ml-auto font-mono text-[9px]" style={{ color }}>
 					{card.shortId}
 				</span>
@@ -504,14 +514,25 @@ export function MachineFleetCard({
 				<div className="flex flex-col gap-2 border-t border-[var(--ret-border)] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
 					<div className="flex flex-wrap items-center gap-2">
 						{!machine.archived ? (
-							<ReticleButton
-								as="a"
-								href={`/dashboard/machines/${machine.id}`}
-								variant="primary"
-								size="sm"
-							>
-								Open
-							</ReticleButton>
+							<>
+								{onInteract ? (
+									<ReticleButton
+										variant="primary"
+										size="sm"
+										onClick={onInteract}
+									>
+										Chat
+									</ReticleButton>
+								) : null}
+								<ReticleButton
+									as="a"
+									href={`/dashboard/machines/${machine.id}`}
+									variant={onInteract ? "ghost" : "primary"}
+									size="sm"
+								>
+									Open
+								</ReticleButton>
+							</>
 						) : null}
 						<ReticleButton variant="ghost" size="sm" onClick={onToggleEdit}>
 							Edit

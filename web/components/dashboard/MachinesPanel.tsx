@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { MachineFleetCard } from "@/components/dashboard/MachineFleetCard";
+import { FleetInteractPane } from "@/components/dashboard/FleetInteractPane";
 import { DashboardPageBody } from "@/components/dashboard/DashboardPageBody";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
@@ -19,6 +21,7 @@ import {
 	PROVIDER_KINDS,
 	PROVIDER_LABEL,
 	type AgentKind,
+	type BootstrapState,
 	type MachineSpec,
 	type ProviderKind,
 } from "@/lib/user-config/schema";
@@ -38,6 +41,7 @@ type LiveMachine = {
 	hasApiKey: boolean;
 	archived?: boolean;
 	capabilities: ProviderCapabilities | null;
+	bootstrapState: BootstrapState;
 	live:
 		| { ok: true; state: string; rawPhase: string; lastError: string | null }
 		| { ok: false; reason: string };
@@ -50,6 +54,9 @@ type Payload = {
 };
 
 export function MachinesPanel() {
+	const router = useRouter();
+	const searchParams = useSearchParams();
+	const focusId = searchParams.get("focus");
 	const [data, setData] = useState<Payload | null>(null);
 	const [logsById, setLogsById] = useState<Record<string, LogLine[]>>({});
 	const [logsFetched, setLogsFetched] = useState<Record<string, boolean>>({});
@@ -109,6 +116,22 @@ export function MachinesPanel() {
 	const visible = machines.filter((m) => !m.archived);
 	const archived = machines.filter((m) => m.archived);
 	const activeMachineId = data?.activeMachineId ?? null;
+	const focusMachine = focusId
+		? machines.find((m) => m.id === focusId && !m.archived) ?? null
+		: null;
+
+	const setFocus = useCallback(
+		(id: string | null) => {
+			const params = new URLSearchParams(searchParams.toString());
+			if (id) params.set("focus", id);
+			else params.delete("focus");
+			const qs = params.toString();
+			router.replace(qs ? `/dashboard/machines?${qs}` : "/dashboard/machines", {
+				scroll: false,
+			});
+		},
+		[router, searchParams],
+	);
 
 	const cardsById = useMemo(() => {
 		const map = new Map<string, ReturnType<typeof toFleetStreamCard>>();
@@ -192,33 +215,60 @@ export function MachinesPanel() {
 			) : null}
 
 			{visible.length > 0 ? (
-				<section className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-					{visible.map((machine, idx) => {
-						const card = cardsById.get(machine.id);
-						if (!card) return null;
-						return (
-							<MachineFleetCard
-								key={machine.id}
-								machine={machine}
-								card={card}
-								loadout={loadout}
-								active={machine.id === activeMachineId}
-								delaySec={idx * 0.65}
-								logsLoaded={isFleetLogsLoaded(machine, logsFetched)}
-								editing={editing === machine.id}
-								onChange={refresh}
-								onToggleEdit={() =>
-									setEditing((prev) => (prev === machine.id ? null : machine.id))
-								}
-								onSavedEdit={() => {
-									setEditing(null);
-									void refresh();
-								}}
-								EditPanel={EditPanel}
-							/>
-						);
-					})}
-				</section>
+				<div
+					className={
+						focusMachine
+							? "grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(380px,44%)]"
+							: undefined
+					}
+				>
+					<section
+						className={
+							focusMachine
+								? "grid max-h-[calc(100vh-12rem)] grid-cols-1 gap-3 overflow-y-auto lg:grid-cols-1"
+								: "grid grid-cols-1 gap-3 lg:grid-cols-2"
+						}
+					>
+						{visible.map((machine, idx) => {
+							const card = cardsById.get(machine.id);
+							if (!card) return null;
+							return (
+								<MachineFleetCard
+									key={machine.id}
+									machine={machine}
+									card={card}
+									loadout={loadout}
+									active={machine.id === activeMachineId}
+									focused={machine.id === focusMachine?.id}
+									delaySec={idx * 0.65}
+									logsLoaded={isFleetLogsLoaded(machine, logsFetched)}
+									editing={editing === machine.id}
+									onChange={refresh}
+									onToggleEdit={() =>
+										setEditing((prev) =>
+											prev === machine.id ? null : machine.id,
+										)
+									}
+									onSavedEdit={() => {
+										setEditing(null);
+										void refresh();
+									}}
+									onInteract={() => setFocus(machine.id)}
+									EditPanel={EditPanel}
+								/>
+							);
+						})}
+					</section>
+					{focusMachine ? (
+						<FleetInteractPane
+							machineId={focusMachine.id}
+							name={focusMachine.name}
+							agentKind={focusMachine.agentKind}
+							model={focusMachine.model}
+							onClose={() => setFocus(null)}
+						/>
+					) : null}
+				</div>
 			) : null}
 
 			{archived.length > 0 ? (

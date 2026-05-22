@@ -39,7 +39,10 @@ export default async function DashboardLayout({
 	return (
 		<DashboardShell config={publicConfig}>
 			<BetaBanner />
-			<AutoWake />
+			<AutoWake
+				machines={publicConfig.machines}
+				activeMachineId={publicConfig.activeMachineId}
+			/>
 			{children}
 		</DashboardShell>
 	);

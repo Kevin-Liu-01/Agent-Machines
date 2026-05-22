@@ -71,15 +71,21 @@ export function useMachineControl(
 			else userSleptRef.current = false;
 			setState((prev) => ({ ...prev, pending: kind, error: null }));
 			try {
-				const response = await fetch(
-					`/api/dashboard/machine/${kind}`,
-					{ method: "POST", cache: "no-store" },
-				);
+				const endpoint = activeMachineId
+					? `/api/dashboard/machines/${encodeURIComponent(activeMachineId)}/${kind}`
+					: `/api/dashboard/machine/${kind}`;
+				const response = await fetch(endpoint, {
+					method: "POST",
+					cache: "no-store",
+				});
 				if (!response.ok) {
 					const body = await response.json().catch(() => ({}));
 					throw new Error(body.message ?? `HTTP ${response.status}`);
 				}
-				const summary = (await response.json()) as MachineSummary;
+				const body = (await response.json()) as
+					| MachineSummary
+					| { summary: MachineSummary };
+				const summary = "summary" in body ? body.summary : body;
 				if (!stoppedRef.current) {
 					setState((prev) => ({ ...prev, machine: summary }));
 				}
@@ -93,7 +99,7 @@ export function useMachineControl(
 				}
 			}
 		},
-		[],
+		[activeMachineId],
 	);
 
 	const wake = useCallback(() => submitTransition("wake"), [submitTransition]);

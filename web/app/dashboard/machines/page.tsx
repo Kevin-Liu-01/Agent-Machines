@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+
 import { MachinesPanel } from "@/components/dashboard/MachinesPanel";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
@@ -10,7 +12,7 @@ export default function MachinesPage() {
 			<PageHeader
 				kicker="FLEET"
 				title="Your machines"
-				description="Live fleet activity across every machine. Click a card to drill into chat, terminal, logs, and loadout."
+				description="Live fleet activity across every machine. Click Chat to interact in split view, or Open to drill into terminal, logs, and loadout."
 				right={
 					<ReticleButton
 						as="a"
@@ -22,7 +24,9 @@ export default function MachinesPage() {
 					</ReticleButton>
 				}
 			/>
-			<MachinesPanel />
+			<Suspense fallback={null}>
+				<MachinesPanel />
+			</Suspense>
 		</div>
 	);
 }

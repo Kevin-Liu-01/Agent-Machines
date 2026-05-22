@@ -11,47 +11,73 @@
  * the legacy `MachineSummary` wire shape consumed by existing UI.
  */
 
+import { ensureGatewayRunning } from "@/lib/bootstrap/gateway-lifecycle";
 import { MachineProviderError, getProvider } from "@/lib/providers";
 import { getUserConfig } from "@/lib/user-config/clerk";
-import { activeMachine } from "@/lib/user-config/schema";
+import { activeMachine, type MachineRef } from "@/lib/user-config/schema";
 
 import type { MachineSummary } from "./types";
 import type { MachineProvider, ProviderMachineSummary } from "@/lib/providers";
 
-type ActiveResolved = {
-	machineId: string;
+async function resolveMachineRef(machineId?: string | null): Promise<{
+	machine: MachineRef;
 	provider: MachineProvider;
-};
-
-async function resolveActive(): Promise<ActiveResolved> {
+}> {
 	const config = await getUserConfig();
-	const machine = activeMachine(config);
+	const machine = machineId
+		? config.machines.find((m) => m.id === machineId) ?? null
+		: activeMachine(config);
 	if (!machine) {
 		throw new MachineProviderError(
 			"dedalus",
 			"missing_credentials",
-			"No active machine configured. Provision or select one in /dashboard/machines.",
+			machineId
+				? `Machine ${machineId} not found in your account.`
+				: "No active machine configured. Provision or select one in /dashboard/machines.",
 		);
 	}
 	const provider = getProvider(machine.providerKind, config.providers);
-	return { machineId: machine.id, provider };
+	return { machine, provider };
+}
+
+export async function fetchMachineSummary(
+	machineId?: string | null,
+): Promise<MachineSummary> {
+	const { machine, provider } = await resolveMachineRef(machineId);
+	const summary = await provider.state(machine.id);
+	return toMachineSummary(summary);
 }
 
 export async function fetchActiveMachineSummary(): Promise<MachineSummary> {
-	const { machineId, provider } = await resolveActive();
-	const summary = await provider.state(machineId);
+	return fetchMachineSummary(null);
+}
+
+export async function wakeMachine(machineId?: string | null): Promise<MachineSummary> {
+	const { machine, provider } = await resolveMachineRef(machineId);
+	const summary = await provider.wake(machine.id);
+	if (
+		summary.state === "ready" &&
+		machine.bootstrapState.phase === "succeeded" &&
+		machine.agentKind !== "claude-code" &&
+		machine.agentKind !== "codex"
+	) {
+		await ensureGatewayRunning(machine, provider).catch((err) => {
+			console.warn(
+				`[wake] gateway restart skipped for ${machine.id}:`,
+				err instanceof Error ? err.message : err,
+			);
+		});
+	}
 	return toMachineSummary(summary);
 }
 
 export async function wakeActiveMachine(): Promise<MachineSummary> {
-	const { machineId, provider } = await resolveActive();
-	const summary = await provider.wake(machineId);
-	return toMachineSummary(summary);
+	return wakeMachine(null);
 }
 
 export async function sleepActiveMachine(): Promise<MachineSummary> {
-	const { machineId, provider } = await resolveActive();
-	const summary = await provider.sleep(machineId);
+	const { machine, provider } = await resolveMachineRef(null);
+	const summary = await provider.sleep(machine.id);
 	return toMachineSummary(summary);
 }
 
