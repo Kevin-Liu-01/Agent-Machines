@@ -461,9 +461,7 @@ export function HeroBlock() {
 		<div className="relative">
 			{/* ── Announcement banner ── */}
 			<a
-				href="https://dedaluslabs.ai"
-				target="_blank"
-				rel="noopener noreferrer"
+				href="/dashboard/setup"
 				className="bg-[var(--ret-bg-soft)] group/banner relative flex items-center gap-3 border-b border-[var(--ret-border)] px-5 py-2.5 transition-colors hover:bg-[var(--ret-surface)]"
 			>
 				{/* Corner crosshair marks */}
@@ -477,19 +475,15 @@ export function HeroBlock() {
 					<circle cx="8" cy="8" r="2" fill="currentColor" opacity="0.5" />
 				</svg>
 				<span className="text-[9px] font-medium uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-					Powered by <span className="text-[var(--ret-purple)]">Dedalus Machines</span>
-				</span>
-
-				<span className="inline-flex items-center border border-[var(--ret-green)]/25 bg-[var(--ret-green)]/8 px-1.5 py-px text-[7px] uppercase tracking-[0.2em] text-[var(--ret-green)]">
-					BETA
+					Route <span className="text-[var(--ret-purple)]">E2B · Sprites · Dedalus</span>
 				</span>
 
 				<span className="hidden text-[10px] text-[var(--ret-text-dim)] sm:inline">
-					Persistent VMs for AI agents
+					OpenRouter for agents and containers
 				</span>
 
 				<span className="ml-auto flex items-center gap-1.5 text-[9px] uppercase tracking-[0.18em] text-[var(--ret-purple)] opacity-60 transition-opacity group-hover/banner:opacity-100">
-					dedaluslabs.ai
+					/dashboard/setup
 					<IconArrowRight className="h-2.5 w-2.5 transition-transform group-hover/banner:translate-x-0.5" />
 				</span>
 			</a>
@@ -605,16 +599,13 @@ export function HeroBlock() {
 								<h1 className="ret-display text-[clamp(2rem,5.5vw,4.5rem)] leading-[0.95] tracking-tight">
 									<span className="flex items-center whitespace-nowrap">
 										<span className="h-px w-4 shrink-0 border-t border-dashed border-[var(--ret-border)] md:w-8" />
-										<span className="px-3">
-											<AnimatedWord word={activeWord} hue={hue} />
-											{" "}Machines
-										</span>
+										<span className="px-3">OpenRouter</span>
 										<span className="h-px flex-1 border-t border-dashed border-[var(--ret-border)]" />
 									</span>
 									<span className="flex items-center">
 										<span className="h-px w-4 shrink-0 border-t border-dashed border-[var(--ret-border)] md:w-8" />
 										<span className="px-3 text-[var(--ret-text-muted)]">
-											for your Agent.
+											for agents and containers.
 										</span>
 										<span className="h-px flex-1 border-t border-dashed border-[var(--ret-border)]" />
 									</span>
@@ -679,9 +670,9 @@ export function HeroBlock() {
 				<Cell action="analyzing value proposition..." agent={agent} hue={hue} className="col-span-4" hoverVisual={<HoverGradient color={hue} />}>
 					<div className="px-5 py-5">
 						<p className="max-w-[56ch] text-[15px] leading-relaxed text-[var(--ret-text-dim)]">
-							One stateful VM per account.{" "}
+							Route runtime and substrate in one account.{" "}
 							<strong className="text-[var(--ret-text)]">
-								Boot in 30 seconds, sleep on idle, wake on the first prompt.
+								Deploy persistent agent workers — skills, MCP, cron, observation — and supervise your fleet from one dashboard.
 							</strong>
 						</p>
 					</div>

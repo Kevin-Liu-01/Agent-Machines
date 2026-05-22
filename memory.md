@@ -16,7 +16,7 @@
 
 **ICP on camera:** Founder / PM / ops lead who uses AI daily but does not live in a terminal.  
 **Technical audience (subtext):** Engineers who've tried raw Docker + Claude Code and felt the gap.  
-**Run:** `cd web && pnpm dev:demo` → http://localhost:3210
+**Run:** `cd web && pnpm dev` → http://localhost:3210 (Clerk + real provider credentials)
 
 **One-line thesis:** ChatGPT is a session. This is a **machine** — persistent, observable, schedulable, and yours.
 
@@ -30,7 +30,7 @@ Screen: agent-machines.dev/dashboard/setup.
 "No preamble. Most AI products give you a chat window. We give you a computer
 that stays on — with an agent already installed, already wired to your tools."
 
-Pick template: Full-stack dev agent. Substrate: Dedalus. Click Provision.
+Pick template: Full-stack dev agent. Substrate: E2B, Sprites, or Dedalus (same harness). Click Provision.
 Timer ~30s. Gateway comes online.
 
 "One click. You didn't rent a GPU. You didn't SSH into a box. You got a
@@ -116,7 +116,7 @@ more agents. The control plane is the moat, not any single model."
 /dashboard: Activity heatmap, fleet metrics, gateway latency, Telemetry charts,
 quick links. All four machines visible.
 
-"Persistent agents as a one-click primitive.
+"OpenRouter for agents and containers. Persistent workers, supervised fleet. Humans today. Agents tomorrow.
 161 skills. 30 MCP servers. Any substrate. Full observability.
 For humans today — founders, operators, engineers who need trust, not magic.
 For agents tomorrow — the coordination layer they run on.
@@ -130,7 +130,7 @@ agent-machines.dev."
 
 | Time | URL | Action |
 |------|-----|--------|
-| 0:00 | `/dashboard/setup` | Show completed wizard or walk Provision on Dedalus |
+| 0:00 | `/dashboard/setup` | Walk Provision — any substrate (E2B / Sprites / Dedalus) |
 | 0:15 | `/dashboard` | Activity heatmap → tap a hot day → show sidebar events |
 | 0:20 | `/dashboard/chat` | Bootstrap once if needed → security audit thread or live prompt |
 | 0:40 | `/dashboard/chat` → `/dashboard/skills` | Save-skill thread; show 161 count |
@@ -178,4 +178,4 @@ agent-machines.dev."
 **Changed:** Activity heatmap panel, fleet machine cards, overview telemetry restore, demo persistence split, starter-prompts client module
 **Why:** Dashboard revamp + runnable demo for YC recording
 **Decision:** Server returns raw activity days; client builds grid with week/month/all scales
-**Open:** Auto-bootstrap in demo chat; unify 155/156/161 copy in provision narrative
+**Open:** Auto-bootstrap polish; keep harness counts registry-derived (161 skills as of last sync)

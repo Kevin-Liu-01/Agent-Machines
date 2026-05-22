@@ -8,7 +8,7 @@ export function FaqSection() {
 				<div>
 					<ReticleLabel>FAQ</ReticleLabel>
 					<h2 className="ret-display mt-2 text-xl md:text-2xl">
-						Common questions about persistent agent machines.
+						Common questions about Agent Machines.
 					</h2>
 				</div>
 				<p className="hidden text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)] md:block">

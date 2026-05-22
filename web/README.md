@@ -1,21 +1,21 @@
 # Agent Machines Web
 
-Next.js 15 + Tailwind v4 public site and Clerk-gated dashboard for **Agent Machines**.
+Next.js public site + Clerk-gated **control plane**. **OpenRouter for agents and containers** — route runtime + substrate, provision specialist presets, supervise the fleet.
 
-The web app does three jobs:
+Three jobs:
 
-- Public marketing/docs: landing page, architecture map, FAQ, terms, privacy.
-- Authenticated control plane: setup, machines, chat, loadout, skills, MCPs, sessions, logs, Cursor runs, artifacts.
-- Server-side gateway proxy: browser chat calls go through API routes so machine bearers never become `NEXT_PUBLIC_*` values.
+1. **Marketing** — landing, fleet demo, activity grid, FAQ, architecture (primitive-first copy).
+2. **Control plane** — setup, fleet, chat, loadout, skills, MCPs, cron, sessions, logs, artifacts.
+3. **Gateway proxy** — browser chat via API routes; machine bearers never become `NEXT_PUBLIC_*`.
 
 ## Current status
 
-- **Three live VM providers:** Dedalus Machines, E2B Sandbox, and Sprites.dev — each implements `MachineProvider`.
-- **Four agent runtimes:** Hermes (default), OpenClaw, Claude Code, Codex CLI.
-- `/dashboard/setup` stores provider credentials, creates a machine, and runs browser bootstrap into `~/.agent-machines/`.
-- Cursor is optional. `cursor-bridge` only activates when a Cursor API key is present.
+- **Three substrates:** E2B, Sprites.dev, Dedalus Machines (`MachineProvider`). Dedalus benchmarks best on boot/sleep in our harness; all three are first-class.
+- **Four runtimes:** Hermes, OpenClaw, Claude Code, Codex CLI.
+- `/dashboard/setup` — credentials, provision, browser bootstrap into `~/.agent-machines/`.
+- Harness counts are **registry-derived** — `lib/platform/harness.ts` (not hard-coded).
 
-Canonical paths and loadout counts live in `lib/platform/runtime.ts` — keep aligned with `../src/lib/constants.ts`.
+Canonical paths: `lib/platform/runtime.ts` ↔ `../src/lib/constants.ts`.
 
 ## Quick start
 

@@ -1,41 +1,33 @@
 # Agent Machines
 
-> Persistent AI agents as a one-click primitive. Deploy the combined unit: agent + home + skills + services + memory + scheduling + observation — on any container substrate.
+> OpenRouter for agents and containers.
 
 ## Summary
 
-Agent Machines provisions a per-account Linux machine where everything persists to disk under `/home/machine/.agent-machines/`. The product is the **combined primitive** — not a bare container, not a framework-only layer, not a memory bolt-on.
+Agent Machines is the **product layer** above sandboxes: a control plane that deploys a full persistent agent worker in one unit — runtime, skills, MCP, integrations, cron, observation, and fleet management — on any substrate.
 
-Humans use the dashboard to provision, watch, and customize. The endgame is programmatic control: an MCP server and CLI so head agents spin up, route, observe, and tear down worker machines.
+**Analogies:** OpenRouter for agents **and** containers (route runtime + substrate in one account). Vercel on AWS for substrates (product layer vs interchangeable infra).
+
+**Fleet:** Provision design, news, code, or ops agents from opinionated presets (Hermes, OpenClaw, Claude Code, Codex). Vendor SKUs are UI + skills + MCPs + prompts; we ship that composable, one click per specialist, one dashboard for the fleet.
+
+**Providers:** E2B, Sprites.dev, Dedalus Machines (interchangeable). Dedalus benchmarks best on boot/sleep in our harness — strong default, not the product.
 
 Open source (MIT): <https://github.com/Kevin-Liu-01/agent-machines>
 
 ## Core facts
 
-- **Primitive**: persistent agent-on-a-machine with harness, not VM-only hosting.
-- **Persistence**: real filesystem at `~/.agent-machines/` — chats, MEMORY.md, FTS5 sessions, cron, skills, MCP config, logs.
-- **Agents**: Hermes, OpenClaw, Claude Code, Codex CLI — native tool sets differ per runtime.
-- **Providers**: Dedalus Machines, E2B Sandbox, Sprites.dev (interchangeable substrate).
-- **Harness** (registry-driven — counts from `web/lib/platform/harness.ts` + loadout):
+- **Product:** dual routing + persistent workers + fleet supervision — not VM hosting, not chat sessions
+- **Persistence:** `~/.agent-machines/` on `/home/machine` — chats, skills, cron, sessions, MCP config
+- **Agents:** Hermes, OpenClaw, Claude Code, Codex CLI
+- **Harness** (registry-derived — `web/lib/platform/harness.ts`):
   - **161** SKILL.md skills
-  - **27** ranked service routes (MCP → CLI → skills per vendor)
-  - **35** MCP catalog servers (2 core · 28 bundled · 4 IDE · 1 reference)
-  - **23+** closed-loop CLIs
-  - **9–23** agent-native tools (Hermes 23 · OpenClaw 18 · Claude Code 11 · Codex 9)
-  - **12** task-route categories
-  - **113** trusted-addons registry entries (skills, MCPs, CLIs, plugins, sources)
-- **Observation**: sessions, tool calls, skill invocations, logs, cost — orchestrate what you can see.
-- **Programmatic surface (roadmap)**: Agent Machines MCP + CLI for agent-to-agent fleet orchestration.
+  - **27** service routes · **35** MCP servers · **23+** CLIs
+  - **9–23** agent-native tools by runtime
+- **Observation:** activity, sessions, tool calls, logs, cost
+- **Roadmap:** MCP/CLI for agent-to-agent fleet orchestration
 
 ## Important pages
 
 - [Landing](https://www.agent-machines.dev/)
 - [FAQ](https://www.agent-machines.dev/faq)
 - [GitHub](https://github.com/Kevin-Liu-01/agent-machines)
-- [Hermes agent runtime](https://github.com/NousResearch/hermes-agent) (optional runtime, not the product)
-- [OpenClaw](https://github.com/openclaw/openclaw)
-- [Dedalus Machines](https://docs.dedaluslabs.ai/dcs)
-
-## Design
-
-Reticle/Sigil UI. Service/task rankings mirror kevin-wiki `tool-hierarchy.mdc`.

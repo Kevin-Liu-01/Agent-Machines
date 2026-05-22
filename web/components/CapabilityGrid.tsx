@@ -15,18 +15,19 @@ type Capability = {
 
 const CAPABILITIES: ReadonlyArray<Capability> = [
 	{
-		kicker: "PRIMITIVE",
-		title: "Agent + machine, one unit",
-		body: PRODUCT.oneLiner,
-		notes: ["combined primitive", "not bare VM", "not framework-only"],
+		kicker: "ROUTING",
+		title: "Agents and containers",
+		body: `${PRODUCT.analogies.primary}. Pick Hermes, OpenClaw, Claude Code, or Codex and pick E2B, Sprites.dev, or Dedalus Machines — one account, one control plane. ${PRODUCT.analogies.substrate}.`,
+		notes: ["OpenRouter-style", "dual routing", "one account"],
 		mark: "agent",
 		nyx: "nyx-waves",
 	},
 	{
-		kicker: "ACCOUNT",
-		title: "One fleet per identity",
-		body: "Sign in once; machines follow across devices. UserConfig in Clerk metadata -- provider keys, active machine, agent choice. Per-user multi-tenancy.",
-		notes: ["Clerk metadata", "MachineRef[]", "activeMachineId"],
+		kicker: "FLEET",
+		title: "Specialists, one click each",
+		body: "Design agent, news agent, code agent — provision each from opinionated presets (Hermes, OpenClaw, Claude Code, Codex) with skills, MCPs, and system prompts already wired. Vendor SKUs are the same recipe: UI on top of harness. Here you supervise the whole fleet from one dashboard.",
+		notes: ["presets", "multi-machine", "one pane"],
+		mark: "agent",
 	},
 	{
 		kicker: "RUNTIME",
@@ -87,7 +88,7 @@ export function CapabilityGrid() {
 				<div>
 					<ReticleLabel>CAPABILITIES</ReticleLabel>
 					<h2 className="ret-display mt-2 text-xl md:text-2xl">
-						Machine first. Loadout second.
+						Route agents. Route substrates. Supervise the fleet.
 					</h2>
 				</div>
 				<p className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)] md:block">
@@ -143,7 +144,7 @@ export function CapabilityGrid() {
 
 function MiniGlyph({ index }: { index: number }) {
 	const labels = [
-		["disk", "memory", "cron"],
+		["hermes", "e2b", "dedalus"],
 		["clerk", "fleet", "active"],
 		["sleep", "wake", "bill"],
 		["host", "exec", "disk"],

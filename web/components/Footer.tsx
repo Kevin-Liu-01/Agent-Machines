@@ -10,17 +10,13 @@ export function Footer() {
 						<BrandMark size={18} gap="tight" withLabel={false} />
 						<span>agent-machines . MIT . Reticle / Sigil UI</span>
 						<span className="hidden items-center gap-2 text-[var(--ret-text-muted)] md:flex">
-							<span>runtime stack:</span>
-							<a
-								href="https://docs.dedaluslabs.ai/dcs"
-								target="_blank"
-								rel="noreferrer"
-								className="inline-flex items-center gap-1 hover:text-[var(--ret-text)]"
-							>
+							<span>substrates:</span>
+							<span className="inline-flex items-center gap-1">
 								<Logo mark="am" size={14} />
-								<span>Dedalus</span>
-							</a>
-							<span>+</span>
+								<span>E2B · Sprites · Dedalus</span>
+							</span>
+							<span>·</span>
+							<span>agents:</span>
 							<a
 								href="https://github.com/NousResearch/hermes-agent"
 								target="_blank"

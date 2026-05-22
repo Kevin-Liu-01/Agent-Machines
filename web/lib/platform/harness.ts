@@ -1,12 +1,10 @@
 /**
  * Agent Machines harness — registry-derived stats and product framing.
  *
- * The product is the **combined primitive**: persistent agent-on-a-machine with
- * skills, service routes, CLIs, MCP servers, scheduling, and observation — not
- * a bare container and not a single static tool count.
+ * OpenRouter for agents and containers: route runtime + substrate, deploy a
+ * persistent agent worker (skills, MCP, cron, observation, fleet management).
  *
- * Counts come from live registries (loadout, MCP catalog, skills manifest),
- * aligned with kevin-wiki `tool-hierarchy.mdc` and the YC application framing.
+ * Counts come from live registries (loadout, MCP catalog, skills manifest).
  */
 
 import mcpCatalog from "@/data/mcps-catalog.json";
@@ -27,19 +25,30 @@ import type { AgentKind } from "@/lib/types";
 
 export const PRODUCT = {
 	name: "Agent Machines",
-	tagline: "Persistent AI agents as a one-click primitive.",
+	/** Site title suffix, OG, GitHub — lead with the routing analogy. */
+	tagline: "OpenRouter for agents and containers.",
 	oneLiner:
-		"Deploy the combined unit: an agent with a home, skills, services, memory, scheduling, and observability — on any container substrate.",
+		"Route runtimes and substrates in one account — deploy persistent agent workers with skills, MCP, cron, observation, and fleet supervision.",
+	summary:
+		"Agent Machines is the product layer above sandboxes: a control plane that provisions a full persistent agent in one unit — runtime, skills, MCP, integrations, cron, observation, and fleet management — on any substrate.",
+	analogies: {
+		primary: "OpenRouter for agents and containers",
+		substrate: "Vercel on AWS — Agent Machines is the product layer; E2B, Sprites.dev, and Dedalus Machines are interchangeable infrastructure underneath",
+	},
 	audiences: {
 		humans:
-			"Visual dashboard to provision, watch, and customize persistent agents without SSH or MCP archaeology.",
+			"Pick runtime + substrate in clicks. Provision specialist agents from presets (design, news, code, ops). Supervise the fleet from one dashboard.",
 		agents:
-			"MCP + CLI surface so a head agent can provision, route, observe, and tear down specialized worker machines (the endgame).",
+			"MCP + CLI surface so a head agent can provision, route, observe, and tear down worker machines (the endgame).",
 	},
+	fleet:
+		"Spin up design, news, code, or ops agents from opinionated presets (Hermes, OpenClaw, Claude Code, Codex). Vendor SKUs (e.g. Anthropic design modes) are UI + skills + MCPs + system prompts — we ship that stack composable, one click per specialist, one pane of glass for the fleet.",
+	substrateNote:
+		"Dedalus Machines is one of three live providers (with E2B and Sprites.dev) and currently benchmarks best on boot latency and sleep/wake — a strong default, not the product. Sandboxed environments are hard; we route rather than rebuild infra.",
 	moat: [
 		"SKILL.md protocol — versioned agent procedures that compound every session",
 		"Combined harness — runtime + skills + services + CLIs + observation in one deploy",
-		"Substrate abstraction — Dedalus, E2B, Sprites today; interchangeable underneath",
+		"Dual routing — agent runtime and container substrate, OpenRouter-style",
 		"Programmatic control plane — dashboard for humans, MCP/CLI for agent-to-agent orchestration",
 	],
 } as const;

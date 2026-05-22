@@ -4,7 +4,7 @@ import { PublicRegistryBrowser } from "@/components/PublicRegistryBrowser";
 
 export const metadata = {
 	title: "Registry",
-	description: "Browse 1000+ skills, MCPs, CLI tools, and plugins for your agent machine.",
+	description: "Browse skills, MCPs, CLI tools, and plugins for persistent agent workers.",
 };
 
 export default function RegistryPage() {

@@ -4,7 +4,7 @@ This file loads into the system prompt every session. Combined with `SOUL.md` (p
 
 ## What this rig is
 
-**Agent Machines** gives each operator a resumable Linux machine for agent work. Runtime state lives under `~/.agent-machines`. The control plane is the Next.js dashboard + CLI in the agent-machines repo. Choose Hermes, OpenClaw, Claude Code, or Codex as the agent runtime on Dedalus, E2B, or Sprites.
+**Agent Machines** is **OpenRouter for agents and containers** — a control plane for persistent agent workers. Route Hermes, OpenClaw, Claude Code, or Codex on E2B, Sprites.dev, or Dedalus Machines. Runtime state lives under `~/.agent-machines/`. This repo ships the Next.js dashboard + CLI.
 
 Read `MEMORY.md` and `~/.agent-machines/mcps/catalog.json` for paths, tools, and MCP registry.
 

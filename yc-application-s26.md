@@ -1,396 +1,330 @@
-# YC S26 Application -- Agent Machines
+# YC S26 Application — Agent Machines
+
+> **Read this first**
+>
+> **OpenRouter for agents and containers.**
+>
+> Agent Machines is the **product layer** above sandboxes — a control plane that deploys a **persistent agent worker** in one unit: runtime, skills, MCP, integrations, cron, observation, fleet management — on any substrate.
+>
+> **Analogies:** OpenRouter routes models; we route **runtimes and containers**. Vercel on AWS — we are the product; E2B, Sprites.dev, and Dedalus Machines are infra underneath.
+>
+> **Fleet:** Design, news, code agents from opinionated presets (Hermes, OpenClaw, …) — same stack as vendor SKUs (UI + skills + MCPs + prompts). One click each; supervise the fleet.
+>
+> Dedalus = **provider** with best boot/sleep stats in our harness, not the product.
 
 ---
 
-## Bay Area Landscape Analysis (May 2026)
+## Bay Area landscape (May 2026)
 
 ### The stack that's crystallizing
 
-The Bay is building layers. Nobody has built the combined primitive:
+The Bay is building layers. Nobody has shipped the **combined primitive**:
 
 | What people are building | Players | The problem |
 |---|---|---|
-| **Containers** (bare compute) | E2B, Modal, Fly, Dedalus | Nobody wants a bare container. |
+| **Containers** (bare compute) | E2B, Modal, Fly, Daytona | Nobody wants a bare container. |
 | **Frameworks** (agent logic) | LangGraph, CrewAI, OpenClaw | Logic without a persistent home. |
 | **Memory** (bolt-on state) | Mem0 ($24M), Letta ($10M) | Band-aid on stateless models. |
 | **Models** (raw intelligence) | OpenAI, Anthropic, Google | Commodity. Falling prices. |
 
-Everyone treats containers and agents as separate things -- a container you put an agent into, or an agent you give a sandbox to. **The actual primitive people want is the persistent agent-on-a-machine.** Not a bare VM. Not a stateless framework. The combined unit: an agent with a home, skills, services, memory, and scheduling -- ready to work.
+Everyone treats containers and agents as separate things — a container you put an agent into, or an agent you give a sandbox to. **The primitive people want is the persistent agent machine:** agent + home + skills + services + scheduling + observation, ready to work.
 
-Agent Machines ships that combined primitive. And the reason people care about containers at all in this context is to run persistent agents -- so we're the layer that gives the container market its primary use case.
+Agent Machines ships that unit. Containers matter here because people want to **run persistent agents** — we're the layer that gives substrate markets a primary use case.
 
-The parallel: before ChatGPT, you needed API keys and Python to use GPT-3. OpenAI didn't invent the model -- they invented the interface. Same here. Containers exist. Frameworks exist. But the combined "deploy a persistent agent" primitive with an accessible interface? Missing.
+**Parallel:** Before ChatGPT, you needed API keys and Python to use GPT-3. OpenAI didn't invent the model — they invented the interface. Containers and frameworks exist; the combined "deploy a persistent agent" interface was missing.
 
-### The two audiences -- and the programmatic endgame
+### Two audiences — programmatic endgame
 
-**Audience 1: Humans** -- Today's agent tools (Cursor, Claude Code, OpenClaw CLI) are expert-only. Terminals, SSH, MCP configs. 95% of people who want persistent agents working for them aren't sysadmins. They need a visual interface: provision from a template, watch it work, drop in customizations. That's our dashboard.
+**Humans (now):** Pick **specialist presets** — design, news, code, ops — each a persistent worker with the right runtime (Hermes, OpenClaw, Claude Code, Codex), skills, MCPs, and system prompts. Vendor product SKUs (e.g. a design-only chat mode) are the same recipe: UI on top of harness. Provision many specialists in one click, **supervise the fleet** from one dashboard.
 
-**Audience 2: Other agents** -- This is the endgame. An MCP server and CLI that lets a head agent programmatically spin up, coordinate, and tear down specialized agent machines. One orchestrator agent managing a fleet: "spin up a code review agent, a research agent, and a deploy agent -- route this task across all three." The interface serves humans first, then becomes the API surface for agent-to-agent coordination.
+**Other agents (endgame):** MCP + CLI so a head agent spins up, routes, observes, and tears down worker machines. Platform self-scales.
 
-This is what makes the combined primitive powerful: when agents can provision other agents via MCP, the platform becomes self-scaling. Every agent machine is both a worker and a potential orchestrator.
-
-**The enterprise gap is also real**: ServiceNow, Microsoft Foundry, and Guild.ai published "agent control plane" strategies in 2026. But they're building for enterprises with 18-month sales cycles. We start with developers and their agents today, grow into teams, then enterprise. Bottom-up, like Datadog and Vercel.
+**Enterprise gap:** ServiceNow, Microsoft Foundry, Guild.ai published "agent control plane" strategies in 2026 — UI-heavy, 18-month cycles. We start with developers, grow teams, then enterprise. Bottom-up (Datadog, Vercel).
 
 ### Why the combined primitive wins
 
-Individual layers (bare VMs, memory stores, frameworks) are commodity. The combined "persistent agent" primitive is not:
+- Bare container → no value until an agent lives on it.
+- Memory SaaS → one folder on a real filesystem when you ship the full unit.
+- Frameworks → logic without deploy, persist, observe, schedule.
 
-- A bare container has no value until an agent lives on it. We are the reason people buy containers.
-- Memory is one feature of a persistent agent, not a product. Mem0's moat disappears when the agent has a real filesystem.
-- Frameworks define logic but don't deploy, persist, observe, or schedule anything. We do all of that.
+**Primitive = agent + machine, not machine alone.** Runtime, skills, services, scheduling, observation — on any substrate. Value accrues at the interface.
 
-**The primitive is agent+machine, not machine alone.** We package the full unit: runtime, skills, services, scheduling, observation -- on any substrate. The interface to deploy, watch, and customize that unit is where all value accrues.
+### Defensibility
 
-### What makes this defensible
-
-1. **The skill protocol (SKILL.md)** -- a structured, versioned format where every complex task becomes a reusable agent procedure. 155 ship pre-loaded. Compounds with every session. No one else has a protocol for agents to learn, share, and version procedures. This is npm for agent intelligence.
-
-2. **The combined harness** -- 155 skills, 17 MCP service integrations, 10+ closed-loop CLIs (agent-browser, Playwright, curl, httpx, sqlite3), 15+ built-in tools (terminal, filesystem, browser, vision, cron, TTS, Python sandbox), 4 agent runtimes (Hermes, OpenClaw, Claude Code, Codex CLI), Cursor IDE delegation, and a 14-command management CLI. 6 months of battle-tested tooling that deploys as a single unit in 30 seconds. The harness IS the product -- the container is just where it runs.
-
-3. **The observation layer** -- session playback, skill invocation tracking, cost attribution, log correlation. You can't orchestrate what you can't see. This is what makes us the interface, not just another CLI. Same stickiness as Datadog.
-
-4. **The MCP/CLI surface for programmatic control** -- our interface isn't just a dashboard for humans. It's an MCP server and CLI that agents themselves can call. A head agent provisions specialized machines, routes tasks, tears down workers -- programmatically. This makes the platform self-scaling: agents are both consumers and orchestrators of other agents.
+1. **SKILL.md protocol** — versioned procedures; 161 ship today; compounds every session.
+2. **Combined harness** — registry-driven loadout (skills, service routes, MCP catalog, CLIs, agent-native tools); deploys as one unit in ~30s.
+3. **Observation layer** — activity, sessions, tool calls, skill invocations, cost. Can't orchestrate what you can't see.
+4. **Programmatic surface (roadmap)** — MCP/CLI for head agents to provision fleets. Dashboard is table stakes; agent-callable control plane is the moat.
 
 ---
 
-## Application Answers
+## Application answers
 
 ### Company name
 Agent Machines
 
 ### Describe what your company does in 50 characters or less
-Persistent AI agents as a one-click primitive.
+OpenRouter for agents and containers.
 
-### Company URL
-https://www.agent-machines.dev
-
-### Product link
+### Company URL / Product link
 https://www.agent-machines.dev
 
 ### What is your company going to make?
 
-Agent Machines deploys persistent agents as a single combined primitive: an agent with a home, skills, services, memory, scheduling, and observability -- on any container substrate. The interface lets you provision, watch, and customize these agents without understanding the underlying infrastructure.
+Agent Machines is **OpenRouter for agents and containers** — the product layer above sandboxes. One account routes **which agent runtime** (Hermes, OpenClaw, Claude Code, Codex) and **which substrate** (E2B, Sprites.dev, Dedalus Machines), then deploys a **persistent worker** in one unit: runtime, skills, MCP, integrations, cron, observation, and fleet management.
 
-Right now the Bay is building every layer separately: containers (E2B, Modal, Fly, Dedalus), frameworks (LangGraph, CrewAI, OpenClaw), memory (Mem0, Letta), models (OpenAI, Anthropic). Everyone treats containers and agents as separate things, either a container you put an agent into, or an agent you give a sandbox to. **The actual primitive people want is the persistent agent-on-a-machine.** The entire interest in containers/microVMs is to run persistent agents, so we're the layer that gives the container market its primary use case. We ship that combined unit directly, instead of making you assemble an agent from a VM + a framework + a memory provider + tool configs + cron + MCP servers. The goal is to become the de facto persistent agent provider, not another sandbox provider.
+**Vercel on AWS** for substrates: interchangeable infra underneath; our value is the harness and control plane. People don't want bare sandboxes — they want workers that audit code, run on schedules, and accumulate skills. Dedalus currently benchmarks best on boot/sleep (strong default, not the product).
 
-**How it started**: I built this at Dedalus Labs to dogfood and benchmark our own microVMs against E2B, Fly, and Modal. I needed to deploy agents across substrates, observe what they were doing, and compare. The observation layer became more valuable than the benchmarking. Once I could see agents working in real-time, I wanted to control them: schedule work, manage lifecycle, insert new skills. The benchmarking tool became an observation layer, then an orchestration layer, then the full interface.
+**Fleet:** Provision design, news, code specialists from presets — vendor SKUs are UI + skills + MCPs + prompts; we ship that composable, one click per machine, one dashboard to supervise all.
 
-**What you can use today:**
+**Origin:** I built this to benchmark agents across E2B, Fly, Modal, and microVM providers — deploy the same harness everywhere, observe behavior, compare substrates. The observation layer became more valuable than the benchmarks. Then lifecycle control, skills, cron, fleet UI. Benchmark tool → observation layer → control plane → product.
 
-- **The combined primitive**: Deploy a persistent agent in 30 seconds. 155 skills, 17 MCP service integrations, 10+ closed-loop CLIs, 15+ built-in tools, browser automation, Cursor IDE delegation, cron scheduling -- all in one unit, using any substrate. We ship far more than a bare container you build on top of.
-- **Visual observation**: Watch agents work in real-time through the dashboard. Sessions, tool calls, skill invocations, and cost -- all visible without SSH or log-tailing.
-- **Opinionated templates + insertion layers**: Works out of the box. But every layer is customizable -- drop in skills, attach providers, connect services/plugins/MCP, set governance, change the container substrate.
-- **Customizability**: Switch between substrates, model providers, SDKs, APIs, MCPs, plugins, and tools in clicks. One account, no confusing onboarding.
-- **Self-healing / skill accumulation**: Every complex task becomes a reusable procedure. After 6 months, I have hundreds of custom skills. New users inherit the community library (155 today, growing).
-- **Programmatic control (the endgame)**: An MCP server and CLI so agents themselves can provision and coordinate other agent machines -- no UI required. One head agent spins up a fleet of specialized workers, routes tasks, observes results, tears down idle machines. The interface serves humans today, with the goal of becoming an API for agent-to-agent orchestration.
+**Live today:**
 
-We serve two audiences. **Humans first**: today's agent tools (Cursor, Claude Code, OpenClaw CLI) are expert-only. Terminals, SSH, MCP configs are your primary interface, even though 95% of people who want persistent agents aren't sysadmins. There is such an untapped market here it's almost frustrating. Agent Machines solves observability and comprehension at once through one accessible interface -- provisioning, auto-scaling, skill usage, and more. **Other agents second (the endgame)**: this project began as a devtool and will evolve to primarily be a superior devtool, offering an MCP server and CLI so a head agent can programmatically spin up, coordinate, and tear down specialized agent machines from one orchestrator managing a fleet. When agents can provision other agents, the platform self-scales.
+- **Combined primitive:** ~30s deploy. 161 skills, 35 MCP catalog entries, ranked service routes, 10+ closed-loop CLIs, agent-native tools (varies by runtime), browser automation, optional Cursor bridge, cron — one unit, any supported substrate.
+- **Visual observation:** Dashboard activity, chat, sessions, logs, artifacts, usage — no SSH archaeology.
+- **Templates + insertion layers:** Works out of the box; swap skills, MCPs, providers, models, governance in clicks.
+- **Skill accumulation:** Complex tasks become reusable SKILL.md on disk under `~/.agent-machines/` — not trapped in chat history.
+- **Programmatic control (roadmap):** MCP/CLI for head agents to provision and coordinate worker machines without the UI.
 
-The enterprise gap is real too: ServiceNow, Microsoft Foundry, and Guild.ai published "agent control plane" strategies in 2026, but they don't come close to the problem of true persistence and full end-to-end observability -- offering only UI components to visualize agents -- and are building for 18-month enterprise sales cycles. We start with developers and their agents today, make them love the product, grow into teams, then enterprise. Bottom-up, like Datadog and Vercel.
+**Substrates:** E2B, Sprites.dev, and Dedalus Machines are live. Dedalus currently leads our benchmarks on boot latency (~250ms) and sleep/wake; all three are first-class via `MachineProvider`.
 
-### Where do you live now, and where would the company be based after YC?
-
+### Where do you live / company based after YC?
 San Francisco, USA / San Francisco, USA
 
-### Explain your decision regarding location
-
-I'm a Princeton sophomore (19) graduating early -- one of two in my class. I chose to spend 2026 in SF rather than on campus. After 6 months here, I've learned more than I did in 1.5 years at Princeton. I'm forward-deployed at Dedalus Labs, embedded in the agent infrastructure ecosystem, shipping product alongside the substrate providers and developers who are our customers. I will learn and build more and faster here than anywhere else. The company stays in SF.
+### Explain location
+Princeton sophomore (19), graduating early — one of two in my class. Chose SF in 2026 over campus; shipping faster here. Company stays in SF.
 
 ### How far along are you?
 
-Live product at agent-machines.dev, used internally and open source. Full control plane operational:
-- CLI that deploys a fully-harnessed agent in 30 seconds (`npm run deploy`)
-- Web dashboard: multi-machine management, chat, skills browser, session viewer, log tail, artifacts, usage tracking
-- 155 production-tested skills in the protocol
-- 17 MCP service integrations (Vercel, Stripe, Supabase, GitHub, Linear, Slack, Figma, PostHog, Sentry, Datadog, Firebase, Shopify, ClickHouse, Cloudflare, AWS, Clerk, browser automation)
-- 10+ closed-loop CLIs (agent-browser, Playwright, curl, httpx, sqlite3, jq, dig, nc)
-- 15+ built-in tools (terminal, filesystem, browser, vision, image gen, TTS, Python sandbox, cron, memory, subagent delegation)
-- 4 agent runtimes (Hermes, OpenClaw, Claude Code, Codex CLI)
-- Coding agents use an integrated Cursor IDE delegation via MCP bridge (4 tools: cursor_agent, cursor_resume, cursor_list_skills, cursor_models)
-- Cron-scheduled autonomous operation (agents run without human prompts)
-- Dedalus microVMs as primary substrate, with E2B and Sprites.dev also supported, more providers planned
-- Open source on GitHub
+Live at agent-machines.dev, open source on GitHub. Control plane operational:
 
-### How long have each of you been working on this? How much of that has been full-time?
+- CLI: `npm run deploy` bootstraps fully-harnessed agent (~30s)
+- Dashboard: multi-machine fleet, setup wizard, chat, skills, MCP/loadout, sessions, logs, artifacts, cron, activity overview, usage
+- 161 skills (SKILL.md protocol, synced from `knowledge/`)
+- 35 MCP catalog entries + ranked service routes (Vercel, Stripe, Supabase, GitHub, Linear, Slack, Figma, PostHog, Sentry, Datadog, …)
+- 4 agent runtimes: Hermes, OpenClaw, Claude Code, Codex CLI
+- Optional Cursor bridge (4 MCP tools)
+- Cron-scheduled autonomous operation
+- 3 substrates: E2B, Sprites.dev, Dedalus Machines
 
-~3 months on Agent Machines directly, full-time alongside my role at Dedalus Labs.
+Early users; no external paying customers yet.
 
-At Dedalus I'm not in one lane. I own everything user-facing, including frontend, own parts of the infrastructure, I've shipped product features end-to-end, I've written docs, I've done customer demos/calls and onboarding, I've debugged production issues at 2am. I built the agent-browser CLI that ships as a Dedalus product. I built internal tooling for machine lifecycle management using our fork of Cloud Hypervisor. I wrote the cookbook recipes and integration guides that developers use to onboard. I've been in the room for pricing decisions, GTM strategy, and partnership conversations. Six months forward-deployed at an early-stage infra startup teaches you things a CS degree never will: how to scope a release, how to talk to users, how distribution actually works, how to ship at hyperspeed. And how agents are an increasingly superior execution primitive, with capabilities exponentiated by persistence and cloud.
+### How long working on this? Full-time?
 
-Agent Machines is a direct product of that experience. The observation layer came from benchmarking Dedalus machines against competitors. The skill protocol came from operating persistent agents on our own infrastructure and noticing that the same procedures kept getting rebuilt from scratch. The multi-substrate architecture came from integrating with E2B and Sprites.dev alongside Dedalus and seeing that the value is in the harness, not in any single provider.
+~3 months on Agent Machines directly, full-time.
 
-### What tech stack are you using?
+Built harnesses at AWS; applied to YC with Sevenfold; spent 2026 in SF shipping agent infrastructure and learning distribution. Agent Machines came from benchmarking agents across substrates, operating persistent cron agents for months, and hitting the same rebuilt-from-scratch procedures — which became the skill protocol.
 
-**Frontend**: Next.js 16, React 19, TypeScript, Tailwind v4, Clerk auth, React Three Fiber
-**Backend/CLI**: Node.js + tsx, Dedalus SDK for machine provisioning
-**Agent Runtimes/Harnesses**: Hermes, OpenClaw, Claude Code, Codex
-**Infrastructure**: Dedalus Machines (VMs with persistent state, 250ms boot, sleep/wake, VM-level isolation), with E2B and Sprites as other options
-**AI Models**: Claude Opus 4.7, GPT-5.5 (default), routable to 200+ models via Dedalus inference API (vendor-agnostic)
-**AI Coding Tools**: Cursor, Claude Code, Codex
-**MCP Services**: Vercel, Stripe, Supabase, GitHub, Linear, Slack, Figma, PostHog, Sentry, Datadog, Firebase, Shopify, ClickHouse, Cloudflare, AWS
+### Tech stack
 
-### Are people using your product?
-Yes, internally at Dedalus and in my own workflow. Open source on GitHub. No external paying users yet.
+- **Frontend:** Next.js 16, React 19, TypeScript, Tailwind v4, Clerk, R3F
+- **Backend/CLI:** Node.js + tsx; provider SDKs behind `MachineProvider`
+- **Runtimes:** Hermes, OpenClaw, Claude Code, Codex
+- **Substrates:** E2B, Sprites.dev, Dedalus Machines (Dedalus: best boot/sleep stats in our harness)
+- **Models:** OpenAI-compatible routing (Claude, GPT, 200+ via configurable `/v1` endpoints)
+- **MCP:** Vercel, Stripe, Supabase, GitHub, Linear, Slack, Figma, PostHog, Sentry, Datadog, Firebase, Shopify, ClickHouse, Cloudflare, AWS, Clerk, browser automation
 
-### Do you have revenue?
-No
+### Are people using your product? Revenue?
 
-### Why did you pick this idea to work on? Do you have domain expertise?
+Yes — my workflow + early open-source adopters. No revenue yet.
 
-For the past 6 months I've been forward-deployed at Dedalus Labs, wearing every hat, owning multiple domains, learning how a startup actually ships, distributes, and grows. The biggest lesson for me was that in a crowded landscape it's really a distribution game. The best infrastructure doesn't win. The infrastructure people can understand and adopt wins. And abstractions that provide infrastructure and condense the swarm of agentic tooling and associated plugins around agents into one reliable interface will win.
+### Why this idea? Domain expertise?
 
-That's why I built Agent Machines. It started as a tool to dogfood and benchmark our own microVMs against E2B, Fly, Modal. The observation layer I built to watch agents became more valuable than the benchmarks, and gradually observation became orchestration. Agent Machines fills an observability and imagination gap. It's hard to imagine what you can do with a bare sandbox -- the use case is abstract. People even struggle to do this with agents besides with coding. But a persistent agent with skills, services, and scheduling? People get it immediately. And because we're simultaneously low-level (real VMs, real tools) and high-level (visual dashboard, templates), we give actual observability instead of a black box. We'll win on distribution because the product explains itself.
+**Distribution beats raw specs.** Best infrastructure loses to infrastructure people can understand. Persistent agent with skills + schedule + observation is imaginable; bare sandbox is not.
 
-On the research side: I work with Professor Danqi Chen at Princeton, who is currently on sabbatical at Thinking Machines, but she made an exception to advise my research into agent orchestration variables. My research with her is directly relevant to orchestration: how agents coordinate, how to route tasks between specialized models, how multi-agent systems maintain coherence. The academic work informs the product and the product generates real data for the research. Few people have both the infrastructure experience (Dedalus) and the research foundation (Princeton NLP/agent orchestration) simultaneously.
+**Research:** Agent orchestration with Prof. Danqi Chen (Princeton / Thinking Machines) — routing, multi-agent coherence.
 
-Domain expertise is vertically integrated:
-- Research on agent orchestration with Danqi Chen (Princeton / Thinking Machines)
-- Forward-deployed at Dedalus Labs for 6 months (the microVM substrate. I know the infrastructure, the distribution, and the GTM from the inside)
-- Built harnesses/agentic runtimes at Amazon
-- Authored 155 production-tested skills, integrated 17 MCP services, installed 10+ closed-loop CLIs
-- Operated persistent agents with autonomous cron for months
-- Benchmarked agents across every major container/VM provider
+**Vertical experience:**
+- Orchestration research (Princeton)
+- Agent harnesses (Amazon)
+- 161 skills, MCP integrations, multi-substrate benchmarking
+- Months operating cron agents on persistent machines
 
-Even the name itself is the primitive: agent machines are the simple solution that solves your persistence problem. And bonus, no one has taken it yet.
+The name *is* the primitive: **agent machines**.
 
-### Who are your competitors? What do you understand that they don't?
+### Competitors — what we understand that they don't
 
-Everyone in the Bay is building one layer. Nobody has built the combined primitive. Our competitors are all in different layers, and we subsume or sit on top of each:
+| Layer | Examples | Our position |
+|---|---|---|
+| Container/VM | E2B, Modal, Fly, Daytona | Substrate; we give it a use case |
+| Memory | Mem0, Letta | One feature of a machine with a filesystem |
+| Frameworks | LangGraph, CrewAI | Logic without deploy/persist/observe |
+| Expert CLIs | Cursor SDK, Claude Code, Hermes CLI | Single-agent; no fleet control plane |
 
-**Container/VM providers** (sell raw compute; we give it a reason to exist):
-- **E2B / Modal / Fly.io / Daytona** -- Sell bare containers with varying levels of persistence support, filesystem support, highly varying start times. But nobody wants a bare container -- they want the persistent agent that lives on it. We are the primary use case for their product. We use them as substrate, like Vercel uses AWS.
+**Insights:**
 
-**Memory bolt-ons** (one feature of the combined primitive):
-- **Mem0** ($24M raised) / **Letta** ($10M) -- Bolt memory onto stateless agents. But memory is one file on a filesystem. When you ship the full primitive (agent + machine + skills + services), memory is a trivial included feature, not a separate product.
+1. Primitive is **agent + machine**, not container alone.
+2. **Distribution wins on imagination** — "agent that audits code on a schedule" > "microVM with 512MB."
+3. **Observation beats black box** — low-level VMs + high-level dashboard.
+4. **Programmatic surface** — agents provisioning agents (roadmap) → recursive growth.
 
-**Agent frameworks** (logic without a home):
-- **LangGraph / CrewAI / Codex** -- Define agent logic. Don't deploy it, persist it, observe it, or schedule it. Agent Machines is the deploy-and-manage layer that makes frameworks useful in production.
+### How do you make money?
 
-**Expert-only agent tools** (powerful, narrow audience):
-- **Cursor SDK / Claude Code / Hermes / OpenClaw CLI** -- Excellent for terminal experts. But they require SSH, MCP configs, manual process management. No visual interface. No templates. No observation. And critically: no programmatic MCP for agent-to-agent coordination. They're single-agent tools, not fleet orchestrators.
+Platform fee + compute margin (Vercel-on-AWS shape).
 
-**What I understand that they don't:**
+- **Free:** 1 machine, capped compute-hours, community skills
+- **Pro ($29/mo):** multiple machines, cron, full library
+- **Team ($99/seat/mo):** fleet, shared skills, audit, SSO
+- **Enterprise:** self-host, compliance, private registries
 
-1. **The primitive is agent+container, not container alone.** Everyone in the Bay is building containers OR agents OR memory as separate products. The thing people actually want is the combined unit: a persistent agent with skills, services, memory, and scheduling, ready to work.
+Flywheel: skills → more cron/autonomous work → more compute hours.
 
-2. **Distribution wins on imagination, not specs.** It's hard to imagine what you can do with a bare sandbox -- the use case is abstract. But a persistent agent that runs security audits, deploys your code, monitors your services, and gets smarter every week? People get it immediately. We win on distribution because the product explains itself. Competitors sell infrastructure. I sell the outcome.
-
-3. **Observation beats the black box.** I discovered this building the tool: you can't orchestrate what you can't see. Because we're simultaneously low-level (real VMs, real tool calls) and high-level (visual dashboard, templates), we give actual observability instead of a black box. Competitors skip to "run code" without showing what's happening, which is why they stay expert-only.
-
-4. **The programmatic surface is the real moat.** A dashboard for humans is table stakes. An MCP server that lets agents provision and coordinate other agents is the endgame -- API-based with a CLI exposer. If the platform is callable by agents, not just humans, growth becomes recursive. No competitor is building this.
-
-### How do or will you make money? How much could you make?
-
-**Revenue model**: Platform fee + compute margin (we mark up substrate costs like Vercel marks up AWS).
-
-**Tiers**:
-- Free: 1 machine, 10 compute-hours/mo, community skill library
-- Pro ($29/mo): 5 machines, unlimited compute, full skill library, cron scheduling, priority routing
-- Team ($99/seat/mo): Fleet management, shared skill libraries, audit logs, SSO, team governance
-- Enterprise (custom): Self-hosted option, compliance layer, private skill registries, SLA
-
-**Why this grows fast**: Every skill an agent learns generates more autonomous work (cron jobs, scheduled audits, automated deploys). More autonomous work = more compute hours = more revenue. Usage compounds without the developer doing anything. This is the AWS flywheel: the more you use it, the more you need it.
-
-**TAM**: Agent infrastructure market projected $47B+ by 2028 (44% CAGR). Control planes in adjacent markets capture 10-30% of total spend (Kubernetes ecosystem is ~$7B of $65B container market). If agent compute reaches $47B, the control plane layer is $5-15B.
-
-**Near-term**: 100K developers × $29/mo = $35M ARR. Plausible within 3 years given 57% of teams already run agents and have no management layer.
-
-**Expansion**: The skill marketplace takes a cut of premium skill sales (like Shopify themes). Enterprise governance is high-margin SaaS. Substrate cost optimization (routing to cheapest provider) creates a Cloudflare-style margin expansion over time.
+TAM: agent infra $47B+ by 2028; control-plane capture 10–30% → $5–15B layer.
 
 ### Other ideas considered
 
-1. **Self-evolving agent skills / automation** (standalone) -- Publishing and monetizing SKILL.md files that self-update using research agents with browser use, scraping signals from RSS feeds, blogs, Twitter trending, etc. Most published skills (e.g. on Skills.sh) are useless. All the actual skills I use come from building proper frameworks for my agents -- and even then they fall out of date with the pace of R&D in SF. I've built the solution at https://loooop.dev/ -- self-evolving skills on a public community marketplace with an execution runtime to see skills at work.
-2. **AI-native CI/CD** -- Agent-driven pipelines replacing GitHub Actions. The combined primitive subsumes this: cron + skills + substrate management IS CI/CD for agents.
-3. **Agent-to-agent protocol** (standalone) -- A networking standard for agents. Too early as a spec. But the Agent Machines MCP server IS this protocol in practice -- the programmatic surface for agents to provision and coordinate other agents. Shipping it as infrastructure rather than a standard is the right path.
+1. **Self-evolving skills marketplace** — built at [loooop.dev](https://loooop.dev); Agent Machines ships the execution runtime + SKILL.md protocol.
+2. **AI-native CI/CD** — subsumed by cron + skills + substrate management.
+3. **Agent-to-agent protocol spec** — too early; we ship MCP/CLI as infrastructure instead.
 
 ---
 
-## Moat & Future Plans
+## Moat & roadmap
 
-### Why the combined primitive is defensible (and bare VMs aren't)
+### Defensibility
 
-Containers are commodity. Anyone can spin up a microVM. But the combined "persistent agent" unit -- with skills, services, observation, and scheduling -- is not. And the programmatic MCP surface that lets agents orchestrate other agents? That's where lock-in compounds.
+- **Skill protocol** — switching cost grows every session
+- **Harness** — 6 months of integrated tooling, one deploy
+- **Observation** — Datadog-style stickiness for agents
+- **Substrate abstraction** — E2B | Sprites | Dedalus interchangeable
+- **Programmatic MCP (roadmap)** — head agents scale the platform
 
-1. **Intelligence lock-in via the skill protocol.** SKILL.md is a structured format for agent-learned procedures. Every complex task becomes a reusable skill. After 6 months: hundreds of procedures customized to your stack, conventions, services. Not portable to ChatGPT, Claude, or any single-vendor agent. Switching costs grow with every session.
+### Roadmap
 
-2. **The skill graph has network effects.** 155 skills ship today. As the community grows, the shared library grows. New users in 2027 start with 1000+ battle-tested procedures. This is npm for agent intelligence -- the registry gets more valuable with every contributor.
+**Q3 2026:** Billing, skill marketplace, more substrates  
+**Q4 2026:** Agent Machines MCP server + fleet CLI (`am provision`, head-agent pattern)  
+**2027:** Team fleets, cost-based routing, enterprise compliance, self-host
 
-3. **Substrate abstraction accrues value at our layer.** We make container providers interchangeable. Today Dedalus, E2B, and Sprites.dev. Tomorrow more. The combined primitive deploys identically on any substrate. The value stays in our layer regardless of where the bits run.
+### Three phases
 
-4. **The programmatic surface creates recursive growth.** When a head agent can provision worker agents via MCP, every agent machine is both a consumer and a creator of demand. Growth becomes self-reinforcing -- agents scale the platform faster than humans alone ever could.
-
-### Future roadmap
-
-**Q3 2026 -- Multi-substrate + billing + marketplace**:
-- Additional substrate providers beyond Dedalus, E2B, and Sprites.dev
-- Usage-based billing: pay per active compute-hour, store-only when sleeping
-- Skill marketplace: publish, install, rate, version community skills
-
-**Q4 2026 -- The programmatic layer (the big unlock)**:
-- **Agent Machines MCP server**: an MCP tool that any agent can call to provision, wake, sleep, destroy, and chat with other agent machines. This turns every existing agent (Claude, Cursor, OpenClaw, custom) into an orchestrator of our platform.
-- **Agent Machines CLI**: same operations from any terminal or CI pipeline -- `am provision --template code-review`, `am fleet create`, `am route task`
-- Head-agent pattern: one orchestrator agent manages a fleet of specialized workers, routing tasks by capability, observing results, scaling up/down
-
-**2027 -- Self-scaling agent fleets**:
-- Team/org fleet management with shared skill libraries and governance
-- Agent-to-agent task routing: specialized machines advertise capabilities, head agents discover and delegate
-- Substrate cost optimizer: head agent routes workloads to cheapest provider automatically
-- Enterprise compliance: audit trails, budget limits, model allowlists, data boundaries
-- Self-hosting: run the full stack on your own infrastructure
-
-### Why this scales -- three phases
-
-**Phase 1 (now): Humans deploy agents through the interface.**
-Visual dashboard, templates, insertion layers. Makes persistent agents accessible to non-experts. This is the ChatGPT moment for cloud, persistent agents.
-
-**Phase 2 (Q4 2026): Agents deploy agents through MCP/CLI.**
-The same platform, but the user is an agent, not a human. A head agent calls `agent-machines/provision` via MCP, spins up three workers, routes a complex task across them, observes results, tears down idle machines. The interface becomes an API. The platform becomes self-scaling.
-
-**Phase 3 (2027): Agent fleets as a service.**
-Organizations run fleets of specialized agents -- code review, research, ops, compliance -- all managed through our control plane. Head agents orchestrate. Humans set policies and observe. The platform is the nervous system.
-
-### The endgame
+1. **Now:** Humans deploy via dashboard (ChatGPT moment for persistent agents)
+2. **Q4 2026:** Agents deploy via MCP/CLI
+3. **2027:** Org fleets; humans set policy, head agents orchestrate
 
 ```
-Human or Head Agent
+Human or head agent
         ↓
-Agent Machines (dashboard / MCP server / CLI)
-        ↓                    ↓                    ↓
-  Provision & Observe    Route & Schedule     Skill Registry
-        ↓                    ↓                    ↓
-  [persistent agent machines on any substrate]
+Agent Machines (dashboard / MCP / CLI)
         ↓
-  Dedalus | Fly | Vercel | self-hosted | future
-```
-
-The critical insight: when agents can programmatically provision and coordinate other agents through our MCP, the platform self-scales. Every agent machine is both a worker AND a potential orchestrator. Growth becomes recursive -- agents create demand for more agents.
-
-Flywheels:
-- Every new substrate → more routing options, better pricing
-- Every new skill → better templates, faster onboarding, more capable agents
-- Every new user (human OR agent) → more operational data, more community skills
-- Every head agent that orchestrates → creates demand for N more worker machines
-
----
-
-## Founder Video Script (60 seconds)
-
-```
-[0:00 - 0:08]
-"Hey, I'm Kevin Liu. I'm 19, a Princeton sophomore, one of two in my 
-class graduating early. 2026 in SF, not campus. Ex-Bloomberg, ex-AWS. 
-Building agentic infra at Dedalus Labs."
-
-[0:08 - 0:22]
-"I can't wait for other people to solve my problems. I put myself in 
-front of the hardest problems I can find and stay until I solve them -- 
-induced challenge. I learn through curiosity, not a set path through 
-academics. First proof: I cofounded the largest online math competition 
-for high schoolers. 35K raised, 8,000 users, scaling under attack -- 
-a perceived limiter until it wasn't."
-
-[0:22 - 0:38]
-"At AWS I built my first agent harness. That led to Sevenfold. We 
-applied to YC. You told us to figure out if we were ready. I wasn't. 
-Six months forward-deployed at Dedalus. The lesson: the best software 
-loses to software people can actually understand and adopt."
-
-[0:38 - 0:50]
-"Agent Machines is that interface. Persistent agents that audit your 
-code, deploy your app, monitor your endpoints, and get smarter every 
-week without shutting down. One click. Any substrate."
-
-[0:50 - 1:00]
-"Two cofounders from MIT and Columbia ready to drop out. Not a slide 
-deck -- something live. Thank you for your time."
+Provision · Observe · Schedule · Skill registry
+        ↓
+Persistent agent machines (E2B | Sprites | Dedalus | …)
 ```
 
 ---
 
-## Demo Video Script (3 minutes) — control plane edition
-
-**ICP:** Founder / PM / ops lead (non-terminal). **Subtext:** Engineers who've hit the session/container wall.
+## Founder video script (~60s)
 
 ```
-[0:00 - 0:15] Cold open — the primitive, not the chatbot.
-Screen: agent-machines.dev/dashboard/setup.
-"No preamble. Most AI products give you a chat window. We give you a computer
-that stays on — with an agent already installed, already wired to your tools."
+[0:00–0:08]
+"Hey, I'm Kevin. I'm 19, a Princeton sophomore — one of two in my class graduating
+early. I'm in SF because I've shipped more here in six months than in a year on campus."
 
-Pick template: Full-stack dev agent. Substrate: Dedalus. Click Provision. ~30s.
-"One click: persistent agent machine — 161 skills, 30 MCP servers, browser
-automation, cron, live gateway. Survives when you close the tab."
+[0:08–0:22]
+"First time I couldn't sit still until I'd built something end-to-end: cofounded the
+largest online high school math competition — 35K raised, 8,000 users, real team,
+real mistakes. That taught me I love building systems, not just studying them."
 
-[WHY OP] Chat resets. Cron can't run in a tab. Procedures aren't on disk.
-Persistent agent-container = disk + process + schedule + identity in one unit.
+[0:22–0:38]
+"Two summers at Bloomberg, then AWS — I built my first agent harness to scrape docs.
+Ugly, but it worked. That led to Sevenfold and a YC interview. I wasn't ready to
+drop out. I came to SF, shipped across frontend, infra, docs, GTM — and built Agent
+Machines because persistent agents kept breaking without a control plane."
 
-[TECH] Hard part isn't the LLM — it's the control plane: bootstrap on any
-substrate, gateway auth off the model path, sleep/wake without losing
-/home/machine, streaming every tool call to a dashboard humans trust.
+[0:38–0:52]
+"The lesson: the best product loses to the product people can actually adopt. People
+need useful primitives. Agent Machines is the persistent agent machine — one click,
+any substrate, skills and cron included."
 
-[0:15 - 0:40] Observation — control plane is the product.
-/dashboard activity heatmap → tap a day. /dashboard/chat: security audit.
-Live: deepsec skill, browser, terminal, tokens, cost.
-"Non-technical users get a flight recorder. Engineers get the harness we
-used to benchmark Dedalus, E2B, Sprites."
-
-[0:40 - 1:00] Skill protocol — procedures become assets.
-Save audit as skill → SKILL.md → /dashboard/skills (161).
-"Can't export that to ChatGPT. Intentional."
-
-[1:00 - 1:20] Insertion layers — your stack.
-Loadout + MCPs (Vercel, Stripe, Datadog). "161 out of the box; everything
-is an insertion point."
-
-[1:20 - 1:45] Cron — agents at 3am.
-4 schedules. nightly-memory-consolidation: wake, run, sleep, $0.04.
-"AI employee, not assistant."
-
-[1:45 - 2:10] Fleet — specialized agents, one pane of glass.
-4 machines. Switch active. Substrate is implementation detail.
-
-[2:10 - 2:35] Endgame — agents provisioning agents.
-Terminal / spin-up. Head agent provisions review + deploy machines.
-"Control plane is the moat."
-
-[2:35 - 3:00] Pull back — full instrument panel.
-Activity, telemetry, fleet, gateway. "Persistent agents as a one-click primitive.
-For humans today. For agents tomorrow. agent-machines.dev."
+[0:52–1:00]
+"Two cofounder candidates from MIT and Columbia ready to drop out. Live product, not
+a slide deck. Thank you."
 ```
 
 ---
 
-## Additional Application Fields
+## Demo video script (~3 min)
 
-### Who writes code on your product?
-Me. All technical work so far -- CLI, web dashboard, website, skill protocol/tool router, MCP integrations, substrate provider abstraction, infrastructure routing, deployment, gateway protocol, terminal environments, and agent runtimes.
+**Audience:** Founder/PM who uses AI daily; engineers who've hit the session/container wall.  
+**Run:** `cd web && pnpm dev` → http://localhost:3210 (real Clerk + provider credentials)
 
-### Are you looking for a cofounder?
-Yes. I have two people I'd cofound with in a heartbeat -- one from MIT, one from Columbia -- both willing to drop out. We're in active conversations. Ideal profile: distributed systems / orchestration background (Kubernetes, Nomad, Terraform, cloud infrastructure). The product works today for individual developers; a cofounder helps make it work for fleets of thousands of agents.
+```
+[0:00–0:15] Cold open — the primitive, not the chatbot.
+/dashboard/setup → pick template "Full-stack dev agent" → pick substrate (E2B, Sprites,
+or Dedalus — same harness) → Provision ~30s.
+"Most products give you a chat window. We give you a computer that stays on — agent
+installed, tools wired, gateway live. 161 skills, 35 MCP servers, cron, observation."
 
-### Applied before / pivot?
-Yes. Applied previously with a different idea and cofounder (Athan Zhang). YC told us to figure out whether we wanted to drop out. We split -- Athan founded Copperlane, which is in the current Spring batch. I stayed in SF and went forward-deployed at Dedalus Labs to learn how startups actually work from the inside.
+[WHY] Chat resets. Cron can't run in a tab. Procedures aren't on disk. One unit:
+disk + process + schedule + identity.
 
-Different idea, different cofounder, different company. Agent Machines emerged from 6 months of operating at Dedalus -- dogfooding containers, building agent harnesses, learning distribution. The previous application was the push I needed to get serious. This time I'm applying with a live product, used internally, open source, and the conviction that comes from shipping.
+[TECH] Hard part is the control plane: bootstrap on any substrate, gateway auth off
+the model path, sleep/wake without losing /home/machine, stream tool calls to a
+dashboard humans trust.
 
-### Incubator/accelerator participation?
-[Fill if applicable]
+[0:15–0:40] Observation.
+Activity heatmap → tap a day. Chat: "Run a security audit on this repo."
+Show skill load, browser, terminal, tokens/cost.
+"Flight recorder for non-experts; harness for engineers."
 
-### What convinced you to apply to YC?
-Last time I applied, YC told me to figure out whether I wanted to drop out. My cofounder went on to found Copperlane in the Spring batch. I stayed in SF, went forward-deployed at Dedalus, and spent six months learning how to actually build and ship. I came back with a live product, three substrate providers, 155 skills, and the conviction that persistent agents are the primitive the industry is missing.
+[0:40–1:00] Skill protocol.
+"Save this audit pattern as a skill." → SKILL.md → /dashboard/skills.
+"Procedures on disk — not exportable to ChatGPT. Intentional."
 
-YC's Summer 2026 RFS calls out "Software for Agents" and "Dynamic Software Interfaces." Agent Machines is both. The timing is right: substrates just got cheap enough for persistent agents to be economically viable, frameworks stabilized, and the interface layer is wide open. Nobody has built the accessible way to deploy, observe, and control persistent agents. That's the gap.
+[1:00–1:20] Insertion layers.
+Loadout + MCP cards (Vercel, Stripe, Datadog). Everything is an insertion point.
 
-I'm also not just pitching an idea. I've been building in this exact space for six months at one of the infrastructure companies that powers agent compute. I know the substrate economics, the developer pain points, and the distribution challenges from the inside. Agent Machines already works. What I need from YC is the network to distribute it and the velocity to capture this window before the big platforms close it.
+[1:20–1:45] Cron.
+Scheduled jobs — wake, run, sleep. "AI employee, not assistant."
+
+[1:45–2:10] Fleet.
+Multiple machines, one pane. Substrate is implementation detail.
+
+[2:10–2:35] Endgame.
+"MCP/CLI so a head agent provisions review + deploy workers — same control plane."
+
+[2:35–3:00] Pull back.
+"OpenRouter for agents and containers. Persistent workers, supervised fleet. Humans today. Agents tomorrow.
+agent-machines.dev."
+```
+
+---
+
+## Additional fields
+
+### Who writes code?
+Me — CLI, dashboard, website, skill protocol, MCP integrations, provider abstraction, gateway, bootstrap, runtimes.
+
+### Cofounder?
+Yes — two candidates (MIT, Columbia), willing to drop out. Ideal: distributed systems / orchestration (K8s, Nomad, Terraform).
+
+### Applied before?
+Yes — with Athan Zhang; YC said figure out dropout. Athan → Copperlane (Spring batch). I stayed in SF, shipped, returned with live product and clearer primitive.
+
+### Why YC now?
+Summer 2026 RFS: "Software for Agents" + "Dynamic Software Interfaces." Substrates are cheap enough; frameworks stabilized; **interface layer open**. Live product, 3 substrates, 161 skills. Need network + velocity before platforms close the window.
 
 ### How did you hear about YC?
-[Your answer]
+[Fill]
 
-### Have you formed a legal entity?
-[Your answer]
+### Legal entity / investment / fundraising?
+[Fill]
 
-### Have you taken investment?
-[Your answer]
+---
 
-### Are you currently fundraising?
-[Your answer]
+## Appendix: Agent Machines vs substrate providers
+
+**Agent Machines ≠ a container company.** We are the **control plane** for persistent agent machines.
+
+| | Substrate provider | Agent Machines |
+|---|---|---|
+| Sells | Raw compute / microVM | Agent + home + harness + observation |
+| Analogy | AWS | Vercel |
+| User gets | Empty machine | Worker ready in ~30s |
+
+**Dedalus Machines** is one of three live providers. In our benchmarks it leads on boot latency (~250ms) and sleep/wake — a strong default when those stats matter. **E2B** and **Sprites.dev** are fully supported alternatives. Value stays in our layer regardless of where bits run.
+
+**OpenRouter analogy:** route agents and containers — pick runtime, pick substrate, pick model, one account.
+
+I built Agent Machines independently to compare substrates fairly; it is not a Dedalus product. Substrate vendors benefit when more persistent agents run on their machines.

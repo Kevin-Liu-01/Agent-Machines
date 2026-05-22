@@ -1,44 +1,50 @@
 # Agent Machines — product vision
 
-## The primitive
+## The product
 
-The Bay is building layers separately: containers (E2B, Modal, Fly, Dedalus), frameworks (LangGraph, CrewAI, OpenClaw), memory bolt-ons (Mem0, Letta), models (OpenAI, Anthropic).
+**OpenRouter for agents and containers.**
 
-**Agent Machines ships the combined primitive people actually want:** a persistent agent-on-a-machine — not a bare VM, not a stateless framework. Agent + home + skills + services + memory + scheduling + observation, ready to work on any substrate.
+Agent Machines is the **product layer** above sandboxes — not another container SKU, not a chat tab, not a vendor memory blob. A **control plane** that deploys a **persistent agent worker** in one unit:
 
-Containers matter here because people want to **run persistent agents**. We are the layer that gives container markets their primary use case.
+runtime · skills · MCP · integrations · cron · observation · fleet management
+
+…on any substrate you route to (E2B, Sprites.dev, Dedalus Machines).
+
+| Analogy | Meaning |
+|---------|---------|
+| **OpenRouter for agents + containers** | One account routes **which runtime** and **which substrate** — like OpenRouter routes models |
+| **Vercel on AWS** | We are the product layer; providers are interchangeable infrastructure |
+
+People don't want a bare sandbox. They want a worker that audits code, runs on a schedule, and gets smarter over time. **That's what we ship.** Substrate vendors get a primary use case; our value stays in the harness and control plane.
+
+**Dedalus** is one of three live providers and currently benchmarks best on boot latency (~250ms) and sleep/wake — a competitive default, **not the product**. Sandboxed environments are exceedingly hard to build; we prefer **routing** over native infra for now.
+
+## Specialist fleet
+
+Design agent · news agent · code agent — provision each from **opinionated presets** (Hermes, OpenClaw, Claude Code, Codex).
+
+Named vendor products (e.g. Anthropic design modes) are **UI + skills + MCPs + system prompts** on the same model. We make that stack **composable**: one click per specialist, **supervise the fleet** from one dashboard.
 
 ## Two audiences
 
-1. **Humans** — Provision from templates, watch agents work, drop in customizations. Dashboard-first. Expert-only CLIs (Cursor, Hermes, OpenClaw) leave 95% of users behind.
-2. **Other agents (endgame)** — MCP + CLI so a head agent provisions, routes, observes, and tears down worker machines. Platform becomes self-scaling: every machine is worker and potential orchestrator.
+1. **Humans** — Route runtime + substrate, provision presets, supervise fleet.
+2. **Other agents (endgame)** — MCP + CLI so head agents provision, route, observe, tear down workers.
 
-## The harness (what deploys in ~30s)
+## The harness (registry-driven)
 
-Not a single static tool count. A **registry-driven loadout** aligned with `tool-hierarchy.mdc`:
-
-| Layer | What it is |
-|-------|------------|
-| **Skills** | SKILL.md protocol — versioned procedures, npm for agent intelligence |
-| **Service routes** | Per-vendor rankings: MCP → CLI → plugin skill → personal skill |
-| **MCP servers** | Core (playwright, cursor-bridge) + bundled SaaS + IDE bridges |
-| **CLIs** | Closed-loop verification: agent-browser, Playwright, gh, curl, httpx, jq, sqlite3, … |
-| **Agent-native tools** | Varies by runtime — Hermes ~23, OpenClaw ~18, Claude Code ~11, Codex ~9 |
-| **Task routes** | Category rankings: browser QA, security, design review, research, SEO, … |
-
-Source of truth: `knowledge/skills/`, `knowledge/mcps/catalog.json`, dashboard `loadout.ts`, wiki service/task registry.
+See `web/lib/platform/harness.ts` and dashboard loadout for live counts — skills, service routes, MCP catalog, CLIs, agent-native tools, task routes.
 
 ## Defensibility
 
-- **Skill protocol** — procedures compound; switching cost grows every session
-- **Combined harness** — battle-tested tooling deploys as one unit
-- **Observation layer** — sessions, tool calls, skill invocations, cost — orchestrate what you can see
-- **Programmatic surface** — dashboard today, MCP/CLI for agent-to-agent tomorrow
-- **Substrate abstraction** — Dedalus, E2B, Sprites interchangeable; value stays at our layer
+- Dual routing (runtime + substrate)
+- SKILL.md protocol — procedures compound
+- Combined harness — one deploy
+- Observation — orchestrate what you see
+- Programmatic surface (roadmap) — agents provisioning agents
 
 ## Runtime paths
 
-- **Product:** Agent Machines
+- **Product:** Agent Machines (control plane + dashboard + CLI)
 - **Runtime root:** `~/.agent-machines/`
-- **Repo checkout:** `/home/machine/agent-machines/` (reload-from-git)
-- **Hermes** is an agent runtime option, not the product name
+- **Repo checkout:** `/home/machine/agent-machines/`
+- **Hermes / OpenClaw / Claude Code / Codex** — runtime options, not the product name

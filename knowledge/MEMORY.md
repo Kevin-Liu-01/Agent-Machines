@@ -2,7 +2,7 @@
 
 ## Product (read VISION.md)
 
-Agent Machines = **persistent agent-on-a-machine** — the combined primitive (agent + home + skills + services + scheduling + observation). Not Hermes. Not a bare container.
+Agent Machines = **OpenRouter for agents and containers** — control plane for persistent agent workers (runtime + skills + MCP + cron + observation + fleet). Not Hermes. Not a bare sandbox.
 
 Two audiences: humans (dashboard) → agents (MCP/CLI orchestration endgame).
 
@@ -12,7 +12,7 @@ Two audiences: humans (dashboard) → agents (MCP/CLI orchestration endgame).
 - **Runtime root:** `~/.agent-machines` — skills, config, mcps, crons, sessions, logs, chats, artifacts.
 - **Providers:** Dedalus Machines, E2B Sandbox, Sprites.dev.
 - **Agent runtimes:** Hermes, OpenClaw, Claude Code, Codex CLI (native tool sets differ per runtime).
-- **Inference:** `https://api.dedaluslabs.ai/v1` default; 200+ models via Dedalus router.
+- **Inference:** OpenAI-compatible `/v1` (default env in CLI); configurable per machine via `model.base_url`.
 - **Gateway:** `:8642` (Hermes) or `:18789` (OpenClaw). Bearer: `API_SERVER_KEY` in `~/.agent-machines/.env`.
 - **Control plane:** agent-machines.dev dashboard + CLI + (future) Agent Machines MCP server.
 

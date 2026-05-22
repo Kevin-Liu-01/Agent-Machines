@@ -27,7 +27,7 @@ const STAGES: ReadonlyArray<Stage> = [
 	{
 		kicker: "stage 02",
 		title: "The runtime router chooses the host shape.",
-		body: "Dedalus and E2B are persistent machine lanes. Sprites.dev adds another live host with public URL proxy. The UI only shows lifecycle actions that lane can actually do.",
+		body: "E2B, Sprites.dev, and Dedalus Machines are interchangeable substrate routes — OpenRouter-style dual routing. Dedalus benchmarks best on boot and sleep/wake; the UI only shows lifecycle actions each lane supports.",
 		nodes: ["provider", "capability", "host"],
 		accent: "var(--ret-green)",
 	},
@@ -176,7 +176,7 @@ function StageMeta({ index }: { index: number }) {
 		<div className="mt-6 flex items-center gap-2">
 			<Logo mark={index === 0 ? "am" : "agent"} size={18} />
 			<span className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-				persistent agent lane
+				control plane route
 			</span>
 		</div>
 	);

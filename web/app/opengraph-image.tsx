@@ -16,7 +16,7 @@ import { HARNESS_COUNTS } from "@/lib/platform/harness-counts";
  */
 
 export const runtime = "edge";
-export const alt = "Agent Machines — A persistent machine for your agent";
+export const alt = "Agent Machines — OpenRouter for agents and containers";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -79,7 +79,7 @@ export default async function OpengraphImage() {
 							background: COLOR.purpleGlow,
 						}}
 					>
-						stateful vm
+						agents + containers
 					</span>
 					<span
 						style={{
@@ -88,7 +88,7 @@ export default async function OpengraphImage() {
 							color: COLOR.textDim,
 						}}
 					>
-						per-account fleet
+						fleet control plane
 					</span>
 				</div>
 
@@ -103,11 +103,11 @@ export default async function OpengraphImage() {
 						letterSpacing: -1.5,
 					}}
 				>
-					<span style={{ fontSize: 96, color: COLOR.text }}>
-						A persistent machine
+					<span style={{ fontSize: 72, color: COLOR.text }}>
+						OpenRouter for agents
 					</span>
-					<span style={{ fontSize: 96, color: COLOR.textDim }}>
-						for your agent.
+					<span style={{ fontSize: 72, color: COLOR.textDim }}>
+						and containers.
 					</span>
 				</div>
 
@@ -115,15 +115,14 @@ export default async function OpengraphImage() {
 				<div
 					style={{
 						marginTop: 28,
-						fontSize: 28,
+						fontSize: 26,
 						color: COLOR.textDim,
 						lineHeight: 1.35,
 						maxWidth: 980,
 					}}
 				>
-					Boot in 30 seconds, sleep on idle, wake on the first prompt. Chats,
-					files, learned skills, and cron persist on{" "}
-					<span style={{ color: COLOR.text }}>/home/machine</span>.
+					Route runtime + substrate. Deploy persistent workers with skills, MCP,
+					cron, and fleet supervision — one click per specialist.
 				</div>
 
 				{/* Feature strip */}
@@ -142,7 +141,7 @@ export default async function OpengraphImage() {
 						{ label: `${HARNESS_COUNTS.serviceRouteCount} service routes` },
 						{ label: `${HARNESS_COUNTS.cliCount}+ CLIs` },
 						{ label: `${HARNESS_COUNTS.mcpServerCount} MCP servers` },
-						{ label: "combined primitive" },
+						{ label: "route runtime + substrate" },
 					].map((f) => (
 						<div
 							key={f.label}

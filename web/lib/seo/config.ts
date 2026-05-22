@@ -20,8 +20,8 @@ export const SITE = {
 	wordmark: "agent-machines",
 	url: "https://www.agent-machines.dev",
 	description:
-		`${PRODUCT.oneLiner} Hermes, OpenClaw, Claude Code, or Codex on Dedalus, E2B, or Sprites. ${HARNESS_SUMMARY}.`,
-	tagline: "A persistent machine for your agent",
+		`${PRODUCT.oneLiner} Hermes, OpenClaw, Claude Code, or Codex on E2B, Sprites.dev, or Dedalus Machines. ${HARNESS_SUMMARY}.`,
+	tagline: PRODUCT.tagline,
 	ogImage: "/og.png",
 	twitterHandle: "@kevin_liu_01",
 	authorName: "Kevin Liu",
@@ -65,9 +65,13 @@ export type FaqEntry = {
 
 export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
-		question: "What is Agent Machines?",
+		question: "Can I run multiple agents for different jobs?",
 		answer:
-			"Agent Machines deploys persistent agents as a single combined primitive: an agent with a home, skills, services, memory, scheduling, and observability on any container substrate. The dashboard lets humans provision and watch; the MCP/CLI surface (roadmap) lets other agents orchestrate fleets programmatically.",
+			"Yes. Provision a fleet of specialist machines from opinionated presets — e.g. Hermes for research/cron, OpenClaw for browser work, Claude Code or Codex for coding. Each preset bundles runtime, skills, MCPs, and system prompts (the same stack vendors ship as single-purpose products like design or research modes). One dashboard supervises every machine: activity, chat, cron, logs, and cost.",
+	},
+	{
+		question: "What is Agent Machines?",
+		answer: `${PRODUCT.summary} Think OpenRouter for agents and containers: pick Hermes, OpenClaw, Claude Code, or Codex and pick E2B, Sprites.dev, or Dedalus Machines in one account. ${PRODUCT.fleet} The dashboard supervises the fleet; MCP/CLI (roadmap) lets other agents orchestrate workers programmatically.`,
 	},
 	{
 		question: "How is this different from a regular chatbot?",
@@ -82,7 +86,7 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "Which providers can host the machine?",
 		answer:
-			"Dedalus Machines, E2B Sandbox, and Sprites.dev are live provider implementations. Each exposes provision, exec, public URL, and bootstrap through the same MachineProvider abstraction.",
+			"E2B Sandbox, Sprites.dev, and Dedalus Machines are live provider implementations. Each exposes provision, exec, public URL, and bootstrap through the same MachineProvider abstraction. Dedalus currently benchmarks best on boot latency (~250ms) and sleep/wake in our harness; E2B and Sprites are fully supported alternatives.",
 	},
 	{
 		question: "How do I get my own machine today?",
@@ -106,7 +110,7 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "What inference providers are supported?",
 		answer:
-			"Dedalus is the default OpenAI-compatible inference endpoint. The agent is configured through model.base_url and model.default, so the CLI can point DEDALUS_CHAT_BASE_URL at another compatible /v1 endpoint when needed. The dashboard stores a model slug per machine.",
+			"Models route through any OpenAI-compatible /v1 endpoint. The CLI defaults to a vendor-agnostic inference URL; override with DEDALUS_CHAT_BASE_URL or configure model.base_url on the machine. The dashboard stores a model slug per machine.",
 	},
 	{
 		question: "What happens when a machine sleeps?",

@@ -11,7 +11,7 @@ import { LEGAL_EFFECTIVE_DATE, SITE } from "@/lib/seo/config";
 export const metadata: Metadata = {
 	title: "Terms of Service",
 	description:
-		"Terms for using Agent Machines, a persistent machine runtime for agents.",
+		"Terms for using Agent Machines — OpenRouter for agents and containers.",
 	alternates: { canonical: "/terms" },
 };
 
