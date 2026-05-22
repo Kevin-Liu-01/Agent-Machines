@@ -137,7 +137,7 @@ export function ThemeToggle({ className }: { className?: string }) {
 			role="radiogroup"
 			aria-label="Theme"
 			className={cn(
-				"flex overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg-soft)]",
+				"flex h-8 overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg-soft)]",
 				className,
 			)}
 		>
@@ -152,7 +152,7 @@ export function ThemeToggle({ className }: { className?: string }) {
 						aria-checked={isActive}
 						onClick={() => pick(t.id)}
 						className={cn(
-							"flex h-6 w-7 items-center justify-center transition-colors",
+							"flex h-full w-8 items-center justify-center transition-colors",
 							isActive
 								? "bg-[var(--ret-purple-glow)] text-[var(--ret-purple)]"
 								: "text-[var(--ret-text-muted)] hover:text-[var(--ret-text)]",

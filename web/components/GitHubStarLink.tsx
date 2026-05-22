@@ -65,12 +65,12 @@ export async function GitHubStarLink({ repo, className }: Props) {
 				stars !== null ? `${stars.toLocaleString()} stars on GitHub` : "GitHub"
 			}
 			className={cn(
-				"group flex items-center gap-1.5 border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1 font-mono text-[11px] text-[var(--ret-text-dim)] transition-colors hover:border-[var(--ret-border-hover)] hover:bg-[var(--ret-surface)] hover:text-[var(--ret-text)]",
+				"group flex h-8 items-center gap-1.5 border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2.5 text-[13px] font-medium text-[var(--ret-text-dim)] transition-colors hover:border-[var(--ret-border-hover)] hover:bg-[var(--ret-surface)] hover:text-[var(--ret-text)]",
 				className,
 			)}
 		>
 			<ServiceIcon slug="github" size={12} tone="mono" />
-			<span className="text-[var(--ret-text)]">github</span>
+			<span className="text-[var(--ret-text-secondary)]">GitHub</span>
 			{display ? (
 				<>
 					<span className="h-3 w-px bg-[var(--ret-border)]" aria-hidden="true" />

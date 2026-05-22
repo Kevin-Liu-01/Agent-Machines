@@ -1,5 +1,6 @@
 import { AgentCommandToggle } from "@/components/AgentCommandToggle";
 import { ContributionGrid } from "@/components/ContributionGrid";
+import { FleetDemo } from "@/components/FleetDemo";
 import { RuntimeVizGrid } from "@/components/RuntimeVizGrid";
 import { FaqSection } from "@/components/FaqSection";
 import { Footer } from "@/components/Footer";
@@ -23,6 +24,12 @@ export default function HomePage() {
 			<main id="top">
 				<ReticleSection contentClassName="" >
 					<HeroBlock />
+				</ReticleSection>
+
+				<ReticleSpacer />
+
+				<ReticleSection contentClassName="" >
+					<FleetDemo />
 				</ReticleSection>
 
 				<ReticleSpacer />

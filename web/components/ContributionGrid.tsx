@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type CSSProperties } from "react";
+import { useMemo, useState } from "react";
 
 import { Logo, type Mark } from "@/components/Logo";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
@@ -12,6 +12,7 @@ import {
 	type ServiceSlug,
 } from "@/components/ServiceIcon";
 import { ToolIcon } from "@/components/ToolIcon";
+import { HEATMAP_CELL_PX, HeatmapGridCell, HeatmapGridSlot, heatmapGridStyle } from "@/components/heatmap/HeatmapGridCell";
 import { cn } from "@/lib/cn";
 import {
 	generateContributionGrid,
@@ -174,6 +175,7 @@ function EventRow({ event }: { event: ContributionEvent }) {
 }
 
 const INTENSITY_OPACITY = [0.06, 0.32, 0.55, 0.78, 1] as const;
+const CELL_PX = HEATMAP_CELL_PX;
 
 function CellSwatch({
 	day,
@@ -186,20 +188,19 @@ function CellSwatch({
 }) {
 	const hue = PARTNER_HUE[day.partner];
 	const opacity = INTENSITY_OPACITY[day.intensity];
+	const isEmpty = day.intensity === 0;
+
 	return (
-		<button
-			type="button"
+		<HeatmapGridCell
+			empty={isEmpty}
+			fill
+			selected={active}
+			hue={isEmpty ? undefined : hue}
+			opacity={isEmpty ? 1 : opacity}
+			title={`${day.date}, ${day.events.length} events on ${day.partner}`}
 			onClick={() => onSelect(day)}
 			onMouseEnter={() => onSelect(day)}
-			onFocus={() => onSelect(day)}
-			aria-label={`${day.date}, ${day.events.length} events on ${day.partner}`}
-			className={cn(
-				"relative box-border h-full min-h-0 w-full shrink-0 cursor-pointer border p-0 leading-none transition-all duration-100",
-				active
-					? "z-20 scale-[1.1] border-[var(--ret-text)] outline outline-2 outline-offset-1 outline-[var(--ret-purple)]/70 shadow-[0_0_0_1px_var(--ret-bg)]"
-					: "border-[var(--ret-border)]/50 hover:z-10 hover:scale-[1.1] hover:border-[var(--ret-text)]",
-			)}
-			style={{ background: hue, opacity }}
+			className={cn(isEmpty && "bg-[var(--ret-surface)]/20")}
 		/>
 	);
 }
@@ -217,11 +218,17 @@ function MonthLabels({ weeks }: { weeks: ContributionDay[][] }) {
 		return { idx, label: month };
 	});
 	return (
-		<div className="grid gap-[3px]" style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }}>
+		<div
+			className="grid w-full gap-[3px]"
+			style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }}
+		>
 			{weeks.map((_, weekIdx) => {
 				const tag = labels.find((l) => l?.idx === weekIdx);
 				return (
-					<div key={weekIdx} className="text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+					<div
+						key={weekIdx}
+						className="min-w-0 truncate text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]"
+					>
 						{tag?.label ?? ""}
 					</div>
 				);
@@ -367,39 +374,35 @@ export function ContributionGrid() {
 					{/* Cell grid */}
 					<div className="border-b border-[var(--ret-border)] px-3 py-3">
 						<MonthLabels weeks={weeks} />
-						<div
-							className="mt-1 grid gap-[3px]"
-							style={{
-								gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))`,
-								gridTemplateRows: "repeat(7, minmax(0, auto))",
-							}}
-						>
+						<div className="mt-1 grid w-full gap-[3px]" style={heatmapGridStyle(weeks.length)}>
 							{weeks.flatMap((week, weekIdx) =>
 								Array.from({ length: 7 }, (_, dayIdx) => {
-									const placement: CSSProperties = {
-										gridColumn: weekIdx + 1,
-										gridRow: dayIdx + 1,
-									};
 									const day = week[dayIdx];
 									if (!day) {
 										return (
-											<div
-												key={`empty-${weekIdx}-${dayIdx}`}
-												style={placement}
-												className="aspect-square min-h-0 min-w-0 "
-												aria-hidden="true"
-											>
-												<div className="mt-[0.21rem] aspect-square h-full w-full border border-dashed border-[var(--ret-border)]/30"/>
-											</div>
+											<HeatmapGridSlot key={`empty-${weekIdx}-${dayIdx}`} weekIdx={weekIdx} dayIdx={dayIdx}>
+												<HeatmapGridCell empty inert fill />
+											</HeatmapGridSlot>
 										);
 									}
 									const partnerDim = filter !== "all" && day.partner !== filter;
-									const brandDim = brandFilter !== null && !day.events.some((e) => e.brand === brandFilter);
+									const brandDim =
+										brandFilter !== null &&
+										!day.events.some((e) => e.brand === brandFilter);
 									const dimmed = partnerDim || brandDim;
 									return (
-										<div key={day.date} style={placement} className={cn("aspect-square min-h-0 min-w-0", dimmed && "opacity-20")}>
-											<CellSwatch day={day} active={day.date === selected.date} onSelect={setSelected} />
-										</div>
+										<HeatmapGridSlot
+											key={day.date}
+											weekIdx={weekIdx}
+											dayIdx={dayIdx}
+											className={cn(dimmed && "opacity-20")}
+										>
+											<CellSwatch
+												day={day}
+												active={day.date === selected.date}
+												onSelect={setSelected}
+											/>
+										</HeatmapGridSlot>
 									);
 								}),
 							)}

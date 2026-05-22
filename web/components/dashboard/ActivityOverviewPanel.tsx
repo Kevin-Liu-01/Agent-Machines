@@ -20,13 +20,14 @@ import type {
 } from "@/lib/dashboard/activity/types";
 import type { LogLine } from "@/lib/dashboard/types";
 import { fetchLogTail } from "@/lib/fleet/fetch-log-tail";
+import { HEATMAP_CELL_PX, HeatmapGridCell, HeatmapGridSlot, heatmapGridStyle } from "@/components/heatmap/HeatmapGridCell";
 import { cn } from "@/lib/cn";
 import type { AgentKind, ProviderKind } from "@/lib/user-config/schema";
 
 const POLL_MS = 12_000;
 const TIME_SCALE_STORAGE_KEY = "am-activity-time-scale";
 const DAY_LABEL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const CELL_PX = 13;
+const CELL_PX = HEATMAP_CELL_PX;
 
 const AGENT_FILTER_MAP: Record<string, { agent?: AgentKind; provider?: ProviderKind }> = {
 	nous: { agent: "hermes" },
@@ -301,81 +302,74 @@ function HeatmapGrid({
 	onHoverDate: (d: string | null) => void;
 }) {
 	return (
-		<div className="overflow-x-auto">
-			<div className="inline-flex min-w-0 flex-col">
-				<div
-					className="mb-1 grid gap-[3px] pl-7"
-					style={{ gridTemplateColumns: `repeat(${weeks.length}, ${CELL_PX}px)` }}
-				>
-					{monthLabels.map((label, i) => {
-						const show =
-							i === 0 || label !== monthLabels[i - 1];
+		<div className="w-full min-w-0">
+			<div
+				className="mb-1 grid w-full gap-[3px]"
+				style={{
+					gridTemplateColumns: `24px repeat(${weeks.length}, minmax(0, 1fr))`,
+				}}
+			>
+				<div aria-hidden="true" />
+				{monthLabels.map((label, i) => {
+					const show = i === 0 || label !== monthLabels[i - 1];
+					return (
+						<div
+							key={`m-${i}`}
+							className="min-w-0 truncate font-mono text-[8px] uppercase tracking-wider text-[var(--ret-text-muted)]"
+						>
+							{show ? label : ""}
+						</div>
+					);
+				})}
+			</div>
+			<div className="grid w-full gap-[3px]" style={heatmapGridStyle(weeks.length, { labelColumnPx: 24 })}>
+				{DAY_LABEL.map((label, dayIdx) => (
+					<div
+						key={label}
+						className="flex min-h-0 items-center self-stretch font-mono text-[8px] uppercase tracking-wider text-[var(--ret-text-muted)]"
+						style={{ gridColumn: 1, gridRow: dayIdx + 1 }}
+					>
+						{label.slice(0, 1)}
+					</div>
+				))}
+				{weeks.flatMap((week, weekIdx) =>
+					Array.from({ length: 7 }, (_, dayIdx) => {
+						const cell = week[dayIdx] ?? null;
 						return (
-							<div
-								key={`m-${i}`}
-								className="font-mono text-[8px] uppercase tracking-wider text-[var(--ret-text-muted)]"
+							<HeatmapGridSlot
+								key={`${weekIdx}-${dayIdx}`}
+								weekIdx={weekIdx}
+								dayIdx={dayIdx}
+								columnOffset={1}
 							>
-								{show ? label : ""}
-							</div>
+								<HeatmapCellButton
+									cell={cell}
+									agentFilter={agentFilter}
+									serviceFilter={serviceFilter}
+									selected={cell?.date === selectedDate}
+									onSelect={onSelectDate}
+									onHover={onHoverDate}
+								/>
+							</HeatmapGridSlot>
 						);
-					})}
-				</div>
-				<div className="flex gap-[3px]">
-					<div
-						className="grid shrink-0 gap-[3px]"
-						style={{ gridTemplateRows: `repeat(7, ${CELL_PX}px)` }}
-					>
-						{DAY_LABEL.map((label) => (
-							<div
-								key={label}
-								className="flex items-center font-mono text-[8px] uppercase tracking-wider text-[var(--ret-text-muted)]"
-								style={{ width: 24, height: CELL_PX }}
-							>
-								{label.slice(0, 1)}
-							</div>
-						))}
-					</div>
-					<div
-						className="grid gap-[3px]"
+					}),
+				)}
+			</div>
+			<div className="mt-2 flex items-center justify-end gap-1 pl-7 font-mono text-[8px] uppercase tracking-wider text-[var(--ret-text-muted)]">
+				<span>less</span>
+				{[0.15, 0.35, 0.55, 0.75, 1].map((o) => (
+					<span
+						key={o}
+						className="border border-[var(--ret-border)]"
 						style={{
-							gridTemplateColumns: `repeat(${weeks.length}, ${CELL_PX}px)`,
-							gridTemplateRows: `repeat(7, ${CELL_PX}px)`,
+							width: CELL_PX,
+							height: CELL_PX,
+							background: "var(--ret-purple)",
+							opacity: o,
 						}}
-					>
-						{weeks.flatMap((week, weekIdx) =>
-							Array.from({ length: 7 }, (_, dayIdx) => {
-								const cell = week[dayIdx] ?? null;
-								return (
-									<HeatmapCellButton
-										key={`${weekIdx}-${dayIdx}`}
-										cell={cell}
-										agentFilter={agentFilter}
-										serviceFilter={serviceFilter}
-										selected={cell?.date === selectedDate}
-										onSelect={onSelectDate}
-										onHover={onHoverDate}
-									/>
-								);
-							}),
-						)}
-					</div>
-				</div>
-				<div className="mt-2 flex items-center justify-end gap-1 pl-7 font-mono text-[8px] uppercase tracking-wider text-[var(--ret-text-muted)]">
-					<span>less</span>
-					{[0.15, 0.35, 0.55, 0.75, 1].map((o) => (
-						<span
-							key={o}
-							className="border border-[var(--ret-border)]"
-							style={{
-								width: CELL_PX,
-								height: CELL_PX,
-								background: "var(--ret-purple)",
-								opacity: o,
-							}}
-						/>
-					))}
-					<span>more</span>
-				</div>
+					/>
+				))}
+				<span>more</span>
 			</div>
 		</div>
 	);
@@ -397,13 +391,7 @@ function HeatmapCellButton({
 	onHover: (d: string | null) => void;
 }) {
 	if (!cell) {
-		return (
-			<div
-				className="border border-dashed border-[var(--ret-border)]/35 bg-transparent"
-				style={{ width: CELL_PX, height: CELL_PX }}
-				aria-hidden="true"
-			/>
-		);
+		return <HeatmapGridCell empty inert fill />;
 	}
 
 	const matches = cellMatchesFilters(cell, agentFilter, serviceFilter);
@@ -411,24 +399,18 @@ function HeatmapCellButton({
 	const opacity = isEmpty ? 1 : 0.15 + (cell.level / 4) * 0.85;
 
 	return (
-		<button
-			type="button"
+		<HeatmapGridCell
+			empty={isEmpty}
+			fill
+			selected={selected}
+			dimmed={!matches}
+			hue={isEmpty ? undefined : cell.hue}
+			opacity={matches ? opacity : 0.12}
 			title={`${cell.date} — ${cell.events.length} events`}
-			className={cn(
-				"shrink-0 border border-[var(--ret-border)] transition-opacity",
-				isEmpty && "bg-[var(--ret-surface)]/25",
-				selected && "ring-1 ring-[var(--ret-purple)]/50",
-				!matches && "opacity-20",
-			)}
-			style={{
-				width: CELL_PX,
-				height: CELL_PX,
-				background: !isEmpty ? cell.hue : undefined,
-				opacity: matches ? opacity : 0.12,
-			}}
 			onClick={() => onSelect(selected ? null : cell.date)}
 			onMouseEnter={() => onHover(cell.date)}
 			onMouseLeave={() => onHover(null)}
+			className={cn(isEmpty && "bg-[var(--ret-surface)]/25")}
 		/>
 	);
 }

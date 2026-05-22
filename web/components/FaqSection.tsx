@@ -20,9 +20,9 @@ export function FaqSection() {
 				{FAQ.map(({ question, answer }, i) => (
 					<div
 						key={question}
-						className="grid gap-3 border-l-2 border-l-[var(--ret-purple)]/30 bg-[var(--ret-bg)] px-5 py-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] md:gap-8"
+						className="grid gap-3 bg-[var(--ret-bg)] px-5 py-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] md:gap-8"
 					>
-						<dt className="flex items-baseline gap-3">
+						<dt className="flex items-baseline gap-3 border-l-2 border-l-[var(--ret-purple)]/30 pl-3 md:pl-4">
 							<span className="tabular-nums text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
 								{String(i + 1).padStart(2, "0")}
 							</span>

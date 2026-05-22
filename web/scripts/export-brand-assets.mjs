@@ -100,9 +100,12 @@ async function writeFavicons() {
 		source.clone().resize(16, 16).png().toBuffer(),
 		source.clone().resize(32, 32).png().toBuffer(),
 	]);
-	writeFileSync(path.join(PUBLIC, "favicon.ico"), await toIco([fav16, fav32]));
+	const favicon = await toIco([fav16, fav32]);
+	// Next.js App Router serves app/favicon.ico (not public/) for /favicon.ico.
+	writeFileSync(path.join(APP, "favicon.ico"), favicon);
+	writeFileSync(path.join(PUBLIC, "favicon.ico"), favicon);
 	console.log(
-		"wrote app/icon.png, app/apple-icon.png, public/favicon.ico (from icon-nyx-waves)",
+		"wrote app/icon.png, app/apple-icon.png, app/favicon.ico, public/favicon.ico (from icon-nyx-waves)",
 	);
 }
 
