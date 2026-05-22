@@ -46,12 +46,11 @@ export const PROVIDER_LABELS: Record<(typeof RUNTIME.providersLive)[number], str
 };
 
 export function migrateLegacyPathsShell(home: string, runtimeHome: string): string {
+	// Each fragment must be a single `&&`-joinable unit — no multiline if/fi
+	// blocks, or bash sees `then &&` after join and fails.
 	return [
 		`mkdir -p ${runtimeHome}/logs ${runtimeHome}/skills ${runtimeHome}/scripts`,
-		`if [ -d ${home}/.hermes ] && [ ! -f ${runtimeHome}/.migrated-from-hermes ]; then`,
-		`  (command -v rsync >/dev/null && rsync -a ${home}/.hermes/ ${runtimeHome}/) || cp -a ${home}/.hermes/. ${runtimeHome}/ || true`,
-		`  touch ${runtimeHome}/.migrated-from-hermes`,
-		`fi`,
+		`if [ -d ${home}/.hermes ] && [ ! -f ${runtimeHome}/.migrated-from-hermes ]; then (command -v rsync >/dev/null && rsync -a ${home}/.hermes/ ${runtimeHome}/) || cp -a ${home}/.hermes/. ${runtimeHome}/ || true; touch ${runtimeHome}/.migrated-from-hermes; fi`,
 		`ln -sfn ${runtimeHome} ${home}/.hermes`,
 		`if [ -d ${home}/hermes-machines/.git ] && [ ! -e ${home}/agent-machines ]; then ln -sfn ${home}/hermes-machines ${home}/agent-machines; fi`,
 	].join(" && ");

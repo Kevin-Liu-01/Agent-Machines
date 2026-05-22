@@ -147,9 +147,10 @@ export function Logo({ mark, size = 18, className, tone }: Props) {
 		);
 	}
 
-	const resolved = tone ?? DEFAULT_TONE[mark];
+	const native = NATIVE_SRC[mark as Mark];
+	const resolved = tone ?? DEFAULT_TONE[mark as Mark];
 	const dim = `${size}px`;
-	const aria = ARIA_LABEL[mark];
+	const aria = ARIA_LABEL[mark as Mark] ?? String(mark);
 
 	if (resolved === "currentColor") {
 		// The Nous mark's source SVG paints a rectangular frame at its
@@ -192,7 +193,22 @@ export function Logo({ mark, size = 18, className, tone }: Props) {
 		);
 	}
 
-	const { light, dark } = NATIVE_SRC[mark];
+	if (!native) {
+		return (
+			<span
+				role="img"
+				aria-label={aria}
+				className={cn(
+					"inline-flex shrink-0 items-center justify-center rounded-sm border border-[var(--ret-border)] bg-[var(--ret-surface)] font-mono text-[9px] uppercase text-[var(--ret-text-muted)]",
+					className,
+				)}
+				style={{ width: dim, height: dim }}
+			>
+				{String(mark).slice(0, 2)}
+			</span>
+		);
+	}
+	const { light, dark } = native;
 	if (resolved === "native" || light === dark) {
 		return (
 			<span

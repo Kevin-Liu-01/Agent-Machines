@@ -64,10 +64,7 @@ async function migrateLegacyPaths({ client, machineId }: BootstrapInput): Promis
 		machineId,
 		[
 			`mkdir -p ${VM_APP_HOME}/logs ${VM_APP_HOME}/skills ${VM_APP_HOME}/scripts`,
-			`if [ -d ${VM_HOME}/.hermes ] && [ ! -f ${VM_APP_HOME}/.migrated-from-hermes ]; then`,
-			`  (command -v rsync >/dev/null && rsync -a ${VM_HOME}/.hermes/ ${VM_APP_HOME}/) || cp -a ${VM_HOME}/.hermes/. ${VM_APP_HOME}/ || true`,
-			`  touch ${VM_APP_HOME}/.migrated-from-hermes`,
-			`fi`,
+			`if [ -d ${VM_HOME}/.hermes ] && [ ! -f ${VM_APP_HOME}/.migrated-from-hermes ]; then (command -v rsync >/dev/null && rsync -a ${VM_HOME}/.hermes/ ${VM_APP_HOME}/) || cp -a ${VM_HOME}/.hermes/. ${VM_APP_HOME}/ || true; touch ${VM_APP_HOME}/.migrated-from-hermes; fi`,
 			`ln -sfn ${VM_APP_HOME} ${VM_HOME}/.hermes`,
 			`if [ -d ${VM_HOME}/hermes-machines/.git ] && [ ! -e ${VM_REPO_DIR} ]; then ln -sfn ${VM_HOME}/hermes-machines ${VM_REPO_DIR}; fi`,
 		].join(" && "),
