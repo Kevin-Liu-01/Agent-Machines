@@ -13,16 +13,16 @@ type Props = {
 	gap?: "tight" | "default";
 	/**
 	 * Reserved for surfaces that pin a single agent in copy; the lockup
-	 * always cycles partner marks at cruise speed (no intro spin).
+	 * cycles partner marks at cruise speed unless `intro` is enabled.
 	 */
 	agent?: Variant;
-	/** @deprecated Use AnimatedBrandMark `intro` directly. Lockups never spin fast on mount. */
+	/** Fast initial carousel on mount (navbar hero moment). */
 	intro?: boolean;
 };
 
 /**
  * Lockup of the Agent Machines mark × rotating partner marks separated by "×".
- * Delegates to AnimatedBrandMark at normal cruise speed (no initial fast spin).
+ * Pass `intro` for the fast spin on first paint (navbar).
  */
 export function BrandMark({
 	size = 22,

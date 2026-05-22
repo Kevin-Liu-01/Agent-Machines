@@ -253,8 +253,8 @@ function AccountFlowDiagram() {
 
 const PROVIDERS = [
 	{ name: "Dedalus", caps: ["disk", "wake/sleep", "exec", "tunnel"], accent: "var(--ret-purple)" },
-	{ name: "Fly", caps: ["disk", "volume", "machine API", "exec"], accent: "var(--ret-green)" },
-	{ name: "Sandbox", caps: ["session exec", "external storage", "ephemeral", "microVM"], accent: "var(--ret-amber)" },
+	{ name: "Sprites", caps: ["disk", "auto-sleep", "checkpoints", "public URL"], accent: "var(--ret-green)" },
+	{ name: "E2B", caps: ["pause/resume", "snapshots", "exec", "microVM"], accent: "var(--ret-amber)" },
 ] as const;
 
 function ProviderComparisonDiagram() {
@@ -275,8 +275,9 @@ function ProviderComparisonDiagram() {
 						))}
 					</ul>
 					<div className="mt-3">
-						{p.name === "Dedalus" ? <Logo mark="dedalus" size={14} /> : null}
-						{p.name === "Sandbox" ? <ServiceIcon slug="vercel" size={14} /> : null}
+						{p.name === "Dedalus" ? <Logo mark="dedalus" size={14} tone="auto" /> : null}
+						{p.name === "Sprites" ? <ServiceIcon slug="sprites" size={14} tone="color" /> : null}
+						{p.name === "E2B" ? <ServiceIcon slug="e2b" size={14} tone="color" /> : null}
 					</div>
 				</div>
 			))}

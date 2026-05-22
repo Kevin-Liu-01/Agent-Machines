@@ -34,7 +34,7 @@ import { HARNESS, HARNESS_SUMMARY } from "@/lib/platform/harness";
  *   y=0    operator                                                   *
  *   y=140  dashboard      |   CLI                                     *
  *   y=280  fleet                                                      *
- *   y=420  Vercel | Dedalus(live) | Fly       <- 3-column             *
+ *   y=420  Vercel | Dedalus(live) | Sprites       <- 3-column             *
  *   y=580  persistent Linux machine                                   *
  *   y=720  Hermes  |  gateway  |  OpenClaw    <- agent runtime row    *
  *   y=860  ~/.agent-machines/ (runtime state + app data + repo)        *

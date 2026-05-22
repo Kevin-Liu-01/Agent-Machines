@@ -92,7 +92,7 @@ const PROVIDERS_META: Record<
 	sprites: {
 		name: "Sprites",
 		tagline:
-			"Persistent Linux sandboxes by Fly.io. Auto-sleep, instant wake, checkpoints, public URLs. The simplest place to run an agent.",
+			"Persistent Linux sandboxes on Sprites.dev. Auto-sleep, instant wake, checkpoints, public URLs. Runs on Fly.io infrastructure.",
 		keyLabel: "Sprites token",
 		keyPlaceholder: "kevin-liu-553/...",
 		keyHint: "Get one at sprites.dev/account",
@@ -114,7 +114,7 @@ const COMPARISON_ROWS: ReadonlyArray<{
 	sprites: string;
 }> = [
 	{ label: "Type", dedalus: "Persistent VM", e2b: "Pausable sandbox", sprites: "Persistent sandbox" },
-	{ label: "OS", dedalus: "Ubuntu", e2b: "Debian 12", sprites: "Linux (Fly.io)" },
+	{ label: "OS", dedalus: "Ubuntu", e2b: "Debian 12", sprites: "Linux" },
 	{ label: "Sleep / wake", dedalus: "Manual", e2b: "Pause / resume", sprites: "Auto-sleep / auto-wake" },
 	{ label: "Cold start", dedalus: "~30s", e2b: "Instant", sprites: "~5s" },
 	{ label: "Storage", dedalus: "Persistent disk", e2b: "Persists across pause", sprites: "Persistent ext4" },

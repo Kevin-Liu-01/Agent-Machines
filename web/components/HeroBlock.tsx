@@ -11,6 +11,7 @@ import { ToolIcon } from "@/components/ToolIcon";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
+import { ProviderRouteBanner } from "@/components/ProviderRouteBanner";
 
 /* ── 3D scenes (lazy) ── */
 
@@ -40,7 +41,7 @@ const WireframeDashboardScene = dynamic(
 const AGENT_WORD: Record<HeroAgent, string> = {
 	hermes: "Persistent",
 	openclaw: "Autonomous",
-	"claude-code": "Stateful",
+	"claude-code": "Agentic",
 	codex: "Sandboxed",
 };
 
@@ -367,9 +368,9 @@ const RAIL_AGENTS: ReadonlyArray<{
 }> = [
 	{ mark: "nous", label: "Hermes", id: "hermes", word: "Persistent" },
 	{ mark: "openclaw", label: "OpenClaw", id: "openclaw", word: "Autonomous" },
-	{ mark: "anthropic", label: "Claude", id: "claude-code", word: "Stateful" },
+	{ mark: "anthropic", label: "Claude", id: "claude-code", word: "Agentic" },
 	{ mark: "openai", label: "Codex", id: "codex", word: "Sandboxed" },
-	{ mark: "cursor", label: "Cursor", id: null, word: "Integrated" },
+	{ mark: "cursor", label: "Cursor", id: null, word: "Routed" },
 ];
 
 function agentRailCell(
@@ -459,34 +460,7 @@ export function HeroBlock() {
 
 	return (
 		<div className="relative">
-			{/* ── Announcement banner ── */}
-			<a
-				href="/dashboard/setup"
-				className="bg-[var(--ret-bg-soft)] group/banner relative flex items-center gap-3 border-b border-[var(--ret-border)] px-5 py-2.5 transition-colors hover:bg-[var(--ret-surface)]"
-			>
-				{/* Corner crosshair marks */}
-				<span className="pointer-events-none absolute left-1.5 top-1.5 h-1.5 w-1.5 border-l border-t border-[var(--ret-cross)] opacity-40" />
-				<span className="pointer-events-none absolute bottom-1.5 left-1.5 h-1.5 w-1.5 border-b border-l border-[var(--ret-cross)] opacity-40" />
-				<span className="pointer-events-none absolute right-1.5 top-1.5 h-1.5 w-1.5 border-r border-t border-[var(--ret-cross)] opacity-40" />
-				<span className="pointer-events-none absolute bottom-1.5 right-1.5 h-1.5 w-1.5 border-b border-r border-[var(--ret-cross)] opacity-40" />
-
-				<svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5 text-[var(--ret-purple)]" aria-hidden>
-					<path d="M8 1v4M8 11v4M1 8h4M11 8h4M3.5 3.5l2.5 2.5M10 10l2.5 2.5M12.5 3.5L10 6M6 10l-2.5 2.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
-					<circle cx="8" cy="8" r="2" fill="currentColor" opacity="0.5" />
-				</svg>
-				<span className="text-[9px] font-medium uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-					Route <span className="text-[var(--ret-purple)]">E2B · Sprites · Dedalus</span>
-				</span>
-
-				<span className="hidden text-[10px] text-[var(--ret-text-dim)] sm:inline">
-					OpenRouter for agents and containers
-				</span>
-
-				<span className="ml-auto flex items-center gap-1.5 text-[9px] uppercase tracking-[0.18em] text-[var(--ret-purple)] opacity-60 transition-opacity group-hover/banner:opacity-100">
-					/dashboard/setup
-					<IconArrowRight className="h-2.5 w-2.5 transition-transform group-hover/banner:translate-x-0.5" />
-				</span>
-			</a>
+			<ProviderRouteBanner />
 
 			{/* ── Single unified grid: col 1 = rail, cols 2-8 = content ── */}
 			<div className="grid grid-cols-4 auto-rows-auto md:grid-cols-[4.5rem_repeat(7,1fr)_4.5rem]">
@@ -599,13 +573,16 @@ export function HeroBlock() {
 								<h1 className="ret-display text-[clamp(2rem,5.5vw,4.5rem)] leading-[0.95] tracking-tight">
 									<span className="flex items-center whitespace-nowrap">
 										<span className="h-px w-4 shrink-0 border-t border-dashed border-[var(--ret-border)] md:w-8" />
-										<span className="px-3">OpenRouter</span>
+										<span className="px-3">
+											<AnimatedWord word={activeWord} hue={hue} />
+											{" "}Agents
+										</span>
 										<span className="h-px flex-1 border-t border-dashed border-[var(--ret-border)]" />
 									</span>
-									<span className="flex items-center">
+									<span className="flex items-center whitespace-nowrap">
 										<span className="h-px w-4 shrink-0 border-t border-dashed border-[var(--ret-border)] md:w-8" />
 										<span className="px-3 text-[var(--ret-text-muted)]">
-											for agents and containers.
+											on any substrate.
 										</span>
 										<span className="h-px flex-1 border-t border-dashed border-[var(--ret-border)]" />
 									</span>
@@ -672,7 +649,7 @@ export function HeroBlock() {
 						<p className="max-w-[56ch] text-[15px] leading-relaxed text-[var(--ret-text-dim)]">
 							Route runtime and substrate in one account.{" "}
 							<strong className="text-[var(--ret-text)]">
-								Deploy persistent agent workers — skills, MCP, cron, observation — and supervise your fleet from one dashboard.
+								Deploy persistent agent workers with tools and supervise your fleet from one dashboard.
 							</strong>
 						</p>
 					</div>

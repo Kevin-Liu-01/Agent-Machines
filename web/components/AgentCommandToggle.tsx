@@ -234,7 +234,7 @@ function TerminalPanel({ agentId, meta }: { agentId: AgentKind; meta: AgentMeta 
 			</div>
 			<div
 				ref={scrollRef}
-				className="flex-1 overflow-y-auto overflow-x-hidden p-4 font-mono text-[11px] leading-[1.7] scrollbar-thin scrollbar-track-transparent scrollbar-thumb-[#333]"
+				className="flex-1 overflow-y-auto overflow-x-hidden p-4 font-mono text-[11px] leading-[1.7]"
 			>
 				{/* ASCII art header */}
 				<pre className="mb-3 text-[9px] leading-[1.4] text-[#444]">{ascii}</pre>

@@ -1,4 +1,5 @@
 import { UserButton } from "@clerk/nextjs";
+import type { SVGProps } from "react";
 
 import { SignedIn, SignedOut } from "@/components/AuthSwitch";
 import { BrandHomeLockup } from "@/components/BrandHomeLockup";
@@ -13,11 +14,11 @@ const CLERK_READY = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 type NavItem = {
 	href: string;
 	label: string;
+	icon: (props: SVGProps<SVGSVGElement>) => React.ReactElement;
 };
 
 /**
  * Public site navbar — landing and other marketing surfaces.
- * Serif wordmark for brand; everything else stays on Nacelle sans.
  */
 export async function PublicNavbar({
 	githubRepo,
@@ -25,39 +26,46 @@ export async function PublicNavbar({
 	githubRepo: string;
 }) {
 	const items: ReadonlyArray<NavItem> = [
-		{ href: "/#capabilities", label: "Features" },
-		{ href: "/#runtime", label: "Live" },
-		{ href: "/#loadout", label: "Tools" },
-		{ href: "/registry", label: "Registry" },
-		{ href: "/#skills", label: "Skills" },
-		{ href: "/#architecture", label: "Stack" },
-		{ href: "/faq", label: "FAQ" },
+		{ href: "/#capabilities", label: "Features", icon: IconFeatures },
+		{ href: "/#runtime", label: "Live", icon: IconLive },
+		{ href: "/#loadout", label: "Tools", icon: IconTools },
+		{ href: "/registry", label: "Registry", icon: IconRegistry },
+		{ href: "/#skills", label: "Skills", icon: IconSkills },
+		{ href: "/#architecture", label: "Stack", icon: IconStack },
+		{ href: "/faq", label: "FAQ", icon: IconFaq },
 	];
 
 	return (
 		<ReticleNavbar>
-			<div className="grid h-14 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-3 px-5 md:px-6">
-				<BrandHomeLockup density="navbar" className="min-w-0" />
+			<div className="relative flex h-14 items-center gap-2 px-3 sm:gap-3 md:px-4 lg:px-5">
+				<BrandHomeLockup
+					density="navbar"
+					className="relative z-10 shrink-0"
+				/>
 
 				<nav
 					aria-label="Sections"
-					className="hidden items-center justify-center gap-0.5 md:flex"
+					className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] md:flex"
 				>
-					{items.map((item) => (
-						<a
-							key={item.href}
-							href={item.href}
-							className={cn(
-								"whitespace-nowrap rounded-sm px-2.5 py-1.5 text-[13px] font-medium tracking-[-0.01em] text-[var(--ret-text-dim)] transition-colors",
-								"hover:bg-[var(--ret-surface)] hover:text-[var(--ret-text)]",
-							)}
-						>
-							{item.label}
-						</a>
-					))}
+					{items.map((item) => {
+						const Icon = item.icon;
+						return (
+							<a
+								key={item.href}
+								href={item.href}
+								className={cn(
+									"flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-[var(--ret-text-dim)] transition-colors",
+									"hover:bg-[var(--ret-surface)] hover:text-[var(--ret-text)]",
+								)}
+							>
+								<Icon className="h-3 w-3 shrink-0 text-[var(--ret-text-muted)]" />
+								<span>{item.label}</span>
+							</a>
+						);
+					})}
 				</nav>
 
-				<div className="flex items-center justify-end gap-2">
+				<div className="relative z-10 ml-auto flex shrink-0 items-center justify-end gap-2">
 					<GitHubStarLink repo={githubRepo} className="hidden md:flex" />
 					<ThemeToggle className="h-8" />
 					<SignedIn>
@@ -78,5 +86,71 @@ export async function PublicNavbar({
 				</div>
 			</div>
 		</ReticleNavbar>
+	);
+}
+
+function IconFeatures(props: SVGProps<SVGSVGElement>) {
+	return (
+		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+			<rect x="2" y="2" width="5" height="5" />
+			<rect x="9" y="2" width="5" height="5" />
+			<rect x="2" y="9" width="5" height="5" />
+			<rect x="9" y="9" width="5" height="5" />
+		</svg>
+	);
+}
+
+function IconLive(props: SVGProps<SVGSVGElement>) {
+	return (
+		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+			<path d="M2 8h2.5l1.5-4 3 8 1.5-4H14" />
+		</svg>
+	);
+}
+
+function IconTools(props: SVGProps<SVGSVGElement>) {
+	return (
+		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+			<path d="M9 4l3 3-7 7H2v-3l7-7z" />
+			<path d="M11 2l3 3" />
+		</svg>
+	);
+}
+
+function IconRegistry(props: SVGProps<SVGSVGElement>) {
+	return (
+		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+			<rect x="2" y="2" width="12" height="12" />
+			<path d="M2 6h12M6 6v8" />
+		</svg>
+	);
+}
+
+function IconSkills(props: SVGProps<SVGSVGElement>) {
+	return (
+		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+			<path d="M3 3h7l3 3v7H3z" />
+			<path d="M5 6h6M5 8.5h6M5 11h4" />
+		</svg>
+	);
+}
+
+function IconStack(props: SVGProps<SVGSVGElement>) {
+	return (
+		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+			<path d="M8 2L2 5l6 3 6-3z" />
+			<path d="M2 11l6 3 6-3" />
+			<path d="M2 8l6 3 6-3" />
+		</svg>
+	);
+}
+
+function IconFaq(props: SVGProps<SVGSVGElement>) {
+	return (
+		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+			<path d="M5.5 6a2.5 2.5 0 1 1 4 2c-.7.5-1 1-1 2" />
+			<line x1="8.5" y1="12.5" x2="8.5" y2="12.5" />
+			<rect x="2" y="2" width="12" height="12" />
+		</svg>
 	);
 }

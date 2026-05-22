@@ -11,7 +11,7 @@ First comprehensive live-fire QA session against the Agent Machines web dashboar
 | 00:00 | Session start — full walkthrough of dashboard, per-machine pages, settings |
 | 00:15 | Typography audit — found 48+ misuses of `font-mono` on body text |
 | 00:30 | Per-machine routing bug discovered — commands routing to wrong machine |
-| 00:50 | Dedalus-only credential gates blocking Fly/Sandbox providers |
+| 00:50 | Dedalus-only credential gates blocking Sprites/E2B providers |
 | 01:10 | Agent label hardcoding found across chat and metrics |
 | 01:30 | Quota exhaustion hit — 4 invisible machines consuming slots |
 | 01:45 | Gateway bootstrap failure traced to dpkg lock on fresh VMs |
@@ -34,7 +34,7 @@ All 7 API routes (`logs`, `sessions`, `cursor`, `exec`, `chats`, `artifacts`, `g
 
 ### 3. Dedalus-specific credential gates
 
-`logs`, `sessions`, and `cursor` API routes checked `config.providers.dedalus?.apiKey` before proceeding. This blocked Fly and Vercel Sandbox users even when their machine was running and healthy.
+`logs`, `sessions`, and `cursor` API routes checked `config.providers.dedalus?.apiKey` before proceeding. This blocked Sprites and E2B users even when their machine was running and healthy.
 
 **Why:** Auth was added during the Dedalus-only era and never generalized when the provider abstraction was introduced.
 

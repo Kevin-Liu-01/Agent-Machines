@@ -129,7 +129,7 @@ export function FleetLiveTerminal({
 			ref={scrollRef}
 			className={cn(
 				FLEET_TERMINAL_HEIGHT_CLASS,
-				"fleet-terminal-scroll overflow-y-auto overflow-x-hidden font-mono",
+				"overflow-y-auto overflow-x-hidden font-mono",
 			)}
 		>
 			<div className="flex flex-col gap-px pr-1 pb-1">

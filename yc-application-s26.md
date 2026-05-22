@@ -22,7 +22,7 @@ The Bay is building layers. Nobody has shipped the **combined primitive**:
 
 | What people are building | Players | The problem |
 |---|---|---|
-| **Containers** (bare compute) | E2B, Modal, Fly, Daytona | Nobody wants a bare container. |
+| **Containers** (bare compute) | E2B, Modal, Sprites, Daytona | Nobody wants a bare container. |
 | **Frameworks** (agent logic) | LangGraph, CrewAI, OpenClaw | Logic without a persistent home. |
 | **Memory** (bolt-on state) | Mem0 ($24M), Letta ($10M) | Band-aid on stateless models. |
 | **Models** (raw intelligence) | OpenAI, Anthropic, Google | Commodity. Falling prices. |
@@ -77,7 +77,7 @@ Agent Machines is **OpenRouter for agents and containers** — the product layer
 
 **Fleet:** Provision design, news, code specialists from presets — vendor SKUs are UI + skills + MCPs + prompts; we ship that composable, one click per machine, one dashboard to supervise all.
 
-**Origin:** I built this to benchmark agents across E2B, Fly, Modal, and microVM providers — deploy the same harness everywhere, observe behavior, compare substrates. The observation layer became more valuable than the benchmarks. Then lifecycle control, skills, cron, fleet UI. Benchmark tool → observation layer → control plane → product.
+**Origin:** I built this to benchmark agents across E2B, Sprites, Modal, and microVM providers — deploy the same harness everywhere, observe behavior, compare substrates. The observation layer became more valuable than the benchmarks. Then lifecycle control, skills, cron, fleet UI. Benchmark tool → observation layer → control plane → product.
 
 **Live today:**
 
@@ -147,7 +147,7 @@ The name *is* the primitive: **agent machines**.
 
 | Layer | Examples | Our position |
 |---|---|---|
-| Container/VM | E2B, Modal, Fly, Daytona | Substrate; we give it a use case |
+| Container/VM | E2B, Modal, Sprites, Daytona | Substrate; we give it a use case |
 | Memory | Mem0, Letta | One feature of a machine with a filesystem |
 | Frameworks | LangGraph, CrewAI | Logic without deploy/persist/observe |
 | Expert CLIs | Cursor SDK, Claude Code, Hermes CLI | Single-agent; no fleet control plane |

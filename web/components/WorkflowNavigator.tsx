@@ -2,6 +2,7 @@ import type { SVGProps } from "react";
 
 import { Logo, type Mark } from "@/components/Logo";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
+import { ServiceIcon, type ServiceSlug } from "@/components/ServiceIcon";
 import { WorkflowTabs } from "@/components/WorkflowTabs";
 import { cn } from "@/lib/cn";
 import { HARNESS } from "@/lib/platform/harness";
@@ -12,7 +13,9 @@ import { HARNESS } from "@/lib/platform/harness";
 
 type Bullet = readonly [prefix: string, highlight: string, suffix?: string];
 
-type PoweredByEntry = { name: string; mark: Mark };
+type PoweredByEntry =
+	| { kind: "logo"; name: string; mark: Mark }
+	| { kind: "service"; name: string; slug: ServiceSlug };
 
 type Step = {
 	id: string;
@@ -29,39 +32,42 @@ const STEPS: ReadonlyArray<Step> = [
 	{
 		id: "ui",
 		tab: "dashboard",
-		kicker: "AGENT MACHINES · DASHBOARD",
-		title: "Configure once, then operate from the fleet view.",
-		body: "Settings, setup, machine lifecycle, terminal, logs, artifacts, and chat all read from the same account configuration instead of one-off wizard state.",
+		kicker: "AGENT MACHINES · CONTROL PLANE",
+		title: "Configure once, supervise the whole fleet.",
+		body: "Settings, setup, worker lifecycle, terminal, logs, artifacts, and chat all read from the same account objects — not one-off wizard state.",
 		Icon: IconPanel,
 		bullets: [
-			["Configure all ", "settings", " — providers, gateways, and profiles"],
-			["Full machine lifecycle: ", "wake · sleep · destroy"],
+			["Route ", "runtime + substrate", " from one account settings model"],
+			["Worker lifecycle: ", "wake · sleep · destroy", " (per substrate capability)"],
 			["Persistent state in ", "/home/machine/.agent-machines"],
 		],
-		poweredBy: [{ name: "Dedalus", mark: "dedalus" }],
+		poweredBy: [
+			{ kind: "service", name: "Clerk", slug: "clerk" },
+			{ kind: "service", name: "Vercel", slug: "vercel" },
+		],
 	},
 	{
 		id: "agent",
 		tab: "agent",
-		kicker: "AGENT MACHINES · RUNTIME",
-		title: "Four agents, two operation models, one machine.",
-		body: "Autonomous agents have built-in drivers that wake up on schedule. Task-driven CLIs run per-task but can be automated via headless flags and cron.",
+		kicker: "AGENT MACHINES · RUNTIME ROUTES",
+		title: "Four runtimes, two operation models, one worker.",
+		body: "Autonomous agents wake on schedule with built-in drivers. Task-driven CLIs run per job but automate via headless flags and cron — same gateway and disk boundary.",
 		Icon: IconAgent,
 		bullets: [
-			["Autonomous agents: ", "Hermes · OpenClaw"],
-			["Task-driven CLIs: ", "Claude Code · Codex"],
+			["Autonomous routes: ", "Hermes · OpenClaw"],
+			["Task-driven routes: ", "Claude Code · Codex"],
 			["Reusable per-account ", "agent profiles"],
 		],
 		poweredBy: [
-			{ name: "Nous", mark: "nous" },
-			{ name: "OpenClaw", mark: "openclaw" },
+			{ kind: "logo", name: "Nous", mark: "nous" },
+			{ kind: "logo", name: "OpenClaw", mark: "openclaw" },
 		],
 	},
 	{
 		id: "tools",
 		tab: "tools + mcps",
 		kicker: "AGENT MACHINES · LOADOUT",
-		title: "Skills, MCP servers, CLI tools, and plugins — all visible.",
+		title: "Skills, MCP servers, CLIs, and plugins — one harness.",
 		body: "Built-ins and custom loadout entries live in the same account settings model so terminal edits sync back into the dashboard.",
 		Icon: IconTools,
 		bullets: [
@@ -70,35 +76,38 @@ const STEPS: ReadonlyArray<Step> = [
 			["", `${HARNESS.cliCount}+ CLIs`, " · closed-loop verification"],
 			["Custom loadout: ", "skill · tool · mcp · cli · plugin"],
 		],
-		poweredBy: [],
+		poweredBy: [{ kind: "logo", name: "Agent Machines", mark: "am" }],
 	},
 	{
 		id: "providers",
 		tab: "providers",
-		kicker: "AGENT MACHINES · HOSTS",
-		title: "Dedalus, E2B, and Sprites are live.",
-		body: "Persistent-machine providers expose disk, wake/sleep, destroy, and exec. Each maps to the same bootstrap and dashboard surfaces.",
+		kicker: "AGENT MACHINES · SUBSTRATE ROUTES",
+		title: "E2B, Sprites, and Dedalus are interchangeable lanes.",
+		body: "OpenRouter-style substrate routing — same bootstrap, gateway, and dashboard surfaces. Pick the host shape; lifecycle actions follow what each lane supports.",
 		Icon: IconProvider,
 		bullets: [
-			["", "Dedalus", " — persistent microVM with full disk"],
 			["", "E2B", " — sandbox with pause/resume"],
-			["", "Sprites", " — Sprites.dev compute"],
+			["", "Sprites", " — persistent microVM on Sprites.dev"],
+			["", "Dedalus Machines", " — strong default on boot and sleep/wake"],
 		],
-		poweredBy: [{ name: "Dedalus", mark: "dedalus" }],
+		poweredBy: [],
 	},
 	{
 		id: "env",
 		tab: "environment",
 		kicker: "AGENT MACHINES · ENVIRONMENT",
-		title: "Gateway and environment settings follow new machines.",
-		body: "Gateway profiles, env profiles, and bootstrap presets are account-level objects that a new machine can inherit.",
+		title: "Gateway and env profiles follow every new worker.",
+		body: "Gateway modes, named variable sets, and bootstrap presets are account-level objects a new worker inherits on deploy.",
 		Icon: IconEnv,
 		bullets: [
-			["Gateway modes: ", "dedalus · ai gateway · byo"],
+			["Gateway modes: ", "tunnel · ai gateway · byo"],
 			["Named variable sets with ", "env profiles"],
 			["Phase-tracked ", "bootstrap", " presets"],
 		],
-		poweredBy: [{ name: "Dedalus", mark: "dedalus" }],
+		poweredBy: [
+			{ kind: "service", name: "Vercel", slug: "vercel" },
+			{ kind: "service", name: "Cloudflare", slug: "cloudflare" },
+		],
 	},
 ];
 
@@ -151,11 +160,12 @@ export function WorkflowNavigator() {
 			<div className="px-4 py-10 text-center md:px-5 md:py-14">
 				<ReticleLabel className="mx-auto">WORKFLOW</ReticleLabel>
 				<h2 className="ret-display mx-auto mt-4 max-w-[24ch] text-2xl md:text-4xl">
-					Everything your machine needs in one tool
+					Route runtime, substrate, and loadout in one surface
 				</h2>
 				<p className="mx-auto mt-4 max-w-[54ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
-					Agent Machines unifies dashboard, agents, tools, providers,
-					and environment into a single, consistent interface.
+					The control plane unifies dashboard, agent runtimes, tools, substrate
+					lanes, and environment into one account — OpenRouter for agents and
+					containers.
 				</p>
 			</div>
 
@@ -226,7 +236,11 @@ function WorkflowRow({ step, index }: { step: Step; index: number }) {
 								key={p.name}
 								className="inline-flex items-center gap-1.5 rounded-full bg-[var(--ret-surface)] px-2.5 py-1"
 							>
-								<Logo mark={p.mark} size={14} />
+								{p.kind === "logo" ? (
+									<Logo mark={p.mark} size={14} />
+								) : (
+									<ServiceIcon slug={p.slug} size={14} tone="color" />
+								)}
 								<span className="text-[11px] font-medium text-[var(--ret-text)]">
 									{p.name}
 								</span>
@@ -274,17 +288,17 @@ function StepTerminal({ index }: { index: number }) {
 
 function DashboardTerminal() {
 	return (
-		<TerminalShell command="dedalus fleet inspect">
+		<TerminalShell command="am fleet inspect">
 			<TLine dim>Fleet: kevin-fleet</TLine>
-			<TLine dim>Machines: 1 active</TLine>
+			<TLine dim>Workers: 3 active</TLine>
 			<TSpacer />
-			<TRow label="Machine" value="main-01" />
+			<TRow label="Worker" value="code-review-01" />
 			<TRow label="Status" value="awake" success />
-			<TRow label="Provider" value="dedalus (persistent VM)" />
-			<TRow label="Disk" value="2.1 / 10 GiB" />
+			<TRow label="Runtime" value="hermes (autonomous)" />
+			<TRow label="Substrate" value="e2b (sandbox)" />
 			<TRow label="Last wake" value="12m ago" />
 			<TSpacer />
-			<TRow label="Settings" value="providers + gateways + profiles" />
+			<TRow label="Settings" value="runtime + substrate + profiles" />
 			<TRow label="Actions" value="wake · sleep · destroy" />
 			<TRow label="Storage" value="/home/machine/.agent-machines" />
 			<TSpacer />
@@ -295,8 +309,8 @@ function DashboardTerminal() {
 
 function AgentTerminal() {
 	return (
-		<TerminalShell command="dedalus agent list">
-			<TLine dim>4 agents configured</TLine>
+		<TerminalShell command="am runtime list">
+			<TLine dim>4 runtimes configured</TLine>
 			<TSpacer />
 			<THeader cols={["Name", "Mode", "Driver"]} />
 			<TTableRow cols={["Hermes", "autonomous", "memory + cron + MCP"]} />
@@ -317,13 +331,13 @@ function AgentTerminal() {
 
 function ToolsTerminal() {
 	return (
-		<TerminalShell command="dedalus loadout show">
+		<TerminalShell command="am loadout show">
 			<TLine dim>Loadout: opinionated-default</TLine>
 			<TSpacer />
-			<TRow label="Built-ins" value="23 tools" />
-			<TRow label="Skills" value="96 synced" />
-			<TRow label="MCP servers" value="7 connected (42 tools)" />
-			<TRow label="Services" value="17 routes" />
+			<TRow label="Built-ins" value={`${HARNESS.rigToolSurfaceCount} tools`} />
+			<TRow label="Skills" value={`${HARNESS.skillCount} synced`} />
+			<TRow label="MCP servers" value={`${HARNESS.mcpServerCount} catalog entries`} />
+			<TRow label="Services" value={`${HARNESS.serviceRouteCount} routes`} />
 			<TSpacer />
 			<TLine dim>
 				Categories: frontend · security · research · design · ops ·
@@ -337,30 +351,30 @@ function ToolsTerminal() {
 
 function ProvidersTerminal() {
 	return (
-		<TerminalShell command="dedalus provider list">
-			<TLine dim>3 providers configured</TLine>
+		<TerminalShell command="am substrate list">
+			<TLine dim>3 substrate lanes configured</TLine>
 			<TSpacer />
-			<THeader cols={["Provider", "Type", "Status"]} />
-			<TTableRow cols={["dedalus", "persistent", "● active"]} accent={[false, false, true]} />
-			<TTableRow cols={["fly", "persistent", "○ standby"]} />
-			<TTableRow cols={["sandbox", "ephemeral", "○ standby"]} />
+			<THeader cols={["Lane", "Type", "Status"]} />
+			<TTableRow cols={["e2b", "sandbox", "● active"]} accent={[false, false, true]} />
+			<TTableRow cols={["sprites", "persistent", "○ standby"]} />
+			<TTableRow cols={["dedalus", "persistent", "○ standby"]} />
 			<TSpacer />
 			<TLine dim>Filesystem:</TLine>
 			<TLine>{"  "}~/.agent-machines/{"    "}runtime state</TLine>
-			<TLine>{"  "}skills/{"               "}96 SKILL.md files</TLine>
+			<TLine>{"  "}skills/{"               "}{HARNESS.skillCount} SKILL.md files</TLine>
 			<TLine>{"  "}sessions.db{"           "}FTS5 history</TLine>
 			<TSpacer />
-			<TLine success>✓ 1 provider active</TLine>
+			<TLine success>✓ 1 lane active</TLine>
 		</TerminalShell>
 	);
 }
 
 function EnvironmentTerminal() {
 	return (
-		<TerminalShell command="dedalus env show">
+		<TerminalShell command="am env show">
 			<TLine>
 				Gateway:{"   "}
-				<span className="text-[#d2beff]">dedalus</span> (default)
+				<span className="text-[#d2beff]">ai gateway</span> (default)
 			</TLine>
 			<TLine>Bootstrap: phase-tracked</TLine>
 			<TSpacer />

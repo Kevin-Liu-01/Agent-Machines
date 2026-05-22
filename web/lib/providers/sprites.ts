@@ -1,7 +1,7 @@
 /**
  * Sprites.dev provider.
  *
- * Sprites is Fly.io's newer product for stateful sandboxes. Each sprite
+ * Sprites.dev persistent sandboxes (Fly.io infrastructure).
  * gets a persistent ext4 filesystem, auto-sleeps when idle (no compute
  * charges), and auto-wakes on exec or HTTP request. The sprite URL
  * proxies to port 8080 inside the sandbox by default.

@@ -9,7 +9,7 @@
  *   - a writable HOME (we use /home/machine)
  *   - inbound port 18789 reachable from outside the VM
  *
- * So swapping Dedalus for any other Linux host (Vercel Sandbox, Fly
+ * So swapping Dedalus for any other Linux host (E2B, Sprites
  * Machines, a bare EC2 box, ...) is a question of how you provision
  * the host, not the agent install. The Dedalus exec API is just our
  * runner of choice today.

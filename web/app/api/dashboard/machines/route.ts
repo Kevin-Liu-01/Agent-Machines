@@ -3,7 +3,7 @@
  *
  * Returns the user's full machine list with live state per machine
  * (where the provider is reachable). Dedalus machines are polled via
- * the Dedalus REST API; E2B / Fly machines are returned with their
+ * the Dedalus REST API; E2B / Sprites machines are returned with their
  * stored state from each provider's SDK.
  *
  * The dashboard's machines page polls this endpoint every 5s. Cheap

@@ -14,45 +14,45 @@ const SPECS: ReadonlyArray<{
 	icon: ToolCategory;
 }> = [
 	{
-		label: "Compute",
-		value: "1 vCPU",
-		description: "Billed by the second. Pauses when idle.",
+		label: "Runtime routes",
+		value: "4 agents",
+		description: "Hermes, OpenClaw, Claude Code, and Codex.",
+		icon: "delegate",
+	},
+	{
+		label: "Substrate routes",
+		value: "3 lanes",
+		description: "E2B, Sprites.dev, and Dedalus Machines.",
 		icon: "shell",
 	},
 	{
-		label: "Memory",
-		value: "2 GiB RAM",
-		description: "Enough for the agent runtime + browser.",
+		label: "Model routes",
+		value: "200+",
+		description: "OpenAI-compatible endpoints via AI Gateway.",
 		icon: "memory",
 	},
 	{
-		label: "Disk",
-		value: "10 GiB SSD",
-		description: "Persistent across sleep/wake cycles.",
-		icon: "filesystem",
-	},
-	{
-		label: "Cold boot",
-		value: "< 30 seconds",
-		description: "Warm wake < 5s. Auto-wakes on first prompt.",
+		label: "Deploy",
+		value: "~30 seconds",
+		description: "One worker unit: runtime, skills, MCP, and cron.",
 		icon: "schedule",
 	},
 	{
-		label: "Skills loaded",
-		value: "96",
-		description: "SKILL.md files synced from the wiki at boot.",
-		icon: "memory",
+		label: "Skills synced",
+		value: "161",
+		description: "SKILL.md files installed from registries at boot.",
+		icon: "filesystem",
 	},
 	{
 		label: "Fleet model",
 		value: "Per-account",
-		description: "One identity, many machines. Clerk-backed.",
+		description: "One identity, many specialist workers. Clerk-backed.",
 		icon: "delegate",
 	},
 ];
 
 type StackIcon =
-	| { kind: "logo"; mark: "am" | "cursor" | "nous" | "openclaw" }
+	| { kind: "logo"; mark: "am" | "cursor" | "dedalus" | "nous" | "openclaw" }
 	| { kind: "service"; slug: ServiceSlug };
 
 type ServiceEntry = {
@@ -76,87 +76,87 @@ type Feature = {
 const FEATURES: ReadonlyArray<Feature> = [
 	{
 		assembly: "stack",
-		Icon: IconDisk,
-		title: "State on disk, not in RAM",
-		body: "Chats, files, memory, sessions, crons -- all in /home/machine. Survives every sleep.",
+		Icon: IconRoute,
+		title: "Route runtime and substrate",
+		body: "OpenRouter-style dual routing in one account. Pick an agent runtime, pick a substrate lane, deploy a persistent worker — Vercel on AWS for sandboxes.",
 		services: [
 			{
+				id: "e2b",
+				icon: { kind: "service", slug: "e2b" },
+				name: "E2B",
+				role: "Sandbox substrate for fast ephemeral agent runs",
+				href: "https://e2b.dev",
+			},
+			{
+				id: "sprites",
+				icon: { kind: "service", slug: "sprites" },
+				name: "Sprites",
+				role: "Persistent microVM substrate on Sprites.dev",
+				href: "https://sprites.dev",
+			},
+			{
 				id: "dedalus",
-				icon: { kind: "logo", mark: "am" },
+				icon: { kind: "logo", mark: "dedalus" },
 				name: "Dedalus Machines",
-				role: "Persistent VMs that sleep on idle and wake on demand",
+				role: "Strong default on boot, sleep, and wake — one lane of three",
 				href: "https://docs.dedaluslabs.ai/dcs",
-			},
-			{
-				id: "cloudflare",
-				icon: { kind: "service", slug: "cloudflare" },
-				name: "Cloudflare",
-				role: "Exposes the agent gateway via quick tunnels",
-				href: "https://www.cloudflare.com/products/tunnel/",
-			},
-			{
-				id: "vercel",
-				icon: { kind: "service", slug: "vercel" },
-				name: "Vercel",
-				role: "Hosts the Next.js dashboard + AI Gateway",
-				href: "https://vercel.com",
 			},
 		],
 	},
 	{
 		assembly: "pills",
 		Icon: IconFleet,
-		title: "Per-account fleet",
-		body: "One Clerk sign-in. Same machine on every device. Keys + agent choice in private metadata.",
+		title: "Supervise a specialist fleet",
+		body: "One Clerk sign-in. Preset workers for code, design, and ops. Same account on every device — keys, runtime choice, and fleet metadata travel with you.",
 		services: [
 			{
 				id: "clerk",
 				icon: { kind: "service", slug: "clerk" },
 				name: "Clerk",
-				role: "Per-user config, machine fleet, API key storage",
+				role: "Per-user identity, fleet metadata, and API key storage",
 				href: "https://clerk.com",
+			},
+			{
+				id: "vercel",
+				icon: { kind: "service", slug: "vercel" },
+				name: "Vercel",
+				role: "Hosts the dashboard, AI Gateway, and control-plane APIs",
+				href: "https://vercel.com",
 			},
 			{
 				id: "anthropic",
 				icon: { kind: "service", slug: "anthropic" },
 				name: "Anthropic",
-				role: "Claude models via direct API or Vercel AI Gateway",
+				role: "Claude models via direct API or AI Gateway routing",
 				href: "https://www.anthropic.com/",
-			},
-			{
-				id: "openai",
-				icon: { kind: "service", slug: "openai" },
-				name: "OpenAI",
-				role: "GPT and Codex models via direct API or AI Gateway",
-				href: "https://openai.com",
 			},
 		],
 	},
 	{
 		assembly: "logos",
 		Icon: IconToolStack,
-		title: "Bring any agent + tool",
-		body: "Hermes, OpenClaw, Claude Code, or Codex. 161 skills, 22 built-ins, 35 MCP catalog. Dedalus, E2B, and Sprites live.",
+		title: "One worker, full harness",
+		body: "Not a bare sandbox — runtime, skills, MCP, cron, gateway, and observation in one deployable unit. State persists under /home/machine across sleep cycles.",
 		services: [
 			{
 				id: "hermes",
 				icon: { kind: "logo", mark: "nous" },
 				name: "Hermes",
-				role: "Memory, cron, sessions, MCP host, subagents",
+				role: "Memory, cron, sessions, MCP host, and subagents",
 				href: "https://github.com/NousResearch/hermes-agent",
 			},
 			{
 				id: "openclaw",
 				icon: { kind: "logo", mark: "openclaw" },
 				name: "OpenClaw",
-				role: "Browser, screenshot, shell, vision, computer-use",
+				role: "Browser, shell, vision, and computer-use automation",
 				href: "https://github.com/openclaw/openclaw",
 			},
 			{
 				id: "cursor",
 				icon: { kind: "logo", mark: "cursor" },
 				name: "Cursor SDK",
-				role: "Spawns coding agents for file edits via MCP bridge",
+				role: "Spawns coding agents for repo edits via MCP bridge",
 				href: "https://cursor.com/docs/sdk/typescript",
 			},
 		],
@@ -178,14 +178,14 @@ export function StatsRow() {
 		<div>
 			<div className="grid grid-cols-1 gap-6 border-b border-[var(--ret-border)] px-4 py-6 md:px-5 lg:grid-cols-[1fr_1.4fr] lg:gap-8 lg:py-8">
 				<div className="flex flex-col justify-center">
-					<ReticleLabel>MACHINE SPEC</ReticleLabel>
+					<ReticleLabel>CONTROL PLANE</ReticleLabel>
 					<h2 className="ret-display mt-3 text-xl tracking-tight md:text-2xl">
-						What each VM ships with out of the box.
+						OpenRouter for agents and containers.
 					</h2>
 				</div>
 				<div className="flex flex-col gap-3">
-					<SpecTerminal label="Hardware" specs={SPECS.slice(0, 3)} />
-					<SpecTerminal label="Runtime" specs={SPECS.slice(3)} />
+					<SpecTerminal label="Routing" specs={SPECS.slice(0, 3)} />
+					<SpecTerminal label="Worker unit" specs={SPECS.slice(3)} />
 				</div>
 			</div>
 
@@ -358,7 +358,7 @@ function AssembledLogoGrid({ services }: { services: ServiceEntry[] }) {
 
 /* ── SVG Icons ── */
 
-function IconDisk(props: SVGProps<SVGSVGElement>) {
+function IconRoute(props: SVGProps<SVGSVGElement>) {
 	return (
 		<svg
 			viewBox="0 0 16 16"
@@ -369,9 +369,10 @@ function IconDisk(props: SVGProps<SVGSVGElement>) {
 			strokeLinejoin="round"
 			{...props}
 		>
-			<ellipse cx="8" cy="4" rx="6" ry="2" />
-			<path d="M2 4v8c0 1.1 2.7 2 6 2s6-.9 6-2V4" />
-			<path d="M2 8c0 1.1 2.7 2 6 2s6-.9 6-2" />
+			<circle cx="4" cy="4" r="2" />
+			<circle cx="12" cy="4" r="2" />
+			<circle cx="8" cy="12" r="2" />
+			<path d="M5.5 5.5 7 10M10.5 5.5 9 10" />
 		</svg>
 	);
 }

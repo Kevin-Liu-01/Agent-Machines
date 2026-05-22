@@ -36,6 +36,7 @@ export function BrandHomeLockup({
 				size={size}
 				gap="tight"
 				withLabel={false}
+				intro={density === "navbar"}
 				className="shrink-0"
 			/>
 			<span

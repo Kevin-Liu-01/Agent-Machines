@@ -90,7 +90,7 @@ const PROVIDERS_DESC: Record<
 	sprites: {
 		name: "Sprites",
 		tagline:
-			"Persistent Linux sandboxes by Fly.io. Auto-sleep, instant wake, checkpoints, public URLs. The simplest place to run an agent.",
+			"Persistent Linux sandboxes on Sprites.dev. Auto-sleep, instant wake, checkpoints, public URLs. Runs on Fly.io infrastructure.",
 		ready: true,
 		keyHint: "sprites-token",
 	},
@@ -689,7 +689,7 @@ function ProviderStep({
 	return (
 		<StepShell
 			title="Pick the provider"
-			description="Where the agent's microVM lives. All providers accept credentials and provision through the same multi-tenant shape. Dedalus is the default with full sleep/wake and persistent disk. E2B Sandbox offers pause/resume with snapshots. Sprites offers persistent sandboxes with auto-sleep and instant wake."
+			description="Where the agent's microVM lives. All providers accept credentials and provision through the same multi-tenant shape. Dedalus is the default with full sleep/wake and persistent disk. E2B Sandbox offers pause/resume with snapshots. Sprites offers persistent sandboxes with auto-sleep and instant wake (Fly.io under the hood)."
 		>
 			<div className="grid gap-4 md:grid-cols-3">
 				{PROVIDER_KINDS.map((kind) => {

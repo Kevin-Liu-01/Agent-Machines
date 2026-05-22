@@ -9,7 +9,7 @@
  * cookbook pattern.
  *
  * All operations route through the selected provider's exec API. On
- * persistent-machine providers (Dedalus, Fly once exec is available)
+ * persistent-machine providers (Dedalus, Sprites, E2B)
  * this points at `/home/machine`. Ephemeral providers such as Vercel
  * Sandbox need an external storage backend and fail closed here until
  * that profile is configured.

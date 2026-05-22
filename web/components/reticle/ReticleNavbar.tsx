@@ -18,7 +18,7 @@ export function ReticleNavbar({ children, className }: Props) {
 			aria-label="Main"
 			className={cn(
 				"sticky top-0 z-30 border-b border-[var(--ret-border)]",
-				"bg-[var(--ret-bg)]/85 backdrop-blur-md",
+				"bg-[var(--ret-bg)] backdrop-blur-md",
 				className,
 			)}
 		>

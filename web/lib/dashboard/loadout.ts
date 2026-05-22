@@ -966,14 +966,14 @@ export const TRUSTED_ADDONS: ReadonlyArray<TrustedAddOn> = [
 
 	},
 	{
-		id: "cli-fly",
-		name: "Fly CLI",
+		id: "cli-sprites",
+		name: "Sprites CLI",
 		kind: "cli",
-		provider: "Fly.io",
+		provider: "Sprites.dev",
 		description:
-			"Manage Fly apps, volumes, machines, secrets, deploys, and logs when Fly is selected as a provider.",
-		source: "superfly/flyctl",
-		command: "flyctl",
+			"Manage Sprites sandboxes, checkpoints, exec sessions, and public URLs when Sprites is selected as a provider.",
+		source: "sprites-dev/cli",
+		command: "sprites",
 
 	},
 	{
