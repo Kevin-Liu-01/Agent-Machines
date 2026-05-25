@@ -101,7 +101,8 @@ export async function runWebBootstrap({
 	const priorCompleted = machine.bootstrapState.completed ?? [];
 	const completed: BootstrapPhaseId[] = force ? [] : [...priorCompleted];
 	const startedAt = machine.bootstrapState.startedAt ?? new Date().toISOString();
-	const apiKey = machine.apiKey ?? crypto.randomUUID();
+	const paths = pathsFor(machine.providerKind);
+	const apiKey = await resolveGatewayApiKey(machine, provider, paths);
 	await onState({
 		phase: "running",
 		current: CORE_BOOTSTRAP_PHASES[0],
@@ -111,7 +112,6 @@ export async function runWebBootstrap({
 		lastError: null,
 	});
 
-	const paths = pathsFor(machine.providerKind);
 	const skipPhases = force ? new Set<BootstrapPhaseId>() : new Set(priorCompleted);
 
 	try {
@@ -221,6 +221,31 @@ export async function runWebBootstrap({
 	}
 }
 
+async function resolveGatewayApiKey(
+	machine: MachineRef,
+	provider: MachineProvider,
+	paths: BootstrapPaths,
+): Promise<string> {
+	if (machine.apiKey) return machine.apiKey;
+	if (machine.agentKind === "claude-code" || machine.agentKind === "codex") {
+		return crypto.randomUUID();
+	}
+	const envFile =
+		machine.agentKind === "openclaw"
+			? `${paths.OPENCLAW_HOME}/.env`
+			: `${paths.HERMES_HOME}/.env`;
+	const keyName =
+		machine.agentKind === "openclaw" ? "OPENCLAW_API_KEY" : "API_SERVER_KEY";
+	const probe = await provider.exec(
+		machine.id,
+		`grep -E '^${keyName}=' ${envFile} 2>/dev/null | head -1 | cut -d= -f2- || true`,
+		{ timeoutMs: 20_000 },
+	);
+	const fromEnv = probe.stdout.trim();
+	if (fromEnv) return fromEnv;
+	return crypto.randomUUID();
+}
+
 /** Start gateway + wire public URL when Hermes is already installed (fast repair path). */
 export async function finalizeGatewayBootstrap({
 	machine,
@@ -234,7 +259,7 @@ export async function finalizeGatewayBootstrap({
 	onState: StateSink;
 }): Promise<BootstrapResult> {
 	const paths = pathsFor(machine.providerKind);
-	const apiKey = machine.apiKey ?? crypto.randomUUID();
+	const apiKey = await resolveGatewayApiKey(machine, provider, paths);
 	const startedAt = machine.bootstrapState.startedAt ?? new Date().toISOString();
 	const completed = [...(machine.bootstrapState.completed ?? [])];
 
@@ -430,6 +455,19 @@ function commandFor(
 				`uv pip install --python ${p.HERMES_HOME}/venv/bin/python 'hermes-agent[web,mcp] @ git+https://github.com/NousResearch/hermes-agent.git@main' aiohttp`,
 			].join(" && ");
 		case "install-node":
+			if (isSandbox && machine.agentKind === "openclaw") {
+				return [
+					"set -e",
+					`node -e 'process.exit(Number(process.version.slice(1).split(".")[0]) >= 22 ? 0 : 1)' && node --version && exit 0 || true`,
+					`export FNM_DIR="${p.HOME}/.local/share/fnm"`,
+					`export PATH="$FNM_DIR:$PATH"`,
+					`if ! command -v fnm >/dev/null; then curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$FNM_DIR" --skip-shell; fi`,
+					`eval "$(fnm env)"`,
+					`fnm install 22`,
+					`fnm use 22`,
+					`node --version`,
+				].join(" && ");
+			}
 			if (isSandbox) {
 				return "set -e && node --version";
 			}
@@ -472,7 +510,8 @@ function commandFor(
 			// Sprites proxies the sprite URL to port 8080; E2B uses per-port URLs
 			const gwPort = isSprites ? 8080 : HERMES_PORT;
 			if (agent === "openclaw") {
-				return configureOpenClaw(model, gatewayKey, upstreamApiKey, upstreamBaseUrl, p);
+				const ocPort = isSprites ? 8080 : OPENCLAW_PORT;
+				return configureOpenClaw(model, gatewayKey, upstreamApiKey, upstreamBaseUrl, p, ocPort);
 			}
 			if (agent === "claude-code" || agent === "codex") {
 				return configureCliAgent(agent, upstream.key, upstream.baseUrl, p, isSandbox);
@@ -499,14 +538,13 @@ function installClosedLoopTools(p: BootstrapPaths, isSandbox = false): string {
 	const envBlock = [
 		"set -e",
 		`export HOME=${p.HOME}`,
-		`export NPM_CONFIG_PREFIX=${p.NPM_PREFIX}`,
 		`export NPM_CONFIG_CACHE=${p.NPM_CACHE}`,
 		`export PLAYWRIGHT_BROWSERS_PATH=${p.PLAYWRIGHT_BROWSERS}`,
 		`export AGENT_BROWSER_DATA_DIR=${p.AGENT_BROWSER_HOME}`,
 		`export PATH=${p.NPM_PREFIX}/bin:${p.HOME}/.local/bin:$PATH`,
 	].join("\n");
 	const npmGlobal = isSandbox
-		? "npm install -g --no-audit --no-fund --loglevel=error agent-browser playwright @playwright/mcp"
+		? `npm install -g --prefix=${p.NPM_PREFIX} --no-audit --no-fund --loglevel=error agent-browser playwright @playwright/mcp`
 		: "npm install -g --no-audit --no-fund --loglevel=error agent-browser playwright @playwright/mcp";
 	const playwrightInstall = isSandbox
 		? "npx playwright install --with-deps chromium"
@@ -550,8 +588,9 @@ type GatewayConfig = {
 
 function gatewayConfigFor(machine: MachineRef, paths: BootstrapPaths): GatewayConfig {
 	if (machine.agentKind === "openclaw") {
+		const port = machine.providerKind === "sprites" ? 8080 : OPENCLAW_PORT;
 		return {
-			port: OPENCLAW_PORT,
+			port,
 			killPattern: "openclaw gateway run",
 			envSetup: openClawEnv(paths),
 			envFile: `${paths.OPENCLAW_HOME}/.env`,
@@ -657,10 +696,12 @@ function configureOpenClaw(
 	upstreamApiKey: string,
 	upstreamBaseUrl: string,
 	p: BootstrapPaths,
+	gatewayPort = OPENCLAW_PORT,
 ): string {
 	const stripShell = (value: string) => value.replace(/^'|'$/g, "");
 	const batch = JSON.stringify([
 		{ path: "gateway.mode", value: "local" },
+		{ path: "gateway.port", value: gatewayPort },
 		{ path: "gateway.http.endpoints.chatCompletions.enabled", value: true },
 		{ path: "gateway.bind", value: "lan" },
 		{ path: "gateway.auth.mode", value: "token" },
@@ -671,13 +712,16 @@ function configureOpenClaw(
 		{ path: "env.vars.ANTHROPIC_BASE_URL", value: stripShell(upstreamBaseUrl) },
 	]);
 	const batchPath = `${p.OPENCLAW_HOME}/bootstrap-config.batch.json`;
+	// Sprites ships nvm; NPM_CONFIG_PREFIX breaks npm/nvm — use --prefix instead.
+	const npmInstall =
+		`if test -x ${p.NPM_PREFIX}/bin/openclaw; then :; else ` +
+		`rm -rf ${p.NPM_PREFIX}/lib/node_modules/openclaw ${p.NPM_PREFIX}/lib/node_modules/.openclaw-* 2>/dev/null || true; ` +
+		`(NPM_CONFIG_CACHE=${p.NPM_CACHE} TMPDIR=${p.HOME}/.tmp npm install -g openclaw@latest --prefix=${p.NPM_PREFIX} --no-audit --no-fund --loglevel=error); fi`;
 	return [
 		"set -e",
-		openClawEnv(p),
 		`mkdir -p ${p.HOME}/.npm-global ${p.HOME}/.npm-cache ${p.HOME}/.tmp ${p.OPENCLAW_HOME}/logs`,
-		`if command -v openclaw >/dev/null 2>&1 && openclaw --version >/dev/null 2>&1; then :; else ` +
-			`rm -rf ${p.NPM_PREFIX}/lib/node_modules/openclaw ${p.NPM_PREFIX}/lib/node_modules/.openclaw-* 2>/dev/null || true; ` +
-			`NPM_CONFIG_PREFIX=${p.HOME}/.npm-global NPM_CONFIG_CACHE=${p.HOME}/.npm-cache TMPDIR=${p.HOME}/.tmp npm install -g openclaw@latest --no-audit --no-fund --loglevel=error; fi`,
+		npmInstall,
+		openClawEnv(p),
 		writeRemoteFile(batchPath, batch),
 		`openclaw config set --batch-file ${batchPath}`,
 		writeRemoteFile(
@@ -709,7 +753,7 @@ function configureCliAgent(
 	if (isClaude) {
 		const aptWait = isSandbox ? "" : `${WAIT_FOR_APT} && `;
 		const claudeInstall = isSandbox
-			? `NPM_CONFIG_PREFIX=${p.NPM_PREFIX} NPM_CONFIG_CACHE=${p.NPM_CACHE} npm install -g @anthropic-ai/claude-code --no-audit --no-fund --loglevel=error`
+			? `NPM_CONFIG_CACHE=${p.NPM_CACHE} npm install -g @anthropic-ai/claude-code --prefix=${p.NPM_PREFIX} --no-audit --no-fund --loglevel=error`
 			: `${aptWait}curl -fsSL https://claude.ai/install.sh | bash`;
 		return [
 			"set -e",
@@ -730,7 +774,7 @@ function configureCliAgent(
 		pathLine,
 		`mkdir -p ${configDir} ${p.APP_HOME} ${p.NPM_PREFIX} ${p.NPM_CACHE}`,
 		`if ! command -v codex >/dev/null 2>&1 || ! codex --version >/dev/null 2>&1; then ` +
-			`${aptWait}NPM_CONFIG_PREFIX=${p.NPM_PREFIX} NPM_CONFIG_CACHE=${p.NPM_CACHE} npm install -g @openai/codex --no-audit --no-fund --loglevel=error; fi`,
+			`${aptWait}NPM_CONFIG_CACHE=${p.NPM_CACHE} npm install -g @openai/codex --prefix=${p.NPM_PREFIX} --no-audit --no-fund --loglevel=error; fi`,
 		envWrite,
 		`chmod 600 ${p.APP_HOME}/.agent-env`,
 		`${pathLine} && codex --version`,
@@ -809,12 +853,14 @@ function startHermes(p: BootstrapPaths, machine: MachineRef): string {
 }
 
 function startOpenClaw(p: BootstrapPaths, machine: MachineRef): string {
+	const gwPort = machine.providerKind === "sprites" ? 8080 : OPENCLAW_PORT;
 	const script = [
 		"#!/usr/bin/env bash",
 		"set -euo pipefail",
 		`export HOME=${p.HOME}`,
-		`export NPM_CONFIG_PREFIX=${p.NPM_PREFIX}`,
 		`export NPM_CONFIG_CACHE=${p.NPM_CACHE}`,
+		`export FNM_DIR=${p.HOME}/.local/share/fnm`,
+		`if [ -x "$FNM_DIR/fnm" ]; then eval "$($FNM_DIR/fnm env)"; fi`,
 		`export PLAYWRIGHT_BROWSERS_PATH=${p.PLAYWRIGHT_BROWSERS}`,
 		`export AGENT_BROWSER_DATA_DIR=${p.AGENT_BROWSER_HOME}`,
 		`export PATH=${p.NPM_PREFIX}/bin:${p.HOME}/.npm-global/bin:$PATH`,
@@ -847,15 +893,15 @@ function startOpenClaw(p: BootstrapPaths, machine: MachineRef): string {
 			launcher,
 			installGatewayUnitCommand(machine, gatewayPaths),
 			"sleep 12",
-			`ss -tlnp 2>/dev/null | grep ':${OPENCLAW_PORT}'`,
-			`echo gateway:${OPENCLAW_PORT}`,
+			`ss -tlnp 2>/dev/null | grep ':${gwPort}'`,
+			`echo gateway:${gwPort}`,
 		].join("\n");
 	}
 	return [
 		launcher,
 		`(setsid ${p.HOME}/start-openclaw-gateway.sh </dev/null &>/dev/null &) && sleep 14`,
-		`ss -tlnp 2>/dev/null | grep ':${OPENCLAW_PORT}'`,
-		`echo gateway:${OPENCLAW_PORT}`,
+		`ss -tlnp 2>/dev/null | grep ':${gwPort}'`,
+		`echo gateway:${gwPort}`,
 	].join(" && ");
 }
 
@@ -876,7 +922,7 @@ function configureHealthProbe(agent: string, p: BootstrapPaths): string | null {
 		case "codex":
 			return `command -v codex >/dev/null 2>&1 && codex --version >/dev/null 2>&1 && test -s ${p.APP_HOME}/.agent-env && echo ok || echo broken`;
 		case "openclaw":
-			return `command -v openclaw >/dev/null 2>&1 && openclaw --version >/dev/null 2>&1 && test -s ${p.OPENCLAW_HOME}/.env && echo ok || echo broken`;
+			return `test -x ${p.NPM_PREFIX}/bin/openclaw && test -s ${p.OPENCLAW_HOME}/.env && echo ok || echo broken`;
 		case "hermes":
 			return `test -s ${p.HERMES_HOME}/.env && echo ok || echo broken`;
 		default:
@@ -899,8 +945,10 @@ function hermesEnv(p: BootstrapPaths): string {
 function openClawEnv(p: BootstrapPaths): string {
 	return [
 		`export HOME=${p.HOME}`,
-		`export NPM_CONFIG_PREFIX=${p.NPM_PREFIX}`,
+		// Do not set NPM_CONFIG_PREFIX — Sprites nvm rejects it and breaks openclaw CLI.
 		`export NPM_CONFIG_CACHE=${p.NPM_CACHE}`,
+		`export FNM_DIR=${p.HOME}/.local/share/fnm`,
+		`if [ -x "$FNM_DIR/fnm" ]; then eval "$($FNM_DIR/fnm env)"; fi`,
 		`export PLAYWRIGHT_BROWSERS_PATH=${p.PLAYWRIGHT_BROWSERS}`,
 		`export AGENT_BROWSER_DATA_DIR=${p.AGENT_BROWSER_HOME}`,
 		`export PATH=${p.NPM_PREFIX}/bin:${p.HOME}/.npm-global/bin:$PATH`,
@@ -919,11 +967,11 @@ async function exposeGateway(
 	if (machine.agentKind === "claude-code" || machine.agentKind === "codex") {
 		return null;
 	}
-	const port = machine.agentKind === "openclaw" ? OPENCLAW_PORT : HERMES_PORT;
-	const name = machine.agentKind === "openclaw" ? "openclaw" : "hermes";
-	const localPort =
+	const port =
 		machine.providerKind === "sprites" ? 8080 :
 		machine.agentKind === "openclaw" ? OPENCLAW_PORT : HERMES_PORT;
+	const name = machine.agentKind === "openclaw" ? "openclaw" : "hermes";
+	const localPort = port;
 	const waitOpts = {
 		provider,
 		machineId: machine.id,

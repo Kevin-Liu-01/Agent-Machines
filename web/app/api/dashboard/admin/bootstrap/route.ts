@@ -13,6 +13,7 @@ import { runWebBootstrap } from "@/lib/bootstrap/runner";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 import { INITIAL_BOOTSTRAP_STATE, type MachineRef } from "@/lib/user-config/schema";
+import crypto from "node:crypto";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -74,6 +75,9 @@ export async function POST(request: Request): Promise<Response> {
 		patchMachine: {
 			id: machine.id,
 			patch: {
+				...(machine.apiKey || (machine.bootstrapState.completed ?? []).includes("configure-hermes")
+					? {}
+					: { apiKey: crypto.randomUUID() }),
 				bootstrapState: {
 					...machine.bootstrapState,
 					phase: "running",
@@ -86,9 +90,13 @@ export async function POST(request: Request): Promise<Response> {
 		},
 	});
 
+	const latestConfig = await getUserConfig();
+	const machineForBootstrap =
+		latestConfig.machines.find((m) => m.id === machine.id) ?? machine;
+
 	try {
 		const result = await runWebBootstrap({
-			machine,
+			machine: machineForBootstrap,
 			provider,
 			config,
 			force: body.force === true,

@@ -51,7 +51,6 @@ function hermesEnv(p: GatewayPaths): string {
 function openClawEnv(p: GatewayPaths): string {
 	return [
 		`export HOME=${p.HOME}`,
-		`export NPM_CONFIG_PREFIX=${p.NPM_PREFIX}`,
 		`export NPM_CONFIG_CACHE=${p.NPM_CACHE}`,
 		`export PLAYWRIGHT_BROWSERS_PATH=${p.PLAYWRIGHT_BROWSERS}`,
 		`export AGENT_BROWSER_DATA_DIR=${p.AGENT_BROWSER_HOME}`,
@@ -62,8 +61,8 @@ function openClawEnv(p: GatewayPaths): string {
 }
 
 function gatewayPort(machine: MachineRef): number {
-	if (machine.agentKind === "openclaw") return OPENCLAW_PORT;
 	if (machine.providerKind === "sprites") return 8080;
+	if (machine.agentKind === "openclaw") return OPENCLAW_PORT;
 	return HERMES_PORT;
 }
 
