@@ -19,6 +19,11 @@ import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
 import {
+	agentCredentialRequirements,
+	canBootstrapAgent,
+	type DraftAiKeys,
+} from "@/lib/agents/credentials";
+import {
 	BUILTIN_TOOLS,
 	CATEGORY_LABEL,
 	type BuiltinTool,
@@ -219,6 +224,7 @@ export function OnboardingFlow({
 		() => new Set(mcps.map((m) => m.name)),
 	);
 	const [providerKey, setProviderKey] = useState("");
+	const [aiKeys, setAiKeys] = useState({ anthropic: "", openai: "" });
 	const [providerSecondary, setProviderSecondary] = useState<
 		Record<string, string>
 	>({});
@@ -303,6 +309,12 @@ export function OnboardingFlow({
 				}
 				setupBody.providerCredentials = { [provider]: cred };
 			}
+			const aiProviderKeys: Record<string, string> = {};
+			if (aiKeys.anthropic.trim()) aiProviderKeys.anthropic = aiKeys.anthropic.trim();
+			if (aiKeys.openai.trim()) aiProviderKeys.openai = aiKeys.openai.trim();
+			if (Object.keys(aiProviderKeys).length > 0) {
+				setupBody.aiProviderKeys = aiProviderKeys;
+			}
 			const setupResp = await fetch("/api/dashboard/admin/setup", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
@@ -382,7 +394,20 @@ export function OnboardingFlow({
 		} finally {
 			setBusy(false);
 		}
-	}, [agent, builtinSel, initialConfig, mcpSel, provider, providerKey, providerSecondary, skillSel]);
+	}, [agent, aiKeys, builtinSel, initialConfig, mcpSel, provider, providerKey, providerSecondary, skillSel]);
+
+	const agentCredDraft: DraftAiKeys = {
+		anthropic: aiKeys.anthropic,
+		openai: aiKeys.openai,
+		dedalus: provider === "dedalus" ? providerKey : undefined,
+	};
+	const agentCredsOk = canBootstrapAgent(
+		agent,
+		{ providers: initialConfig.providers, aiProviders: initialConfig.aiProviders },
+		agentCredDraft,
+	);
+	const canProvisionInfra = hasKey || ownerKey || providerKey.trim().length > 0;
+	const canProvision = canProvisionInfra && agentCredsOk;
 
 	// Poll machine state once we have an id.
 	useEffect(() => {
@@ -429,8 +454,6 @@ export function OnboardingFlow({
 		setStep("boot");
 		void provision();
 	}
-
-	const canProvision = hasKey || ownerKey || providerKey.trim().length > 0;
 
 	return (
 		<main className="relative min-h-[100dvh] overflow-hidden bg-[var(--ret-bg)] text-[var(--ret-text)]">
@@ -518,11 +541,18 @@ export function OnboardingFlow({
 						) : null}
 						{step === "key" ? (
 							<KeyStep
+								agent={agent}
 								provider={provider}
+								config={initialConfig}
 								hasKey={hasKey}
 								ownerKey={ownerKey}
 								value={providerKey}
 								onChange={setProviderKey}
+								aiKeys={aiKeys}
+								onAiKeyChange={(field, val) =>
+									setAiKeys((prev) => ({ ...prev, [field]: val }))
+								}
+								agentCredsOk={agentCredsOk}
 								secondary={providerSecondary}
 								onSecondaryChange={(field, val) =>
 									setProviderSecondary((prev) => ({ ...prev, [field]: val }))
@@ -1124,11 +1154,16 @@ function ProviderPickStep({
 }
 
 function KeyStep({
+	agent,
 	provider,
+	config,
 	hasKey,
 	ownerKey,
 	value,
 	onChange,
+	aiKeys,
+	onAiKeyChange,
+	agentCredsOk,
 	secondary,
 	onSecondaryChange,
 	busy,
@@ -1136,11 +1171,16 @@ function KeyStep({
 	onBack,
 	onProvision,
 }: {
+	agent: AgentKind;
 	provider: ProviderKind;
+	config: PublicUserConfig;
 	hasKey: boolean;
 	ownerKey: boolean;
 	value: string;
 	onChange: (v: string) => void;
+	aiKeys: { anthropic: string; openai: string };
+	onAiKeyChange: (field: "anthropic" | "openai", val: string) => void;
+	agentCredsOk: boolean;
 	secondary: Record<string, string>;
 	onSecondaryChange: (field: string, val: string) => void;
 	busy: boolean;
@@ -1149,18 +1189,22 @@ function KeyStep({
 	onProvision: () => void;
 }) {
 	const meta = PROVIDERS_META[provider];
+	const agentReqs = agentCredentialRequirements(agent).filter(
+		(r) => r.field !== "dedalus" || provider !== "dedalus",
+	);
 	return (
 		<div className="space-y-5">
 			<div>
-				<ReticleLabel>step 5 . key</ReticleLabel>
+				<ReticleLabel>step 5 . keys</ReticleLabel>
 				<h1 className="ret-display mt-1 text-2xl">
-					Bring a {PROVIDER_LABEL[provider]} key
+					Bring your keys
 				</h1>
 				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
-					{meta.keyHint}. Stored in your Clerk private metadata, never
-					sent to the browser.
+					Infrastructure key provisions the {PROVIDER_LABEL[provider]} machine.
+					AI provider keys power {AGENT_LABEL[agent]}. Stored in private metadata.
 				</p>
 			</div>
+			<ReticleLabel>infrastructure</ReticleLabel>
 			<label className="flex flex-col gap-1.5">
 				<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					{meta.keyLabel}
@@ -1179,6 +1223,10 @@ function KeyStep({
 						: ownerKey
 							? "Owner default exists. Leave blank to inherit."
 							: "Required to provision."}
+					{provider === "dedalus" &&
+					(agent === "hermes" || agent === "openclaw")
+						? " Also routes LLM inference when no separate AI key is set."
+						: ""}
 				</span>
 			</label>
 			{meta.secondaryFields?.map((f) => (
@@ -1196,6 +1244,63 @@ function KeyStep({
 					/>
 				</label>
 			))}
+			{agentReqs.length > 0 ? (
+				<>
+					<ReticleLabel>agent inference · {AGENT_LABEL[agent]}</ReticleLabel>
+					{agentReqs.map((req) => {
+						if (req.field === "dedalus") return null;
+						const field = req.field as "anthropic" | "openai";
+						const onFile = config.aiProviders[field]?.configured ?? false;
+						return (
+							<label key={req.field} className="flex flex-col gap-1.5">
+								<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+									{req.label}
+									{req.required ? " *" : ""}
+								</span>
+								<input
+									type="password"
+									autoComplete="off"
+									placeholder={req.hint}
+									value={aiKeys[field]}
+									onChange={(e) => onAiKeyChange(field, e.target.value)}
+									className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-[12px] text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)] focus:border-[var(--ret-purple)] focus:outline-none"
+								/>
+								<span className="text-[10px] text-[var(--ret-text-muted)]">
+									{onFile
+										? "On file. Leave blank to keep."
+										: req.required
+											? "Required for headless bootstrap."
+											: "Optional — improves upstream routing."}
+									{req.signupUrl ? (
+										<>
+											{" "}
+											<a
+												href={req.signupUrl}
+												target="_blank"
+												rel="noopener noreferrer"
+												className="text-[var(--ret-purple)] underline-offset-2 hover:underline"
+											>
+												Get a key
+											</a>
+										</>
+									) : null}
+								</span>
+							</label>
+						);
+					})}
+					{(agent === "claude-code" || agent === "codex") ? (
+						<p className="text-[10px] text-[var(--ret-text-muted)]">
+							Subscription sign-in ({agent === "claude-code" ? "claude auth login" : "codex login"}) is
+							interactive-only — run it in the machine terminal after boot. API keys enable headless setup.
+						</p>
+					) : null}
+				</>
+			) : null}
+			{!agentCredsOk ? (
+				<p className="text-[11px] text-[var(--ret-amber)]">
+					Add the required AI provider key(s) above before booting {AGENT_LABEL[agent]}.
+				</p>
+			) : null}
 			<div className="flex items-center justify-between gap-2">
 				<ReticleButton variant="ghost" size="md" onClick={onBack} disabled={busy}>
 					← Back

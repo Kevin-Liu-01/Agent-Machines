@@ -42,7 +42,7 @@ export async function resolveGatewayForUser(machineId?: string | null): Promise<
 	}
 	return {
 		apiUrl: normalizeOpenAiBase(machine.apiUrl),
-		model: machine.model,
+		model: machine.agentKind === "openclaw" ? "openclaw" : machine.model,
 		headers: { Authorization: `Bearer ${machine.apiKey}` },
 		kind: "machine",
 		apiHost: hostOf(machine.apiUrl),

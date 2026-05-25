@@ -13,7 +13,11 @@
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import type { GatewaySummary } from "@/lib/dashboard/types";
+import { resolveMachine } from "@/lib/dashboard/exec";
+import { probeGateway } from "@/lib/bootstrap/gateway-lifecycle";
 import { resolveGatewayForUser } from "@/lib/gateway/resolver";
+import { getProvider } from "@/lib/providers";
+import { getUserConfig } from "@/lib/user-config/clerk";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,28 +44,29 @@ export async function GET(request: Request): Promise<Response> {
 
 	const start = performance.now();
 	try {
-		const response = await fetch(`${env.apiUrl}/models`, {
-			headers: env.headers,
-			cache: "no-store",
+		const config = await getUserConfig();
+		const machine = resolveMachine(config, machineId);
+		const provider = machine ? getProvider(machine.providerKind, config.providers) : null;
+		const localPort =
+			machine?.providerKind === "sprites" ? 8080 :
+			machine?.agentKind === "openclaw" ? 18789 : 8642;
+
+		const probe = await probeGateway({
+			apiUrl: env.apiUrl,
+			apiKey: env.headers.Authorization?.replace(/^Bearer\s+/i, "") ?? "",
+			provider: provider ?? undefined,
+			machineId: machine?.id,
+			localPort,
 		});
 		const latencyMs = Math.round(performance.now() - start);
-		let modelCount: number | null = null;
-		if (response.ok) {
-			try {
-				const body = (await response.json()) as { data?: unknown[] };
-				if (Array.isArray(body.data)) modelCount = body.data.length;
-			} catch {
-				// Body not JSON -- happens during cold-start when the gateway
-				// returns an HTML error page. Leave modelCount as null.
-			}
-		}
 		const payload: GatewaySummary = {
-			ok: response.ok,
-			status: response.status,
+			ok: probe.ok,
+			status: probe.status,
 			model: env.model,
 			apiHost: env.apiHost,
 			latencyMs,
-			modelCount,
+			modelCount: probe.modelCount,
+			...(probe.error ? { error: probe.error } : {}),
 		};
 		return Response.json(payload, {
 			headers: { "Cache-Control": "no-store" },

@@ -79,12 +79,8 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
 		return Response.json({ error: "invalid_json" }, { status: 400 });
 	}
 
-	if (body.active === true) {
-		const next = await setUserConfig({ activeMachineId: id });
-		return Response.json({ ok: true, activeMachineId: next.activeMachineId });
-	}
-
 	const patch: Partial<MachineRef> = {};
+	const setActive = body.active === true;
 	if (typeof body.name === "string" && body.name.trim().length > 0) {
 		patch.name = body.name.trim().slice(0, 80);
 	}
@@ -110,11 +106,14 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
 				: null;
 	}
 
-	if (Object.keys(patch).length === 0) {
+	if (Object.keys(patch).length === 0 && !setActive) {
 		return Response.json({ error: "no_changes" }, { status: 422 });
 	}
 
-	const next = await setUserConfig({ patchMachine: { id, patch } });
+	const next = await setUserConfig({
+		...(setActive ? { activeMachineId: id } : {}),
+		...(Object.keys(patch).length > 0 ? { patchMachine: { id, patch } } : {}),
+	});
 	const updated = next.machines.find((m) => m.id === id);
 	if (!updated) return Response.json({ error: "not_found" }, { status: 404 });
 	const { apiKey, ...rest } = updated;

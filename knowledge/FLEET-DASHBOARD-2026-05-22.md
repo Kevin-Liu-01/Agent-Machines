@@ -30,7 +30,42 @@ Related: [POSTMORTEM-2026-05-18-live-fire-qa.md](./POSTMORTEM-2026-05-18-live-fi
 
 ---
 
-## Run log (chronological)
+## Run 6 — Sprites gateway green (2026-05-24)
+
+**Working reference machine:** `am-hermes-sprites-o7ayjx4o` (Hermes · Sprites)
+
+| Check | Result |
+|-------|--------|
+| `GET /api/dashboard/gateway?machineId=…` | `ok: true`, ~130ms |
+| `POST /api/dashboard/admin/finalize-gateway` | `ok: true` in ~7s |
+| `bootstrapState.phase` | `succeeded` |
+| Fleet split chat (`?focus=`) | Send enabled, streams via `/api/chat` |
+
+### Root bugs fixed this run
+
+1. **Storage path + machine scoping** — chat/artifact exec used hardcoded `/home/machine` and `activeMachineId` instead of provider home (`/home/sprite`) + focused `machineId`. Fixed via `machine-paths.ts` + `MachineStorageContext`.
+2. **Chat gateway probe** — `Chat.tsx` called `/api/dashboard/gateway` without `machineId`, so fleet split view probed the wrong machine. Now scoped.
+3. **Bootstrap stuck on `start-gateway`** — Sprites exec had no timeout; kill/restart loop hung. Added `withTimeout` on Sprites exec + fast-path skip when port already listening.
+4. **Post-gateway phases block chat** — `install-closed-loop-tools` (playwright install) timed out and failed entire bootstrap. Split into `POST_GATEWAY_BOOTSTRAP_PHASES` — gateway marks `succeeded` first; post phases are best-effort.
+5. **Bootstrap state loss on failure** — failed runs wiped `completed[]`. Route now preserves progress.
+6. **`/api/chat` machine scoping** — passes `body.machineId` to `resolveGatewayForUser`.
+
+### Provider testing cheatsheet
+
+| Provider | Gateway probe | Logs on VM | Public URL |
+|----------|---------------|------------|------------|
+| **Sprites** | `GET …/v1/models` on `*.sprites.app` | `tail ~/.agent-machines/logs/gateway.log` under `/home/sprite` | `GET https://api.sprites.dev/v1/sprites/<name>` → `url` proxies :8080 |
+| **Dedalus** | preview URL `/v1/models` | `tail ~/.agent-machines/logs/gateway.log` under `/home/machine` | `createPreview(machineId, 8642)` |
+| **E2B** | `https://8642-<sandboxId>.e2b.app/v1/models` | `/home/user/.agent-machines/logs/gateway.log` | deterministic port URL |
+
+**Repair API:** `POST /api/dashboard/admin/finalize-gateway` `{ "machineId": "…" }` — restart gateway + probe + persist `apiUrl` without re-running full bootstrap.
+
+### Dedalus fleet status (blocked on provider)
+
+- `dm-019e4e52`, `dm-019e4e57`, `dm-019e4336` — 404 or `SNAPSHOT_LAUNCH_GUEST_RUNTIME_TIMEOUT`
+- Overlay FS resets on sleep/wake; stale `bootstrapState: succeeded` ≠ artifacts present — use `needsBootstrapRepair` + re-bootstrap on wake (CLI `wake.ts` already does this; dashboard AutoWake should trigger bootstrap when repair needed).
+
+---
 
 ### Run 1 — End-to-end API proof
 

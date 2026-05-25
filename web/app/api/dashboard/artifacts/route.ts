@@ -34,7 +34,7 @@ export async function GET(request: Request): Promise<Response> {
 		return Response.json({ ...handle, artifacts: [] });
 	}
 	try {
-		const artifacts = await listArtifacts();
+		const artifacts = await listArtifacts(handle.storage);
 		return Response.json({
 			ok: true,
 			artifacts,
@@ -85,7 +85,7 @@ export async function POST(request: Request): Promise<Response> {
 			mime: file.type || "application/octet-stream",
 			body: Buffer.from(await file.arrayBuffer()),
 			chatId: typeof chatId === "string" && chatId ? chatId : undefined,
-		});
+		}, handle.storage);
 		return Response.json({ ok: true, artifact: ref });
 	} catch (err) {
 		const message = err instanceof Error ? err.message : "save_failed";

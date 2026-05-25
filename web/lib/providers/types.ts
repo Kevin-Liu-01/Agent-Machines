@@ -109,4 +109,6 @@ export type MachineProvider = {
 	destroy(machineId: string): Promise<void>;
 	exec(machineId: string, command: string, options?: ExecOptions): Promise<ExecResult>;
 	execBackground?(machineId: string, command: string): Promise<void>;
+	/** Public HTTPS URL for a listening port (E2B, Sprites). */
+	getPublicUrl?(machineId: string, port: number): Promise<string | null>;
 };

@@ -15,16 +15,17 @@ export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
+export async function GET(request: Request, ctx: Ctx): Promise<Response> {
 	const userId = await getEffectiveUserId();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 	const { id } = await ctx.params;
-	const handle = await withActiveMachine();
+	const machineId = new URL(request.url).searchParams.get("machineId") ?? undefined;
+	const handle = await withActiveMachine(machineId);
 	if ("ok" in handle) {
 		return Response.json(handle, { status: 503 });
 	}
 	try {
-		const chat = await loadChat(id);
+		const chat = await loadChat(id, handle.storage);
 		if (!chat) return Response.json({ error: "not_found" }, { status: 404 });
 		return Response.json({ ok: true, chat });
 	} catch (err) {
@@ -36,16 +37,17 @@ export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
 	}
 }
 
-export async function DELETE(_req: Request, ctx: Ctx): Promise<Response> {
+export async function DELETE(request: Request, ctx: Ctx): Promise<Response> {
 	const userId = await getEffectiveUserId();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 	const { id } = await ctx.params;
-	const handle = await withActiveMachine();
+	const machineId = new URL(request.url).searchParams.get("machineId") ?? undefined;
+	const handle = await withActiveMachine(machineId);
 	if ("ok" in handle) {
 		return Response.json(handle, { status: 503 });
 	}
 	try {
-		await deleteChat(id);
+		await deleteChat(id, handle.storage);
 		return Response.json({ ok: true });
 	} catch (err) {
 		const message = err instanceof Error ? err.message : "delete_failed";

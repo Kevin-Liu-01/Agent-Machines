@@ -400,11 +400,12 @@ export function Chat({
 	messagesRef.current = messages;
 
 	useEffect(() => {
-		fetch("/api/dashboard/gateway")
+		const params = machineId ? `?machineId=${encodeURIComponent(machineId)}` : "";
+		fetch(`/api/dashboard/gateway${params}`)
 			.then((r) => r.json())
 			.then((info: HealthInfo) => setHealth(info))
 			.catch(() => setHealth({ ok: false, error: "unreachable" }));
-	}, []);
+	}, [machineId]);
 
 	useEffect(() => {
 		const node = transcriptRef.current;

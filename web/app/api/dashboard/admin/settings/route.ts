@@ -11,7 +11,7 @@
  * can be reflected back into the UI.
  */
 
-import { APP_DATA_ROOT, readTextFile } from "@/lib/storage/machine-fs";
+import { readTextFile, withActiveMachine } from "@/lib/storage/machine-fs";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 import {
@@ -140,7 +140,15 @@ export async function POST(request: Request): Promise<Response> {
 }
 
 async function readMachineSettings(): Promise<SettingsBody> {
-	const text = await readTextFile(`${APP_DATA_ROOT}/settings.json`);
+	const config = await getUserConfig();
+	const handle = await withActiveMachine(config.activeMachineId);
+	if ("ok" in handle) {
+		throw new Error(handle.message);
+	}
+	const text = await readTextFile(
+		`${handle.storage.appDataRoot}/settings.json`,
+		handle.storage,
+	);
 	if (!text) return {};
 	const parsed = JSON.parse(text) as SettingsBody;
 	return parsed;

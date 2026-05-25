@@ -64,6 +64,15 @@ export const BOOTSTRAP_PHASES = [
 	"install-closed-loop-tools",
 ] as const;
 
+/** Optional tooling installed after the gateway is live — failures must not block chat. */
+export const POST_GATEWAY_BOOTSTRAP_PHASES = [
+	"install-closed-loop-tools",
+] as const;
+
+export const CORE_BOOTSTRAP_PHASES = BOOTSTRAP_PHASES.filter(
+	(phase) => !(POST_GATEWAY_BOOTSTRAP_PHASES as readonly string[]).includes(phase),
+);
+
 export type BootstrapPhaseId = (typeof BOOTSTRAP_PHASES)[number];
 
 export type BootstrapState = {
@@ -343,6 +352,32 @@ export const DEFAULT_AGENT_PROFILES: AgentProfile[] = [
 		createdAt: DEFAULT_CREATED_AT,
 		updatedAt: DEFAULT_CREATED_AT,
 	},
+	{
+		id: "claude-code-default",
+		name: "Claude Code default",
+		agentKind: "claude-code",
+		gatewayProfileId: DEFAULT_GATEWAY_PROFILE.id,
+		model: DEFAULT_MODEL,
+		enabledSkills: [],
+		enabledTools: [],
+		enabledMcpServers: [],
+		environmentProfileId: null,
+		createdAt: DEFAULT_CREATED_AT,
+		updatedAt: DEFAULT_CREATED_AT,
+	},
+	{
+		id: "codex-default",
+		name: "Codex CLI default",
+		agentKind: "codex",
+		gatewayProfileId: DEFAULT_GATEWAY_PROFILE.id,
+		model: DEFAULT_MODEL,
+		enabledSkills: [],
+		enabledTools: [],
+		enabledMcpServers: [],
+		environmentProfileId: null,
+		createdAt: DEFAULT_CREATED_AT,
+		updatedAt: DEFAULT_CREATED_AT,
+	},
 ];
 
 export const DEFAULT_BOOTSTRAP_PRESETS: BootstrapPreset[] = [
@@ -361,6 +396,26 @@ export const DEFAULT_BOOTSTRAP_PRESETS: BootstrapPreset[] = [
 		name: "Dedalus + OpenClaw",
 		providerKind: "dedalus",
 		agentProfileId: "openclaw-default",
+		environmentProfileId: null,
+		spec: DEFAULT_MACHINE_SPEC,
+		createdAt: DEFAULT_CREATED_AT,
+		updatedAt: DEFAULT_CREATED_AT,
+	},
+	{
+		id: "dedalus-claude-code-default",
+		name: "Dedalus + Claude Code",
+		providerKind: "dedalus",
+		agentProfileId: "claude-code-default",
+		environmentProfileId: null,
+		spec: DEFAULT_MACHINE_SPEC,
+		createdAt: DEFAULT_CREATED_AT,
+		updatedAt: DEFAULT_CREATED_AT,
+	},
+	{
+		id: "dedalus-codex-default",
+		name: "Dedalus + Codex CLI",
+		providerKind: "dedalus",
+		agentProfileId: "codex-default",
 		environmentProfileId: null,
 		spec: DEFAULT_MACHINE_SPEC,
 		createdAt: DEFAULT_CREATED_AT,

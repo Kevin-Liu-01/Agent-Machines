@@ -9,6 +9,7 @@
  */
 
 import type { MachineProvider } from "@/lib/providers";
+import { validateAgentCredentials } from "@/lib/agents/credentials";
 import {
 	buildMcpRegisterShell,
 	buildWebReloadScript,
@@ -23,6 +24,8 @@ import {
 import { migrateLegacyPathsShell } from "@/lib/platform/runtime";
 import {
 	BOOTSTRAP_PHASES,
+	CORE_BOOTSTRAP_PHASES,
+	POST_GATEWAY_BOOTSTRAP_PHASES,
 	type BootstrapPhaseId,
 	type BootstrapState,
 	type MachineRef,
@@ -67,6 +70,9 @@ function pathsFor(providerKind: ProviderKind): BootstrapPaths {
 const HERMES_PORT = 8642;
 const OPENCLAW_PORT = 18789;
 
+const WAIT_FOR_APT =
+	'for i in $(seq 1 90); do pgrep -x apt-get >/dev/null 2>&1 || pgrep -x apt >/dev/null 2>&1 || pgrep -x dpkg >/dev/null 2>&1 || break; echo "waiting for apt ($i/90)..."; sleep 2; done';
+
 type StateSink = (state: BootstrapState) => Promise<void>;
 
 export type BootstrapResult = {
@@ -79,18 +85,26 @@ export async function runWebBootstrap({
 	provider,
 	config,
 	onState,
+	force = false,
 }: {
 	machine: MachineRef;
 	provider: MachineProvider;
 	config: UserConfig;
 	onState: StateSink;
+	force?: boolean;
 }): Promise<BootstrapResult> {
-	const completed: BootstrapPhaseId[] = [];
-	const startedAt = new Date().toISOString();
+	const credCheck = validateAgentCredentials(machine.agentKind, config);
+	if (!credCheck.ok) {
+		throw new Error(credCheck.message);
+	}
+
+	const priorCompleted = machine.bootstrapState.completed ?? [];
+	const completed: BootstrapPhaseId[] = force ? [] : [...priorCompleted];
+	const startedAt = machine.bootstrapState.startedAt ?? new Date().toISOString();
 	const apiKey = machine.apiKey ?? crypto.randomUUID();
 	await onState({
 		phase: "running",
-		current: BOOTSTRAP_PHASES[0],
+		current: CORE_BOOTSTRAP_PHASES[0],
 		completed,
 		startedAt,
 		finishedAt: null,
@@ -98,9 +112,45 @@ export async function runWebBootstrap({
 	});
 
 	const paths = pathsFor(machine.providerKind);
+	const skipPhases = force ? new Set<BootstrapPhaseId>() : new Set(priorCompleted);
 
 	try {
-		for (const phase of BOOTSTRAP_PHASES) {
+		for (const phase of CORE_BOOTSTRAP_PHASES) {
+			if (skipPhases.has(phase)) {
+				if (phase === "install-hermes" && machine.agentKind === "hermes") {
+					const hermesBin = `${paths.HERMES_HOME}/venv/bin/hermes`;
+					const probe = await provider.exec(
+						machine.id,
+						`${hermesBin} --version >/dev/null 2>&1 && echo ok || echo broken`,
+						{ timeoutMs: 20_000 },
+					);
+					if (probe.stdout.trim() !== "ok") {
+						skipPhases.delete(phase);
+					} else {
+						if (!completed.includes(phase)) completed.push(phase);
+						continue;
+					}
+				} else if (phase === "configure-hermes") {
+					const probeCmd = configureHealthProbe(machine.agentKind, paths);
+					if (probeCmd) {
+						const probe = await provider.exec(machine.id, probeCmd, {
+							timeoutMs: 20_000,
+						});
+						if (probe.stdout.trim() !== "ok") {
+							skipPhases.delete(phase);
+						} else {
+							if (!completed.includes(phase)) completed.push(phase);
+							continue;
+						}
+					} else {
+						if (!completed.includes(phase)) completed.push(phase);
+						continue;
+					}
+				} else {
+					if (!completed.includes(phase)) completed.push(phase);
+					continue;
+				}
+			}
 			await onState({
 				phase: "running",
 				current: phase,
@@ -121,6 +171,42 @@ export async function runWebBootstrap({
 			finishedAt: new Date().toISOString(),
 			lastError: null,
 		});
+
+		for (const phase of POST_GATEWAY_BOOTSTRAP_PHASES) {
+			if (skipPhases.has(phase)) continue;
+			try {
+				await onState({
+					phase: "running",
+					current: phase,
+					completed: [...completed],
+					startedAt,
+					finishedAt: null,
+					lastError: null,
+				});
+				await runPhase(phase, machine, provider, config, apiKey, paths);
+				completed.push(phase);
+				await onState({
+					phase: "succeeded",
+					current: null,
+					completed,
+					startedAt,
+					finishedAt: new Date().toISOString(),
+					lastError: null,
+				});
+			} catch (postErr) {
+				const message =
+					postErr instanceof Error ? postErr.message : "post-bootstrap failed";
+				await onState({
+					phase: "succeeded",
+					current: null,
+					completed,
+					startedAt,
+					finishedAt: new Date().toISOString(),
+					lastError: message,
+				}).catch(() => {});
+			}
+		}
+
 		return { apiUrl, apiKey };
 	} catch (err) {
 		await onState({
@@ -133,6 +219,55 @@ export async function runWebBootstrap({
 		});
 		throw err;
 	}
+}
+
+/** Start gateway + wire public URL when Hermes is already installed (fast repair path). */
+export async function finalizeGatewayBootstrap({
+	machine,
+	provider,
+	config,
+	onState,
+}: {
+	machine: MachineRef;
+	provider: MachineProvider;
+	config: UserConfig;
+	onState: StateSink;
+}): Promise<BootstrapResult> {
+	const paths = pathsFor(machine.providerKind);
+	const apiKey = machine.apiKey ?? crypto.randomUUID();
+	const startedAt = machine.bootstrapState.startedAt ?? new Date().toISOString();
+	const completed = [...(machine.bootstrapState.completed ?? [])];
+
+	await onState({
+		phase: "running",
+		current: "start-gateway",
+		completed,
+		startedAt,
+		finishedAt: null,
+		lastError: null,
+	});
+
+	const isSandbox =
+		machine.providerKind === "e2b" || machine.providerKind === "sprites";
+	if (isSandbox) {
+		await startGatewaySandbox(machine, provider, paths);
+	} else {
+		await ensureGatewayRunning(machine, provider);
+	}
+	if (!completed.includes("start-gateway")) {
+		completed.push("start-gateway");
+	}
+
+	const apiUrl = await exposeGateway(machine, provider, config, paths, apiKey);
+	await onState({
+		phase: "succeeded",
+		current: null,
+		completed,
+		startedAt,
+		finishedAt: new Date().toISOString(),
+		lastError: null,
+	});
+	return { apiUrl, apiKey };
 }
 
 async function runPhase(
@@ -163,10 +298,23 @@ async function runPhase(
 type UpstreamProvider = { key: string; baseUrl: string };
 
 const DEDALUS_BASE = "https://api.dedaluslabs.ai/v1";
+const DEDALUS_DCS_HOST = "dcs.dedaluslabs.ai";
 const ANTHROPIC_BASE = "https://api.anthropic.com/v1";
 const OPENAI_BASE = "https://api.openai.com/v1";
 const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
 const VERCEL_AI_GATEWAY_BASE = "https://ai-gateway.vercel.sh/v1";
+
+/**
+ * Machine control plane (dcs.dedaluslabs.ai) ≠ LLM router (api.dedaluslabs.ai/v1).
+ * Provider creds often store the DCS URL — normalize before writing Hermes config.
+ */
+export function normalizeDedalusLlmBaseUrl(baseUrl: string | undefined): string {
+	if (!baseUrl || baseUrl.includes(DEDALUS_DCS_HOST)) {
+		return DEDALUS_BASE;
+	}
+	const trimmed = baseUrl.trim().replace(/\/$/, "");
+	return trimmed.endsWith("/v1") ? trimmed : `${trimmed}/v1`;
+}
 
 /**
  * Resolve the best upstream LLM API key + base URL for the given agent.
@@ -178,20 +326,24 @@ function resolveUpstream(agent: string, config: UserConfig): UpstreamProvider {
 	const dedalus = config.providers.dedalus?.apiKey;
 	const dedalusBase = config.providers.dedalus?.baseUrl;
 
-	if (agent === "claude-code" && ai.anthropic) {
-		return { key: ai.anthropic, baseUrl: ANTHROPIC_BASE };
+	if (agent === "claude-code") {
+		if (ai.anthropic) return { key: ai.anthropic, baseUrl: ANTHROPIC_BASE };
+		if (dedalus) return { key: dedalus, baseUrl: normalizeDedalusLlmBaseUrl(dedalusBase) };
+		return { key: "", baseUrl: ANTHROPIC_BASE };
 	}
-	if (agent === "codex" && ai.openai) {
-		return { key: ai.openai, baseUrl: OPENAI_BASE };
+	if (agent === "codex") {
+		if (ai.openai) return { key: ai.openai, baseUrl: OPENAI_BASE };
+		if (dedalus) return { key: dedalus, baseUrl: normalizeDedalusLlmBaseUrl(dedalusBase) };
+		return { key: "", baseUrl: OPENAI_BASE };
 	}
 	if (agent === "openclaw") {
 		if (ai.anthropic) return { key: ai.anthropic, baseUrl: ANTHROPIC_BASE };
-		if (dedalus) return { key: dedalus, baseUrl: dedalusBase ?? DEDALUS_BASE };
+		if (dedalus) return { key: dedalus, baseUrl: normalizeDedalusLlmBaseUrl(dedalusBase) };
 		if (ai.vercelAiGateway) return { key: ai.vercelAiGateway, baseUrl: VERCEL_AI_GATEWAY_BASE };
 		if (ai.openai) return { key: ai.openai, baseUrl: OPENAI_BASE };
 		return { key: "", baseUrl: DEDALUS_BASE };
 	}
-	if (dedalus) return { key: dedalus, baseUrl: dedalusBase ?? DEDALUS_BASE };
+	if (dedalus) return { key: dedalus, baseUrl: normalizeDedalusLlmBaseUrl(dedalusBase) };
 	if (ai.vercelAiGateway) return { key: ai.vercelAiGateway, baseUrl: VERCEL_AI_GATEWAY_BASE };
 	if (ai.anthropic) return { key: ai.anthropic, baseUrl: ANTHROPIC_BASE };
 	if (ai.openai) return { key: ai.openai, baseUrl: OPENAI_BASE };
@@ -236,13 +388,15 @@ function commandFor(
 			}
 			return [
 				"set -e",
+				`mkdir -p ${p.HOME} ${p.HOME}/.local/bin`,
 				migrate,
 				`mkdir -p ${p.APP_HOME}/chats ${p.APP_HOME}/artifacts ${p.HERMES_HOME}/logs ${p.OPENCLAW_HOME}/logs ${p.MACHINE_HOME}/logs/services`,
-				'for i in $(seq 1 30); do fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; echo "waiting for dpkg lock ($i/30)..."; sleep 2; done',
+				WAIT_FOR_APT,
 				`${sudo}apt-get update -qq >/dev/null`,
 				`${sudo}apt-get install -y -qq curl git build-essential ca-certificates jq sqlite3 dnsutils iproute2 netcat-openbsd >/dev/null`,
 			].join(" && ");
 		case "install-uv":
+			if (agent !== "hermes") return null;
 			return [
 				"set -e",
 				`export HOME=${p.HOME}`,
@@ -268,11 +422,12 @@ function commandFor(
 				"set -e",
 				`export HOME=${p.HOME}`,
 				`export PATH=${p.HOME}/.local/bin:$PATH`,
-				'for i in $(seq 1 30); do fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; echo "waiting for dpkg lock ($i/30)..."; sleep 2; done',
+				`if ${p.HERMES_HOME}/venv/bin/hermes --version >/dev/null 2>&1; then exit 0; fi`,
+				WAIT_FOR_APT,
 				`${sudo}apt-get update -qq >/dev/null && ${sudo}apt-get install -y -qq python3-venv python3-pip >/dev/null`,
-				`rm -rf ${p.HERMES_HOME}/venv && python3 -m venv ${p.HERMES_HOME}/venv`,
-				`${p.HERMES_HOME}/venv/bin/python -m pip install --upgrade pip`,
-				`${p.HERMES_HOME}/venv/bin/pip install 'hermes-agent[web,mcp] @ git+https://github.com/NousResearch/hermes-agent.git@main' aiohttp`,
+				`rm -rf ${p.HERMES_HOME}/venv`,
+				`uv venv ${p.HERMES_HOME}/venv --python python3`,
+				`uv pip install --python ${p.HERMES_HOME}/venv/bin/python 'hermes-agent[web,mcp] @ git+https://github.com/NousResearch/hermes-agent.git@main' aiohttp`,
 			].join(" && ");
 		case "install-node":
 			if (isSandbox) {
@@ -280,8 +435,10 @@ function commandFor(
 			}
 			return [
 				"set -e",
-				'for i in $(seq 1 30); do fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; echo "waiting for dpkg lock ($i/30)..."; sleep 2; done',
-				"command -v node >/dev/null || (curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && apt-get install -y nodejs)",
+				"command -v node >/dev/null 2>&1 && node --version && exit 0",
+				WAIT_FOR_APT,
+				"curl -fsSL https://deb.nodesource.com/setup_22.x | bash -",
+				"DEBIAN_FRONTEND=noninteractive apt-get install -y -qq nodejs",
 				"node --version",
 			].join(" && ");
 		case "seed-knowledge":
@@ -298,7 +455,7 @@ function commandFor(
 				"set -e",
 				`if [ ! -d ${repoDir}/.git ]; then ` +
 					`if [ -d ${legacyRepo}/.git ]; then ln -sfn ${legacyRepo} ${repoDir}; ` +
-					`else git clone --depth 1 --branch ${REPO_BRANCH} ${REPO_CLONE_URL} ${repoDir}; fi; ` +
+					`else rm -rf ${repoDir} && git clone --depth 1 --branch ${REPO_BRANCH} ${REPO_CLONE_URL} ${repoDir}; fi; ` +
 					`else cd ${repoDir} && git fetch --depth 1 origin ${REPO_BRANCH} && git reset --hard origin/${REPO_BRANCH}; fi`,
 				`mkdir -p ${p.HERMES_HOME}/scripts ${p.APP_HOME}/scripts`,
 				`cat > ${p.HERMES_HOME}/scripts/reload-from-git.sh <<'EOF'\n${reloadBody}\nEOF`,
@@ -318,7 +475,7 @@ function commandFor(
 				return configureOpenClaw(model, gatewayKey, upstreamApiKey, upstreamBaseUrl, p);
 			}
 			if (agent === "claude-code" || agent === "codex") {
-				return configureCliAgent(agent, upstreamApiKey, p);
+				return configureCliAgent(agent, upstream.key, upstream.baseUrl, p, isSandbox);
 			}
 			return configureHermes(model, gatewayKey, upstreamApiKey, upstreamBaseUrl, p, gwPort);
 		}
@@ -329,7 +486,7 @@ function commandFor(
 		case "seed-cron-jobs":
 			return `mkdir -p ${p.HERMES_HOME}/crons && touch ${p.HERMES_HOME}/crons/.seeded`;
 		case "start-gateway":
-			if (agent === "openclaw") return startOpenClaw(p);
+			if (agent === "openclaw") return startOpenClaw(p, machine);
 			if (agent === "claude-code" || agent === "codex") return null;
 			return startHermes(p, machine);
 		case "install-closed-loop-tools":
@@ -338,30 +495,46 @@ function commandFor(
 }
 
 function installClosedLoopTools(p: BootstrapPaths, isSandbox = false): string {
-	const sudo = isSandbox ? "sudo " : "";
-	return [
+	// Sprites/E2B: run as the sandbox user — sudo strips PATH and often lacks npm.
+	const envBlock = [
 		"set -e",
-		`mkdir -p ${p.NPM_PREFIX} ${p.NPM_CACHE} ${p.PLAYWRIGHT_BROWSERS} ${p.AGENT_BROWSER_HOME} ${p.AGENT_HOME}/docs ${p.MACHINE_HOME}/logs/services`,
 		`export HOME=${p.HOME}`,
 		`export NPM_CONFIG_PREFIX=${p.NPM_PREFIX}`,
 		`export NPM_CONFIG_CACHE=${p.NPM_CACHE}`,
 		`export PLAYWRIGHT_BROWSERS_PATH=${p.PLAYWRIGHT_BROWSERS}`,
 		`export AGENT_BROWSER_DATA_DIR=${p.AGENT_BROWSER_HOME}`,
 		`export PATH=${p.NPM_PREFIX}/bin:${p.HOME}/.local/bin:$PATH`,
-		`${sudo}npm install -g --no-audit --no-fund --loglevel=error agent-browser playwright @playwright/mcp`,
-		...(isSandbox
-			? [`${sudo}npx playwright install --with-deps chromium`]
-			: [
-					'for i in $(seq 1 30); do fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; echo "waiting for dpkg lock ($i/30)..."; sleep 2; done',
-					"playwright install --with-deps chromium",
-				]),
+	].join("\n");
+	const npmGlobal = isSandbox
+		? "npm install -g --no-audit --no-fund --loglevel=error agent-browser playwright @playwright/mcp"
+		: "npm install -g --no-audit --no-fund --loglevel=error agent-browser playwright @playwright/mcp";
+	const playwrightInstall = isSandbox
+		? "npx playwright install --with-deps chromium"
+		: [
+				WAIT_FOR_APT,
+				"playwright install --with-deps chromium",
+			].join("\n");
+	const rootLinks = isSandbox
+		? [
+				`mkdir -p /.agent /.machine 2>/dev/null || true`,
+				`ln -sfn ${p.AGENT_HOME} /.agent 2>/dev/null || true`,
+				`ln -sfn ${p.MACHINE_HOME} /.machine 2>/dev/null || true`,
+			]
+		: [
+				`ln -sfn ${p.AGENT_HOME} /.agent || true`,
+				`ln -sfn ${p.MACHINE_HOME} /.machine || true`,
+			];
+	return [
+		envBlock,
+		`mkdir -p ${p.NPM_PREFIX} ${p.NPM_CACHE} ${p.PLAYWRIGHT_BROWSERS} ${p.AGENT_BROWSER_HOME} ${p.AGENT_HOME}/docs ${p.MACHINE_HOME}/logs/services`,
+		npmGlobal,
+		playwrightInstall,
 		"agent-browser install || true",
 		"uv tool install 'httpx[cli]' || python3 -m pip install --user 'httpx[cli]' || true",
 		`cat > ${p.AGENT_HOME}/llm.txt <<'EOF'\nAgent Machines runtime context.\n\nRead /.agent/docs/agent-context.md before assuming which tools exist. Close the loop with browser automation, curl/httpx+jq, sqlite3, service logs, and network probes.\nEOF`,
 		`cat > ${p.AGENT_HOME}/docs/agent-context.md <<'EOF'\n# Agent Machine Context\n\nThis machine is built for closed-loop agent development. Write code, start the service, hit the endpoint, inspect logs, fix, and retry.\n\n## Tools\n\n- Browser/UI: agent-browser, Playwright, and npx @playwright/mcp with Chromium cached under ${p.HOME}/.cache/ms-playwright.\n- API: curl, jq, and httpx.\n- Database: sqlite3.\n- Network: ss, dig, curl -v, and nc.\n- Logs: /.machine/logs/services/ plus runtime originals under ${p.HOME}.\n\nKeep toolchains and caches under ${p.HOME} because the root filesystem can reset on wake.\nEOF`,
-		`${sudo}ln -sfn ${p.AGENT_HOME} /.agent || true`,
-		`${sudo}ln -sfn ${p.MACHINE_HOME} /.machine || true`,
-				`ln -sfn ${p.APP_HOME}/logs/gateway.log ${p.MACHINE_HOME}/logs/services/agent-gateway.log || true`,
+		...rootLinks,
+		`ln -sfn ${p.APP_HOME}/logs/gateway.log ${p.MACHINE_HOME}/logs/services/agent-gateway.log || true`,
 		`ln -sfn ${p.APP_HOME}/logs/dashboard.log ${p.MACHINE_HOME}/logs/services/agent-dashboard.log || true`,
 	].join("\n");
 }
@@ -404,6 +577,13 @@ async function startGatewaySandbox(
 	if (machine.agentKind === "claude-code" || machine.agentKind === "codex") return;
 
 	const gw = gatewayConfigFor(machine, paths);
+
+	const alreadyUp = await provider.exec(
+		machine.id,
+		`ss -ltn 2>/dev/null | grep -q ":${gw.port} " && echo ready || echo waiting`,
+		{ timeoutMs: 15_000 },
+	);
+	if (alreadyUp.stdout.trim() === "ready") return;
 
 	// 1. Kill existing gateway
 	await provider.exec(machine.id, [
@@ -478,35 +658,82 @@ function configureOpenClaw(
 	upstreamBaseUrl: string,
 	p: BootstrapPaths,
 ): string {
+	const stripShell = (value: string) => value.replace(/^'|'$/g, "");
+	const batch = JSON.stringify([
+		{ path: "gateway.mode", value: "local" },
+		{ path: "gateway.http.endpoints.chatCompletions.enabled", value: true },
+		{ path: "gateway.bind", value: "lan" },
+		{ path: "gateway.auth.mode", value: "token" },
+		{ path: "gateway.auth.token", value: stripShell(gatewayKey) },
+		{ path: "agents.defaults.model", value: stripShell(model) },
+		{ path: "env.vars.ANTHROPIC_API_KEY", value: stripShell(upstreamApiKey) },
+		{ path: "env.vars.OPENAI_API_KEY", value: stripShell(upstreamApiKey) },
+		{ path: "env.vars.ANTHROPIC_BASE_URL", value: stripShell(upstreamBaseUrl) },
+	]);
+	const batchPath = `${p.OPENCLAW_HOME}/bootstrap-config.batch.json`;
 	return [
 		"set -e",
 		openClawEnv(p),
 		`mkdir -p ${p.HOME}/.npm-global ${p.HOME}/.npm-cache ${p.HOME}/.tmp ${p.OPENCLAW_HOME}/logs`,
-		`NPM_CONFIG_PREFIX=${p.HOME}/.npm-global NPM_CONFIG_CACHE=${p.HOME}/.npm-cache TMPDIR=${p.HOME}/.tmp npm install -g openclaw@latest --no-audit --no-fund --loglevel=error`,
-		`openclaw config set gateway.mode local`,
-		`openclaw config set gateway.http.endpoints.chatCompletions.enabled true`,
-		`openclaw config set gateway.bind "0.0.0.0"`,
-		`openclaw config set gateway.auth.mode none`,
-		`openclaw config set agent.model ${model}`,
-		`openclaw config set env.vars.ANTHROPIC_API_KEY ${upstreamApiKey}`,
-		`openclaw config set env.vars.OPENAI_API_KEY ${upstreamApiKey}`,
-		`openclaw config set env.vars.ANTHROPIC_BASE_URL ${upstreamBaseUrl}`,
-		`cat > ${p.OPENCLAW_HOME}/.env <<EOF\nOPENCLAW_API_KEY=${gatewayKey}\nOPENCLAW_MODEL=${model}\nEOF`,
+		`if command -v openclaw >/dev/null 2>&1 && openclaw --version >/dev/null 2>&1; then :; else ` +
+			`rm -rf ${p.NPM_PREFIX}/lib/node_modules/openclaw ${p.NPM_PREFIX}/lib/node_modules/.openclaw-* 2>/dev/null || true; ` +
+			`NPM_CONFIG_PREFIX=${p.HOME}/.npm-global NPM_CONFIG_CACHE=${p.HOME}/.npm-cache TMPDIR=${p.HOME}/.tmp npm install -g openclaw@latest --no-audit --no-fund --loglevel=error; fi`,
+		writeRemoteFile(batchPath, batch),
+		`openclaw config set --batch-file ${batchPath}`,
+		writeRemoteFile(
+			`${p.OPENCLAW_HOME}/.env`,
+			`OPENCLAW_API_KEY=${stripShell(gatewayKey)}\nOPENCLAW_MODEL=${stripShell(model)}\n`,
+		),
 	].join(" && ");
 }
 
 function configureCliAgent(
 	agent: string,
 	upstreamApiKey: string,
+	upstreamBaseUrl: string,
 	p: BootstrapPaths,
+	isSandbox: boolean,
 ): string {
-	const envVar = agent === "claude-code" ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY";
-	const configDir = agent === "claude-code" ? `${p.HOME}/.claude` : `${p.HOME}/.codex`;
+	const isClaude = agent === "claude-code";
+	const keyVar = isClaude ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY";
+	const baseVar = isClaude ? "ANTHROPIC_BASE_URL" : "OPENAI_BASE_URL";
+	const configDir = isClaude ? `${p.HOME}/.claude` : `${p.HOME}/.codex`;
+	const pathLine = `export PATH=${p.NPM_PREFIX}/bin:${p.HOME}/.local/bin:$PATH`;
+	const profileSnippet = [
+		`export PATH=${p.NPM_PREFIX}/bin:${p.HOME}/.local/bin:$PATH`,
+		`export ${keyVar}=${upstreamApiKey}`,
+		`export ${baseVar}=${upstreamBaseUrl}`,
+	].join("\n");
+	const envWrite = writeRemoteFile(`${p.APP_HOME}/.agent-env`, `${profileSnippet}\n`);
+
+	if (isClaude) {
+		const aptWait = isSandbox ? "" : `${WAIT_FOR_APT} && `;
+		const claudeInstall = isSandbox
+			? `NPM_CONFIG_PREFIX=${p.NPM_PREFIX} NPM_CONFIG_CACHE=${p.NPM_CACHE} npm install -g @anthropic-ai/claude-code --no-audit --no-fund --loglevel=error`
+			: `${aptWait}curl -fsSL https://claude.ai/install.sh | bash`;
+		return [
+			"set -e",
+			`export HOME=${p.HOME}`,
+			pathLine,
+			`mkdir -p ${configDir} ${p.APP_HOME} ${p.NPM_PREFIX} ${p.NPM_CACHE}`,
+			`if ! command -v claude >/dev/null 2>&1 || ! claude --version >/dev/null 2>&1; then ${claudeInstall}; fi`,
+			envWrite,
+			`chmod 600 ${p.APP_HOME}/.agent-env`,
+			`${pathLine} && claude --version`,
+		].join(" && ");
+	}
+
+	const aptWait = isSandbox ? "" : `${WAIT_FOR_APT} && `;
 	return [
 		"set -e",
-		`mkdir -p ${configDir} ${p.APP_HOME}`,
-		`cat > ${p.APP_HOME}/.agent-env <<EOF\nexport ${envVar}=${upstreamApiKey}\nEOF`,
+		`export HOME=${p.HOME}`,
+		pathLine,
+		`mkdir -p ${configDir} ${p.APP_HOME} ${p.NPM_PREFIX} ${p.NPM_CACHE}`,
+		`if ! command -v codex >/dev/null 2>&1 || ! codex --version >/dev/null 2>&1; then ` +
+			`${aptWait}NPM_CONFIG_PREFIX=${p.NPM_PREFIX} NPM_CONFIG_CACHE=${p.NPM_CACHE} npm install -g @openai/codex --no-audit --no-fund --loglevel=error; fi`,
+		envWrite,
 		`chmod 600 ${p.APP_HOME}/.agent-env`,
+		`${pathLine} && codex --version`,
 	].join(" && ");
 }
 
@@ -581,7 +808,7 @@ function startHermes(p: BootstrapPaths, machine: MachineRef): string {
 	].join("\n");
 }
 
-function startOpenClaw(p: BootstrapPaths): string {
+function startOpenClaw(p: BootstrapPaths, machine: MachineRef): string {
 	const script = [
 		"#!/usr/bin/env bash",
 		"set -euo pipefail",
@@ -593,17 +820,39 @@ function startOpenClaw(p: BootstrapPaths): string {
 		`export PATH=${p.NPM_PREFIX}/bin:${p.HOME}/.npm-global/bin:$PATH`,
 		`export OPENCLAW_STATE_DIR=${p.OPENCLAW_HOME}`,
 		`export OPENCLAW_NO_RESPAWN=1`,
-		`mkdir -p ${p.MACHINE_HOME}/logs/services`,
+		`mkdir -p ${p.MACHINE_HOME}/logs/services ${p.OPENCLAW_HOME}/logs`,
 		`ln -sfn ${p.OPENCLAW_HOME}/logs/gateway.log ${p.MACHINE_HOME}/logs/services/openclaw-gateway.log`,
-		`source ${p.OPENCLAW_HOME}/.env`,
-		`exec openclaw gateway run > ${p.OPENCLAW_HOME}/logs/gateway.log 2>&1`,
+		`set -a && source ${p.OPENCLAW_HOME}/.env && set +a`,
+		`exec openclaw gateway run >> ${p.OPENCLAW_HOME}/logs/gateway.log 2>&1`,
 	].join("\n");
-	return [
+	const gatewayPaths = {
+		HOME: p.HOME,
+		HERMES_HOME: p.HERMES_HOME,
+		OPENCLAW_HOME: p.OPENCLAW_HOME,
+		NPM_PREFIX: p.NPM_PREFIX,
+		NPM_CACHE: p.NPM_CACHE,
+		PLAYWRIGHT_BROWSERS: p.PLAYWRIGHT_BROWSERS,
+		AGENT_BROWSER_HOME: p.AGENT_BROWSER_HOME,
+		MACHINE_HOME: p.MACHINE_HOME,
+	};
+	const launcher = [
 		"set -e",
 		`ps -eo pid,cmd | awk '/openclaw gateway run/ && !/awk/ && !/bash/ {print $1}' | xargs -r kill 2>/dev/null || true`,
 		openClawEnv(p),
 		`cat > ${p.HOME}/start-openclaw-gateway.sh <<'EOF'\n${script}\nEOF`,
 		`chmod +x ${p.HOME}/start-openclaw-gateway.sh`,
+	].join("\n");
+	if (machine.providerKind === "dedalus") {
+		return [
+			launcher,
+			installGatewayUnitCommand(machine, gatewayPaths),
+			"sleep 12",
+			`ss -tlnp 2>/dev/null | grep ':${OPENCLAW_PORT}'`,
+			`echo gateway:${OPENCLAW_PORT}`,
+		].join("\n");
+	}
+	return [
+		launcher,
 		`(setsid ${p.HOME}/start-openclaw-gateway.sh </dev/null &>/dev/null &) && sleep 14`,
 		`ss -tlnp 2>/dev/null | grep ':${OPENCLAW_PORT}'`,
 		`echo gateway:${OPENCLAW_PORT}`,
@@ -612,6 +861,27 @@ function startOpenClaw(p: BootstrapPaths): string {
 
 function shell(value: string): string {
 	return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+/** Avoid heredocs in provider exec — E2B/Sprites multiline scripts break easily when joined. */
+function writeRemoteFile(path: string, content: string): string {
+	const b64 = Buffer.from(content, "utf8").toString("base64");
+	return `printf '%s' '${b64}' | base64 -d > ${path}`;
+}
+
+function configureHealthProbe(agent: string, p: BootstrapPaths): string | null {
+	switch (agent) {
+		case "claude-code":
+			return `command -v claude >/dev/null 2>&1 && claude --version >/dev/null 2>&1 && test -s ${p.APP_HOME}/.agent-env && echo ok || echo broken`;
+		case "codex":
+			return `command -v codex >/dev/null 2>&1 && codex --version >/dev/null 2>&1 && test -s ${p.APP_HOME}/.agent-env && echo ok || echo broken`;
+		case "openclaw":
+			return `command -v openclaw >/dev/null 2>&1 && openclaw --version >/dev/null 2>&1 && test -s ${p.OPENCLAW_HOME}/.env && echo ok || echo broken`;
+		case "hermes":
+			return `test -s ${p.HERMES_HOME}/.env && echo ok || echo broken`;
+		default:
+			return null;
+	}
 }
 
 function hermesEnv(p: BootstrapPaths): string {
@@ -651,16 +921,30 @@ async function exposeGateway(
 	}
 	const port = machine.agentKind === "openclaw" ? OPENCLAW_PORT : HERMES_PORT;
 	const name = machine.agentKind === "openclaw" ? "openclaw" : "hermes";
+	const localPort =
+		machine.providerKind === "sprites" ? 8080 :
+		machine.agentKind === "openclaw" ? OPENCLAW_PORT : HERMES_PORT;
+	const waitOpts = {
+		provider,
+		machineId: machine.id,
+		localPort,
+	};
+
 	if (provider.kind === "e2b") {
-		// E2B public URL format is deterministic -- no SDK call needed
-		const url = `https://${port}-${machine.id}.e2b.app`;
-		return `${url}/v1`;
+		const e2bProvider = provider as import("@/lib/providers/e2b").E2BProvider;
+		const url = await e2bProvider.getPublicUrl(machine.id, port);
+		const normalized = url.trim().replace(/\/$/, "");
+		const apiUrl = normalized.endsWith("/v1") ? normalized : `${normalized}/v1`;
+		await waitForGatewayUrl(apiUrl, apiKey, waitOpts);
+		return apiUrl;
 	}
 
 	if (provider.kind === "sprites") {
 		const spritesProvider = provider as import("@/lib/providers/sprites").SpritesProvider;
 		const url = await spritesProvider.getPublicUrl(machine.id, port);
-		return url ? (url.endsWith("/v1") ? url : `${url}/v1`) : null;
+		const apiUrl = url ? (url.endsWith("/v1") ? url : `${url}/v1`) : null;
+		if (apiUrl) await waitForGatewayUrl(apiUrl, apiKey, waitOpts);
+		return apiUrl;
 	}
 
 	if (provider.kind !== "dedalus") return null;
@@ -669,7 +953,7 @@ async function exposeGateway(
 	if (tunnelToken) {
 		await startNamedTunnel(machine, provider, tunnelToken, p);
 		const apiUrl = machine.apiUrl ?? null;
-		if (apiUrl) await waitForGatewayUrl(apiUrl, apiKey);
+		if (apiUrl) await waitForGatewayUrl(apiUrl, apiKey, waitOpts);
 		return apiUrl;
 	}
 
@@ -679,13 +963,13 @@ async function exposeGateway(
 		if (previewUrl) {
 			const normalized = previewUrl.trim().replace(/\/$/, "");
 			const apiUrl = normalized.endsWith("/v1") ? normalized : `${normalized}/v1`;
-			await waitForGatewayUrl(apiUrl, apiKey);
+			await waitForGatewayUrl(apiUrl, apiKey, { ...waitOpts, maxAttempts: 15 });
 			return apiUrl;
 		}
 	}
 
 	const apiUrl = await exposeViaCloudflared(machine, provider, port, name, p);
-	await waitForGatewayUrl(apiUrl, apiKey);
+	await waitForGatewayUrl(apiUrl, apiKey, { ...waitOpts, maxAttempts: 15 });
 	return apiUrl;
 }
 

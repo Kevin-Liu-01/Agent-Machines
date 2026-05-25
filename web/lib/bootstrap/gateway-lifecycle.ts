@@ -156,21 +156,115 @@ export async function ensureGatewayRunning(
 export async function waitForGatewayUrl(
 	apiUrl: string,
 	apiKey: string,
-	maxAttempts = 30,
+	options?: {
+		maxAttempts?: number;
+		/** When set, also accept in-VM localhost probe (more reliable than preview tunnels). */
+		provider?: MachineProvider;
+		machineId?: string;
+		localPort?: number;
+	},
 ): Promise<void> {
+	const maxAttempts = options?.maxAttempts ?? 30;
 	const base = apiUrl.replace(/\/$/, "");
 	const modelsUrl = base.endsWith("/v1") ? `${base}/models` : `${base}/v1/models`;
+
 	for (let attempt = 0; attempt < maxAttempts; attempt++) {
+		let externalOk = false;
 		try {
 			const response = await fetch(modelsUrl, {
 				headers: { Authorization: `Bearer ${apiKey}` },
 				cache: "no-store",
 			});
-			if (response.ok) return;
+			externalOk = response.ok;
+			if (externalOk) return;
 		} catch {
 			// Preview tunnel may still be connecting.
 		}
+
+		if (options?.provider && options?.machineId && options?.localPort) {
+			const local = await probeGatewayLocal(
+				options.provider,
+				options.machineId,
+				options.localPort,
+				apiKey,
+			).catch(() => false);
+			if (local) return;
+		}
+
 		await sleep(2_000);
 	}
 	throw new Error(`Gateway URL not ready after ${maxAttempts} attempts: ${modelsUrl}`);
+}
+
+async function probeGatewayLocal(
+	provider: MachineProvider,
+	machineId: string,
+	port: number,
+	apiKey: string,
+): Promise<boolean> {
+	const result = await provider.exec(
+		machineId,
+		[
+			"set -e",
+			`code=$(curl -s -o /dev/null -w '%{http_code}' -H 'Authorization: Bearer ${apiKey}' http://127.0.0.1:${port}/v1/models || echo 000)`,
+			'echo "$code"',
+		].join("\n"),
+		{ timeoutMs: 15_000 },
+	);
+	return result.stdout.trim() === "200";
+}
+
+/** Probe public URL, falling back to in-VM localhost when preview tunnels fail. */
+export async function probeGateway(args: {
+	apiUrl: string;
+	apiKey: string;
+	provider?: MachineProvider;
+	machineId?: string;
+	localPort?: number;
+}): Promise<{ ok: boolean; status: number; modelCount: number | null; error?: string }> {
+	const base = args.apiUrl.replace(/\/$/, "");
+	const modelsUrl = base.endsWith("/v1") ? `${base}/models` : `${base}/v1/models`;
+
+	try {
+		const response = await fetch(modelsUrl, {
+			headers: { Authorization: `Bearer ${args.apiKey}` },
+			cache: "no-store",
+		});
+		let modelCount: number | null = null;
+		if (response.ok) {
+			try {
+				const body = (await response.json()) as { data?: unknown[] };
+				if (Array.isArray(body.data)) modelCount = body.data.length;
+			} catch {
+				// non-json body
+			}
+			return { ok: true, status: response.status, modelCount };
+		}
+		if (args.provider && args.machineId && args.localPort) {
+			const local = await probeGatewayLocal(
+				args.provider,
+				args.machineId,
+				args.localPort,
+				args.apiKey,
+			).catch(() => false);
+			if (local) return { ok: true, status: 200, modelCount: null };
+		}
+		return { ok: false, status: response.status, modelCount: null };
+	} catch (err) {
+		if (args.provider && args.machineId && args.localPort) {
+			const local = await probeGatewayLocal(
+				args.provider,
+				args.machineId,
+				args.localPort,
+				args.apiKey,
+			).catch(() => false);
+			if (local) return { ok: true, status: 200, modelCount: null };
+		}
+		return {
+			ok: false,
+			status: 0,
+			modelCount: null,
+			error: err instanceof Error ? err.message : "fetch_failed",
+		};
+	}
 }

@@ -36,7 +36,11 @@ export async function POST(request: NextRequest): Promise<Response> {
 
 	let env: Awaited<ReturnType<typeof resolveGatewayForUser>>;
 	try {
-		env = await resolveGatewayForUser();
+		const machineId =
+			typeof (body as Record<string, unknown>).machineId === "string"
+				? ((body as Record<string, unknown>).machineId as string)
+				: null;
+		env = await resolveGatewayForUser(machineId);
 	} catch (err) {
 		const message = err instanceof Error ? err.message : "config_error";
 		return Response.json(

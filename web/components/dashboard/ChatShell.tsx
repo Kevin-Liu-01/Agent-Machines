@@ -141,7 +141,10 @@ export function ChatShell({ activeMachineId, model }: Props) {
 	const loadChat = useCallback(async (chatId: string) => {
 		setLoadError(null);
 		try {
-			const response = await fetch(`/api/dashboard/chats/${chatId}`, {
+			const params = activeMachineId
+				? `?machineId=${encodeURIComponent(activeMachineId)}`
+				: "";
+			const response = await fetch(`/api/dashboard/chats/${chatId}${params}`, {
 				cache: "no-store",
 			});
 			const body = (await response.json()) as LoadResponse;
@@ -156,7 +159,7 @@ export function ChatShell({ activeMachineId, model }: Props) {
 		} catch (err) {
 			setLoadError(err instanceof Error ? err.message : "load failed");
 		}
-	}, []);
+	}, [activeMachineId]);
 
 	const newChat = useCallback(() => {
 		setActiveChatId(newId());

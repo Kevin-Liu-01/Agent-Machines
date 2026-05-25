@@ -27,12 +27,19 @@ import {
 	type MachineRef,
 } from "@/lib/user-config/schema";
 
-/**
- * Root directory on the VM for all persistent state -- runtime, app data,
- * skills, sessions, crons, and config. Lives under `/home/machine`
- * (the persistent volume).
- */
-export const APP_DATA_ROOT = "/home/machine/.agent-machines";
+import {
+	APP_DATA_ROOT,
+	type MachineStorageContext,
+	storageContextFor,
+} from "./machine-paths";
+
+export {
+	APP_DATA_ROOT,
+	appDataRootFor,
+	homeFor,
+	storageContextFor,
+	type MachineStorageContext,
+} from "./machine-paths";
 
 export type MachineUnreachable =
 	| { ok: false; reason: "no_active_machine"; message: string }
@@ -43,6 +50,7 @@ export type MachineUnreachable =
 
 export type MachineHandle = {
 	machine: MachineRef;
+	storage: MachineStorageContext;
 };
 
 /**
@@ -79,7 +87,9 @@ export async function withActiveMachine(
 		};
 	}
 
-	if (await isMachineRunning(machine.id)) return { machine };
+	if (await isMachineRunning(machine.id)) {
+		return { machine, storage: storageContextFor(machine) };
+	}
 
 	try {
 		const summary = await provider.state(machine.id);
@@ -142,10 +152,10 @@ function shellEscape(value: string): string {
 	return `'${value.replace(/'/g, "'\\''")}'`;
 }
 
-function assertSafePath(path: string): void {
-	if (!path.startsWith(APP_DATA_ROOT)) {
+function assertSafePath(path: string, root: string): void {
+	if (!path.startsWith(root)) {
 		throw new Error(
-			`refusing to operate on a path outside ${APP_DATA_ROOT}: ${path}`,
+			`refusing to operate on a path outside ${root}: ${path}`,
 		);
 	}
 	if (path.includes("..") || path.includes("\n")) {
@@ -157,10 +167,14 @@ function assertSafePath(path: string): void {
 /* Read helpers                                                        */
 /* ------------------------------------------------------------------ */
 
-export async function readTextFile(path: string): Promise<string | null> {
-	assertSafePath(path);
+export async function readTextFile(
+	path: string,
+	ctx: MachineStorageContext,
+): Promise<string | null> {
+	assertSafePath(path, ctx.appDataRoot);
 	const result = await execOnMachine(
 		`if [ -f ${shellEscape(path)} ]; then cat ${shellEscape(path)}; else echo __MISSING__; fi`,
+		{ machineId: ctx.machineId },
 	);
 	if (result.exitCode !== 0) {
 		throw new Error(`read ${path}: exit ${result.exitCode}: ${result.stderr.slice(0, 200)}`);
@@ -169,8 +183,11 @@ export async function readTextFile(path: string): Promise<string | null> {
 	return result.stdout;
 }
 
-export async function readJsonFile<T>(path: string): Promise<T | null> {
-	const text = await readTextFile(path);
+export async function readJsonFile<T>(
+	path: string,
+	ctx: MachineStorageContext,
+): Promise<T | null> {
+	const text = await readTextFile(path, ctx);
 	if (text === null || text.length === 0) return null;
 	try {
 		return JSON.parse(text) as T;
@@ -182,13 +199,16 @@ export async function readJsonFile<T>(path: string): Promise<T | null> {
 	}
 }
 
-export async function readBytes(path: string): Promise<Buffer | null> {
-	assertSafePath(path);
+export async function readBytes(
+	path: string,
+	ctx: MachineStorageContext,
+): Promise<Buffer | null> {
+	assertSafePath(path, ctx.appDataRoot);
 	// `base64 -w 0` keeps the output as one line so we can ferry it
 	// back through the execution API without newline truncation.
 	const result = await execOnMachine(
 		`if [ -f ${shellEscape(path)} ]; then base64 -w 0 < ${shellEscape(path)}; else echo __MISSING__; fi`,
-		{ timeoutMs: 60_000 },
+		{ timeoutMs: 60_000, machineId: ctx.machineId },
 	);
 	if (result.exitCode !== 0) {
 		throw new Error(`readBytes ${path}: exit ${result.exitCode}: ${result.stderr.slice(0, 200)}`);
@@ -207,12 +227,15 @@ export type StatEntry = {
 	mtime: number;
 };
 
-export async function listDir(path: string): Promise<StatEntry[]> {
-	assertSafePath(path);
+export async function listDir(
+	path: string,
+	ctx: MachineStorageContext,
+): Promise<StatEntry[]> {
+	assertSafePath(path, ctx.appDataRoot);
 	const cmd =
 		`mkdir -p ${shellEscape(path)} && ` +
 		`find ${shellEscape(path)} -mindepth 1 -maxdepth 1 -printf '%f\\t%s\\t%T@\\n' 2>/dev/null`;
-	const result = await execOnMachine(cmd);
+	const result = await execOnMachine(cmd, { machineId: ctx.machineId });
 	if (result.exitCode !== 0) {
 		throw new Error(`listDir ${path}: exit ${result.exitCode}: ${result.stderr.slice(0, 200)}`);
 	}
@@ -235,9 +258,14 @@ export async function listDir(path: string): Promise<StatEntry[]> {
 /* Write helpers                                                       */
 /* ------------------------------------------------------------------ */
 
-export async function ensureDir(path: string): Promise<void> {
-	assertSafePath(path);
-	const result = await execOnMachine(`mkdir -p ${shellEscape(path)}`);
+export async function ensureDir(
+	path: string,
+	ctx: MachineStorageContext,
+): Promise<void> {
+	assertSafePath(path, ctx.appDataRoot);
+	const result = await execOnMachine(`mkdir -p ${shellEscape(path)}`, {
+		machineId: ctx.machineId,
+	});
 	if (result.exitCode !== 0) {
 		throw new Error(`ensureDir ${path}: exit ${result.exitCode}: ${result.stderr.slice(0, 200)}`);
 	}
@@ -257,8 +285,9 @@ export async function ensureDir(path: string): Promise<void> {
 export async function writeFile(
 	path: string,
 	content: Buffer | string,
+	ctx: MachineStorageContext,
 ): Promise<void> {
-	assertSafePath(path);
+	assertSafePath(path, ctx.appDataRoot);
 	const buf =
 		typeof content === "string" ? Buffer.from(content, "utf8") : content;
 	if (buf.byteLength > 8 * 1024 * 1024) {
@@ -269,19 +298,31 @@ export async function writeFile(
 	const dir = path.replace(/\/[^/]+$/, "");
 	const b64 = buf.toString("base64");
 	const cmd = `mkdir -p ${shellEscape(dir)} && echo ${shellEscape(b64)} | base64 -d > ${shellEscape(path)}`;
-	const result = await execOnMachine(cmd, { timeoutMs: 60_000 });
+	const result = await execOnMachine(cmd, {
+		timeoutMs: 60_000,
+		machineId: ctx.machineId,
+	});
 	if (result.exitCode !== 0) {
 		throw new Error(`writeFile ${path}: exit ${result.exitCode}: ${result.stderr.slice(0, 200)}`);
 	}
 }
 
-export async function writeJsonFile<T>(path: string, value: T): Promise<void> {
-	await writeFile(path, JSON.stringify(value));
+export async function writeJsonFile<T>(
+	path: string,
+	value: T,
+	ctx: MachineStorageContext,
+): Promise<void> {
+	await writeFile(path, JSON.stringify(value), ctx);
 }
 
-export async function deletePath(path: string): Promise<void> {
-	assertSafePath(path);
-	const result = await execOnMachine(`rm -rf -- ${shellEscape(path)}`);
+export async function deletePath(
+	path: string,
+	ctx: MachineStorageContext,
+): Promise<void> {
+	assertSafePath(path, ctx.appDataRoot);
+	const result = await execOnMachine(`rm -rf -- ${shellEscape(path)}`, {
+		machineId: ctx.machineId,
+	});
 	if (result.exitCode !== 0) {
 		throw new Error(`deletePath ${path}: exit ${result.exitCode}: ${result.stderr.slice(0, 200)}`);
 	}
@@ -293,19 +334,20 @@ export async function deletePath(path: string): Promise<void> {
  * the first write to a new user's machine so we don't have to gate
  * every call behind it.
  */
-export async function ensureAppDataLayout(): Promise<void> {
+export async function ensureAppDataLayout(ctx: MachineStorageContext): Promise<void> {
+	const root = ctx.appDataRoot;
 	const cmd = [
-		`mkdir -p ${shellEscape(`${APP_DATA_ROOT}/chats`)}`,
-		`mkdir -p ${shellEscape(`${APP_DATA_ROOT}/artifacts`)}`,
+		`mkdir -p ${shellEscape(`${root}/chats`)}`,
+		`mkdir -p ${shellEscape(`${root}/artifacts`)}`,
 		// README is a one-time hint to anyone shelling into the box.
-		`if [ ! -f ${shellEscape(`${APP_DATA_ROOT}/README.md`)} ]; then ` +
+		`if [ ! -f ${shellEscape(`${root}/README.md`)} ]; then ` +
 			`echo '# agent-machines persistent state\\n\\n' \\\n` +
 			`     'chats/    -- chat sessions started from /dashboard/chat\\n' \\\n` +
 			`     'artifacts/ -- files uploaded via /dashboard/artifacts\\n\\n' \\\n` +
 			`     'these survive sleep/wake. the running agent can read these as context.' \\\n` +
-			`     > ${shellEscape(`${APP_DATA_ROOT}/README.md`)}; fi`,
+			`     > ${shellEscape(`${root}/README.md`)}; fi`,
 	].join(" && ");
-	const result = await execOnMachine(cmd);
+	const result = await execOnMachine(cmd, { machineId: ctx.machineId });
 	if (result.exitCode !== 0) {
 		throw new Error(`ensureAppDataLayout: exit ${result.exitCode}: ${result.stderr.slice(0, 200)}`);
 	}

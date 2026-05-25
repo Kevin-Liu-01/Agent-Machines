@@ -22,18 +22,19 @@ export const dynamic = "force-dynamic";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
+export async function GET(request: Request, ctx: Ctx): Promise<Response> {
 	const userId = await getEffectiveUserId();
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}
-	const handle = await withActiveMachine();
+	const machineId = new URL(request.url).searchParams.get("machineId") ?? undefined;
+	const handle = await withActiveMachine(machineId);
 	if ("ok" in handle) {
 		return Response.json(handle, { status: 503 });
 	}
 	const { id } = await ctx.params;
 	try {
-		const result = await loadArtifactBytes(id);
+		const result = await loadArtifactBytes(id, handle.storage);
 		if (!result) {
 			return Response.json({ error: "not_found" }, { status: 404 });
 		}

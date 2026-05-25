@@ -1,28 +1,17 @@
 /**
- * Artifact persistence on the user's active Dedalus machine.
- *
- * Layout on the VM:
- *   ~/.agent-machines/artifacts/_index.json    -- ArtifactRef[] (newest first)
- *   ~/.agent-machines/artifacts/<id>/_meta.json -- ArtifactRef
- *   ~/.agent-machines/artifacts/<id>/<filename> -- raw bytes
- *
- * Downloads stream through `/api/dashboard/artifacts/[id]/download`,
- * which fetches the bytes via the execution API and pipes them back
- * to the browser. There's no public CDN URL like Vercel Blob gave us;
- * artifacts are private to the user's machine and only the signed-in
- * owner can fetch them.
+ * Artifact persistence on the user's active machine.
  */
 
 import { Buffer } from "node:buffer";
 
 import {
-	APP_DATA_ROOT,
 	deletePath,
 	ensureAppDataLayout,
 	readBytes,
 	readJsonFile,
 	writeFile,
 	writeJsonFile,
+	type MachineStorageContext,
 } from "./machine-fs";
 
 export type ArtifactRef = {
@@ -34,8 +23,13 @@ export type ArtifactRef = {
 	createdAt: string;
 };
 
-const ARTIFACTS_DIR = `${APP_DATA_ROOT}/artifacts`;
-const ARTIFACTS_INDEX = `${ARTIFACTS_DIR}/_index.json`;
+function artifactsDir(ctx: MachineStorageContext): string {
+	return `${ctx.appDataRoot}/artifacts`;
+}
+
+function artifactsIndex(ctx: MachineStorageContext): string {
+	return `${artifactsDir(ctx)}/_index.json`;
+}
 
 function safeName(name: string): string {
 	const base = name
@@ -51,20 +45,20 @@ function safeId(id: string): string {
 	return v;
 }
 
-function artifactDir(id: string): string {
-	return `${ARTIFACTS_DIR}/${safeId(id)}`;
+function artifactDir(id: string, ctx: MachineStorageContext): string {
+	return `${artifactsDir(ctx)}/${safeId(id)}`;
 }
 
-function artifactMeta(id: string): string {
-	return `${artifactDir(id)}/_meta.json`;
+function artifactMeta(id: string, ctx: MachineStorageContext): string {
+	return `${artifactDir(id, ctx)}/_meta.json`;
 }
 
-function artifactPath(id: string, name: string): string {
-	return `${artifactDir(id)}/${safeName(name)}`;
+function artifactPath(id: string, name: string, ctx: MachineStorageContext): string {
+	return `${artifactDir(id, ctx)}/${safeName(name)}`;
 }
 
-export async function listArtifacts(): Promise<ArtifactRef[]> {
-	const index = await readJsonFile<ArtifactRef[]>(ARTIFACTS_INDEX);
+export async function listArtifacts(ctx: MachineStorageContext): Promise<ArtifactRef[]> {
+	const index = await readJsonFile<ArtifactRef[]>(artifactsIndex(ctx), ctx);
 	if (index && Array.isArray(index)) {
 		return [...index].sort((a, b) =>
 			b.createdAt.localeCompare(a.createdAt),
@@ -75,22 +69,26 @@ export async function listArtifacts(): Promise<ArtifactRef[]> {
 
 export async function loadArtifactBytes(
 	id: string,
+	ctx: MachineStorageContext,
 ): Promise<{ ref: ArtifactRef; bytes: Buffer } | null> {
-	const ref = await readJsonFile<ArtifactRef>(artifactMeta(id));
+	const ref = await readJsonFile<ArtifactRef>(artifactMeta(id, ctx), ctx);
 	if (!ref) return null;
-	const bytes = await readBytes(artifactPath(id, ref.name));
+	const bytes = await readBytes(artifactPath(id, ref.name, ctx), ctx);
 	if (!bytes) return null;
 	return { ref, bytes };
 }
 
-export async function saveArtifact(args: {
-	id: string;
-	name: string;
-	mime: string;
-	body: Buffer;
-	chatId?: string;
-}): Promise<ArtifactRef> {
-	await ensureAppDataLayout();
+export async function saveArtifact(
+	args: {
+		id: string;
+		name: string;
+		mime: string;
+		body: Buffer;
+		chatId?: string;
+	},
+	ctx: MachineStorageContext,
+): Promise<ArtifactRef> {
+	await ensureAppDataLayout(ctx);
 	const ref: ArtifactRef = {
 		id: safeId(args.id),
 		name: args.name,
@@ -99,15 +97,18 @@ export async function saveArtifact(args: {
 		chatId: args.chatId ?? null,
 		createdAt: new Date().toISOString(),
 	};
-	await writeFile(artifactPath(ref.id, ref.name), args.body);
-	await writeJsonFile(artifactMeta(ref.id), ref);
-	const existing = (await listArtifacts()).filter((a) => a.id !== ref.id);
-	await writeJsonFile(ARTIFACTS_INDEX, [ref, ...existing]);
+	await writeFile(artifactPath(ref.id, ref.name, ctx), args.body, ctx);
+	await writeJsonFile(artifactMeta(ref.id, ctx), ref, ctx);
+	const existing = (await listArtifacts(ctx)).filter((a) => a.id !== ref.id);
+	await writeJsonFile(artifactsIndex(ctx), [ref, ...existing], ctx);
 	return ref;
 }
 
-export async function deleteArtifact(id: string): Promise<void> {
-	await deletePath(artifactDir(id));
-	const existing = (await listArtifacts()).filter((a) => a.id !== id);
-	await writeJsonFile(ARTIFACTS_INDEX, existing);
+export async function deleteArtifact(
+	id: string,
+	ctx: MachineStorageContext,
+): Promise<void> {
+	await deletePath(artifactDir(id, ctx), ctx);
+	const existing = (await listArtifacts(ctx)).filter((a) => a.id !== id);
+	await writeJsonFile(artifactsIndex(ctx), existing, ctx);
 }

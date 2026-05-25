@@ -15,9 +15,10 @@
 
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
-import { ensureGatewayRunning } from "@/lib/bootstrap/gateway-lifecycle";
+import { repairGatewayAfterWake } from "@/lib/bootstrap/bootstrap-repair";
+import { scheduleWebBootstrap } from "@/lib/bootstrap/schedule-bootstrap";
 import { getProvider, MachineProviderError } from "@/lib/providers";
-import { getUserConfig } from "@/lib/user-config/clerk";
+import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -41,21 +42,45 @@ export async function POST(_req: Request, ctx: Ctx): Promise<Response> {
 	try {
 		const provider = getProvider(machine.providerKind, config.providers);
 		const summary = await provider.wake(machine.id);
+		let needsBootstrap = false;
 		if (
 			summary.state === "ready" &&
-			machine.bootstrapState.phase === "succeeded" &&
 			machine.agentKind !== "claude-code" &&
 			machine.agentKind !== "codex"
 		) {
-			await ensureGatewayRunning(machine, provider).catch((err) => {
+			const repair = await repairGatewayAfterWake(machine, provider, config).catch((err) => {
 				console.warn(
-					`[wake] gateway restart skipped for ${machine.id}:`,
+					`[wake] gateway repair skipped for ${machine.id}:`,
 					err instanceof Error ? err.message : err,
 				);
+				return { repaired: false, missingArtifacts: false, apiUrl: null };
 			});
+			if (repair.missingArtifacts) {
+				needsBootstrap = true;
+				scheduleWebBootstrap(machine, provider, config);
+			} else if (repair.repaired && repair.apiUrl) {
+				await setUserConfig({
+					patchMachine: {
+						id: machine.id,
+						patch: { apiUrl: repair.apiUrl },
+					},
+				}).catch(() => {});
+			} else {
+				const phase = machine.bootstrapState.phase;
+				const agentNeedsBootstrap =
+					machine.agentKind === "hermes" || machine.agentKind === "openclaw";
+				if (
+					agentNeedsBootstrap &&
+					phase !== "succeeded" &&
+					phase !== "running"
+				) {
+					needsBootstrap = true;
+					scheduleWebBootstrap(machine, provider, config);
+				}
+			}
 		}
 		return Response.json(
-			{ ok: true, summary },
+			{ ok: true, summary, needsBootstrap },
 			{ headers: { "Cache-Control": "no-store" } },
 		);
 	} catch (err) {

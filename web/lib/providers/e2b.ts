@@ -55,6 +55,16 @@ function classifyError(err: unknown): "missing_credentials" | "transient" | "fat
 	return "transient";
 }
 
+/**
+ * E2B commands.run accepts a single shell string. Wrapping multiline bootstrap
+ * scripts in JSON.stringify for bash -lc turns real newlines into literal `\n`,
+ * which breaks heredocs (seed-knowledge, gateway launchers, etc.).
+ */
+function bashViaBase64(command: string): string {
+	const b64 = Buffer.from(command, "utf8").toString("base64");
+	return `printf '%s' '${b64}' | base64 -d | bash --noprofile --norc`;
+}
+
 export class E2BProvider implements MachineProvider {
 	readonly kind = "e2b" as const;
 	readonly capabilities: ProviderCapabilities = {
@@ -190,7 +200,7 @@ export class E2BProvider implements MachineProvider {
 		try {
 			const Sandbox = await getSandbox();
 			const sandbox = await Sandbox.connect(machineId, { apiKey: this.apiKey });
-			const result = await sandbox.commands.run(`bash -lc ${JSON.stringify(command)}`, {
+			const result = await sandbox.commands.run(bashViaBase64(command), {
 				timeoutMs: options?.timeoutMs ?? 30_000,
 			});
 			return {
@@ -222,7 +232,7 @@ export class E2BProvider implements MachineProvider {
 		try {
 			const Sandbox = await getSandbox();
 			const sandbox = await Sandbox.connect(machineId, { apiKey: this.apiKey });
-			await sandbox.commands.run(`bash -lc ${JSON.stringify(command)}`, {
+			await sandbox.commands.run(bashViaBase64(command), {
 				background: true,
 			});
 		} catch (err) {

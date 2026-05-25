@@ -11,9 +11,9 @@
  * the legacy `MachineSummary` wire shape consumed by existing UI.
  */
 
-import { ensureGatewayRunning } from "@/lib/bootstrap/gateway-lifecycle";
+import { repairGatewayAfterWake } from "@/lib/bootstrap/bootstrap-repair";
 import { MachineProviderError, getProvider } from "@/lib/providers";
-import { getUserConfig } from "@/lib/user-config/clerk";
+import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 import { activeMachine, type MachineRef } from "@/lib/user-config/schema";
 
 import type { MachineSummary } from "./types";
@@ -53,20 +53,30 @@ export async function fetchActiveMachineSummary(): Promise<MachineSummary> {
 }
 
 export async function wakeMachine(machineId?: string | null): Promise<MachineSummary> {
+	const config = await getUserConfig();
 	const { machine, provider } = await resolveMachineRef(machineId);
 	const summary = await provider.wake(machine.id);
 	if (
 		summary.state === "ready" &&
-		machine.bootstrapState.phase === "succeeded" &&
 		machine.agentKind !== "claude-code" &&
 		machine.agentKind !== "codex"
 	) {
-		await ensureGatewayRunning(machine, provider).catch((err) => {
+		const repair = await repairGatewayAfterWake(machine, provider, config).catch((err) => {
 			console.warn(
-				`[wake] gateway restart skipped for ${machine.id}:`,
+				`[wake] gateway repair skipped for ${machine.id}:`,
 				err instanceof Error ? err.message : err,
 			);
+			return { repaired: false, missingArtifacts: false, apiUrl: null };
 		});
+		if (repair.missingArtifacts) {
+			console.warn(
+				`[wake] ${machine.id} bootstrap artifacts missing after wake — re-run bootstrap from /dashboard/setup`,
+			);
+		} else if (repair.repaired && repair.apiUrl) {
+			await setUserConfig({
+				patchMachine: { id: machine.id, patch: { apiUrl: repair.apiUrl } },
+			}).catch(() => {});
+		}
 	}
 	return toMachineSummary(summary);
 }

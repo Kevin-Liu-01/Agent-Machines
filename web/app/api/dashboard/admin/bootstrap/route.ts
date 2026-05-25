@@ -8,6 +8,7 @@
  */
 
 import { getProvider } from "@/lib/providers";
+import { validateAgentCredentials } from "@/lib/agents/credentials";
 import { runWebBootstrap } from "@/lib/bootstrap/runner";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
@@ -19,6 +20,7 @@ export const maxDuration = 300;
 
 type Body = {
 	machineId?: string;
+	force?: boolean;
 };
 
 export async function POST(request: Request): Promise<Response> {
@@ -60,10 +62,27 @@ export async function POST(request: Request): Promise<Response> {
 		);
 	}
 
+	const credCheck = validateAgentCredentials(machine.agentKind, config);
+	if (!credCheck.ok) {
+		return Response.json(
+			{ error: "missing_agent_credentials", message: credCheck.message },
+			{ status: 400 },
+		);
+	}
+
 	await setUserConfig({
 		patchMachine: {
 			id: machine.id,
-			patch: { bootstrapState: { ...INITIAL_BOOTSTRAP_STATE, phase: "running" } },
+			patch: {
+				bootstrapState: {
+					...machine.bootstrapState,
+					phase: "running",
+					current: null,
+					finishedAt: null,
+					lastError: null,
+					startedAt: machine.bootstrapState.startedAt ?? new Date().toISOString(),
+				},
+			},
 		},
 	});
 
@@ -72,6 +91,7 @@ export async function POST(request: Request): Promise<Response> {
 			machine,
 			provider,
 			config,
+			force: body.force === true,
 			onState: async (bootstrapState) => {
 				await setUserConfig({
 					patchMachine: { id: machine.id, patch: { bootstrapState } },
@@ -90,13 +110,16 @@ export async function POST(request: Request): Promise<Response> {
 		return Response.json({ ok: true, machineId: machine.id });
 	} catch (err) {
 		const message = err instanceof Error ? err.message : "bootstrap failed";
+		const latest = await getUserConfig().catch(() => null);
+		const latestMachine = latest?.machines.find((m) => m.id === machine.id) ?? machine;
 		await setUserConfig({
 			patchMachine: {
 				id: machine.id,
 				patch: {
 					bootstrapState: {
-						...INITIAL_BOOTSTRAP_STATE,
+						...latestMachine.bootstrapState,
 						phase: "failed",
+						current: null,
 						finishedAt: new Date().toISOString(),
 						lastError: message,
 					},

@@ -35,6 +35,7 @@ import {
 	DEFAULT_USER_CONFIG,
 	INITIAL_BOOTSTRAP_STATE,
 	activeMachine,
+	AGENT_KINDS,
 	type AgentKind,
 	type AgentProfile,
 	type BootstrapPreset,
@@ -57,7 +58,7 @@ import {
 	type UserConfig,
 } from "./schema";
 
-const KNOWN_AGENTS: ReadonlySet<AgentKind> = new Set(["hermes", "openclaw"]);
+const KNOWN_AGENTS: ReadonlySet<AgentKind> = new Set(AGENT_KINDS);
 const KNOWN_PROVIDERS: ReadonlySet<ProviderKind> = new Set([
 	"dedalus",
 	"sprites",
@@ -261,9 +262,15 @@ function defaultDedalusGatewayProfile(): GatewayProfile {
 
 function defaultAgentProfile(agentKind: AgentKind): AgentProfile {
 	const now = new Date().toISOString();
+	const titles: Record<AgentKind, string> = {
+		hermes: "Hermes default",
+		openclaw: "OpenClaw default",
+		"claude-code": "Claude Code default",
+		codex: "Codex CLI default",
+	};
 	return {
 		id: `${agentKind}-default`,
-		name: agentKind === "hermes" ? "Hermes default" : "OpenClaw default",
+		name: titles[agentKind],
 		agentKind,
 		gatewayProfileId: "dedalus-default",
 		model: DEFAULT_MODEL,
@@ -282,10 +289,15 @@ function defaultBootstrapPreset(): BootstrapPreset {
 
 function defaultBootstrapPresetFor(agentKind: AgentKind): BootstrapPreset {
 	const now = new Date().toISOString();
-	const title = agentKind === "hermes" ? "Hermes" : "OpenClaw";
+	const titles: Record<AgentKind, string> = {
+		hermes: "Hermes",
+		openclaw: "OpenClaw",
+		"claude-code": "Claude Code",
+		codex: "Codex CLI",
+	};
 	return {
 		id: `dedalus-${agentKind}-default`,
-		name: `Dedalus + ${title}`,
+		name: `Dedalus + ${titles[agentKind]}`,
 		providerKind: "dedalus",
 		agentProfileId: `${agentKind}-default`,
 		environmentProfileId: null,
@@ -403,8 +415,9 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
 				.filter((entry): entry is AgentProfile => entry !== null)
 		: [];
 	if (agentProfiles.length === 0) {
-		agentProfiles.push(defaultAgentProfile("hermes"));
-		agentProfiles.push(defaultAgentProfile("openclaw"));
+		for (const kind of AGENT_KINDS) {
+			agentProfiles.push(defaultAgentProfile(kind));
+		}
 	}
 
 	const bootstrapPresets = Array.isArray(publicMeta.bootstrapPresets)
@@ -413,8 +426,9 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
 				.filter((entry): entry is BootstrapPreset => entry !== null)
 		: [];
 	if (bootstrapPresets.length === 0) {
-		bootstrapPresets.push(defaultBootstrapPresetFor("hermes"));
-		bootstrapPresets.push(defaultBootstrapPresetFor("openclaw"));
+		for (const kind of AGENT_KINDS) {
+			bootstrapPresets.push(defaultBootstrapPresetFor(kind));
+		}
 	}
 	const customLoadout = Array.isArray(publicMeta.customLoadout)
 		? publicMeta.customLoadout

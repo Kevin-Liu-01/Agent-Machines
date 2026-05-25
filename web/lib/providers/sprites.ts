@@ -139,8 +139,9 @@ export class SpritesProvider implements MachineProvider {
 	async exec(
 		spriteName: string,
 		command: string,
-		_options?: ExecOptions,
+		options?: ExecOptions,
 	): Promise<ExecResult> {
+		const timeoutMs = options?.timeoutMs ?? 30_000;
 		// Sprites exec is WebSocket-based, not REST. Use the @fly/sprites
 		// SDK which handles the binary WS protocol automatically.
 		try {
@@ -149,7 +150,8 @@ export class SpritesProvider implements MachineProvider {
 			const sprite = client.sprite(spriteName);
 			// sprite.exec() splits on whitespace, breaking shell operators
 			// like && and |. Use execFile with /bin/bash -c instead.
-			const result = await sprite.execFile("/bin/bash", ["-c", command]);
+			const execPromise = sprite.execFile("/bin/bash", ["-c", command]);
+			const result = await withTimeout(execPromise, timeoutMs, "sprites exec timed out");
 			const stdout = result.stdout ? String(result.stdout) : "";
 			const stderr = result.stderr ? String(result.stderr) : "";
 			return {
@@ -230,4 +232,22 @@ function spriteNameFor(name: string | undefined): string {
 		.replace(/^-+|-+$/g, "")
 		.slice(0, 32);
 	return `am-${base || "agent"}-${suffix}`;
+}
+
+async function withTimeout<T>(
+	promise: Promise<T>,
+	timeoutMs: number,
+	message: string,
+): Promise<T> {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	try {
+		return await Promise.race([
+			promise,
+			new Promise<T>((_, reject) => {
+				timer = setTimeout(() => reject(new Error(message)), timeoutMs);
+			}),
+		]);
+	} finally {
+		if (timer) clearTimeout(timer);
+	}
 }

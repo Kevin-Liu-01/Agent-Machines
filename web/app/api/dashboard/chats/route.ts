@@ -39,7 +39,7 @@ export async function GET(request: Request): Promise<Response> {
 		return Response.json({ ...handle, chats: [] });
 	}
 	try {
-		const chats = await listChats();
+		const chats = await listChats(handle.storage);
 		return Response.json({
 			ok: true,
 			chats,
@@ -86,7 +86,7 @@ export async function POST(request: Request): Promise<Response> {
 		title: (body.title || derivedTitle(body.messages)).slice(0, 120),
 	};
 	try {
-		await saveChat(record);
+		await saveChat(record, handle.storage);
 		return Response.json({ ok: true, chat: record });
 	} catch (err) {
 		const message = err instanceof Error ? err.message : "save_failed";
@@ -111,7 +111,7 @@ export async function DELETE(request: Request): Promise<Response> {
 		return Response.json(handle, { status: 503 });
 	}
 	try {
-		await deleteChat(id);
+		await deleteChat(id, handle.storage);
 		return Response.json({ ok: true });
 	} catch (err) {
 		const message = err instanceof Error ? err.message : "delete_failed";
