@@ -10,7 +10,7 @@ Three jobs:
 
 ## Current status
 
-- **Three substrates:** E2B, Sprites.dev, Dedalus Machines (`MachineProvider`). Dedalus benchmarks best on boot/sleep in our harness; all three are first-class.
+- **Four substrates:** E2B, Sprites.dev, Dedalus Machines, and Vercel Sandbox (`MachineProvider`). Dedalus benchmarks best on boot/sleep in our harness; all four are first-class.
 - **Four runtimes:** Hermes, OpenClaw, Claude Code, Codex CLI.
 - `/dashboard/setup` — credentials, provision, browser bootstrap into `~/.agent-machines/`.
 - Harness counts are **registry-derived** — `lib/platform/harness.ts` (not hard-coded).

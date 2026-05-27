@@ -11,7 +11,8 @@ export type Mark =
 	| "anthropic"
 	| "openai"
 	| "e2b"
-	| "sprites";
+	| "sprites"
+	| "vercel";
 
 /**
  * Pseudo-mark for "either agent". Wherever a UI surface represents the
@@ -77,6 +78,10 @@ const NATIVE_SRC: Record<Mark, { light: string; dark: string }> = {
 		light: "/brand/services/sprites.svg",
 		dark: "/brand/services/sprites.svg",
 	},
+	vercel: {
+		light: "/brand/services/vercel.svg",
+		dark: "/brand/services/vercel.svg",
+	},
 };
 
 const MASK_SRC: Record<Mark, string> = {
@@ -89,6 +94,7 @@ const MASK_SRC: Record<Mark, string> = {
 	openai: "/brand/services/openai.svg",
 	e2b: "/brand/services/e2b.svg",
 	sprites: "/brand/services/sprites.svg",
+	vercel: "/brand/services/vercel.svg",
 };
 
 const DEFAULT_TONE: Record<Mark, NonNullable<Props["tone"]>> = {
@@ -101,6 +107,7 @@ const DEFAULT_TONE: Record<Mark, NonNullable<Props["tone"]>> = {
 	openai: "currentColor",
 	e2b: "native",
 	sprites: "native",
+	vercel: "native",
 };
 
 const ARIA_LABEL: Record<Mark, string> = {
@@ -113,6 +120,7 @@ const ARIA_LABEL: Record<Mark, string> = {
 	openai: "OpenAI",
 	e2b: "E2B",
 	sprites: "Sprites",
+	vercel: "Vercel",
 };
 
 /**

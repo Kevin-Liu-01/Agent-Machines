@@ -33,6 +33,7 @@ const PARTNER_HUE: Record<PartnerKey, string> = {
 	openai: "#4ae0a0",
 	e2b: "#FF8800",
 	sprites: "#7C3AED",
+	vercel: "#ffffff",
 	"claude-code": "#d4a574",
 	codex: "#4ae0a0",
 };
@@ -47,6 +48,7 @@ const PARTNER_LABEL: Record<PartnerKey, string> = {
 	openai: "openai",
 	e2b: "e2b",
 	sprites: "sprites",
+	vercel: "vercel",
 	"claude-code": "claude code",
 	codex: "codex cli",
 };
@@ -298,6 +300,7 @@ export function ContributionGrid() {
 			openai: 0,
 			e2b: 0,
 			sprites: 0,
+			vercel: 0,
 			"claude-code": 0,
 			codex: 0,
 		};

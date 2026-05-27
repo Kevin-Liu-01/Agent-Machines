@@ -23,6 +23,7 @@ function pathsFor(providerKind: MachineRef["providerKind"]): GatewayPaths {
 	const HOME =
 		providerKind === "e2b" ? "/home/user" :
 		providerKind === "sprites" ? "/home/sprite" :
+		providerKind === "vercel" ? "/vercel/sandbox" :
 		"/home/machine";
 	return {
 		HOME,

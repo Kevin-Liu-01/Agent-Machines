@@ -63,6 +63,7 @@ const KNOWN_PROVIDERS: ReadonlySet<ProviderKind> = new Set([
 	"dedalus",
 	"sprites",
 	"e2b",
+	"vercel",
 ]);
 const KNOWN_GATEWAYS: ReadonlySet<GatewayKind> = new Set([
 	"dedalus",
@@ -208,6 +209,16 @@ function readEnvProviderCreds(): ProviderCredentials {
 			baseUrl: dedalusBaseUrl,
 		};
 	}
+	const vercelToken = process.env.VERCEL_TOKEN?.trim();
+	const vercelTeamId = process.env.VERCEL_TEAM_ID?.trim();
+	const vercelProjectId = process.env.VERCEL_PROJECT_ID?.trim();
+	if (vercelToken && vercelTeamId && vercelProjectId) {
+		out.vercel = {
+			token: vercelToken,
+			teamId: vercelTeamId,
+			projectId: vercelProjectId,
+		};
+	}
 	return out;
 }
 
@@ -331,6 +342,13 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
 	if (privateProviders.e2b?.apiKey) {
 		providers.e2b = { apiKey: privateProviders.e2b.apiKey };
 	}
+	if (privateProviders.vercel?.token) {
+		providers.vercel = {
+			token: privateProviders.vercel.token,
+			teamId: privateProviders.vercel.teamId,
+			projectId: privateProviders.vercel.projectId,
+		};
+	}
 	// Legacy single-key field.
 	const legacyDedalusKey = asString(privateMeta.dedalusApiKey);
 	if (legacyDedalusKey && !providers.dedalus) {
@@ -340,6 +358,17 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
 	const envCreds = readEnvProviderCreds();
 	if (!providers.dedalus && envCreds.dedalus) {
 		providers.dedalus = envCreds.dedalus;
+	}
+	if (!providers.vercel && envCreds.vercel) {
+		providers.vercel = envCreds.vercel;
+	}
+	const oidcToken = process.env.VERCEL_OIDC_TOKEN?.trim();
+	if (!providers.vercel && oidcToken) {
+		const teamId = process.env.VERCEL_TEAM_ID?.trim();
+		const projectId = process.env.VERCEL_PROJECT_ID?.trim();
+		if (teamId && projectId) {
+			providers.vercel = { token: oidcToken, teamId, projectId };
+		}
 	}
 
 	const machineApiKeys =
@@ -903,7 +932,7 @@ export async function setUserConfigById(
 			if (value === null) {
 				delete nextProviders[kind];
 			} else {
-				nextProviders[kind] = value;
+				nextProviders[kind] = value as never;
 			}
 		}
 	}

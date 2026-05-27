@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 
 import { Logo } from "@/components/Logo";
+import { providerLogoMark } from "@/lib/fleet/logos";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
@@ -100,6 +101,13 @@ const PROVIDERS_DESC: Record<
 			"Full Linux sandboxes with pause/resume, snapshots, and public URLs. Best for stable agent work with fast cold starts.",
 		ready: true,
 		keyHint: "e2b_...",
+	},
+	vercel: {
+		name: "Vercel Sandbox",
+		tagline:
+			"Persistent Firecracker microVMs on Vercel. Auto-snapshots on stop, resume by name, public port URLs, getOrCreate + fork APIs.",
+		ready: true,
+		keyHint: "vercel token",
 	},
 };
 
@@ -392,6 +400,9 @@ type CredsState = {
 	dedalus: string;
 	sprites: string;
 	e2b: string;
+	vercelToken: string;
+	vercelTeamId: string;
+	vercelProjectId: string;
 	cursor: string;
 	anthropic: string;
 	openai: string;
@@ -411,6 +422,7 @@ function CredentialsStep({
 			dedalus?: { apiKey: string };
 			sprites?: { apiKey: string };
 			e2b?: { apiKey: string };
+			vercel?: { token: string; teamId: string; projectId: string };
 		},
 		cursorApiKey: string | undefined,
 		aiProviderKeys: Record<string, string> | undefined,
@@ -420,6 +432,9 @@ function CredentialsStep({
 		dedalus: "",
 		sprites: "",
 		e2b: "",
+		vercelToken: "",
+		vercelTeamId: "",
+		vercelProjectId: "",
 		cursor: "",
 		anthropic: "",
 		openai: "",
@@ -428,11 +443,12 @@ function CredentialsStep({
 	const dedalusOnFile = config.providers.dedalus.configured;
 	const spritesOnFile = config.providers.sprites.configured;
 	const e2bOnFile = config.providers.e2b.configured;
+	const vercelOnFile = config.providers.vercel.configured;
 	const cursorOnFile = config.hasCursorKey;
 	const anthropicOnFile = config.aiProviders.anthropic.configured;
 	const openaiOnFile = config.aiProviders.openai.configured;
 	const anyConfigured =
-		dedalusOnFile || spritesOnFile || e2bOnFile || hasOwnerDedalusKey ||
+		dedalusOnFile || spritesOnFile || e2bOnFile || vercelOnFile || hasOwnerDedalusKey ||
 		anthropicOnFile || openaiOnFile;
 
 	function buildPatch() {
@@ -445,6 +461,12 @@ function CredentialsStep({
 		}
 		if (state.e2b.trim()) {
 			creds.e2b = { apiKey: state.e2b.trim() };
+		}
+		const vToken = state.vercelToken.trim();
+		const vTeam = state.vercelTeamId.trim();
+		const vProject = state.vercelProjectId.trim();
+		if (vToken && vTeam && vProject) {
+			creds.vercel = { token: vToken, teamId: vTeam, projectId: vProject };
 		}
 		const cursor = state.cursor.trim();
 		const aiKeys: Record<string, string> = {};
@@ -494,6 +516,31 @@ function CredentialsStep({
 					hint={
 						spritesOnFile ? "On file. Leave blank to keep." : "Get one at sprites.dev/account."
 					}
+				/>
+				<KeyField
+					label="Vercel access token"
+					placeholder="vercel token"
+					value={state.vercelToken}
+					onChange={(v) => setState((s) => ({ ...s, vercelToken: v }))}
+					hint={
+						vercelOnFile
+							? "On file. Leave blank to keep."
+							: "Personal access token — or deploy on Vercel for OIDC."
+					}
+				/>
+				<KeyField
+					label="Vercel team ID"
+					placeholder="team_..."
+					value={state.vercelTeamId}
+					onChange={(v) => setState((s) => ({ ...s, vercelTeamId: v }))}
+					hint="Team settings → copy team ID. Required with token for local dev."
+				/>
+				<KeyField
+					label="Vercel project ID"
+					placeholder="prj_..."
+					value={state.vercelProjectId}
+					onChange={(v) => setState((s) => ({ ...s, vercelProjectId: v }))}
+					hint="Project settings → copy project ID."
 				/>
 			</div>
 
@@ -689,9 +736,9 @@ function ProviderStep({
 	return (
 		<StepShell
 			title="Pick the provider"
-			description="Where the agent's microVM lives. All providers accept credentials and provision through the same multi-tenant shape. Dedalus is the default with full sleep/wake and persistent disk. E2B Sandbox offers pause/resume with snapshots. Sprites offers persistent sandboxes with auto-sleep and instant wake (Fly.io under the hood)."
+			description="Where the agent's microVM lives. All four providers accept credentials and provision through the same multi-tenant shape. Dedalus is the default with full sleep/wake and persistent disk. E2B Sandbox offers pause/resume with snapshots. Sprites offers persistent sandboxes with auto-sleep and instant wake. Vercel Sandbox offers persistent Firecracker microVMs with auto-snapshots and getOrCreate."
 		>
-			<div className="grid gap-4 md:grid-cols-3">
+			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 				{PROVIDER_KINDS.map((kind) => {
 					const meta = PROVIDERS_DESC[kind];
 					const selected = value === kind;
@@ -713,9 +760,12 @@ function ProviderStep({
 							)}
 						>
 							<div className="flex items-center justify-between gap-3">
-								<h3 className="font-mono text-[13px] text-[var(--ret-text)]">
-									{meta.name}
-								</h3>
+								<div className="flex items-center gap-2">
+									<Logo mark={providerLogoMark(kind)} size={18} tone="auto" />
+									<h3 className="font-mono text-[13px] text-[var(--ret-text)]">
+										{meta.name}
+									</h3>
+								</div>
 								{!meta.ready ? (
 									<ReticleBadge variant="warning">pr4</ReticleBadge>
 								) : selected ? (

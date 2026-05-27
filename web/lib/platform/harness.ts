@@ -33,7 +33,8 @@ export const PRODUCT = {
 		"Agent Machines is the product layer above sandboxes: a control plane that provisions a full persistent agent in one unit — runtime, skills, MCP, integrations, cron, observation, and fleet management — on any substrate.",
 	analogies: {
 		primary: "OpenRouter for agents and containers",
-		substrate: "Vercel on AWS — Agent Machines is the product layer; E2B, Sprites.dev, and Dedalus Machines are interchangeable infrastructure underneath",
+		substrate:
+			"Vercel on AWS — Agent Machines is the product layer; E2B, Sprites.dev, Dedalus Machines, and Vercel Sandbox are interchangeable infrastructure underneath",
 	},
 	audiences: {
 		humans:
@@ -44,7 +45,7 @@ export const PRODUCT = {
 	fleet:
 		"Spin up design, news, code, or ops agents from opinionated presets (Hermes, OpenClaw, Claude Code, Codex). Vendor SKUs (e.g. Anthropic design modes) are UI + skills + MCPs + system prompts — we ship that stack composable, one click per specialist, one pane of glass for the fleet.",
 	substrateNote:
-		"Dedalus Machines is one of three live providers (with E2B and Sprites.dev) and currently benchmarks best on boot latency and sleep/wake — a strong default, not the product. Sandboxed environments are hard; we route rather than rebuild infra.",
+		"Dedalus Machines is one of four live providers (with E2B, Sprites.dev, and Vercel Sandbox) and currently benchmarks best on boot latency and sleep/wake — a strong default, not the product. Sandboxed environments are hard; we route rather than rebuild infra.",
 	moat: [
 		"SKILL.md protocol — versioned agent procedures that compound every session",
 		"Combined harness — runtime + skills + services + CLIs + observation in one deploy",
@@ -143,7 +144,7 @@ export const HARNESS = {
 	nativeToolMin: minNativeTools(),
 	nativeToolMax: maxNativeTools(),
 	agentRuntimeCount: AGENTS.length,
-	providersLive: ["dedalus", "e2b", "sprites"] as const,
+	providersLive: ["dedalus", "e2b", "sprites", "vercel"] as const,
 	catalogUpdated: mcpCatalog.updated,
 } as const;
 

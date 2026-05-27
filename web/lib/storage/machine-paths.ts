@@ -7,6 +7,7 @@ import type { MachineRef, ProviderKind } from "@/lib/user-config/schema";
 export function homeFor(providerKind: ProviderKind): string {
 	if (providerKind === "e2b") return "/home/user";
 	if (providerKind === "sprites") return "/home/sprite";
+	if (providerKind === "vercel") return "/vercel/sandbox";
 	return "/home/machine";
 }
 

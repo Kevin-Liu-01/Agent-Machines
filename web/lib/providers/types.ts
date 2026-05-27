@@ -1,7 +1,7 @@
 /**
  * Provider abstraction for the multi-tenant rig.
  *
- * Each provider (Dedalus, E2B, Sprites) implements a thin
+ * Each provider (Dedalus, E2B, Sprites, Vercel) implements a thin
  * `MachineProvider` contract. Routes call `getProvider(kind, creds)` to
  * get an instance bound to the user's credentials, then drive it with
  * `provision`, `wake`, `sleep`, `destroy`, `state`, and `exec`.

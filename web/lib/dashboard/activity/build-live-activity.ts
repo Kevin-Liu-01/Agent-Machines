@@ -44,6 +44,7 @@ const PROVIDER_CHIP: Record<ProviderKind, { id: string; label: string; mark: Mar
 	dedalus: { id: "dedalus", label: "Dedalus", mark: "dedalus" },
 	e2b: { id: "e2b", label: "E2B", mark: "e2b" },
 	sprites: { id: "sprites", label: "Sprites", mark: "sprites" },
+	vercel: { id: "vercel", label: "Vercel", mark: "vercel" },
 };
 
 function ensureDay(map: Map<string, ActivityDay>, date: string): ActivityDay {

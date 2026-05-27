@@ -37,6 +37,7 @@ const AGENT_FILTER_MAP: Record<string, { agent?: AgentKind; provider?: ProviderK
 	dedalus: { provider: "dedalus" },
 	e2b: { provider: "e2b" },
 	sprites: { provider: "sprites" },
+	vercel: { provider: "vercel" },
 	cursor: {},
 };
 

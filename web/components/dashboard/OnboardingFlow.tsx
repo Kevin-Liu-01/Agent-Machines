@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { BrandMark } from "@/components/BrandMark";
 import { BootTranscript } from "@/components/dashboard/BootTranscript";
 import { Logo, type Mark } from "@/components/Logo";
+import { providerLogoMark } from "@/lib/fleet/logos";
 import { ServiceIcon, isServiceSlug } from "@/components/ServiceIcon";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ToolIcon } from "@/components/ToolIcon";
@@ -110,6 +111,18 @@ const PROVIDERS_META: Record<
 		keyPlaceholder: "e2b_...",
 		keyHint: "Get one at e2b.dev/dashboard",
 	},
+	vercel: {
+		name: "Vercel Sandbox",
+		tagline:
+			"Persistent Firecracker microVMs on Vercel. Auto-snapshots on stop, resume by name, port URLs, getOrCreate + fork.",
+		keyLabel: "Vercel access token",
+		keyPlaceholder: "token…",
+		keyHint: "Account settings → tokens. On Vercel deploys, OIDC is automatic.",
+		secondaryFields: [
+			{ label: "Team ID", placeholder: "team_…", field: "teamId" },
+			{ label: "Project ID", placeholder: "prj_…", field: "projectId" },
+		],
+	},
 };
 
 const COMPARISON_ROWS: ReadonlyArray<{
@@ -117,16 +130,17 @@ const COMPARISON_ROWS: ReadonlyArray<{
 	dedalus: string;
 	e2b: string;
 	sprites: string;
+	vercel: string;
 }> = [
-	{ label: "Type", dedalus: "Persistent VM", e2b: "Pausable sandbox", sprites: "Persistent sandbox" },
-	{ label: "OS", dedalus: "Ubuntu", e2b: "Debian 12", sprites: "Linux" },
-	{ label: "Sleep / wake", dedalus: "Manual", e2b: "Pause / resume", sprites: "Auto-sleep / auto-wake" },
-	{ label: "Cold start", dedalus: "~30s", e2b: "Instant", sprites: "~5s" },
-	{ label: "Storage", dedalus: "Persistent disk", e2b: "Persists across pause", sprites: "Persistent ext4" },
-	{ label: "Public URLs", dedalus: "Preview URLs", e2b: "Per-port host", sprites: "Per-sprite URL" },
-	{ label: "Snapshots", dedalus: "\u2014", e2b: "Full snapshots", sprites: "~300ms checkpoints" },
-	{ label: "Max lifetime", dedalus: "Unlimited", e2b: "24h (Pro) / 1h", sprites: "Unlimited" },
-	{ label: "Best for", dedalus: "Production agents", e2b: "Fast iteration", sprites: "Always-on services" },
+	{ label: "Type", dedalus: "Persistent VM", e2b: "Pausable sandbox", sprites: "Persistent sandbox", vercel: "Persistent microVM" },
+	{ label: "OS", dedalus: "Ubuntu", e2b: "Debian 12", sprites: "Linux", vercel: "Amazon Linux 2023" },
+	{ label: "Sleep / wake", dedalus: "Manual", e2b: "Pause / resume", sprites: "Auto-sleep / auto-wake", vercel: "Stop / auto-resume" },
+	{ label: "Cold start", dedalus: "~30s", e2b: "Instant", sprites: "~5s", vercel: "Sub-second resume" },
+	{ label: "Storage", dedalus: "Persistent disk", e2b: "Persists across pause", sprites: "Persistent ext4", vercel: "Auto snapshots (default)" },
+	{ label: "Public URLs", dedalus: "Preview URLs", e2b: "Per-port host", sprites: "Per-sprite URL", vercel: "sandbox.domain(port)" },
+	{ label: "Snapshots", dedalus: "\u2014", e2b: "Full snapshots", sprites: "~300ms checkpoints", vercel: "Unlimited auto snapshots" },
+	{ label: "Max lifetime", dedalus: "Unlimited", e2b: "24h (Pro) / 1h", sprites: "Unlimited", vercel: "5h session / named forever" },
+	{ label: "Best for", dedalus: "Production agents", e2b: "Fast iteration", sprites: "Always-on services", vercel: "Vercel-native agents" },
 ];
 
 const AGENT_DESC: Record<
@@ -299,7 +313,10 @@ export function OnboardingFlow({
 				draftProviderKind: provider,
 			};
 			if (providerKey.trim()) {
-				const cred: Record<string, unknown> = { apiKey: providerKey.trim() };
+				const cred: Record<string, unknown> =
+					provider === "vercel"
+						? { token: providerKey.trim() }
+						: { apiKey: providerKey.trim() };
 				const meta = PROVIDERS_META[provider];
 				if (meta.secondaryFields) {
 					for (const f of meta.secondaryFields) {
@@ -1017,6 +1034,7 @@ function ProviderComparison({ selected }: { selected: ProviderKind }) {
 		{ key: "dedalus", label: "Dedalus" },
 		{ key: "e2b", label: "E2B" },
 		{ key: "sprites", label: "Sprites" },
+		{ key: "vercel", label: "Vercel" },
 	];
 
 	return (
@@ -1041,7 +1059,10 @@ function ProviderComparison({ selected }: { selected: ProviderKind }) {
 											: "text-[var(--ret-text-muted)]",
 									)}
 								>
-									{col.label}
+									<span className="inline-flex items-center gap-1.5">
+										<Logo mark={providerLogoMark(col.key as ProviderKind)} size={12} tone="auto" />
+										{col.label}
+									</span>
 								</th>
 							))}
 						</tr>
@@ -1096,11 +1117,11 @@ function ProviderPickStep({
 				</h1>
 				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
 					The infrastructure provider hosting your agent&rsquo;s VM.
-				Dedalus is the default and fully wired. E2B Sandbox and
-				Sprites are available as alternative hosts.
+					Dedalus is the default and fully wired. E2B Sandbox, Sprites,
+					and Vercel Sandbox are available as alternative hosts.
 				</p>
 			</div>
-			<div className="grid gap-3 md:grid-cols-3">
+			<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
 				{PROVIDER_KINDS.map((kind) => {
 					const meta = PROVIDERS_META[kind];
 					const selected = value === kind;
@@ -1118,9 +1139,12 @@ function ProviderPickStep({
 							)}
 						>
 							<div className="flex items-center justify-between gap-2">
-							<h2 className="text-[13px] font-medium text-[var(--ret-text)]">
-								{meta.name}
-							</h2>
+								<div className="flex items-center gap-2">
+									<Logo mark={providerLogoMark(kind)} size={18} tone="auto" />
+									<h2 className="text-[13px] font-medium text-[var(--ret-text)]">
+										{meta.name}
+									</h2>
+								</div>
 								<div className="flex items-center gap-1.5">
 									{hasCreds ? (
 										<ReticleBadge variant="success">key on file</ReticleBadge>

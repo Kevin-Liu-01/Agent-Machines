@@ -267,6 +267,14 @@ const TRIPLE_X = {
 	right: 1610, // md 260 -> center 1740
 };
 
+// 4-col provider row — center stays on gateway axis for the live spine.
+const PROVIDER_X = {
+	e2b: TRIPLE_X.left,
+	vercel: 280,
+	dedalus: TRIPLE_X.center,
+	sprites: 1300,
+};
+
 // Vertical row anchors. Each row leaves at least ~20px of clear space
 // below the row above so the smoothstep horizontal segments (which
 // carry the edge labels) don't visually overlap the nodes they pass
@@ -361,12 +369,12 @@ const INITIAL_NODES: Node<NodeData>[] = [
 			size: "md",
 		},
 	},
-	// Row 3 -- providers (3-col spread). Dedalus center matches the
+	// Row 3 -- providers (4-col spread). Dedalus center matches the
 	// gateway axis so fleet -> dedalus -> machine is one straight line.
 	{
-		id: "provider-vercel",
+		id: "provider-e2b",
 		type: "box",
-		position: { x: TRIPLE_X.left, y: Y.providers },
+		position: { x: PROVIDER_X.e2b, y: Y.providers },
 		data: {
 			eyebrow: "provider",
 			title: "E2B Sandbox",
@@ -377,7 +385,27 @@ const INITIAL_NODES: Node<NodeData>[] = [
 				"snapshot-ready bootstrap",
 				"public URLs",
 			],
-			services: [],
+			services: ["e2b"],
+			tone: "provider",
+			size: "md",
+			status: "live",
+		},
+	},
+	{
+		id: "provider-vercel",
+		type: "box",
+		position: { x: PROVIDER_X.vercel, y: Y.providers },
+		data: {
+			eyebrow: "provider",
+			title: "Vercel Sandbox",
+			subtitle: "persistent microVM",
+			body: "Firecracker microVMs on Vercel with getOrCreate, auto-snapshots on stop, resume by name, and public port URLs.",
+			bullets: [
+				"getOrCreate + fork",
+				"auto-snapshot on stop",
+				"sandbox.domain(port)",
+			],
+			services: ["vercel"],
 			tone: "provider",
 			size: "md",
 			status: "live",
@@ -386,7 +414,7 @@ const INITIAL_NODES: Node<NodeData>[] = [
 	{
 		id: "provider-dedalus",
 		type: "box",
-		position: { x: TRIPLE_X.center, y: Y.providers },
+		position: { x: PROVIDER_X.dedalus, y: Y.providers },
 		data: {
 			eyebrow: "provider",
 			title: "Dedalus Machines",
@@ -406,7 +434,7 @@ const INITIAL_NODES: Node<NodeData>[] = [
 	{
 		id: "provider-sprites",
 		type: "box",
-		position: { x: TRIPLE_X.right, y: Y.providers },
+		position: { x: PROVIDER_X.sprites, y: Y.providers },
 		data: {
 			eyebrow: "provider",
 			title: "Sprites.dev",
@@ -737,7 +765,13 @@ const EDGES: Edge[] = [
 		target: "fleet",
 		label: "deploy / wake",
 	},
-	// Fleet -> 3 providers fan-out (center = live)
+	// Fleet -> 4 providers fan-out (center = live)
+	{
+		id: "e-fleet-e2b",
+		source: "fleet",
+		target: "provider-e2b",
+		label: "alt",
+	},
 	{
 		id: "e-fleet-vercel",
 		source: "fleet",
@@ -979,8 +1013,8 @@ export function ArchitectureFlow() {
 				/>
 				<MachineNote
 					label="providers"
-					value="three live hosts"
-					body="Dedalus Machines, E2B Sandbox, and Sprites.dev — same MachineProvider interface."
+					value="four live hosts"
+					body="Dedalus Machines, E2B Sandbox, Sprites.dev, and Vercel Sandbox — same MachineProvider interface."
 				/>
 				<MachineNote
 					label="loadout"

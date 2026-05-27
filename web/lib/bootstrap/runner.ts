@@ -51,6 +51,7 @@ function pathsFor(providerKind: ProviderKind): BootstrapPaths {
 	const HOME =
 		providerKind === "e2b" ? "/home/user" :
 		providerKind === "sprites" ? "/home/sprite" :
+		providerKind === "vercel" ? "/vercel/sandbox" :
 		"/home/machine";
 	return {
 		HOME,
@@ -273,7 +274,9 @@ export async function finalizeGatewayBootstrap({
 	});
 
 	const isSandbox =
-		machine.providerKind === "e2b" || machine.providerKind === "sprites";
+		machine.providerKind === "e2b" ||
+		machine.providerKind === "sprites" ||
+		machine.providerKind === "vercel";
 	if (isSandbox) {
 		await startGatewaySandbox(machine, provider, paths);
 	} else {
@@ -303,7 +306,10 @@ async function runPhase(
 	apiKey: string,
 	paths: BootstrapPaths,
 ): Promise<void> {
-	const isSandbox = machine.providerKind === "e2b" || machine.providerKind === "sprites";
+	const isSandbox =
+		machine.providerKind === "e2b" ||
+		machine.providerKind === "sprites" ||
+		machine.providerKind === "vercel";
 
 	if (phase === "start-gateway" && isSandbox) {
 		await startGatewaySandbox(machine, provider, paths);
@@ -395,13 +401,22 @@ function commandFor(
 	const providerKind = machine.providerKind;
 	const isE2B = providerKind === "e2b";
 	const isSprites = providerKind === "sprites";
-	const isSandbox = isE2B || isSprites;
-	// E2B and Sprites run as non-root users with sudo available
+	const isVercel = providerKind === "vercel";
+	const isSandbox = isE2B || isSprites || isVercel;
+	// E2B, Sprites, and Vercel run as non-root users with sudo available
 	const sudo = isSandbox ? "sudo " : "";
 
 	switch (phase) {
 		case "system-deps":
 			const migrate = migrateLegacyPathsShell(p.HOME, p.APP_HOME);
+			if (isVercel) {
+				return [
+					"set -e",
+					migrate,
+					`mkdir -p ${p.APP_HOME}/chats ${p.APP_HOME}/artifacts ${p.HERMES_HOME}/logs ${p.OPENCLAW_HOME}/logs ${p.MACHINE_HOME}/logs/services`,
+					`${sudo}dnf install -y -q jq sqlite >/dev/null 2>&1 || true`,
+				].join(" && ");
+			}
 			if (isSandbox) {
 				return [
 					"set -e",
@@ -992,6 +1007,15 @@ async function exposeGateway(
 		const url = await spritesProvider.getPublicUrl(machine.id, port);
 		const apiUrl = url ? (url.endsWith("/v1") ? url : `${url}/v1`) : null;
 		if (apiUrl) await waitForGatewayUrl(apiUrl, apiKey, waitOpts);
+		return apiUrl;
+	}
+
+	if (provider.kind === "vercel") {
+		const vercelProvider = provider as import("@/lib/providers/vercel").VercelProvider;
+		const url = await vercelProvider.getPublicUrl(machine.id, port);
+		const normalized = url.trim().replace(/\/$/, "");
+		const apiUrl = normalized.endsWith("/v1") ? normalized : `${normalized}/v1`;
+		await waitForGatewayUrl(apiUrl, apiKey, waitOpts);
 		return apiUrl;
 	}
 

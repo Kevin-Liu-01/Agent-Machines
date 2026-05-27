@@ -18,6 +18,7 @@ const PROVIDER_REGION: Partial<Record<ProviderKind, string>> = {
 	dedalus: "us-east-1",
 	e2b: "us-west-2",
 	sprites: "us-east-2",
+	vercel: "iad1",
 };
 
 const DEFAULT_TOOLS: Record<AgentKind, FleetToolBadge[]> = {

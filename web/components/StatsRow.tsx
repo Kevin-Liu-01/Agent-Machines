@@ -21,8 +21,8 @@ const SPECS: ReadonlyArray<{
 	},
 	{
 		label: "Substrate routes",
-		value: "3 lanes",
-		description: "E2B, Sprites.dev, and Dedalus Machines.",
+		value: "4 lanes",
+		description: "E2B, Sprites.dev, Dedalus Machines, and Vercel Sandbox.",
 		icon: "shell",
 	},
 	{
@@ -98,8 +98,15 @@ const FEATURES: ReadonlyArray<Feature> = [
 				id: "dedalus",
 				icon: { kind: "logo", mark: "dedalus" },
 				name: "Dedalus Machines",
-				role: "Strong default on boot, sleep, and wake — one lane of three",
+				role: "Strong default on boot, sleep, and wake — one lane of four",
 				href: "https://docs.dedaluslabs.ai/dcs",
+			},
+			{
+				id: "vercel-sandbox",
+				icon: { kind: "service", slug: "vercel" },
+				name: "Vercel Sandbox",
+				role: "Persistent microVMs with auto-snapshots, getOrCreate, and port URLs",
+				href: "https://vercel.com/docs/vercel-sandbox",
 			},
 		],
 	},

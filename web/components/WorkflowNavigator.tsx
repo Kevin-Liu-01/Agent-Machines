@@ -82,15 +82,16 @@ const STEPS: ReadonlyArray<Step> = [
 		id: "providers",
 		tab: "providers",
 		kicker: "AGENT MACHINES · SUBSTRATE ROUTES",
-		title: "E2B, Sprites, and Dedalus are interchangeable lanes.",
+		title: "Four substrate lanes — E2B, Sprites, Dedalus, and Vercel.",
 		body: "OpenRouter-style substrate routing — same bootstrap, gateway, and dashboard surfaces. Pick the host shape; lifecycle actions follow what each lane supports.",
 		Icon: IconProvider,
 		bullets: [
 			["", "E2B", " — sandbox with pause/resume"],
 			["", "Sprites", " — persistent microVM on Sprites.dev"],
 			["", "Dedalus Machines", " — strong default on boot and sleep/wake"],
+			["", "Vercel Sandbox", " — persistent microVMs with auto-snapshots"],
 		],
-		poweredBy: [],
+		poweredBy: [{ kind: "service", name: "Vercel", slug: "vercel" }],
 	},
 	{
 		id: "env",

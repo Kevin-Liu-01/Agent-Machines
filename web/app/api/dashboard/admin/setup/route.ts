@@ -67,6 +67,12 @@ type CredsBody = {
 	dedalus?: { apiKey?: string };
 	e2b?: { apiKey?: string };
 	sprites?: { apiKey?: string };
+	vercel?: {
+		token?: string;
+		apiKey?: string;
+		teamId?: string;
+		projectId?: string;
+	};
 };
 
 type AiKeysBody = {
@@ -112,6 +118,22 @@ function validateCreds(input: CredsBody): {
 	if (input.sprites) {
 		const k = (input.sprites.apiKey ?? "").trim();
 		if (k) out.sprites = { apiKey: k };
+	}
+	if (input.vercel) {
+		const token = (input.vercel.token ?? input.vercel.apiKey ?? "").trim();
+		const teamId = (input.vercel.teamId ?? "").trim();
+		const projectId = (input.vercel.projectId ?? "").trim();
+		if (token || teamId || projectId) {
+			if (!token || !teamId || !projectId) {
+				return {
+					ok: false,
+					error: "incomplete_vercel_creds",
+					message:
+						"Vercel Sandbox needs access token, team ID, and project ID (or deploy on Vercel with OIDC).",
+				};
+			}
+			out.vercel = { token, teamId, projectId };
+		}
 	}
 	return { ok: true, value: out };
 }

@@ -9,6 +9,8 @@
     "build": "next build",
     "start": "next start -p 3210",
     "typecheck": "node scripts/sync-data.mjs && tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "sync-skills": "node scripts/sync-skills.mjs",
     "sync-mcp-catalog": "node scripts/sync-mcp-catalog.mjs",
     "sync-harness-counts": "node scripts/sync-harness-counts.mjs",
@@ -22,6 +24,7 @@
     "@react-three/fiber": "^9.6.1",
     "@supabase/supabase-js": "^2.105.4",
     "@types/three": "^0.184.0",
+    "@vercel/sandbox": "^2.0.1",
     "e2b": "^2.21.0",
     "next": "^16.2.6",
     "react": "^19.2.6",
@@ -45,6 +48,7 @@
     "sharp": "^0.34.5",
     "tailwindcss": "^4.0.0",
     "to-ico": "^1.1.5",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.4"
   }
 }

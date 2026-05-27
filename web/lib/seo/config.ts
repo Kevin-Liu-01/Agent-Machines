@@ -20,7 +20,7 @@ export const SITE = {
 	wordmark: "agent-machines",
 	url: "https://www.agent-machines.dev",
 	description:
-		`${PRODUCT.oneLiner} Hermes, OpenClaw, Claude Code, or Codex on E2B, Sprites.dev, or Dedalus Machines. ${HARNESS_SUMMARY}.`,
+		`${PRODUCT.oneLiner} Hermes, OpenClaw, Claude Code, or Codex on E2B, Sprites.dev, Dedalus Machines, or Vercel Sandbox. ${HARNESS_SUMMARY}.`,
 	tagline: PRODUCT.tagline,
 	ogImage: "/og.png",
 	twitterHandle: "@kevin_liu_01",
@@ -71,7 +71,7 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	},
 	{
 		question: "What is Agent Machines?",
-		answer: `${PRODUCT.summary} Think OpenRouter for agents and containers: pick Hermes, OpenClaw, Claude Code, or Codex and pick E2B, Sprites.dev, or Dedalus Machines in one account. ${PRODUCT.fleet} The dashboard supervises the fleet; MCP/CLI (roadmap) lets other agents orchestrate workers programmatically.`,
+		answer: `${PRODUCT.summary} Think OpenRouter for agents and containers: pick Hermes, OpenClaw, Claude Code, or Codex and pick E2B, Sprites.dev, Dedalus Machines, or Vercel Sandbox in one account. ${PRODUCT.fleet} The dashboard supervises the fleet; MCP/CLI (roadmap) lets other agents orchestrate workers programmatically.`,
 	},
 	{
 		question: "How is this different from a regular chatbot?",
@@ -86,7 +86,7 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "Which providers can host the machine?",
 		answer:
-			"E2B Sandbox, Sprites.dev, and Dedalus Machines are live provider implementations. Each exposes provision, exec, public URL, and bootstrap through the same MachineProvider abstraction. Dedalus currently benchmarks best on boot latency (~250ms) and sleep/wake in our harness; E2B and Sprites are fully supported alternatives.",
+			"E2B Sandbox, Sprites.dev, Dedalus Machines, and Vercel Sandbox are live provider implementations. Each exposes provision, exec, public URL, and bootstrap through the same MachineProvider abstraction. Dedalus currently benchmarks best on boot latency (~250ms) and sleep/wake in our harness; E2B, Sprites, and Vercel Sandbox are fully supported alternatives.",
 	},
 	{
 		question: "How do I get my own machine today?",

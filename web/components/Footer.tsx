@@ -1,5 +1,6 @@
 import { BrandMark } from "@/components/BrandMark";
 import { Logo } from "@/components/Logo";
+import { ServiceIcon } from "@/components/ServiceIcon";
 
 export function Footer() {
 	return (
@@ -11,9 +12,11 @@ export function Footer() {
 						<span>agent-machines . MIT . Reticle / Sigil UI</span>
 						<span className="hidden items-center gap-2 text-[var(--ret-text-muted)] md:flex">
 							<span>substrates:</span>
-							<span className="inline-flex items-center gap-1">
-								<Logo mark="am" size={14} />
-								<span>E2B · Sprites · Dedalus</span>
+							<span className="inline-flex items-center gap-1.5">
+								<ServiceIcon slug="e2b" size={14} tone="color" />
+								<ServiceIcon slug="sprites" size={14} tone="color" />
+								<Logo mark="dedalus" size={14} />
+								<ServiceIcon slug="vercel" size={14} tone="color" />
 							</span>
 							<span>·</span>
 							<span>agents:</span>

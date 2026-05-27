@@ -6,7 +6,7 @@
  * in `privateMetadata`; everything client-readable lives in
  * `publicMetadata`.
  *
- * The shape supports multiple providers (Dedalus, E2B, Sprites)
+ * The shape supports multiple providers (Dedalus, E2B, Sprites, Vercel)
  * and multiple machines per user. Each machine has its own provider,
  * agent kind, spec, and (after install) gateway URL + bearer. The user
  * picks one as `activeMachineId` -- that's the one the chat surface
@@ -22,12 +22,13 @@ export type AgentKind = "hermes" | "openclaw" | "claude-code" | "codex";
 export const AGENT_KINDS: ReadonlyArray<AgentKind> = ["hermes", "openclaw", "claude-code", "codex"];
 
 /** Where the agent's VM lives. */
-export type ProviderKind = "dedalus" | "sprites" | "e2b";
+export type ProviderKind = "dedalus" | "sprites" | "e2b" | "vercel";
 
 export const PROVIDER_KINDS: ReadonlyArray<ProviderKind> = [
 	"dedalus",
 	"e2b",
 	"sprites",
+	"vercel",
 ];
 
 export type MachineSpec = {
@@ -116,11 +117,12 @@ export const SETUP_STEPS: ReadonlyArray<SetupStep> = [
  *
  * Stored in Clerk privateMetadata; the public-config helper strips them.
  */
-export type ProviderCredentials = {
-	dedalus?: { apiKey: string; baseUrl?: string };
-	sprites?: { apiKey: string };
-	e2b?: { apiKey: string };
-};
+export type ProviderCredentials = Partial<{
+	dedalus: { apiKey: string; baseUrl?: string };
+	sprites: { apiKey: string };
+	e2b: { apiKey: string };
+	vercel: { token: string; teamId: string; projectId: string };
+}>;
 
 /**
  * AI provider API keys that power the agent's LLM inference.
@@ -690,9 +692,15 @@ export function toPublicConfig(config: UserConfig): PublicUserConfig {
 	const providers: Record<ProviderKind, PublicProviderStatus> = {
 		dedalus: { configured: Boolean(config.providers.dedalus?.apiKey) },
 		e2b: { configured: Boolean(config.providers.e2b?.apiKey) },
-	sprites: {
-		configured: Boolean(config.providers.sprites?.apiKey),
-	},
+		sprites: {
+			configured: Boolean(config.providers.sprites?.apiKey),
+		},
+		vercel: {
+			configured: Boolean(config.providers.vercel?.token),
+			scopeHint: config.providers.vercel?.teamId
+				? `team ${config.providers.vercel.teamId.slice(0, 8)}…`
+				: undefined,
+		},
 	};
 	const machines: PublicMachineRef[] = config.machines.map((m) => {
 		const { apiKey, ...rest } = m;
@@ -754,6 +762,7 @@ export const PROVIDER_LABEL: Record<ProviderKind, string> = {
 	dedalus: "Dedalus",
 	e2b: "E2B Sandbox",
 	sprites: "Sprites",
+	vercel: "Vercel Sandbox",
 };
 
 export const AGENT_LABEL: Record<AgentKind, string> = {

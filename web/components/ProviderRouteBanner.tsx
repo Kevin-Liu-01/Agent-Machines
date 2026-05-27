@@ -12,6 +12,7 @@ const PROVIDERS: ReadonlyArray<ProviderChip> = [
 	{ kind: "service", slug: "e2b", label: "E2B" },
 	{ kind: "service", slug: "sprites", label: "Sprites" },
 	{ kind: "logo", label: "Dedalus" },
+	{ kind: "service", slug: "vercel", label: "Vercel" },
 ];
 
 function IconArrowRight(props: SVGProps<SVGSVGElement>) {

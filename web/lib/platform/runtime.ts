@@ -43,6 +43,7 @@ export const PROVIDER_LABELS: Record<(typeof RUNTIME.providersLive)[number], str
 	dedalus: "Dedalus Machines",
 	e2b: "E2B Sandbox",
 	sprites: "Sprites.dev",
+	vercel: "Vercel Sandbox",
 };
 
 export function migrateLegacyPathsShell(home: string, runtimeHome: string): string {

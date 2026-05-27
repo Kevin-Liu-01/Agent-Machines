@@ -17,7 +17,7 @@ const CAPABILITIES: ReadonlyArray<Capability> = [
 	{
 		kicker: "ROUTING",
 		title: "Agents and containers",
-		body: `${PRODUCT.analogies.primary}. Pick Hermes, OpenClaw, Claude Code, or Codex and pick E2B, Sprites.dev, or Dedalus Machines — one account, one control plane. ${PRODUCT.analogies.substrate}.`,
+		body: `${PRODUCT.analogies.primary}. Pick Hermes, OpenClaw, Claude Code, or Codex and pick E2B, Sprites.dev, Dedalus Machines, or Vercel Sandbox — one account, one control plane. ${PRODUCT.analogies.substrate}.`,
 		notes: ["OpenRouter-style", "dual routing", "one account"],
 		mark: "agent",
 		nyx: "nyx-waves",
@@ -39,9 +39,9 @@ const CAPABILITIES: ReadonlyArray<Capability> = [
 	},
 	{
 		kicker: "PROVIDERS",
-		title: "Three live hosts",
-		body: "Dedalus Machines, E2B Sandbox, and Sprites.dev each implement provision, exec, wake/sleep (where supported), and public URL through the same MachineProvider interface.",
-		notes: ["dedalus", "e2b", "sprites"],
+		title: "Four live hosts",
+		body: "Dedalus Machines, E2B Sandbox, Sprites.dev, and Vercel Sandbox each implement provision, exec, wake/sleep (where supported), and public URL through the same MachineProvider interface.",
+		notes: ["dedalus", "e2b", "sprites", "vercel"],
 	},
 	{
 		kicker: "AGENTS",

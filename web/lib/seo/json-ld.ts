@@ -90,7 +90,7 @@ export function buildRootJsonLd(): JsonLdGraph {
 					"Persistent agent-on-a-machine combined primitive",
 					"Stateful filesystem at /home/machine/.agent-machines",
 					"Hermes, OpenClaw, Claude Code, and Codex agent runtimes",
-					"Dedalus Machines, E2B Sandbox, and Sprites.dev providers",
+					"Dedalus Machines, E2B Sandbox, Sprites.dev, and Vercel Sandbox providers",
 					"Registry-driven harness: skills, service routes, MCP, CLIs, task routes",
 					"OpenAI-compatible /v1/chat/completions endpoint",
 					`${HARNESS.skillCount} SKILL.md skills in the protocol library`,

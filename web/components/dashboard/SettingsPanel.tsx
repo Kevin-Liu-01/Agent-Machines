@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { DashboardPageBody } from "@/components/dashboard/DashboardPageBody";
-import { Logo } from "@/components/Logo";
+import { Logo, type Mark } from "@/components/Logo";
 import { ServiceIcon } from "@/components/ServiceIcon";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
@@ -41,6 +41,9 @@ export function SettingsPanel({ initialConfig }: Props) {
 	const [dedalusBaseUrl, setDedalusBaseUrl] = useState("");
 	const [spritesKey, setSpritesKey] = useState("");
 	const [e2bKey, setE2bKey] = useState("");
+	const [vercelToken, setVercelToken] = useState("");
+	const [vercelTeamId, setVercelTeamId] = useState("");
+	const [vercelProjectId, setVercelProjectId] = useState("");
 	const [cursorApiKey, setCursorApiKey] = useState("");
 	const [anthropicKey, setAnthropicKey] = useState("");
 	const [openaiKey, setOpenaiKey] = useState("");
@@ -81,6 +84,13 @@ export function SettingsPanel({ initialConfig }: Props) {
 		}
 		if (e2bKey.trim()) {
 			providers.e2b = { apiKey: e2bKey.trim() };
+		}
+		if (vercelToken.trim() && vercelTeamId.trim() && vercelProjectId.trim()) {
+			providers.vercel = {
+				token: vercelToken.trim(),
+				teamId: vercelTeamId.trim(),
+				projectId: vercelProjectId.trim(),
+			};
 		}
 		const aiProviderKeys: Record<string, unknown> = {};
 			if (anthropicKey.trim()) aiProviderKeys.anthropic = anthropicKey.trim();
@@ -210,9 +220,10 @@ export function SettingsPanel({ initialConfig }: Props) {
 				title="Provider credentials"
 				description="Blank fields preserve existing secrets. Fill only what you want to add or rotate."
 			>
-			<div className="grid gap-px bg-[var(--ret-border)] md:grid-cols-2 lg:grid-cols-4">
+			<div className="grid gap-px bg-[var(--ret-border)] md:grid-cols-2 lg:grid-cols-5">
 				<ProviderBox
 					title="Dedalus"
+					mark="dedalus"
 					configured={config.providers.dedalus.configured}
 					fields={[
 						["API key", dedalusKey, setDedalusKey, "dsk-live-..."],
@@ -221,6 +232,7 @@ export function SettingsPanel({ initialConfig }: Props) {
 				/>
 				<ProviderBox
 					title="E2B Sandbox"
+					mark="e2b"
 					configured={config.providers.e2b.configured}
 					fields={[
 						["API key", e2bKey, setE2bKey, "e2b_..."],
@@ -228,9 +240,20 @@ export function SettingsPanel({ initialConfig }: Props) {
 				/>
 				<ProviderBox
 					title="Sprites"
+					mark="sprites"
 					configured={config.providers.sprites.configured}
 					fields={[
 						["Token", spritesKey, setSpritesKey, "kevin-liu-553/..."],
+					]}
+				/>
+				<ProviderBox
+					title="Vercel Sandbox"
+					mark="vercel"
+					configured={config.providers.vercel.configured}
+					fields={[
+						["Token", vercelToken, setVercelToken, "vercel token"],
+						["Team ID", vercelTeamId, setVercelTeamId, "team_..."],
+						["Project ID", vercelProjectId, setVercelProjectId, "prj_..."],
 					]}
 				/>
 			</div>
@@ -401,19 +424,24 @@ function Summary({ label, value }: { label: string; value: number }) {
 
 function ProviderBox({
 	title,
+	mark,
 	configured,
 	fields,
 }: {
 	title: string;
+	mark?: Mark;
 	configured: boolean;
 	fields: Array<[string, string, (value: string) => void, string]>;
 }) {
 	return (
 		<div className="bg-[var(--ret-bg)] p-3">
 			<div className="mb-2 flex items-center justify-between gap-2">
-				<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--ret-text)]">
-					{title}
-				</p>
+				<div className="flex items-center gap-2">
+					{mark ? <Logo mark={mark} size={14} tone="auto" /> : null}
+					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--ret-text)]">
+						{title}
+					</p>
+				</div>
 				<ReticleBadge variant={configured ? "success" : "default"}>
 					{configured ? "configured" : "empty"}
 				</ReticleBadge>

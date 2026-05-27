@@ -28,7 +28,7 @@ export default function TermsPage() {
 						current status
 					</p>
 					<p>
-						Dedalus Machines, E2B Sandbox, and Sprites.dev are live
+						Dedalus Machines, E2B Sandbox, Sprites.dev, and Vercel Sandbox are live
 						provider implementations.
 					</p>
 				</div>
@@ -44,7 +44,7 @@ export default function TermsPage() {
 					<p>
 						The project is open source under the MIT license. Hosted usage may
 						depend on third-party services, including Clerk, Vercel, Dedalus,
-						Cloudflare, Cursor, E2B, Sprites, and model providers.
+						Cloudflare, Cursor, E2B, Sprites, Vercel, and model providers.
 					</p>
 				</DocSection>
 

@@ -15,6 +15,7 @@ import type {
 import { DedalusProvider } from "./dedalus";
 import { E2BProvider } from "./e2b";
 import { SpritesProvider } from "./sprites";
+import { VercelProvider } from "./vercel";
 import { MachineProviderError, type MachineProvider } from "./types";
 
 export function getProvider(
@@ -54,6 +55,19 @@ export function getProvider(
 				);
 			}
 			return new SpritesProvider(creds);
+		}
+		case "vercel": {
+			const creds = credentials.vercel;
+			try {
+				return new VercelProvider(creds ?? null);
+			} catch (err) {
+				if (err instanceof MachineProviderError) throw err;
+				throw new MachineProviderError(
+					"vercel",
+					"missing_credentials",
+					"No Vercel Sandbox credentials on file. Add token + team ID + project ID via /dashboard/setup, or deploy on Vercel with OIDC.",
+				);
+			}
 		}
 		default: {
 			const exhaustive: never = kind;

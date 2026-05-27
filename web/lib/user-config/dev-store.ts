@@ -144,7 +144,7 @@ export async function setDevUserConfig(
 			if (value === null) {
 				delete nextProviders[kind];
 			} else {
-				nextProviders[kind] = value;
+				nextProviders[kind] = value as never;
 			}
 		}
 	}

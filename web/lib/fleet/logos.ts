@@ -7,6 +7,7 @@ const PROVIDER_MARK: Record<ProviderKind, Mark> = {
 	dedalus: "dedalus",
 	e2b: "e2b",
 	sprites: "sprites",
+	vercel: "vercel",
 };
 
 export function machineLogoMark(): Mark {

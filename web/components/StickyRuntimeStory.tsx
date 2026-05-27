@@ -27,7 +27,7 @@ const STAGES: ReadonlyArray<Stage> = [
 	{
 		kicker: "stage 02",
 		title: "The runtime router chooses the host shape.",
-		body: "E2B, Sprites.dev, and Dedalus Machines are interchangeable substrate routes — OpenRouter-style dual routing. Dedalus benchmarks best on boot and sleep/wake; the UI only shows lifecycle actions each lane supports.",
+		body: "E2B, Sprites.dev, Dedalus Machines, and Vercel Sandbox are interchangeable substrate routes — OpenRouter-style dual routing. Dedalus benchmarks best on boot and sleep/wake; the UI only shows lifecycle actions each lane supports.",
 		nodes: ["provider", "capability", "host"],
 		accent: "var(--ret-green)",
 	},
@@ -138,11 +138,13 @@ function StoryPanel({
 function StageMeta({ index }: { index: number }) {
 	if (index === 1) {
 		return (
-			<div className="mt-6 flex items-center gap-2">
-				<Logo mark="am" size={18} />
+			<div className="mt-6 flex flex-wrap items-center gap-2">
+				<ServiceIcon slug="e2b" size={16} tone="color" />
+				<ServiceIcon slug="sprites" size={16} tone="color" />
+				<Logo mark="dedalus" size={16} />
 				<ServiceIcon slug="vercel" size={16} tone="color" />
 				<span className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-					+ e2b + sprites
+					four substrate lanes
 				</span>
 			</div>
 		);
@@ -255,11 +257,12 @@ const PROVIDERS = [
 	{ name: "Dedalus", caps: ["disk", "wake/sleep", "exec", "tunnel"], accent: "var(--ret-purple)" },
 	{ name: "Sprites", caps: ["disk", "auto-sleep", "checkpoints", "public URL"], accent: "var(--ret-green)" },
 	{ name: "E2B", caps: ["pause/resume", "snapshots", "exec", "microVM"], accent: "var(--ret-amber)" },
+	{ name: "Vercel", caps: ["persistent", "auto-snapshot", "port URLs", "getOrCreate"], accent: "var(--ret-text)" },
 ] as const;
 
 function ProviderComparisonDiagram() {
 	return (
-		<div className="relative z-10 grid h-full grid-cols-3 gap-px bg-[var(--ret-border)] p-px">
+		<div className="relative z-10 grid h-full grid-cols-2 gap-px bg-[var(--ret-border)] p-px sm:grid-cols-4">
 			{PROVIDERS.map((p) => (
 				<div key={p.name} className="flex flex-col justify-between bg-[var(--ret-bg)]/90 p-3 backdrop-blur-sm">
 					<div>
@@ -278,6 +281,7 @@ function ProviderComparisonDiagram() {
 						{p.name === "Dedalus" ? <Logo mark="dedalus" size={14} tone="auto" /> : null}
 						{p.name === "Sprites" ? <ServiceIcon slug="sprites" size={14} tone="color" /> : null}
 						{p.name === "E2B" ? <ServiceIcon slug="e2b" size={14} tone="color" /> : null}
+						{p.name === "Vercel" ? <ServiceIcon slug="vercel" size={14} tone="color" /> : null}
 					</div>
 				</div>
 			))}
