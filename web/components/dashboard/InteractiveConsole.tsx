@@ -4,11 +4,13 @@ import "@xterm/xterm/css/xterm.css";
 
 import type { FitAddon as FitAddonType } from "@xterm/addon-fit";
 import type { Terminal as XTerm } from "@xterm/xterm";
-import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useOptionalMachineContext } from "@/components/dashboard/MachineProvider";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
+import { agentLabel, agentLaunchCommand, isCliAgent } from "@/lib/dashboard/agent-launch";
 
 type Status = "connecting" | "ready" | "offline" | "error";
 
@@ -29,9 +31,26 @@ function sleep(ms: number): Promise<void> {
 export function InteractiveConsole() {
 	const machineCtx = useOptionalMachineContext();
 	const machineId = machineCtx?.machineId;
+	const agentKind = machineCtx?.machine?.agentKind ?? null;
+	const searchParams = useSearchParams();
+	const autoLaunch = searchParams.get("launch") === "1";
 	const hostRef = useRef<HTMLDivElement>(null);
 	const [status, setStatus] = useState<Status>("connecting");
 	const [detail, setDetail] = useState<string>("");
+	const launchedRef = useRef(false);
+
+	const launchAgent = useCallback(() => {
+		const cmd = agentLaunchCommand(agentKind);
+		if (!cmd || !machineId) return;
+		void fetch("/api/dashboard/terminal/input", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ machineId, data: `${cmd}\r` }),
+		}).catch(() => {});
+	}, [agentKind, machineId]);
+
+	const launchRef = useRef(launchAgent);
+	launchRef.current = launchAgent;
 
 	useEffect(() => {
 		let alive = true;
@@ -106,6 +125,12 @@ export function InteractiveConsole() {
 			}
 			setStatus("ready");
 			term.focus();
+
+			// One-click flow: auto-start the agent CLI once the pane is attached.
+			if (autoLaunch && isCliAgent(agentKind) && !launchedRef.current) {
+				launchedRef.current = true;
+				setTimeout(() => launchRef.current(), 700);
+			}
 
 			if (hostRef.current) {
 				resizeObs = new ResizeObserver(() => {
@@ -198,9 +223,22 @@ export function InteractiveConsole() {
 						tmux console · send-keys / pane tail
 					</span>
 				</div>
-				{status === "connecting" ? (
-					<BrailleSpinner name="cascade" className="text-[var(--ret-purple)]" />
-				) : null}
+				<div className="flex items-center gap-2">
+					{isCliAgent(agentKind) ? (
+						<button
+							type="button"
+							onClick={launchAgent}
+							disabled={status !== "ready"}
+							title={`Start the ${agentLabel(agentKind)} CLI in this console`}
+							className="border border-[var(--ret-purple)]/40 bg-[var(--ret-purple-glow)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-purple)] transition-colors hover:border-[var(--ret-purple)] disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							launch {agentLabel(agentKind)} CLI
+						</button>
+					) : null}
+					{status === "connecting" ? (
+						<BrailleSpinner name="cascade" className="text-[var(--ret-purple)]" />
+					) : null}
+				</div>
 			</div>
 
 			<div className="relative border border-[var(--ret-border)] bg-[#0a0a0e]">

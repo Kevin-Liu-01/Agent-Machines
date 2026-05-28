@@ -517,9 +517,15 @@ function commandFor(
 					`else rm -rf ${repoDir} && git clone --depth 1 --branch ${REPO_BRANCH} ${REPO_CLONE_URL} ${repoDir}; fi; ` +
 					`else cd ${repoDir} && git fetch --depth 1 origin ${REPO_BRANCH} && git reset --hard origin/${REPO_BRANCH}; fi`,
 				`mkdir -p ${p.HERMES_HOME}/scripts ${p.APP_HOME}/scripts`,
-				`cat > ${p.HERMES_HOME}/scripts/reload-from-git.sh <<'EOF'\n${reloadBody}\nEOF`,
+				// base64 write, not a heredoc: this command is `&&`-joined, and a
+				// heredoc whose closing `EOF` isn't alone on its line ("EOF && ...")
+				// never terminates -> "unexpected end of file". writeRemoteFile is safe.
+				writeRemoteFile(`${p.HERMES_HOME}/scripts/reload-from-git.sh`, reloadBody),
 				`chmod +x ${p.HERMES_HOME}/scripts/reload-from-git.sh`,
-				`ln -sfn ${p.HERMES_HOME}/scripts/reload-from-git.sh ${p.APP_HOME}/scripts/reload-from-git.sh`,
+				// HERMES_HOME === APP_HOME on every provider, so this symlink would
+				// point a file at itself ("are the same file", exit 1 under set -e).
+				// Only link when the paths actually differ.
+				`[ "${p.HERMES_HOME}/scripts/reload-from-git.sh" = "${p.APP_HOME}/scripts/reload-from-git.sh" ] || ln -sfn ${p.HERMES_HOME}/scripts/reload-from-git.sh ${p.APP_HOME}/scripts/reload-from-git.sh`,
 				`${p.HERMES_HOME}/scripts/reload-from-git.sh`,
 			].join(" && ");
 		}

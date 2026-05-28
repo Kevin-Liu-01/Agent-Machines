@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 
+import { DeployAndTalk } from "@/components/dashboard/DeployAndTalk";
 import { MachinesPanel } from "@/components/dashboard/MachinesPanel";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
@@ -24,6 +25,9 @@ export default function MachinesPage() {
 					</ReticleButton>
 				}
 			/>
+			<div className="px-5 pt-5">
+				<DeployAndTalk />
+			</div>
 			<Suspense fallback={null}>
 				<MachinesPanel />
 			</Suspense>
