@@ -10,16 +10,21 @@
  * REST API: https://api.sprites.dev/v1
  */
 
+import { bridgeExecStream } from "./stream-util";
 import {
 	MachineProviderError,
 	type ExecOptions,
 	type ExecResult,
+	type ExecStreamEvent,
+	type ExecStreamOptions,
 	type MachineProvider,
 	type ProviderCapabilities,
 	type ProviderMachineSummary,
 	type ProvisionInput,
 	type ProvisionResult,
 } from "./types";
+
+const DEFAULT_STREAM_TIMEOUT_MS = 120_000;
 
 export type SpritesCreds = {
 	apiKey: string;
@@ -178,6 +183,58 @@ export class SpritesProvider implements MachineProvider {
 				`sprites exec failed: ${message.slice(0, 200)}`,
 			);
 		}
+	}
+
+	/**
+	 * Native streaming via the Sprites WebSocket process API. `spawn` opens a
+	 * WS-backed process whose stdout/stderr are Node `Readable` streams; we
+	 * relay each chunk as it arrives and resolve the exit code from
+	 * `proc.wait()`. A timeout guard kills the process so the bridge can
+	 * never hang on a stuck command.
+	 */
+	async *streamExec(
+		spriteName: string,
+		command: string,
+		options?: ExecStreamOptions,
+	): AsyncGenerator<ExecStreamEvent, void, void> {
+		const { SpritesClient } = await import("@fly/sprites");
+		const client = new SpritesClient(this.apiKey);
+		const sprite = client.sprite(spriteName);
+		const timeoutMs = options?.timeoutMs ?? DEFAULT_STREAM_TIMEOUT_MS;
+
+		yield* bridgeExecStream(async (emit) => {
+			const proc = sprite.spawn("/bin/bash", ["-lc", command], {});
+			proc.stdout.on("data", (chunk: Buffer | string) => {
+				emit.stdout(typeof chunk === "string" ? chunk : chunk.toString("utf8"));
+			});
+			proc.stderr.on("data", (chunk: Buffer | string) => {
+				emit.stderr(typeof chunk === "string" ? chunk : chunk.toString("utf8"));
+			});
+
+			let timer: ReturnType<typeof setTimeout> | undefined;
+			const timeout = new Promise<number>((_, reject) => {
+				timer = setTimeout(() => {
+					try {
+						proc.kill();
+					} catch {
+						// best-effort
+					}
+					reject(
+						new MachineProviderError(
+							"sprites",
+							"transient",
+							`sprites streamExec timed out after ${timeoutMs}ms`,
+						),
+					);
+				}, timeoutMs);
+			});
+
+			try {
+				return await Promise.race([proc.wait(), timeout]);
+			} finally {
+				if (timer) clearTimeout(timer);
+			}
+		});
 	}
 
 	async getPublicUrl(spriteName: string, _port: number): Promise<string | null> {

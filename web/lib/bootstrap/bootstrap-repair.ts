@@ -10,6 +10,7 @@ import { finalizeGatewayBootstrap } from "./runner";
 function homeFor(providerKind: MachineRef["providerKind"]): string {
 	if (providerKind === "e2b") return "/home/user";
 	if (providerKind === "sprites") return "/home/sprite";
+	if (providerKind === "vercel") return "/vercel/sandbox";
 	return "/home/machine";
 }
 

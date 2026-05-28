@@ -20,6 +20,8 @@ import {
 	MachineProviderError,
 	type ExecOptions,
 	type ExecResult,
+	type ExecStreamEvent,
+	type ExecStreamOptions,
 	type MachineProvider,
 	type MachineState,
 	type ProviderCapabilities,
@@ -27,6 +29,8 @@ import {
 	type ProvisionInput,
 	type ProvisionResult,
 } from "./types";
+
+const DEFAULT_STREAM_TIMEOUT_MS = 120_000;
 
 const HERMES_PORT = 8642;
 const OPENCLAW_PORT = 18789;
@@ -390,6 +394,45 @@ export class VercelProvider implements MachineProvider {
 				"vercel",
 				classifyError(err),
 				`vercel execBackground failed on ${machineId}: ${err instanceof Error ? err.message : String(err)}`,
+			);
+		}
+	}
+
+	/**
+	 * Native streaming via Vercel's `Command.logs()` async iterator. We run
+	 * the command detached, relay each stdout/stderr frame as it lands, then
+	 * await the exit code. (Vercel Sandbox has no post-start stdin, so this
+	 * is live output only -- not an interactive PTY.)
+	 */
+	async *streamExec(
+		machineId: string,
+		command: string,
+		options?: ExecStreamOptions,
+	): AsyncGenerator<ExecStreamEvent, void, void> {
+		const timeoutMs = options?.timeoutMs ?? DEFAULT_STREAM_TIMEOUT_MS;
+		const signal =
+			timeoutMs > 0 ? AbortSignal.timeout(timeoutMs) : undefined;
+		try {
+			const sandbox = await this.connect(machineId, true);
+			const cmd = await sandbox.runCommand({
+				cmd: "bash",
+				args: ["-lc", bashViaBase64(command)],
+				detached: true,
+			});
+			for await (const log of cmd.logs({ signal })) {
+				if (log.stream === "stdout") {
+					yield { type: "stdout", data: log.data };
+				} else {
+					yield { type: "stderr", data: log.data };
+				}
+			}
+			const finished = await cmd.wait({ signal });
+			yield { type: "exit", exitCode: finished.exitCode };
+		} catch (err) {
+			throw new MachineProviderError(
+				"vercel",
+				classifyError(err),
+				`vercel streamExec failed on ${machineId}: ${err instanceof Error ? err.message : String(err)}`,
 			);
 		}
 	}

@@ -11,13 +11,9 @@ import type { LiveDataEnvelope, LogsPayload, MachineSummary } from "@/lib/dashbo
 /**
  * Live transcript of a machine boot.
  *
- * Polls /api/dashboard/machine for phase + reason fields and appends
- * a new line every time something actually changes (phase flip,
- * reason text change, last_progress_at advances). Once the machine
- * is `running` and we have a machine id, we additionally poll
- * /api/dashboard/logs and merge those lines in so the transcript
- * keeps rolling with real bootstrap output (apt installs, uv install,
- * agent install) once it's available.
+ * Polls /api/dashboard/machine for phase + reason fields before a machine
+ * id exists. Once `machineId` is set, opens GET /api/dashboard/bootstrap/stream
+ * (SSE) for live phase transitions and bootstrap.log output from the sandbox.
  *
  * Designed to live below the `BootStep` checklist on onboarding AND
  * inside the dashboard's wake banner. Same component, same accumulator
@@ -82,7 +78,7 @@ export function BootTranscript({
 			source: "controlplane",
 			level: "info",
 			message: "transcript started",
-			hint: "polling controlplane every 3.5s",
+			hint: machineId ? "SSE bootstrap stream" : "polling controlplane every 3.5s",
 		});
 	}
 
@@ -179,8 +175,74 @@ export function BootTranscript({
 		};
 	}, [active]);
 
-	// On-VM log tail. Only meaningful once the machine reaches
-	// `running` (otherwise execOnMachine returns "machine_offline").
+	// Live bootstrap SSE — phase markers + sandbox bootstrap.log tail.
+	useEffect(() => {
+		if (!active || !machineId) return;
+		const source = new EventSource(
+			`/api/dashboard/bootstrap/stream?machineId=${encodeURIComponent(machineId)}`,
+		);
+
+		function ingestLog(text: string): void {
+			for (const line of text.split("\n")) {
+				const trimmed = line.trimEnd();
+				if (!trimmed) continue;
+				append({
+					at: new Date().toISOString(),
+					source: "vm",
+					level: trimmed.includes("exit ") && trimmed.includes("phase")
+						? "debug"
+						: "info",
+					message: trimmed,
+					hint: "bootstrap.log",
+				});
+			}
+		}
+
+		source.addEventListener("phase", (event) => {
+			try {
+				const data = JSON.parse((event as MessageEvent).data) as {
+					phase?: string;
+					current?: string | null;
+					lastError?: string | null;
+					at?: string;
+				};
+				const label = data.current ?? data.phase ?? "unknown";
+				append({
+					at: data.at ?? new Date().toISOString(),
+					source: "controlplane",
+					level: data.phase === "failed" ? "error" : "info",
+					message: `phase -> ${label}`,
+					hint: data.lastError ?? undefined,
+				});
+			} catch {
+				// ignore malformed frames
+			}
+		});
+
+		source.addEventListener("log", (event) => {
+			try {
+				const data = JSON.parse((event as MessageEvent).data) as { text?: string };
+				if (data.text) ingestLog(data.text);
+			} catch {
+				// ignore malformed frames
+			}
+		});
+
+		source.addEventListener("done", () => {
+			source.close();
+		});
+
+		source.onerror = () => {
+			setError("bootstrap stream disconnected — falling back to log poll");
+		};
+
+		return () => {
+			source.close();
+		};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [active, machineId]);
+
+	// On-VM log tail fallback when SSE is unavailable or machine is running post-boot.
 	useEffect(() => {
 		if (!active || !machineId) return;
 		let stopped = false;

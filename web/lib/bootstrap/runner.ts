@@ -21,6 +21,10 @@ import {
 	installGatewayUnitCommand,
 	waitForGatewayUrl,
 } from "@/lib/bootstrap/gateway-lifecycle";
+import {
+	bootstrapLogPath,
+	wrapPhaseCommand,
+} from "@/lib/bootstrap/bootstrap-log";
 import { migrateLegacyPathsShell } from "@/lib/platform/runtime";
 import {
 	BOOTSTRAP_PHASES,
@@ -318,7 +322,9 @@ async function runPhase(
 
 	const command = commandFor(phase, machine, config, apiKey, paths);
 	if (command === null) return;
-	const result = await provider.exec(machine.id, command, { timeoutMs: 900_000 });
+	const logPath = bootstrapLogPath(machine.providerKind);
+	const wrapped = wrapPhaseCommand(phase, command, logPath);
+	const result = await provider.exec(machine.id, wrapped, { timeoutMs: 900_000 });
 	if (result.exitCode !== 0) {
 		throw new Error(
 			`${phase} failed: ${result.stderr || result.stdout || `exit ${result.exitCode}`}`,

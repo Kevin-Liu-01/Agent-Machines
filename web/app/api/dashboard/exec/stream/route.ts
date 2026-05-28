@@ -1,21 +1,13 @@
 /**
  * POST /api/dashboard/exec/stream
  *
- * SSE-streaming version of the exec endpoint. Instead of blocking for
- * up to 30s and returning a single JSON blob, this streams events as
- * the command executes:
- *
- *   event: started    → { command, startedAt }
- *   event: heartbeat  → { elapsedMs }           (every ~800ms while running)
- *   event: output     → { stdout, stderr }      (streamed in chunks if available)
- *   event: done       → { exitCode, stdout, stderr, elapsedMs, finishedAt }
- *   event: error      → { message }
- *
- * The browser sees output arriving progressively so the terminal
- * feels alive instead of dead while waiting.
+ * SSE exec gateway: streams stdout from the sandbox while the command runs.
+ * Uses detached VM exec + log polling (see lib/dashboard/exec-stream.ts).
  */
 
-import { execOnMachine, isMachineRunning } from "@/lib/dashboard/exec";
+import { execStreamOnMachine } from "@/lib/dashboard/exec-stream";
+import { isMachineRunning } from "@/lib/dashboard/exec";
+import { SSE_HEADERS, sseFrame } from "@/lib/dashboard/sse";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 export const runtime = "nodejs";
@@ -32,10 +24,6 @@ type ExecRequestBody = {
 	timeoutMs?: number;
 	machineId?: string;
 };
-
-function sseFrame(event: string, data: unknown): string {
-	return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-}
 
 export async function POST(request: Request): Promise<Response> {
 	const userId = await getEffectiveUserId();
@@ -70,9 +58,11 @@ export async function POST(request: Request): Promise<Response> {
 
 	const startedAt = new Date().toISOString();
 	const t0 = Date.now();
+	let accumulatedStdout = "";
+	let accumulatedStderr = "";
 
 	const stream = new ReadableStream({
-		start(controller) {
+		async start(controller) {
 			const encoder = new TextEncoder();
 			const write = (s: string) => controller.enqueue(encoder.encode(s));
 
@@ -82,59 +72,70 @@ export async function POST(request: Request): Promise<Response> {
 				write(sseFrame("heartbeat", { elapsedMs: Date.now() - t0 }));
 			}, HEARTBEAT_INTERVAL_MS);
 
-			execOnMachine(command, { timeoutMs, machineId })
-				.then((result) => {
-					clearInterval(heartbeat);
-					const elapsedMs = Date.now() - t0;
-					const finishedAt = new Date().toISOString();
-
-					// Stream output in chunks for large output
-					const stdout = result.stdout ?? "";
-					const stderr = result.stderr ?? "";
-					const CHUNK_SIZE = 4096;
-
-					if (stdout.length > CHUNK_SIZE) {
-						for (let i = 0; i < stdout.length; i += CHUNK_SIZE) {
-							write(sseFrame("output", {
-								stdout: stdout.slice(i, i + CHUNK_SIZE),
+			try {
+				for await (const event of execStreamOnMachine(command, {
+					timeoutMs,
+					machineId,
+					pollMs: 300,
+				})) {
+					if (event.type === "stdout") {
+						accumulatedStdout += event.data;
+						write(
+							sseFrame("output", {
+								stdout: event.data,
 								stderr: "",
-								chunk: Math.floor(i / CHUNK_SIZE),
-								total: Math.ceil(stdout.length / CHUNK_SIZE),
-							}));
-						}
+							}),
+						);
+					} else if (event.type === "stderr") {
+						accumulatedStderr += event.data;
+						write(
+							sseFrame("output", {
+								stdout: "",
+								stderr: event.data,
+							}),
+						);
+					} else if (event.type === "exit") {
+						clearInterval(heartbeat);
+						write(
+							sseFrame("done", {
+								exitCode: event.exitCode,
+								stdout: accumulatedStdout,
+								stderr: accumulatedStderr,
+								elapsedMs: Date.now() - t0,
+								finishedAt: new Date().toISOString(),
+							}),
+						);
+						controller.close();
+						return;
 					}
-
-					write(sseFrame("done", {
-						exitCode: result.exitCode,
-						stdout,
-						stderr,
-						elapsedMs,
-						finishedAt,
-					}));
-					controller.close();
-				})
-				.catch((err) => {
-					clearInterval(heartbeat);
-					const message = err instanceof Error ? err.message : "exec failed";
-					write(sseFrame("error", {
+				}
+				clearInterval(heartbeat);
+				write(
+					sseFrame("done", {
+						exitCode: 0,
+						stdout: accumulatedStdout,
+						stderr: accumulatedStderr,
+						elapsedMs: Date.now() - t0,
+						finishedAt: new Date().toISOString(),
+					}),
+				);
+				controller.close();
+			} catch (err) {
+				clearInterval(heartbeat);
+				const message = err instanceof Error ? err.message : "exec failed";
+				write(
+					sseFrame("error", {
 						message,
 						elapsedMs: Date.now() - t0,
 						finishedAt: new Date().toISOString(),
-					}));
-					controller.close();
-				});
+					}),
+				);
+				controller.close();
+			}
 		},
 	});
 
-	return new Response(stream, {
-		status: 200,
-		headers: {
-			"Content-Type": "text/event-stream; charset=utf-8",
-			"Cache-Control": "no-cache, no-transform",
-			Connection: "keep-alive",
-			"X-Accel-Buffering": "no",
-		},
-	});
+	return new Response(stream, { status: 200, headers: SSE_HEADERS });
 }
 
 function clampTimeout(raw: unknown): number {

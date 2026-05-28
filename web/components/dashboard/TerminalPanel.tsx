@@ -621,7 +621,7 @@ export function TerminalPanel({ initialCommand }: Props) {
 						{error ? (
 							<span className="text-[var(--ret-red)]">! {error}</span>
 						) : (
-							<span>SSE streaming . 30s default timeout</span>
+							<span>SSE exec stream · live sandbox output</span>
 						)}
 					</div>
 				</div>

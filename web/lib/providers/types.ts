@@ -67,6 +67,20 @@ export type ExecOptions = {
 	timeoutMs?: number;
 };
 
+/**
+ * Incremental output frame emitted while a command runs. Shared by the
+ * provider streaming adapters and the dashboard exec-stream engine.
+ */
+export type ExecStreamEvent =
+	| { type: "stdout"; data: string }
+	| { type: "stderr"; data: string }
+	| { type: "exit"; exitCode: number };
+
+export type ExecStreamOptions = {
+	timeoutMs?: number;
+	signal?: AbortSignal;
+};
+
 export type ProviderError =
 	| "missing_credentials"
 	| "not_supported"
@@ -109,6 +123,18 @@ export type MachineProvider = {
 	destroy(machineId: string): Promise<void>;
 	exec(machineId: string, command: string, options?: ExecOptions): Promise<ExecResult>;
 	execBackground?(machineId: string, command: string): Promise<void>;
+	/**
+	 * Stream stdout/stderr as a command runs, using the provider's native
+	 * streaming primitive (E2B `onStdout`/`onStderr`, Vercel `Command.logs()`,
+	 * Sprites `spawn`). Providers whose backends cannot stream (Dedalus REST
+	 * exec only returns output after completion) omit this; the exec-stream
+	 * engine falls back to log-tail polling for them.
+	 */
+	streamExec?(
+		machineId: string,
+		command: string,
+		options?: ExecStreamOptions,
+	): AsyncGenerator<ExecStreamEvent, void, void>;
 	/** Public HTTPS URL for a listening port (E2B, Sprites). */
 	getPublicUrl?(machineId: string, port: number): Promise<string | null>;
 };

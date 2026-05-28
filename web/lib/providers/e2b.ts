@@ -12,10 +12,13 @@
  *   anything else -> unknown
  */
 
+import { bridgeExecStream } from "./stream-util";
 import {
 	MachineProviderError,
 	type ExecOptions,
 	type ExecResult,
+	type ExecStreamEvent,
+	type ExecStreamOptions,
 	type MachineProvider,
 	type MachineState,
 	type ProviderCapabilities,
@@ -23,6 +26,8 @@ import {
 	type ProvisionInput,
 	type ProvisionResult,
 } from "./types";
+
+const DEFAULT_STREAM_TIMEOUT_MS = 120_000;
 
 async function getSandbox() {
 	const { Sandbox } = await import("e2b");
@@ -226,6 +231,40 @@ export class E2BProvider implements MachineProvider {
 				`e2b exec failed on ${machineId}: ${err instanceof Error ? err.message : String(err)}`,
 			);
 		}
+	}
+
+	/**
+	 * Native streaming via E2B's `onStdout`/`onStderr` callbacks. The SDK
+	 * fires them as bytes arrive on the foreground command, then resolves
+	 * (or throws `CommandExitError` carrying the non-zero exit code -- the
+	 * callbacks have already delivered the output by then).
+	 */
+	async *streamExec(
+		machineId: string,
+		command: string,
+		options?: ExecStreamOptions,
+	): AsyncGenerator<ExecStreamEvent, void, void> {
+		const Sandbox = await getSandbox();
+		const sandbox = await Sandbox.connect(machineId, { apiKey: this.apiKey });
+		yield* bridgeExecStream(async (emit) => {
+			try {
+				const result = await sandbox.commands.run(bashViaBase64(command), {
+					timeoutMs: options?.timeoutMs ?? DEFAULT_STREAM_TIMEOUT_MS,
+					onStdout: (data: string) => emit.stdout(data),
+					onStderr: (data: string) => emit.stderr(data),
+				});
+				return result.exitCode;
+			} catch (err) {
+				if (err && typeof err === "object" && "exitCode" in err) {
+					return (err as { exitCode: number }).exitCode;
+				}
+				throw new MachineProviderError(
+					"e2b",
+					classifyError(err),
+					`e2b streamExec failed on ${machineId}: ${err instanceof Error ? err.message : String(err)}`,
+				);
+			}
+		});
 	}
 
 	async execBackground(machineId: string, command: string): Promise<void> {
