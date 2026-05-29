@@ -1,18 +1,17 @@
 import type { SVGProps } from "react";
 
-import { Logo } from "@/components/Logo";
-import { ServiceIcon, type ServiceSlug } from "@/components/ServiceIcon";
+import { Logo, type Mark } from "@/components/Logo";
 import { cn } from "@/lib/cn";
 
-type ProviderChip =
-	| { kind: "service"; slug: ServiceSlug; label: string }
-	| { kind: "logo"; label: string };
+type ProviderChip = { mark: Mark; label: string };
 
+// One renderer (Logo) for every substrate so each mark uses its correct
+// per-brand tone — including Vercel's theme-adaptive triangle.
 const PROVIDERS: ReadonlyArray<ProviderChip> = [
-	{ kind: "service", slug: "e2b", label: "E2B" },
-	{ kind: "service", slug: "sprites", label: "Sprites" },
-	{ kind: "logo", label: "Dedalus" },
-	{ kind: "service", slug: "vercel", label: "Vercel" },
+	{ mark: "e2b", label: "E2B" },
+	{ mark: "sprites", label: "Sprites" },
+	{ mark: "dedalus", label: "Dedalus" },
+	{ mark: "vercel", label: "Vercel" },
 ];
 
 function IconArrowRight(props: SVGProps<SVGSVGElement>) {
@@ -55,11 +54,7 @@ export function ProviderRouteBanner() {
 								"group-hover/banner:border-[var(--ret-border)]",
 							)}
 						>
-							{provider.kind === "service" ? (
-								<ServiceIcon slug={provider.slug} size={16} tone="color" />
-							) : (
-								<Logo mark="dedalus" size={16} tone="auto" />
-							)}
+							<Logo mark={provider.mark} size={16} />
 							<span className="text-[11px] font-normal leading-none text-[var(--ret-text)]">
 								{provider.label}
 							</span>

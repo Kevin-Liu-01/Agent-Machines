@@ -1,0 +1,142 @@
+{
+  "version": 1,
+  "generatedAt": "2026-05-29T00:00:00.000Z",
+  "hasMeasuredData": false,
+  "methodology": "Every substrate is driven through the same MachineProvider contract at a fixed 2 vCPU / 4 GiB / 10 GiB spec. Lifecycle latencies (cold boot, time-to-ready, resume, teardown) are measured wall-clock from the control plane; exec round-trip is the p50/p95 of repeated no-op commands on a warm machine; CPU and disk are in-VM microbenchmarks so they are independent of network latency. The figures below are cited, published reference numbers shown until you run `npm run benchmark`, which replaces them with measured data tagged as such.",
+  "profiles": [
+    {
+      "provider": "dedalus",
+      "label": "Dedalus",
+      "hue": "#d2beff",
+      "tagline": "Persistent agent machines; leads our harness on boot + sleep/wake.",
+      "isolation": "MicroVM (dedicated kernel)",
+      "runtimeKind": "persistent-machine",
+      "capabilities": {
+        "isolation": "MicroVM",
+        "persistentDisk": true,
+        "scaleToZero": true,
+        "nativeSleepWake": "autosleep (HMAC-gated manual sleep)",
+        "streamingExec": false,
+        "publicUrl": true,
+        "maxRuntime": "persistent"
+      },
+      "pricing": {
+        "cpuPerVcpuHour": { "value": null, "unit": "$/vCPU-hr", "basis": "unknown" },
+        "memoryPerGibHour": { "value": null, "unit": "$/GiB-hr", "basis": "unknown" },
+        "storagePerGibHour": { "value": null, "unit": "$/GiB-hr", "basis": "unknown" },
+        "scaleToZero": true,
+        "note": "Not publicly listed. Autosleep default 300s; no compute charge while parked."
+      },
+      "defaultSpec": { "vcpu": 1, "memoryMib": 2048, "storageGib": 10 },
+      "referenceMetrics": { "coldBootMs": 250 },
+      "citations": [
+        {
+          "label": "Agent Machines README: ~250ms boot claim",
+          "url": "https://github.com/Kevin-Liu-01/agent-machines"
+        }
+      ]
+    },
+    {
+      "provider": "e2b",
+      "label": "E2B Sandbox",
+      "hue": "#ff8351",
+      "tagline": "Firecracker microVMs for AI agent tool-call loops.",
+      "isolation": "Firecracker microVM (dedicated kernel)",
+      "runtimeKind": "persistent-machine",
+      "capabilities": {
+        "isolation": "Firecracker microVM",
+        "persistentDisk": true,
+        "scaleToZero": true,
+        "nativeSleepWake": "pause / resume",
+        "streamingExec": true,
+        "publicUrl": true,
+        "maxRuntime": "24h (Pro)"
+      },
+      "pricing": {
+        "cpuPerVcpuHour": { "value": 0.0504, "unit": "$/vCPU-hr", "basis": "published" },
+        "memoryPerGibHour": { "value": 0.0162, "unit": "$/GiB-hr", "basis": "published" },
+        "storagePerGibHour": { "value": null, "unit": "$/GiB-hr", "basis": "unknown" },
+        "scaleToZero": true,
+        "note": "Firecracker microVMs; ~150ms published cold start."
+      },
+      "defaultSpec": { "vcpu": 1, "memoryMib": 512, "storageGib": 0 },
+      "referenceMetrics": { "coldBootMs": 150 },
+      "citations": [
+        {
+          "label": "Superagent: AI Code Sandbox Benchmark 2026",
+          "url": "https://www.superagent.sh/blog/ai-code-sandbox-benchmark-2026"
+        },
+        {
+          "label": "StartupHub: Daytona vs E2B vs Modal vs Vercel 2026",
+          "url": "https://www.startuphub.ai/ai-news/artificial-intelligence/2026/daytona-vs-e2b-vs-modal-vs-vercel-sandbox-2026"
+        }
+      ]
+    },
+    {
+      "provider": "sprites",
+      "label": "Sprites",
+      "hue": "#a855f7",
+      "tagline": "Persistent sandboxes on Fly.io; auto-sleep, auto-wake on exec.",
+      "isolation": "Fly Machine (Firecracker microVM)",
+      "runtimeKind": "persistent-machine",
+      "capabilities": {
+        "isolation": "Firecracker microVM (Fly)",
+        "persistentDisk": true,
+        "scaleToZero": true,
+        "nativeSleepWake": "auto (wake on exec/HTTP)",
+        "streamingExec": true,
+        "publicUrl": true,
+        "maxRuntime": "persistent"
+      },
+      "pricing": {
+        "cpuPerVcpuHour": { "value": null, "unit": "$/vCPU-hr", "basis": "unknown" },
+        "memoryPerGibHour": { "value": null, "unit": "$/GiB-hr", "basis": "unknown" },
+        "storagePerGibHour": { "value": null, "unit": "$/GiB-hr", "basis": "unknown" },
+        "scaleToZero": true,
+        "note": "Fly.io machine pricing applies; no compute charge while asleep."
+      },
+      "defaultSpec": { "vcpu": 2, "memoryMib": 4096, "storageGib": 100 },
+      "referenceMetrics": {},
+      "citations": [
+        {
+          "label": "Fly.io Machines (underlying infrastructure)",
+          "url": "https://fly.io/docs/machines/"
+        }
+      ]
+    },
+    {
+      "provider": "vercel",
+      "label": "Vercel Sandbox",
+      "hue": "#7c8cf8",
+      "tagline": "Firecracker microVMs on Vercel; filesystem persists across stop.",
+      "isolation": "Firecracker microVM (Vercel)",
+      "runtimeKind": "persistent-machine",
+      "capabilities": {
+        "isolation": "Firecracker microVM",
+        "persistentDisk": true,
+        "scaleToZero": true,
+        "nativeSleepWake": "stop / resume",
+        "streamingExec": true,
+        "publicUrl": true,
+        "maxRuntime": "5h (Pro)"
+      },
+      "pricing": {
+        "cpuPerVcpuHour": { "value": 0.128, "unit": "$/vCPU-hr", "basis": "published" },
+        "memoryPerGibHour": { "value": 0.0212, "unit": "$/GB-hr", "basis": "published" },
+        "storagePerGibHour": { "value": null, "unit": "$/GiB-hr", "basis": "unknown" },
+        "scaleToZero": true,
+        "note": "Active-CPU billing; filesystem auto-saves on stop."
+      },
+      "defaultSpec": { "vcpu": 2, "memoryMib": 4096, "storageGib": 0 },
+      "referenceMetrics": {},
+      "citations": [
+        {
+          "label": "StartupHub: Daytona vs E2B vs Modal vs Vercel 2026",
+          "url": "https://www.startuphub.ai/ai-news/artificial-intelligence/2026/daytona-vs-e2b-vs-modal-vs-vercel-sandbox-2026"
+        }
+      ]
+    }
+  ],
+  "latest": null,
+  "history": []
+}

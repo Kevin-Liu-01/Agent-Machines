@@ -179,3 +179,57 @@ agent-machines.dev."
 **Why:** Dashboard revamp + runnable demo for YC recording
 **Decision:** Server returns raw activity days; client builds grid with week/month/all scales
 **Open:** Auto-bootstrap polish; keep harness counts registry-derived (161 skills as of last sync)
+
+## [2026-05-29] feat | Substrate benchmark harness + dashboard
+
+**Changed:** New `web/lib/benchmarks/*` engine (types, metric catalog in `constants.ts`, `stats`, `Probe` base + exec/cpu/disk probes, `engine` lifecycle runner + parallel suite, `store`, `format`, `credentials`, `FakeProvider`, `demo` synthesizer). CLI `web/scripts/run-benchmarks.ts` wired as root `npm run benchmark` (tsx --tsconfig web/tsconfig.json). API `GET /api/dashboard/benchmarks` + guarded `POST .../run` (demo|live). UI `/dashboard/benchmarks` (`BenchmarksClient` + `benchmarks/*` components: leaderboard, comparison bars, score ranking, capability/pricing matrix, methodology) wired into `SidebarNav`. Cited seed `web/data/benchmarks.json`; Supabase migration `003_provider_benchmarks.sql`. View model `web/lib/dashboard/benchmarks-view.ts`. Tests: 27 (stats/probes/engine/view).
+**Why:** User asked for scripts + UI to show targeted benchmarks across all substrate providers (the README's "Dedalus benchmarks best on boot" claim, made empirical + comparable).
+**Metrics measured (via `MachineProvider`):** cold boot→first exec, provision, time-to-ready, resume/wake, exec p50/p95, CPU Mops/s, disk write/read MB/s, teardown, reliability%; composite responsiveness score = geomean of scored latencies normalized so fastest = 100.
+**Decisions:**
+- Built on the existing `MachineProvider` contract so all 4 providers compare apples-to-apples; probes are a `Probe` base class others extend.
+- Honest data sourcing: seed carries cited reference/capability/pricing (basis tag: published|estimate|unknown), `source: "reference"`; real runs tag `measured`; demo synthesizer tags `demo`. UI never presents reference/demo as measured. Dedalus pricing left `unknown` (cost.ts internal estimate is ~300x off public peers).
+- `--demo` / Demo-data button synthesize deterministic ordered numbers from `DEMO_PROFILES` (FakeProvider wall-clock is JS/poll noise, unsuitable for ordering); engine tests are structural, ordering covered by `computeResponsivenessScores` + demo.
+- Client applies POST run optimistically (`applyRunToSnapshot`) so the feature works even before migration 003 is applied.
+- Live runs require `--yes` (CLI) / confirm() (UI); they provision+destroy real machines and spend credits. CLI is the recommended path for full suites (API route has 300s cap).
+**Open:** Apply migration 003 for persistence; run a real `npm run benchmark -- --yes` to replace reference numbers with measured; optional landing-page section reusing `BenchmarkComparisonBars`.
+
+## [2026-05-29] feat | First live benchmark run + honesty fixes
+
+**Ran:** `npm run benchmark -- --yes` — only `DEDALUS_API_KEY` is in env, so E2B/Sprites/Vercel were skipped (no creds). Real measured Dedalus (2vCPU/4GiB/10GiB, 12 iters): cold boot→first exec **13.2s**, provision **3.17s**, time-to-ready **11.6s**, resume **4.25s**, exec p50 **1.56s** / p95 1.59s, CPU **14.9 Mops/s**, disk write **120 MB/s**, disk read 8.1 GB/s (page cache — read-back is warm), teardown **757ms**, reliability 100%.
+**Finding:** The public-API end-to-end latency is seconds, NOT the README's "~250ms boot" — the 1.5s exec floor is our Dedalus client's 1s completion-poll (`POLL_INTERVAL_MS` in `web/lib/providers/dedalus.ts`). The harness made that empirical. (Future: a streaming/no-poll exec path would lower exec latency.)
+**Changed (to surface the run without the unapplied migration):**
+- `store.ts`: added `writeLocalRun` / `readLocalRuns`; `getSnapshot` now merges Supabase runs + local `<web>/.benchmarks/*.json` files, dedupes by runId, falls back to seed. CLI always caches the run to `<web>/.benchmarks/` (gitignored `.benchmarks`). Closes the loop fully offline.
+- `benchmarks-view.ts` `pickWinner`: once any measured/demo cell exists for a metric, rank ONLY among measured — a cited reference (e.g. E2B 150ms) must never outrank a real measurement (Dedalus 13.2s). Added `source` to `LeaderboardEntry`; winner cards show a `ref`/`demo` tag. Locked with a regression test (`measured-beats-reference`).
+**State:** Supabase still lacks table 003 (service-role key can't run DDL; no DB password/`config.toml` in env, so I couldn't apply it). Dashboard reads the local run file and shows measured Dedalus + reference for the rest. Tests: 73 pass.
+
+## [2026-05-29] data | First full 4-provider measured run
+
+**Setup:** Sprites token + E2B key provided by user (passed inline, not persisted). Vercel via OIDC: `vercel link --yes` (linked `kl01s-projects/web`) + `vercel env pull web/.env.vercel.local` → `VERCEL_OIDC_TOKEN` (expires ~12h; `.env*.local` now gitignored). Provider reads OIDC via `hasOidcCredentials()`; SDK auto-uses the env token.
+**Run 9bce2873 (2vCPU/4GiB/10GiB, 12 iters), measured:**
+| metric | dedalus | sprites | e2b | vercel |
+|---|---|---|---|---|
+| cold boot→first exec | 4.91s | 6.09s | 1.55s | **1.12s** |
+| provision API | 3.24s | **613ms** | 860ms | 673ms |
+| time to ready | 3.39s | **660ms** | 981ms | 843ms |
+| resume from sleep | — (err) | 5.25s | **472ms** | 2.02s |
+| exec p50 | 1.57s | 5.34s | **230ms** | 290ms |
+| CPU Mops/s | 28.4 | 9.3 | **40.4** | 22.0 |
+| disk write MB/s | 121 | 214 | **1000** | 908 |
+| disk read MB/s | **9500** | 2300 | 5500 | 6300 |
+| teardown | 790ms | 285ms | 341ms | **145ms** |
+| score | 22 | 23 | 92 | **100** |
+**Findings:**
+- **Vercel** wins responsiveness (100), **E2B** close (92); both have direct/fast exec (230–290ms p50). **Dedalus** (22) and **Sprites** (23) are dragged down by adapter exec overhead: Dedalus's 1s completion-poll floor (~1.57s p50) and Sprites creating a fresh `@fly/sprites` WS client per exec (~5.3s p50). These are *adapter* costs, not raw substrate speed — optimizing those adapters (persistent WS / streaming exec) would change the ranking.
+- **Dedalus resume = error**: `wake()` throws when the machine is still `running` (HMAC-gated sleep didn't park it within the 8s window) → wakeMs null, reliability 90%. Honest. Dedalus cold boot also varied run-to-run (13.2s → 4.9s) = placement variance.
+- **Sprites** has the fastest provision/ready (~0.6s) + good disk write; **E2B** best CPU + disk write; **Dedalus** best (cached) disk read.
+**Open:** Persist to Supabase (migration 003); consider a persistent-WS Sprites exec + non-poll Dedalus exec to measure raw (not adapter) latency; `.env.vercel.local` OIDC expires in ~12h (re-pull to re-run Vercel).
+
+## [2026-05-29] perf/feat | Migration 003 live, exec adapters optimized, Vercel logo fixed
+
+**Migration 003 applied by user** → benchmark runs now persist. Re-run stored 4 rows to Supabase (run `107d48db`); dashboard `getSnapshot` reads Supabase first, merges local `.benchmarks/` files, falls back to seed.
+**Optimizations (production provider code, benefits whole app):**
+- `dedalus.ts` exec: replaced fixed `POLL_INTERVAL_MS=1000` with adaptive backoff (`60ms → ×1.6 → 1000ms` cap). Measured exec p50 **1.57s → 866ms** (~45% faster). Helps dashboard terminal + metrics collection too.
+- `sprites.ts` exec: memoized the dynamic `import("@fly/sprites")` + cache one `SpritesClient` + per-name `Sprite` handle on the instance (per "reuse clients" rule). NOTE: exec p50 stayed ~5.4s — the `@fly/sprites` `exec`/`execFile`/`spawn` open a fresh WebSocket per command (`SpriteCommand`), so latency is WS-connect-bound, not import/client overhead. Real gains need a persistent tmux session (`createSession`/`attachSession`) — bigger change, deferred.
+**Vercel logo (proper, across dashboard):** `Logo.tsx` `DEFAULT_TONE.vercel` `native → currentColor` so the monochrome triangle adapts to theme (was a fixed black, invisible in dark mode). Unified benchmarks `ProviderMark` and `ProviderRouteBanner` onto `Logo` (which has marks for all 4 substrates) instead of `ServiceIcon tone="color"`. Verified: Vercel triangle now renders white in dark mode.
+**Re-run 107d48db (optimized):** dedalus exec 866ms (was 1.57s); scores E2B 100 / Vercel 52 / Dedalus 17 / Sprites 17 (E2B+Vercel win on fast direct exec; Dedalus/Sprites dragged by lifecycle + Sprites WS exec).
+**Note:** User is mid-refactor on `DeployAndTalk.tsx` / `upstreams.ts` / `RouterSelect.tsx` (uncommitted, 5 typecheck errors there) — left untouched; my files are type-clean, 39 provider+benchmark tests pass.

@@ -51,6 +51,7 @@ const FLEET_OVERVIEW_ITEMS: ReadonlyArray<NavItem> = [
 	{ href: "/dashboard/machines", label: "Machines", icon: IconStack },
 	{ href: "/dashboard/containers", label: "Containers", icon: IconBox },
 	{ href: "/dashboard/usage", label: "Usage", icon: IconWave },
+	{ href: "/dashboard/benchmarks", label: "Benchmarks", icon: IconGauge, badge: "new" },
 ];
 
 const FLEET_CONFIG_ITEMS: ReadonlyArray<NavItem> = [
@@ -383,6 +384,16 @@ function IconConsole(props: SVGProps<SVGSVGElement>) {
 			<path d="M1 5 h14" />
 			<path d="M4 8 l2 2 -2 2" />
 			<path d="M9 12 h4" />
+		</svg>
+	);
+}
+
+function IconGauge(props: SVGProps<SVGSVGElement>) {
+	return (
+		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
+			<path d="M2.5 12 a5.5 5.5 0 1 1 11 0" />
+			<path d="M8 9.5 L11 6" />
+			<circle cx="8" cy="11.5" r="0.6" fill="currentColor" stroke="none" />
 		</svg>
 	);
 }

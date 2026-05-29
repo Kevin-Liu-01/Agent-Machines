@@ -1,6 +1,7 @@
 node_modules
 .env
 .env.local
+.env*.local
 .next
 dist
 out
@@ -9,3 +10,4 @@ out
 .turbo
 .vercel
 .machine-state.json
+.benchmarks

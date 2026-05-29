@@ -30,7 +30,14 @@ import {
 	type ProvisionResult,
 } from "./types";
 
-const POLL_INTERVAL_MS = 1000;
+// Adaptive exec polling. The execution status endpoint is cheap, so we
+// poll quickly at first (a no-op finishes in well under a second) and back
+// off toward POLL_MAX_MS for long-running commands. The previous fixed 1s
+// interval added a full second of latency to every exec round-trip — the
+// dominant cost in benchmarks and the interactive terminal alike.
+const POLL_INITIAL_MS = 60;
+const POLL_MAX_MS = 1000;
+const POLL_BACKOFF = 1.6;
 const DEFAULT_EXEC_TIMEOUT_MS = 30_000;
 
 type RawMachine = {
@@ -383,6 +390,7 @@ export class DedalusProvider implements MachineProvider {
 
 		const deadline = Date.now() + timeoutMs + 5_000;
 		let current = created;
+		let pollInterval = POLL_INITIAL_MS;
 		while (
 			current.status !== "succeeded" &&
 			current.status !== "failed" &&
@@ -396,7 +404,8 @@ export class DedalusProvider implements MachineProvider {
 					`exec poll timed out after ${timeoutMs}ms: ${command.slice(0, 80)}`,
 				);
 			}
-			await sleep(POLL_INTERVAL_MS);
+			await sleep(pollInterval);
+			pollInterval = Math.min(POLL_MAX_MS, Math.round(pollInterval * POLL_BACKOFF));
 			const poll = await this.fetch(
 				`/v1/machines/${machineId}/executions/${created.execution_id}`,
 			);

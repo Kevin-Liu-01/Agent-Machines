@@ -10,6 +10,11 @@
  * REST API: https://api.sprites.dev/v1
  */
 
+import type {
+	Sprite as SpriteHandle,
+	SpritesClient as SpritesClientType,
+} from "@fly/sprites";
+
 import { bridgeExecStream } from "./stream-util";
 import {
 	MachineProviderError,
@@ -25,6 +30,14 @@ import {
 } from "./types";
 
 const DEFAULT_STREAM_TIMEOUT_MS = 120_000;
+
+// Memoize the dynamic import so we pay the module-resolution cost once per
+// process rather than on every exec call.
+let spritesModulePromise: Promise<typeof import("@fly/sprites")> | null = null;
+function loadSprites(): Promise<typeof import("@fly/sprites")> {
+	if (!spritesModulePromise) spritesModulePromise = import("@fly/sprites");
+	return spritesModulePromise;
+}
 
 export type SpritesCreds = {
 	apiKey: string;
@@ -75,6 +88,12 @@ export class SpritesProvider implements MachineProvider {
 		usesExternalStorage: false,
 	};
 	private readonly apiKey: string;
+	// A single SpritesClient is reused for the instance's lifetime, and
+	// sprite handles are cached per name — the dashboard recreates the
+	// provider per request, but a benchmark trial reuses one instance for
+	// all 12 exec iterations, so this removes redundant client/import work.
+	private clientPromise: Promise<SpritesClientType> | null = null;
+	private readonly spriteHandles = new Map<string, SpriteHandle>();
 
 	constructor(creds: SpritesCreds) {
 		if (!creds.apiKey) {
@@ -89,6 +108,23 @@ export class SpritesProvider implements MachineProvider {
 
 	get hasCredentials(): boolean {
 		return Boolean(this.apiKey);
+	}
+
+	private client(): Promise<SpritesClientType> {
+		if (!this.clientPromise) {
+			this.clientPromise = loadSprites().then(
+				({ SpritesClient }) => new SpritesClient(this.apiKey),
+			);
+		}
+		return this.clientPromise;
+	}
+
+	private async spriteHandle(name: string): Promise<SpriteHandle> {
+		const cached = this.spriteHandles.get(name);
+		if (cached) return cached;
+		const handle = (await this.client()).sprite(name);
+		this.spriteHandles.set(name, handle);
+		return handle;
 	}
 
 	async provision(input: ProvisionInput): Promise<ProvisionResult> {
@@ -150,9 +186,7 @@ export class SpritesProvider implements MachineProvider {
 		// Sprites exec is WebSocket-based, not REST. Use the @fly/sprites
 		// SDK which handles the binary WS protocol automatically.
 		try {
-			const { SpritesClient } = await import("@fly/sprites");
-			const client = new SpritesClient(this.apiKey);
-			const sprite = client.sprite(spriteName);
+			const sprite = await this.spriteHandle(spriteName);
 			// sprite.exec() splits on whitespace, breaking shell operators
 			// like && and |. Use execFile with /bin/bash -c instead.
 			const execPromise = sprite.execFile("/bin/bash", ["-c", command]);
@@ -197,9 +231,7 @@ export class SpritesProvider implements MachineProvider {
 		command: string,
 		options?: ExecStreamOptions,
 	): AsyncGenerator<ExecStreamEvent, void, void> {
-		const { SpritesClient } = await import("@fly/sprites");
-		const client = new SpritesClient(this.apiKey);
-		const sprite = client.sprite(spriteName);
+		const sprite = await this.spriteHandle(spriteName);
 		const timeoutMs = options?.timeoutMs ?? DEFAULT_STREAM_TIMEOUT_MS;
 
 		yield* bridgeExecStream(async (emit) => {

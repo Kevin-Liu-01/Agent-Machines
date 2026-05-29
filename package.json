@@ -18,6 +18,7 @@
     "reset": "tsx src/cli.ts reset",
     "doctor": "tsx src/cli.ts doctor",
     "gc": "tsx scripts/cleanup-machines.ts",
+    "benchmark": "tsx --tsconfig web/tsconfig.json web/scripts/run-benchmarks.ts",
     "sync-wiki": "node scripts/sync-from-wiki.mjs",
     "sync-manifest": "node scripts/sync-knowledge-manifest.mjs",
     "typecheck": "tsc --noEmit",

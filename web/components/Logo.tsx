@@ -107,7 +107,10 @@ const DEFAULT_TONE: Record<Mark, NonNullable<Props["tone"]>> = {
 	openai: "currentColor",
 	e2b: "native",
 	sprites: "native",
-	vercel: "native",
+	// Vercel's mark is a monochrome triangle — render it via currentColor
+	// so it adapts to the theme (black on light, white on dark) instead of
+	// a fixed black that vanishes in dark mode.
+	vercel: "currentColor",
 };
 
 const ARIA_LABEL: Record<Mark, string> = {
