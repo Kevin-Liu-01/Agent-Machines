@@ -43,8 +43,8 @@ export function agentCredentialRequirements(
 			return [
 				{
 					field: "anthropic",
-					label: "Anthropic API key",
-					hint: "Required for headless Claude Code (console.anthropic.com). Subscription login is interactive-only on the VM.",
+					label: "Anthropic API key (required)",
+					hint: "Claude Code speaks the Anthropic Messages API, so a native Anthropic key is required — the Dedalus router can't drive it. Only Dedalus? Use Hermes or OpenClaw instead.",
 					signupUrl: SIGNUP.anthropic,
 					required: true,
 				},
@@ -53,8 +53,8 @@ export function agentCredentialRequirements(
 			return [
 				{
 					field: "openai",
-					label: "OpenAI API key",
-					hint: "Required for headless Codex (platform.openai.com). ChatGPT login is interactive-only on the VM.",
+					label: "OpenAI API key (required)",
+					hint: "Codex speaks the OpenAI Responses API, so a native OpenAI key is required — the Dedalus router can't drive it. Only Dedalus? Use Hermes or OpenClaw instead.",
 					signupUrl: SIGNUP.openai,
 					required: true,
 				},
@@ -165,20 +165,25 @@ export function validateAgentCredentials(
 
 	switch (agentKind) {
 		case "claude-code":
-			if (!keyAvailable(config, "anthropic", draft) && !keyAvailable(config, "dedalus", draft)) {
+			// Claude Code speaks the Anthropic Messages API. The Dedalus router is
+			// OpenAI-format only, so a native Anthropic key is required — Dedalus
+			// alone cannot drive it. Dedalus-only users should pick Hermes/OpenClaw.
+			if (!keyAvailable(config, "anthropic", draft)) {
 				return {
 					ok: false,
 					message:
-						"Anthropic API key or Dedalus router key required for Claude Code.",
+						"Claude Code needs a native Anthropic API key — it speaks the Anthropic Messages API, which the Dedalus router does not serve. Add one at console.anthropic.com, or deploy Hermes or OpenClaw, which run on your Dedalus router key.",
 				};
 			}
 			return { ok: true };
 		case "codex":
-			if (!keyAvailable(config, "openai", draft) && !keyAvailable(config, "dedalus", draft)) {
+			// Codex (>=0.118) only speaks the OpenAI Responses API; the Dedalus
+			// router doesn't serve it, so a native OpenAI key is required.
+			if (!keyAvailable(config, "openai", draft)) {
 				return {
 					ok: false,
 					message:
-						"OpenAI API key or Dedalus router key required for Codex CLI.",
+						"Codex CLI needs a native OpenAI API key — it speaks the OpenAI Responses API, which the Dedalus router does not serve. Add one at platform.openai.com, or deploy Hermes or OpenClaw, which run on your Dedalus router key.",
 				};
 			}
 			return { ok: true };

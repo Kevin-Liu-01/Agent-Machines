@@ -131,6 +131,14 @@ export function DeployAndTalk() {
 				{busy ? <BrailleSpinner name="cascade" className="text-[var(--ret-purple)]" /> : null}
 			</div>
 
+			<p className="font-mono text-[10px] tracking-[0.04em] text-[var(--ret-text-muted)]">
+				{agent === "codex"
+					? "Codex needs a native OpenAI key (it speaks the Responses API)."
+					: agent === "claude-code"
+						? "Claude Code needs a native Anthropic key (Messages API)."
+						: "Runs on your Dedalus router key — no extra key needed."}
+			</p>
+
 			{phase !== "idle" ? (
 				<p
 					className={cn(
