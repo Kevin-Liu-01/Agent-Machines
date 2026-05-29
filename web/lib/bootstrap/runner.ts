@@ -630,7 +630,7 @@ function commandFor(
 			if (agent === "claude-code" || agent === "codex") {
 				return configureCliAgent(agent, upstream.key, upstream.baseUrl, p, isSandbox);
 			}
-			return configureHermes(model, gatewayKey, upstreamApiKey, upstreamBaseUrl, p, gwPort);
+			return configureHermes(model, gatewayKey, upstreamApiKey, upstreamBaseUrl, p, gwPort, upstream.baseUrl);
 		}
 		case "register-cursor-mcp":
 			return agent === "hermes" || agent === "openclaw"
@@ -784,6 +784,20 @@ async function startGatewaySandbox(
 	);
 }
 
+/**
+ * Map an upstream base URL to a hermes-agent provider id. Built-in providers
+ * (openrouter/openai/anthropic) are registered as pooled credentials via
+ * `hermes auth add`; everything else (Dedalus, Vercel AI Gateway, custom) is a
+ * `custom` OpenAI-compatible endpoint configured with base_url + api_key.
+ */
+function hermesProviderId(rawBaseUrl: string): { id: string; builtin: boolean } {
+	const b = rawBaseUrl.toLowerCase();
+	if (b.includes("openrouter")) return { id: "openrouter", builtin: true };
+	if (b.includes("api.openai.com")) return { id: "openai", builtin: true };
+	if (b.includes("api.anthropic.com")) return { id: "anthropic", builtin: true };
+	return { id: "custom", builtin: false };
+}
+
 function configureHermes(
 	model: string,
 	gatewayKey: string,
@@ -791,17 +805,32 @@ function configureHermes(
 	upstreamBaseUrl: string,
 	p: BootstrapPaths,
 	port = HERMES_PORT,
+	rawBaseUrl = "",
 ): string {
-	return [
-		"set -e",
-		hermesEnv(p),
-		`hermes config set model.provider custom`,
-		`hermes config set model.base_url ${upstreamBaseUrl}`,
-		`hermes config set model.api_key ${upstreamApiKey}`,
-		`hermes config set model.default ${model}`,
+	// hermes-agent @main: the default model lives at `model.model` (not the old
+	// `model.default`), and built-in providers take a pooled credential via
+	// `hermes auth add`. Writing the old schema left the gateway with "No LLM
+	// provider configured". This builds the current schema.
+	const { id, builtin } = hermesProviderId(rawBaseUrl);
+	const cmds = ["set -e", hermesEnv(p)];
+	if (builtin) {
+		cmds.push(
+			`hermes auth add ${id} --type api-key --api-key ${upstreamApiKey} --label agent-machines --no-browser 2>/dev/null || true`,
+			`hermes config set model.provider ${id}`,
+		);
+	} else {
+		cmds.push(
+			`hermes config set model.provider custom`,
+			`hermes config set model.base_url ${upstreamBaseUrl}`,
+			`hermes config set model.api_key ${upstreamApiKey}`,
+		);
+	}
+	cmds.push(
+		`hermes config set model.model ${model}`,
 		`hermes config set first_run_complete true`,
 		`cat > ${p.HERMES_HOME}/.env <<EOF\nAPI_SERVER_ENABLED=true\nAPI_SERVER_KEY=${gatewayKey}\nAPI_SERVER_HOST=0.0.0.0\nAPI_SERVER_PORT=${port}\nGATEWAY_ALLOW_ALL_USERS=true\nEOF`,
-	].join(" && ");
+	);
+	return cmds.join(" && ");
 }
 
 function configureOpenClaw(
