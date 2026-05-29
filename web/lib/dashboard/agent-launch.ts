@@ -3,22 +3,29 @@
  * console. Kept free of server imports so both the xterm client component
  * and server routes can use it.
  *
- * Only `codex` and `claude-code` are interactive terminal CLIs you "talk
- * to" in a shell. `hermes` and `openclaw` run as gateways (HTTP), so they
- * have no console launch command — the console is just a shell for them.
+ * All four agents expose an interactive terminal you can "talk to":
+ *  - codex / claude-code: the coding-agent CLI (creds in .agent-env).
+ *  - hermes:   `hermes chat`   — interactive chat with the agent (venv bin).
+ *  - openclaw: `openclaw chat` — local terminal UI (npm-global bin).
+ * hermes/openclaw also run as HTTP gateways when deployed; `chat` is the
+ * standalone REPL that talks to the configured model directly.
  */
 
 export function agentLaunchCommand(
 	agentKind: string | null | undefined,
 ): string | null {
-	// cd into the cloned repo first: the CLI agents expect a git working
-	// directory, and .agent-env exports PATH (CLI bin) + model creds.
-	const prep = "cd ~/agent-machines 2>/dev/null || cd ~; source ~/.agent-machines/.agent-env 2>/dev/null;";
+	// cd into the cloned repo first — the agents expect a working directory.
+	const cd = "cd ~/agent-machines 2>/dev/null || cd ~;";
 	switch (agentKind) {
 		case "codex":
-			return `${prep} codex`;
+			// .agent-env exports PATH (CLI bin); auth lives in ~/.codex/auth.json.
+			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null; codex`;
 		case "claude-code":
-			return `${prep} claude`;
+			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null; claude`;
+		case "hermes":
+			return `${cd} export HERMES_HOME="$HOME/.agent-machines"; export PATH="$HOME/.agent-machines/venv/bin:$PATH"; hermes chat`;
+		case "openclaw":
+			return `${cd} export PATH="$HOME/.npm-global/bin:$PATH"; openclaw chat`;
 		default:
 			return null;
 	}
