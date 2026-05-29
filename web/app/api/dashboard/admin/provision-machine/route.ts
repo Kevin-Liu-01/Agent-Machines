@@ -22,6 +22,7 @@ import {
 	MachineProviderError,
 	getProvider,
 } from "@/lib/providers";
+import { ROUTER_PRESETS } from "@/lib/agents/upstreams";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 import {
 	AGENT_KINDS,
@@ -161,11 +162,13 @@ export async function POST(request: Request): Promise<Response> {
 
 	try {
 		const result = await provider.provision({ spec, name });
-		const chosenProfileId =
+		// Accept either a saved gateway profile id or a built-in router preset id
+		// (presets are resolved by id at bootstrap, not persisted as profiles).
+		const isKnownRouter =
 			typeof body.gatewayProfileId === "string" &&
-			config.gatewayProfiles.some((p) => p.id === body.gatewayProfileId)
-				? body.gatewayProfileId
-				: null;
+			(config.gatewayProfiles.some((p) => p.id === body.gatewayProfileId) ||
+				ROUTER_PRESETS.some((p) => p.id === body.gatewayProfileId));
+		const chosenProfileId = isKnownRouter ? (body.gatewayProfileId ?? null) : null;
 		const gatewayProfileId =
 			chosenProfileId ??
 			config.gatewayProfiles.find((profile) => profile.kind === "dedalus")?.id ??

@@ -76,9 +76,12 @@ export function buildMcpRegisterShell(runtimeHome: string, home: string, hasCurs
 		"print('registered', len(data.get('mcp_servers', {})))",
 	);
 	const py = lines.join("\n");
+	// base64 write, not a heredoc: this command is `&&`-joined, so a heredoc
+	// whose closing `PYEOF` isn't alone on its line never terminates.
+	const pyB64 = Buffer.from(py, "utf8").toString("base64");
 	return [
 		"set -e",
-		`cat > ${runtimeHome}/.register-mcp-servers.py <<'PYEOF'\n${py}\nPYEOF`,
+		`printf '%s' '${pyB64}' | base64 -d > ${runtimeHome}/.register-mcp-servers.py`,
 		`${runtimeHome}/venv/bin/python ${runtimeHome}/.register-mcp-servers.py || python3 ${runtimeHome}/.register-mcp-servers.py`,
 	].join(" && ");
 }
