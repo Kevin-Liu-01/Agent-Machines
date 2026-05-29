@@ -625,7 +625,7 @@ function commandFor(
 			const gwPort = isSprites ? 8080 : HERMES_PORT;
 			if (agent === "openclaw") {
 				const ocPort = isSprites ? 8080 : OPENCLAW_PORT;
-				return configureOpenClaw(model, gatewayKey, upstreamApiKey, upstreamBaseUrl, p, ocPort);
+				return configureOpenClaw(model, gatewayKey, upstreamApiKey, upstreamBaseUrl, p, ocPort, upstream.baseUrl);
 			}
 			if (agent === "claude-code" || agent === "codex") {
 				return configureCliAgent(agent, upstream.key, upstream.baseUrl, p, isSandbox);
@@ -633,7 +633,11 @@ function commandFor(
 			return configureHermes(model, gatewayKey, upstreamApiKey, upstreamBaseUrl, p, gwPort, upstream.baseUrl);
 		}
 		case "register-cursor-mcp":
-			return agent === "hermes" || agent === "openclaw"
+			// buildMcpRegisterShell writes into hermes' config.yaml via the hermes
+			// venv python. openclaw has no venv and uses its own MCP config
+			// (`openclaw config set`), so this phase is both useless and fatal for
+			// it (NO-VENV + system python3 lacks PyYAML -> exit 1). Hermes only.
+			return agent === "hermes"
 				? buildMcpRegisterShell(p.APP_HOME, p.HOME, Boolean(cursorKey))
 				: null;
 		case "seed-cron-jobs":
@@ -833,6 +837,20 @@ function configureHermes(
 	return cmds.join(" && ");
 }
 
+/**
+ * Map an upstream base URL to an openclaw provider. openclaw bundles
+ * openrouter/openai/anthropic (auth via a pasted API key); any other
+ * OpenAI-compatible router (Dedalus / Vercel AI Gateway / custom) is registered
+ * as a `models.providers` custom provider with api=openai-completions.
+ */
+function openclawProviderFor(rawBaseUrl: string): { id: string; builtin: boolean } {
+	const b = rawBaseUrl.toLowerCase();
+	if (b.includes("openrouter")) return { id: "openrouter", builtin: true };
+	if (b.includes("api.openai.com")) return { id: "openai", builtin: true };
+	if (b.includes("api.anthropic.com")) return { id: "anthropic", builtin: true };
+	return { id: "router", builtin: false };
+}
+
 function configureOpenClaw(
 	model: string,
 	gatewayKey: string,
@@ -840,8 +858,23 @@ function configureOpenClaw(
 	upstreamBaseUrl: string,
 	p: BootstrapPaths,
 	gatewayPort = OPENCLAW_PORT,
+	rawBaseUrl = "",
 ): string {
 	const stripShell = (value: string) => value.replace(/^'|'$/g, "");
+	const rawKey = stripShell(upstreamApiKey);
+	const rawBase = stripShell(upstreamBaseUrl);
+	const rawModel = stripShell(model);
+	const { id, builtin } = openclawProviderFor(rawBaseUrl || rawBase);
+	// openclaw splits model refs on the first "/"; routers keep the upstream
+	// provider prefix (e.g. openrouter/openai/gpt-4o-mini). Don't double-prefix.
+	const modelRef = rawModel.startsWith(`${id}/`) ? rawModel : `${id}/${rawModel}`;
+	const shortName = rawModel.includes("/")
+		? rawModel.slice(rawModel.lastIndexOf("/") + 1)
+		: rawModel;
+
+	// Gateway transport config only. openclaw does NOT inject config env.vars
+	// into its own LLM client, so provider creds go through auth profiles /
+	// custom providers below (an env.vars-only setup 401s against api.openai.com).
 	const batch = JSON.stringify([
 		{ path: "gateway.mode", value: "local" },
 		{ path: "gateway.port", value: gatewayPort },
@@ -849,10 +882,6 @@ function configureOpenClaw(
 		{ path: "gateway.bind", value: "lan" },
 		{ path: "gateway.auth.mode", value: "token" },
 		{ path: "gateway.auth.token", value: stripShell(gatewayKey) },
-		{ path: "agents.defaults.model", value: stripShell(model) },
-		{ path: "env.vars.ANTHROPIC_API_KEY", value: stripShell(upstreamApiKey) },
-		{ path: "env.vars.OPENAI_API_KEY", value: stripShell(upstreamApiKey) },
-		{ path: "env.vars.ANTHROPIC_BASE_URL", value: stripShell(upstreamBaseUrl) },
 	]);
 	const batchPath = `${p.OPENCLAW_HOME}/bootstrap-config.batch.json`;
 	// Sprites ships nvm; NPM_CONFIG_PREFIX breaks npm/nvm — use --prefix instead.
@@ -860,6 +889,11 @@ function configureOpenClaw(
 		`if test -x ${p.NPM_PREFIX}/bin/openclaw; then :; else ` +
 		`rm -rf ${p.NPM_PREFIX}/lib/node_modules/openclaw ${p.NPM_PREFIX}/lib/node_modules/.openclaw-* 2>/dev/null || true; ` +
 		`(NPM_CONFIG_CACHE=${p.NPM_CACHE} TMPDIR=${p.HOME}/.tmp npm install -g openclaw@latest --prefix=${p.NPM_PREFIX} --no-audit --no-fund --loglevel=error); fi`;
+	// Built-in providers: paste the API key into an auth profile (key on stdin).
+	// Custom OpenAI-compatible routers: register a models.providers entry.
+	const providerSetup = builtin
+		? `printf '%s\\n' '${rawKey}' | openclaw models auth paste-api-key --provider ${id}`
+		: `openclaw config set models.providers.${id} '${JSON.stringify({ baseUrl: rawBase, apiKey: rawKey, api: "openai-completions", models: [{ id: rawModel, name: shortName }] })}' --strict-json --merge`;
 	return [
 		"set -e",
 		`mkdir -p ${p.HOME}/.npm-global ${p.HOME}/.npm-cache ${p.HOME}/.tmp ${p.OPENCLAW_HOME}/logs`,
@@ -867,9 +901,11 @@ function configureOpenClaw(
 		openClawEnv(p),
 		writeRemoteFile(batchPath, batch),
 		`openclaw config set --batch-file ${batchPath}`,
+		providerSetup,
+		`openclaw models set ${modelRef}`,
 		writeRemoteFile(
 			`${p.OPENCLAW_HOME}/.env`,
-			`OPENCLAW_API_KEY=${stripShell(gatewayKey)}\nOPENCLAW_MODEL=${stripShell(model)}\n`,
+			`OPENCLAW_API_KEY=${stripShell(gatewayKey)}\nOPENCLAW_MODEL=${modelRef}\n`,
 		),
 	].join(" && ");
 }
