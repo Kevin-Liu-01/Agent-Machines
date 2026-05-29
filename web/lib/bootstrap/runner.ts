@@ -32,6 +32,7 @@ import {
 	POST_GATEWAY_BOOTSTRAP_PHASES,
 	type BootstrapPhaseId,
 	type BootstrapState,
+	type GatewayProfile,
 	type MachineRef,
 	type ProviderKind,
 	type UserConfig,
@@ -354,33 +355,81 @@ export function normalizeDedalusLlmBaseUrl(baseUrl: string | undefined): string 
 }
 
 /**
- * Resolve the best upstream LLM API key + base URL for the given agent.
- * Priority: agent-specific AI provider key > Dedalus (routes all models)
- * > any available AI provider key > gateway profile > empty (will fail).
+ * Resolve the LLM upstream (key + base URL) for a machine's agent.
+ *
+ * - codex / claude-code are locked to their native API (OpenAI Responses /
+ *   Anthropic Messages); no router can substitute, so we use the native key.
+ * - hermes / openclaw are OpenAI-compatible gateways: they honor the
+ *   machine's chosen gateway profile (gatewayProfileId), so users can route
+ *   through Dedalus, Vercel AI Gateway, or any custom OpenAI-compatible
+ *   endpoint instead of being locked to Dedalus. Falls back to the first
+ *   configured key (Dedalus-first) for back-compat when no profile resolves.
  */
-function resolveUpstream(agent: string, config: UserConfig): UpstreamProvider {
+function resolveUpstream(machine: MachineRef, config: UserConfig): UpstreamProvider {
+	const agent = machine.agentKind;
+	const ai = config.aiProviderKeys ?? {};
+
+	if (agent === "codex") {
+		return { key: ai.openai ?? "", baseUrl: OPENAI_BASE };
+	}
+	if (agent === "claude-code") {
+		return { key: ai.anthropic ?? "", baseUrl: ANTHROPIC_BASE };
+	}
+
+	// hermes / openclaw: use the explicitly chosen router when it resolves.
+	const profile = machine.gatewayProfileId
+		? config.gatewayProfiles.find((p) => p.id === machine.gatewayProfileId)
+		: null;
+	if (profile) {
+		const chosen = gatewayProfileToUpstream(profile, config);
+		if (chosen.key) return chosen;
+	}
+
+	return firstConfiguredUpstream(config);
+}
+
+/** Map a gateway profile to a concrete upstream key + base URL. */
+function gatewayProfileToUpstream(
+	profile: GatewayProfile,
+	config: UserConfig,
+): UpstreamProvider {
+	const ai = config.aiProviderKeys ?? {};
+	if (profile.kind === "dedalus") {
+		return {
+			key: config.providers.dedalus?.apiKey ?? "",
+			baseUrl: normalizeDedalusLlmBaseUrl(config.providers.dedalus?.baseUrl),
+		};
+	}
+	if (profile.kind === "vercel-ai-gateway") {
+		return {
+			key:
+				profile.apiKey ??
+				ai.vercelAiGateway ??
+				process.env.VERCEL_OIDC_TOKEN?.trim() ??
+				"",
+			baseUrl: profile.baseUrl ?? VERCEL_AI_GATEWAY_BASE,
+		};
+	}
+	// openai-compatible: explicit profile key, else infer from the base URL.
+	const baseUrl = profile.baseUrl ?? OPENAI_BASE;
+	let key = profile.apiKey ?? "";
+	if (!key) {
+		if (baseUrl.includes("openrouter")) key = ai.openrouter ?? "";
+		else if (baseUrl.includes("openai.com")) key = ai.openai ?? "";
+		else if (baseUrl.includes("dedalus")) key = config.providers.dedalus?.apiKey ?? "";
+		else if (baseUrl.includes("ai-gateway.vercel")) key = ai.vercelAiGateway ?? "";
+		else key = ai.custom?.key ?? "";
+	}
+	return { key, baseUrl };
+}
+
+/** Back-compat fallback: first configured upstream, Dedalus-first. */
+function firstConfiguredUpstream(config: UserConfig): UpstreamProvider {
 	const ai = config.aiProviderKeys ?? {};
 	const dedalus = config.providers.dedalus?.apiKey;
-	const dedalusBase = config.providers.dedalus?.baseUrl;
-
-	if (agent === "claude-code") {
-		if (ai.anthropic) return { key: ai.anthropic, baseUrl: ANTHROPIC_BASE };
-		if (dedalus) return { key: dedalus, baseUrl: normalizeDedalusLlmBaseUrl(dedalusBase) };
-		return { key: "", baseUrl: ANTHROPIC_BASE };
+	if (dedalus) {
+		return { key: dedalus, baseUrl: normalizeDedalusLlmBaseUrl(config.providers.dedalus?.baseUrl) };
 	}
-	if (agent === "codex") {
-		if (ai.openai) return { key: ai.openai, baseUrl: OPENAI_BASE };
-		if (dedalus) return { key: dedalus, baseUrl: normalizeDedalusLlmBaseUrl(dedalusBase) };
-		return { key: "", baseUrl: OPENAI_BASE };
-	}
-	if (agent === "openclaw") {
-		if (ai.anthropic) return { key: ai.anthropic, baseUrl: ANTHROPIC_BASE };
-		if (dedalus) return { key: dedalus, baseUrl: normalizeDedalusLlmBaseUrl(dedalusBase) };
-		if (ai.vercelAiGateway) return { key: ai.vercelAiGateway, baseUrl: VERCEL_AI_GATEWAY_BASE };
-		if (ai.openai) return { key: ai.openai, baseUrl: OPENAI_BASE };
-		return { key: "", baseUrl: DEDALUS_BASE };
-	}
-	if (dedalus) return { key: dedalus, baseUrl: normalizeDedalusLlmBaseUrl(dedalusBase) };
 	if (ai.vercelAiGateway) return { key: ai.vercelAiGateway, baseUrl: VERCEL_AI_GATEWAY_BASE };
 	if (ai.anthropic) return { key: ai.anthropic, baseUrl: ANTHROPIC_BASE };
 	if (ai.openai) return { key: ai.openai, baseUrl: OPENAI_BASE };
@@ -399,7 +448,7 @@ function commandFor(
 	const agent = machine.agentKind;
 	const model = shell(machine.model);
 	const gatewayKey = shell(apiKey);
-	const upstream = resolveUpstream(agent, config);
+	const upstream = resolveUpstream(machine, config);
 	const upstreamApiKey = shell(upstream.key);
 	const upstreamBaseUrl = shell(upstream.baseUrl);
 	const cursorKey = config.cursorApiKey ? shell(config.cursorApiKey) : null;

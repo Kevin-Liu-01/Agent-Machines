@@ -45,6 +45,8 @@ type Body = {
 	model?: string;
 	name?: string;
 	force?: boolean;
+	/** Chosen model router (gateway profile id) for hermes/openclaw. */
+	gatewayProfileId?: string;
 };
 
 function isProvider(value: unknown): value is ProviderKind {
@@ -159,7 +161,13 @@ export async function POST(request: Request): Promise<Response> {
 
 	try {
 		const result = await provider.provision({ spec, name });
+		const chosenProfileId =
+			typeof body.gatewayProfileId === "string" &&
+			config.gatewayProfiles.some((p) => p.id === body.gatewayProfileId)
+				? body.gatewayProfileId
+				: null;
 		const gatewayProfileId =
+			chosenProfileId ??
 			config.gatewayProfiles.find((profile) => profile.kind === "dedalus")?.id ??
 			null;
 		const agentProfileId =

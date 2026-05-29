@@ -1,12 +1,21 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
+import {
+	GATEWAY_KIND_LABEL,
+	agentUsesRouter,
+	nativeUpstreamLabel,
+	requiredNativeUpstream,
+} from "@/lib/agents/upstreams";
 import { cn } from "@/lib/cn";
+import type { GatewayKind } from "@/lib/user-config/schema";
+
+type GatewayProfileLite = { id: string; name: string; kind: GatewayKind; hasApiKey?: boolean };
 
 type Phase = "idle" | "provisioning" | "bootstrapping" | "ready" | "error";
 
@@ -28,9 +37,36 @@ export function DeployAndTalk() {
 	const [agent, setAgent] = useState<(typeof AGENTS)[number]>("codex");
 	const [phase, setPhase] = useState<Phase>("idle");
 	const [detail, setDetail] = useState<string>("");
+	const [profiles, setProfiles] = useState<GatewayProfileLite[]>([]);
+	const [aiConfigured, setAiConfigured] = useState<Record<string, boolean>>({});
+	const [gatewayProfileId, setGatewayProfileId] = useState<string>("");
 	const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
 	const busy = phase === "provisioning" || phase === "bootstrapping";
+	const nativeUpstream = requiredNativeUpstream(agent);
+
+	// Load the configured routers (gateway profiles) + which provider keys exist.
+	useEffect(() => {
+		let alive = true;
+		void fetch("/api/dashboard/admin/settings")
+			.then((r) => (r.ok ? r.json() : null))
+			.then((j) => {
+				if (!alive || !j?.config) return;
+				const gps = (j.config.gatewayProfiles ?? []) as GatewayProfileLite[];
+				setProfiles(gps);
+				const ai = (j.config.aiProviders ?? {}) as Record<string, { configured?: boolean }>;
+				const conf: Record<string, boolean> = {};
+				for (const k of Object.keys(ai)) conf[k] = Boolean(ai[k]?.configured);
+				conf.dedalus = Boolean(j.config.providers?.dedalus?.configured);
+				setAiConfigured(conf);
+				const def = gps.find((p) => p.kind === "dedalus") ?? gps[0];
+				if (def) setGatewayProfileId(def.id);
+			})
+			.catch(() => {});
+		return () => {
+			alive = false;
+		};
+	}, []);
 
 	const run = useCallback(async () => {
 		setPhase("provisioning");
@@ -39,7 +75,12 @@ export function DeployAndTalk() {
 			const prov = await fetch("/api/dashboard/admin/provision-machine", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ providerKind: provider, agentKind: agent, force: true }),
+				body: JSON.stringify({
+					providerKind: provider,
+					agentKind: agent,
+					force: true,
+					...(agentUsesRouter(agent) && gatewayProfileId ? { gatewayProfileId } : {}),
+				}),
 			});
 			const provJson = (await prov.json()) as { ok?: boolean; machineId?: string; message?: string; error?: string };
 			if (!prov.ok || !provJson.machineId) {
@@ -87,7 +128,7 @@ export function DeployAndTalk() {
 			setPhase("error");
 			setDetail(err instanceof Error ? err.message : "deploy failed");
 		}
-	}, [provider, agent, router]);
+	}, [provider, agent, router, gatewayProfileId]);
 
 	return (
 		<div className="grid gap-3 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-4">
@@ -131,12 +172,40 @@ export function DeployAndTalk() {
 				{busy ? <BrailleSpinner name="cascade" className="text-[var(--ret-purple)]" /> : null}
 			</div>
 
-			<p className="font-mono text-[10px] tracking-[0.04em] text-[var(--ret-text-muted)]">
-				{agent === "codex"
-					? "Codex needs a native OpenAI key (it speaks the Responses API)."
-					: agent === "claude-code"
-						? "Claude Code needs a native Anthropic key (Messages API)."
-						: "Runs on your Dedalus router key — no extra key needed."}
+			{agentUsesRouter(agent) ? (
+				<label className="grid w-fit gap-1">
+					<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+						model router (not locked to Dedalus)
+					</span>
+					<select
+						value={gatewayProfileId}
+						onChange={(e) => setGatewayProfileId(e.target.value)}
+						disabled={busy || profiles.length === 0}
+						className="border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1 font-mono text-[11px] text-[var(--ret-text)] outline-none"
+					>
+						{profiles.length === 0 ? <option value="">loading routers…</option> : null}
+						{profiles.map((p) => (
+							<option key={p.id} value={p.id}>
+								{p.name} · {GATEWAY_KIND_LABEL[p.kind]}
+							</option>
+						))}
+					</select>
+				</label>
+			) : null}
+
+			<p
+				className={cn(
+					"font-mono text-[10px] tracking-[0.04em]",
+					nativeUpstream && !aiConfigured[nativeUpstream]
+						? "text-[var(--ret-amber)]"
+						: "text-[var(--ret-text-muted)]",
+				)}
+			>
+				{nativeUpstream
+					? aiConfigured[nativeUpstream]
+						? `Uses your ${nativeUpstreamLabel(nativeUpstream)} key.`
+						: `Needs a native ${nativeUpstream === "openai" ? "OpenAI" : "Anthropic"} key — the Dedalus router can't drive ${agent}. Add one in Settings, or pick Hermes/OpenClaw.`
+					: "Routes through the selected gateway — Dedalus, Vercel AI Gateway, or any custom OpenAI-compatible router. Manage routers + keys in Settings."}
 			</p>
 
 			{phase !== "idle" ? (
