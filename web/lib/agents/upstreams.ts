@@ -30,6 +30,48 @@ export const GATEWAY_KIND_LABEL: Record<GatewayKind, string> = {
 	"openai-compatible": "OpenAI-compatible",
 };
 
+/**
+ * Which stored credential a router draws its key from. Matches the
+ * `aiProviderKeys` slugs (+ `dedalus`, stored under providers) so the UI can
+ * show a "needs key" hint and the bootstrap can resolve the key.
+ */
+export type RouterSource =
+	| "dedalus"
+	| "vercelAiGateway"
+	| "openai"
+	| "openrouter"
+	| "google"
+	| "custom";
+
+export type RouterPreset = {
+	/** Stored as machine.gatewayProfileId; first two reuse the seeded profile ids. */
+	id: string;
+	label: string;
+	source: RouterSource;
+	baseUrl: string | null;
+};
+
+/**
+ * Built-in routers offered to hermes/openclaw with zero setup. `dedalus-default`
+ * and `vercel-ai-gateway` reuse the seeded gateway-profile ids; the rest are
+ * virtual presets resolved by id from the user's provider keys at bootstrap.
+ */
+export const ROUTER_PRESETS: ReadonlyArray<RouterPreset> = [
+	{ id: "dedalus-default", label: "Dedalus router (200+ models)", source: "dedalus", baseUrl: UPSTREAM_BASE_URL.dedalus },
+	{ id: "vercel-ai-gateway", label: "Vercel AI Gateway", source: "vercelAiGateway", baseUrl: UPSTREAM_BASE_URL.vercelAiGateway },
+	{ id: "openai-router", label: "OpenAI (direct)", source: "openai", baseUrl: UPSTREAM_BASE_URL.openai },
+	{ id: "openrouter-router", label: "OpenRouter", source: "openrouter", baseUrl: UPSTREAM_BASE_URL.openrouter },
+	{ id: "google-router", label: "Google (OpenAI-compatible)", source: "google", baseUrl: UPSTREAM_BASE_URL.google },
+	{ id: "custom-router", label: "Custom OpenAI-compatible", source: "custom", baseUrl: null },
+];
+
+export function routerPresetById(id: string | null | undefined): RouterPreset | null {
+	if (!id) return null;
+	return ROUTER_PRESETS.find((p) => p.id === id) ?? null;
+}
+
+export const DEFAULT_ROUTER_ID = "dedalus-default";
+
 /** Native (non-router) provider an agent is locked to, if any. */
 export function requiredNativeUpstream(
 	agentKind: AgentKind,

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { BrandMark } from "@/components/BrandMark";
 import { BootTranscript } from "@/components/dashboard/BootTranscript";
+import { RouterSelect } from "@/components/dashboard/RouterSelect";
 import { Logo, type Mark } from "@/components/Logo";
 import { providerLogoMark } from "@/lib/fleet/logos";
 import { ServiceIcon, isServiceSlug } from "@/components/ServiceIcon";
@@ -24,6 +25,7 @@ import {
 	canBootstrapAgent,
 	type DraftAiKeys,
 } from "@/lib/agents/credentials";
+import { DEFAULT_ROUTER_ID, agentUsesRouter } from "@/lib/agents/upstreams";
 import {
 	BUILTIN_TOOLS,
 	CATEGORY_LABEL,
@@ -228,6 +230,14 @@ export function OnboardingFlow({
 	const [provider, setProvider] = useState<ProviderKind>(
 		initialConfig.draftProviderKind ?? "dedalus",
 	);
+	const [routerId, setRouterId] = useState<string>(DEFAULT_ROUTER_ID);
+	const wizardAiConfigured = useMemo(() => {
+		const ai = (initialConfig.aiProviders ?? {}) as Record<string, { configured?: boolean }>;
+		const conf: Record<string, boolean> = {};
+		for (const k of Object.keys(ai)) conf[k] = Boolean(ai[k]?.configured);
+		conf.dedalus = Boolean(initialConfig.providers?.dedalus?.configured);
+		return conf;
+	}, [initialConfig]);
 	const [skillSel, setSkillSel] = useState<Set<string>>(
 		() => new Set(skills.map((s) => s.slug)),
 	);
@@ -365,6 +375,7 @@ export function OnboardingFlow({
 				body: JSON.stringify({
 					providerKind: provider,
 					agentKind: agent,
+					...(agentUsesRouter(agent) && routerId ? { gatewayProfileId: routerId } : {}),
 				}),
 			});
 			// Server may return a non-JSON body on 5xx (gateway HTML page,
@@ -557,6 +568,17 @@ export function OnboardingFlow({
 							/>
 						) : null}
 						{step === "key" ? (
+							<div className="grid gap-4">
+							{agentUsesRouter(agent) ? (
+								<div className="border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3">
+									<RouterSelect
+										agentKind={agent}
+										value={routerId}
+										onChange={setRouterId}
+										aiConfigured={wizardAiConfigured}
+									/>
+								</div>
+							) : null}
 							<KeyStep
 								agent={agent}
 								provider={provider}
@@ -579,6 +601,7 @@ export function OnboardingFlow({
 								onBack={back}
 								onProvision={handleStartBoot}
 							/>
+							</div>
 						) : null}
 						{step === "boot" ? (
 							<BootStep

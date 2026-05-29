@@ -1,4 +1,5 @@
 import { LoadoutPanel } from "@/components/dashboard/LoadoutPanel";
+import { MachineRouterCard } from "@/components/dashboard/MachineRouterCard";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { getUserConfig } from "@/lib/user-config/clerk";
 import { listMcpServers } from "@/lib/dashboard/mcps";
@@ -38,6 +39,7 @@ export default async function MachineLoadoutPage() {
 				title="This machine's loadout"
 				description="Everything callable from the chat surface on this machine."
 			/>
+			<MachineRouterCard />
 			<LoadoutPanel
 				counts={counts}
 				skills={skills}

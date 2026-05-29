@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	DEFAULT_ROUTER_ID,
 	GATEWAY_KIND_LABEL,
+	ROUTER_PRESETS,
 	agentUsesRouter,
 	requiredNativeUpstream,
+	routerPresetById,
 } from "./upstreams";
 
 describe("requiredNativeUpstream", () => {
@@ -32,5 +35,23 @@ describe("GATEWAY_KIND_LABEL", () => {
 		expect(GATEWAY_KIND_LABEL.dedalus).toMatch(/Dedalus/);
 		expect(GATEWAY_KIND_LABEL["vercel-ai-gateway"]).toMatch(/Vercel/);
 		expect(GATEWAY_KIND_LABEL["openai-compatible"]).toMatch(/OpenAI/);
+	});
+});
+
+describe("ROUTER_PRESETS", () => {
+	it("covers the named routers and reuses seeded profile ids for the first two", () => {
+		const ids = ROUTER_PRESETS.map((p) => p.id);
+		expect(ids).toContain("dedalus-default");
+		expect(ids).toContain("vercel-ai-gateway");
+		expect(ids).toContain("openai-router");
+		expect(ids).toContain("openrouter-router");
+		expect(ids).toContain("custom-router");
+		expect(DEFAULT_ROUTER_ID).toBe("dedalus-default");
+	});
+
+	it("maps each preset to a distinct credential source", () => {
+		expect(routerPresetById("openrouter-router")?.source).toBe("openrouter");
+		expect(routerPresetById("custom-router")?.baseUrl).toBeNull();
+		expect(routerPresetById("nope")).toBeNull();
 	});
 });

@@ -10,6 +10,7 @@
 
 import type { MachineProvider } from "@/lib/providers";
 import { validateAgentCredentials } from "@/lib/agents/credentials";
+import { ROUTER_PRESETS } from "@/lib/agents/upstreams";
 import {
 	buildMcpRegisterShell,
 	buildWebReloadScript,
@@ -376,7 +377,8 @@ function resolveUpstream(machine: MachineRef, config: UserConfig): UpstreamProvi
 		return { key: ai.anthropic ?? "", baseUrl: ANTHROPIC_BASE };
 	}
 
-	// hermes / openclaw: use the explicitly chosen router when it resolves.
+	// hermes / openclaw: use the explicitly chosen router when it resolves —
+	// a saved gateway profile first, then a built-in router preset by id.
 	const profile = machine.gatewayProfileId
 		? config.gatewayProfiles.find((p) => p.id === machine.gatewayProfileId)
 		: null;
@@ -384,8 +386,44 @@ function resolveUpstream(machine: MachineRef, config: UserConfig): UpstreamProvi
 		const chosen = gatewayProfileToUpstream(profile, config);
 		if (chosen.key) return chosen;
 	}
+	if (machine.gatewayProfileId) {
+		const preset = resolveRouterPreset(machine.gatewayProfileId, config);
+		if (preset?.key) return preset;
+	}
 
 	return firstConfiguredUpstream(config);
+}
+
+/** Resolve a built-in router preset id to a concrete upstream key + base URL. */
+function resolveRouterPreset(
+	id: string,
+	config: UserConfig,
+): UpstreamProvider | null {
+	const preset = ROUTER_PRESETS.find((p) => p.id === id);
+	if (!preset) return null;
+	const ai = config.aiProviderKeys ?? {};
+	switch (preset.source) {
+		case "dedalus":
+			return {
+				key: config.providers.dedalus?.apiKey ?? "",
+				baseUrl: normalizeDedalusLlmBaseUrl(config.providers.dedalus?.baseUrl),
+			};
+		case "vercelAiGateway":
+			return {
+				key: ai.vercelAiGateway ?? process.env.VERCEL_OIDC_TOKEN?.trim() ?? "",
+				baseUrl: preset.baseUrl ?? VERCEL_AI_GATEWAY_BASE,
+			};
+		case "openai":
+			return { key: ai.openai ?? "", baseUrl: preset.baseUrl ?? OPENAI_BASE };
+		case "openrouter":
+			return { key: ai.openrouter ?? "", baseUrl: preset.baseUrl ?? OPENROUTER_BASE };
+		case "google":
+			return { key: ai.google ?? "", baseUrl: preset.baseUrl ?? OPENAI_BASE };
+		case "custom":
+			return { key: ai.custom?.key ?? "", baseUrl: ai.custom?.url ?? "" };
+		default:
+			return null;
+	}
 }
 
 /** Map a gateway profile to a concrete upstream key + base URL. */
