@@ -918,16 +918,26 @@ function configureCliAgent(
 	isSandbox: boolean,
 ): string {
 	const isClaude = agent === "claude-code";
-	const keyVar = isClaude ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY";
-	const baseVar = isClaude ? "ANTHROPIC_BASE_URL" : "OPENAI_BASE_URL";
 	const configDir = isClaude ? `${p.HOME}/.claude` : `${p.HOME}/.codex`;
 	const pathLine = `export PATH=${p.NPM_PREFIX}/bin:${p.HOME}/.local/bin:$PATH`;
-	const profileSnippet = [
+
+	// .agent-env carries the native key. Base-URL handling differs per CLI:
+	//  - Claude reads ANTHROPIC_API_KEY and appends `/v1/messages` itself, so the
+	//    base URL must be the HOST. A trailing `/v1` yields `/v1/v1/messages` ->
+	//    404, which the CLI misreports as "model may not exist". Strip it.
+	//  - Codex (>=0.118) deprecates OPENAI_BASE_URL and authenticates the
+	//    Responses API from ~/.codex/auth.json (via `codex login`), NOT the env
+	//    var — setting only OPENAI_API_KEY leaves the WebSocket unauthenticated
+	//    (401 "missing bearer"). So we omit the base URL and register below.
+	const envLines = [
 		`export PATH=${p.NPM_PREFIX}/bin:${p.HOME}/.local/bin:$PATH`,
-		`export ${keyVar}=${upstreamApiKey}`,
-		`export ${baseVar}=${upstreamBaseUrl}`,
-	].join("\n");
-	const envWrite = writeRemoteFile(`${p.APP_HOME}/.agent-env`, `${profileSnippet}\n`);
+		`export ${isClaude ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY"}=${upstreamApiKey}`,
+	];
+	if (isClaude) {
+		const host = upstreamBaseUrl.replace(/\/v1\/?$/, "");
+		envLines.push(`export ANTHROPIC_BASE_URL=${host}`);
+	}
+	const envWrite = writeRemoteFile(`${p.APP_HOME}/.agent-env`, `${envLines.join("\n")}\n`);
 
 	if (isClaude) {
 		const aptWait = isSandbox ? "" : `${WAIT_FOR_APT} && `;
@@ -956,6 +966,8 @@ function configureCliAgent(
 			`${aptWait}NPM_CONFIG_CACHE=${p.NPM_CACHE} npm install -g @openai/codex --prefix=${p.NPM_PREFIX} --no-audit --no-fund --loglevel=error; fi`,
 		envWrite,
 		`chmod 600 ${p.APP_HOME}/.agent-env`,
+		// codex >=0.118 authenticates from ~/.codex/auth.json, not the env var.
+		`printf %s ${shell(upstreamApiKey)} | codex login --with-api-key`,
 		`${pathLine} && codex --version`,
 	].join(" && ");
 }
