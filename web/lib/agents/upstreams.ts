@@ -98,3 +98,71 @@ export function nativeUpstreamReason(provider: "openai" | "anthropic"): string {
 export function agentUsesRouter(agentKind: AgentKind): boolean {
 	return agentKind === "hermes" || agentKind === "openclaw";
 }
+
+/** Stored-credential slugs a gateway agent can draw an upstream key from. */
+export const ROUTER_SOURCE_KEYS: ReadonlyArray<RouterSource> = [
+	"dedalus",
+	"vercelAiGateway",
+	"openai",
+	"openrouter",
+	"google",
+	"custom",
+];
+
+export type ReadinessStatus = "ready" | "fallback" | "blocked";
+
+export type AgentUpstreamReadiness = {
+	/** "blocked" must stop provisioning until the user adds a key. */
+	status: ReadinessStatus;
+	/** One-line explanation for the UI. */
+	detail: string;
+	/** The credential slug to add when blocked/fallback (for deep-links). */
+	needs: RouterSource | "openai" | "anthropic" | null;
+};
+
+/**
+ * Client-side mirror of `validateAgentCredentials`, driven by the public
+ * `aiConfigured` map (which provider keys are on file). Drives the spin-up
+ * gate: a "blocked" result must prevent provisioning until a key is added.
+ *
+ *  - native agents (codex/claude-code): require their native key, full stop.
+ *  - router agents (hermes/openclaw): "ready" when the selected router has a
+ *    key, "fallback" when another upstream key exists, "blocked" when none do.
+ */
+export function agentUpstreamReadiness(
+	agentKind: AgentKind,
+	routerId: string,
+	aiConfigured: Record<string, boolean>,
+): AgentUpstreamReadiness {
+	const native = requiredNativeUpstream(agentKind);
+	if (native) {
+		if (aiConfigured[native]) {
+			return { status: "ready", detail: `Uses your ${nativeUpstreamLabel(native)} key.`, needs: null };
+		}
+		return {
+			status: "blocked",
+			detail: `Needs a native ${native === "openai" ? "OpenAI" : "Anthropic"} key — ${
+				agentKind === "codex" ? "the OpenAI Responses API" : "the Anthropic Messages API"
+			} can't run on the Dedalus router.`,
+			needs: native,
+		};
+	}
+
+	const preset = routerPresetById(routerId);
+	if (preset && aiConfigured[preset.source]) {
+		return { status: "ready", detail: `Routes via ${preset.label}.`, needs: null };
+	}
+	const anyUpstream = ROUTER_SOURCE_KEYS.some((key) => aiConfigured[key]);
+	if (anyUpstream) {
+		return {
+			status: "fallback",
+			detail: `${preset?.label ?? "Selected router"} has no key — bootstrap falls back to a configured provider.`,
+			needs: preset?.source ?? null,
+		};
+	}
+	return {
+		status: "blocked",
+		detail: "No AI provider key configured. Add one to deploy a gateway agent.",
+		needs: preset?.source ?? "dedalus",
+	};
+}

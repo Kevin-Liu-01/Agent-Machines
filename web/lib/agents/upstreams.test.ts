@@ -4,6 +4,7 @@ import {
 	DEFAULT_ROUTER_ID,
 	GATEWAY_KIND_LABEL,
 	ROUTER_PRESETS,
+	agentUpstreamReadiness,
 	agentUsesRouter,
 	requiredNativeUpstream,
 	routerPresetById,
@@ -53,5 +54,43 @@ describe("ROUTER_PRESETS", () => {
 		expect(routerPresetById("openrouter-router")?.source).toBe("openrouter");
 		expect(routerPresetById("custom-router")?.baseUrl).toBeNull();
 		expect(routerPresetById("nope")).toBeNull();
+	});
+});
+
+describe("agentUpstreamReadiness", () => {
+	// Native CLIs are blocked without their native key (no router substitute).
+	it("blocks codex without an OpenAI key and points at openai", () => {
+		const r = agentUpstreamReadiness("codex", DEFAULT_ROUTER_ID, { dedalus: true });
+		expect(r.status).toBe("blocked");
+		expect(r.needs).toBe("openai");
+	});
+
+	it("readies codex once a native OpenAI key is on file", () => {
+		expect(agentUpstreamReadiness("codex", DEFAULT_ROUTER_ID, { openai: true }).status).toBe("ready");
+	});
+
+	it("blocks claude-code without an Anthropic key", () => {
+		const r = agentUpstreamReadiness("claude-code", DEFAULT_ROUTER_ID, { openai: true });
+		expect(r.status).toBe("blocked");
+		expect(r.needs).toBe("anthropic");
+	});
+
+	// Router agents are ready when the *selected* router has a key.
+	it("readies hermes when the selected router has a key", () => {
+		const r = agentUpstreamReadiness("hermes", "openrouter-router", { openrouter: true });
+		expect(r.status).toBe("ready");
+	});
+
+	// Selected router has no key but another upstream exists -> soft fallback.
+	it("flags fallback when the selected router lacks a key but another exists", () => {
+		const r = agentUpstreamReadiness("hermes", "openrouter-router", { dedalus: true });
+		expect(r.status).toBe("fallback");
+		expect(r.needs).toBe("openrouter");
+	});
+
+	// No usable key at all -> hard block.
+	it("blocks router agents when no upstream key is configured", () => {
+		const r = agentUpstreamReadiness("openclaw", DEFAULT_ROUTER_ID, {});
+		expect(r.status).toBe("blocked");
 	});
 });

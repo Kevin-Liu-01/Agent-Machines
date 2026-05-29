@@ -1,17 +1,25 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Logo } from "@/components/Logo";
+import { AgentInfoPanel, MachineInfoPanel } from "@/components/dashboard/AgentMachineInfo";
 import {
 	MachineActions,
 	type MachineState as MachineActionState,
 } from "@/components/dashboard/MachineActions";
+import { RouterSelect } from "@/components/dashboard/RouterSelect";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { Skeleton } from "@/components/ui/Skeleton";
+import {
+	DEFAULT_ROUTER_ID,
+	agentUpstreamReadiness,
+	agentUsesRouter,
+} from "@/lib/agents/upstreams";
 import { cn } from "@/lib/cn";
 import type { ProviderCapabilities } from "@/lib/providers";
 import {
@@ -99,6 +107,41 @@ export function FleetMonitor() {
 	const [loading, setLoading] = useState(true);
 	const [showForm, setShowForm] = useState(false);
 	const [spawn, setSpawn] = useState<SpawnState>({ phase: "idle" });
+	// Which provider keys are on file — drives the spin-up credential gate.
+	// `null` until loaded so the gate doesn't blink "blocked" prematurely.
+	const [aiConfigured, setAiConfigured] = useState<Record<string, boolean> | null>(null);
+	const [providerConfigured, setProviderConfigured] = useState<Record<
+		string,
+		boolean
+	> | null>(null);
+
+	useEffect(() => {
+		let alive = true;
+		void fetch("/api/dashboard/admin/settings")
+			.then((r) => (r.ok ? r.json() : null))
+			.then((j) => {
+				if (!alive || !j?.config) return;
+				const ai = (j.config.aiProviders ?? {}) as Record<
+					string,
+					{ configured?: boolean }
+				>;
+				const conf: Record<string, boolean> = {};
+				for (const k of Object.keys(ai)) conf[k] = Boolean(ai[k]?.configured);
+				conf.dedalus = Boolean(j.config.providers?.dedalus?.configured);
+				setAiConfigured(conf);
+				const provs = (j.config.providers ?? {}) as Record<
+					string,
+					{ configured?: boolean }
+				>;
+				const pconf: Record<string, boolean> = {};
+				for (const k of Object.keys(provs)) pconf[k] = Boolean(provs[k]?.configured);
+				setProviderConfigured(pconf);
+			})
+			.catch(() => {});
+		return () => {
+			alive = false;
+		};
+	}, []);
 
 	const refresh = useCallback(async () => {
 		try {
@@ -133,6 +176,7 @@ export function FleetMonitor() {
 			provider: ProviderKind;
 			spec: MachineSpec;
 			name?: string;
+			gatewayProfileId?: string;
 		}): Promise<void> => {
 			setSpawn({
 				phase: "submitting",
@@ -150,6 +194,9 @@ export function FleetMonitor() {
 							providerKind: input.provider,
 							spec: input.spec,
 							name: input.name,
+							...(agentUsesRouter(input.agent) && input.gatewayProfileId
+								? { gatewayProfileId: input.gatewayProfileId }
+								: {}),
 						}),
 					},
 				);
@@ -247,6 +294,8 @@ export function FleetMonitor() {
 				<SpinUpForm
 					busy={spawn.phase === "submitting"}
 					result={spawn}
+					aiConfigured={aiConfigured}
+					providerConfigured={providerConfigured}
 					onSubmit={provision}
 				/>
 			) : null}
@@ -396,6 +445,13 @@ function MachineRow({
 			</dl>
 			<p
 				className="truncate font-mono text-[10px] text-[var(--ret-text-muted)]"
+				title={machine.model}
+			>
+				<span className="text-[var(--ret-text-muted)]">model</span>{" "}
+				<span className="text-[var(--ret-text-dim)]">{machine.model}</span>
+			</p>
+			<p
+				className="truncate font-mono text-[10px] text-[var(--ret-text-muted)]"
 				title={machine.id}
 			>
 				{machine.id}
@@ -511,33 +567,51 @@ const PRESETS: ReadonlyArray<{
 function SpinUpForm({
 	busy,
 	result,
+	aiConfigured,
+	providerConfigured,
 	onSubmit,
 }: {
 	busy: boolean;
 	result: SpawnState;
+	/** null while still loading; gate is neutral until known. */
+	aiConfigured: Record<string, boolean> | null;
+	providerConfigured: Record<string, boolean> | null;
 	onSubmit: (input: {
 		agent: AgentKind;
 		provider: ProviderKind;
 		spec: MachineSpec;
 		name?: string;
+		gatewayProfileId?: string;
 	}) => Promise<void>;
 }) {
 	const [agent, setAgent] = useState<AgentKind>("hermes");
 	const [provider, setProvider] = useState<ProviderKind>("dedalus");
 	const [presetId, setPresetId] = useState<string>("small");
 	const [name, setName] = useState("");
+	const [routerId, setRouterId] = useState<string>(DEFAULT_ROUTER_ID);
 
 	const preset = PRESETS.find((p) => p.id === presetId) ?? PRESETS[0];
 	const spec = preset.spec;
 
+	// Credential gate. Only evaluated once the config has loaded (null = still
+	// loading -> stay neutral so the button never blinks "blocked").
+	const readiness = aiConfigured
+		? agentUpstreamReadiness(agent, routerId, aiConfigured)
+		: null;
+	const upstreamBlocked = readiness?.status === "blocked";
+	const substrateMissing =
+		providerConfigured !== null && !providerConfigured[provider];
+	const blocked = Boolean(upstreamBlocked || substrateMissing);
+
 	function handleSubmit(event: React.FormEvent): void {
 		event.preventDefault();
-		if (busy) return;
+		if (busy || blocked) return;
 		void onSubmit({
 			agent,
 			provider,
 			spec,
 			name: name.trim().length > 0 ? name.trim() : undefined,
+			gatewayProfileId: agentUsesRouter(agent) ? routerId : undefined,
 		});
 	}
 
@@ -562,7 +636,7 @@ function SpinUpForm({
 						value={provider}
 					options={PROVIDER_KINDS.map((k) => ({
 						value: k,
-						label: PROVIDER_LABEL[k],
+						label: `${PROVIDER_LABEL[k]}${providerConfigured && !providerConfigured[k] ? " — needs key" : ""}`,
 						disabled: false,
 					}))}
 					onChange={(v) => setProvider(v as ProviderKind)}
@@ -579,6 +653,15 @@ function SpinUpForm({
 					/>
 				</Field>
 			</div>
+
+			<RouterSelect
+				agentKind={agent}
+				value={routerId}
+				onChange={setRouterId}
+				aiConfigured={aiConfigured ?? {}}
+				disabled={busy}
+			/>
+
 			<Field label="name (optional)">
 				<input
 					type="text"
@@ -588,6 +671,27 @@ function SpinUpForm({
 					className="w-full border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-1.5 font-mono text-[12px] text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)] focus:border-[var(--ret-purple)] focus:outline-none"
 				/>
 			</Field>
+
+			{/* What's about to be created — agent runtime + machine substrate. */}
+			<div className="grid gap-3 md:grid-cols-2">
+				<AgentInfoPanel agentKind={agent} readiness={readiness ?? undefined} />
+				<MachineInfoPanel
+					provider={provider}
+					spec={spec}
+					configured={providerConfigured ? providerConfigured[provider] : undefined}
+				/>
+			</div>
+
+			{/* Credential gate: must add a key before provisioning. */}
+			{substrateMissing ? (
+				<GateBanner
+					message={`No ${PROVIDER_LABEL[provider]} key on file — provisioning needs the substrate credential.`}
+				/>
+			) : null}
+			{upstreamBlocked && readiness ? (
+				<GateBanner message={readiness.detail} />
+			) : null}
+
 			<div className="flex flex-wrap items-center justify-between gap-2">
 				{/* Endpoint + payload preview stays mono: it's literally
 				    a wire-protocol fragment, not body copy. */}
@@ -611,13 +715,16 @@ function SpinUpForm({
 						type="submit"
 						variant="primary"
 						size="sm"
-						disabled={busy || result.phase === "ok"}
+						disabled={busy || blocked || result.phase === "ok"}
+						title={blocked ? "Add the missing key in Settings to enable spin up" : undefined}
 					>
 						{busy ? (
 							<span className="inline-flex items-center gap-1.5">
 								<BrailleSpinner className="text-[var(--ret-text)]" />
 								provisioning...
 							</span>
+						) : blocked ? (
+							<>missing key</>
 						) : (
 							<>spin up</>
 						)}
@@ -625,6 +732,23 @@ function SpinUpForm({
 				</div>
 			</div>
 		</form>
+	);
+}
+
+/** Inline credential gate with a deep-link to where keys are added. */
+function GateBanner({ message }: { message: string }) {
+	return (
+		<div className="flex flex-wrap items-center justify-between gap-2 border border-[var(--ret-red)]/40 bg-[var(--ret-red)]/5 px-3 py-2">
+			<p className="min-w-0 text-[11px] leading-relaxed text-[var(--ret-red)]">
+				! {message}
+			</p>
+			<Link
+				href="/dashboard/settings"
+				className="shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-red)] underline underline-offset-2 hover:text-[var(--ret-text)]"
+			>
+				add a key in settings →
+			</Link>
+		</div>
 	);
 }
 
