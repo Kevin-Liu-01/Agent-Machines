@@ -110,7 +110,10 @@ export async function* streamConsoleOutput(
 
 	if (typeof provider.streamExec === "function") {
 		// `tail -c +N` is 1-indexed: +1 == whole file, +(offset+1) == skip `offset` bytes.
-		const follow = `stdbuf -oL -eL tail -c +${offset + 1} -f ${CONSOLE_LOG}`;
+		// Fully unbuffered (-o0), NOT line-buffered: full-screen TUIs (codex/claude)
+		// emit cursor-addressed escape sequences with no newlines, so line buffering
+		// would stall the live screen until the buffer filled. -o0 flushes each write.
+		const follow = `stdbuf -o0 -e0 tail -c +${offset + 1} -f ${CONSOLE_LOG}`;
 		yield* provider.streamExec(machine.id, follow, { timeoutMs: maxDurationMs });
 		return;
 	}

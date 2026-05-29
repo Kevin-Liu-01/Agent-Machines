@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { BrandMark } from "@/components/BrandMark";
+import { AgentInfoPanel, MachineInfoPanel } from "@/components/dashboard/AgentMachineInfo";
 import { BootTranscript } from "@/components/dashboard/BootTranscript";
 import { RouterSelect } from "@/components/dashboard/RouterSelect";
 import { Logo, type Mark } from "@/components/Logo";
@@ -25,7 +26,12 @@ import {
 	canBootstrapAgent,
 	type DraftAiKeys,
 } from "@/lib/agents/credentials";
-import { DEFAULT_ROUTER_ID, agentUsesRouter } from "@/lib/agents/upstreams";
+import {
+	type AgentUpstreamReadiness,
+	DEFAULT_ROUTER_ID,
+	agentUpstreamReadiness,
+	agentUsesRouter,
+} from "@/lib/agents/upstreams";
 import {
 	BUILTIN_TOOLS,
 	CATEGORY_LABEL,
@@ -437,6 +443,18 @@ export function OnboardingFlow({
 	const canProvisionInfra = hasKey || ownerKey || providerKey.trim().length > 0;
 	const canProvision = canProvisionInfra && agentCredsOk;
 
+	// Live upstream readiness for the info panel — merges on-file keys with what
+	// the user is typing this step, so the status flips to "ready" as they fill in.
+	const effectiveAiConfigured: Record<string, boolean> = {
+		...wizardAiConfigured,
+		anthropic: wizardAiConfigured.anthropic || aiKeys.anthropic.trim().length > 0,
+		openai: wizardAiConfigured.openai || aiKeys.openai.trim().length > 0,
+		dedalus:
+			wizardAiConfigured.dedalus ||
+			(provider === "dedalus" && providerKey.trim().length > 0),
+	};
+	const agentReadiness = agentUpstreamReadiness(agent, routerId, effectiveAiConfigured);
+
 	// Poll machine state once we have an id.
 	useEffect(() => {
 		if (!bootMachineId) return;
@@ -583,6 +601,8 @@ export function OnboardingFlow({
 								agent={agent}
 								provider={provider}
 								config={initialConfig}
+								readiness={agentReadiness}
+								substrateReady={canProvisionInfra}
 								hasKey={hasKey}
 								ownerKey={ownerKey}
 								value={providerKey}
@@ -1204,6 +1224,8 @@ function KeyStep({
 	agent,
 	provider,
 	config,
+	readiness,
+	substrateReady,
 	hasKey,
 	ownerKey,
 	value,
@@ -1221,6 +1243,8 @@ function KeyStep({
 	agent: AgentKind;
 	provider: ProviderKind;
 	config: PublicUserConfig;
+	readiness: AgentUpstreamReadiness;
+	substrateReady: boolean;
 	hasKey: boolean;
 	ownerKey: boolean;
 	value: string;
@@ -1250,6 +1274,11 @@ function KeyStep({
 					Infrastructure key provisions the {PROVIDER_LABEL[provider]} machine.
 					AI provider keys power {AGENT_LABEL[agent]}. Stored in private metadata.
 				</p>
+			</div>
+			{/* What you're about to boot — same panels as the spin-up form. */}
+			<div className="grid gap-3 md:grid-cols-2">
+				<AgentInfoPanel agentKind={agent} readiness={readiness} />
+				<MachineInfoPanel provider={provider} configured={substrateReady} />
 			</div>
 			<ReticleLabel>infrastructure</ReticleLabel>
 			<label className="flex flex-col gap-1.5">

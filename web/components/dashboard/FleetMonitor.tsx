@@ -1,10 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Logo } from "@/components/Logo";
-import { AgentInfoPanel, MachineInfoPanel } from "@/components/dashboard/AgentMachineInfo";
+import { AgentInfoPanel, GateBanner, MachineInfoPanel } from "@/components/dashboard/AgentMachineInfo";
 import {
 	MachineActions,
 	type MachineState as MachineActionState,
@@ -732,23 +731,6 @@ function SpinUpForm({
 				</div>
 			</div>
 		</form>
-	);
-}
-
-/** Inline credential gate with a deep-link to where keys are added. */
-function GateBanner({ message }: { message: string }) {
-	return (
-		<div className="flex flex-wrap items-center justify-between gap-2 border border-[var(--ret-red)]/40 bg-[var(--ret-red)]/5 px-3 py-2">
-			<p className="min-w-0 text-[11px] leading-relaxed text-[var(--ret-red)]">
-				! {message}
-			</p>
-			<Link
-				href="/dashboard/settings"
-				className="shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-red)] underline underline-offset-2 hover:text-[var(--ret-text)]"
-			>
-				add a key in settings →
-			</Link>
-		</div>
 	);
 }
 

@@ -3,12 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { AgentInfoPanel, GateBanner, MachineInfoPanel } from "@/components/dashboard/AgentMachineInfo";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { RouterSelect } from "@/components/dashboard/RouterSelect";
-import { DEFAULT_ROUTER_ID, agentUsesRouter } from "@/lib/agents/upstreams";
+import { DEFAULT_ROUTER_ID, agentUpstreamReadiness, agentUsesRouter } from "@/lib/agents/upstreams";
 import { cn } from "@/lib/cn";
+import type { ProviderKind } from "@/lib/user-config/schema";
 
 type Phase = "idle" | "provisioning" | "bootstrapping" | "ready" | "error";
 
@@ -30,13 +32,15 @@ export function DeployAndTalk() {
 	const [agent, setAgent] = useState<(typeof AGENTS)[number]>("codex");
 	const [phase, setPhase] = useState<Phase>("idle");
 	const [detail, setDetail] = useState<string>("");
-	const [aiConfigured, setAiConfigured] = useState<Record<string, boolean>>({});
+	// null until loaded so the credential gate doesn't pre-block.
+	const [aiConfigured, setAiConfigured] = useState<Record<string, boolean> | null>(null);
+	const [providerConfigured, setProviderConfigured] = useState<Record<string, boolean> | null>(null);
 	const [gatewayProfileId, setGatewayProfileId] = useState<string>(DEFAULT_ROUTER_ID);
 	const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
 	const busy = phase === "provisioning" || phase === "bootstrapping";
 
-	// Load which provider keys are configured (drives the router "needs key" hints).
+	// Load which provider keys are configured (drives the router hints + gate).
 	useEffect(() => {
 		let alive = true;
 		void fetch("/api/dashboard/admin/settings")
@@ -48,6 +52,10 @@ export function DeployAndTalk() {
 				for (const k of Object.keys(ai)) conf[k] = Boolean(ai[k]?.configured);
 				conf.dedalus = Boolean(j.config.providers?.dedalus?.configured);
 				setAiConfigured(conf);
+				const provs = (j.config.providers ?? {}) as Record<string, { configured?: boolean }>;
+				const pconf: Record<string, boolean> = {};
+				for (const k of Object.keys(provs)) pconf[k] = Boolean(provs[k]?.configured);
+				setProviderConfigured(pconf);
 			})
 			.catch(() => {});
 		return () => {
@@ -55,7 +63,17 @@ export function DeployAndTalk() {
 		};
 	}, []);
 
+	// Credential gate: block deploy when the agent has no usable upstream key
+	// or the substrate provider has no key. Neutral while config loads (null).
+	const readiness = aiConfigured
+		? agentUpstreamReadiness(agent, gatewayProfileId, aiConfigured)
+		: null;
+	const upstreamBlocked = readiness?.status === "blocked";
+	const substrateMissing = providerConfigured !== null && !providerConfigured[provider];
+	const blocked = Boolean(upstreamBlocked || substrateMissing);
+
 	const run = useCallback(async () => {
+		if (blocked) return;
 		setPhase("provisioning");
 		setDetail("requesting a machine...");
 		try {
@@ -115,7 +133,7 @@ export function DeployAndTalk() {
 			setPhase("error");
 			setDetail(err instanceof Error ? err.message : "deploy failed");
 		}
-	}, [provider, agent, router, gatewayProfileId]);
+	}, [provider, agent, router, gatewayProfileId, blocked]);
 
 	return (
 		<div className="grid gap-3 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-4">
@@ -153,8 +171,16 @@ export function DeployAndTalk() {
 						))}
 					</select>
 				</label>
-				<ReticleButton as="button" type="button" variant="primary" size="sm" disabled={busy} onClick={() => void run()}>
-					{busy ? "deploying..." : "Deploy & Talk"}
+				<ReticleButton
+					as="button"
+					type="button"
+					variant="primary"
+					size="sm"
+					disabled={busy || blocked}
+					title={blocked ? "Add the missing key in Settings to deploy" : undefined}
+					onClick={() => void run()}
+				>
+					{busy ? "deploying..." : blocked ? "missing key" : "Deploy & Talk"}
 				</ReticleButton>
 				{busy ? <BrailleSpinner name="cascade" className="text-[var(--ret-purple)]" /> : null}
 			</div>
@@ -163,9 +189,22 @@ export function DeployAndTalk() {
 				agentKind={agent}
 				value={gatewayProfileId}
 				onChange={setGatewayProfileId}
-				aiConfigured={aiConfigured}
+				aiConfigured={aiConfigured ?? {}}
 				disabled={busy}
 			/>
+
+			<div className="grid gap-3 md:grid-cols-2">
+				<AgentInfoPanel agentKind={agent} readiness={readiness ?? undefined} />
+				<MachineInfoPanel
+					provider={provider as ProviderKind}
+					configured={providerConfigured ? providerConfigured[provider] : undefined}
+				/>
+			</div>
+
+			{substrateMissing ? (
+				<GateBanner message={`No ${provider} key on file — provisioning needs the substrate credential.`} />
+			) : null}
+			{upstreamBlocked && readiness ? <GateBanner message={readiness.detail} /> : null}
 
 			{phase !== "idle" ? (
 				<p

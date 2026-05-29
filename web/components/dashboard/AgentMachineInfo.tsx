@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { Logo } from "@/components/Logo";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { getAgentMeta } from "@/lib/agents";
@@ -103,7 +105,8 @@ export function MachineInfoPanel({
 	configured,
 }: {
 	provider: ProviderKind;
-	spec: MachineSpec;
+	/** Omit on surfaces that use the provider default spec (e.g. one-click). */
+	spec?: MachineSpec;
 	/** Whether the substrate's provider key is on file (undefined = unknown). */
 	configured?: boolean;
 }) {
@@ -125,11 +128,13 @@ export function MachineInfoPanel({
 					</span>
 				) : null}
 			</div>
-			<dl className="grid grid-cols-3 gap-1">
-				<SpecCell label="vCPU" value={`${spec.vcpu}`} />
-				<SpecCell label="memory" value={`${(spec.memoryMib / 1024).toFixed(1)} GiB`} />
-				<SpecCell label="storage" value={`${spec.storageGib} GiB`} />
-			</dl>
+			{spec ? (
+				<dl className="grid grid-cols-3 gap-1">
+					<SpecCell label="vCPU" value={`${spec.vcpu}`} />
+					<SpecCell label="memory" value={`${(spec.memoryMib / 1024).toFixed(1)} GiB`} />
+					<SpecCell label="storage" value={`${spec.storageGib} GiB`} />
+				</dl>
+			) : null}
 			<p className="text-[11px] leading-relaxed text-[var(--ret-text-dim)]">
 				Provisions an isolated{" "}
 				<code className="font-mono text-[10px] text-[var(--ret-text)]">
@@ -138,6 +143,24 @@ export function MachineInfoPanel({
 				volume, a dedicated gateway port, and the agent runtime — bootstrapped
 				on spin-up.
 			</p>
+		</div>
+	);
+}
+
+/** Inline credential gate with a deep-link to where keys are added. Shared by
+ *  every provisioning entry point so the "add a key" affordance is identical. */
+export function GateBanner({ message }: { message: string }) {
+	return (
+		<div className="flex flex-wrap items-center justify-between gap-2 border border-[var(--ret-red)]/40 bg-[var(--ret-red)]/5 px-3 py-2">
+			<p className="min-w-0 text-[11px] leading-relaxed text-[var(--ret-red)]">
+				! {message}
+			</p>
+			<Link
+				href="/dashboard/settings"
+				className="shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-red)] underline underline-offset-2 hover:text-[var(--ret-text)]"
+			>
+				add a key in settings →
+			</Link>
 		</div>
 	);
 }

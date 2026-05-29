@@ -39,15 +39,33 @@ export function InteractiveConsole() {
 	const [detail, setDetail] = useState<string>("");
 	const launchedRef = useRef(false);
 
+	// Serialize input POSTs through one promise chain so rapid keystrokes
+	// arrive at tmux in order — concurrent fire-and-forget fetches can race
+	// and reorder characters ("Reply" -> "y...lRep").
+	const sendChainRef = useRef<Promise<unknown>>(Promise.resolve());
+	const sendInput = useCallback(
+		(data: string) => {
+			if (!data || !machineId) return;
+			sendChainRef.current = sendChainRef.current
+				.then(() =>
+					fetch("/api/dashboard/terminal/input", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({ machineId, data }),
+					}),
+				)
+				.catch(() => {});
+		},
+		[machineId],
+	);
+	const sendInputRef = useRef(sendInput);
+	sendInputRef.current = sendInput;
+
 	const launchAgent = useCallback(() => {
 		const cmd = agentLaunchCommand(agentKind);
-		if (!cmd || !machineId) return;
-		void fetch("/api/dashboard/terminal/input", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ machineId, data: `${cmd}\r` }),
-		}).catch(() => {});
-	}, [agentKind, machineId]);
+		if (!cmd) return;
+		sendInput(`${cmd}\r`);
+	}, [agentKind, sendInput]);
 
 	const launchRef = useRef(launchAgent);
 	launchRef.current = launchAgent;
@@ -96,12 +114,8 @@ export function InteractiveConsole() {
 				const data = inputBuf;
 				inputBuf = "";
 				inputTimer = null;
-				if (!data || !machineId) return;
-				void fetch("/api/dashboard/terminal/input", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ machineId, data }),
-				}).catch(() => {});
+				if (!data) return;
+				sendInputRef.current(data);
 			};
 			term.onData((d) => {
 				inputBuf += d;
