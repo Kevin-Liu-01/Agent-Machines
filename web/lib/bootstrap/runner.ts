@@ -1216,9 +1216,12 @@ async function exposeGateway(
 		}
 	}
 
-	const apiUrl = await exposeViaCloudflared(machine, provider, port, name, p);
-	await waitForGatewayUrl(apiUrl, apiKey, { ...waitOpts, maxAttempts: 15 });
-	return apiUrl;
+	// No Cloudflare quick-tunnel fallback. The dashboard reaches the gateway
+	// over the provider `exec` primitive (curl localhost on the box), so a
+	// public URL isn't required. A Dedalus machine with neither a configured
+	// named tunnel nor a native preview URL is driven entirely via exec (the
+	// interactive console + the exec-localhost health probe) — no tunnel.
+	return null;
 }
 
 async function startNamedTunnel(
@@ -1248,49 +1251,6 @@ async function startNamedTunnel(
 		].join(" && "),
 		{ timeoutMs: 30_000 },
 	);
-}
-
-async function exposeViaCloudflared(
-	machine: MachineRef,
-	provider: MachineProvider,
-	port: number,
-	name: string,
-	p: BootstrapPaths,
-): Promise<string> {
-	await ensureCloudflared(machine, provider, p);
-	const logPath = `${p.APP_HOME}/cloudflared-${name}.log`;
-	const pidPath = `${p.APP_HOME}/cloudflared-${name}.pid`;
-	const launcher = `${p.HOME}/start-tunnel-${name}.sh`;
-	const launcherBody = [
-		"#!/usr/bin/env bash",
-		"set -euo pipefail",
-		`exec ${p.CLOUDFLARED_BIN} tunnel --no-autoupdate --url http://127.0.0.1:${port} --metrics 127.0.0.1:0 >> ${logPath} 2>&1`,
-	].join("\n");
-	await provider.exec(
-		machine.id,
-		[
-			"set -e",
-			`mkdir -p ${p.APP_HOME}`,
-			`rm -f ${logPath}`,
-			`cat > ${launcher} <<'EOF'\n${launcherBody}\nEOF`,
-			`chmod +x ${launcher}`,
-			`(setsid ${launcher} </dev/null &>/dev/null & echo $! > ${pidPath})`,
-		].join(" && "),
-		{ timeoutMs: 30_000 },
-	);
-	for (let attempt = 0; attempt < 30; attempt++) {
-		await new Promise((resolve) => setTimeout(resolve, 2_000));
-		const result = await provider.exec(
-			machine.id,
-			`grep -oE 'https://[a-z0-9-]+\\.trycloudflare\\.com' ${logPath} | head -1 || true`,
-			{ timeoutMs: 15_000 },
-		);
-		if (result.stdout) return `${result.stdout.trim().replace(/\/$/, "")}/v1`;
-	}
-	const tail = await provider.exec(machine.id, `tail -80 ${logPath} || true`, {
-		timeoutMs: 15_000,
-	});
-	throw new Error(`cloudflared tunnel did not announce a URL: ${tail.stdout || tail.stderr}`);
 }
 
 async function ensureCloudflared(

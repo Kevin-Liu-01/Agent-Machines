@@ -13,7 +13,9 @@ import { getEffectiveUserId } from "@/lib/user-config/identity";
 import type { NextRequest } from "next/server";
 
 import type { ChatRequestBody } from "@/lib/types";
+import { resolveMachine } from "@/lib/dashboard/exec";
 import { resolveGatewayForUser } from "@/lib/gateway/resolver";
+import { getUserConfig } from "@/lib/user-config/clerk";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -34,12 +36,38 @@ export async function POST(request: NextRequest): Promise<Response> {
 		return Response.json({ error: "messages_required" }, { status: 422 });
 	}
 
+	const machineId =
+		typeof (body as Record<string, unknown>).machineId === "string"
+			? ((body as Record<string, unknown>).machineId as string)
+			: null;
+
+	// A bootstrapped machine with no public gateway URL is exec-only — the HTTP
+	// chat path can't reach it. Point the operator at the Terminal console
+	// (which drives the agent over the provider exec channel, no tunnel needed).
+	try {
+		const config = await getUserConfig();
+		const machine = resolveMachine(config, machineId);
+		if (
+			machine?.apiKey &&
+			!machine.apiUrl &&
+			machine.agentKind !== "codex" &&
+			machine.agentKind !== "claude-code"
+		) {
+			return Response.json(
+				{
+					error: "no_http_gateway",
+					message:
+						"This machine's agent gateway isn't exposed over HTTP. Open the Terminal console to talk to it.",
+				},
+				{ status: 409 },
+			);
+		}
+	} catch {
+		// fall through — resolveGatewayForUser surfaces the real config error
+	}
+
 	let env: Awaited<ReturnType<typeof resolveGatewayForUser>>;
 	try {
-		const machineId =
-			typeof (body as Record<string, unknown>).machineId === "string"
-				? ((body as Record<string, unknown>).machineId as string)
-				: null;
 		env = await resolveGatewayForUser(machineId);
 	} catch (err) {
 		const message = err instanceof Error ? err.message : "config_error";

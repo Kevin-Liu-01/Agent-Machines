@@ -61,7 +61,7 @@ function openClawEnv(p: GatewayPaths): string {
 	].join(" && ");
 }
 
-function gatewayPort(machine: MachineRef): number {
+export function gatewayPort(machine: MachineRef): number {
 	if (machine.providerKind === "sprites") return 8080;
 	if (machine.agentKind === "openclaw") return OPENCLAW_PORT;
 	return HERMES_PORT;
@@ -196,7 +196,9 @@ export async function waitForGatewayUrl(
 	throw new Error(`Gateway URL not ready after ${maxAttempts} attempts: ${modelsUrl}`);
 }
 
-async function probeGatewayLocal(
+/** Probe the gateway over the provider `exec` primitive (curl localhost on the
+ *  box) — no public URL/tunnel needed. Returns true when /v1/models is 200. */
+export async function probeGatewayLocal(
 	provider: MachineProvider,
 	machineId: string,
 	port: number,
