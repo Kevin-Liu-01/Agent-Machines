@@ -1,14 +1,46 @@
 # Sandbox terminal gateway
 
-Agent Machines exposes **two bridges** from the Next.js control plane to remote sandboxes:
+Agent Machines exposes **three bridges** from the Next.js control plane to remote sandboxes:
 
 | Bridge | Route | Purpose |
 |--------|-------|---------|
-| **Machine exec** | `POST /api/dashboard/exec/stream` | Run shell on the VM; stream stdout while the command runs |
+| **Interactive console** | `POST /terminal/session`, `POST /terminal/input`, `GET /terminal/stream` | **Live PTY** — talk to agent CLIs in the browser (tmux-over-exec) |
+| **Machine exec** | `POST /api/dashboard/exec/stream` | Run shell on the VM; stream stdout while the command runs (one-shot) |
 | **Bootstrap stream** | `GET /api/dashboard/bootstrap/stream?machineId=` | Phase checklist + live `bootstrap.log` during agent setup |
-| **Agent gateway** | `POST /api/chat` | Hermes/OpenClaw HTTP API (LLM tokens — not shell) |
+| **Agent gateway** | `POST /api/chat` | Hermes/OpenClaw HTTP API (LLM tokens — optional; console is primary) |
 
-## Data flow (exec terminal)
+> **Product narrative:** See [`knowledge/BROWSER-AGENT-CONSOLE.md`](../../knowledge/BROWSER-AGENT-CONSOLE.md) — why the interactive tier is a first-class wedge (CLI-as-a-service for non-terminal users).
+
+---
+
+## Data flow (interactive console — live agent CLI)
+
+```
+InteractiveConsole (xterm.js)
+  → POST /api/dashboard/terminal/session     ensure tmux + snapshot + byte offset
+  → GET  /api/dashboard/terminal/stream      SSE tail of pane log (from offset)
+  → POST /api/dashboard/terminal/input       tmux send-keys -H (hex keystrokes)
+  → POST /api/dashboard/terminal/resize      tmux resize-window
+
+Server (Clerk auth → resolve MachineRef + provider creds)
+  → lib/dashboard/terminal-session.ts
+       ensureSessionCommand / sendKeysCommand / streamConsoleOutput
+  → provider.exec or provider.streamExec
+       native: stdbuf -o0 tail -c +N -f /tmp/am-console.log
+       fallback (Dedalus): poll log via exec-stream tailFileStreamOnMachine
+
+Remote VM
+  tmux session "amconsole" + pipe-pane → /tmp/am-console.log
+  Agent CLI (codex / claude / hermes / openclaw) running inside the pane
+```
+
+**Why tmux-over-exec:** Vercel serverless cannot host a long-lived WebSocket PTY. Session state lives on the sandbox; the control plane is stateless HTTP + SSE. Works on all four substrates with only `exec` (streaming where supported).
+
+**Performance notes (May 2026):** Parallel xterm + session attach; paint snapshot on connect; rAF-batched writes; instant flush for control keys; 2.5s config cache + 3s machine-state cache; E2B sandbox connect reuse (45s); tmux pre-installed in bootstrap `system-deps`.
+
+---
+
+## Data flow (one-shot exec terminal)
 
 ```
 TerminalPanel / BootTranscript
@@ -33,58 +65,57 @@ output · done · error`) is identical across tiers, so the UI is unchanged.
 | **Vercel** | `Command.logs()` async iterator on a `detached` command | native stream |
 | **Dedalus** | *(none — REST exec returns output only after completion)* | poll fallback |
 
-**Native tiers** (E2B / Sprites / Vercel): output is relayed frame-by-frame as
-the SDK delivers it — no extra `exec` calls, no `dd` byte-scanning, no fixed
-poll latency. The shared callback→generator adapter lives in
-`lib/providers/stream-util.ts` (`bridgeExecStream`); Vercel uses its native
-iterator directly.
-
-**Poll fallback** (Dedalus only): launch the command in a detached shell on the
-VM, tee combined stdout/stderr to a temp log, and poll new bytes from the
-control plane until an exit-marker file appears. This is the legacy universal
-path, now scoped to the one provider that needs it.
+---
 
 ## Data flow (bootstrap setup)
 
 ```
-OnboardingFlow / SetupWizard
+OnboardingFlow / SetupWizard / DeployAndTalk
   → POST /api/dashboard/admin/bootstrap (phased runner)
        → each phase wrapped with wrapPhaseCommand → bootstrap.log on VM
-       → bootstrapState persisted to Clerk after every phase
+       → bootstrapState persisted after every phase
   → BootTranscript EventSource
        → GET /api/dashboard/bootstrap/stream
-            → SSE phase events (from Clerk poll on server)
+            → SSE phase events (from config poll on server)
             → SSE log events (tail bootstrap.log on VM)
 ```
 
+---
+
 ## Limitations
 
-- **Output-only, not interactive** — this gateway streams stdout/stderr while a
-  command runs over SSE; it does not pipe keystrokes back in. Interactive TTY
-  apps (`vim`, `less`, `htop`, REPLs) are out of scope for this surface.
-- **Native PTY is available but not wired here** — E2B (`Pty` class) and Sprites
-  (`spawn({ tty: true })` + `createSession`/`attachSession` tmux, `resize`)
-  expose real bidirectional PTYs. A future interactive terminal would use a
-  WebSocket data plane + `xterm.js` (see "Interactive PTY (future tier)" below),
-  *not* a Vercel serverless function (which can't host long-lived WS).
-- **Dedalus poll latency** — on the fallback path only, output appears in
-  ~300–450ms chunks (one provider `exec` per poll). Native tiers are real time.
+| Surface | Scope |
+|---------|--------|
+| **Interactive console** | Built for *agent CLIs* (Codex, Claude Code, Hermes, OpenClaw). Full TUIs supported. Not optimized as a general-purpose vim/htop replacement. |
+| **One-shot exec** | Output-only while command runs; no stdin. |
+| **Input latency** | Keystroke → HTTP → exec → tmux. ~100–300ms on warm Vercel + E2B; not local-terminal instant. |
+| **Stream reconnect** | SSE stream bounded by serverless duration (~110s); client reconnects with byte offset. |
+| **Dedalus streaming** | Poll fallback only (~300–450ms chunks). |
 
-## Interactive PTY (future tier)
+---
 
-A genuinely interactive terminal is feasible on **E2B** and **Sprites** (both
-have full PTY + stdin + resize), partial on **Vercel** (output stream, no
-post-start stdin), and impossible on **Dedalus** (no PTY/stream primitive). The
-proper architecture keeps the Next.js function as a **control plane** (auth +
-mint a scoped token) and runs the **data plane browser↔sandbox** (or via one
-small always-on relay) — because Vercel serverless functions cannot hold a
-long-lived WebSocket, a naive WS PTY route would only work on localhost.
+## Future tiers (not shipped)
+
+- **Native WebSocket PTY data plane** — feasible on E2B/Sprites with a small always-on relay (control plane stays on Vercel). Would reduce input latency further.
+- **Persistent Sprites WS session** — `createSession`/`attachSession` instead of per-command WS connect (~5s adapter overhead today).
+
+---
 
 ## Key files
 
-- `web/lib/dashboard/exec-stream.ts` — streaming engine (`streamFromProvider`, poll fallback)
-- `web/lib/providers/stream-util.ts` — `bridgeExecStream` callback→generator adapter
-- `web/lib/providers/{e2b,vercel,sprites}.ts` — native `streamExec` implementations
+**Interactive console**
+
+- `web/components/dashboard/InteractiveConsole.tsx` — xterm.js UI
+- `web/components/dashboard/TerminalWorkspace.tsx` — interactive vs one-shot tabs
+- `web/components/dashboard/DeployAndTalk.tsx` — provision → bootstrap → `?launch=1`
+- `web/lib/dashboard/terminal-session.ts` — tmux session commands + streamConsoleOutput
+- `web/app/api/dashboard/terminal/{session,input,resize,stream}/route.ts`
+
+**One-shot exec + bootstrap**
+
+- `web/lib/dashboard/exec-stream.ts` — streaming engine
+- `web/lib/providers/stream-util.ts` — `bridgeExecStream` adapter
+- `web/lib/providers/{e2b,vercel,sprites}.ts` — native `streamExec`
 - `web/lib/bootstrap/bootstrap-log.ts` — bootstrap.log path + phase wrapping
 - `web/app/api/dashboard/exec/stream/route.ts` — terminal SSE
 - `web/app/api/dashboard/bootstrap/stream/route.ts` — setup SSE

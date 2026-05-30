@@ -4,6 +4,8 @@
 
 Agent Machines = **OpenRouter for agents and containers** — control plane for persistent agent workers (runtime + skills + MCP + cron + observation + fleet). Not Hermes. Not a bare sandbox.
 
+**Browser Agent Console (May 2026):** Deploy → bootstrap → live interactive CLI in the browser (Codex, Claude Code, Hermes, OpenClaw) via tmux-over-exec + SSE — no local terminal, no mandatory tunnel. Full narrative: `knowledge/BROWSER-AGENT-CONSOLE.md`.
+
 Two audiences: humans (dashboard) → agents (MCP/CLI orchestration endgame).
 
 ## Environment

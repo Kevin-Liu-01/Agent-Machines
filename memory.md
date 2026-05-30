@@ -233,3 +233,18 @@ agent-machines.dev."
 **Vercel logo (proper, across dashboard):** `Logo.tsx` `DEFAULT_TONE.vercel` `native → currentColor` so the monochrome triangle adapts to theme (was a fixed black, invisible in dark mode). Unified benchmarks `ProviderMark` and `ProviderRouteBanner` onto `Logo` (which has marks for all 4 substrates) instead of `ServiceIcon tone="color"`. Verified: Vercel triangle now renders white in dark mode.
 **Re-run 107d48db (optimized):** dedalus exec 866ms (was 1.57s); scores E2B 100 / Vercel 52 / Dedalus 17 / Sprites 17 (E2B+Vercel win on fast direct exec; Dedalus/Sprites dragged by lifecycle + Sprites WS exec).
 **Note:** User is mid-refactor on `DeployAndTalk.tsx` / `upstreams.ts` / `RouterSelect.tsx` (uncommitted, 5 typecheck errors there) — left untouched; my files are type-clean, 39 provider+benchmark tests pass.
+
+## [2026-05-29] feat/docs | Browser Agent Console — product insight captured
+
+**What shipped:** Interactive live console on `/dashboard/machines/[id]/terminal` — real agent CLIs (Codex, Claude Code, Hermes, OpenClaw) in xterm.js over tmux-over-exec + SSE. Deploy & Talk → bootstrap → `?launch=1` auto-starts the CLI. Exec-first (no mandatory Cloudflare tunnel for console).
+
+**Why it matters:** Best agent tools are CLIs; most users never touch a terminal. We built CLI-as-a-service: substrate-agnostic, serverless-safe (session on box, stateless Vercel control plane), neutral routing across E2B/Sprites/Vercel/Dedalus.
+
+**Docs written:**
+- `knowledge/BROWSER-AGENT-CONSOLE.md` — full insight, architecture diagram, positioning copy, honest limits
+- `web/docs/sandbox-terminal-gateway.md` — updated (interactive tier no longer "future"; links to knowledge doc)
+- `knowledge/MEMORY.md` — product blurb added
+
+**Positioning one-liner:** "We put Claude Code / Codex / Hermes / OpenClaw in a tab."
+
+**Broader frame (May 2026):** Almost no browser terminals on serverless. Inversion = tmux on box + HTTP/SSE courier. Explainers: `knowledge/AGENT-MACHINES-EXPLAINER.md` (3 para, whole product), `knowledge/BROWSER-AGENT-CONSOLE-EXPLAINER.md` (4 para, terminal).

@@ -2,11 +2,12 @@
 
 Next.js public site + Clerk-gated **control plane**. **OpenRouter for agents and containers** — route runtime + substrate, provision specialist presets, supervise the fleet.
 
-Three jobs:
+Four jobs:
 
-1. **Marketing** — landing, fleet demo, activity grid, FAQ, architecture (primitive-first copy).
-2. **Control plane** — setup, fleet, chat, loadout, skills, MCPs, cron, sessions, logs, artifacts.
-3. **Gateway proxy** — browser chat via API routes; machine bearers never become `NEXT_PUBLIC_*`.
+1. **Marketing**: landing, fleet demo, activity grid, FAQ, architecture (primitive-first copy).
+2. **Control plane**: setup, fleet, chat, loadout, skills, MCPs, cron, sessions, logs, artifacts.
+3. **Browser Agent Console**: a live PTY to the agent CLI over tmux-over-exec + SSE (see below).
+4. **Gateway proxy**: browser chat via API routes; machine bearers never become `NEXT_PUBLIC_*`.
 
 ## Current status
 
@@ -72,6 +73,7 @@ npm run sync-skills  # regenerate data/skills.json from ../knowledge/skills
 | `/dashboard` | overview |
 | `/dashboard/setup` | credentials, agent, provider, spec, review |
 | `/dashboard/machines` | machine fleet, active machine, gateway credentials |
+| `/dashboard/machines/[machineId]/terminal` | Browser Agent Console: interactive PTY + one-shot exec |
 | `/dashboard/chat` | streaming chat through the active gateway |
 | `/dashboard/loadout` | built-ins, service hierarchy, task hierarchy |
 | `/dashboard/skills` | synced SKILL.md library |
@@ -80,6 +82,21 @@ npm run sync-skills  # regenerate data/skills.json from ../knowledge/skills
 | `/dashboard/logs` | gateway log tail from `~/.agent-machines/logs/` |
 | `/dashboard/cursor` | cursor-bridge run history |
 | `/dashboard/artifacts` | machine artifact storage |
+
+## Browser Agent Console
+
+Operate the real agent CLI (Codex, Claude Code, Hermes, OpenClaw) from a browser tab, on a remote worker, with no local terminal and no tunnel.
+
+A serverless control plane cannot host a long-lived WebSocket PTY server (Vercel functions time out and have no sticky sessions), so the session is inverted onto the worker:
+
+- **Session on the box:** a persistent `tmux` session (`amconsole`) with `pipe-pane` to `/tmp/am-console.log`.
+- **Stateless control plane:** HTTP for input, SSE for output. No WebSocket, no tunnel on the console path.
+- **Input:** `POST /api/dashboard/terminal/input` runs `tmux send-keys -H <hex>`.
+- **Output:** `GET /api/dashboard/terminal/stream` streams an unbuffered `tail -f` of the pane log from a byte offset.
+- **Attach:** `POST /api/dashboard/terminal/session` ensures tmux, returns a `capture-pane` snapshot + byte offset for instant first paint.
+- **Resize:** `POST /api/dashboard/terminal/resize` runs `tmux resize-window`.
+
+`exec` is the only substrate requirement, so the same UI works on E2B, Sprites, Vercel Sandbox, and Dedalus. Full write-up: [`docs/sandbox-terminal-gateway.md`](docs/sandbox-terminal-gateway.md) and [`../knowledge/BROWSER-AGENT-CONSOLE.md`](../knowledge/BROWSER-AGENT-CONSOLE.md).
 
 ## Data boundaries
 
@@ -93,11 +110,16 @@ npm run sync-skills  # regenerate data/skills.json from ../knowledge/skills
 ```txt
 lib/platform/runtime.ts              canonical paths + loadout counts (sync with src/)
 app/page.tsx                         public landing
-app/api/chat/route.ts                server-side SSE chat proxy
+app/api/chat/route.ts                server-side SSE chat proxy (degrades to console when no gateway URL)
 app/api/dashboard/*                  authenticated dashboard APIs
+app/api/dashboard/terminal/*         Browser Agent Console: session, input, resize, stream
+lib/dashboard/terminal-session.ts    tmux-over-exec session commands + streamConsoleOutput
+components/dashboard/InteractiveConsole.tsx   xterm.js client (snapshot paint, batched writes)
+lib/dashboard/exec-stream.ts         capability-tiered exec streaming engine
+lib/providers/stream-util.ts         bridgeExecStream callback-to-generator adapter
 components/ArchitectureFlow.tsx      interactive architecture map
 lib/bootstrap/runner.ts              browser bootstrap (mirrors src/lib/bootstrap.ts)
-lib/user-config/*                    Clerk-backed user config
+lib/user-config/*                    Clerk-backed user config (+ request-scoped cache)
 lib/providers/*                      MachineProvider implementations
 lib/dashboard/loadout.ts             tool/service/task registry
 lib/seo/config.ts                    site metadata and FAQ source
