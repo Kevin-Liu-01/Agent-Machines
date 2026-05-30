@@ -9,7 +9,7 @@
  * reopens with the latest offset when the stream ends.
  */
 
-import { isMachineRunning } from "@/lib/dashboard/exec";
+import { isMachineRunningCached } from "@/lib/dashboard/machine-running-cache";
 import { SSE_HEADERS, sseFrame } from "@/lib/dashboard/sse";
 import { streamConsoleOutput } from "@/lib/dashboard/terminal-session";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
@@ -28,7 +28,7 @@ export async function GET(request: Request): Promise<Response> {
 	const machineId = url.searchParams.get("machineId")?.trim() || undefined;
 	const offset = Math.max(0, Number.parseInt(url.searchParams.get("offset") ?? "0", 10) || 0);
 
-	if (!(await isMachineRunning(machineId))) {
+	if (!(await isMachineRunningCached(machineId))) {
 		return Response.json(
 			{ error: "machine_offline", message: "Machine is not awake." },
 			{ status: 503 },

@@ -507,7 +507,7 @@ function commandFor(
 					"set -e",
 					migrate,
 					`mkdir -p ${p.APP_HOME}/chats ${p.APP_HOME}/artifacts ${p.HERMES_HOME}/logs ${p.OPENCLAW_HOME}/logs ${p.MACHINE_HOME}/logs/services`,
-					`${sudo}dnf install -y -q jq sqlite >/dev/null 2>&1 || true`,
+					`${sudo}dnf install -y -q jq sqlite tmux >/dev/null 2>&1 || true`,
 				].join(" && ");
 			}
 			if (isSandbox) {
@@ -516,7 +516,7 @@ function commandFor(
 					migrate,
 					`mkdir -p ${p.APP_HOME}/chats ${p.APP_HOME}/artifacts ${p.HERMES_HOME}/logs ${p.OPENCLAW_HOME}/logs ${p.MACHINE_HOME}/logs/services`,
 					`${sudo}apt-get update -qq >/dev/null 2>&1 || true`,
-					`${sudo}apt-get install -y -qq jq sqlite3 >/dev/null 2>&1 || true`,
+					`${sudo}apt-get install -y -qq jq sqlite3 tmux >/dev/null 2>&1 || true`,
 				].join(" && ");
 			}
 			return [
@@ -526,7 +526,7 @@ function commandFor(
 				`mkdir -p ${p.APP_HOME}/chats ${p.APP_HOME}/artifacts ${p.HERMES_HOME}/logs ${p.OPENCLAW_HOME}/logs ${p.MACHINE_HOME}/logs/services`,
 				WAIT_FOR_APT,
 				`${sudo}apt-get update -qq >/dev/null`,
-				`${sudo}apt-get install -y -qq curl git build-essential ca-certificates jq sqlite3 dnsutils iproute2 netcat-openbsd >/dev/null`,
+				`${sudo}apt-get install -y -qq curl git build-essential ca-certificates jq sqlite3 dnsutils iproute2 netcat-openbsd tmux >/dev/null`,
 			].join(" && ");
 		case "install-uv":
 			if (agent !== "hermes") return null;

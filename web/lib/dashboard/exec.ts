@@ -12,7 +12,7 @@
  */
 
 import { getProvider } from "@/lib/providers";
-import { getUserConfig } from "@/lib/user-config/clerk";
+import { getUserConfigCached } from "@/lib/user-config/request-cache";
 import { activeMachine, type UserConfig } from "@/lib/user-config/schema";
 
 export type ExecResult = {
@@ -37,7 +37,7 @@ export async function execOnMachine(
 	command: string,
 	options: { timeoutMs?: number; machineId?: string | null } = {},
 ): Promise<ExecResult> {
-	const config = await getUserConfig();
+	const config = await getUserConfigCached();
 	const machine = resolveMachine(config, options.machineId);
 	if (!machine) {
 		throw new Error(
@@ -59,7 +59,7 @@ export async function execOnMachine(
  */
 export async function isMachineRunning(machineId?: string | null): Promise<boolean> {
 	try {
-		const config = await getUserConfig();
+		const config = await getUserConfigCached();
 		const machine = resolveMachine(config, machineId);
 		if (!machine) return false;
 		const provider = getProvider(machine.providerKind, config.providers);

@@ -28,6 +28,34 @@ import {
 } from "./types";
 
 const DEFAULT_STREAM_TIMEOUT_MS = 120_000;
+/** Reuse sandbox handles across exec/input within a warm serverless instance. */
+const CONNECT_CACHE_MS = 45_000;
+
+type ConnectCacheEntry = {
+	sandbox: Awaited<ReturnType<Awaited<ReturnType<typeof getSandbox>>["connect"]>>;
+	expiresAt: number;
+};
+
+const connectCache = new Map<string, ConnectCacheEntry>();
+
+function invalidateConnectCache(machineId: string): void {
+	connectCache.delete(machineId);
+}
+
+async function connectSandbox(
+	machineId: string,
+	apiKey: string,
+): Promise<ConnectCacheEntry["sandbox"]> {
+	const now = Date.now();
+	const hit = connectCache.get(machineId);
+	if (hit && hit.expiresAt > now) {
+		return hit.sandbox;
+	}
+	const Sandbox = await getSandbox();
+	const sandbox = await Sandbox.connect(machineId, { apiKey });
+	connectCache.set(machineId, { sandbox, expiresAt: now + CONNECT_CACHE_MS });
+	return sandbox;
+}
 
 async function getSandbox() {
 	const { Sandbox } = await import("e2b");
@@ -203,8 +231,7 @@ export class E2BProvider implements MachineProvider {
 		options?: ExecOptions,
 	): Promise<ExecResult> {
 		try {
-			const Sandbox = await getSandbox();
-			const sandbox = await Sandbox.connect(machineId, { apiKey: this.apiKey });
+			const sandbox = await connectSandbox(machineId, this.apiKey);
 			const result = await sandbox.commands.run(bashViaBase64(command), {
 				timeoutMs: options?.timeoutMs ?? 30_000,
 			});
@@ -214,6 +241,7 @@ export class E2BProvider implements MachineProvider {
 				exitCode: result.exitCode,
 			};
 		} catch (err) {
+			invalidateConnectCache(machineId);
 			// E2B SDK throws CommandExitError on non-zero exit codes.
 			// Return the result so the bootstrap runner can inspect
 			// exitCode/stderr instead of getting a generic error.
@@ -244,8 +272,17 @@ export class E2BProvider implements MachineProvider {
 		command: string,
 		options?: ExecStreamOptions,
 	): AsyncGenerator<ExecStreamEvent, void, void> {
-		const Sandbox = await getSandbox();
-		const sandbox = await Sandbox.connect(machineId, { apiKey: this.apiKey });
+		let sandbox: ConnectCacheEntry["sandbox"];
+		try {
+			sandbox = await connectSandbox(machineId, this.apiKey);
+		} catch (err) {
+			invalidateConnectCache(machineId);
+			throw new MachineProviderError(
+				"e2b",
+				classifyError(err),
+				`e2b streamExec connect failed on ${machineId}: ${err instanceof Error ? err.message : String(err)}`,
+			);
+		}
 		yield* bridgeExecStream(async (emit) => {
 			try {
 				const result = await sandbox.commands.run(bashViaBase64(command), {
@@ -255,6 +292,7 @@ export class E2BProvider implements MachineProvider {
 				});
 				return result.exitCode;
 			} catch (err) {
+				invalidateConnectCache(machineId);
 				if (err && typeof err === "object" && "exitCode" in err) {
 					return (err as { exitCode: number }).exitCode;
 				}
@@ -269,12 +307,12 @@ export class E2BProvider implements MachineProvider {
 
 	async execBackground(machineId: string, command: string): Promise<void> {
 		try {
-			const Sandbox = await getSandbox();
-			const sandbox = await Sandbox.connect(machineId, { apiKey: this.apiKey });
+			const sandbox = await connectSandbox(machineId, this.apiKey);
 			await sandbox.commands.run(bashViaBase64(command), {
 				background: true,
 			});
 		} catch (err) {
+			invalidateConnectCache(machineId);
 			throw new MachineProviderError(
 				"e2b",
 				classifyError(err),
@@ -285,10 +323,10 @@ export class E2BProvider implements MachineProvider {
 
 	async getPublicUrl(sandboxId: string, port: number): Promise<string> {
 		try {
-			const Sandbox = await getSandbox();
-			const sandbox = await Sandbox.connect(sandboxId, { apiKey: this.apiKey });
+			const sandbox = await connectSandbox(sandboxId, this.apiKey);
 			return `https://${sandbox.getHost(port)}`;
 		} catch (err) {
+			invalidateConnectCache(sandboxId);
 			throw new MachineProviderError(
 				"e2b",
 				classifyError(err),

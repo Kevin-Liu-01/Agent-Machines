@@ -213,6 +213,12 @@ export async function POST(request: Request): Promise<Response> {
 					? err.message
 					: "provision failed";
 		const status = err instanceof MachineProviderError && err.kind === "not_supported" ? 501 : 502;
+		// Surface the real reason in Vercel logs — the client only sees the HTTP
+		// status, so an opaque 502 is otherwise undiagnosable in production.
+		console.error(
+			`[provision-machine] ${providerKind}/${agentKind} provision failed (${status}):`,
+			message,
+		);
 		return Response.json(
 			{ error: "provision_failed", message },
 			{ status },

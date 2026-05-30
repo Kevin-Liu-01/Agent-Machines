@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import { InteractiveConsole } from "@/components/dashboard/InteractiveConsole";
+import { InteractiveConsole, prefetchXterm } from "@/components/dashboard/InteractiveConsole";
 import { TerminalPanel } from "@/components/dashboard/TerminalPanel";
 import { cn } from "@/lib/cn";
 
@@ -15,6 +15,10 @@ const TABS: ReadonlyArray<{ id: Mode; label: string; hint: string }> = [
 
 export function TerminalWorkspace() {
 	const [mode, setMode] = useState<Mode>("interactive");
+
+	useEffect(() => {
+		prefetchXterm();
+	}, []);
 
 	return (
 		<section className="grid gap-3">

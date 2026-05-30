@@ -6,7 +6,8 @@
  * offset so the client can paint immediately and stream only new output.
  */
 
-import { execOnMachine, isMachineRunning } from "@/lib/dashboard/exec";
+import { execOnMachine } from "@/lib/dashboard/exec";
+import { isMachineRunningCached } from "@/lib/dashboard/machine-running-cache";
 import {
 	CONSOLE_SESSION,
 	capturePaneCommand,
@@ -34,7 +35,7 @@ export async function POST(request: Request): Promise<Response> {
 	const cols = clampDim(body.cols, 20, 500, 120);
 	const rows = clampDim(body.rows, 5, 200, 32);
 
-	if (!(await isMachineRunning(machineId))) {
+	if (!(await isMachineRunningCached(machineId))) {
 		return Response.json(
 			{ error: "machine_offline", message: "Machine is not awake. Wake it first." },
 			{ status: 503 },

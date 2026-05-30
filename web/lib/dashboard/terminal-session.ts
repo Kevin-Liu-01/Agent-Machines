@@ -17,7 +17,7 @@
 
 import { getProvider } from "@/lib/providers";
 import type { ExecStreamEvent } from "@/lib/providers/types";
-import { getUserConfig } from "@/lib/user-config/clerk";
+import { getUserConfigCached } from "@/lib/user-config/request-cache";
 
 import { resolveMachine } from "./exec";
 import { tailFileStreamOnMachine } from "./exec-stream";
@@ -95,7 +95,7 @@ export async function* streamConsoleOutput(
 	machineId: string | null | undefined,
 	options: { offset?: number; maxDurationMs?: number } = {},
 ): AsyncGenerator<ExecStreamEvent, void, void> {
-	const config = await getUserConfig();
+	const config = await getUserConfigCached();
 	const machine = resolveMachine(config, machineId);
 	if (!machine) {
 		throw new Error(

@@ -126,7 +126,7 @@ export function DeployAndTalk() {
 
 			setPhase("ready");
 			setDetail("agent ready — opening console...");
-			await sleep(600);
+			await sleep(150);
 			router.push(`/dashboard/machines/${machineId}/terminal?launch=1`);
 		} catch (err) {
 			if (pollRef.current) clearInterval(pollRef.current);

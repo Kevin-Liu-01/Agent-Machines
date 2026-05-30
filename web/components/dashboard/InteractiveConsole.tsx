@@ -14,11 +14,37 @@ import { agentLabel, agentLaunchCommand, isCliAgent } from "@/lib/dashboard/agen
 
 type Status = "connecting" | "ready" | "offline" | "error";
 
-const INPUT_COALESCE_MS = 12;
-const RECONNECT_MS = 300;
+type SessionPayload = {
+	ok?: boolean;
+	snapshot?: string;
+	offset?: number;
+	message?: string;
+	error?: string;
+};
+
+/** Printable coalesce window — control keys flush immediately. */
+const INPUT_COALESCE_MS = 8;
+const RECONNECT_MS = 100;
+const DEFAULT_COLS = 120;
+const DEFAULT_ROWS = 32;
 
 function sleep(ms: number): Promise<void> {
 	return new Promise((r) => setTimeout(r, ms));
+}
+
+/** Keys that must reach tmux without waiting for the coalesce timer. */
+function shouldFlushInputImmediately(data: string): boolean {
+	for (let i = 0; i < data.length; i += 1) {
+		const code = data.charCodeAt(i);
+		if (code === 0x1b || code === 0x0d || code === 0x09 || code === 0x7f) return true;
+		if (code < 0x20) return true;
+	}
+	return false;
+}
+
+function prefetchXterm(): void {
+	void import("@xterm/xterm");
+	void import("@xterm/addon-fit");
 }
 
 /**
@@ -39,6 +65,10 @@ export function InteractiveConsole() {
 	const [detail, setDetail] = useState<string>("");
 	const launchedRef = useRef(false);
 
+	useEffect(() => {
+		prefetchXterm();
+	}, []);
+
 	// Serialize input POSTs through one promise chain so rapid keystrokes
 	// arrive at tmux in order — concurrent fire-and-forget fetches can race
 	// and reorder characters ("Reply" -> "y...lRep").
@@ -52,6 +82,7 @@ export function InteractiveConsole() {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
 						body: JSON.stringify({ machineId, data }),
+						keepalive: true,
 					}),
 				)
 				.catch(() => {});
@@ -71,6 +102,9 @@ export function InteractiveConsole() {
 	launchRef.current = launchAgent;
 
 	useEffect(() => {
+		if (!machineId) return;
+		const scopedMachineId = machineId;
+
 		let alive = true;
 		let term: XTerm | null = null;
 		let fit: FitAddonType | null = null;
@@ -79,102 +113,55 @@ export function InteractiveConsole() {
 		let inputBuf = "";
 		let inputTimer: ReturnType<typeof setTimeout> | null = null;
 		const offsetRef = { current: 0 };
+		let pendingWrite = "";
+		let pendingBytes = 0;
+		let writeScheduled = false;
 
-		async function boot() {
-			const [{ Terminal }, { FitAddon }] = await Promise.all([
-				import("@xterm/xterm"),
-				import("@xterm/addon-fit"),
-			]);
-			if (!alive || !hostRef.current) return;
+		const flushPendingWrite = () => {
+			writeScheduled = false;
+			if (!pendingWrite || !term) return;
+			const chunk = pendingWrite;
+			const bytes = pendingBytes;
+			pendingWrite = "";
+			pendingBytes = 0;
+			term.write(chunk);
+			offsetRef.current += bytes;
+		};
 
-			term = new Terminal({
-				cursorBlink: true,
-				fontSize: 12,
-				fontFamily:
-					'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
-				theme: {
-					background: "#0a0a0e",
-					foreground: "#d7d7e0",
-					cursor: "#b794f6",
-					selectionBackground: "#3a3357",
-				},
-				scrollback: 8_000,
-				convertEol: false,
-			});
-			fit = new FitAddon();
-			term.loadAddon(fit);
-			term.open(hostRef.current);
-			try {
-				fit.fit();
-			} catch {
-				// container not measured yet; default 80x24 is fine
-			}
+		const scheduleWrite = (data: string, bytes: number) => {
+			pendingWrite += data;
+			pendingBytes += bytes;
+			if (writeScheduled) return;
+			writeScheduled = true;
+			requestAnimationFrame(flushPendingWrite);
+		};
 
-			const flushInput = () => {
-				const data = inputBuf;
-				inputBuf = "";
-				inputTimer = null;
-				if (!data) return;
-				sendInputRef.current(data);
-			};
-			term.onData((d) => {
-				inputBuf += d;
-				if (!inputTimer) inputTimer = setTimeout(flushInput, INPUT_COALESCE_MS);
-			});
-
+		async function attachSession(cols: number, rows: number): Promise<SessionPayload | null> {
 			const created = await fetch("/api/dashboard/terminal/session", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ machineId, cols: term.cols, rows: term.rows }),
+				body: JSON.stringify({ machineId: scopedMachineId, cols, rows }),
 			});
-			if (!alive) return;
+			if (!alive) return null;
 			if (!created.ok) {
-				const e = (await created.json().catch(() => ({}))) as {
-					message?: string;
-					error?: string;
-				};
+				const e = (await created.json().catch(() => ({}))) as SessionPayload;
 				setStatus(created.status === 503 ? "offline" : "error");
 				setDetail(e.message ?? e.error ?? `HTTP ${created.status}`);
-				return;
+				return null;
 			}
-			setStatus("ready");
-			term.focus();
+			return (await created.json()) as SessionPayload;
+		}
 
-			// One-click flow: auto-start the agent CLI once the pane is attached.
-			if (autoLaunch && isCliAgent(agentKind) && !launchedRef.current) {
-				launchedRef.current = true;
-				setTimeout(() => launchRef.current(), 700);
-			}
-
-			if (hostRef.current) {
-				resizeObs = new ResizeObserver(() => {
-					if (!fit || !term) return;
-					try {
-						fit.fit();
-						if (machineId) {
-							void fetch("/api/dashboard/terminal/resize", {
-								method: "POST",
-								headers: { "Content-Type": "application/json" },
-								body: JSON.stringify({ machineId, cols: term.cols, rows: term.rows }),
-							}).catch(() => {});
-						}
-					} catch {
-						// ignore transient layout errors
-					}
-				});
-				resizeObs.observe(hostRef.current);
-			}
-
-			// Output stream loop: stream from byte offset, reconnect on end.
+		async function streamLoop(): Promise<void> {
 			while (alive) {
 				streamAbort = new AbortController();
 				try {
 					const r = await fetch(
-						`/api/dashboard/terminal/stream?machineId=${encodeURIComponent(machineId ?? "")}&offset=${offsetRef.current}`,
+						`/api/dashboard/terminal/stream?machineId=${encodeURIComponent(scopedMachineId)}&offset=${offsetRef.current}`,
 						{ signal: streamAbort.signal },
 					);
 					if (!r.ok || !r.body) {
-						await sleep(800);
+						await sleep(400);
 						continue;
 					}
 					const reader = r.body.getReader();
@@ -196,10 +183,11 @@ export function InteractiveConsole() {
 							if (ev !== "output" || !ds) continue;
 							try {
 								const o = JSON.parse(ds) as { data?: string; bytes?: number };
-								if (o.data && term) {
-									term.write(o.data);
-									offsetRef.current +=
-										o.bytes ?? new TextEncoder().encode(o.data).length;
+								if (o.data) {
+									scheduleWrite(
+										o.data,
+										o.bytes ?? new TextEncoder().encode(o.data).length,
+									);
 								}
 							} catch {
 								// skip malformed frame
@@ -210,7 +198,103 @@ export function InteractiveConsole() {
 					if (!alive) break;
 				}
 				if (!alive) break;
+				flushPendingWrite();
 				await sleep(RECONNECT_MS);
+			}
+		}
+
+		async function boot() {
+			// Attach tmux session in parallel with xterm bundle download.
+			const sessionPromise = attachSession(DEFAULT_COLS, DEFAULT_ROWS);
+			const [xtermModules, session] = await Promise.all([
+				Promise.all([import("@xterm/xterm"), import("@xterm/addon-fit")]),
+				sessionPromise,
+			]);
+			if (!alive || !hostRef.current || !session) return;
+
+			const [{ Terminal }, { FitAddon }] = xtermModules;
+			term = new Terminal({
+				cursorBlink: true,
+				fontSize: 12,
+				fontFamily:
+					'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+				theme: {
+					background: "#0a0a0e",
+					foreground: "#d7d7e0",
+					cursor: "#b794f6",
+					selectionBackground: "#3a3357",
+				},
+				scrollback: 4_000,
+				convertEol: false,
+			});
+			fit = new FitAddon();
+			term.loadAddon(fit);
+			term.open(hostRef.current);
+
+			const flushInput = () => {
+				const data = inputBuf;
+				inputBuf = "";
+				inputTimer = null;
+				if (!data) return;
+				sendInputRef.current(data);
+			};
+			term.onData((d) => {
+				inputBuf += d;
+				if (shouldFlushInputImmediately(d)) {
+					if (inputTimer) {
+						clearTimeout(inputTimer);
+						inputTimer = null;
+					}
+					flushInput();
+					return;
+				}
+				if (!inputTimer) inputTimer = setTimeout(flushInput, INPUT_COALESCE_MS);
+			});
+
+			try {
+				fit.fit();
+			} catch {
+				// container not measured yet; default cols/rows is fine
+			}
+
+			if (term.cols !== DEFAULT_COLS || term.rows !== DEFAULT_ROWS) {
+				void fetch("/api/dashboard/terminal/resize", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ machineId: scopedMachineId, cols: term.cols, rows: term.rows }),
+				}).catch(() => {});
+			}
+
+			if (session.snapshot) {
+				term.write(session.snapshot);
+			}
+			offsetRef.current = session.offset ?? 0;
+
+			setStatus("ready");
+			term.focus();
+
+			void streamLoop();
+
+			if (autoLaunch && isCliAgent(agentKind) && !launchedRef.current) {
+				launchedRef.current = true;
+				setTimeout(() => launchRef.current(), 250);
+			}
+
+			if (hostRef.current) {
+				resizeObs = new ResizeObserver(() => {
+					if (!fit || !term) return;
+					try {
+						fit.fit();
+						void fetch("/api/dashboard/terminal/resize", {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({ machineId: scopedMachineId, cols: term.cols, rows: term.rows }),
+						}).catch(() => {});
+					} catch {
+						// ignore transient layout errors
+					}
+				});
+				resizeObs.observe(hostRef.current);
 			}
 		}
 
@@ -221,9 +305,9 @@ export function InteractiveConsole() {
 			streamAbort?.abort();
 			resizeObs?.disconnect();
 			if (inputTimer) clearTimeout(inputTimer);
+			flushPendingWrite();
 			term?.dispose();
 		};
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [machineId]);
 
 	return (
@@ -288,3 +372,5 @@ export function InteractiveConsole() {
 		</div>
 	);
 }
+
+export { prefetchXterm };

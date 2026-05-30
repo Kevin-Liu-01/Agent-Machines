@@ -99,6 +99,9 @@ Click any row to jump. Every answer has **[↑ All questions](#question-index)**
 | OpenClaw on E2B/Sprites is one command | [→](#obj-one-command)    |
 | Internal agent teams at big cos        | [→](#obj-internal-teams) |
 | 500 skills vs 161 — which number?      | [→](#obj-skills-count)   |
+| Runtime risk — OpenClaw/Hermes dies?   | [→](#obj-runtime-risk)   |
+| E2B ships easy deploy — what's the moat? | [→](#obj-substrate-copy) |
+| Who pays deploy — you or the user?       | [→](#obj-who-pays)         |
 
 
 ### Team & timing
@@ -156,6 +159,8 @@ Click any row to jump. Every answer has **[↑ All questions](#question-index)**
 | vs Vercel                              | [→](#q-vs-vercel)    |
 | vs OpenAI agents / Operator            | [→](#q-vs-openai)    |
 | What if OpenAI ships one-click agents? | [→](#q-openai-ships) |
+| vs BYOS (bring your own sandbox)       | [→](#vs-byos)        |
+| vs Hyperagent                          | [→](#vs-hyperagent)  |
 
 
 ### Business
@@ -755,6 +760,50 @@ A hundred and sixty-one ship in the product today — that's the partner-safe nu
 
 ---
 
+<a id="obj-runtime-risk"></a>
+
+### "What if OpenClaw or Hermes usage changes — or dies? Is this sustainable long-term?"
+
+[↑ All questions](#question-index)
+
+**Say this:**
+
+We're not betting the company on OpenClaw or Hermes — we route four runtimes today and we're substrate-agnostic on three cloud providers. OpenClaw is one lane in the router, not the product. The product is the persistent skilled worker: harness, skills on disk, gateway, observation, fleet, presets. If OpenClaw fades, we swap the runtime lane the same way OpenRouter swaps when a model lab deprecates a checkpoint — users keep their workers, their SKILL.md procedures, their session history, their cron jobs; we change what's under the hood. Runtimes will churn the way models churn; that's why we never described ourselves as an OpenClaw company. What's durable is the control plane — deploy, route, observe, compose — and the harness registry that compounds every week. If the whole category of open runtimes died tomorrow, we'd still have value in observation, fleet, and preset distribution on whatever runtime wins next — Claude Code, Codex, or the next thing. Sustainability comes from neutrality plus stickiness above the runtime, not from picking the winning tarball.
+
+---
+
+<a id="obj-substrate-copy"></a>
+
+### "E2B and others will ship one-click agent deploy if there's demand. Is your value prop just tools, management, or UX?"
+
+[↑ All questions](#question-index)
+
+**Say this:**
+
+They probably will — and some already have tutorial-level paths — and we assume that becomes table stakes the same way every cloud had a "deploy Node app" button before Vercel existed, so the value prop was never "we click deploy instead of you." It's harness composition — a hundred and sixty-one skills, thirty-five MCPs, ranked routes, closed-loop CLIs that E2B won't ship because they're an infra company — plus neutral routing across runtime, substrate, and model in one account, plus observation and fleet management as the Datadog layer for agents, plus distribution through outcome-labeled presets and eventually programmatic fleet provisioning; UX matters and we're building the most non-technical-friendly technical company in the category, but the UX sits on that integrated stack, not on an empty box. You pay a platform subscription plus metered compute while the worker is awake — Vercel shape, not sandbox resale — and if substrates give away easy deploy for free our margin just moves up the stack, which is exactly where we want it.
+
+---
+
+<a id="obj-who-pays"></a>
+
+### "Who pays the deployment fees — you or the user? How do you charge for worker usage?"
+
+[↑ All questions](#question-index)
+
+**Short answer:** The user pays. We do not eat substrate bills to grow.
+
+| From Agent Machines | Separate (not us today) |
+| --- | --- |
+| **Platform subscription** — harness, dashboard, gateway, presets, cron | **Model API usage** — user brings OpenAI / Anthropic / Dedalus keys |
+| **Compute while awake** — CPU, memory, storage on E2B / Sprites / Dedalus | |
+| **Sleep = $0 compute** — disk, skills, sessions preserved | |
+
+**Say this:**
+
+The user pays — we don't subsidize deploy. You get two charges from us and one that's separate. First, a platform subscription: free to try one worker, about twenty-nine a month for multiple workers and cron, more for teams — that's the product, not the box. Second, metered compute only while the worker is awake — CPU, memory, storage on whichever substrate you picked. Sleep it and compute goes to zero; your skills, sessions, and disk stay. Third, models: today that's BYOK — you bring your own API keys and pay OpenAI or Anthropic directly; we route through our gateway. We're not eating any of those bills. Our revenue is subscription plus a markup on substrate compute — Vercel on AWS, not trying to be the cheapest microVM. Usage tracking is live in the dashboard; Stripe checkout ships this summer. The flywheel is cron and skills keep the worker running overnight, which drives awake hours and usage revenue.
+
+---
+
 
 
 ## User understanding (script)
@@ -803,7 +852,9 @@ We win on distribution first, the same way ChatGPT beat the raw API — friction
 
 **Say this:**
 
-Vercel-on-AWS shape — platform fee plus usage. Compute hours, wake time, optional token pass-through. Free tier with one worker and capped hours so people can try a preset. Pro around twenty-nine for multiple workers and cron. Team for fleet and shared presets. Enterprise for self-host and compliance. The flywheel is more skills means more autonomous cron work means more compute hours. We're not betting on being the cheapest sandbox. We're betting on being the place you deploy workers that actually finish tasks.
+The user pays — two charges from us, models separate. Platform subscription for the product; metered compute only while the worker is awake; sleep stops the meter. Models are BYOK today. Full breakdown: [→](#obj-who-pays)
+
+**If they push on unit economics:** [→](#obj-who-pays)
 
 ---
 
@@ -1118,6 +1169,30 @@ Not idea validation — the product is live. We need help pressure-testing the m
 [↑ All questions](#question-index)
 
 **Say this:** That validates the market. We stay multi-runtime, multi-substrate, skill-open, observable, fleet-first. The OpenRouter position gets more valuable when one vendor ships a good agent — because everyone else needs neutral ground.
+
+---
+
+<a id="vs-byos"></a>
+
+**Q: vs BYOS — bring your own sandbox? OpenAI and Claude now support multiple sandbox providers; switching costs go to zero.**
+
+[↑ All questions](#question-index)
+
+**Say this:**
+
+BYOS is a developer SDK pattern, not a product — it lets engineers who already write agent code swap E2B for Docker for Modal by changing config, and that's real and good for them. It doesn't solve discovery, one-click deploy, pre-loaded skills, gateway bootstrap, cron, fleet observation, or any of the assembly work that still takes a weekend. It actually validates our bet: when sandboxes commoditize and switching costs go to zero, value moves up the stack to whoever owns deploy, harness composition, and observability on neutral infra — exactly the OpenRouter-for-agents layer we built. BYOS makes the box free; we productize the worker. That's tailwind, not a threat.
+
+---
+
+<a id="vs-hyperagent"></a>
+
+**Q: vs Hyperagent? They look like they're doing the same thing — fleet, specialists, command center.**
+
+[↑ All questions](#question-index)
+
+**Say this:**
+
+Hyperagent is the closest surface-level comp — Airtable-team product, "OS for AI agents," specialist presets like Data Analyst and Recruiter, fleet command center, Slack deployment, evals and A/B testing, and they're well-funded with strong UX. The difference is they're building a walled-garden OS on their own cloud-native stack with their templates and their infra, and we're building the neutral control plane — any runtime, any sandbox, open skill registry, one deploy primitive, substrate routing like OpenRouter. They validate the category and prove enterprises want outcome-labeled fleets; we win because BYOS and commoditized sandboxes favor routing and harness compounding over owning a single hosted stack, because our moat is idempotent multi-substrate bootstrap and observation across heterogeneous agents not just fleet analytics, and because we start with builders who feel deploy pain today and expand to the same "this does your HR" story on a composable platform instead of a closed one.
 
 ---
 

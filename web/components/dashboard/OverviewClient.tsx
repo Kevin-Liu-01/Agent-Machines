@@ -141,7 +141,7 @@ export function OverviewClient({
 					icon={<Logo mark="am" size={11} />}
 					value={<StatusPill phase={phase} className="px-2 py-0.5 text-[11px]" />}
 					hint={
-						machine.machine
+						machine.machine?.machineId
 							? `${machine.machine.machineId.slice(0, 14)}…`
 							: "loading"
 					}
