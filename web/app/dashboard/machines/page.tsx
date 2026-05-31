@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
 import { DeployAndTalk } from "@/components/dashboard/DeployAndTalk";
+import { FleetAnalytics } from "@/components/dashboard/FleetAnalytics";
 import { MachinesPanel } from "@/components/dashboard/MachinesPanel";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
@@ -13,7 +14,7 @@ export default function MachinesPage() {
 			<PageHeader
 				kicker="FLEET"
 				title="Your machines"
-				description="Live fleet activity across every machine. Click Chat to interact in split view, or Open to drill into terminal, logs, and loadout."
+				description="Every machine on the account: live state, resource trends, and one-click deploy. Open a machine to drill into its console, terminal, logs, and loadout."
 				right={
 					<ReticleButton
 						as="a"
@@ -25,7 +26,8 @@ export default function MachinesPage() {
 					</ReticleButton>
 				}
 			/>
-			<div className="px-5 pt-5">
+			<div className="flex flex-col gap-5 px-5 pt-5">
+				<FleetAnalytics />
 				<DeployAndTalk />
 			</div>
 			<Suspense fallback={null}>

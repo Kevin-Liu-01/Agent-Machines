@@ -20,6 +20,7 @@ import type {
 import type { AgentKind, PublicMachineRef } from "@/lib/user-config/schema";
 
 import { AgentSwitcher } from "./AgentSwitcher";
+import { FleetStatusStrip } from "./FleetStatusStrip";
 import { MachineSwitcher } from "./MachineSwitcher";
 import { ModelSwitcher } from "./ModelSwitcher";
 import { StatusPill } from "./StatusPill";
@@ -29,8 +30,8 @@ const CLERK_READY = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 const MACHINE_PATH_RE = /^\/dashboard\/machines\/([^/]+)/;
 
 type Props = {
+	/** Fallback agent for the switcher label when the URL machine isn't resolved. */
 	agentKind: AgentKind;
-	activeMachineId?: string;
 	machines?: PublicMachineRef[];
 };
 
@@ -45,13 +46,17 @@ type State = {
  * we show breadcrumbs, status, and controls. Polls machine + gateway every
  * five seconds; pauses while the tab is hidden.
  */
-export function StatusHeader({ agentKind, activeMachineId, machines }: Props) {
+export function StatusHeader({ agentKind, machines }: Props) {
 	const pathname = usePathname();
 	const machineMatch = MACHINE_PATH_RE.exec(pathname);
 	const urlMachine = machineMatch
 		? machines?.find((m) => m.id === machineMatch[1])
 		: undefined;
-	const scopedMachineId = urlMachine?.id ?? activeMachineId ?? null;
+	// In machine view the header is scoped to the URL machine; on fleet
+	// pages there is no single machine in context, so we never fall back to
+	// the implicit active machine for the machine-scoped controls.
+	const inMachineView = Boolean(urlMachine);
+	const scopedMachineId = urlMachine?.id ?? null;
 	const [state, setState] = useState<State>({
 		machine: null,
 		gateway: null,
@@ -59,6 +64,10 @@ export function StatusHeader({ agentKind, activeMachineId, machines }: Props) {
 	});
 
 	useEffect(() => {
+		if (!inMachineView) {
+			setState({ machine: null, gateway: null, error: null });
+			return;
+		}
 		let stopped = false;
 
 		async function tick() {
@@ -98,7 +107,7 @@ export function StatusHeader({ agentKind, activeMachineId, machines }: Props) {
 			window.clearInterval(interval);
 			document.removeEventListener("visibilitychange", onVisible);
 		};
-	}, [scopedMachineId]);
+	}, [scopedMachineId, inMachineView]);
 
 	const machinePhase = state.machine?.phase ?? "loading";
 	const gateway = state.gateway;
@@ -142,18 +151,38 @@ export function StatusHeader({ agentKind, activeMachineId, machines }: Props) {
 						<FleetBreadcrumb pathname={pathname} />
 					)}
 				</nav>
-				<StatusPill
-					phase={machinePhase}
-					className="shrink-0 text-[12px] font-medium"
-				/>
+				{inMachineView ? (
+					<StatusPill
+						phase={machinePhase}
+						className="shrink-0 text-[12px] font-medium"
+					/>
+				) : null}
 			</div>
 
 			<div className="flex shrink-0 items-center gap-2">
-				<GatewayStrip data={gateway} />
-				<span className={headerDivider} aria-hidden />
-				<ModelSwitcher activeMachineId={scopedMachineId} />
-				<MachineSwitcher />
-				<AgentSwitcher value={agentKind} activeMachineId={scopedMachineId ?? undefined} />
+				{inMachineView ? (
+					<>
+						<GatewayStrip data={gateway} />
+						<span className={headerDivider} aria-hidden />
+						<ModelSwitcher activeMachineId={scopedMachineId} />
+						<MachineSwitcher />
+						<AgentSwitcher
+							value={urlMachine?.agentKind ?? agentKind}
+							activeMachineId={scopedMachineId ?? undefined}
+						/>
+					</>
+				) : (
+					<>
+						<FleetStatusStrip />
+						<Link
+							href="/dashboard/setup"
+							className="flex items-center gap-1 border border-[var(--ret-purple)]/45 bg-[var(--ret-purple-glow)] px-2.5 py-1 text-[12px] font-medium leading-none text-[var(--ret-purple)] transition-colors hover:border-[var(--ret-purple)]"
+						>
+							<span aria-hidden>+</span>
+							<span>Spin up</span>
+						</Link>
+					</>
+				)}
 				<span className={headerDivider} aria-hidden />
 				<ThemeToggle />
 				{CLERK_READY ? (

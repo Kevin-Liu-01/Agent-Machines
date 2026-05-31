@@ -13,6 +13,13 @@ import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { WingBackground } from "@/components/WingBackground";
 import { AGENTS } from "@/lib/agents";
 import { TRUSTED_ADDONS } from "@/lib/dashboard/loadout";
+import { groupedModelCatalog, modelDisplayLabel } from "@/lib/dashboard/model-catalog";
+import {
+	AGENT_KINDS,
+	AGENT_LABEL,
+	PROVIDER_KINDS,
+	PROVIDER_LABEL,
+} from "@/lib/user-config/schema";
 import type {
 	AgentProfile,
 	BootstrapPreset,
@@ -64,10 +71,43 @@ export function SettingsPanel({ initialConfig }: Props) {
 	const [loadoutPresetJson, setLoadoutPresetJson] = useState(
 		json(config.loadoutPresets),
 	);
-	const [activeLoadoutPresetId, setActiveLoadoutPresetId] = useState(
-		config.activeLoadoutPresetId,
-	);
 	const [state, setState] = useState<SaveState>({ phase: "idle" });
+	// Which instant-save Active-configuration control is mid-flight.
+	const [savingField, setSavingField] = useState<string | null>(null);
+
+	// Active configuration writes a single field and reflects the returned
+	// config immediately, so switching agent/substrate/model/loadout feels
+	// like flipping a setting rather than filling a form.
+	async function applyConfigPatch(
+		endpoint: "setup" | "settings",
+		body: Record<string, unknown>,
+		field: string,
+	): Promise<void> {
+		setSavingField(field);
+		try {
+			const response = await fetch(`/api/dashboard/admin/${endpoint}`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body),
+			});
+			const result = (await response.json().catch(() => ({}))) as {
+				config?: PublicUserConfig;
+				message?: string;
+			};
+			if (!response.ok || !result.config) {
+				throw new Error(result.message ?? `HTTP ${response.status}`);
+			}
+			setConfig(result.config);
+			setState({ phase: "ok", message: `${field} updated` });
+		} catch (err) {
+			setState({
+				phase: "error",
+				message: err instanceof Error ? err.message : `${field} update failed`,
+			});
+		} finally {
+			setSavingField(null);
+		}
+	}
 
 	async function save(): Promise<void> {
 		setState({ phase: "saving" });
@@ -120,7 +160,6 @@ export function SettingsPanel({ initialConfig }: Props) {
 					customLoadout: parse<CustomLoadoutEntry[]>(loadoutJson),
 					loadoutSources: parse<LoadoutSource[]>(sourceJson),
 					loadoutPresets: parse<LoadoutPreset[]>(loadoutPresetJson),
-					activeLoadoutPresetId,
 				}),
 			});
 			const body = (await response.json().catch(() => ({}))) as {
@@ -163,7 +202,6 @@ export function SettingsPanel({ initialConfig }: Props) {
 			setLoadoutJson(json(body.config.customLoadout));
 			setSourceJson(json(body.config.loadoutSources));
 			setLoadoutPresetJson(json(body.config.loadoutPresets));
-			setActiveLoadoutPresetId(body.config.activeLoadoutPresetId);
 			setState({ phase: "ok", message: "synced from machine settings.json" });
 		} catch (err) {
 			setState({
@@ -214,6 +252,72 @@ export function SettingsPanel({ initialConfig }: Props) {
 				</p>
 				</ReticleFrame>
 			) : null}
+
+			<Section
+				kicker="ACTIVE CONFIGURATION"
+				title="Defaults for new machines"
+				description="What every new machine inherits, plus the active loadout preset. These save instantly. Per-machine model/agent and the router are chosen at deploy time."
+			>
+				<div className="grid gap-px bg-[var(--ret-border)] sm:grid-cols-2 lg:grid-cols-4">
+					<ConfigSelect
+						label="Agent"
+						value={config.draftAgentKind}
+						saving={savingField === "agent"}
+						onChange={(value) =>
+							void applyConfigPatch("setup", { draftAgentKind: value }, "agent")
+						}
+						options={AGENT_KINDS.map((kind) => ({
+							value: kind,
+							label: AGENT_LABEL[kind],
+						}))}
+					/>
+					<ConfigSelect
+						label="Substrate"
+						value={config.draftProviderKind}
+						saving={savingField === "substrate"}
+						onChange={(value) =>
+							void applyConfigPatch("setup", { draftProviderKind: value }, "substrate")
+						}
+						options={PROVIDER_KINDS.map((kind) => ({
+							value: kind,
+							label: PROVIDER_LABEL[kind],
+						}))}
+					/>
+					<ModelConfigSelect
+						value={config.draftModel}
+						saving={savingField === "model"}
+						onChange={(value) =>
+							void applyConfigPatch("setup", { draftModel: value }, "model")
+						}
+					/>
+					<ConfigSelect
+						label="Loadout preset"
+						value={config.activeLoadoutPresetId}
+						saving={savingField === "loadout preset"}
+						onChange={(value) =>
+							void applyConfigPatch(
+								"settings",
+								{ activeLoadoutPresetId: value },
+								"loadout preset",
+							)
+						}
+						options={
+							config.loadoutPresets.length > 0
+								? config.loadoutPresets.map((preset) => ({
+										value: preset.id,
+										label: preset.name || preset.id,
+									}))
+								: [
+										{
+											value: config.activeLoadoutPresetId || "default",
+											label: config.activeLoadoutPresetId || "default",
+										},
+									]
+						}
+						hint={`${config.loadoutPresets.length} preset${config.loadoutPresets.length === 1 ? "" : "s"} \u00b7 edit in Advanced`}
+					/>
+				</div>
+			</Section>
 
 			<Section
 				kicker="SECRETS"
@@ -347,30 +451,36 @@ export function SettingsPanel({ initialConfig }: Props) {
 				</div>
 			</Section>
 
-			<Section
-				kicker="PROFILES"
-				title="Reusable machine configuration"
-				description="These JSON arrays are account-level. Existing bundled sources are the opinionated default preset; add GitHub repos, URLs, MCP servers, CLIs, npm packages, or manual tools and compose your own presets."
-			>
-				<CatalogHint />
-				<JsonEditor label="Gateway profiles" value={gatewayJson} onChange={setGatewayJson} />
-				<JsonEditor label="Agent profiles" value={agentJson} onChange={setAgentJson} />
-				<JsonEditor label="Environment profiles" value={envJson} onChange={setEnvJson} />
-				<JsonEditor label="Bootstrap presets" value={presetJson} onChange={setPresetJson} />
-				<label className="mb-3 block">
-					<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-						Active loadout preset
+			<details className="group">
+				<summary className="flex cursor-pointer list-none items-center justify-between gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2.5">
+					<span className="flex items-center gap-2">
+						<ReticleLabel>ADVANCED</ReticleLabel>
+						<ReticleBadge>Profiles &amp; loadout (raw JSON)</ReticleBadge>
 					</span>
-					<input
-						value={activeLoadoutPresetId}
-						onChange={(event) => setActiveLoadoutPresetId(event.target.value)}
-						className="mt-1 w-full border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-2 font-mono text-[11px] text-[var(--ret-text)]"
-					/>
-				</label>
-				<JsonEditor label="Loadout sources" value={sourceJson} onChange={setSourceJson} />
-				<JsonEditor label="Loadout presets" value={loadoutPresetJson} onChange={setLoadoutPresetJson} />
-				<JsonEditor label="Custom skills / tools / MCP / CLI / plugins" value={loadoutJson} onChange={setLoadoutJson} />
-			</Section>
+					<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)] group-open:hidden">
+						show
+					</span>
+					<span className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)] group-open:inline">
+						hide
+					</span>
+				</summary>
+				<div className="border border-t-0 border-[var(--ret-border)] bg-[var(--ret-bg)] p-3">
+					<p className="mb-3 max-w-[80ch] text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
+						Account-level recipes: bundled sources are the opinionated default;
+						add GitHub repos, URLs, MCP servers, CLIs, npm packages, or manual
+						tools and compose presets. Gateway profiles are your routers. Edit
+						the JSON, then Save settings below.
+					</p>
+					<CatalogHint />
+					<JsonEditor label="Gateway profiles (routers)" value={gatewayJson} onChange={setGatewayJson} />
+					<JsonEditor label="Agent profiles" value={agentJson} onChange={setAgentJson} />
+					<JsonEditor label="Environment profiles" value={envJson} onChange={setEnvJson} />
+					<JsonEditor label="Bootstrap presets" value={presetJson} onChange={setPresetJson} />
+					<JsonEditor label="Loadout sources" value={sourceJson} onChange={setSourceJson} />
+					<JsonEditor label="Loadout presets" value={loadoutPresetJson} onChange={setLoadoutPresetJson} />
+					<JsonEditor label="Custom skills / tools / MCP / CLI / plugins" value={loadoutJson} onChange={setLoadoutJson} />
+				</div>
+			</details>
 
 			<div className="flex flex-wrap justify-end gap-2">
 				<ReticleButton variant="ghost" onClick={() => void syncFromMachine()}>
@@ -408,6 +518,100 @@ function Section({
 			</div>
 			<div className="p-3">{children}</div>
 		</ReticleFrame>
+	);
+}
+
+function ConfigSelect({
+	label,
+	value,
+	options,
+	onChange,
+	saving,
+	hint,
+}: {
+	label: string;
+	value: string;
+	options: ReadonlyArray<{ value: string; label: string }>;
+	onChange: (value: string) => void;
+	saving: boolean;
+	hint?: string;
+}) {
+	return (
+		<div className="bg-[var(--ret-bg)] p-3">
+			<div className="mb-1.5 flex items-center justify-between gap-2">
+				<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+					{label}
+				</p>
+				{saving ? (
+					<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-purple)]">
+						saving…
+					</span>
+				) : null}
+			</div>
+			<select
+				value={value}
+				onChange={(event) => onChange(event.target.value)}
+				disabled={saving}
+				className="w-full border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1.5 text-[12px] text-[var(--ret-text)] outline-none disabled:opacity-60"
+			>
+				{options.map((option) => (
+					<option key={option.value} value={option.value}>
+						{option.label}
+					</option>
+				))}
+			</select>
+			{hint ? (
+				<p className="mt-1 text-[9px] text-[var(--ret-text-muted)]">{hint}</p>
+			) : null}
+		</div>
+	);
+}
+
+function ModelConfigSelect({
+	value,
+	onChange,
+	saving,
+}: {
+	value: string;
+	onChange: (value: string) => void;
+	saving: boolean;
+}) {
+	const groups = groupedModelCatalog();
+	const known = groups.some((group) =>
+		group.models.some((model) => model.id === value),
+	);
+	return (
+		<div className="bg-[var(--ret-bg)] p-3">
+			<div className="mb-1.5 flex items-center justify-between gap-2">
+				<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+					Model
+				</p>
+				{saving ? (
+					<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-purple)]">
+						saving…
+					</span>
+				) : null}
+			</div>
+			<select
+				value={value}
+				onChange={(event) => onChange(event.target.value)}
+				disabled={saving}
+				className="w-full border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1.5 text-[12px] text-[var(--ret-text)] outline-none disabled:opacity-60"
+			>
+				{known ? null : (
+					<option value={value}>{value ? modelDisplayLabel(value) : "—"}</option>
+				)}
+				{groups.map((group) => (
+					<optgroup key={group.group} label={group.label}>
+						{group.models.map((model) => (
+							<option key={model.id} value={model.id}>
+								{model.label}
+							</option>
+						))}
+					</optgroup>
+				))}
+			</select>
+		</div>
 	);
 }
 

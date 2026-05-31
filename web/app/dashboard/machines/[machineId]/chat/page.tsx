@@ -1,31 +1,14 @@
-import { ChatShell } from "@/components/dashboard/ChatShell";
-import { PageHeader } from "@/components/dashboard/PageHeader";
-import { getUserConfig } from "@/lib/user-config/clerk";
-import { AGENT_LABEL } from "@/lib/user-config/schema";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-type Props = {
+/**
+ * Chat folded into Console. The 3-panel agent console (which streams through
+ * the same gateway) is now the single conversational surface per machine.
+ */
+export default async function MachineChatPage({
+	params,
+}: {
 	params: Promise<{ machineId: string }>;
-};
-
-export default async function MachineChatPage({ params }: Props) {
+}) {
 	const { machineId } = await params;
-	const config = await getUserConfig();
-	const machine = config.machines.find((m) => m.id === machineId);
-	const agentLabel = machine?.agentKind ? AGENT_LABEL[machine.agentKind] : "agent";
-
-	return (
-		<div className="flex flex-col">
-			<PageHeader
-				kicker={`CHAT -- ${agentLabel} gateway`}
-				title="Chat"
-				description="Streams from the resolved gateway profile for this machine."
-			/>
-			<ChatShell
-				activeMachineId={machineId}
-				model={machine?.model ?? null}
-			/>
-		</div>
-	);
+	redirect(`/dashboard/machines/${machineId}/console`);
 }

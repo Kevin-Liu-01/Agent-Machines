@@ -1,17 +1,11 @@
-import { ArtifactsPanel } from "@/components/dashboard/ArtifactsPanel";
-import { PageHeader } from "@/components/dashboard/PageHeader";
+import { redirect } from "next/navigation";
+
+import { resolveActiveMachineId } from "@/lib/dashboard/active-machine";
 
 export const dynamic = "force-dynamic";
 
-export default function ArtifactsPage() {
-	return (
-		<div className="flex flex-col">
-			<PageHeader
-				kicker="ARTIFACTS"
-				title="Persistent files"
-				description="Drop files here -- agent outputs, screenshots, exported docs. Persistent-machine artifacts live under /home/machine/.agent-machines and downloads are proxied through the dashboard. Ephemeral sandboxes use the account's external storage backend."
-			/>
-			<ArtifactsPanel />
-		</div>
-	);
+/** Fleet-level shortcut to the active machine's artifacts. */
+export default async function DashboardArtifactsRedirect() {
+	const id = await resolveActiveMachineId();
+	redirect(id ? `/dashboard/machines/${id}/artifacts` : "/dashboard/machines");
 }

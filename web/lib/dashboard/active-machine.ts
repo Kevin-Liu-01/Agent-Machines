@@ -52,6 +52,18 @@ export async function fetchActiveMachineSummary(): Promise<MachineSummary> {
 	return fetchMachineSummary(null);
 }
 
+/**
+ * Resolve which machine the fleet-level "active machine" shortcuts should
+ * target: the explicitly-active machine, else the first non-archived one,
+ * else null (caller should send the user to the fleet listing).
+ */
+export async function resolveActiveMachineId(): Promise<string | null> {
+	const config = await getUserConfig();
+	const active = activeMachine(config);
+	if (active) return active.id;
+	return config.machines.find((m) => !m.archived)?.id ?? null;
+}
+
 export async function wakeMachine(machineId?: string | null): Promise<MachineSummary> {
 	const config = await getUserConfig();
 	const { machine, provider } = await resolveMachineRef(machineId);

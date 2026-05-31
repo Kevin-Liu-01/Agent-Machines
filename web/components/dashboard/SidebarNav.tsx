@@ -33,7 +33,7 @@ type NavItem = {
 };
 
 type NavSection = {
-	id: "work" | "live" | "config";
+	id: string;
 	label: string;
 	hint: string;
 	items: ReadonlyArray<NavItem>;
@@ -46,20 +46,25 @@ type Props = {
 	machines: PublicMachineRef[];
 };
 
-const FLEET_OVERVIEW_ITEMS: ReadonlyArray<NavItem> = [
+// Fleet view, top-down: operate the fleet, then what's installed on it,
+// then account-level keys + provisioning. "Machines" is the single fleet
+// listing (the old "Containers" page folded its analytics in here).
+const FLEET_ITEMS: ReadonlyArray<NavItem> = [
 	{ href: "/dashboard", label: "Overview", icon: IconGrid },
 	{ href: "/dashboard/machines", label: "Machines", icon: IconStack },
-	{ href: "/dashboard/containers", label: "Containers", icon: IconBox },
 	{ href: "/dashboard/usage", label: "Usage", icon: IconWave },
 	{ href: "/dashboard/benchmarks", label: "Benchmarks", icon: IconGauge, badge: "new" },
 ];
 
-const FLEET_CONFIG_ITEMS: ReadonlyArray<NavItem> = [
-	{ href: "/dashboard/settings", label: "Settings", icon: IconKey },
-	{ href: "/dashboard/registry", label: "Registry", icon: IconStore, badge: "new" },
+const LIBRARY_ITEMS: ReadonlyArray<NavItem> = [
 	{ href: "/dashboard/skills", label: "Skills", icon: IconScroll },
 	{ href: "/dashboard/mcps", label: "MCPs", icon: IconPlug },
 	{ href: "/dashboard/cron", label: "Cron", icon: IconClock },
+	{ href: "/dashboard/registry", label: "Registry", icon: IconStore, badge: "new" },
+];
+
+const ACCOUNT_ITEMS: ReadonlyArray<NavItem> = [
+	{ href: "/dashboard/settings", label: "Settings", icon: IconSliders },
 ];
 
 const SETUP_ITEM: NavItem = {
@@ -72,7 +77,6 @@ function machineWorkItems(base: string): ReadonlyArray<NavItem> {
 	return [
 		{ href: base, label: "Overview", icon: IconGrid },
 		{ href: `${base}/console`, label: "Console", icon: IconConsole, badge: "new" },
-		{ href: `${base}/chat`, label: "Chat", icon: IconChat },
 		{ href: `${base}/terminal`, label: "Terminal", icon: IconTerminal },
 		{ href: `${base}/loadout`, label: "Loadout", icon: IconLoadout },
 	];
@@ -134,12 +138,13 @@ export function SidebarNav({ setupComplete, machines }: Props) {
 
 	const setupItem: NavItem = { ...SETUP_ITEM, dot: !setupComplete };
 	const sections: NavSection[] = [
-		{ id: "work", label: "OVERVIEW", hint: "your fleet", items: FLEET_OVERVIEW_ITEMS },
+		{ id: "fleet", label: "FLEET", hint: "your fleet", items: FLEET_ITEMS },
+		{ id: "library", label: "LIBRARY", hint: "what's installed", items: LIBRARY_ITEMS },
 		{
-			id: "config",
-			label: "CONFIG",
-			hint: "what you've installed",
-			items: [...FLEET_CONFIG_ITEMS, setupItem],
+			id: "account",
+			label: "ACCOUNT",
+			hint: "keys & config",
+			items: [...ACCOUNT_ITEMS, setupItem],
 		},
 	];
 
@@ -254,10 +259,13 @@ function IconGrid(props: SVGProps<SVGSVGElement>) {
 	);
 }
 
-function IconChat(props: SVGProps<SVGSVGElement>) {
+function IconSliders(props: SVGProps<SVGSVGElement>) {
 	return (
-		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" {...props}>
-			<path d="M2 4 a2 2 0 0 1 2 -2 h8 a2 2 0 0 1 2 2 v5 a2 2 0 0 1 -2 2 H7 l-3 3 v-3 H4 a2 2 0 0 1 -2 -2 z" />
+		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" {...props}>
+			<path d="M3 4 h7 M12.5 4 h0.5 M3 8 h1.5 M7 8 h6 M3 12 h4 M9.5 12 h3.5" />
+			<circle cx="11" cy="4" r="1.4" />
+			<circle cx="5.5" cy="8" r="1.4" />
+			<circle cx="8" cy="12" r="1.4" />
 		</svg>
 	);
 }

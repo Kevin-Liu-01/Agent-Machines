@@ -1,17 +1,11 @@
-import { PageHeader } from "@/components/dashboard/PageHeader";
-import { SessionsList } from "@/components/dashboard/SessionsList";
+import { redirect } from "next/navigation";
+
+import { resolveActiveMachineId } from "@/lib/dashboard/active-machine";
 
 export const dynamic = "force-dynamic";
 
-export default function SessionsPage() {
-	return (
-		<div className="flex flex-col">
-			<PageHeader
-				kicker="SESSIONS -- ~/.agent-machines/sessions/"
-				title="Conversation history"
-				description="The agent stores one SQLite DB per session. The dashboard polls the live machine every 30s and lists every conversation it's holding. Transcript drill-in is a follow-up; this view tells you what's there and how heavy each one is."
-			/>
-			<SessionsList />
-		</div>
-	);
+/** Fleet-level shortcut to the active machine's sessions. */
+export default async function DashboardSessionsRedirect() {
+	const id = await resolveActiveMachineId();
+	redirect(id ? `/dashboard/machines/${id}/sessions` : "/dashboard/machines");
 }
