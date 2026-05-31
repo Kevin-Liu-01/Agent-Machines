@@ -65,6 +65,24 @@ export default function MachineOverviewPage() {
 	const [usageData, setUsageData] = useState<NormalizedMachineUsage | null>(null);
 	const [usageLoading, setUsageLoading] = useState(true);
 	const [chartDays, setChartDays] = useState(7);
+	const [refreshKey, setRefreshKey] = useState(0);
+
+	// Kick a fresh collection pass when the page opens so resource and
+	// activity panels reflect current state immediately. The background
+	// scheduler (/api/internal/cron/tick) keeps them updated thereafter; this
+	// is best-effort and rate-limited server-side. Bumping refreshKey re-reads
+	// usage once the pass settles.
+	useEffect(() => {
+		let stopped = false;
+		fetch("/api/dashboard/metrics/collect", { method: "POST" })
+			.catch(() => {})
+			.finally(() => {
+				if (!stopped) setRefreshKey((k) => k + 1);
+			});
+		return () => {
+			stopped = true;
+		};
+	}, [machineId]);
 
 	useEffect(() => {
 		let stopped = false;
@@ -127,7 +145,7 @@ export default function MachineOverviewPage() {
 		}
 		load();
 		return () => { stopped = true; };
-	}, [machineId, chartDays]);
+	}, [machineId, chartDays, refreshKey]);
 
 	const usageResources = usageData?.resources;
 	const cpuBuckets = useMemo(

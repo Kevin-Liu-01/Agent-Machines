@@ -18,6 +18,9 @@ type SessionPayload = {
 	ok?: boolean;
 	snapshot?: string;
 	offset?: number;
+	/** tmux pane cursor (0-based) so the client can re-home xterm's cursor. */
+	cursorRow?: number;
+	cursorCol?: number;
 	message?: string;
 	error?: string;
 };
@@ -204,15 +207,15 @@ export function InteractiveConsole() {
 		}
 
 		async function boot() {
-			// Attach tmux session in parallel with xterm bundle download.
-			const sessionPromise = attachSession(DEFAULT_COLS, DEFAULT_ROWS);
-			const [xtermModules, session] = await Promise.all([
-				Promise.all([import("@xterm/xterm"), import("@xterm/addon-fit")]),
-				sessionPromise,
+			// Warm the xterm bundle (prefetched on mount), then fit and attach
+			// at the REAL dimensions so the tmux pane, the snapshot height, and
+			// xterm all agree — required for correct cursor sync.
+			const [{ Terminal }, { FitAddon }] = await Promise.all([
+				import("@xterm/xterm"),
+				import("@xterm/addon-fit"),
 			]);
-			if (!alive || !hostRef.current || !session) return;
+			if (!alive || !hostRef.current) return;
 
-			const [{ Terminal }, { FitAddon }] = xtermModules;
 			term = new Terminal({
 				cursorBlink: true,
 				fontSize: 12,
@@ -257,20 +260,33 @@ export function InteractiveConsole() {
 				// container not measured yet; default cols/rows is fine
 			}
 
-			if (term.cols !== DEFAULT_COLS || term.rows !== DEFAULT_ROWS) {
-				void fetch("/api/dashboard/terminal/resize", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ machineId: scopedMachineId, cols: term.cols, rows: term.rows }),
-				}).catch(() => {});
-			}
+			// Attach at the fitted size; the route resizes the tmux pane to
+			// match and returns the snapshot + cursor captured at that size.
+			const session = await attachSession(
+				term.cols || DEFAULT_COLS,
+				term.rows || DEFAULT_ROWS,
+			);
+			if (!alive || !session) return;
 
 			if (session.snapshot) {
-				// `tmux capture-pane` joins visible lines with a bare "\n".
-				// xterm runs convertEol:false (correct for the raw live PTY
-				// stream, which already carries CRLF), so the snapshot must be
-				// normalized to CRLF here or every line staircases to the right.
-				term.write(session.snapshot.replace(/\r?\n/g, "\r\n"));
+				// `tmux capture-pane` joins visible lines with a bare "\n" and
+				// pads to the pane height. Strip trailing blanks so painting
+				// doesn't scroll, then normalize lone "\n" to CRLF (xterm runs
+				// convertEol:false for the raw live PTY stream).
+				const snap = session.snapshot
+					.replace(/[\r\n]+$/, "")
+					.replace(/\r?\n/g, "\r\n");
+				term.write(snap);
+			}
+			// Re-home the cursor to tmux's real position. capture-pane leaves
+			// the terminal cursor at the bottom of the paint, so without this
+			// keystroke echoes land in the wrong row (typing showed up at the
+			// bottom of the pane instead of at the prompt).
+			if (
+				typeof session.cursorRow === "number" &&
+				typeof session.cursorCol === "number"
+			) {
+				term.write(`\x1b[${session.cursorRow + 1};${session.cursorCol + 1}H`);
 			}
 			offsetRef.current = session.offset ?? 0;
 

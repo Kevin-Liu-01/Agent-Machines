@@ -82,6 +82,17 @@ export function capturePaneCommand(): string {
 	return `tmux capture-pane -e -p -t ${CONSOLE_SESSION} 2>/dev/null || true`;
 }
 
+/**
+ * The pane's cursor position as `row col` (0-based, from the pane's top-left).
+ * `capture-pane` paints every line and leaves the terminal cursor at the
+ * bottom, so the client must move xterm's cursor back here after painting —
+ * otherwise keystroke echoes land wherever the snapshot ended, not at the
+ * prompt.
+ */
+export function cursorPosCommand(): string {
+	return `tmux display-message -p -t ${CONSOLE_SESSION} -F '#{cursor_y} #{cursor_x}' 2>/dev/null || echo '0 0'`;
+}
+
 export function logSizeCommand(): string {
 	return `[ -f ${CONSOLE_LOG} ] && wc -c < ${CONSOLE_LOG} || echo 0`;
 }

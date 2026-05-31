@@ -19,6 +19,7 @@ import {
 } from "@/lib/user-config/clerk";
 import { DEV_USER_ID, isDevBypassEnabled } from "@/lib/user-config/identity";
 import { listDueCrons, runCronOnMachine } from "@/lib/crons/service";
+import { collectMetricsForUser } from "@/lib/metrics/collector";
 import type { CronEntry } from "@/lib/user-config/schema";
 
 export const runtime = "nodejs";
@@ -26,6 +27,9 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const USER_PAGE_LIMIT = 500;
+// Seconds this tick represents — must match the vercel.json cron schedule
+// (*/5 == 300s) so usage accumulation (awake/CPU/memory/storage) is accurate.
+const TICK_INTERVAL_SECONDS = 300;
 
 function authorized(req: Request): boolean {
 	if (isDevBypassEnabled()) return true;
@@ -46,11 +50,27 @@ async function listUserIds(): Promise<string[]> {
 	return res.data.map((u) => u.id);
 }
 
-async function tickUser(userId: string): Promise<{ fired: number; failed: number }> {
+type UserTick = { fired: number; failed: number; collected: number; transitions: number };
+
+async function tickUser(userId: string): Promise<UserTick> {
 	const config = await getUserConfigById(userId);
 	const now = Date.now();
+
+	// Usage + activity tracking runs every tick (independent of crons): probe
+	// running machines, store resource samples, roll up daily usage/cost, and
+	// record phase transitions. Best-effort — never let it abort the tick.
+	let collected = 0;
+	let transitions = 0;
+	try {
+		const m = await collectMetricsForUser(userId, config, TICK_INTERVAL_SECONDS);
+		collected = m.collected;
+		transitions = m.transitions;
+	} catch {
+		// metrics collection is best-effort
+	}
+
 	const due = listDueCrons(config, now);
-	if (due.length === 0) return { fired: 0, failed: 0 };
+	if (due.length === 0) return { fired: 0, failed: 0, collected, transitions };
 
 	const dueIds = new Set(due.map((c) => c.id));
 	const results = await Promise.all(
@@ -73,7 +93,7 @@ async function tickUser(userId: string): Promise<{ fired: number; failed: number
 	await setUserConfigById(userId, { crons: nextCrons });
 
 	const failed = results.filter((r) => !r.ok).length;
-	return { fired: due.length, failed };
+	return { fired: due.length, failed, collected, transitions };
 }
 
 async function handle(req: Request): Promise<Response> {
@@ -93,12 +113,16 @@ async function handle(req: Request): Promise<Response> {
 
 	let fired = 0;
 	let failed = 0;
+	let collected = 0;
+	let transitions = 0;
 	let scanned = 0;
 	for (const userId of users) {
 		try {
 			const r = await tickUser(userId);
 			fired += r.fired;
 			failed += r.failed;
+			collected += r.collected;
+			transitions += r.transitions;
 			scanned += 1;
 		} catch {
 			// One user's failure must not abort the whole tick.
@@ -110,6 +134,8 @@ async function handle(req: Request): Promise<Response> {
 		users: scanned,
 		fired,
 		failed,
+		collected,
+		transitions,
 		at: new Date().toISOString(),
 	});
 }
