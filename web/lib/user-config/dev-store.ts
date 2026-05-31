@@ -23,6 +23,7 @@ import {
 	type AgentKind,
 	type AgentProfile,
 	type BootstrapPreset,
+	type CronEntry,
 	type CustomLoadoutEntry,
 	type EnvironmentProfile,
 	type GatewayProfile,
@@ -46,6 +47,7 @@ const DEV_STORE_PATH = path.join(process.cwd(), ".dev-user-config.json");
 type ConfigPatch = {
 	providers?: ProviderCredentials;
 	aiProviderKeys?: AiProviderKeys;
+	crons?: CronEntry[];
 	cursorApiKey?: string | null;
 	cloudflareTunnelToken?: string | null;
 	gatewayProfiles?: GatewayProfile[];
@@ -201,6 +203,7 @@ export async function setDevUserConfig(
 		providers: nextProviders,
 		aiProviderKeys: nextAiKeys,
 		machines: nextMachines,
+		crons: patch.crons ?? current.crons ?? [],
 		activeMachineId: nextActive,
 		cursorApiKey:
 			patch.cursorApiKey !== undefined

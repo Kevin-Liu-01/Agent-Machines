@@ -13,7 +13,7 @@ export default async function RegistryPage() {
 			<PageHeader
 				kicker="REGISTRY"
 				title="Browse and install tools, skills, MCPs, and CLIs"
-				description="Search across skills.sh, the MCP server registry, npm, Cursor plugins, GitHub repos, and URL manifests. Click Add to install onto your machine and add to your loadout."
+				description="The installable catalog — search skills.sh, the MCP server registry, npm, Cursor plugins, GitHub repos, and URL manifests, then Add to a machine. Distinct from Loadout, which shows the stack already active on a given machine."
 			/>
 			<RegistryBrowser installedIds={installedIds} />
 		</div>

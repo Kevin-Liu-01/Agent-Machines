@@ -41,6 +41,8 @@ import {
 	type BootstrapPreset,
 	type BootstrapPhaseId,
 	type BootstrapState,
+	type CronEntry,
+	type CronStatus,
 	type EnvironmentProfile,
 	type GatewayKind,
 	type GatewayProfile,
@@ -326,6 +328,40 @@ function defaultBootstrapPresetFor(agentKind: AgentKind): BootstrapPreset {
  * only here -- callers can persist back via `setUserConfig` if they
  * want to harden the migration on disk.
  */
+const CRON_STATUSES: ReadonlyArray<CronStatus> = ["success", "failed", "running"];
+
+function asCronEntry(value: unknown): CronEntry | null {
+	if (!value || typeof value !== "object") return null;
+	const v = value as Record<string, unknown>;
+	const id = asString(v.id);
+	const schedule = asString(v.schedule);
+	const machineId = asString(v.machineId);
+	if (!id || !schedule || !machineId) return null;
+	const status = asString(v.lastStatus) as CronStatus | undefined;
+	return {
+		id,
+		name: asString(v.name) ?? id,
+		schedule,
+		prompt: asString(v.prompt) ?? "",
+		machineId,
+		skills: Array.isArray(v.skills)
+			? v.skills.filter((s): s is string => typeof s === "string")
+			: [],
+		enabled: v.enabled !== false,
+		createdAt: asString(v.createdAt) ?? new Date(0).toISOString(),
+		lastRunAt: asString(v.lastRunAt) ?? null,
+		lastStatus: status && CRON_STATUSES.includes(status) ? status : null,
+		lastSummary: asString(v.lastSummary) ?? null,
+	};
+}
+
+function asCronEntries(value: unknown): CronEntry[] {
+	if (!Array.isArray(value)) return [];
+	return value
+		.map((entry) => asCronEntry(entry))
+		.filter((entry): entry is CronEntry => entry !== null);
+}
+
 function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig {
 	const providers: ProviderCredentials = {};
 	const privateProviders =
@@ -510,6 +546,7 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
 		providers,
 		aiProviderKeys,
 		machines,
+		crons: asCronEntries(privateMeta.crons),
 		activeMachineId,
 		cursorApiKey,
 		cloudflareTunnelToken,
@@ -688,6 +725,7 @@ export async function getUserConfigById(userId: string): Promise<UserConfig> {
 type ConfigPatch = {
 	providers?: ProviderCredentials;
 	aiProviderKeys?: AiProviderKeys;
+	crons?: CronEntry[];
 	cursorApiKey?: string | null;
 	cloudflareTunnelToken?: string | null;
 	gatewayProfiles?: GatewayProfile[];
@@ -992,6 +1030,8 @@ export async function setUserConfigById(
 		nextActive = nextMachines.find((m) => !m.archived)?.id ?? null;
 	}
 
+	const nextCrons = patch.crons ?? current.crons ?? [];
+
 	const nextCursor =
 		patch.cursorApiKey !== undefined ? patch.cursorApiKey : current.cursorApiKey;
 	const nextTunnelToken =
@@ -1029,6 +1069,7 @@ export async function setUserConfigById(
 		...existingPrivate,
 		providers: nextProviders,
 		aiProviderKeys: nextAiKeys,
+		crons: nextCrons,
 		machineApiKeys: machineKeyMap(nextMachines),
 		gatewayApiKeys: gatewayKeyMap(nextGatewayProfiles),
 		environmentProfileVars: environmentVarsMap(nextEnvironmentProfiles),

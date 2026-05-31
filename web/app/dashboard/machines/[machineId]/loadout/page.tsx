@@ -37,7 +37,7 @@ export default async function MachineLoadoutPage() {
 			<PageHeader
 				kicker="LOADOUT"
 				title="This machine's loadout"
-				description="Everything callable from the chat surface on this machine."
+				description="The stack active on this machine — skills, MCP servers and their tools, built-ins, services, and tasks. Browse and install more from the Registry."
 			/>
 			<MachineRouterCard />
 			<LoadoutPanel

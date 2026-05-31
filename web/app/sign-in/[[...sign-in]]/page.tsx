@@ -87,7 +87,7 @@ export default function SignInPage() {
 								formFieldInput:
 									"border border-[var(--ret-border)] bg-[var(--ret-bg)] text-[var(--ret-text)] rounded-none focus:border-[var(--ret-purple)] focus:ring-0",
 								formButtonPrimary:
-									"bg-[var(--ret-purple)] text-[#0F0F0F] font-medium rounded-none hover:brightness-110 hover:shadow-[0_0_24px_var(--ret-purple-glow)]",
+									"bg-[var(--ret-accent)] text-[var(--ret-bg)] font-medium rounded-none hover:brightness-110 hover:shadow-[0_0_24px_var(--ret-purple-glow)]",
 								// Misc
 								identityPreview:
 									"border border-[var(--ret-border)] bg-[var(--ret-bg)] rounded-none",

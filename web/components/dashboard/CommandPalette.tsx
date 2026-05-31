@@ -74,10 +74,10 @@ const NAV_ITEMS: ReadonlyArray<{ label: string; href: string; keywords: string }
 const SURFACE_ITEMS: ReadonlyArray<{ label: string; seg: string; keywords: string }> = [
 	{ label: "Console", seg: "console", keywords: "chat agent talk conversation" },
 	{ label: "Terminal", seg: "terminal", keywords: "shell cli pty tmux command" },
+	{ label: "Agents", seg: "agents", keywords: "agent runtime keys credentials cursor runs readiness" },
 	{ label: "Loadout", seg: "loadout", keywords: "skills mcp tools capabilities" },
 	{ label: "Logs", seg: "logs", keywords: "tail output" },
 	{ label: "Sessions", seg: "sessions", keywords: "history runs" },
-	{ label: "Cursor runs", seg: "cursor", keywords: "code delegation" },
 	{ label: "Artifacts", seg: "artifacts", keywords: "files output" },
 ];
 
@@ -308,9 +308,11 @@ export function CommandPalette() {
 				aria-label={triggerLabel}
 				title={`${triggerLabel} (Cmd/Ctrl+K)`}
 				className={cn(
-					"flex items-center gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] px-2.5 py-1 text-[12px] leading-none transition-colors",
+					"flex shrink-0 items-center gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] px-2.5 py-1 text-[12px] leading-none transition-colors",
 					"hover:border-[var(--ret-purple)]/45 hover:bg-[var(--ret-surface)]",
-					"md:w-[260px] md:justify-between",
+					// Fixed, non-squishing width that scales with viewport. The
+					// breadcrumb (min-w-0) yields space instead of the search box.
+					"md:w-[180px] md:justify-between lg:w-[220px] xl:w-[260px]",
 				)}
 			>
 				<span className="flex items-center gap-2 text-[var(--ret-text-muted)]">

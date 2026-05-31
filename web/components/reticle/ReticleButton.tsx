@@ -14,7 +14,7 @@ type Size = "sm" | "md" | "lg";
 
 const VARIANT: Record<Variant, string> = {
 	primary: cn(
-		"bg-[var(--ret-purple)] text-[#0F0F0F]",
+		"bg-[var(--ret-accent)] text-[var(--ret-bg)]",
 		"hover:shadow-[0_0_24px_var(--ret-purple-glow)] hover:brightness-110",
 	),
 	secondary: cn(

@@ -221,8 +221,8 @@ export function InteractiveConsole() {
 				theme: {
 					background: "#0a0a0e",
 					foreground: "#d7d7e0",
-					cursor: "#b794f6",
-					selectionBackground: "#3a3357",
+					cursor: "#e4e4e7",
+					selectionBackground: "#33333a",
 				},
 				scrollback: 4_000,
 				convertEol: false,
@@ -266,7 +266,11 @@ export function InteractiveConsole() {
 			}
 
 			if (session.snapshot) {
-				term.write(session.snapshot);
+				// `tmux capture-pane` joins visible lines with a bare "\n".
+				// xterm runs convertEol:false (correct for the raw live PTY
+				// stream, which already carries CRLF), so the snapshot must be
+				// normalized to CRLF here or every line staircases to the right.
+				term.write(session.snapshot.replace(/\r?\n/g, "\r\n"));
 			}
 			offsetRef.current = session.offset ?? 0;
 

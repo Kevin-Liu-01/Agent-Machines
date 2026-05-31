@@ -55,8 +55,12 @@ type Tab =
 	| "services"
 	| "tasks";
 
-const TABS: ReadonlyArray<{ id: Tab; label: string; count: (c: Props) => number }> = [
-	{ id: "all", label: "All", count: (p) => p.counts.total + p.services.length + p.tasks.length + p.catalog.length },
+// `all` shows every section (incl. the catalog superset), so a single total
+// would double-count — leave it uncounted. Every other tab counts exactly what
+// it renders: the "MCP servers" tab counts servers (mcpTools is a separate stat
+// tile), not the tool surface.
+const TABS: ReadonlyArray<{ id: Tab; label: string; count?: (c: Props) => number }> = [
+	{ id: "all", label: "All" },
 	{
 		id: "presets",
 		label: "Sources + presets",
@@ -65,7 +69,7 @@ const TABS: ReadonlyArray<{ id: Tab; label: string; count: (c: Props) => number 
 	},
 	{ id: "catalog", label: "Available to add", count: (p) => p.catalog.length },
 	{ id: "builtin", label: "Built-in tools", count: (p) => p.builtins.length },
-	{ id: "mcp", label: "MCP servers", count: (p) => p.counts.mcpTools },
+	{ id: "mcp", label: "MCP servers", count: (p) => p.mcps.length },
 	{ id: "skills", label: "Skills", count: (p) => p.skills.length },
 	{ id: "services", label: "Services", count: (p) => p.services.length },
 	{ id: "tasks", label: "Tasks", count: (p) => p.tasks.length },
@@ -107,9 +111,11 @@ export function LoadoutPanel(props: Props) {
 							)}
 						>
 							<span>{t.label}</span>
-							<span className="text-[10px] text-[var(--ret-text-muted)]">
-								{t.count(props)}
-							</span>
+							{t.count ? (
+								<span className="text-[10px] text-[var(--ret-text-muted)]">
+									{t.count(props)}
+								</span>
+							) : null}
 						</button>
 					))}
 				</div>

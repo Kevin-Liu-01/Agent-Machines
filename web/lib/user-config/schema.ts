@@ -275,11 +275,39 @@ export type MachineRef = {
 	archived?: boolean;
 };
 
+export type CronStatus = "success" | "failed" | "running";
+
+/**
+ * A scheduled agent task. The schedule is a 5-field cron expression in UTC
+ * (or an `every Nm|Nh|Nd` shorthand). The server-side scheduler
+ * (`/api/internal/cron/tick`) evaluates these on a fixed cadence and execs
+ * the agent one-shot on the bound machine. Stored in Clerk privateMetadata
+ * (non-secret, per user) so it survives without a DB migration.
+ */
+export type CronEntry = {
+	id: string;
+	name: string;
+	/** 5-field cron expr (UTC) or `every Nm|Nh|Nd`. */
+	schedule: string;
+	/** Natural-language task handed to the agent. */
+	prompt: string;
+	/** Machine this cron runs on. */
+	machineId: string;
+	skills: string[];
+	enabled: boolean;
+	createdAt: string;
+	lastRunAt: string | null;
+	lastStatus: CronStatus | null;
+	lastSummary: string | null;
+};
+
 export type UserConfig = {
 	providers: ProviderCredentials;
 	aiProviderKeys: AiProviderKeys;
 	machines: MachineRef[];
 	activeMachineId: string | null;
+	/** Scheduled agent tasks, driven by the server-side cron scheduler. */
+	crons: CronEntry[];
 	cursorApiKey: string | null;
 	/** Cloudflare named tunnel token for stable gateway URLs on a custom domain. */
 	cloudflareTunnelToken: string | null;
@@ -635,6 +663,7 @@ export const DEFAULT_USER_CONFIG: UserConfig = {
 	providers: {},
 	aiProviderKeys: {},
 	machines: [],
+	crons: [],
 	cloudflareTunnelToken: null,
 	activeMachineId: null,
 	cursorApiKey: null,
@@ -720,6 +749,7 @@ export function toPublicConfig(config: UserConfig): PublicUserConfig {
 		providers,
 		aiProviders,
 		machines,
+		crons: config.crons ?? [],
 		activeMachineId: config.activeMachineId,
 		gatewayProfiles: config.gatewayProfiles.map(({ apiKey, ...profile }) => ({
 			...profile,

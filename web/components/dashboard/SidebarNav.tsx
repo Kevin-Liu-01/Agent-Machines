@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
 	BarChart3,
+	Bot,
 	Boxes,
 	ChevronLeft,
 	Clock,
-	Code2,
 	Gauge,
 	History,
 	LayoutGrid,
@@ -42,6 +42,13 @@ type NavItem = {
 	icon: LucideIcon;
 	dot?: boolean;
 	badge?: "live" | "new";
+	/**
+	 * Match the active state on an exact path only. Required for any row
+	 * whose href is a prefix of its siblings (the section root "Overview" /
+	 * "/dashboard" and the machine base) -- otherwise `startsWith` lights it
+	 * up on every child route (e.g. Console highlighting Overview).
+	 */
+	exact?: boolean;
 };
 
 type NavSection = {
@@ -60,7 +67,7 @@ type Props = {
 // then account-level keys + provisioning. "Machines" is the single fleet
 // listing (the old "Containers" page folded its analytics in here).
 const FLEET_ITEMS: ReadonlyArray<NavItem> = [
-	{ href: "/dashboard", label: "Overview", icon: LayoutGrid },
+	{ href: "/dashboard", label: "Overview", icon: LayoutGrid, exact: true },
 	{ href: "/dashboard/machines", label: "Machines", icon: Server },
 	{ href: "/dashboard/usage", label: "Usage", icon: BarChart3 },
 	{ href: "/dashboard/benchmarks", label: "Benchmarks", icon: Gauge, badge: "new" },
@@ -85,9 +92,10 @@ const SETUP_ITEM: NavItem = {
 
 function machineWorkItems(base: string): ReadonlyArray<NavItem> {
 	return [
-		{ href: base, label: "Overview", icon: LayoutGrid },
+		{ href: base, label: "Overview", icon: LayoutGrid, exact: true },
 		{ href: `${base}/console`, label: "Console", icon: MessagesSquare, badge: "new" },
 		{ href: `${base}/terminal`, label: "Terminal", icon: SquareTerminal },
+		{ href: `${base}/agents`, label: "Agents", icon: Bot },
 		{ href: `${base}/loadout`, label: "Loadout", icon: Boxes },
 	];
 }
@@ -96,7 +104,6 @@ function machineLiveItems(base: string): ReadonlyArray<NavItem> {
 	return [
 		{ href: `${base}/logs`, label: "Logs", icon: ScrollText, badge: "live" },
 		{ href: `${base}/sessions`, label: "Sessions", icon: History, badge: "live" },
-		{ href: `${base}/cursor`, label: "Cursor runs", icon: Code2, badge: "live" },
 		{ href: `${base}/artifacts`, label: "Artifacts", icon: Package },
 	];
 }
@@ -190,9 +197,9 @@ function Section({
 				</p>
 			</div>
 			{section.items.map((item) => {
-				const active =
-					pathname === item.href ||
-					(item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
+				const active = item.exact
+					? pathname === item.href
+					: pathname === item.href || pathname.startsWith(`${item.href}/`);
 				return <Row key={item.href} item={item} active={active} />;
 			})}
 		</div>

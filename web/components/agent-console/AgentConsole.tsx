@@ -325,14 +325,15 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 					onNew={newConversation}
 					onDelete={deleteConversation}
 					machineOk={machineOk}
+					machineId={activeMachineId}
 					streaming={streamState === "streaming"}
-					crons={DEFAULT_CRONS}
 					loadoutItems={DEFAULT_LOADOUT}
 				/>
 			</aside>
 
 			{/* Middle: Activity stream */}
 			<main className="flex min-w-0 flex-1 flex-col bg-[var(--ret-bg)]">
+				<TranscriptActions turns={turns} onSave={() => void persistConversation(turnsRef.current)} canSave={machineOk && Boolean(activeConvoId)} />
 				<ActivityStream
 					turns={turns}
 					streaming={streamState === "streaming"}
@@ -436,12 +437,103 @@ function agentEventsToLegacy(events: AgentEvent[]): unknown[] {
 		.filter(Boolean);
 }
 
-const DEFAULT_CRONS = [
-	{ name: "hourly-health-check", schedule: "every 1h", prompt: "Run a runtime health check; summarize unhealthy items in 3 lines or fewer; reply OK if clean.", skills: ["dedalus-machines"] },
-	{ name: "daily-wiki-digest", schedule: "0 9 * * *", prompt: "Summarize the most important context to keep in active memory today in <=5 bullets.", skills: ["agent-ethos"] },
-	{ name: "weekly-skill-audit", schedule: "0 4 * * mon", prompt: "Audit ~/.agent-machines/skills for stale, drifted, or duplicated entries. Output JSON.", skills: ["plan-mode-review"] },
-	{ name: "nightly-memory-consolidation", schedule: "0 3 * * *", prompt: "Consolidate MEMORY.md and USER.md within size limits. Reorganize, do not invent.", skills: ["agent-ethos"] },
-];
+function transcriptToMarkdown(turns: ConversationTurn[]): string {
+	if (turns.length === 0) return "";
+	return turns
+		.map((t) => {
+			const who = t.role === "user" ? "## You" : "## Agent";
+			const meta = t.model ? ` _(model: ${t.model})_` : "";
+			return `${who}${meta}\n\n${t.content.trim()}`;
+		})
+		.join("\n\n---\n\n");
+}
+
+function downloadText(filename: string, text: string, type: string): void {
+	const blob = new Blob([text], { type });
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement("a");
+	a.href = url;
+	a.download = filename;
+	a.click();
+	URL.revokeObjectURL(url);
+}
+
+function timestampSlug(): string {
+	return new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+}
+
+/** Copy / export / save controls for the live transcript. */
+function TranscriptActions({
+	turns,
+	onSave,
+	canSave,
+}: {
+	turns: ConversationTurn[];
+	onSave: () => void;
+	canSave: boolean;
+}) {
+	const [copied, setCopied] = useState(false);
+	const empty = turns.length === 0;
+
+	const copy = async () => {
+		try {
+			await navigator.clipboard.writeText(transcriptToMarkdown(turns));
+			setCopied(true);
+			setTimeout(() => setCopied(false), 1500);
+		} catch {
+			/* clipboard unavailable */
+		}
+	};
+
+	return (
+		<div className="flex shrink-0 items-center gap-1.5 border-b border-[var(--ret-border)] px-3 py-1.5">
+			<span className="mr-auto font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
+				transcript · {turns.length} turns
+			</span>
+			<ToolbarButton label={copied ? "copied" : "copy"} onClick={() => void copy()} disabled={empty} />
+			<ToolbarButton
+				label="export .md"
+				onClick={() =>
+					downloadText(`console-${timestampSlug()}.md`, transcriptToMarkdown(turns), "text/markdown")
+				}
+				disabled={empty}
+			/>
+			<ToolbarButton
+				label=".json"
+				onClick={() =>
+					downloadText(
+						`console-${timestampSlug()}.json`,
+						JSON.stringify(turns, null, 2),
+						"application/json",
+					)
+				}
+				disabled={empty}
+			/>
+			<ToolbarButton label="save" onClick={onSave} disabled={empty || !canSave} />
+		</div>
+	);
+}
+
+function ToolbarButton({
+	label,
+	onClick,
+	disabled,
+}: {
+	label: string;
+	onClick: () => void;
+	disabled?: boolean;
+}) {
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			disabled={disabled}
+			className="border border-[var(--ret-border)] px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.15em] text-[var(--ret-text-muted)] transition-colors hover:border-[var(--ret-border-hover)] hover:text-[var(--ret-text)] disabled:cursor-not-allowed disabled:opacity-40"
+		>
+			{label}
+		</button>
+	);
+}
 
 const DEFAULT_LOADOUT = [
 	{ name: "shell", kind: "tool" as const, description: "Execute bash commands in the VM" },

@@ -20,14 +20,9 @@ import type { ConversationSummary } from "@/lib/agents/protocol";
 import type { AgentProfile, MachineIntrospection } from "@/lib/agents/machine-introspection";
 import { INTROSPECTION_COMMAND, parseIntrospection } from "@/lib/agents/machine-introspection";
 
-type LeftView = "sessions" | "agent" | "automations" | "loadout";
+import { CronManager } from "./CronManager";
 
-type CronItem = {
-	name: string;
-	schedule: string;
-	prompt: string;
-	skills: string[];
-};
+type LeftView = "sessions" | "agent" | "automations" | "loadout";
 
 type LoadoutItem = {
 	name: string;
@@ -42,7 +37,7 @@ type Props = {
 	onNew: () => void;
 	onDelete: (id: string) => void;
 	machineOk: boolean;
-	crons?: CronItem[];
+	machineId: string | null;
 	loadoutItems?: LoadoutItem[];
 	streaming?: boolean;
 };
@@ -54,7 +49,7 @@ export function ConversationList({
 	onNew,
 	onDelete,
 	machineOk,
-	crons = [],
+	machineId,
 	loadoutItems = [],
 	streaming,
 }: Props) {
@@ -91,15 +86,15 @@ export function ConversationList({
 				</div>
 			</div>
 
-			{/* Search + actions (hidden for Agent view) */}
-			{view !== "agent" ? (
+			{/* Search + actions (Agent + Crons views have their own headers) */}
+			{view !== "agent" && view !== "automations" ? (
 				<div className="shrink-0 border-b border-[var(--ret-border)] p-2">
 					<div className="flex items-center gap-2 pb-2">
 						<input
 							type="text"
 							value={search}
 							onChange={(e) => setSearch(e.target.value)}
-							placeholder={view === "sessions" ? "Search sessions..." : view === "automations" ? "Filter crons..." : "Filter loadout..."}
+							placeholder={view === "sessions" ? "Search sessions..." : "Filter loadout..."}
 							className={cn(
 								"min-w-0 flex-1 border border-[var(--ret-border)] bg-[var(--ret-bg)]",
 								"px-2 py-1 font-mono text-[11px] text-[var(--ret-text)]",
@@ -129,9 +124,9 @@ export function ConversationList({
 						streaming={streaming}
 					/>
 				) : view === "agent" ? (
-					<AgentIntrospectionView machineOk={machineOk} />
+					<AgentIntrospectionView machineOk={machineOk} machineId={machineId} />
 				) : view === "automations" ? (
-					<AutomationsView crons={crons} search={search} />
+					<CronManager machineId={machineId} machineOk={machineOk} />
 				) : (
 					<LoadoutView items={loadoutItems} search={search} />
 				)}
@@ -432,89 +427,6 @@ function SectionHeader({ label, count }: { label: string; count?: number }) {
 	);
 }
 
-/* ── Automations view ──────────────────────────────────────────────── */
-
-function AutomationsView({
-	crons,
-	search,
-}: {
-	crons: CronItem[];
-	search: string;
-}) {
-	const filtered = useMemo(() => {
-		if (!search.trim()) return crons;
-		const q = search.toLowerCase();
-		return crons.filter(
-			(c) => c.name.toLowerCase().includes(q) || c.prompt.toLowerCase().includes(q),
-		);
-	}, [crons, search]);
-
-	if (filtered.length === 0) {
-		return (
-			<div className="p-3">
-				<p className="font-mono text-[11px] text-[var(--ret-text-muted)]">
-					{search ? "No matching crons" : "No automations configured"}
-				</p>
-				<p className="mt-1 text-[10px] text-[var(--ret-text-dim)]">
-					Crons are seeded from knowledge/crons/seed.json during bootstrap.
-				</p>
-			</div>
-		);
-	}
-
-	return (
-		<div>
-			<SectionHeader label="Scheduled" count={filtered.length} />
-			{filtered.map((cron) => (
-				<CronCard key={cron.name} cron={cron} />
-			))}
-		</div>
-	);
-}
-
-function CronCard({ cron }: { cron: CronItem }) {
-	const [expanded, setExpanded] = useState(false);
-
-	return (
-		<div className="border-b border-[var(--ret-border)]/30">
-			<button
-				type="button"
-				onClick={() => setExpanded((v) => !v)}
-				className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-[var(--ret-surface)]"
-			>
-				<span className="shrink-0 font-mono text-[10px] text-[var(--ret-amber)]">⟳</span>
-				<div className="min-w-0 flex-1">
-					<p className="truncate font-mono text-[11px] text-[var(--ret-text)]">{cron.name}</p>
-					<p className="font-mono text-[9px] text-[var(--ret-text-muted)]">{cron.schedule}</p>
-				</div>
-				<span className={cn(
-					"shrink-0 font-mono text-[10px] text-[var(--ret-text-muted)] transition-transform",
-					expanded ? "rotate-90" : "rotate-0",
-				)}>
-					{">"}
-				</span>
-			</button>
-			{expanded ? (
-				<div className="border-t border-[var(--ret-border)]/20 px-3 py-2">
-					<p className="text-[10px] leading-relaxed text-[var(--ret-text-dim)]">{cron.prompt}</p>
-					{cron.skills.length > 0 ? (
-						<div className="mt-1.5 flex flex-wrap gap-1">
-							{cron.skills.map((s) => (
-								<span
-									key={s}
-									className="border border-[var(--ret-border)] px-1.5 py-0.5 font-mono text-[8px] text-[var(--ret-text-muted)]"
-								>
-									{s}
-								</span>
-							))}
-						</div>
-					) : null}
-				</div>
-			) : null}
-		</div>
-	);
-}
-
 /* ── Loadout view ──────────────────────────────────────────────────── */
 
 function LoadoutView({
@@ -580,7 +492,13 @@ function LoadoutView({
 
 /* ── Agent introspection view ──────────────────────────────────────── */
 
-function AgentIntrospectionView({ machineOk }: { machineOk: boolean }) {
+function AgentIntrospectionView({
+	machineOk,
+	machineId,
+}: {
+	machineOk: boolean;
+	machineId: string | null;
+}) {
 	const [data, setData] = useState<MachineIntrospection | null>(null);
 	const [loading, setLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -593,7 +511,13 @@ function AgentIntrospectionView({ machineOk }: { machineOk: boolean }) {
 			const response = await fetch("/api/dashboard/exec", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ command: INTROSPECTION_COMMAND, timeoutMs: 15000 }),
+				// Scope introspection to THIS console's machine — without the
+				// machineId the exec route falls back to the active machine.
+				body: JSON.stringify({
+					command: INTROSPECTION_COMMAND,
+					timeoutMs: 15000,
+					...(machineId ? { machineId } : {}),
+				}),
 			});
 			const body = await response.json();
 			if (body.stdout) {
@@ -606,7 +530,7 @@ function AgentIntrospectionView({ machineOk }: { machineOk: boolean }) {
 		} finally {
 			setLoading(false);
 		}
-	}, [machineOk]);
+	}, [machineOk, machineId]);
 
 	useEffect(() => { void fetchIntrospection(); }, [fetchIntrospection]);
 

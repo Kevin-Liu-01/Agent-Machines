@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 
 import { OverviewClient } from "@/components/dashboard/OverviewClient";
 import { PageHeader } from "@/components/dashboard/PageHeader";
-import { listCrons } from "@/lib/dashboard/crons";
 import { listMcpServers } from "@/lib/dashboard/mcps";
 import { listSkills } from "@/lib/dashboard/skills";
 import { getUserConfig } from "@/lib/user-config/clerk";
@@ -18,10 +17,12 @@ export default async function OverviewPage() {
 	let activeMachineId: string | null = null;
 	let agentKind: import("@/lib/user-config/schema").AgentKind = "hermes";
 	let model: string | null = null;
+	let cronCount = 0;
 	try {
 		const config = await getUserConfig();
 		needsOnboarding = !config.machines.some((m) => !m.archived);
 		activeMachineId = config.activeMachineId;
+		cronCount = (config.crons ?? []).length;
 		const active = activeMachine(config);
 		if (active) {
 			agentKind = active.agentKind;
@@ -38,7 +39,6 @@ export default async function OverviewPage() {
 
 	const skills = listSkills();
 	const mcps = listMcpServers();
-	const crons = listCrons();
 	const tools = mcps.reduce((acc, server) => acc + server.tools.length, 0);
 
 	return (
@@ -53,7 +53,7 @@ export default async function OverviewPage() {
 					skills: skills.length,
 					mcps: mcps.length,
 					tools,
-					crons: crons.length,
+					crons: cronCount,
 				}}
 				agentKind={agentKind}
 				model={model}

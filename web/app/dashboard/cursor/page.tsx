@@ -4,8 +4,8 @@ import { resolveActiveMachineId } from "@/lib/dashboard/active-machine";
 
 export const dynamic = "force-dynamic";
 
-/** Fleet-level shortcut to the active machine's Cursor runs. */
+/** Fleet-level shortcut to the active machine's Agents surface. */
 export default async function DashboardCursorRedirect() {
 	const id = await resolveActiveMachineId();
-	redirect(id ? `/dashboard/machines/${id}/cursor` : "/dashboard/machines");
+	redirect(id ? `/dashboard/machines/${id}/agents` : "/dashboard/machines");
 }

@@ -189,7 +189,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 					formFieldInput:
 						"border border-[var(--ret-border)] bg-[var(--ret-bg)] text-[var(--ret-text)] rounded-none",
 					formButtonPrimary:
-						"bg-[var(--ret-purple)] text-[#0F0F0F] rounded-none hover:brightness-110",
+						"bg-[var(--ret-accent)] text-[var(--ret-bg)] rounded-none hover:brightness-110",
 					userButtonPopoverCard:
 						"border border-[var(--ret-border)] bg-[var(--ret-surface)] shadow-none rounded-none",
 					userButtonPopoverActionButton:

@@ -158,7 +158,7 @@ export function StatusHeader({ agentKind, machines }: Props) {
 						className="shrink-0 text-[12px] font-medium"
 					/>
 				) : null}
-				<div className="ml-1 hidden sm:block">
+				<div className="ml-1 hidden shrink-0 sm:block">
 					<CommandPalette />
 				</div>
 			</div>
