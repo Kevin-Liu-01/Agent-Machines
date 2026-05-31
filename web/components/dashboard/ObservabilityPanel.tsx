@@ -95,7 +95,9 @@ export function ObservabilityPanel({
 		async function tick() {
 			try {
 				const [gwRes, logsRes, cursorRes, sessionsRes] = await Promise.all([
-					fetch("/api/dashboard/gateway", { cache: "no-store" }).catch(() => null),
+					fetch(withMachineId("/api/dashboard/gateway", activeMachineId), {
+						cache: "no-store",
+					}).catch(() => null),
 					fetch(withMachineId("/api/dashboard/logs?n=40", activeMachineId), {
 						cache: "no-store",
 					}).catch(() => null),

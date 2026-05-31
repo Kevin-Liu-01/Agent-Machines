@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { MachineFleetCard } from "@/components/dashboard/MachineFleetCard";
@@ -27,6 +28,19 @@ import {
 } from "@/lib/user-config/schema";
 
 const POLL_MS = 5000;
+const VIEW_STORAGE_KEY = "am-fleet-view";
+
+type FleetView = "cards" | "table";
+
+const TABLE_PHASE: Record<string, { label: string; dot: string; text: string }> = {
+	ready: { label: "Running", dot: "bg-[var(--ret-green)]", text: "text-[var(--ret-green)]" },
+	starting: { label: "Starting", dot: "bg-[var(--ret-purple)]", text: "text-[var(--ret-purple)]" },
+	sleeping: { label: "Sleeping", dot: "bg-[var(--ret-amber)]", text: "text-[var(--ret-amber)]" },
+	destroying: { label: "Destroying", dot: "bg-[var(--ret-text-muted)]", text: "text-[var(--ret-text-muted)]" },
+	destroyed: { label: "Destroyed", dot: "bg-[var(--ret-text-muted)]", text: "text-[var(--ret-text-muted)]" },
+	error: { label: "Failed", dot: "bg-[var(--ret-red)]", text: "text-[var(--ret-red)]" },
+	unknown: { label: "Unknown", dot: "bg-[var(--ret-text-muted)]", text: "text-[var(--ret-text-muted)]" },
+};
 
 type LiveMachine = {
 	id: string;
@@ -64,7 +78,22 @@ export function MachinesPanel() {
 	const [loading, setLoading] = useState(true);
 	const [editing, setEditing] = useState<string | null>(null);
 	const [showProvision, setShowProvision] = useState(false);
+	const [view, setView] = useState<FleetView>("cards");
 	const loadout = useFleetLoadout();
+
+	useEffect(() => {
+		const saved = window.localStorage.getItem(VIEW_STORAGE_KEY);
+		if (saved === "cards" || saved === "table") setView(saved);
+	}, []);
+
+	const selectView = useCallback((next: FleetView) => {
+		setView(next);
+		try {
+			window.localStorage.setItem(VIEW_STORAGE_KEY, next);
+		} catch {
+			// storage unavailable; in-memory toggle still works
+		}
+	}, []);
 
 	const refresh = useCallback(async () => {
 		try {
@@ -171,10 +200,13 @@ export function MachinesPanel() {
 
 			{/* Quick provision controls */}
 			{!loading ? (
-				<div className="flex items-center justify-between">
-					<h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
-						Fleet
-					</h2>
+				<div className="flex flex-wrap items-center justify-between gap-2">
+					<div className="flex items-center gap-3">
+						<h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
+							Fleet
+						</h2>
+						<ViewToggle view={view} onChange={selectView} />
+					</div>
 					<div className="flex items-center gap-2">
 						<ReticleButton
 							variant="primary"
@@ -214,7 +246,11 @@ export function MachinesPanel() {
 				/>
 			) : null}
 
-			{visible.length > 0 ? (
+			{visible.length > 0 && view === "table" ? (
+				<MachineTable machines={visible} activeMachineId={activeMachineId} />
+			) : null}
+
+			{visible.length > 0 && view === "cards" ? (
 				<div
 					className={
 						focusMachine
@@ -301,6 +337,117 @@ export function MachinesPanel() {
 				</section>
 			) : null}
 		</DashboardPageBody>
+	);
+}
+
+function ViewToggle({
+	view,
+	onChange,
+}: {
+	view: FleetView;
+	onChange: (view: FleetView) => void;
+}) {
+	return (
+		<div className="flex items-center border border-[var(--ret-border)] bg-[var(--ret-bg)]">
+			{(["cards", "table"] as const).map((option) => (
+				<button
+					key={option}
+					type="button"
+					onClick={() => onChange(option)}
+					aria-pressed={view === option}
+					className={cn(
+						"px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors",
+						view === option
+							? "bg-[var(--ret-surface)] text-[var(--ret-text)]"
+							: "text-[var(--ret-text-muted)] hover:text-[var(--ret-text)]",
+					)}
+				>
+					{option}
+				</button>
+			))}
+		</div>
+	);
+}
+
+function MachineTable({
+	machines,
+	activeMachineId,
+}: {
+	machines: LiveMachine[];
+	activeMachineId: string | null;
+}) {
+	return (
+		<ReticleFrame>
+			<div className="overflow-x-auto">
+				<table className="w-full text-left text-[12px]">
+					<thead>
+						<tr className="border-b border-[var(--ret-border)] text-[var(--ret-text-muted)]">
+							<th className="px-4 py-2 font-mono text-[10px] font-normal uppercase tracking-[0.18em]">Machine</th>
+							<th className="px-4 py-2 font-mono text-[10px] font-normal uppercase tracking-[0.18em]">Agent</th>
+							<th className="px-4 py-2 font-mono text-[10px] font-normal uppercase tracking-[0.18em]">Status</th>
+							<th className="hidden px-4 py-2 font-mono text-[10px] font-normal uppercase tracking-[0.18em] md:table-cell">Shape</th>
+							<th className="hidden px-4 py-2 font-mono text-[10px] font-normal uppercase tracking-[0.18em] lg:table-cell">Created</th>
+							<th className="px-4 py-2">
+								<span className="sr-only">Open</span>
+							</th>
+						</tr>
+					</thead>
+					<tbody>
+						{machines.map((machine) => {
+							const state = machine.live.ok ? machine.live.state : "unknown";
+							const meta = TABLE_PHASE[state] ?? TABLE_PHASE.unknown;
+							const memGib = (machine.spec.memoryMib / 1024).toFixed(1);
+							const isActive = machine.id === activeMachineId;
+							return (
+								<tr
+									key={machine.id}
+									className="border-b border-[var(--ret-border)] transition-colors hover:bg-[var(--ret-surface)]"
+								>
+									<td className="px-4 py-2.5">
+										<span className="flex items-center gap-1.5">
+											<span className="truncate font-mono text-[12px] text-[var(--ret-text)]">
+												{machine.name}
+											</span>
+											{isActive ? (
+												<span className="shrink-0 border border-[var(--ret-purple)]/45 bg-[var(--ret-purple-glow)] px-1 text-[8px] uppercase tracking-[0.2em] text-[var(--ret-purple)]">
+													active
+												</span>
+											) : null}
+										</span>
+										<span className="block truncate font-mono text-[10px] text-[var(--ret-text-muted)]">
+											{machine.id.slice(0, 22)}
+										</span>
+									</td>
+									<td className="px-4 py-2.5 text-[11px] text-[var(--ret-text-dim)]">
+										{AGENT_LABEL[machine.agentKind]}
+									</td>
+									<td className="px-4 py-2.5">
+										<span className="inline-flex items-center gap-1.5">
+											<span className={cn("inline-block h-1.5 w-1.5 rounded-full", meta.dot)} />
+											<span className={cn("text-[11px]", meta.text)}>{meta.label}</span>
+										</span>
+									</td>
+									<td className="hidden px-4 py-2.5 font-mono text-[11px] text-[var(--ret-text-dim)] md:table-cell">
+										{machine.spec.vcpu}v / {memGib}G / {machine.spec.storageGib}G
+									</td>
+									<td className="hidden px-4 py-2.5 text-[11px] text-[var(--ret-text-dim)] lg:table-cell">
+										{new Date(machine.createdAt).toLocaleDateString()}
+									</td>
+									<td className="px-4 py-2.5 text-right">
+										<Link
+											href={`/dashboard/machines/${machine.id}`}
+											className="font-mono text-[11px] text-[var(--ret-text-muted)] transition-colors hover:text-[var(--ret-text)]"
+										>
+											open →
+										</Link>
+									</td>
+								</tr>
+							);
+						})}
+					</tbody>
+				</table>
+			</div>
+		</ReticleFrame>
 	);
 }
 

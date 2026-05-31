@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Logo } from "@/components/Logo";
@@ -8,6 +9,7 @@ import {
 	MachineActions,
 	type MachineState as MachineActionState,
 } from "@/components/dashboard/MachineActions";
+import { MachineDetailModal } from "@/components/dashboard/MachineDetailModal";
 import { RouterSelect } from "@/components/dashboard/RouterSelect";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
@@ -113,6 +115,8 @@ export function FleetMonitor() {
 		string,
 		boolean
 	> | null>(null);
+	// Machine whose detail/observability modal is open (clicked in the list).
+	const [detail, setDetail] = useState<LiveMachine | null>(null);
 
 	useEffect(() => {
 		let alive = true;
@@ -245,6 +249,7 @@ export function FleetMonitor() {
 	const summary = useMemo(() => summarize(visible), [visible]);
 
 	return (
+		<>
 		<section className="border border-[var(--ret-border)] bg-[var(--ret-bg)]">
 			<header className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--ret-border)] px-4 py-2.5">
 				<div className="flex items-center gap-2">
@@ -341,6 +346,7 @@ export function FleetMonitor() {
 							machine={machine}
 							active={machine.id === data?.activeMachineId}
 							onChange={refresh}
+							onOpenDetails={() => setDetail(machine)}
 						/>
 					))}
 				</ul>
@@ -352,6 +358,15 @@ export function FleetMonitor() {
 				</footer>
 			) : null}
 		</section>
+		{detail ? (
+			<MachineDetailModal
+				machine={detail}
+				active={detail.id === data?.activeMachineId}
+				onClose={() => setDetail(null)}
+				onChange={refresh}
+			/>
+		) : null}
+		</>
 	);
 }
 
@@ -379,10 +394,12 @@ function MachineRow({
 	machine,
 	active,
 	onChange,
+	onOpenDetails,
 }: {
 	machine: LiveMachine;
 	active: boolean;
 	onChange: () => Promise<void>;
+	onOpenDetails: () => void;
 }) {
 	const stateName = machine.live.ok ? machine.live.state : "unknown";
 	const tone = STATE_TONE[stateName] ?? "muted";
@@ -413,17 +430,22 @@ function MachineRow({
 			)}
 		>
 			<div className="flex items-center justify-between gap-2">
-				<div className="flex min-w-0 items-center gap-1.5">
+				<button
+					type="button"
+					onClick={onOpenDetails}
+					className="flex min-w-0 items-center gap-1.5 text-left"
+					title="View machine details"
+				>
 					{providerMark ? <Logo mark={providerMark} size={12} /> : null}
-				<span className="truncate text-[12px] text-[var(--ret-text)]">
-					{machine.name}
-				</span>
+					<span className="truncate text-[12px] text-[var(--ret-text)] transition-colors hover:text-[var(--ret-purple)]">
+						{machine.name}
+					</span>
 					{active ? (
 						<ReticleBadge variant="accent" className="text-[9px]">
 							active
 						</ReticleBadge>
 					) : null}
-				</div>
+				</button>
 				<StateChip tone={tone}>{stateName}</StateChip>
 			</div>
 			<dl className="grid grid-cols-3 gap-1 text-[10px] text-[var(--ret-text-muted)]">
@@ -473,7 +495,13 @@ function MachineRow({
 					{providerMessage.slice(0, 80)}
 				</p>
 			) : null}
-			<div className="flex justify-end">
+			<div className="flex items-center justify-between gap-2">
+				<Link
+					href={`/dashboard/machines/${machine.id}`}
+					className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)] transition-colors hover:text-[var(--ret-text)]"
+				>
+					open →
+				</Link>
 				<MachineActions
 					machineId={machine.id}
 					state={stateName as MachineActionState}

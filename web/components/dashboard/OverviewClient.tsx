@@ -1,6 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import {
+	Activity,
+	Cpu,
+	Gauge,
+	MessageSquare,
+	Network,
+	Plug2,
+	Server,
+	Sparkles,
+	Zap,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Logo } from "@/components/Logo";
@@ -10,14 +21,13 @@ import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { ActivityOverviewPanel } from "@/components/dashboard/ActivityOverviewPanel";
 import { DashboardPageBody } from "@/components/dashboard/DashboardPageBody";
+import { FleetAnalytics } from "@/components/dashboard/FleetAnalytics";
 import { FleetMetrics } from "@/components/dashboard/FleetMetrics";
 import { FleetMonitor } from "@/components/dashboard/FleetMonitor";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { MetricsChartPanel } from "@/components/dashboard/MetricsChartPanel";
-import { ObservabilityPanel } from "@/components/dashboard/ObservabilityPanel";
 import { ReloadKnowledge } from "@/components/dashboard/ReloadKnowledge";
 import { StatusPill } from "@/components/dashboard/StatusPill";
-import { ToolIcon } from "@/components/ToolIcon";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { useMachineControl } from "@/lib/dashboard/use-machine-control";
 import type { GatewaySummary } from "@/lib/dashboard/types";
@@ -131,14 +141,14 @@ export function OverviewClient({
 			<section className="grid grid-cols-2 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] md:grid-cols-4 xl:grid-cols-6">
 				<MetricCard
 					label="fleet"
-					icon={<Logo mark="am" size={11} />}
+					icon={<Server size={12} className="text-[var(--ret-text-muted)]" />}
 					value={fleetRunning != null ? String(fleetRunning) : "—"}
 					hint="machines running"
 					tone="ok"
 				/>
 				<MetricCard
 					label="active"
-					icon={<Logo mark="am" size={11} />}
+					icon={<Activity size={12} className="text-[var(--ret-text-muted)]" />}
 					value={<StatusPill phase={phase} className="px-2 py-0.5 text-[11px]" />}
 					hint={
 						machine.machine?.machineId
@@ -148,7 +158,7 @@ export function OverviewClient({
 				/>
 				<MetricCard
 					label="gateway"
-					icon={<ToolIcon name="browser" size={11} className="text-[var(--ret-text-muted)]" />}
+					icon={<Network size={12} className="text-[var(--ret-text-muted)]" />}
 					value={
 						gateway ? (
 							gateway.ok ? (
@@ -165,7 +175,7 @@ export function OverviewClient({
 				/>
 				<MetricCard
 					label="latency"
-					icon={<ToolIcon name="schedule" size={11} className="text-[var(--ret-text-muted)]" />}
+					icon={<Gauge size={12} className="text-[var(--ret-text-muted)]" />}
 					value={
 						gateway ? (
 							`${gateway.latencyMs} ms`
@@ -178,7 +188,7 @@ export function OverviewClient({
 				/>
 				<MetricCard
 					label="spec"
-					icon={<ToolIcon name="memory" size={11} className="text-[var(--ret-text-muted)]" />}
+					icon={<Cpu size={12} className="text-[var(--ret-text-muted)]" />}
 					value={
 						machine.machine?.vcpu != null ? `${machine.machine.vcpu}v · ${memoryGib}G` : "—"
 					}
@@ -190,7 +200,7 @@ export function OverviewClient({
 				/>
 				<MetricCard
 					label="skills"
-					icon={<ToolIcon name="skill" size={11} className="text-[var(--ret-text-muted)]" />}
+					icon={<Sparkles size={12} className="text-[var(--ret-text-muted)]" />}
 					value={String(counts.skills)}
 					hint={`${counts.mcps} MCP · ${counts.tools} tools · ${counts.crons} crons`}
 					tone="purple"
@@ -202,7 +212,10 @@ export function OverviewClient({
 			<section className="grid gap-4">
 				<div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-[var(--ret-border)] pb-2">
 					<div>
-						<ReticleLabel>Telemetry</ReticleLabel>
+						<span className="flex items-center gap-1.5">
+							<Activity size={12} className="text-[var(--ret-purple)]" />
+							<ReticleLabel>Telemetry</ReticleLabel>
+						</span>
 						<p className="mt-1 text-[12px] text-[var(--ret-text-dim)]">
 							Fleet ops, gateway latency, log rates, and live activity on the active machine.
 						</p>
@@ -211,12 +224,7 @@ export function OverviewClient({
 
 				<FleetMetrics activeMachineId={activeMachineId} />
 
-				<ObservabilityPanel
-					agentKind={agentKind}
-					modelOverride={model}
-					machineSummary={machine.machine}
-					activeMachineId={activeMachineId}
-				/>
+				<FleetAnalytics showStats={false} />
 
 				<MetricsChartPanel activeMachineId={activeMachineId} />
 
@@ -224,7 +232,8 @@ export function OverviewClient({
 
 				<section className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
 					<ReticleFrame className="p-4">
-						<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+						<p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+							<Zap size={12} className="text-[var(--ret-purple)]" />
 							Quick actions
 						</p>
 						<h2 className="ret-display mt-1.5 text-base">
@@ -236,13 +245,13 @@ export function OverviewClient({
 						</p>
 						<div className="mt-3 flex flex-wrap gap-2">
 							<ReticleButton as="a" href="/dashboard/chat" variant="primary" size="sm">
-								Open chat
+								<MessageSquare size={13} /> Open chat
 							</ReticleButton>
 							<ReticleButton as="a" href="/dashboard/skills" variant="secondary" size="sm">
-								Browse skills
+								<Sparkles size={13} /> Browse skills
 							</ReticleButton>
 							<ReticleButton as="a" href="/dashboard/mcps" variant="secondary" size="sm">
-								View MCPs
+								<Plug2 size={13} /> View MCPs
 							</ReticleButton>
 						</div>
 					</ReticleFrame>

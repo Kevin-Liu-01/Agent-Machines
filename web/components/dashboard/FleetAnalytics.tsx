@@ -17,10 +17,10 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { bucketByDay } from "@/lib/dashboard/chart-buckets";
 
 /**
- * Fleet-level analytics strip for the Machines page. Folds in the
- * active/idle counts and the "machines created" timeline that previously
- * lived on the standalone Containers page, so the fleet has one home.
- * The interactive machine list itself is rendered by <MachinesPanel>.
+ * Fleet-level analytics. The "machines created" timeline lives on the
+ * Overview alongside the other telemetry (`showStats={false}` there, since
+ * Overview's FleetMetrics already carries the running/idle counts). The
+ * stat cards render when used standalone.
  */
 
 const POLL_MS = 5000;
@@ -37,7 +37,7 @@ function resolveState(m: LiveMachine): string {
 	return m.live.ok ? m.live.state : "unknown";
 }
 
-export function FleetAnalytics() {
+export function FleetAnalytics({ showStats = true }: { showStats?: boolean }) {
 	const [data, setData] = useState<Payload | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [chartDays, setChartDays] = useState(14);
@@ -92,31 +92,33 @@ export function FleetAnalytics() {
 
 	return (
 		<div className="flex flex-col gap-4">
-			<div className="grid gap-3 sm:grid-cols-2">
-				{loading ? (
-					<>
-						<Skeleton className="h-[88px]" />
-						<Skeleton className="h-[88px]" />
-					</>
-				) : (
-					<>
-						<StatCard
-							label="Active machines"
-							value={activeCount}
-							badge={
-								<ReticleBadge variant="accent" className="text-[9px]">
-									LIVE
-								</ReticleBadge>
-							}
-						/>
-						<StatCard
-							label="Idle machines"
-							value={sleepingCount}
-							subtext="sleeping"
-						/>
-					</>
-				)}
-			</div>
+			{showStats ? (
+				<div className="grid gap-3 sm:grid-cols-2">
+					{loading ? (
+						<>
+							<Skeleton className="h-[88px]" />
+							<Skeleton className="h-[88px]" />
+						</>
+					) : (
+						<>
+							<StatCard
+								label="Active machines"
+								value={activeCount}
+								badge={
+									<ReticleBadge variant="accent" className="text-[9px]">
+										LIVE
+									</ReticleBadge>
+								}
+							/>
+							<StatCard
+								label="Idle machines"
+								value={sleepingCount}
+								subtext="sleeping"
+							/>
+						</>
+					)}
+				</div>
+			) : null}
 
 			<ReticleFrame>
 				<div className="px-4 pt-4 pb-2">

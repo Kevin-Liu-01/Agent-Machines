@@ -20,7 +20,7 @@ import type {
 } from "@/lib/dashboard/activity/types";
 import type { LogLine } from "@/lib/dashboard/types";
 import { fetchLogTail } from "@/lib/fleet/fetch-log-tail";
-import { HEATMAP_CELL_PX, HeatmapGridCell, HeatmapGridSlot, heatmapGridStyle } from "@/components/heatmap/HeatmapGridCell";
+import { HEATMAP_CELL_PX, HeatmapGridCell, HeatmapGridSlot, heatmapCellPx, heatmapGridStyle } from "@/components/heatmap/HeatmapGridCell";
 import { cn } from "@/lib/cn";
 import type { AgentKind, ProviderKind } from "@/lib/user-config/schema";
 
@@ -302,12 +302,13 @@ function HeatmapGrid({
 	onSelectDate: (d: string | null) => void;
 	onHoverDate: (d: string | null) => void;
 }) {
+	const cellPx = heatmapCellPx(weeks.length);
 	return (
-		<div className="w-full min-w-0">
+		<div className="w-full min-w-0 overflow-x-auto">
 			<div
-				className="mb-1 grid w-full gap-[3px]"
+				className="mb-1 grid w-fit gap-[3px]"
 				style={{
-					gridTemplateColumns: `24px repeat(${weeks.length}, minmax(0, 1fr))`,
+					gridTemplateColumns: `24px repeat(${weeks.length}, ${cellPx}px)`,
 				}}
 			>
 				<div aria-hidden="true" />
@@ -323,7 +324,7 @@ function HeatmapGrid({
 					);
 				})}
 			</div>
-			<div className="grid w-full gap-[3px]" style={heatmapGridStyle(weeks.length, { labelColumnPx: 24 })}>
+			<div className="grid w-fit gap-[3px]" style={heatmapGridStyle(weeks.length, { labelColumnPx: 24, cellPx })}>
 				{DAY_LABEL.map((label, dayIdx) => (
 					<div
 						key={label}

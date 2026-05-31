@@ -126,8 +126,26 @@ export function HeatmapGridSlot({
 	);
 }
 
-export function heatmapGridStyle(weekCount: number, opts?: { labelColumnPx?: number }): CSSProperties {
+export function heatmapGridStyle(
+	weekCount: number,
+	opts?: { labelColumnPx?: number; cellPx?: number },
+): CSSProperties {
 	const labelPx = opts?.labelColumnPx ?? 0;
+
+	// Fixed-cell mode: square px tracks, no aspect-ratio stretch. Used where the
+	// column count varies a lot (e.g. a "week" range = 1 column) so the grid can
+	// never blow a single column up to full width.
+	if (opts?.cellPx) {
+		const cell = opts.cellPx;
+		const weekCols = `repeat(${weekCount}, ${cell}px)`;
+		return {
+			gridTemplateColumns: labelPx > 0 ? `${labelPx}px ${weekCols}` : weekCols,
+			gridTemplateRows: `repeat(7, ${cell}px)`,
+		};
+	}
+
+	// Fluid mode (default): week columns flex to fill width, kept square by the
+	// aspect ratio. Only safe when the column count is large and stable.
 	const columns =
 		labelPx > 0
 			? `${labelPx}px repeat(${weekCount}, minmax(0, 1fr))`
@@ -136,7 +154,18 @@ export function heatmapGridStyle(weekCount: number, opts?: { labelColumnPx?: num
 	return {
 		gridTemplateColumns: columns,
 		gridTemplateRows: "repeat(7, minmax(0, 1fr))",
-		// Label column is narrow; week columns stay square via 1fr + this ratio.
 		aspectRatio: labelPx > 0 ? `${weekCount + labelPx / HEATMAP_CELL_PX} / 7` : `${weekCount} / 7`,
 	};
+}
+
+/**
+ * Square cell size for a fixed-cell heatmap. The max cap matches the
+ * ~6-month layout (its dense ~28-column grid lands here): capping every
+ * range at the same ceiling keeps the section height consistent so short
+ * ranges (week / month / quarter) don't balloon to taller cells. The floor
+ * keeps a year of columns legible.
+ */
+export function heatmapCellPx(weekCount: number, targetWidth = 720, labelPx = 24): number {
+	const ideal = Math.floor((targetWidth - labelPx) / Math.max(weekCount, 1));
+	return Math.max(12, Math.min(24, ideal));
 }

@@ -1,5 +1,15 @@
 "use client";
 
+import {
+	Activity,
+	Bot,
+	Brain,
+	Cloud,
+	Cpu,
+	Gauge,
+	Hash,
+	SquareTerminal,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { DashboardPageBody } from "@/components/dashboard/DashboardPageBody";
@@ -158,7 +168,7 @@ export default function MachineOverviewPage() {
 			/>
 			<DashboardPageBody>
 				<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-					<StatCard label="Status">
+					<StatCard label="Status" icon={<Activity size={12} />}>
 						{loading ? (
 							<Skeleton className="h-4 w-20" />
 						) : (
@@ -169,19 +179,19 @@ export default function MachineOverviewPage() {
 							</ReticleBadge>
 						)}
 					</StatCard>
-					<StatCard label="Provider">
+					<StatCard label="Provider" icon={<Cloud size={12} />}>
 						{PROVIDER_LABEL[machine.providerKind]}
 					</StatCard>
-					<StatCard label="Agent">
+					<StatCard label="Agent" icon={<Bot size={12} />}>
 						{AGENT_LABEL[machine.agentKind]}
 					</StatCard>
-					<StatCard label="Spec">
+					<StatCard label="Spec" icon={<Cpu size={12} />}>
 						{machine.spec.vcpu}v / {memGib}G RAM / {machine.spec.storageGib}G disk
 					</StatCard>
-					<StatCard label="Model">
+					<StatCard label="Model" icon={<Brain size={12} />}>
 						{machine.model}
 					</StatCard>
-				<StatCard label="Machine ID" mono>
+				<StatCard label="Machine ID" icon={<Hash size={12} />} mono>
 					{machineId}
 				</StatCard>
 				</div>
@@ -189,8 +199,9 @@ export default function MachineOverviewPage() {
 				{/* ── A) SSH Access strip ── */}
 				<ReticleFrame>
 					<div className="px-4 py-3">
-						<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-							&gt;_ SSH Access
+						<p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+							<SquareTerminal size={12} />
+							SSH Access
 						</p>
 						<div className="mt-2 flex items-center gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-4 py-2.5">
 							<span className="text-[var(--ret-text-muted)]">&gt;_</span>
@@ -205,7 +216,8 @@ export default function MachineOverviewPage() {
 				{/* ── B) Resource utilization charts ── */}
 				<ReticleFrame>
 					<div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--ret-border)] px-4 py-3">
-						<h2 className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+						<h2 className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+							<Gauge size={12} />
 							Resource utilization
 						</h2>
 						<TimeRangeSelector
@@ -257,7 +269,8 @@ export default function MachineOverviewPage() {
 				{/* ── C) Activity timeline ── */}
 				<ReticleFrame>
 					<div className="border-b border-[var(--ret-border)] px-4 py-3">
-						<h2 className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+						<h2 className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+							<Activity size={12} />
 							Activity timeline
 						</h2>
 					</div>
@@ -303,15 +316,18 @@ function StatCard({
 	label,
 	children,
 	mono,
+	icon,
 }: {
 	label: string;
 	children: React.ReactNode;
 	mono?: boolean;
+	icon?: React.ReactNode;
 }) {
 	return (
 		<ReticleFrame>
 			<div className="px-4 py-3">
-				<dt className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				<dt className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+					{icon ? <span className="inline-flex text-[var(--ret-text-muted)]">{icon}</span> : null}
 					{label}
 				</dt>
 				<dd className={cn("mt-1 text-[13px] text-[var(--ret-text)]", mono && "font-mono text-[11px]")}>

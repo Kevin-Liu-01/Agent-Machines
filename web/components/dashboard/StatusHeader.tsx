@@ -20,6 +20,7 @@ import type {
 import type { AgentKind, PublicMachineRef } from "@/lib/user-config/schema";
 
 import { AgentSwitcher } from "./AgentSwitcher";
+import { CommandPalette } from "./CommandPalette";
 import { FleetStatusStrip } from "./FleetStatusStrip";
 import { MachineSwitcher } from "./MachineSwitcher";
 import { ModelSwitcher } from "./ModelSwitcher";
@@ -157,6 +158,9 @@ export function StatusHeader({ agentKind, machines }: Props) {
 						className="shrink-0 text-[12px] font-medium"
 					/>
 				) : null}
+				<div className="ml-1 hidden sm:block">
+					<CommandPalette />
+				</div>
 			</div>
 
 			<div className="flex shrink-0 items-center gap-2">
