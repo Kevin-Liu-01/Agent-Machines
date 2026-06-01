@@ -14,6 +14,7 @@
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 import { getUserConfig } from "@/lib/user-config/clerk";
 import {
+	bundledAdapter,
 	skillsShAdapter,
 	mcpRegistryAdapter,
 	npmAdapter,
@@ -36,6 +37,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const ALL_ADAPTERS: RegistryAdapter[] = [
+	bundledAdapter,
 	skillsShAdapter,
 	mcpRegistryAdapter,
 	npmAdapter,
@@ -43,6 +45,10 @@ const ALL_ADAPTERS: RegistryAdapter[] = [
 	githubRepoAdapter,
 	urlManifestAdapter,
 ];
+
+/** Per-adapter result cap. Bundled returns its full catalog; network
+ *  adapters are capped so one source can't dominate the merge. */
+const ADAPTER_LIMIT = 500;
 
 const ADAPTER_MAP = new Map(ALL_ADAPTERS.map((a) => [a.id, a]));
 
@@ -96,7 +102,7 @@ export async function GET(request: Request): Promise<Response> {
 
 	const results = await Promise.allSettled(
 		adaptersToRun.map((adapter) =>
-			adapter.search({ query, limit: 40 }).then((items) => ({
+			adapter.search({ query, limit: ADAPTER_LIMIT }).then((items) => ({
 				adapter,
 				items,
 			})),

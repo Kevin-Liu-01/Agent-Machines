@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 
+import { CircuitArt } from "@/components/reticle/CircuitArt";
 import { cn } from "@/lib/cn";
 
 type Props = {
@@ -9,6 +10,8 @@ type Props = {
 	as?: "section" | "div" | "header" | "footer";
 	id?: string;
 	style?: CSSProperties;
+	/** Circuit-art slug for a blended backdrop (recipe A, card strength). */
+	art?: string | null;
 };
 
 /**
@@ -23,16 +26,19 @@ export function ReticleBand({
 	as: Tag = "div",
 	id,
 	style,
+	art,
 }: Props) {
 	return (
 		<Tag
 			id={id}
-			className={cn("relative w-full", className)}
+			className={cn("relative w-full", art ? "overflow-hidden" : null, className)}
 			style={style}
 		>
+			{art ? <CircuitArt slug={art} variant="card" /> : null}
 			<div
 				className={cn(
-					"relative z-10 mx-auto w-full max-w-[var(--ret-content-max)] bg-[var(--ret-bg)]",
+					"relative z-10 mx-auto w-full max-w-[var(--ret-content-max)]",
+					art ? null : "bg-[var(--ret-bg)]",
 					contentClassName,
 				)}
 			>

@@ -55,21 +55,38 @@ export function RegistryCard({ item, onAdd, onRemove }: Props) {
 		}
 	}
 
+	const Header = (
+		<div className="flex min-w-0 items-center gap-2">
+			<RegistryLogo
+				brand={item.brand}
+				logoUrl={item.logoUrl}
+				kind={item.kind}
+				name={item.name}
+				homepage={item.homepage}
+				size={16}
+			/>
+			<span className="truncate font-mono text-[12px] text-[var(--ret-text)]">
+				{item.name}
+			</span>
+		</div>
+	);
+
 	return (
 		<ReticleFrame>
 			<div className="flex items-start justify-between gap-2 border-b border-[var(--ret-border)] px-3 py-2">
-				<div className="flex min-w-0 items-center gap-2">
-					<RegistryLogo
-						brand={item.brand}
-						logoUrl={item.logoUrl}
-						kind={item.kind}
-						name={item.name}
-						size={16}
-					/>
-					<span className="truncate font-mono text-[12px] text-[var(--ret-text)]">
-						{item.name}
-					</span>
-				</div>
+				{item.homepage ? (
+					<a
+						href={item.homepage}
+						target="_blank"
+						rel="noreferrer"
+						className="min-w-0 transition-opacity hover:opacity-80"
+						title={`Open source — ${item.homepage}`}
+					>
+						{Header}
+					</a>
+				) : (
+					Header
+				)}
 				<ReticleBadge variant={KIND_BADGE[item.kind] ?? "default"} className="shrink-0 text-[10px]">
 					{item.kind}
 				</ReticleBadge>
@@ -110,9 +127,9 @@ export function RegistryCard({ item, onAdd, onRemove }: Props) {
 							href={item.homepage}
 							target="_blank"
 							rel="noreferrer"
-							className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-purple)] hover:underline"
+							className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-accent)] hover:underline"
 						>
-							docs
+							source&nbsp;↗
 						</a>
 					) : (
 						<span />

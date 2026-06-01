@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 
+import { CircuitArt } from "@/components/reticle/CircuitArt";
 import { WingBackground } from "@/components/WingBackground";
 import { cn } from "@/lib/cn";
 
@@ -16,6 +17,8 @@ type Props = {
 		| "wing-cloud"
 		| "wing-nyx-lines"
 		| "wing-nyx-waves";
+	/** Circuit-art slug for a faint blended backdrop (recipe A, ambient). */
+	art?: string | null;
 	as?: "section" | "div" | "header" | "footer" | "main";
 	id?: string;
 };
@@ -43,6 +46,7 @@ export function ReticleSection({
 	className,
 	contentClassName = "px-6 py-14 md:py-16",
 	background = "none",
+	art,
 	as: Tag = "section",
 	id,
 }: Props) {
@@ -57,7 +61,7 @@ export function ReticleSection({
 	return (
 		<Tag
 			id={id}
-			className={cn("relative", className)}
+			className={cn("relative", art ? "overflow-hidden" : null, className)}
 		>
 			{isWing && (
 				<WingBackground
@@ -65,10 +69,11 @@ export function ReticleSection({
 					opacity={{ light: 0.45, dark: 0.30 }}
 				/>
 			)}
+			{art ? <CircuitArt slug={art} variant="card" /> : null}
 			<div
 				className={cn(
 					"relative z-10 mx-auto w-full max-w-[var(--ret-content-max)]",
-					isHatch || isWing ? null : "bg-[var(--ret-bg)]",
+					isHatch || isWing || art ? null : "bg-[var(--ret-bg)]",
 					contentClassName,
 				)}
 				style={innerStyle}

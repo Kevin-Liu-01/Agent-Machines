@@ -28,10 +28,14 @@ async function fetchFromApi(query: string): Promise<SkillsShEntry[]> {
 		? `${API_BASE}/search?q=${encodeURIComponent(query)}&limit=40`
 		: `${API_BASE}/skills?sort=popular&limit=40`;
 	const res = await fetch(url, {
+		// skills.sh has no public JSON API today (returns an HTML app shell),
+		// so fail fast and fall back to the curated seed instead of hanging.
 		headers: { Accept: "application/json" },
-		signal: AbortSignal.timeout(8_000),
+		signal: AbortSignal.timeout(3_000),
 	});
 	if (!res.ok) throw new Error(`skills.sh ${res.status}`);
+	const ct = res.headers.get("content-type") ?? "";
+	if (!ct.includes("application/json")) throw new Error("skills.sh non-JSON");
 	const body = (await res.json()) as { skills?: SkillsShEntry[]; results?: SkillsShEntry[] };
 	return body.skills ?? body.results ?? [];
 }

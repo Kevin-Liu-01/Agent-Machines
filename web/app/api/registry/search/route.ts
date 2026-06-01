@@ -6,6 +6,7 @@
  */
 
 import {
+	bundledAdapter,
 	skillsShAdapter,
 	mcpRegistryAdapter,
 	npmAdapter,
@@ -23,6 +24,7 @@ import type { TrustedAddOnKind } from "@/lib/dashboard/loadout";
 export const runtime = "nodejs";
 
 const PUBLIC_ADAPTERS: RegistryAdapter[] = [
+	bundledAdapter,
 	skillsShAdapter,
 	mcpRegistryAdapter,
 	npmAdapter,
@@ -53,7 +55,7 @@ export async function GET(request: Request): Promise<Response> {
 
 	const results = await Promise.allSettled(
 		adaptersToRun.map((adapter) =>
-			adapter.search({ query, limit: 30 }).then((items) => ({
+			adapter.search({ query, limit: 500 }).then((items) => ({
 				adapter,
 				items,
 			})),
@@ -91,7 +93,7 @@ export async function GET(request: Request): Promise<Response> {
 			? allItems
 			: allItems.filter((item) => requestedKinds.includes(item.kind));
 
-	const limited = filtered.slice(0, 60);
+	const limited = filtered.slice(0, 1600);
 
 	return Response.json(
 		{ items: limited, sources },

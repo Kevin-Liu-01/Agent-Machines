@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { RegistryLogo } from "@/components/dashboard/RegistryLogo";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { cn } from "@/lib/cn";
@@ -16,12 +17,15 @@ type SearchState =
 
 const SOURCES: Array<{ id: RegistrySourceId | "all"; label: string }> = [
 	{ id: "all", label: "All sources" },
+	{ id: "bundled", label: "Bundled" },
 	{ id: "skills-sh", label: "skills.sh" },
 	{ id: "mcp-registry", label: "MCP Registry" },
 	{ id: "npm", label: "npm" },
 	{ id: "cursor-plugins", label: "Cursor Plugins" },
 	{ id: "github-repo", label: "GitHub" },
 ];
+
+const PAGE_SIZE = 60;
 
 const KINDS: Array<{ id: TrustedAddOnKind | "all"; label: string }> = [
 	{ id: "all", label: "All" },
@@ -37,11 +41,13 @@ export function PublicRegistryBrowser() {
 	const [activeSource, setActiveSource] = useState<RegistrySourceId | "all">("all");
 	const [activeKind, setActiveKind] = useState<TrustedAddOnKind | "all">("all");
 	const [state, setState] = useState<SearchState>({ phase: "idle" });
+	const [visible, setVisible] = useState(PAGE_SIZE);
 	const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
 	const doSearch = useCallback(
 		async (q: string, source: RegistrySourceId | "all", kind: TrustedAddOnKind | "all") => {
 			setState({ phase: "loading" });
+			setVisible(PAGE_SIZE);
 			try {
 				const params = new URLSearchParams();
 				if (q) params.set("q", q);
@@ -178,42 +184,77 @@ export function PublicRegistryBrowser() {
 					</div>
 				</ReticleFrame>
 			) : (
-				<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-					{items.map((item) => (
-						<ReticleFrame key={item.id}>
-							<div className="flex flex-col gap-2 p-4">
-								<div className="flex items-start justify-between gap-2">
-									<div className="min-w-0 flex-1">
-										<p className="truncate font-mono text-[12px] font-medium text-[var(--ret-text)]">
-											{item.name}
-										</p>
-										<p className="mt-0.5 font-mono text-[10px] text-[var(--ret-text-muted)]">
-											{item.provider}
-										</p>
+				<>
+					<p className="font-mono text-[11px] text-[var(--ret-text-muted)]">
+						showing {Math.min(visible, items.length).toLocaleString()} of{" "}
+						{items.length.toLocaleString()}
+					</p>
+					<div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+						{items.slice(0, visible).map((item) => (
+							<ReticleFrame key={item.id}>
+								<div className="flex h-full flex-col gap-2 p-4">
+									<div className="flex items-start justify-between gap-2">
+										<a
+											href={item.homepage ?? "#"}
+											target={item.homepage ? "_blank" : undefined}
+											rel="noreferrer"
+											className={cn(
+												"flex min-w-0 flex-1 items-center gap-2",
+												item.homepage ? "transition-opacity hover:opacity-80" : "pointer-events-none",
+											)}
+										>
+											<RegistryLogo
+												brand={item.brand}
+												logoUrl={item.logoUrl}
+												kind={item.kind}
+												name={item.name}
+												homepage={item.homepage}
+												size={16}
+											/>
+											<span className="min-w-0">
+												<span className="block truncate font-mono text-[12px] font-medium text-[var(--ret-text)]">
+													{item.name}
+												</span>
+												<span className="block truncate font-mono text-[10px] text-[var(--ret-text-muted)]">
+													{item.provider}
+												</span>
+											</span>
+										</a>
+										<ReticleBadge variant={item.kind === "mcp" ? "success" : item.kind === "skill" ? "accent" : "default"}>
+											{item.kind}
+										</ReticleBadge>
 									</div>
-									<ReticleBadge variant={item.kind === "mcp" ? "success" : item.kind === "skill" ? "accent" : "default"}>
-										{item.kind}
-									</ReticleBadge>
+									<p className="line-clamp-2 text-[11px] leading-relaxed text-[var(--ret-text-dim)]">
+										{item.description}
+									</p>
+									<div className="mt-auto flex items-center gap-2 pt-1">
+										{item.installCommand ? (
+											<code className="truncate rounded bg-[var(--ret-surface)] px-1.5 py-0.5 font-mono text-[9px] text-[var(--ret-text-muted)]">
+												{item.installCommand}
+											</code>
+										) : null}
+										{item.stars ? (
+											<span className="shrink-0 font-mono text-[9px] text-[var(--ret-text-muted)]">
+												{item.stars.toLocaleString()}
+											</span>
+										) : null}
+									</div>
 								</div>
-								<p className="line-clamp-2 text-[11px] leading-relaxed text-[var(--ret-text-dim)]">
-									{item.description}
-								</p>
-								<div className="mt-auto flex items-center gap-2 pt-1">
-									{item.installCommand ? (
-										<code className="truncate rounded bg-[var(--ret-surface)] px-1.5 py-0.5 font-mono text-[9px] text-[var(--ret-text-muted)]">
-											{item.installCommand}
-										</code>
-									) : null}
-									{item.stars ? (
-										<span className="shrink-0 font-mono text-[9px] text-[var(--ret-text-muted)]">
-											{item.stars.toLocaleString()}
-										</span>
-									) : null}
-								</div>
-							</div>
-						</ReticleFrame>
-					))}
-				</div>
+							</ReticleFrame>
+						))}
+					</div>
+					{visible < items.length ? (
+						<div className="flex justify-center pt-1">
+							<button
+								type="button"
+								onClick={() => setVisible((v) => v + PAGE_SIZE)}
+								className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--ret-text-dim)] transition-colors hover:border-[var(--ret-accent)]/40 hover:text-[var(--ret-text)]"
+							>
+								load {Math.min(PAGE_SIZE, items.length - visible)} more
+							</button>
+						</div>
+					) : null}
+				</>
 			)}
 
 			{/* CTA */}

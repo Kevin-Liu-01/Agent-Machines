@@ -21,6 +21,13 @@ const CATEGORY_ART_SLUGS = new Set<string>([
 	"agents",
 	"loadout",
 	"hero",
+	// per-machine surfaces
+	"terminal",
+	"sessions",
+	"logs",
+	"artifacts",
+	"setup",
+	"console",
 ]);
 
 export function getCategoryArt(slug: string | null | undefined): string | null {

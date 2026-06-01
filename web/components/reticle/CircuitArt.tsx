@@ -22,19 +22,26 @@ import { cn } from "@/lib/cn";
  * - `ambient` — faint version of `card` for page-header backdrops behind text.
  * - `fill`    — fills its container, fades toward the bottom (decorative side panels).
  */
-const RIGHT_MASK =
-	"[-webkit-mask-image:linear-gradient(to_right,transparent,black_88%)] [mask-image:linear-gradient(to_right,transparent,black_88%)]";
+// Card/section backdrops spread further left (more of the art reads); header
+// ambient stays right-weighted so it never fights the title text.
+const RIGHT_MASK_WIDE =
+	"[-webkit-mask-image:linear-gradient(to_right,transparent,black_50%)] [mask-image:linear-gradient(to_right,transparent,black_50%)]";
+const RIGHT_MASK_HEADER =
+	"[-webkit-mask-image:linear-gradient(to_right,transparent,black_68%)] [mask-image:linear-gradient(to_right,transparent,black_68%)]";
 const BOTTOM_MASK =
-	"[-webkit-mask-image:linear-gradient(to_bottom,black_55%,transparent)] [mask-image:linear-gradient(to_bottom,black_55%,transparent)]";
+	"[-webkit-mask-image:linear-gradient(to_bottom,black_60%,transparent)] [mask-image:linear-gradient(to_bottom,black_60%,transparent)]";
 
 const VARIANTS = {
 	card: cn(
-		"inset-y-0 right-0 w-2/3",
-		"opacity-[0.4] group-hover:opacity-[0.6] dark:opacity-[0.5] dark:group-hover:opacity-[0.7]",
-		RIGHT_MASK,
+		"inset-y-0 right-0 w-3/4",
+		"opacity-[0.55] group-hover:opacity-[0.75] dark:opacity-[0.65] dark:group-hover:opacity-[0.85]",
+		RIGHT_MASK_WIDE,
 	),
-	ambient: cn("inset-y-0 right-0 w-2/3 opacity-[0.12] dark:opacity-[0.2]", RIGHT_MASK),
-	fill: cn("inset-0 h-full w-full opacity-[0.5] dark:opacity-[0.6]", BOTTOM_MASK),
+	ambient: cn(
+		"inset-y-0 right-0 w-2/3 opacity-[0.32] dark:opacity-[0.42]",
+		RIGHT_MASK_HEADER,
+	),
+	fill: cn("inset-0 h-full w-full opacity-[0.6] dark:opacity-[0.72]", BOTTOM_MASK),
 } as const;
 
 export function CircuitArt({

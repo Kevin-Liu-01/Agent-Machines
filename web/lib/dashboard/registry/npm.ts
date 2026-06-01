@@ -109,27 +109,65 @@ const SEED: RegistryItem[] = [
 	{ id: "npm:@react-three/fiber", name: "@react-three/fiber", kind: "tool", description: "Declarative React renderer for Three.js enabling component-based 3D scenes.", provider: "Pmndrs", source: "npm", installCommand: "pnpm add @react-three/fiber", logoUrl: null, brand: "react", stars: null, version: null, homepage: "https://www.npmjs.com/package/@react-three/fiber", installed: false },
 ];
 
+/** Agent-relevant seed queries to populate browse mode with hundreds of
+ *  real packages instead of a tiny hand-written list. */
+const BROWSE_QUERIES = [
+	"mcp server",
+	"modelcontextprotocol",
+	"ai agent",
+	"claude code",
+	"agent cli",
+	"llm tool",
+];
+
+async function searchNpm(query: string, size: number): Promise<RegistryItem[]> {
+	const url = `${SEARCH_URL}?text=${encodeURIComponent(query)}&size=${size}`;
+	const res = await fetch(url, {
+		headers: { Accept: "application/json" },
+		signal: AbortSignal.timeout(8_000),
+	});
+	if (!res.ok) throw new Error(`npm search ${res.status}`);
+	const body = (await res.json()) as NpmSearchResponse;
+	return body.objects.map(normalize);
+}
+
+function dedupe(items: RegistryItem[]): RegistryItem[] {
+	const seen = new Set<string>();
+	const out: RegistryItem[] = [];
+	for (const item of items) {
+		if (seen.has(item.id)) continue;
+		seen.add(item.id);
+		out.push(item);
+	}
+	return out;
+}
+
 export const npmAdapter: RegistryAdapter = {
 	id: "npm",
 	label: "npm",
 	async search(opts: RegistrySearchOptions): Promise<RegistryItem[]> {
-		if (!opts.query) return SEED;
+		// Browse mode: fan out across agent-relevant categories so the
+		// registry shows real, popular packages rather than a seed list.
+		if (!opts.query) {
+			const cached = cacheGet<RegistryItem[]>("npm:__browse__");
+			if (cached) return cached;
+			try {
+				const batches = await Promise.all(
+					BROWSE_QUERIES.map((q) => searchNpm(q, 30).catch(() => [])),
+				);
+				const merged = dedupe([...SEED, ...batches.flat()]);
+				cacheSet("npm:__browse__", merged, 30 * 60 * 1000);
+				return merged;
+			} catch {
+				return SEED;
+			}
+		}
 
 		const key = cacheKey("npm", opts.query);
 		const cached = cacheGet<RegistryItem[]>(key);
 		if (cached) return cached;
 
-		const limit = opts.limit ?? 30;
-		const url = `${SEARCH_URL}?text=${encodeURIComponent(opts.query)}&size=${limit}`;
-
-		const res = await fetch(url, {
-			headers: { Accept: "application/json" },
-			signal: AbortSignal.timeout(8_000),
-		});
-		if (!res.ok) throw new Error(`npm search ${res.status}`);
-
-		const body = (await res.json()) as NpmSearchResponse;
-		const items = body.objects.map(normalize);
+		const items = await searchNpm(opts.query, Math.min(opts.limit ?? 50, 100));
 		cacheSet(key, items);
 		return items;
 	},

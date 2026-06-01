@@ -7,13 +7,18 @@
  * curated seed fallback.
  */
 
-import { cacheGet, cacheKey, cacheSet } from "./cache";
+import { cacheGet, cacheSet } from "./cache";
 import type { RegistryAdapter, RegistryItem, RegistrySearchOptions } from "./types";
 
 import type { ServiceSlug } from "@/components/ServiceIcon";
 
-const REGISTRY_API =
-	"https://registry.modelcontextprotocol.io/v0.1/servers?limit=100&version=latest";
+const REGISTRY_BASE = "https://registry.modelcontextprotocol.io/v0/servers";
+/** Page size + how many pages to walk (≈ this many latest servers max). */
+const PAGE_SIZE = 100;
+const MAX_PAGES = 6;
+/** Full-list cache: the registry is a cursor list, so we fetch once and
+ *  filter in-memory per query. 30 min keeps it fresh without re-walking. */
+const LIST_TTL_MS = 30 * 60 * 1000;
 
 type McpServerEntry = {
 	name: string;
@@ -23,6 +28,7 @@ type McpServerEntry = {
 	author?: string;
 	tags?: string[];
 	npm?: string;
+	install?: string | null;
 };
 
 const BRAND_MAP: Record<string, ServiceSlug> = {
@@ -53,55 +59,124 @@ function slug(name: string): string {
 	return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
+/** A bare server name like `io.github.owner/cool-server` reads better as
+ *  just the trailing segment; keep the namespace as the provider. */
+function displayName(fullName: string): string {
+	const tail = fullName.split("/").pop() ?? fullName;
+	return tail.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function providerFromName(fullName: string): string {
+	const ns = fullName.split("/")[0] ?? "";
+	if (ns.startsWith("io.github.")) return ns.slice("io.github.".length);
+	if (ns.includes(".")) return ns;
+	return "MCP Community";
+}
+
 function normalize(entry: McpServerEntry): RegistryItem {
 	const s = slug(entry.name);
 	return {
 		id: `mcp-registry:${s}`,
-		name: entry.name,
+		name: displayName(entry.name),
 		kind: "mcp",
 		description: entry.description || "",
-		provider: entry.author || "MCP Community",
+		provider: entry.author || providerFromName(entry.name),
 		source: "mcp-registry",
-		installCommand: entry.npm ? `npx -y ${entry.npm}` : null,
+		installCommand: entry.install ?? (entry.npm ? `npx -y ${entry.npm}` : null),
 		logoUrl: null,
 		brand: detectBrand(entry.name),
 		stars: null,
 		version: null,
-		homepage: entry.homepage ?? entry.repository ?? null,
+		homepage: entry.repository ?? entry.homepage ?? null,
 		installed: false,
 	};
 }
 
-type McpRegistryApiEntry = {
-	name: string;
-	description?: string;
-	repository?: { url?: string };
-	version_detail?: { packages?: { registry_name?: string }[] };
+type McpPackage = {
+	registryType?: string;
+	registry_name?: string;
+	identifier?: string;
+	name?: string;
 };
 
-async function fetchIndex(): Promise<McpServerEntry[]> {
-	const res = await fetch(REGISTRY_API, {
-		headers: { Accept: "application/json" },
-		signal: AbortSignal.timeout(10_000),
-	});
-	if (!res.ok) throw new Error(`mcp-registry ${res.status}`);
-	const body = await res.json();
+type McpRegistryServer = {
+	name?: string;
+	description?: string;
+	repository?: { url?: string };
+	packages?: McpPackage[];
+	remotes?: { url?: string }[];
+};
 
-	let raw: McpRegistryApiEntry[];
-	if (Array.isArray(body)) raw = body;
-	else if (body && typeof body === "object" && "servers" in body)
-		raw = (body as { servers: McpRegistryApiEntry[] }).servers;
-	else return [];
+type McpRegistryApiEntry = { server?: McpRegistryServer } & McpRegistryServer;
 
-	return raw.map((entry) => {
-		const npmPkg = entry.version_detail?.packages?.[0]?.registry_name ?? undefined;
-		return {
-			name: entry.name,
-			description: entry.description ?? "",
-			repository: entry.repository?.url,
-			npm: npmPkg,
-		};
-	});
+type McpRegistryResponse = {
+	servers?: McpRegistryApiEntry[];
+	metadata?: { nextCursor?: string; next_cursor?: string; count?: number };
+};
+
+function installFromPackages(packages?: McpPackage[]): string | null {
+	const pkg = packages?.[0];
+	if (!pkg) return null;
+	const id = pkg.identifier ?? pkg.name;
+	if (!id) return null;
+	const type = (pkg.registryType ?? pkg.registry_name ?? "").toLowerCase();
+	if (type.includes("npm")) return `npx -y ${id}`;
+	if (type.includes("pypi") || type.includes("python")) return `uvx ${id}`;
+	if (type.includes("oci") || type.includes("docker")) return `docker run ${id}`;
+	return null;
+}
+
+function mapServer(entry: McpRegistryApiEntry): McpServerEntry | null {
+	const srv = entry.server ?? entry;
+	if (!srv.name) return null;
+	const repo = srv.repository?.url;
+	const remote = srv.remotes?.[0]?.url;
+	const install = installFromPackages(srv.packages);
+	return {
+		name: srv.name,
+		description: srv.description ?? "",
+		repository: repo ?? remote,
+		install,
+		npm: undefined,
+	};
+}
+
+/** Walk the cursor-paginated registry once and cache the full latest list. */
+async function fetchAllServers(): Promise<McpServerEntry[]> {
+	const cacheId = "mcp-registry:__all__";
+	const cached = cacheGet<McpServerEntry[]>(cacheId);
+	if (cached) return cached;
+
+	const out: McpServerEntry[] = [];
+	const seen = new Set<string>();
+	let cursor: string | undefined;
+
+	for (let page = 0; page < MAX_PAGES; page++) {
+		const url = new URL(REGISTRY_BASE);
+		url.searchParams.set("limit", String(PAGE_SIZE));
+		url.searchParams.set("version", "latest");
+		if (cursor) url.searchParams.set("cursor", cursor);
+
+		const res = await fetch(url.toString(), {
+			headers: { Accept: "application/json" },
+			signal: AbortSignal.timeout(8_000),
+		});
+		if (!res.ok) throw new Error(`mcp-registry ${res.status}`);
+		const body = (await res.json()) as McpRegistryResponse;
+
+		for (const raw of body.servers ?? []) {
+			const mapped = mapServer(raw);
+			if (!mapped || seen.has(mapped.name)) continue;
+			seen.add(mapped.name);
+			out.push(mapped);
+		}
+
+		cursor = body.metadata?.nextCursor ?? body.metadata?.next_cursor;
+		if (!cursor) break;
+	}
+
+	cacheSet(cacheId, out, LIST_TTL_MS);
+	return out;
 }
 
 const SEED: RegistryItem[] = [
@@ -136,12 +211,8 @@ export const mcpRegistryAdapter: RegistryAdapter = {
 	id: "mcp-registry",
 	label: "MCP Registry",
 	async search(opts: RegistrySearchOptions): Promise<RegistryItem[]> {
-		const key = cacheKey("mcp-registry", opts.query);
-		const cached = cacheGet<RegistryItem[]>(key);
-		if (cached) return cached;
-
 		try {
-			const entries = await fetchIndex();
+			const entries = await fetchAllServers();
 			let items = entries.map(normalize);
 			if (opts.query) {
 				const q = opts.query.toLowerCase();
@@ -152,9 +223,10 @@ export const mcpRegistryAdapter: RegistryAdapter = {
 						i.provider.toLowerCase().includes(q),
 				);
 			}
-			items = items.slice(0, opts.limit ?? 40);
-			cacheSet(key, items);
-			return items;
+			// Merge the curated SEED in front (known-good brands) without dupes.
+			const seen = new Set(items.map((i) => i.id));
+			const seedExtra = SEED.filter((s) => !seen.has(s.id));
+			return [...seedExtra, ...items].slice(0, opts.limit ?? 500);
 		} catch {
 			if (!opts.query) return SEED;
 			const q = opts.query.toLowerCase();

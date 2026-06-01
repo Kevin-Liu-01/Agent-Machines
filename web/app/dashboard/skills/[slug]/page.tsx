@@ -26,6 +26,7 @@ export default async function SkillDetailPage({
 	return (
 		<div className="flex flex-col">
 			<PageHeader
+				artSlug="skills"
 				kicker={`SKILL -- ${skill.category.toUpperCase()}`}
 				title={skill.slug}
 				description={skill.description}

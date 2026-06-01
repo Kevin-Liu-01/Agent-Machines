@@ -23,6 +23,7 @@ type SearchState =
 
 const SOURCES: Array<{ id: RegistrySourceId | "all"; label: string }> = [
 	{ id: "all", label: "All sources" },
+	{ id: "bundled", label: "Bundled" },
 	{ id: "skills-sh", label: "skills.sh" },
 	{ id: "mcp-registry", label: "MCP Registry" },
 	{ id: "npm", label: "npm" },
@@ -30,6 +31,8 @@ const SOURCES: Array<{ id: RegistrySourceId | "all"; label: string }> = [
 	{ id: "github-repo", label: "GitHub" },
 	{ id: "url-manifest", label: "URL Manifest" },
 ];
+
+const PAGE_SIZE = 60;
 
 const KINDS: Array<{ id: TrustedAddOnKind | "all"; label: string }> = [
 	{ id: "all", label: "All kinds" },
@@ -49,12 +52,14 @@ export function RegistryBrowser({ installedIds }: Props) {
 	const [state, setState] = useState<SearchState>({ phase: "idle" });
 	const [urlInput, setUrlInput] = useState("");
 	const [showUrlDrawer, setShowUrlDrawer] = useState(false);
+	const [visible, setVisible] = useState(PAGE_SIZE);
 	const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 	const installedSet = useMemo(() => new Set(installedIds), [installedIds]);
 
 	const doSearch = useCallback(
 		async (q: string, source: RegistrySourceId | "all", kind: TrustedAddOnKind | "all") => {
 			setState({ phase: "loading" });
+			setVisible(PAGE_SIZE);
 			try {
 				const params = new URLSearchParams();
 				if (q) params.set("q", q);
@@ -277,16 +282,35 @@ export function RegistryBrowser({ installedIds }: Props) {
 				</div>
 				</ReticleFrame>
 			) : (
-				<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-					{items.map((item) => (
-						<RegistryCard
-							key={item.id}
-							item={item}
-							onAdd={handleAdd}
-							onRemove={handleRemove}
-						/>
-					))}
-				</div>
+				<>
+					<div className="flex items-center justify-between">
+						<p className="font-mono text-[11px] text-[var(--ret-text-muted)]">
+							showing {Math.min(visible, items.length).toLocaleString()} of{" "}
+							{items.length.toLocaleString()}
+						</p>
+					</div>
+					<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+						{items.slice(0, visible).map((item) => (
+							<RegistryCard
+								key={item.id}
+								item={item}
+								onAdd={handleAdd}
+								onRemove={handleRemove}
+							/>
+						))}
+					</div>
+					{visible < items.length ? (
+						<div className="flex justify-center pt-1">
+							<button
+								type="button"
+								onClick={() => setVisible((v) => v + PAGE_SIZE)}
+								className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--ret-text-dim)] transition-colors hover:border-[var(--ret-accent)]/40 hover:text-[var(--ret-text)]"
+							>
+								load {Math.min(PAGE_SIZE, items.length - visible)} more
+							</button>
+						</div>
+					) : null}
+				</>
 			)}
 		</div>
 	);

@@ -24,6 +24,7 @@ import remarkGfm from "remark-gfm";
 
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
+import { SchematicPanel } from "@/components/reticle/SchematicPanel";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
 import type {
@@ -366,7 +367,14 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
 	];
 
 	return (
-		<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+		<div className="space-y-5">
+			<div className="flex flex-col items-center gap-3 py-2 text-center">
+				<SchematicPanel slug="console" className="w-full max-w-md" />
+				<p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
+					Talk to your machine
+				</p>
+			</div>
+			<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
 			{starters.map((s) => (
 				<button
 					key={s.label}
@@ -384,6 +392,7 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
 					<p className="mt-2 text-sm text-[var(--ret-text-dim)]">{s.prompt}</p>
 				</button>
 			))}
+			</div>
 		</div>
 	);
 }

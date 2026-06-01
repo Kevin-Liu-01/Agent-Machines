@@ -1,3 +1,4 @@
+export { bundledAdapter } from "./bundled";
 export { skillsShAdapter } from "./skills-sh";
 export { mcpRegistryAdapter } from "./mcp-registry";
 export { npmAdapter } from "./npm";
