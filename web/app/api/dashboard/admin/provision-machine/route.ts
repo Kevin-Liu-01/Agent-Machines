@@ -18,19 +18,14 @@ import { randomUUID } from "node:crypto";
 
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
-import {
-	MachineProviderError,
-	getProvider,
-} from "@/lib/providers";
-import { ROUTER_PRESETS } from "@/lib/agents/upstreams";
-import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
+import { MachineProviderError } from "@/lib/providers";
+import { createMachineForConfig } from "@/lib/dashboard/provision";
+import { getUserConfig } from "@/lib/user-config/clerk";
 import {
 	AGENT_KINDS,
 	DEFAULT_MACHINE_SPEC,
-	INITIAL_BOOTSTRAP_STATE,
 	PROVIDER_KINDS,
 	type AgentKind,
-	type MachineRef,
 	type MachineSpec,
 	type ProviderKind,
 } from "@/lib/user-config/schema";
@@ -149,59 +144,20 @@ export async function POST(request: Request): Promise<Response> {
 		}
 	}
 
-	let provider: ReturnType<typeof getProvider>;
 	try {
-		provider = getProvider(providerKind, config.providers);
-	} catch (err) {
-		const message = err instanceof Error ? err.message : "provider init failed";
-		return Response.json(
-			{ error: "provider_init_failed", message },
-			{ status: 400 },
-		);
-	}
-
-	try {
-		const result = await provider.provision({ spec, name });
-		// Accept either a saved gateway profile id or a built-in router preset id
-		// (presets are resolved by id at bootstrap, not persisted as profiles).
-		const isKnownRouter =
-			typeof body.gatewayProfileId === "string" &&
-			(config.gatewayProfiles.some((p) => p.id === body.gatewayProfileId) ||
-				ROUTER_PRESETS.some((p) => p.id === body.gatewayProfileId));
-		const chosenProfileId = isKnownRouter ? (body.gatewayProfileId ?? null) : null;
-		const gatewayProfileId =
-			chosenProfileId ??
-			config.gatewayProfiles.find((profile) => profile.kind === "dedalus")?.id ??
-			null;
-		const agentProfileId =
-			config.agentProfiles.find((profile) => profile.agentKind === agentKind)?.id ??
-			null;
-		const ref: MachineRef = {
-			id: result.id,
+		const created = await createMachineForConfig(config, {
 			providerKind,
 			agentKind,
-			name,
 			spec,
 			model,
-			agentProfileId,
-			gatewayProfileId,
-			environmentProfileId: null,
-			bootstrapPresetId: null,
-			createdAt: new Date().toISOString(),
-			apiUrl: null,
-			apiKey: null,
-			bootstrapState: { ...INITIAL_BOOTSTRAP_STATE },
-		};
-		await setUserConfig({
-			upsertMachine: ref,
-			activeMachineId: ref.id,
-			setupStep: "provisioned",
+			name,
+			gatewayProfileId: body.gatewayProfileId ?? null,
 		});
 		return Response.json({
 			ok: true,
-			machineId: ref.id,
-			phase: result.rawPhase,
-			state: result.state,
+			machineId: created.machineId,
+			phase: created.phase,
+			state: created.state,
 			message:
 				"Machine accepted. Run browser bootstrap from the dashboard to install the selected agent runtime, or use the CLI deploy path for the full production bootstrap.",
 		});

@@ -301,6 +301,59 @@ export type CronEntry = {
 	lastSummary: string | null;
 };
 
+/** Stable id of the seeded default memory bundle (synthesized server-side). */
+export const DEFAULT_MEMORY_BUNDLE_ID = "am-default";
+
+export type MemoryBundleSource = "default" | "custom" | "imported";
+
+/**
+ * The four persona/context docs that map 1:1 to the runtime files the
+ * bootstrap writes: SOUL.md / AGENTS.md / MEMORY.md / USER.md.
+ */
+export type MemoryBundleDocs = {
+	soul: string;
+	agentDocs: string;
+	memory: string;
+	user: string;
+};
+
+/**
+ * A portable "owned memory": persona + rules + agent docs + a selection of
+ * abilities (skills/tools/MCP servers by id). Installs into any agent runtime,
+ * exports to a pastable prompt, and imports from an existing setup. Workers
+ * reference one by id. The seeded default (id `DEFAULT_MEMORY_BUNDLE_ID`) is
+ * synthesized server-side from the bundled `knowledge/` docs.
+ */
+export type MemoryBundle = {
+	id: string;
+	name: string;
+	description: string;
+	source: MemoryBundleSource;
+	docs: MemoryBundleDocs;
+	skillIds: string[];
+	toolIds: string[];
+	mcpServerIds: string[];
+	createdAt: string;
+	updatedAt: string;
+};
+
+/**
+ * A reusable agent template: a runtime + model/router + a referenced memory
+ * bundle (+ optional role prompt). Created once, deployed onto any machine.
+ */
+export type Worker = {
+	id: string;
+	name: string;
+	agentKind: AgentKind;
+	model: string;
+	gatewayProfileId: string;
+	memoryBundleId: string;
+	rolePrompt: string | null;
+	lastMachineId: string | null;
+	createdAt: string;
+	updatedAt: string;
+};
+
 export type UserConfig = {
 	providers: ProviderCredentials;
 	aiProviderKeys: AiProviderKeys;
@@ -308,6 +361,10 @@ export type UserConfig = {
 	activeMachineId: string | null;
 	/** Scheduled agent tasks, driven by the server-side cron scheduler. */
 	crons: CronEntry[];
+	/** Portable owned-memory bundles (persona + rules + abilities). */
+	memoryBundles: MemoryBundle[];
+	/** Reusable agent templates that reference a memory bundle. */
+	workers: Worker[];
 	cursorApiKey: string | null;
 	/** Cloudflare named tunnel token for stable gateway URLs on a custom domain. */
 	cloudflareTunnelToken: string | null;
@@ -664,6 +721,8 @@ export const DEFAULT_USER_CONFIG: UserConfig = {
 	aiProviderKeys: {},
 	machines: [],
 	crons: [],
+	memoryBundles: [],
+	workers: [],
 	cloudflareTunnelToken: null,
 	activeMachineId: null,
 	cursorApiKey: null,
@@ -707,6 +766,11 @@ export type PublicUserConfig = Omit<
 	| "cloudflareTunnelToken"
 	| "gatewayProfiles"
 	| "environmentProfiles"
+	// memoryBundles carry large doc text and workers are fetched on dedicated
+	// pages via the API / full server config -- keep them out of the public
+	// projection the shell ships to every dashboard page.
+	| "memoryBundles"
+	| "workers"
 > & {
 	providers: Record<ProviderKind, PublicProviderStatus>;
 	aiProviders: PublicAiProviderStatus;

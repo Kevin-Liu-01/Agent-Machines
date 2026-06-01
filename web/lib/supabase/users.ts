@@ -18,6 +18,8 @@ export type UserRow = {
 	custom_loadout: unknown[];
 	loadout_sources: unknown[];
 	loadout_presets: unknown[];
+	memory_bundles: unknown[];
+	workers: unknown[];
 	created_at: string;
 	updated_at: string;
 };
@@ -75,6 +77,8 @@ export type UserConfigPatch = Partial<
 		| "custom_loadout"
 		| "loadout_sources"
 		| "loadout_presets"
+		| "memory_bundles"
+		| "workers"
 		| "email"
 		| "display_name"
 	>

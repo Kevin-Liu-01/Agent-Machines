@@ -11,6 +11,7 @@ for (const script of [
 	"sync-skills.mjs",
 	"sync-mcp-catalog.mjs",
 	"sync-harness-counts.mjs",
+	"sync-memory.mjs",
 ]) {
 	const path = join(HERE, script);
 	const result = spawnSync(process.execPath, [path], { stdio: "inherit" });

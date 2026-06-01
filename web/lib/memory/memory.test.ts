@@ -1,0 +1,102 @@
+import { describe, expect, it } from "vitest";
+
+import { newBundle } from "./bundle";
+import { bundleToPrompt } from "./export";
+import { bundleFromPaste } from "./import";
+import { bundleInstallCommand, combinedDoc } from "./install";
+
+const docs = { soul: "SOUL_X", agentDocs: "RULE_X", memory: "MEM_X", user: "USER_X" };
+
+describe("bundleToPrompt", () => {
+	it("includes all four docs and skips the abilities section when empty", () => {
+		const b = newBundle({ name: "T", docs, skillIds: [], toolIds: [], mcpServerIds: [] });
+		const out = bundleToPrompt(b);
+		expect(out).toContain("# T");
+		expect(out).toContain("SOUL_X");
+		expect(out).toContain("RULE_X");
+		expect(out).toContain("MEM_X");
+		expect(out).toContain("USER_X");
+		expect(out).not.toContain("## Abilities");
+	});
+
+	it("renders an abilities section for a wildcard bundle", () => {
+		const b = newBundle({ name: "W", docs: { soul: "S" } }); // defaults to all abilities
+		const out = bundleToPrompt(b);
+		expect(out).toContain("## Abilities");
+		expect(out).toContain("### Skills");
+	});
+
+	it("omits empty docs", () => {
+		const b = newBundle({ name: "P", docs: { agentDocs: "only rules" }, skillIds: [], toolIds: [], mcpServerIds: [] });
+		const out = bundleToPrompt(b);
+		expect(out).toContain("only rules");
+		expect(out).not.toContain("## Persona & voice");
+	});
+});
+
+describe("bundleFromPaste", () => {
+	it("puts an unstructured blob into agentDocs", () => {
+		const b = bundleFromPaste("just some rules and instructions", "My setup");
+		expect(b.source).toBe("imported");
+		expect(b.name).toBe("My setup");
+		expect(b.docs.agentDocs).toBe("just some rules and instructions");
+		expect(b.docs.soul).toBe("");
+		expect(b.docs.memory).toBe("");
+	});
+
+	it("splits when section headers are present", () => {
+		const b = bundleFromPaste("# SOUL\nbe terse\n# MEMORY\nremember the repo path");
+		expect(b.docs.soul).toContain("be terse");
+		expect(b.docs.memory).toContain("remember the repo path");
+	});
+
+	it("defaults the name when none given", () => {
+		expect(bundleFromPaste("x").name).toBe("Imported memory");
+	});
+});
+
+describe("bundleInstallCommand", () => {
+	it("always writes the canonical ~/.agent-machines docs and confirms", () => {
+		const b = newBundle({ name: "I", docs });
+		const cmd = bundleInstallCommand(b, "hermes");
+		expect(cmd).toContain('"$HOME/.agent-machines"');
+		expect(cmd).toContain("$HOME/.agent-machines/SOUL.md");
+		expect(cmd).toContain("$HOME/.agent-machines/AGENTS.md");
+		expect(cmd).toContain("AM_MEMORY_INSTALLED");
+		// hermes reads the canonical root, no extra entrypoints
+		expect(cmd).not.toContain("CLAUDE.md");
+		expect(cmd).not.toContain(".codex");
+	});
+
+	it("writes Claude entrypoints for claude-code", () => {
+		const cmd = bundleInstallCommand(newBundle({ name: "C", docs }), "claude-code");
+		expect(cmd).toContain("$HOME/.claude/CLAUDE.md");
+		expect(cmd).toContain("$HOME/CLAUDE.md");
+	});
+
+	it("writes Codex entrypoints for codex", () => {
+		const cmd = bundleInstallCommand(newBundle({ name: "X", docs }), "codex");
+		expect(cmd).toContain("$HOME/.codex/AGENTS.md");
+		expect(cmd).toContain("$HOME/AGENTS.md");
+	});
+
+	it("writes the openclaw workspace for openclaw", () => {
+		const cmd = bundleInstallCommand(newBundle({ name: "O", docs }), "openclaw");
+		expect(cmd).toContain("$HOME/.openclaw/workspace/SOUL.md");
+	});
+
+	it("base64-encodes doc content (no raw text injection)", () => {
+		const cmd = bundleInstallCommand(newBundle({ name: "B", docs }), "hermes");
+		const b64 = Buffer.from("SOUL_X", "utf8").toString("base64");
+		expect(cmd).toContain(b64);
+	});
+});
+
+describe("combinedDoc", () => {
+	it("joins non-empty docs under headers", () => {
+		const out = combinedDoc(newBundle({ name: "K", docs }));
+		expect(out).toContain("# Persona & voice");
+		expect(out).toContain("SOUL_X");
+		expect(out).toContain("# Working memory");
+	});
+});

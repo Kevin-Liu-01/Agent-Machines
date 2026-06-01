@@ -6,6 +6,7 @@ import {
 	BarChart3,
 	Bot,
 	Boxes,
+	Brain,
 	ChevronLeft,
 	Clock,
 	Gauge,
@@ -22,6 +23,7 @@ import {
 	Sparkles,
 	SquareTerminal,
 	Store,
+	UsersRound,
 } from "lucide-react";
 
 import { cn } from "@/lib/cn";
@@ -69,11 +71,13 @@ type Props = {
 const FLEET_ITEMS: ReadonlyArray<NavItem> = [
 	{ href: "/dashboard", label: "Overview", icon: LayoutGrid, exact: true },
 	{ href: "/dashboard/machines", label: "Machines", icon: Server },
+	{ href: "/dashboard/workers", label: "Workers", icon: UsersRound, badge: "new" },
 	{ href: "/dashboard/usage", label: "Usage", icon: BarChart3 },
 	{ href: "/dashboard/benchmarks", label: "Benchmarks", icon: Gauge, badge: "new" },
 ];
 
 const LIBRARY_ITEMS: ReadonlyArray<NavItem> = [
+	{ href: "/dashboard/memory", label: "Memory", icon: Brain, badge: "new" },
 	{ href: "/dashboard/skills", label: "Skills", icon: Sparkles },
 	{ href: "/dashboard/mcps", label: "MCPs", icon: Plug2 },
 	{ href: "/dashboard/cron", label: "Cron", icon: Clock },

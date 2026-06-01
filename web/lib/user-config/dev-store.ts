@@ -24,6 +24,8 @@ import {
 	type AgentProfile,
 	type BootstrapPreset,
 	type CronEntry,
+	type MemoryBundle,
+	type Worker,
 	type CustomLoadoutEntry,
 	type EnvironmentProfile,
 	type GatewayProfile,
@@ -48,6 +50,8 @@ type ConfigPatch = {
 	providers?: ProviderCredentials;
 	aiProviderKeys?: AiProviderKeys;
 	crons?: CronEntry[];
+	memoryBundles?: MemoryBundle[];
+	workers?: Worker[];
 	cursorApiKey?: string | null;
 	cloudflareTunnelToken?: string | null;
 	gatewayProfiles?: GatewayProfile[];
@@ -204,6 +208,8 @@ export async function setDevUserConfig(
 		aiProviderKeys: nextAiKeys,
 		machines: nextMachines,
 		crons: patch.crons ?? current.crons ?? [],
+		memoryBundles: patch.memoryBundles ?? current.memoryBundles ?? [],
+		workers: patch.workers ?? current.workers ?? [],
 		activeMachineId: nextActive,
 		cursorApiKey:
 			patch.cursorApiKey !== undefined

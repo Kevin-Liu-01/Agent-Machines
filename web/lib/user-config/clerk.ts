@@ -43,6 +43,9 @@ import {
 	type BootstrapState,
 	type CronEntry,
 	type CronStatus,
+	type MemoryBundle,
+	type MemoryBundleSource,
+	type Worker,
 	type EnvironmentProfile,
 	type GatewayKind,
 	type GatewayProfile,
@@ -362,6 +365,78 @@ function asCronEntries(value: unknown): CronEntry[] {
 		.filter((entry): entry is CronEntry => entry !== null);
 }
 
+function asStrArr(value: unknown): string[] {
+	return Array.isArray(value)
+		? value.filter((s): s is string => typeof s === "string")
+		: [];
+}
+
+const MEMORY_SOURCES: ReadonlyArray<MemoryBundleSource> = [
+	"default",
+	"custom",
+	"imported",
+];
+
+function asMemoryBundle(value: unknown): MemoryBundle | null {
+	if (!value || typeof value !== "object") return null;
+	const v = value as Record<string, unknown>;
+	const id = asString(v.id);
+	if (!id) return null;
+	const docs = (v.docs ?? {}) as Record<string, unknown>;
+	const src = asString(v.source) as MemoryBundleSource | undefined;
+	const now = new Date(0).toISOString();
+	return {
+		id,
+		name: asString(v.name) ?? id,
+		description: asString(v.description) ?? "",
+		source: src && MEMORY_SOURCES.includes(src) ? src : "custom",
+		docs: {
+			soul: asString(docs.soul) ?? "",
+			agentDocs: asString(docs.agentDocs) ?? "",
+			memory: asString(docs.memory) ?? "",
+			user: asString(docs.user) ?? "",
+		},
+		skillIds: asStrArr(v.skillIds),
+		toolIds: asStrArr(v.toolIds),
+		mcpServerIds: asStrArr(v.mcpServerIds),
+		createdAt: asString(v.createdAt) ?? now,
+		updatedAt: asString(v.updatedAt) ?? now,
+	};
+}
+
+function asMemoryBundles(value: unknown): MemoryBundle[] {
+	return Array.isArray(value)
+		? value.map(asMemoryBundle).filter((b): b is MemoryBundle => b !== null)
+		: [];
+}
+
+function asWorker(value: unknown): Worker | null {
+	if (!value || typeof value !== "object") return null;
+	const v = value as Record<string, unknown>;
+	const id = asString(v.id);
+	const memoryBundleId = asString(v.memoryBundleId);
+	if (!id || !memoryBundleId) return null;
+	const now = new Date(0).toISOString();
+	return {
+		id,
+		name: asString(v.name) ?? id,
+		agentKind: asAgent(v.agentKind),
+		model: asString(v.model) ?? DEFAULT_MODEL,
+		gatewayProfileId: asString(v.gatewayProfileId) ?? "dedalus-default",
+		memoryBundleId,
+		rolePrompt: asString(v.rolePrompt) ?? null,
+		lastMachineId: asString(v.lastMachineId) ?? null,
+		createdAt: asString(v.createdAt) ?? now,
+		updatedAt: asString(v.updatedAt) ?? now,
+	};
+}
+
+function asWorkers(value: unknown): Worker[] {
+	return Array.isArray(value)
+		? value.map(asWorker).filter((w): w is Worker => w !== null)
+		: [];
+}
+
 function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig {
 	const providers: ProviderCredentials = {};
 	const privateProviders =
@@ -547,6 +622,8 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
 		aiProviderKeys,
 		machines,
 		crons: asCronEntries(privateMeta.crons),
+		memoryBundles: asMemoryBundles(publicMeta.memoryBundles),
+		workers: asWorkers(publicMeta.workers),
 		activeMachineId,
 		cursorApiKey,
 		cloudflareTunnelToken,
@@ -669,6 +746,16 @@ function buildConfigFromSupabase(
 			DEFAULT_USER_CONFIG.activeLoadoutPresetId;
 	}
 
+	// Memory bundles + workers live in their own jsonb columns and aren't
+	// gated by hasSupabaseConfig (a user may have only these). When the
+	// column is absent (pre-migration) the value is undefined -> keep base.
+	if (Array.isArray(sbRow.memory_bundles)) {
+		base.memoryBundles = asMemoryBundles(sbRow.memory_bundles);
+	}
+	if (Array.isArray(sbRow.workers)) {
+		base.workers = asWorkers(sbRow.workers);
+	}
+
 	return base;
 }
 
@@ -726,6 +813,8 @@ type ConfigPatch = {
 	providers?: ProviderCredentials;
 	aiProviderKeys?: AiProviderKeys;
 	crons?: CronEntry[];
+	memoryBundles?: MemoryBundle[];
+	workers?: Worker[];
 	cursorApiKey?: string | null;
 	cloudflareTunnelToken?: string | null;
 	gatewayProfiles?: GatewayProfile[];
@@ -1031,6 +1120,8 @@ export async function setUserConfigById(
 	}
 
 	const nextCrons = patch.crons ?? current.crons ?? [];
+	const nextMemoryBundles = patch.memoryBundles ?? current.memoryBundles ?? [];
+	const nextWorkers = patch.workers ?? current.workers ?? [];
 
 	const nextCursor =
 		patch.cursorApiKey !== undefined ? patch.cursorApiKey : current.cursorApiKey;
@@ -1115,6 +1206,18 @@ export async function setUserConfigById(
 				draft_spec: nextDraftSpec as Record<string, unknown>,
 			});
 
+			// memory_bundles + workers live in columns added by migration 004.
+			// Write them separately so a pre-migration deploy (columns absent)
+			// fails only this write, not the established config columns above.
+			try {
+				await updateUserConfigColumns(userId, {
+					memory_bundles: nextMemoryBundles as unknown[],
+					workers: nextWorkers as unknown[],
+				});
+			} catch {
+				// requires 004_workers_memory.sql; safe to ignore until applied
+			}
+
 			if (patch.upsertMachine) {
 				await upsertMachine(userId, patch.upsertMachine);
 			}
@@ -1146,6 +1249,8 @@ export async function setUserConfigById(
 		customLoadout: nextCustomLoadout,
 		loadoutSources: nextLoadoutSources,
 		loadoutPresets: nextLoadoutPresets,
+		memoryBundles: nextMemoryBundles,
+		workers: nextWorkers,
 		activeLoadoutPresetId: nextActiveLoadoutPresetId,
 	};
 	return buildConfig(finalPublic, nextPrivate);
