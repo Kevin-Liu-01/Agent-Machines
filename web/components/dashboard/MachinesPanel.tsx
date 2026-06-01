@@ -9,7 +9,7 @@ import { FleetInteractPane } from "@/components/dashboard/FleetInteractPane";
 import { DashboardPageBody } from "@/components/dashboard/DashboardPageBody";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
-import { ReticleHatch } from "@/components/reticle/ReticleHatch";
+import { SchematicPanel } from "@/components/reticle/SchematicPanel";
 import type { LogLine } from "@/lib/dashboard/types";
 import { fetchLogTail, headlineFromLogs, isFleetLogsLoaded, shouldFetchFleetLogs } from "@/lib/fleet/fetch-log-tail";
 import { useFleetLoadout } from "@/lib/fleet/use-fleet-loadout";
@@ -462,8 +462,11 @@ function EmptyShell({
 }) {
 	return (
 		<ReticleFrame>
-			<ReticleHatch className="h-1.5 border-b border-[var(--ret-border)]" pitch={6} />
-			<div className="space-y-3 p-6 text-center">
+			<div className="space-y-3 p-8 text-center">
+				<SchematicPanel
+					slug="machines"
+					className="mx-auto w-full max-w-[240px]"
+				/>
 				<h3 className="ret-display text-base">{title}</h3>
 				<p className="mx-auto max-w-[64ch] text-[12px] text-[var(--ret-text-dim)]">
 					{body}
@@ -649,7 +652,6 @@ function QuickProvisionForm({
 
 	return (
 		<ReticleFrame>
-			<ReticleHatch className="h-1 border-b border-[var(--ret-border)]" pitch={6} />
 			<div className="space-y-3 p-4">
 				<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					Quick provision

@@ -1,4 +1,5 @@
 import { AgentCommandToggle } from "@/components/AgentCommandToggle";
+import { CircuitArt } from "@/components/reticle/CircuitArt";
 import { ContributionGrid } from "@/components/ContributionGrid";
 import { FleetDemo } from "@/components/FleetDemo";
 import { RuntimeVizGrid } from "@/components/RuntimeVizGrid";
@@ -38,7 +39,7 @@ export default function HomePage() {
 					<ContributionGrid />
 				</ReticleSection>
 
-				<ReticleSpacer hatch />
+				<ReticleSpacer />
 
 				<ReticleBand contentClassName="">
 					<StatsRow />
@@ -65,7 +66,9 @@ export default function HomePage() {
 								flags and cron.
 							</p>
 						</div>
-						<div className="w-20 border-l border-[var(--ret-border)] bg-[repeating-linear-gradient(135deg,var(--ret-rail)_0_1px,transparent_1px_5px)] md:w-40" />
+						<div className="relative w-20 overflow-hidden border-l border-[var(--ret-border)] md:w-40">
+							<CircuitArt slug="agents" variant="fill" />
+						</div>
 					</div>
 					<AgentCommandToggle />
 				</ReticleSection>

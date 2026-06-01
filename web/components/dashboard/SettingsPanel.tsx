@@ -8,7 +8,6 @@ import { ServiceIcon } from "@/components/ServiceIcon";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
-import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { WingBackground } from "@/components/WingBackground";
 import { AGENTS } from "@/lib/agents";
@@ -214,7 +213,6 @@ export function SettingsPanel({ initialConfig }: Props) {
 	return (
 		<DashboardPageBody>
 			<ReticleFrame>
-				<ReticleHatch className="h-1.5 border-b border-[var(--ret-border)]" pitch={6} />
 				<div className="grid gap-px bg-[var(--ret-border)] md:grid-cols-[1.2fr_0.6fr_0.6fr_0.6fr_0.6fr_0.6fr_0.6fr]">
 					<div className="relative min-h-[120px] overflow-hidden bg-[var(--ret-bg)] p-3">
 						<WingBackground

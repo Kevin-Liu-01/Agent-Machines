@@ -17,6 +17,7 @@ export default function MachinesPage() {
 	return (
 		<div className="flex flex-col">
 			<PageHeader
+				artSlug="machines"
 				kicker="FLEET"
 				title="Your machines"
 				description="Deploy, browse, and open machines. Switch between cards and a compact table; fleet stats and trends live on the Overview."

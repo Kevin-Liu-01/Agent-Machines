@@ -78,6 +78,7 @@ export function CronPanel() {
 	return (
 		<div className="flex flex-col">
 			<PageHeader
+				artSlug="cron"
 				kicker="AUTOMATION"
 				title="Cron schedules"
 				description="Autonomous agent work — health checks, digests, audits. The scheduler fires enabled crons on their schedule. Create and run crons from each machine's console."

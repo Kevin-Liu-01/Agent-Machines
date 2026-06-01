@@ -17,7 +17,6 @@ import { WingBackground } from "@/components/WingBackground";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
-import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
@@ -1453,7 +1452,6 @@ function BootStep({
 			) : null}
 
 			<ReticleFrame>
-				<ReticleHatch className="h-1.5 border-b border-[var(--ret-border)]" pitch={6} />
 				<ol className="divide-y divide-[var(--ret-border)]">
 					{steps.map((s, idx) => {
 						const active = !s.isDone && (idx === 0 || steps[idx - 1].isDone);

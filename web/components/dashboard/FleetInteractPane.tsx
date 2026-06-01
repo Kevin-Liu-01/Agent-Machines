@@ -3,7 +3,6 @@
 import { ChatShell } from "@/components/dashboard/ChatShell";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
-import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import { AGENT_LABEL, type AgentKind } from "@/lib/user-config/schema";
 
 type Props = {
@@ -27,7 +26,6 @@ export function FleetInteractPane({
 }: Props) {
 	return (
 		<ReticleFrame className="flex min-h-0 flex-col overflow-hidden lg:sticky lg:top-[var(--dashboard-header-h,3.5rem)] lg:max-h-[calc(100vh-var(--dashboard-header-h,3.5rem)-2rem)]">
-			<ReticleHatch className="h-1 border-b border-[var(--ret-border)]" pitch={6} />
 			<div className="flex items-center justify-between gap-2 border-b border-[var(--ret-border)] px-3 py-2">
 				<div className="min-w-0">
 					<p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">

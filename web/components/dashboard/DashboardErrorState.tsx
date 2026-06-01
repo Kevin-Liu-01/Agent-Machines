@@ -2,9 +2,10 @@
 
 import { useEffect } from "react";
 
-import { Logo } from "@/components/Logo";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
+import { SchematicPanel } from "@/components/reticle/SchematicPanel";
+import { ERROR_ART } from "@/lib/dashboard/category-art";
 
 export type DashboardErrorStateProps = {
 	error: Error & { digest?: string };
@@ -32,7 +33,7 @@ export function DashboardErrorState({
 	return (
 		<ReticleFrame className="p-6">
 			<div className="flex flex-col items-center gap-4 py-8 text-center">
-				<Logo mark="am" size={28} />
+				<SchematicPanel src={ERROR_ART.server} className="w-full max-w-xs" />
 				<h2 className="ret-display text-lg">Something broke rendering {scope}</h2>
 				<p className="max-w-[52ch] text-[13px] text-[var(--ret-text-dim)]">
 					The rest of the dashboard is still live. Retry to re-render this

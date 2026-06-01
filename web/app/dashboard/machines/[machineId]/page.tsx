@@ -169,6 +169,7 @@ export default function MachineOverviewPage() {
 	return (
 		<div className="flex flex-col">
 			<PageHeader
+				artSlug="machines"
 				kicker={`MACHINE -- ${machine.name}`}
 				title={machine.name}
 				description={`${PROVIDER_LABEL[machine.providerKind]} / ${AGENT_LABEL[machine.agentKind]} / ${machine.model}`}

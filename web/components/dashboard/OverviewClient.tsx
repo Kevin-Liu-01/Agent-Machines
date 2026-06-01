@@ -17,7 +17,6 @@ import { useEffect, useMemo, useState } from "react";
 import { Logo } from "@/components/Logo";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
-import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { ActivityOverviewPanel } from "@/components/dashboard/ActivityOverviewPanel";
 import { DashboardPageBody } from "@/components/dashboard/DashboardPageBody";
@@ -257,7 +256,6 @@ export function OverviewClient({
 					</ReticleFrame>
 
 					<ReticleFrame>
-						<ReticleHatch className="h-2 border-b border-[var(--ret-border)]" pitch={6} />
 						<div className="p-4">
 							<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 								Health probe

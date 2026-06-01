@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 
 import { BrandHomeLockup } from "@/components/BrandHomeLockup";
-import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import { DASHBOARD_SHELL_HEADER_ROW } from "@/lib/dashboard/shell-chrome";
 import { cn } from "@/lib/cn";
 import type { PublicUserConfig } from "@/lib/user-config/schema";
@@ -34,9 +33,6 @@ export function DashboardShell({ children, config }: Props) {
 				</div>
 				<div className="min-h-0 flex-1 overflow-y-auto">
 					<SidebarNav setupComplete={setupComplete} machines={config.machines} />
-				</div>
-				<div className="mt-auto border-t border-[var(--ret-border)]">
-					<ReticleHatch className="h-24" pitch={6} />
 				</div>
 			</aside>
 			<div className="relative z-10 flex min-h-[100dvh] min-w-0 flex-col bg-[var(--ret-bg)]">

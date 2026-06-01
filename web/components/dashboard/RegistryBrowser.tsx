@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
-import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { cn } from "@/lib/cn";
 import type { TrustedAddOnKind } from "@/lib/dashboard/loadout";
@@ -257,8 +256,6 @@ export function RegistryBrowser({ installedIds }: Props) {
 					))}
 				</div>
 			) : null}
-
-			<ReticleHatch className="h-1 border-t border-b border-[var(--ret-border)]" pitch={6} />
 
 			{/* Results */}
 			{state.phase === "loading" ? (

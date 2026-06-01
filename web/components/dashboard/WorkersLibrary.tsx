@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
+import { SchematicPanel } from "@/components/reticle/SchematicPanel";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
 import {
@@ -81,6 +82,10 @@ export function WorkersLibrary() {
 
 			{workers.length === 0 ? (
 				<ReticleFrame className="px-4 py-10 text-center">
+					<SchematicPanel
+						slug="workers"
+						className="mx-auto mb-5 w-full max-w-[240px]"
+					/>
 					<p className="text-[13px] text-[var(--ret-text-dim)]">No workers yet.</p>
 					<p className="mt-1 text-[11px] text-[var(--ret-text-muted)]">
 						Create a worker to package a runtime + model + memory you can deploy onto any machine.

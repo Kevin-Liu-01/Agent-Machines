@@ -2,27 +2,44 @@ import type { ReactNode } from "react";
 
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
-import { ReticleHatch } from "@/components/reticle/ReticleHatch";
+import { SchematicPanel } from "@/components/reticle/SchematicPanel";
 
 type Props = {
 	title: string;
 	description: ReactNode;
 	hint?: ReactNode;
 	action?: { label: string; href: string };
+	/** Circuit-art slug for a framed schematic graphic (recipe B). */
+	artSlug?: string;
+	/** Explicit art src (e.g. an error graphic) if not a category slug. */
+	artSrc?: string;
 };
 
 /**
- * Shared empty / offline / config-missing state. Hatched header strip
- * gives the box visible texture without resorting to an illustration --
- * the agent is doing nothing, so the surface looks like nothing is
- * there. Dashboard frames omit Reticle corner crosses via shell context.
+ * Shared empty / offline / config-missing state. When given art, a framed
+ * schematic graphic (recipe B) anchors the surface so "nothing here" still
+ * feels intentional; otherwise it stays a clean bordered card. Dashboard
+ * frames omit Reticle corner crosses via shell context.
  */
-export function EmptyState({ title, description, hint, action }: Props) {
+export function EmptyState({
+	title,
+	description,
+	hint,
+	action,
+	artSlug,
+	artSrc,
+}: Props) {
 	return (
 		<div className="mx-auto max-w-2xl px-6 py-16">
 			<ReticleFrame>
-				<ReticleHatch className="h-10 w-full border-b border-[var(--ret-border)]" />
 				<div className="p-10 text-center">
+					{artSlug || artSrc ? (
+						<SchematicPanel
+							slug={artSlug}
+							src={artSrc}
+							className="mx-auto mb-7 w-full max-w-[260px]"
+						/>
+					) : null}
 					<p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
 						Nothing here yet
 					</p>

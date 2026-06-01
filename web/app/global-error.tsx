@@ -36,6 +36,23 @@ export default function GlobalError({
 				}}
 			>
 				<div style={{ maxWidth: "480px", textAlign: "center" }}>
+					<div
+						style={{
+							maxWidth: "340px",
+							margin: "0 auto 22px",
+							padding: "8px",
+							border: "1px solid #2a2a30",
+							background: "#0a0a0a",
+						}}
+					>
+						{/* eslint-disable-next-line @next/next/no-img-element -- root boundary ships without app CSS/next-image */}
+						<img
+							src="/error-500.png"
+							alt=""
+							aria-hidden="true"
+							style={{ display: "block", width: "100%" }}
+						/>
+					</div>
 					<p
 						style={{
 							fontFamily: "ui-monospace, monospace",
