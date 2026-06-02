@@ -360,7 +360,7 @@ export function InteractiveConsole() {
 			</div>
 
 			<div className="relative border border-[var(--ret-border)] bg-[#0a0a0e]">
-				<div ref={hostRef} className="h-[60vh] min-h-[360px] w-full px-2 py-2" />
+				<div ref={hostRef} className="h-[60dvh] min-h-[360px] w-full px-2 py-2" />
 				{status !== "ready" ? (
 					<div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[#0a0a0e]/80">
 						<div className="flex flex-col items-center gap-2 text-center">

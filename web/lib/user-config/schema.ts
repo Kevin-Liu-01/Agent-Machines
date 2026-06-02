@@ -169,20 +169,6 @@ export type GatewayProfile = {
 	updatedAt: string;
 };
 
-export type AgentProfile = {
-	id: string;
-	name: string;
-	agentKind: AgentKind;
-	gatewayProfileId: string;
-	model: string;
-	enabledSkills: string[];
-	enabledTools: string[];
-	enabledMcpServers: string[];
-	environmentProfileId: string | null;
-	createdAt: string;
-	updatedAt: string;
-};
-
 export type EnvironmentProfile = {
 	id: string;
 	name: string;
@@ -233,19 +219,6 @@ export type LoadoutSource = {
 	description: string;
 	uri: string | null;
 	enabled: boolean;
-	createdAt: string;
-	updatedAt: string;
-};
-
-export type LoadoutPreset = {
-	id: string;
-	name: string;
-	description: string;
-	sourceIds: string[];
-	customEntryIds: string[];
-	enabledSkillIds: string[];
-	enabledToolIds: string[];
-	enabledMcpServerIds: string[];
 	createdAt: string;
 	updatedAt: string;
 };
@@ -337,13 +310,23 @@ export type MemoryBundle = {
 	updatedAt: string;
 };
 
+/** Where a Worker came from: a curated preset we ship, or user-created. */
+export type WorkerSource = "default" | "custom";
+
 /**
- * A reusable agent template: a runtime + model/router + a referenced memory
- * bundle (+ optional role prompt). Created once, deployed onto any machine.
+ * The deployable "preset" layer, built on top of a Memory.
+ *
+ * A Worker packages a runtime + model/router + a referenced Memory (persona
+ * docs + the abilities selected from the imported pool) + an optional role
+ * prompt. Created once (often from a curated preset), deployed onto any
+ * machine. The machine bootstrap reads the deployed Worker's Memory to write
+ * settings.json and install the persona docs. The machine link is the reverse
+ * `lastMachineId` pointer (no per-machine column required).
  */
 export type Worker = {
 	id: string;
 	name: string;
+	source: WorkerSource;
 	agentKind: AgentKind;
 	model: string;
 	gatewayProfileId: string;
@@ -369,13 +352,15 @@ export type UserConfig = {
 	/** Cloudflare named tunnel token for stable gateway URLs on a custom domain. */
 	cloudflareTunnelToken: string | null;
 	gatewayProfiles: GatewayProfile[];
-	agentProfiles: AgentProfile[];
 	environmentProfiles: EnvironmentProfile[];
 	bootstrapPresets: BootstrapPreset[];
+	/**
+	 * Account-global imported pool: every skill / MCP / CLI the user installed
+	 * from the Registry. The Skills + MCPs library pages render this set, and a
+	 * Memory selects a subset (or "*" = all) of it as its abilities.
+	 */
 	customLoadout: CustomLoadoutEntry[];
 	loadoutSources: LoadoutSource[];
-	loadoutPresets: LoadoutPreset[];
-	activeLoadoutPresetId: string;
 	setupStep: SetupStep;
 
 	/* Wizard scratch -- the choices the user made last in the wizard,

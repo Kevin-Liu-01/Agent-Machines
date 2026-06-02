@@ -372,8 +372,8 @@ function ExportModal({ text, filename, onClose }: { text: string; filename: stri
 		URL.revokeObjectURL(url);
 	};
 	return (
-		<div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-[8vh]">
-			<div className="flex max-h-[80vh] w-full max-w-[720px] flex-col border border-[var(--ret-border)] bg-[var(--ret-bg)] shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
+		<div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-[8dvh]">
+			<div className="flex max-h-[80dvh] w-full max-w-[720px] flex-col border border-[var(--ret-border)] bg-[var(--ret-bg)] shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
 				<div className="flex items-center justify-between border-b border-[var(--ret-border)] px-4 py-2.5">
 					<span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
 						pastable prompt
@@ -405,7 +405,7 @@ function ExportModal({ text, filename, onClose }: { text: string; filename: stri
 				<textarea
 					readOnly
 					value={text}
-					className="min-h-[50vh] flex-1 resize-none border-0 bg-[var(--ret-bg)] p-4 font-mono text-[11px] leading-relaxed text-[var(--ret-text-dim)] focus:outline-none"
+					className="min-h-[50dvh] flex-1 resize-none border-0 bg-[var(--ret-bg)] p-4 font-mono text-[11px] leading-relaxed text-[var(--ret-text-dim)] focus:outline-none"
 				/>
 			</div>
 		</div>

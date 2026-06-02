@@ -39,13 +39,6 @@ const HeroOrbitScene = dynamic(
 
 /* ── Agent metadata ── */
 
-const AGENT_CAPABILITIES: Record<HeroAgent, string[]> = {
-	hermes: ["memory", "cron", "sessions", "MCP-native"],
-	openclaw: ["computer use", "browser", "shell", "vision"],
-	"claude-code": ["agentic coding", "file edit", "shell", "SDK"],
-	codex: ["agentic coding", "sandbox", "exec mode"],
-};
-
 const AGENT_HUE: Record<HeroAgent, string> = {
 	hermes: "#7c8cf8",
 	openclaw: "#e5443b",
@@ -444,13 +437,26 @@ function BleedLine({ pos }: { pos: "top" | "bottom" }) {
 	);
 }
 
+/**
+ * Fixed render size for the decorative circuit texture (source art is
+ * 1024×682). Pinning the height — instead of `bg-cover` — holds the trace
+ * zoom constant across cells of any height: short rail cells now show the
+ * same zoomed-in crop as the tall heading-row cell, rather than a shrunk-down
+ * (denser) version. ~468px matches the scale the tallest rail cell already
+ * read at under `cover` (≈467px tall → ~0.69× of native).
+ */
+const CIRCUIT_BG_SIZE = "auto 468px";
+
 /** Decorative circuit-board texture, theme-adaptive blend. */
 function CircuitGrid() {
 	return (
 		<div
 			aria-hidden="true"
-			className="pointer-events-none absolute inset-0 bg-cover bg-center opacity-[0.1] mix-blend-multiply invert dark:opacity-[0.3] dark:mix-blend-screen dark:invert-0"
-			style={{ backgroundImage: "url(/brand/circuit-grid.png)" }}
+			className="pointer-events-none absolute inset-0 bg-center opacity-[0.1] mix-blend-multiply invert dark:opacity-[0.16] dark:mix-blend-screen dark:invert-0"
+			style={{
+				backgroundImage: "url(/brand/circuit-grid.png)",
+				backgroundSize: CIRCUIT_BG_SIZE,
+			}}
 		/>
 	);
 }
@@ -498,9 +504,6 @@ export function HeroBlock() {
 	const activeWord = ALL_WORDS[wordIndex];
 	const activeRail = RAIL_AGENTS[wordIndex];
 	const isCursor = activeRail.id === null;
-	const capabilities = isCursor
-		? ["IDE", "rules", "MCP", "agents"]
-		: AGENT_CAPABILITIES[agent];
 	const hue = isCursor ? "var(--ret-purple)" : AGENT_HUE[agent];
 	const orbitAgent = isCursor ? null : agent;
 	const activeSubstrate =
@@ -599,13 +602,15 @@ export function HeroBlock() {
 
 				{/* ═══ Row 2: one wide cell — heading + tilted "galaxy" orbit ═══ */}
 				<Cell className="hidden border-b border-r md:block" circuit />
-				<Cell className="col-span-1 border-b border-r md:col-span-7" bleed>
+				<Cell className="col-span-1 border-b border-r md:col-span-7 md:min-h-[520px]" bleed>
 					{/* The galaxy: same core + logos, on a continuously spinning tilted
 					    disc, dissolved into the cell from the right (gradient + hue glow). */}
 					<div className="pointer-events-none absolute inset-y-0 right-0 hidden overflow-hidden md:block md:w-[66%]">
-						{/* circuit-board texture, fading in from the right edge */}
+						{/* circuit-board texture, fading in from the right edge.
+						    Anchor the tile height + auto width so the 1024×682 art
+						    keeps its aspect ratio (no horizontal squish). */}
 						<div
-							className="absolute inset-0 bg-[length:300px_300px] opacity-[0.14] mix-blend-multiply invert dark:opacity-[0.2] dark:mix-blend-screen dark:invert-0 [-webkit-mask-image:linear-gradient(to_right,transparent,black_60%)] [mask-image:linear-gradient(to_right,transparent,black_60%)]"
+							className="absolute inset-0 bg-[length:auto_300px] opacity-[0.14] mix-blend-multiply invert dark:opacity-[0.2] dark:mix-blend-screen dark:invert-0 [-webkit-mask-image:linear-gradient(to_right,transparent,black_60%)] [mask-image:linear-gradient(to_right,transparent,black_60%)]"
 							style={{ backgroundImage: "url(/brand/circuit-grid.png)" }}
 						/>
 						{/* broad ambient hue wash, centered on the gear cluster */}
@@ -627,6 +632,8 @@ export function HeroBlock() {
 							activeAgent={orbitAgent}
 							activeSubstrate={activeSubstrate.id}
 							mode="gears"
+							onSelectAgent={selectRailIndex}
+							onSelectSubstrate={selectSubstrate}
 						/>
 						{/* dissolve the wheels into the heading on the far left only */}
 						<div className="absolute inset-0 bg-[linear-gradient(to_right,var(--ret-bg)_0%,var(--ret-bg)_13%,transparent_45%)]" />
@@ -643,7 +650,7 @@ export function HeroBlock() {
 					</span>
 
 					{/* Heading — left, layered above the galaxy */}
-					<div className="relative z-10 flex h-full flex-col justify-center gap-6 px-6 py-12 md:max-w-[58%] md:px-9 md:py-16">
+					<div className="relative z-10 flex h-full min-h-[420px] flex-col justify-center gap-6 px-6 py-14 md:max-w-[58%] md:min-h-0 md:px-9 md:py-24">
 						<h1 className="ret-display text-[clamp(2.5rem,6vw,5.5rem)] leading-[0.96] tracking-tight">
 							<span className="-mx-6 flex items-center whitespace-nowrap md:-mx-9">
 								<span className="mr-3 h-px w-3 shrink-0 border-t border-dashed border-[var(--ret-border)] md:mr-2 md:w-7" />
@@ -665,18 +672,6 @@ export function HeroBlock() {
 								fleet from one dashboard.
 							</strong>
 						</p>
-						<div className="flex flex-wrap gap-1.5">
-							{capabilities.map((cap) => (
-								<span
-									key={cap}
-									className="inline-flex items-center gap-1 border px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] text-[var(--ret-text-muted)] transition-colors"
-									style={{ borderColor: `${hue}33`, background: `${hue}08` }}
-								>
-									<span className="h-1 w-1 rounded-full" style={{ background: hue }} />
-									{cap}
-								</span>
-							))}
-						</div>
 						<div className="flex flex-wrap items-center gap-2.5">
 							<SignedIn>
 								<ReticleButton as="a" href="/dashboard" variant="primary" size="md">

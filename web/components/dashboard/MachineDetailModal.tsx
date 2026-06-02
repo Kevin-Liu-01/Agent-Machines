@@ -85,7 +85,7 @@ export function MachineDetailModal({
 			role="dialog"
 			aria-modal="true"
 			aria-label={`${machine.name} detail`}
-			className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/55 px-4 py-[6vh] backdrop-blur-sm"
+			className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/55 px-4 py-[6dvh] backdrop-blur-sm"
 			onMouseDown={onClose}
 		>
 			<div
@@ -133,7 +133,7 @@ export function MachineDetailModal({
 					</div>
 				</header>
 
-				<div className="max-h-[72vh] overflow-y-auto p-4">
+				<div className="max-h-[72dvh] overflow-y-auto p-4">
 					<ObservabilityPanel
 						agentKind={machine.agentKind}
 						modelOverride={machine.model}

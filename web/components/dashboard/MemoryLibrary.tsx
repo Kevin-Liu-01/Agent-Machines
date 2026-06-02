@@ -157,7 +157,7 @@ export function MemoryLibrary() {
 
 function Modal({ children }: { children: React.ReactNode }) {
 	return (
-		<div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-[12vh]">
+		<div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-[12dvh]">
 			<div className="w-full max-w-[560px] border border-[var(--ret-border)] bg-[var(--ret-bg)] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
 				{children}
 			</div>

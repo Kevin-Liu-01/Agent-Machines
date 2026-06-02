@@ -15,17 +15,20 @@ type StationDef = {
 	theta: number;
 	phi: number;
 	hue: string;
+	label: string;
+	/** Opened in a new tab when the (already in-view) logo is clicked. */
+	href: string;
 };
 
 // phi is kept at 0 for every station: the logos ride a flat equatorial ring,
 // so the active logo lands exactly on the camera→origin axis and reads dead
 // center in the (portrait) hero cell instead of floating above it.
 const STATIONS: StationDef[] = [
-	{ agent: "hermes", mark: "nous", tone: "currentColor", theta: 0, phi: 0, hue: "#7c8cf8" },
-	{ agent: "openclaw", mark: "openclaw", tone: "currentColor", theta: (Math.PI * 2) / 5, phi: 0, hue: "#e5443b" },
-	{ agent: "claude-code", mark: "anthropic", tone: "currentColor", theta: (Math.PI * 4) / 5, phi: 0, hue: "#d4a574" },
-	{ agent: "codex", mark: "openai", tone: "currentColor", theta: (Math.PI * 6) / 5, phi: 0, hue: "#4ae0a0" },
-	{ agent: null, mark: "cursor", tone: "currentColor", theta: (Math.PI * 8) / 5, phi: 0, hue: "#d2beff" },
+	{ agent: "hermes", mark: "nous", tone: "currentColor", theta: 0, phi: 0, hue: "#7c8cf8", label: "Hermes", href: "https://github.com/NousResearch/hermes-agent" },
+	{ agent: "openclaw", mark: "openclaw", tone: "currentColor", theta: (Math.PI * 2) / 5, phi: 0, hue: "#e5443b", label: "OpenClaw", href: "https://github.com/openclaw/openclaw" },
+	{ agent: "claude-code", mark: "anthropic", tone: "currentColor", theta: (Math.PI * 4) / 5, phi: 0, hue: "#d4a574", label: "Claude Code", href: "https://www.anthropic.com/claude-code" },
+	{ agent: "codex", mark: "openai", tone: "currentColor", theta: (Math.PI * 6) / 5, phi: 0, hue: "#4ae0a0", label: "Codex CLI", href: "https://github.com/openai/codex" },
+	{ agent: null, mark: "cursor", tone: "currentColor", theta: (Math.PI * 8) / 5, phi: 0, hue: "#d2beff", label: "Cursor", href: "https://cursor.com" },
 ];
 
 const LOGO_ORBIT_R = 1.8;
@@ -432,12 +435,34 @@ function OrbitalCamera({
  *  to align the active combination at the top, while the 3D substrate core
  *  spins in the hub. Flat to the screen (XY plane) — no 3D orbit tilt. ── */
 
-const GEAR_OFFSET: [number, number, number] = [1.45, 0, 0]; // pushed right, on the glow
+const GEAR_OFFSET: [number, number, number] = [2.25, 0, 0]; // pushed right, on the glow
 const AGENT_GEAR_R = 2.62; // agent-logo ring radius (outer wheel)
 const SUB_GEAR_R = 1.34; // substrate-logo ring radius (inner wheel)
 const GEAR_LERP = 2.8; // how fast a wheel turns the active to the lock
 const GEAR_LOCK = Math.PI; // 9 o'clock — the active combo aligns on the LEFT
 const SUBSTRATE_IDS: SubstrateId[] = ["e2b", "sprites", "dedalus", "vercel"];
+
+const SUBSTRATE_LABEL: Record<SubstrateId, string> = {
+	e2b: "E2B",
+	sprites: "Sprites",
+	dedalus: "Dedalus",
+	vercel: "Vercel",
+};
+
+/** Opened in a new tab when the (already in-view) substrate logo is clicked. */
+const SUBSTRATE_URL: Record<SubstrateId, string> = {
+	e2b: "https://e2b.dev",
+	sprites: "https://sprites.dev",
+	dedalus: "https://www.dedaluslabs.ai",
+	vercel: "https://vercel.com/sandbox",
+};
+
+/** Open a brand site in a new tab (guarded for SSR). */
+function openSite(href: string) {
+	if (typeof window !== "undefined") {
+		window.open(href, "_blank", "noopener,noreferrer");
+	}
+}
 
 /** Even angular slot for each substrate on the inner ring. */
 const subTheta = (id: SubstrateId): number =>
@@ -544,7 +569,7 @@ function GearWheel({
 	spokes,
 	ticks,
 	hue = "#aab0c4",
-	opacity = 0.55,
+	opacity = 0.82,
 }: {
 	rRoot: number;
 	rTip: number;
@@ -556,6 +581,8 @@ function GearWheel({
 	hue?: string;
 	opacity?: number;
 }) {
+	// Base opacity drives the whole wheel; the sub-elements scale off it so the
+	// teeth/pitch read boldly while spokes + ticks stay a supporting detail.
 	const tooth = useMemo(
 		() => gearToothGeom(rRoot, rTip, teeth),
 		[rRoot, rTip, teeth],
@@ -590,35 +617,43 @@ function GearWheel({
 				<lineBasicMaterial color={hue} transparent opacity={opacity} />
 			</lineLoop>
 			<lineLoop geometry={root}>
-				<lineBasicMaterial color={hue} transparent opacity={opacity * 0.5} />
+				<lineBasicMaterial color={hue} transparent opacity={opacity * 0.62} />
 			</lineLoop>
 			<lineSegments geometry={tick}>
-				<lineBasicMaterial color={hue} transparent opacity={opacity * 0.5} />
+				<lineBasicMaterial color={hue} transparent opacity={opacity * 0.58} />
 			</lineSegments>
 			<lineLoop geometry={pitch}>
-				<lineBasicMaterial color={hue} transparent opacity={opacity * 0.7} />
+				<lineBasicMaterial color={hue} transparent opacity={opacity * 0.82} />
 			</lineLoop>
 			<lineSegments geometry={spoke}>
-				<lineBasicMaterial color={hue} transparent opacity={opacity * 0.3} />
+				<lineBasicMaterial color={hue} transparent opacity={opacity * 0.46} />
 			</lineSegments>
 			<lineSegments geometry={innerTick}>
-				<lineBasicMaterial color={hue} transparent opacity={opacity * 0.4} />
+				<lineBasicMaterial color={hue} transparent opacity={opacity * 0.52} />
 			</lineSegments>
 			<lineLoop geometry={hub}>
-				<lineBasicMaterial color={hue} transparent opacity={opacity * 0.55} />
+				<lineBasicMaterial color={hue} transparent opacity={opacity * 0.64} />
 			</lineLoop>
 		</group>
 	);
 }
 
-/** A flat brand chip mounted on a wheel; the active one grows + glows. */
+/**
+ * A flat brand chip mounted on a wheel; the active one grows + glows. Clickable
+ * when `onClick` is set: an idle chip turns its wheel to bring it into view at
+ * the lock, and clicking the in-view chip opens its site (decided by the caller).
+ */
 function GearChip({
 	active,
 	hue,
+	title,
+	onClick,
 	children,
 }: {
 	active: boolean;
 	hue: string;
+	title?: string;
+	onClick?: () => void;
 	children: ReactNode;
 }) {
 	return (
@@ -630,12 +665,17 @@ function GearChip({
 			zIndexRange={active ? [500, 490] : [60, 40]}
 		>
 			<div
+				title={title}
+				onClick={onClick}
 				style={{
 					opacity: active ? 1 : 0.55,
 					transform: active ? "scale(1.2)" : "scale(0.86)",
 					transition:
 						"opacity 0.4s ease, transform 0.55s cubic-bezier(0.34,1.56,0.64,1)",
-					pointerEvents: "none",
+					// Re-enabled per-chip even though the hero orbit wrapper is
+					// pointer-events:none, so only the logos are interactive.
+					pointerEvents: onClick ? "auto" : "none",
+					cursor: onClick ? "pointer" : "default",
 				}}
 			>
 				<LogoChip glow={active} hue={hue} size={active ? 70 : 54}>
@@ -646,14 +686,51 @@ function GearChip({
 	);
 }
 
+/**
+ * A radial arm (pitch rim → tooth) running under a chip, so each logo reads as
+ * a component seated on the gear rather than floating over it. Drawn in the
+ * wire color, or the chip's hue when active. Lives inside the wheel group, so
+ * it turns with the gear and stays under its chip.
+ */
+function ChipMount({
+	theta,
+	rIn,
+	rOut,
+	color,
+	opacity,
+}: {
+	theta: number;
+	rIn: number;
+	rOut: number;
+	color: string;
+	opacity: number;
+}) {
+	const arm = useMemo(() => {
+		const c = Math.cos(theta);
+		const s = Math.sin(theta);
+		return new THREE.BufferGeometry().setFromPoints([
+			new THREE.Vector3(c * rIn, s * rIn, 0),
+			new THREE.Vector3(c * rOut, s * rOut, 0),
+		]);
+	}, [theta, rIn, rOut]);
+	useEffect(() => () => arm.dispose(), [arm]);
+	return (
+		<lineSegments geometry={arm}>
+			<lineBasicMaterial color={color} transparent opacity={opacity} />
+		</lineSegments>
+	);
+}
+
 /** Inner wheel — substrates. Turns so the active substrate rides up to the top
  *  lock, where it sits just under the active agent (the active combination). */
 function SubstrateGear({
 	activeSubstrate,
 	wire,
+	onSelect,
 }: {
 	activeSubstrate: SubstrateId;
 	wire: string;
+	onSelect?: (id: SubstrateId) => void;
 }) {
 	const g = useRef<THREE.Group>(null);
 	const target = useRef(GEAR_LOCK - subTheta(activeSubstrate));
@@ -683,18 +760,38 @@ function SubstrateGear({
 			{SUBSTRATE_IDS.map((s) => {
 				const active = s === activeSubstrate;
 				const th = subTheta(s);
+				const hue = SUBSTRATE_VISUAL[s].hue;
 				return (
-					<group
-						key={s}
-						position={[
-							Math.cos(th) * SUB_GEAR_R,
-							Math.sin(th) * SUB_GEAR_R,
-							0.06,
-						]}
-					>
-						<GearChip active={active} hue={SUBSTRATE_VISUAL[s].hue}>
-							<SubstrateFace id={s} size={active ? 36 : 30} />
-						</GearChip>
+					<group key={s}>
+						<ChipMount
+							theta={th}
+							rIn={1.16}
+							rOut={1.74}
+							color={active ? hue : wire}
+							opacity={active ? 0.95 : 0.42}
+						/>
+						<group
+							position={[
+								Math.cos(th) * SUB_GEAR_R,
+								Math.sin(th) * SUB_GEAR_R,
+								0.06,
+							]}
+						>
+							<GearChip
+								active={active}
+								hue={hue}
+								title={
+									active
+										? `Open ${SUBSTRATE_LABEL[s]} ↗`
+										: `Show ${SUBSTRATE_LABEL[s]}`
+								}
+								onClick={() =>
+									active ? openSite(SUBSTRATE_URL[s]) : onSelect?.(s)
+								}
+							>
+								<SubstrateFace id={s} size={active ? 36 : 30} />
+							</GearChip>
+						</group>
 					</group>
 				);
 			})}
@@ -703,7 +800,15 @@ function SubstrateGear({
 }
 
 /** Outer wheel — agents. Turns so the active agent rides up to the top lock. */
-function AgentGear({ activeIdx, wire }: { activeIdx: number; wire: string }) {
+function AgentGear({
+	activeIdx,
+	wire,
+	onSelect,
+}: {
+	activeIdx: number;
+	wire: string;
+	onSelect?: (idx: number) => void;
+}) {
 	const g = useRef<THREE.Group>(null);
 	const target = useRef(GEAR_LOCK - STATIONS[activeIdx].theta);
 	useEffect(() => {
@@ -732,17 +837,30 @@ function AgentGear({ activeIdx, wire }: { activeIdx: number; wire: string }) {
 			{STATIONS.map((s, i) => {
 				const active = i === activeIdx;
 				return (
-					<group
-						key={s.agent ?? "cursor"}
-						position={[
-							Math.cos(s.theta) * AGENT_GEAR_R,
-							Math.sin(s.theta) * AGENT_GEAR_R,
-							0.06,
-						]}
-					>
-						<GearChip active={active} hue={s.hue}>
-							<AgentFace mark={s.mark} size={active ? 40 : 32} />
-						</GearChip>
+					<group key={s.agent ?? "cursor"}>
+						<ChipMount
+							theta={s.theta}
+							rIn={2.42}
+							rOut={3.02}
+							color={active ? s.hue : wire}
+							opacity={active ? 0.95 : 0.4}
+						/>
+						<group
+							position={[
+								Math.cos(s.theta) * AGENT_GEAR_R,
+								Math.sin(s.theta) * AGENT_GEAR_R,
+								0.06,
+							]}
+						>
+							<GearChip
+								active={active}
+								hue={s.hue}
+								title={active ? `Open ${s.label} ↗` : `Show ${s.label}`}
+								onClick={() => (active ? openSite(s.href) : onSelect?.(i))}
+							>
+								<AgentFace mark={s.mark} size={active ? 40 : 32} />
+							</GearChip>
+						</group>
 					</group>
 				);
 			})}
@@ -769,21 +887,58 @@ function LockMark({ color }: { color: string }) {
 	);
 }
 
+/**
+ * The Agent Machines mark seated at the gear hub — the brand is the core the
+ * two wheels (agents × substrates) mesh around. Billboarded and theme-aware via
+ * `--ret-text`; a soft `--ret-bg` well separates it from the substrate cage,
+ * which keeps spinning behind it.
+ */
+function HubLogo() {
+	return (
+		<Html center sprite distanceFactor={6.4} zIndexRange={[200, 190]}>
+			<div
+				style={{
+					display: "grid",
+					placeItems: "center",
+					width: 104,
+					height: 104,
+					background:
+						"radial-gradient(circle, var(--ret-bg) 20%, transparent 66%)",
+					color: "var(--ret-text)",
+					pointerEvents: "none",
+				}}
+			>
+				<Logo mark="am" size={46} />
+			</div>
+		</Html>
+	);
+}
+
 function GearScene({
 	activeIdx,
 	activeSubstrate,
+	onSelectAgent,
+	onSelectSubstrate,
 }: {
 	activeIdx: number;
 	activeSubstrate: SubstrateId;
+	onSelectAgent?: (idx: number) => void;
+	onSelectSubstrate?: (id: SubstrateId) => void;
 }) {
 	const wire = useWireColor();
 	return (
 		<group position={GEAR_OFFSET}>
-			{/* the 3D substrate shape spins in the very center (the hub) */}
+			{/* the 3D substrate shape spins in the hub, behind the brand mark */}
 			<SubstrateCore substrate={activeSubstrate} />
+			{/* the Agent Machines mark is the core the two wheels mesh around */}
+			<HubLogo />
 			{/* two flat wheels mesh; each turns its active chip up to the top lock */}
-			<SubstrateGear activeSubstrate={activeSubstrate} wire={wire} />
-			<AgentGear activeIdx={activeIdx} wire={wire} />
+			<SubstrateGear
+				activeSubstrate={activeSubstrate}
+				wire={wire}
+				onSelect={onSelectSubstrate}
+			/>
+			<AgentGear activeIdx={activeIdx} wire={wire} onSelect={onSelectAgent} />
 			<LockMark color={wire} />
 		</group>
 	);
@@ -804,12 +959,18 @@ type Props = {
 	activeAgent: string | null;
 	activeSubstrate?: SubstrateId;
 	mode?: "portrait" | "gears";
+	/** Gear mode: click an idle agent chip to turn it into view (by index). */
+	onSelectAgent?: (idx: number) => void;
+	/** Gear mode: click an idle substrate chip to turn it into view. */
+	onSelectSubstrate?: (id: SubstrateId) => void;
 };
 
 export function HeroOrbitScene({
 	activeAgent,
 	activeSubstrate = "dedalus",
 	mode = "portrait",
+	onSelectAgent,
+	onSelectSubstrate,
 }: Props) {
 	const [introActive, setIntroActive] = useState(true);
 	const [introStationIdx, setIntroStationIdx] = useState(0);
@@ -824,7 +985,12 @@ export function HeroOrbitScene({
 			<>
 				<FixedLook />
 				<ambientLight intensity={0.45} />
-				<GearScene activeIdx={settledIdx} activeSubstrate={activeSubstrate} />
+				<GearScene
+					activeIdx={settledIdx}
+					activeSubstrate={activeSubstrate}
+					onSelectAgent={onSelectAgent}
+					onSelectSubstrate={onSelectSubstrate}
+				/>
 			</>
 		);
 	}

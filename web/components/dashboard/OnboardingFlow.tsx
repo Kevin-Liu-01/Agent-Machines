@@ -860,7 +860,7 @@ function SkillsStep({
 					</button>
 				</div>
 			</div>
-			<div className="max-h-[55vh] space-y-3 overflow-y-auto border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3">
+			<div className="max-h-[55dvh] space-y-3 overflow-y-auto border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3">
 				{grouped.map(([cat, list]) => (
 					<div key={cat}>
 						<p className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
@@ -1002,7 +1002,7 @@ function ToolsStep({
 				<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					built-in tools . {builtins.length}
 				</p>
-				<div className="max-h-[40vh] space-y-3 overflow-y-auto border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3">
+				<div className="max-h-[40dvh] space-y-3 overflow-y-auto border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3">
 					{groupedBuiltins.map(([cat, list]) => (
 						<div key={cat}>
 							<p className="mb-1.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">

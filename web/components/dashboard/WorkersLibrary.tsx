@@ -153,7 +153,7 @@ function CreateWorkerModal({
 	const [bundleId, setBundleId] = useState(DEFAULT_MEMORY_BUNDLE_ID);
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-[12vh]">
+		<div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-[12dvh]">
 			<div className="w-full max-w-[520px] border border-[var(--ret-border)] bg-[var(--ret-bg)] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
 				<p className="mb-3 font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">New worker</p>
 				<div className="flex flex-col gap-2">

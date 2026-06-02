@@ -144,7 +144,7 @@ export function ModelSwitcher({ activeMachineId }: Props) {
 			{open ? (
 				<div role="listbox" className={cn(headerPopover, "w-[280px]")}>
 					<p className={headerPopoverTitle}>Inference model</p>
-					<ul className="max-h-[min(420px,55vh)] overflow-y-auto py-1">
+					<ul className="max-h-[min(420px,55dvh)] overflow-y-auto py-1">
 						{groups.map(({ group, label, models }) => (
 							<li key={group}>
 								<p className="px-3 pb-1 pt-2 text-[10px] font-medium uppercase tracking-[0.12em] text-[var(--ret-text-muted)]">

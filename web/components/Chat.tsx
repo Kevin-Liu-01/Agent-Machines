@@ -629,7 +629,7 @@ export function Chat({
 			<ReticleCard hoverable={false} className="flex flex-col">
 				<div
 					ref={transcriptRef}
-					className="flex max-h-[70vh] min-h-[480px] flex-col gap-6 overflow-y-auto p-5 md:p-7"
+					className="flex max-h-[70dvh] min-h-[480px] flex-col gap-6 overflow-y-auto p-5 md:p-7"
 				>
 					{effectiveDisabled && effectiveDisabledReason ? (
 						<div className="border border-[var(--ret-amber)]/40 bg-[var(--ret-amber)]/5 p-4 font-mono text-[12px] text-[var(--ret-amber)]">

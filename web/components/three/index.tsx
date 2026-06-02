@@ -202,14 +202,18 @@ export function HeroOrbit({
 	activeAgent,
 	activeSubstrate,
 	mode = "portrait",
+	onSelectAgent,
+	onSelectSubstrate,
 }: {
 	className?: string;
 	activeAgent: string | null;
 	activeSubstrate?: SubstrateId;
 	mode?: "portrait" | "gears";
+	onSelectAgent?: (idx: number) => void;
+	onSelectSubstrate?: (id: SubstrateId) => void;
 }) {
 	const gears = mode === "gears";
-	const camPos: [number, number, number] = gears ? [0, 0, 10] : [0, 0, 4.8];
+	const camPos: [number, number, number] = gears ? [0, 0, 7.6] : [0, 0, 4.8];
 	return (
 		<SceneFrame className={className} bg={!gears}>
 			<SceneCanvas camera={{ position: camPos, fov: gears ? 42 : 34 }}>
@@ -217,6 +221,8 @@ export function HeroOrbit({
 					activeAgent={activeAgent}
 					activeSubstrate={activeSubstrate}
 					mode={mode}
+					onSelectAgent={onSelectAgent}
+					onSelectSubstrate={onSelectSubstrate}
 				/>
 			</SceneCanvas>
 			{!gears && <CrossOverlay />}

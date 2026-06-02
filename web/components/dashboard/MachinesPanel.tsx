@@ -261,7 +261,7 @@ export function MachinesPanel() {
 					<section
 						className={
 							focusMachine
-								? "grid max-h-[calc(100vh-12rem)] grid-cols-1 gap-3 overflow-y-auto lg:grid-cols-1"
+								? "grid max-h-[calc(100dvh-12rem)] grid-cols-1 gap-3 overflow-y-auto lg:grid-cols-1"
 								: "grid grid-cols-1 gap-3 lg:grid-cols-2"
 						}
 					>

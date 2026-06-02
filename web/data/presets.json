@@ -1,0 +1,101 @@
+[
+  {
+    "id": "core",
+    "name": "Core starter",
+    "description": "A balanced, general-purpose loadout: closed-loop development, code review, planning, browser, and shipping. A solid default for any project.",
+    "brand": "am",
+    "agentKind": "hermes",
+    "rolePrompt": null,
+    "skillIds": [
+      "closed-loop-development",
+      "production-safety",
+      "code-review",
+      "plan-mode-review",
+      "agent-browser",
+      "rtfm",
+      "commit",
+      "pr",
+      "deepsec",
+      "perf",
+      "content-strategy",
+      "cursor-coding"
+    ],
+    "toolIds": [
+      "*"
+    ],
+    "mcpServerIds": [
+      "cursor-bridge",
+      "playwright"
+    ]
+  },
+  {
+    "id": "frontend-design",
+    "name": "Frontend design lab",
+    "description": "Design-heavy preset for taste work, browser QA, Figma, and visual implementation loops.",
+    "brand": "figma",
+    "agentKind": "hermes",
+    "rolePrompt": "You are a senior frontend design engineer. Bias toward distinctive, production-grade UI with strong motion and accessibility. Verify every change in the browser before claiming it works.",
+    "skillIds": [
+      "frontend-design",
+      "frontend-design-taste",
+      "design-review",
+      "taste-redesign",
+      "agent-browser",
+      "closed-loop-development"
+    ],
+    "toolIds": [
+      "*"
+    ],
+    "mcpServerIds": [
+      "figma",
+      "cursor-bridge",
+      "playwright"
+    ]
+  },
+  {
+    "id": "production-ops",
+    "name": "Production ops",
+    "description": "Operational preset for Vercel, GitHub, Datadog, Linear, logs, CI, incidents, and deployment work.",
+    "brand": "vercel",
+    "agentKind": "hermes",
+    "rolePrompt": "You are a production operations engineer. Treat production infra as sacred, fail closed, and close the loop by verifying with logs and metrics before reporting done.",
+    "skillIds": [
+      "production-safety",
+      "closed-loop-development",
+      "gh-fix-ci",
+      "deepsec",
+      "perf"
+    ],
+    "toolIds": [
+      "*"
+    ],
+    "mcpServerIds": [
+      "vercel",
+      "linear",
+      "datadog"
+    ]
+  },
+  {
+    "id": "research-browser",
+    "name": "Research browser",
+    "description": "Research preset for web search, page extraction, social reach, browser automation, and citation gathering.",
+    "brand": "exa",
+    "agentKind": "hermes",
+    "rolePrompt": "You are a research analyst. Gather from primary sources, cite everything, and prefer empirical reads over assumptions.",
+    "skillIds": [
+      "agent-reach",
+      "closed-loop-development",
+      "rtfm",
+      "read-and-review",
+      "content-strategy"
+    ],
+    "toolIds": [
+      "*"
+    ],
+    "mcpServerIds": [
+      "cursor-ide-browser",
+      "exa",
+      "playwright"
+    ]
+  }
+]

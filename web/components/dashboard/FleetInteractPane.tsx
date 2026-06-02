@@ -25,7 +25,7 @@ export function FleetInteractPane({
 	onClose,
 }: Props) {
 	return (
-		<ReticleFrame className="flex min-h-0 flex-col overflow-hidden lg:sticky lg:top-[var(--dashboard-header-h,3.5rem)] lg:max-h-[calc(100vh-var(--dashboard-header-h,3.5rem)-2rem)]">
+		<ReticleFrame className="flex min-h-0 flex-col overflow-hidden lg:sticky lg:top-[var(--dashboard-header-h,3.5rem)] lg:max-h-[calc(100dvh-var(--dashboard-header-h,3.5rem)-2rem)]">
 			<div className="flex items-center justify-between gap-2 border-b border-[var(--ret-border)] px-3 py-2">
 				<div className="min-w-0">
 					<p className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">

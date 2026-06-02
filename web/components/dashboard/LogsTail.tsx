@@ -141,7 +141,7 @@ export function LogsTail() {
 
 			<div
 				ref={tailRef}
-				className="max-h-[68vh] overflow-y-auto border border-[var(--ret-border)] bg-[var(--ret-bg)] font-mono text-[12px] leading-relaxed"
+				className="max-h-[68dvh] overflow-y-auto border border-[var(--ret-border)] bg-[var(--ret-bg)] font-mono text-[12px] leading-relaxed"
 			>
 				{lines.length === 0 ? (
 				<div className="px-5 py-6 font-sans text-[var(--ret-text-muted)]">

@@ -330,11 +330,11 @@ export function CommandPalette() {
 							role="dialog"
 							aria-modal="true"
 							aria-label="Command palette"
-							className="fixed inset-0 z-[100] flex items-start justify-center bg-black/50 px-4 pt-[12vh] backdrop-blur-sm"
+							className="fixed inset-0 z-[100] flex items-start justify-center bg-black/50 px-4 pt-[12dvh] backdrop-blur-sm"
 							onMouseDown={close}
 						>
 							<div
-								className="flex max-h-[70vh] w-full max-w-[560px] flex-col overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg)] shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
+								className="flex max-h-[70dvh] w-full max-w-[560px] flex-col overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg)] shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
 								onMouseDown={(e) => e.stopPropagation()}
 							>
 								<div className="flex items-center gap-2 border-b border-[var(--ret-border)] px-3 py-2.5">

@@ -557,7 +557,7 @@ export function TerminalPanel({ initialCommand }: Props) {
 				</div>
 				<div
 					ref={scrollRef}
-					className="max-h-[65vh] min-h-[320px] overflow-y-auto px-3 py-3 font-mono text-[12px]"
+					className="max-h-[65dvh] min-h-[320px] overflow-y-auto px-3 py-3 font-mono text-[12px]"
 				>
 					{entries.length === 0 ? (
 						<div className="flex h-full flex-col items-start gap-1 py-6 text-[var(--ret-text-muted)]">
