@@ -9,6 +9,7 @@ import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
+import { ReticleSelect } from "@/components/reticle/ReticleSelect";
 import { WingBackground } from "@/components/WingBackground";
 import { AGENTS } from "@/lib/agents";
 import { TRUSTED_ADDONS } from "@/lib/dashboard/loadout";
@@ -507,18 +508,12 @@ function ConfigSelect({
 					</span>
 				) : null}
 			</div>
-			<select
+			<ReticleSelect
+				ariaLabel={label}
 				value={value}
-				onChange={(event) => onChange(event.target.value)}
-				disabled={saving}
-				className="w-full border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1.5 text-[12px] text-[var(--ret-text)] outline-none disabled:opacity-60"
-			>
-				{options.map((option) => (
-					<option key={option.value} value={option.value}>
-						{option.label}
-					</option>
-				))}
-			</select>
+				onChange={onChange}
+				options={options.map((o) => ({ value: o.value, label: o.label }))}
+			/>
 			{hint ? (
 				<p className="mt-1 text-[9px] text-[var(--ret-text-muted)]">{hint}</p>
 			) : null}
@@ -539,6 +534,18 @@ function ModelConfigSelect({
 	const known = groups.some((group) =>
 		group.models.some((model) => model.id === value),
 	);
+	const options = [
+		...(known
+			? []
+			: [{ value, label: value ? modelDisplayLabel(value) : "—", group: "Current" }]),
+		...groups.flatMap((group) =>
+			group.models.map((model) => ({
+				value: model.id,
+				label: model.label,
+				group: group.label,
+			})),
+		),
+	];
 	return (
 		<div className="bg-[var(--ret-bg)] p-3">
 			<div className="mb-1.5 flex items-center justify-between gap-2">
@@ -551,25 +558,7 @@ function ModelConfigSelect({
 					</span>
 				) : null}
 			</div>
-			<select
-				value={value}
-				onChange={(event) => onChange(event.target.value)}
-				disabled={saving}
-				className="w-full border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1.5 text-[12px] text-[var(--ret-text)] outline-none disabled:opacity-60"
-			>
-				{known ? null : (
-					<option value={value}>{value ? modelDisplayLabel(value) : "—"}</option>
-				)}
-				{groups.map((group) => (
-					<optgroup key={group.group} label={group.label}>
-						{group.models.map((model) => (
-							<option key={model.id} value={model.id}>
-								{model.label}
-							</option>
-						))}
-					</optgroup>
-				))}
-			</select>
+			<ReticleSelect ariaLabel="Model" value={value} onChange={onChange} options={options} />
 		</div>
 	);
 }

@@ -1,19 +1,18 @@
 /**
- * The account-global imported pool.
+ * The account-global ability pool.
  *
- * Everything a user installs from the Registry lands in
- * `config.customLoadout`. This module turns that flat list into the resolved
- * skill + MCP catalogs that the Skills/MCPs library pages render and that a
- * Memory's abilities are selected from. Built-in tools are runtime-intrinsic
- * (always available), so they are NOT part of the imported pool -- only skills
- * and MCP servers are "imported".
+ * The pool is the bundled catalog (shipped, default-loaded on every machine)
+ * PLUS anything the user adds from the Registry (`config.customLoadout`). The
+ * Skills/MCPs library pages render the pool, and a Memory selects its abilities
+ * from it. Built-in tools are runtime-intrinsic (always available), so they are
+ * NOT part of the pool -- only skills and MCP servers are.
  *
  * Registry id conventions (see buildTrustedAddOnCatalog in loadout.ts):
- *   - bundled skill      -> `skill-<slug>`
+ *   - bundled skill      -> `skill-<slug>`   (already in the bundled set)
  *   - custom skill       -> `custom-skill:custom/<slug>`
- *   - bundled MCP server -> `mcp-server-<slug(name)>`
- * Imports from external sources keep their own ids; we fall back to the
- * entry's own metadata for those.
+ *   - bundled MCP server -> `mcp-server-<slug(name)>` (already bundled)
+ * Only non-bundled customLoadout entries (external/custom) are appended; the
+ * bundled catalog already covers the rest.
  */
 
 import { slug } from "@/lib/dashboard/loadout";
@@ -66,31 +65,37 @@ function skillSlugForEntry(entry: CustomLoadoutEntry): string {
 	return slug(entry.name || entry.id);
 }
 
-/** The imported skills, joined to bundled metadata when the id resolves. */
+/**
+ * The pool's skills: the full bundled library (default-loaded) plus any custom
+ * or external skills the user added from the Registry.
+ */
 export function importedSkills(config: UserConfig): SkillSummary[] {
-	const catalog = new Map(listSkills().map((s) => [s.slug, s]));
-	const out: SkillSummary[] = [];
-	const seen = new Set<string>();
+	const bundled = listSkills();
+	const seen = new Set(bundled.map((s) => s.slug));
+	const out: SkillSummary[] = [...bundled];
 	for (const entry of config.customLoadout) {
 		if (entry.kind !== "skill" || !entry.enabled) continue;
 		const slugValue = skillSlugForEntry(entry);
-		if (!slugValue || seen.has(slugValue)) continue;
+		if (!slugValue || seen.has(slugValue)) continue; // bundled already covers it
 		seen.add(slugValue);
-		out.push(catalog.get(slugValue) ?? syntheticSkill(entry, slugValue));
+		out.push(syntheticSkill(entry, slugValue));
 	}
 	return out;
 }
 
-/** The imported MCP servers, joined to bundled metadata when the id resolves. */
+/**
+ * The pool's MCP servers: the full bundled catalog (default-loaded) plus any
+ * external MCP servers the user added from the Registry.
+ */
 export function importedMcps(config: UserConfig): McpServerWithBrand[] {
-	const byRegistryId = new Map(
-		listMcpServers().map((m) => [`${MCP_PREFIX}${slug(m.name)}`, m]),
-	);
-	const out: McpServerWithBrand[] = [];
-	const seen = new Set<string>();
+	const bundled = listMcpServers();
+	const bundledIds = new Set(bundled.map((m) => `${MCP_PREFIX}${slug(m.name)}`));
+	const seen = new Set(bundled.map((m) => m.name));
+	const out: McpServerWithBrand[] = [...bundled];
 	for (const entry of config.customLoadout) {
 		if (entry.kind !== "mcp" || !entry.enabled) continue;
-		const server = byRegistryId.get(entry.id) ?? syntheticMcp(entry);
+		if (bundledIds.has(entry.id)) continue; // bundled already covers it
+		const server = syntheticMcp(entry);
 		if (seen.has(server.name)) continue;
 		seen.add(server.name);
 		out.push(server);
@@ -98,7 +103,7 @@ export function importedMcps(config: UserConfig): McpServerWithBrand[] {
 	return out;
 }
 
-/** Imported skills + MCP servers, the surface a Memory selects abilities from. */
+/** Skills + MCP servers, the surface a Memory selects abilities from. */
 export function buildPool(config: UserConfig): Pool {
 	return { skills: importedSkills(config), mcps: importedMcps(config) };
 }

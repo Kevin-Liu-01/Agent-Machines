@@ -65,11 +65,7 @@ export async function POST(request: Request): Promise<Response> {
 		machineId: typeof body.machineId === "string" ? body.machineId : null,
 	});
 
-	const next = await setUserConfig({
-		customLoadout: application.customLoadout,
-		memoryBundles: application.memoryBundles,
-		workers: application.workers,
-	});
+	const next = await setUserConfig({ workers: application.workers });
 
 	return Response.json({
 		ok: true,

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
+import { ReticleSelect } from "@/components/reticle/ReticleSelect";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
 import { ROUTER_PRESETS } from "@/lib/agents/upstreams";
@@ -142,30 +143,37 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 					<SectionLabel label="Configuration" hint="runtime · model · router · memory" />
 					<div className="grid gap-3 md:grid-cols-2">
 						<Field label="Runtime">
-							<select className={fieldCls} value={worker.agentKind} onChange={(e) => setWorker({ ...worker, agentKind: e.target.value as AgentKind })}>
-								{AGENT_KINDS.map((k) => (
-									<option key={k} value={k}>{AGENT_LABEL[k]}</option>
-								))}
-							</select>
+							<ReticleSelect
+								ariaLabel="Runtime"
+								value={worker.agentKind}
+								onChange={(v) => setWorker({ ...worker, agentKind: v as AgentKind })}
+								options={AGENT_KINDS.map((k) => ({ value: k, label: AGENT_LABEL[k] }))}
+							/>
 						</Field>
 						<Field label="Model">
 							<input className={fieldCls} value={worker.model} onChange={(e) => setWorker({ ...worker, model: e.target.value })} />
 						</Field>
 						<Field label="Router">
-							<select className={fieldCls} value={worker.gatewayProfileId} onChange={(e) => setWorker({ ...worker, gatewayProfileId: e.target.value })}>
-								{ROUTER_PRESETS.map((p) => (
-									<option key={p.id} value={p.id}>{p.label}</option>
-								))}
-							</select>
+							<ReticleSelect
+								ariaLabel="Router"
+								value={worker.gatewayProfileId}
+								onChange={(v) => setWorker({ ...worker, gatewayProfileId: v })}
+								options={ROUTER_PRESETS.map((p) => ({ value: p.id, label: p.label }))}
+							/>
 						</Field>
 						<Field label="Memory bundle">
 							<div className="flex items-center gap-2">
-								<select className={fieldCls} value={worker.memoryBundleId} onChange={(e) => setWorker({ ...worker, memoryBundleId: e.target.value })}>
-									{bundles.length === 0 ? <option value={worker.memoryBundleId}>default</option> : null}
-									{bundles.map((b) => (
-										<option key={b.id} value={b.id}>{b.name}</option>
-									))}
-								</select>
+								<ReticleSelect
+									ariaLabel="Memory bundle"
+									className="flex-1"
+									value={worker.memoryBundleId}
+									onChange={(v) => setWorker({ ...worker, memoryBundleId: v })}
+									options={
+										bundles.length === 0
+											? [{ value: worker.memoryBundleId, label: "default" }]
+											: bundles.map((b) => ({ value: b.id, label: b.name }))
+									}
+								/>
 								<Link
 									href={`/dashboard/memory/${encodeURIComponent(worker.memoryBundleId)}`}
 									className="shrink-0 text-[var(--ret-text-muted)] hover:text-[var(--ret-accent)]"
@@ -191,11 +199,13 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 					<SectionLabel label="Deploy" hint="provision a machine running this worker" />
 					<ReticleFrame className="flex flex-wrap items-center gap-2 p-3">
 						<Server className="h-4 w-4 text-[var(--ret-text-dim)]" strokeWidth={1.75} />
-						<select className={cn(fieldCls, "w-auto")} value={provider} onChange={(e) => setProvider(e.target.value as ProviderKind)}>
-							{PROVIDER_KINDS.map((p) => (
-								<option key={p} value={p}>{PROVIDER_LABEL[p]}</option>
-							))}
-						</select>
+						<ReticleSelect
+							ariaLabel="Provider"
+							className="w-44"
+							value={provider}
+							onChange={(v) => setProvider(v as ProviderKind)}
+							options={PROVIDER_KINDS.map((p) => ({ value: p, label: PROVIDER_LABEL[p] }))}
+						/>
 						<ReticleButton variant="primary" size="sm" disabled={deploying} onClick={() => void deploy()}>
 							<Rocket className="h-3.5 w-3.5" strokeWidth={1.75} /> {deploying ? "deploying…" : "Deploy"}
 						</ReticleButton>

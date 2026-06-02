@@ -11,8 +11,11 @@
 import { randomUUID } from "node:crypto";
 
 import memoryDefault from "@/data/memory-default.json";
+import { findPreset, listPresets } from "@/lib/dashboard/presets";
 import {
+	BAREBONES_MEMORY_BUNDLE_ID,
 	DEFAULT_MEMORY_BUNDLE_ID,
+	PRESET_MEMORY_PREFIX,
 	type MemoryBundle,
 	type MemoryBundleDocs,
 	type MemoryBundleSource,
@@ -24,6 +27,16 @@ export const ABILITY_WILDCARD = "*";
 
 const EPOCH = new Date(0).toISOString();
 
+/** Minimal persona for the barebones starter memory. Kept short on purpose. */
+const BAREBONES_DOCS: MemoryBundleDocs = {
+	soul: "# Persona\n\nYou are a focused engineering agent on an Agent Machine. Surgeon, not painter: direct, specific, minimal correct intervention. Say so when you don't know.",
+	agentDocs:
+		"# Operating rules\n\n1. Empirical over theoretical — run the command, read the output.\n2. Fix root causes; fail closed.\n3. Close the loop: verify before reporting done.\n4. Production infra is sacred.",
+	memory:
+		"# Memory\n\nMinimal starter. Add durable facts (stack, repos, conventions) here as you learn them.",
+	user: "# Operator Profile\n\nPlaceholder. The agent fills this in over time.",
+};
+
 export function defaultBundleDocs(): MemoryBundleDocs {
 	const d = memoryDefault as Partial<MemoryBundleDocs>;
 	return {
@@ -34,14 +47,13 @@ export function defaultBundleDocs(): MemoryBundleDocs {
 	};
 }
 
-/** The seeded "Agent Machines default" bundle — full ability set + the
- *  knowledge/ persona docs. */
+/** The seeded "Agent Machines default" bundle — full ability set + persona. */
 export function defaultMemoryBundle(): MemoryBundle {
 	return {
 		id: DEFAULT_MEMORY_BUNDLE_ID,
 		name: "Agent Machines default",
 		description:
-			"Your starting owned memory: persona, operating rules, agent docs, and the full ability set.",
+			"The full loadout: persona, operating rules, agent docs, and every skill, tool, and MCP server available on your machines.",
 		source: "default",
 		docs: defaultBundleDocs(),
 		skillIds: [ABILITY_WILDCARD],
@@ -52,14 +64,58 @@ export function defaultMemoryBundle(): MemoryBundle {
 	};
 }
 
+/** The seeded "Barebones" bundle — a few essential skills + a focused prompt. */
+export function barebonesMemoryBundle(): MemoryBundle {
+	return {
+		id: BAREBONES_MEMORY_BUNDLE_ID,
+		name: "Barebones",
+		description: "A minimal starter: a handful of essential skills, all built-ins, and a focused prompt.",
+		source: "default",
+		docs: BAREBONES_DOCS,
+		skillIds: ["closed-loop-development", "rtfm", "commit", "code-review", "production-safety"],
+		toolIds: [ABILITY_WILDCARD],
+		mcpServerIds: [],
+		createdAt: EPOCH,
+		updatedAt: EPOCH,
+	};
+}
+
+/** A memory synthesized from a curated preset (persona docs + preset abilities). */
+export function presetMemoryBundle(presetId: string): MemoryBundle | null {
+	const preset = findPreset(presetId);
+	if (!preset) return null;
+	return {
+		id: `${PRESET_MEMORY_PREFIX}${preset.id}`,
+		name: preset.name,
+		description: preset.description,
+		source: "default",
+		docs: defaultBundleDocs(),
+		skillIds: preset.skillIds,
+		toolIds: preset.toolIds,
+		mcpServerIds: preset.mcpServerIds,
+		createdAt: EPOCH,
+		updatedAt: EPOCH,
+	};
+}
+
+/** The seeded memories shown by default: two defaults + one per curated preset. */
+export function seededBundles(): MemoryBundle[] {
+	const presetMemories = listPresets()
+		.map((p) => presetMemoryBundle(p.id))
+		.filter((b): b is MemoryBundle => b !== null);
+	return [defaultMemoryBundle(), barebonesMemoryBundle(), ...presetMemories];
+}
+
 /**
- * All bundles for a user, always including the seeded default first — unless
- * the user has customized it (a stored bundle under the same id replaces it).
+ * All bundles for a user: the seeded defaults (two defaults + one per preset)
+ * followed by the user's own, with a stored bundle overriding a seeded one of
+ * the same id (so editing a default persists an override).
  */
 export function listBundles(config: UserConfig): MemoryBundle[] {
 	const stored = config.memoryBundles ?? [];
-	if (stored.some((b) => b.id === DEFAULT_MEMORY_BUNDLE_ID)) return stored;
-	return [defaultMemoryBundle(), ...stored];
+	const storedIds = new Set(stored.map((b) => b.id));
+	const seeded = seededBundles().filter((b) => !storedIds.has(b.id));
+	return [...seeded, ...stored];
 }
 
 export function resolveBundle(
@@ -70,6 +126,10 @@ export function resolveBundle(
 	const stored = (config.memoryBundles ?? []).find((b) => b.id === id);
 	if (stored) return stored;
 	if (id === DEFAULT_MEMORY_BUNDLE_ID) return defaultMemoryBundle();
+	if (id === BAREBONES_MEMORY_BUNDLE_ID) return barebonesMemoryBundle();
+	if (id.startsWith(PRESET_MEMORY_PREFIX)) {
+		return presetMemoryBundle(id.slice(PRESET_MEMORY_PREFIX.length));
+	}
 	return null;
 }
 

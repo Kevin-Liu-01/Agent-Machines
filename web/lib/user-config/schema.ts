@@ -277,6 +277,12 @@ export type CronEntry = {
 /** Stable id of the seeded default memory bundle (synthesized server-side). */
 export const DEFAULT_MEMORY_BUNDLE_ID = "am-default";
 
+/** Stable id of the seeded minimal "barebones" memory bundle. */
+export const BAREBONES_MEMORY_BUNDLE_ID = "am-barebones";
+
+/** Prefix for a memory synthesized from a curated preset (id = prefix + presetId). */
+export const PRESET_MEMORY_PREFIX = "preset-memory:";
+
 export type MemoryBundleSource = "default" | "custom" | "imported";
 
 /**

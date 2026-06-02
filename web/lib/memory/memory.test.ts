@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import type { Pool } from "@/lib/dashboard/pool";
+import { listPresets } from "@/lib/dashboard/presets";
+import {
+	BAREBONES_MEMORY_BUNDLE_ID,
+	DEFAULT_MEMORY_BUNDLE_ID,
+	DEFAULT_USER_CONFIG,
+	PRESET_MEMORY_PREFIX,
+} from "@/lib/user-config/schema";
 
-import { newBundle } from "./bundle";
+import { listBundles, newBundle, resolveBundle, seededBundles } from "./bundle";
 import { bundleToPrompt } from "./export";
 import { bundleFromPaste } from "./import";
 import { bundleInstallCommand, combinedDoc } from "./install";
@@ -125,5 +132,48 @@ describe("combinedDoc", () => {
 		expect(out).toContain("# Persona & voice");
 		expect(out).toContain("SOUL_X");
 		expect(out).toContain("# Working memory");
+	});
+});
+
+describe("seeded default memories", () => {
+	it("seeds the two defaults + one memory per curated preset", () => {
+		const seeded = seededBundles();
+		const ids = seeded.map((b) => b.id);
+		expect(ids).toContain(DEFAULT_MEMORY_BUNDLE_ID);
+		expect(ids).toContain(BAREBONES_MEMORY_BUNDLE_ID);
+		for (const preset of listPresets()) {
+			expect(ids).toContain(`${PRESET_MEMORY_PREFIX}${preset.id}`);
+		}
+		expect(seeded.length).toBe(2 + listPresets().length);
+	});
+
+	it("the default is the full ability set; barebones is a focused few", () => {
+		const def = resolveBundle(DEFAULT_USER_CONFIG, DEFAULT_MEMORY_BUNDLE_ID);
+		expect(def?.skillIds).toEqual(["*"]);
+		expect(def?.mcpServerIds).toEqual(["*"]);
+
+		const bare = resolveBundle(DEFAULT_USER_CONFIG, BAREBONES_MEMORY_BUNDLE_ID);
+		expect(bare?.skillIds.length).toBeGreaterThan(0);
+		expect(bare?.skillIds).not.toContain("*");
+		expect(bare?.docs.soul.length).toBeGreaterThan(0);
+	});
+
+	it("resolves a preset memory by its synthesized id", () => {
+		const preset = listPresets()[0];
+		const mem = resolveBundle(DEFAULT_USER_CONFIG, `${PRESET_MEMORY_PREFIX}${preset.id}`);
+		expect(mem?.name).toBe(preset.name);
+		expect(mem?.skillIds).toEqual(preset.skillIds);
+	});
+
+	it("a stored bundle overrides a seeded one of the same id", () => {
+		const override = newBundle({ name: "My default", docs: { soul: "X" } });
+		const config = {
+			...DEFAULT_USER_CONFIG,
+			memoryBundles: [{ ...override, id: DEFAULT_MEMORY_BUNDLE_ID }],
+		};
+		const bundles = listBundles(config);
+		const defaults = bundles.filter((b) => b.id === DEFAULT_MEMORY_BUNDLE_ID);
+		expect(defaults.length).toBe(1);
+		expect(defaults[0].name).toBe("My default");
 	});
 });

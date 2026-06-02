@@ -1,5 +1,6 @@
 "use client";
 
+import { ReticleSelect } from "@/components/reticle/ReticleSelect";
 import {
 	ROUTER_PRESETS,
 	agentUsesRouter,
@@ -55,23 +56,25 @@ export function RouterSelect({
 
 	return (
 		<div className="grid gap-1">
-			<label className="grid w-fit gap-1">
+			<label className="grid w-full max-w-[280px] gap-1">
 				<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					{label}
 				</span>
-				<select
-					value={value}
-					onChange={(e) => onChange(e.target.value)}
-					disabled={disabled}
-					className="border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1 font-mono text-[11px] text-[var(--ret-text)] outline-none"
-				>
-					{ROUTER_PRESETS.map((p) => (
-						<option key={p.id} value={p.id}>
-							{p.label}
-							{aiConfigured[p.source] ? "" : " — needs key"}
-						</option>
-					))}
-				</select>
+				{disabled ? (
+					<div className="border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1.5 font-mono text-[11px] text-[var(--ret-text-muted)]">
+						{ROUTER_PRESETS.find((p) => p.id === value)?.label ?? value}
+					</div>
+				) : (
+					<ReticleSelect
+						ariaLabel={label}
+						value={value}
+						onChange={onChange}
+						options={ROUTER_PRESETS.map((p) => ({
+							value: p.id,
+							label: `${p.label}${aiConfigured[p.source] ? "" : " — needs key"}`,
+						}))}
+					/>
+				)}
 			</label>
 			{!aiConfigured[ROUTER_PRESETS.find((p) => p.id === value)?.source ?? ""] ? (
 				<span className="font-mono text-[10px] text-[var(--ret-amber)]">

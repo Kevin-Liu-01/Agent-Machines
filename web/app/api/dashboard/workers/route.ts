@@ -72,11 +72,7 @@ export async function POST(request: Request): Promise<Response> {
 		const workers = application.workers.map((w) =>
 			w.id === application.workerId ? { ...w, name } : w,
 		);
-		await setUserConfig({
-			customLoadout: application.customLoadout,
-			memoryBundles: application.memoryBundles,
-			workers,
-		});
+		await setUserConfig({ workers });
 		const worker = workers.find((w) => w.id === application.workerId);
 		return Response.json({ ok: true, worker });
 	}

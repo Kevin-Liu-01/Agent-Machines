@@ -15,14 +15,14 @@ export default async function McpsPage() {
 	return (
 		<div className="flex flex-col">
 			<PageHeader
-				kicker={`MCPS -- ${servers.length} IMPORTED . ${totalTools} TOOLS`}
+				kicker={`MCPS -- ${servers.length} SERVERS . ${totalTools} TOOLS`}
 				title="Tool servers"
-				description="MCP servers you've imported from the Registry, grouped by server. Each exposes callable tools to your agents. The on-VM source of truth lives in ~/.agent-machines/config.yaml. Browse and install more in Registry."
+				description="The MCP servers loaded on your machines: the bundled catalog shipped by default, plus any you add from the Registry. Each exposes callable tools to your agents. The on-VM source of truth lives in ~/.agent-machines/config.yaml."
 			/>
 			{servers.length === 0 ? (
 				<div className="px-6 py-10">
 					<div className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-6 py-12 text-center">
-						<p className="text-[13px] text-[var(--ret-text-dim)]">No MCP servers imported yet.</p>
+						<p className="text-[13px] text-[var(--ret-text-dim)]">No MCP servers yet.</p>
 						<p className="mx-auto mt-1 max-w-[48ch] text-[11px] text-[var(--ret-text-muted)]">
 							Install MCP servers from the Registry to give your agents callable
 							tools for Vercel, Stripe, Figma, Playwright, and more.

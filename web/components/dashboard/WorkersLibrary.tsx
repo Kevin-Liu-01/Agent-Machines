@@ -2,20 +2,21 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bot, Brain, Plus, Rocket } from "lucide-react";
+import { Bot, Brain, Plug2, Plus, Rocket, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { Logo, type Mark } from "@/components/Logo";
+import { ServiceIcon, isServiceSlug } from "@/components/ServiceIcon";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
-import { SchematicPanel } from "@/components/reticle/SchematicPanel";
+import { ReticleSelect, type ReticleSelectOption } from "@/components/reticle/ReticleSelect";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
 import type { Preset } from "@/lib/dashboard/presets";
 import {
 	AGENT_KINDS,
 	AGENT_LABEL,
-	DEFAULT_MEMORY_BUNDLE_ID,
 	type AgentKind,
 	type Worker,
 } from "@/lib/user-config/schema";
@@ -25,12 +26,24 @@ type BundleOpt = { id: string; name: string };
 /** Worker create source: a curated preset (`preset:<id>`) or an existing memory (`bundle:<id>`). */
 type CreateSource = { kind: "preset"; id: string } | { kind: "bundle"; id: string };
 
+const MARK_SET = new Set<string>(["am", "dedalus", "nous", "cursor", "openclaw", "anthropic", "openai"]);
+function isMark(value: string): value is Mark {
+	return MARK_SET.has(value);
+}
+
+function presetBrand(brand: string | undefined, size: number) {
+	if (!brand) return null;
+	if (isMark(brand)) return <Logo mark={brand} size={size} />;
+	if (isServiceSlug(brand)) return <ServiceIcon slug={brand} size={size} />;
+	return null;
+}
+
 export function WorkersLibrary({ presets }: { presets: Preset[] }) {
 	const router = useRouter();
 	const [workers, setWorkers] = useState<Worker[] | null>(null);
 	const [bundleNames, setBundleNames] = useState<Record<string, string>>({});
 	const [bundles, setBundles] = useState<BundleOpt[]>([]);
-	const [creating, setCreating] = useState(false);
+	const [seed, setSeed] = useState<{ name: string; sourceValue: string } | null>(null);
 	const [busy, setBusy] = useState(false);
 
 	const load = useCallback(async () => {
@@ -79,62 +92,116 @@ export function WorkersLibrary({ presets }: { presets: Preset[] }) {
 		);
 	}
 
+	const firstSource = presets[0]
+		? `preset:${presets[0].id}`
+		: bundles[0]
+			? `bundle:${bundles[0].id}`
+			: "preset:";
+
 	return (
-		<div className="space-y-4">
-			<div className="flex items-center justify-between gap-2">
-				<span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
-					{workers.length} worker{workers.length === 1 ? "" : "s"}
-				</span>
-				<ReticleButton variant="primary" size="sm" onClick={() => setCreating(true)}>
-					<Plus className="h-3.5 w-3.5" strokeWidth={1.75} /> New worker
-				</ReticleButton>
-			</div>
-
-			{workers.length === 0 ? (
-				<ReticleFrame className="px-4 py-10 text-center">
-					<SchematicPanel
-						slug="workers"
-						className="mx-auto mb-5 w-full max-w-[240px]"
-					/>
-					<p className="text-[13px] text-[var(--ret-text-dim)]">No workers yet.</p>
-					<p className="mt-1 text-[11px] text-[var(--ret-text-muted)]">
-						Create a worker to package a runtime + model + memory you can deploy onto any machine.
-					</p>
-				</ReticleFrame>
-			) : null}
-
-			<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-				{workers.map((w) => (
-					<Link key={w.id} href={`/dashboard/workers/${w.id}`} className="group">
-						<ReticleFrame className="h-full p-4 transition-colors group-hover:bg-[var(--ret-surface)]">
-							<div className="mb-2 flex items-center justify-between gap-2">
-								<div className="flex min-w-0 items-center gap-2">
-									<Bot className="h-4 w-4 shrink-0 text-[var(--ret-text-dim)]" strokeWidth={1.75} />
-									<span className="truncate text-[13px] text-[var(--ret-text)]">{w.name}</span>
+		<div className="space-y-6">
+			{/* Curated presets -- deployable defaults shipped with Agent Machines. */}
+			<section className="space-y-3">
+				<div className="flex items-center justify-between gap-2">
+					<span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
+						presets . {presets.length}
+					</span>
+					<ReticleButton
+						variant="primary"
+						size="sm"
+						onClick={() => setSeed({ name: "", sourceValue: firstSource })}
+					>
+						<Plus className="h-3.5 w-3.5" strokeWidth={1.75} /> New worker
+					</ReticleButton>
+				</div>
+				<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+					{presets.map((preset) => {
+						const skillCount = preset.skillIds.filter((id) => id !== "*").length;
+						const mcpCount = preset.mcpServerIds.filter((id) => id !== "*").length;
+						return (
+							<button
+								key={preset.id}
+								type="button"
+								onClick={() => setSeed({ name: preset.name, sourceValue: `preset:${preset.id}` })}
+								className="flex h-full flex-col border border-[var(--ret-border)] bg-[var(--ret-bg)] p-4 text-left transition-colors hover:border-[var(--ret-purple)]/40"
+							>
+								<div className="mb-2 flex items-center justify-between gap-2">
+									<div className="flex min-w-0 items-center gap-2">
+										{presetBrand(preset.brand, 16) ?? (
+											<Sparkles className="h-4 w-4 shrink-0 text-[var(--ret-text-dim)]" strokeWidth={1.75} />
+										)}
+										<span className="truncate text-[13px] text-[var(--ret-text)]">{preset.name}</span>
+									</div>
+									<ReticleBadge variant="accent">preset</ReticleBadge>
 								</div>
-								<ReticleBadge variant={w.lastMachineId ? "success" : "default"}>
-									{w.lastMachineId ? "deployed" : "draft"}
-								</ReticleBadge>
-							</div>
-							<div className="flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] text-[var(--ret-text-muted)]">
-								<span>{AGENT_LABEL[w.agentKind]}</span>
-								<span className="truncate">{w.model}</span>
-							</div>
-							<p className="mt-2 flex items-center gap-1.5 truncate font-mono text-[10px] text-[var(--ret-text-dim)]">
-								<Brain className="h-3 w-3 shrink-0" strokeWidth={1.75} />
-								{bundleNames[w.memoryBundleId] ?? "memory bundle"}
-							</p>
-						</ReticleFrame>
-					</Link>
-				))}
-			</div>
+								<p className="line-clamp-2 min-h-[2.4em] text-[11px] leading-relaxed text-[var(--ret-text-dim)]">
+									{preset.description}
+								</p>
+								<div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] text-[var(--ret-text-muted)]">
+									<span>{AGENT_LABEL[preset.agentKind]}</span>
+									<span className="flex items-center gap-1">
+										<Sparkles className="h-3 w-3" strokeWidth={1.75} /> {skillCount} skills
+									</span>
+									<span className="flex items-center gap-1">
+										<Plug2 className="h-3 w-3" strokeWidth={1.75} /> {mcpCount} MCP
+									</span>
+								</div>
+							</button>
+						);
+					})}
+				</div>
+			</section>
 
-			{creating ? (
+			{/* The user's own workers. */}
+			<section className="space-y-3">
+				<span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
+					your workers . {workers.length}
+				</span>
+				{workers.length === 0 ? (
+					<ReticleFrame className="px-4 py-8 text-center">
+						<p className="text-[13px] text-[var(--ret-text-dim)]">No workers yet.</p>
+						<p className="mt-1 text-[11px] text-[var(--ret-text-muted)]">
+							Start from a preset above (or an existing Memory) to package a runtime
+							+ model + memory you can deploy onto any machine.
+						</p>
+					</ReticleFrame>
+				) : (
+					<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+						{workers.map((w) => (
+							<Link key={w.id} href={`/dashboard/workers/${w.id}`} className="group">
+								<ReticleFrame className="h-full p-4 transition-colors group-hover:bg-[var(--ret-surface)]">
+									<div className="mb-2 flex items-center justify-between gap-2">
+										<div className="flex min-w-0 items-center gap-2">
+											<Bot className="h-4 w-4 shrink-0 text-[var(--ret-text-dim)]" strokeWidth={1.75} />
+											<span className="truncate text-[13px] text-[var(--ret-text)]">{w.name}</span>
+										</div>
+										<ReticleBadge variant={w.lastMachineId ? "success" : "default"}>
+											{w.lastMachineId ? "deployed" : "draft"}
+										</ReticleBadge>
+									</div>
+									<div className="flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] text-[var(--ret-text-muted)]">
+										<span>{AGENT_LABEL[w.agentKind]}</span>
+										<span className="truncate">{w.model}</span>
+									</div>
+									<p className="mt-2 flex items-center gap-1.5 truncate font-mono text-[10px] text-[var(--ret-text-dim)]">
+										<Brain className="h-3 w-3 shrink-0" strokeWidth={1.75} />
+										{bundleNames[w.memoryBundleId] ?? "memory"}
+									</p>
+								</ReticleFrame>
+							</Link>
+						))}
+					</div>
+				)}
+			</section>
+
+			{seed ? (
 				<CreateWorkerModal
 					bundles={bundles}
 					presets={presets}
+					initialName={seed.name}
+					initialSource={seed.sourceValue}
 					busy={busy}
-					onCancel={() => setCreating(false)}
+					onCancel={() => setSeed(null)}
 					onSubmit={create}
 				/>
 			) : null}
@@ -151,22 +218,30 @@ const fieldCls = cn(
 function CreateWorkerModal({
 	bundles,
 	presets,
+	initialName,
+	initialSource,
 	busy,
 	onCancel,
 	onSubmit,
 }: {
 	bundles: BundleOpt[];
 	presets: Preset[];
+	initialName: string;
+	initialSource: string;
 	busy: boolean;
 	onCancel: () => void;
 	onSubmit: (name: string, agentKind: AgentKind, source: CreateSource) => void;
 }) {
-	const [name, setName] = useState("");
-	const [agentKind, setAgentKind] = useState<AgentKind>("hermes");
-	// Default to the first curated preset, else the default Memory bundle.
-	const [sourceValue, setSourceValue] = useState(
-		presets[0] ? `preset:${presets[0].id}` : `bundle:${DEFAULT_MEMORY_BUNDLE_ID}`,
+	const [name, setName] = useState(initialName);
+	const [agentKind, setAgentKind] = useState<AgentKind>(
+		presets.find((p) => `preset:${p.id}` === initialSource)?.agentKind ?? "hermes",
 	);
+	const [sourceValue, setSourceValue] = useState(initialSource);
+
+	const sourceOptions: ReticleSelectOption[] = [
+		...presets.map((p) => ({ value: `preset:${p.id}`, label: p.name, group: "Curated presets" })),
+		...bundles.map((b) => ({ value: `bundle:${b.id}`, label: b.name, group: "Your memories" })),
+	];
 
 	function parseSource(value: string): CreateSource {
 		return value.startsWith("preset:")
@@ -181,35 +256,20 @@ function CreateWorkerModal({
 				<div className="flex flex-col gap-2">
 					<input className={fieldCls} placeholder="worker name (e.g. code-reviewer)" value={name} autoFocus onChange={(e) => setName(e.target.value)} />
 					<label className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">Runtime</label>
-					<select className={fieldCls} value={agentKind} onChange={(e) => setAgentKind(e.target.value as AgentKind)}>
-						{AGENT_KINDS.map((k) => (
-							<option key={k} value={k}>
-								{AGENT_LABEL[k]}
-							</option>
-						))}
-					</select>
+					<ReticleSelect
+						ariaLabel="Runtime"
+						value={agentKind}
+						onChange={(v) => setAgentKind(v as AgentKind)}
+						options={AGENT_KINDS.map((k) => ({ value: k, label: AGENT_LABEL[k] }))}
+					/>
 					<label className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">Start from</label>
-					<select className={fieldCls} value={sourceValue} onChange={(e) => setSourceValue(e.target.value)}>
-						{presets.length > 0 ? (
-							<optgroup label="Curated presets">
-								{presets.map((p) => (
-									<option key={p.id} value={`preset:${p.id}`}>
-										{p.name}
-									</option>
-								))}
-							</optgroup>
-						) : null}
-						<optgroup label="Your memories">
-							{bundles.length === 0 ? (
-								<option value={`bundle:${DEFAULT_MEMORY_BUNDLE_ID}`}>Agent Machines default</option>
-							) : null}
-							{bundles.map((b) => (
-								<option key={b.id} value={`bundle:${b.id}`}>
-									{b.name}
-								</option>
-							))}
-						</optgroup>
-					</select>
+					<ReticleSelect
+						ariaLabel="Start from"
+						value={sourceValue}
+						onChange={setSourceValue}
+						options={sourceOptions}
+						placeholder="Pick a preset or memory"
+					/>
 				</div>
 				<div className="mt-3 flex items-center gap-2">
 					<ReticleButton variant="primary" size="sm" disabled={!name.trim() || busy} onClick={() => onSubmit(name.trim(), agentKind, parseSource(sourceValue))}>

@@ -14,6 +14,7 @@ import { RouterSelect } from "@/components/dashboard/RouterSelect";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
+import { ReticleSelect } from "@/components/reticle/ReticleSelect";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
@@ -789,17 +790,14 @@ function Choice({
 	onChange: (value: string) => void;
 }) {
 	return (
-		<select
+		<ReticleSelect
 			value={value}
-			onChange={(e) => onChange(e.target.value)}
-			className="w-full border border-[var(--ret-border)] bg-[var(--ret-bg)] px-2 py-1.5 font-mono text-[12px] text-[var(--ret-text)] focus:border-[var(--ret-purple)] focus:outline-none"
-		>
-			{options.map((opt) => (
-				<option key={opt.value} value={opt.value} disabled={opt.disabled}>
-					{opt.label}
-					{opt.disabled ? " (coming soon)" : ""}
-				</option>
-			))}
-		</select>
+			onChange={onChange}
+			options={options.map((opt) => ({
+				value: opt.value,
+				label: opt.disabled ? `${opt.label} (coming soon)` : opt.label,
+				disabled: opt.disabled,
+			}))}
+		/>
 	);
 }

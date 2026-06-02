@@ -9,6 +9,7 @@ import { FleetInteractPane } from "@/components/dashboard/FleetInteractPane";
 import { DashboardPageBody } from "@/components/dashboard/DashboardPageBody";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
+import { ReticleSelect } from "@/components/reticle/ReticleSelect";
 import { SchematicPanel } from "@/components/reticle/SchematicPanel";
 import type { LogLine } from "@/lib/dashboard/types";
 import { fetchLogTail, headlineFromLogs, isFleetLogsLoaded, shouldFetchFleetLogs } from "@/lib/fleet/fetch-log-tail";
@@ -667,29 +668,26 @@ function QuickProvisionForm({
 						<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 							Provider
 						</span>
-					<select
-						value={providerKind}
-						onChange={(e) => setProviderKind(e.target.value as ProviderKind)}
-						className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-[12px] text-[var(--ret-text)] focus:border-[var(--ret-purple)] focus:outline-none"
-					>
-						{PROVIDER_KINDS.map((p) => (
-							<option key={p} value={p}>{PROVIDER_LABEL[p]}</option>
-						))}
-					</select>
+						<ReticleSelect
+							ariaLabel="Provider"
+							value={providerKind}
+							onChange={(v) => setProviderKind(v as ProviderKind)}
+							options={PROVIDER_KINDS.map((p) => ({ value: p, label: PROVIDER_LABEL[p] }))}
+						/>
 					</label>
 					<label className="flex flex-col gap-1.5">
 						<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 							Agent
 						</span>
-						<select
+						<ReticleSelect
+							ariaLabel="Agent"
 							value={agentKind}
-							onChange={(e) => setAgentKind(e.target.value as AgentKind)}
-							className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-[12px] text-[var(--ret-text)] focus:border-[var(--ret-purple)] focus:outline-none"
-						>
-							{(["hermes", "openclaw", "claude-code", "codex"] as const).map((a) => (
-								<option key={a} value={a}>{AGENT_LABEL[a]}</option>
-							))}
-						</select>
+							onChange={(v) => setAgentKind(v as AgentKind)}
+							options={(["hermes", "openclaw", "claude-code", "codex"] as const).map((a) => ({
+								value: a,
+								label: AGENT_LABEL[a],
+							}))}
+						/>
 					</label>
 					<EditField label="name" value={name} onChange={setName} placeholder="my-agent" />
 				</div>

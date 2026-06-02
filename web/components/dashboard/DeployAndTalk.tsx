@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AgentInfoPanel, GateBanner, MachineInfoPanel } from "@/components/dashboard/AgentMachineInfo";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
+import { ReticleSelect } from "@/components/reticle/ReticleSelect";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { RouterSelect } from "@/components/dashboard/RouterSelect";
 import { DEFAULT_ROUTER_ID, agentUpstreamReadiness, agentUsesRouter } from "@/lib/agents/upstreams";
@@ -145,31 +146,23 @@ export function DeployAndTalk() {
 			</div>
 
 			<div className="flex flex-wrap items-end gap-3">
-				<label className="grid gap-1">
+				<label className="grid w-40 gap-1">
 					<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">substrate</span>
-					<select
+					<ReticleSelect
+						ariaLabel="substrate"
 						value={provider}
-						onChange={(e) => setProvider(e.target.value as (typeof PROVIDERS)[number])}
-						disabled={busy}
-						className="border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1 font-mono text-[11px] text-[var(--ret-text)] outline-none"
-					>
-						{PROVIDERS.map((p) => (
-							<option key={p} value={p}>{p}</option>
-						))}
-					</select>
+						onChange={(v) => setProvider(v as (typeof PROVIDERS)[number])}
+						options={PROVIDERS.map((p) => ({ value: p, label: p }))}
+					/>
 				</label>
-				<label className="grid gap-1">
+				<label className="grid w-40 gap-1">
 					<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">agent</span>
-					<select
+					<ReticleSelect
+						ariaLabel="agent"
 						value={agent}
-						onChange={(e) => setAgent(e.target.value as (typeof AGENTS)[number])}
-						disabled={busy}
-						className="border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1 font-mono text-[11px] text-[var(--ret-text)] outline-none"
-					>
-						{AGENTS.map((a) => (
-							<option key={a} value={a}>{a}</option>
-						))}
-					</select>
+						onChange={(v) => setAgent(v as (typeof AGENTS)[number])}
+						options={AGENTS.map((a) => ({ value: a, label: a }))}
+					/>
 				</label>
 				<ReticleButton
 					as="button"

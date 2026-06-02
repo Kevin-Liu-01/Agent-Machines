@@ -16,6 +16,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
+import { ReticleSelect } from "@/components/reticle/ReticleSelect";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
 import { OnMachineMemory } from "@/components/dashboard/OnMachineMemory";
@@ -305,18 +306,14 @@ export function MemoryBundleEditor({ bundleId }: { bundleId: string }) {
 					<SectionLabel label="Install" hint="write this memory into an agent on a machine" />
 					<ReticleFrame className="flex flex-wrap items-center gap-2 p-3">
 						<HardDriveDownload className="h-4 w-4 text-[var(--ret-text-dim)]" strokeWidth={1.75} />
-						<select
+						<ReticleSelect
+							ariaLabel="Install target machine"
+							className="w-52"
 							value={installTarget}
-							onChange={(e) => setInstallTarget(e.target.value)}
-							className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-2 py-1 font-mono text-[11px] text-[var(--ret-text)] focus:border-[var(--ret-accent)] focus:outline-none"
-						>
-							{machines.length === 0 ? <option value="">no machines</option> : null}
-							{machines.map((m) => (
-								<option key={m.id} value={m.id}>
-									{m.name}
-								</option>
-							))}
-						</select>
+							onChange={setInstallTarget}
+							placeholder={machines.length === 0 ? "no machines" : "pick a machine"}
+							options={machines.map((m) => ({ value: m.id, label: m.name }))}
+						/>
 						<ReticleButton variant="secondary" size="sm" disabled={!installTarget || installing} onClick={() => void doInstall()}>
 							{installing ? "installing…" : "Install to machine"}
 						</ReticleButton>

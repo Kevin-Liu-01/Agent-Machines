@@ -10,12 +10,8 @@ import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 import { BUILTIN_TOOLS } from "@/lib/dashboard/loadout";
 import { buildPool } from "@/lib/dashboard/pool";
 import { resolveAbilities } from "@/lib/memory/abilities";
-import { defaultMemoryBundle, resolveBundle } from "@/lib/memory/bundle";
-import {
-	DEFAULT_MEMORY_BUNDLE_ID,
-	type MemoryBundle,
-	type MemoryBundleDocs,
-} from "@/lib/user-config/schema";
+import { resolveBundle } from "@/lib/memory/bundle";
+import type { MemoryBundle, MemoryBundleDocs } from "@/lib/user-config/schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -64,9 +60,9 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
 
 	const config = await getUserConfig();
 	const stored = config.memoryBundles ?? [];
-	const existing =
-		stored.find((b) => b.id === id) ??
-		(id === DEFAULT_MEMORY_BUNDLE_ID ? defaultMemoryBundle() : null);
+	// Editing a seeded default (am-default, am-barebones, or a preset memory)
+	// persists an override under the same id.
+	const existing = stored.find((b) => b.id === id) ?? resolveBundle(config, id);
 	if (!existing) return Response.json({ error: "not_found" }, { status: 404 });
 
 	const docs = (body.docs ?? {}) as Partial<MemoryBundleDocs>;

@@ -47,14 +47,18 @@ describe("importedSkills", () => {
 		expect(s?.category).toBe("custom");
 	});
 
-	it("excludes disabled entries and non-skill kinds", () => {
+	it("always includes the bundled library; excludes disabled custom + non-skill kinds", () => {
 		const skills = importedSkills(
 			configWith([
-				entry({ id: "skill-deepsec", kind: "skill", enabled: false }),
-				entry({ id: "mcp-server-vercel", kind: "mcp" }),
+				entry({ id: "custom-skill:custom/disabled-one", name: "Disabled", kind: "skill", enabled: false }),
+				entry({ id: "ext-mcp-foo", name: "foo", kind: "mcp" }),
 			]),
 		);
-		expect(skills).toEqual([]);
+		// bundled defaults are always present
+		expect(skills.length).toBeGreaterThan(50);
+		expect(skills.some((s) => s.slug === "deepsec")).toBe(true);
+		// the disabled custom skill and the MCP entry are not in the skill pool
+		expect(skills.some((s) => s.slug === "disabled-one")).toBe(false);
 	});
 });
 
