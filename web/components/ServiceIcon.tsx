@@ -60,7 +60,8 @@ export type ServiceSlug =
 	| "grafana"
 	| "sanity"
 	| "e2b"
-	| "sprites";
+	| "sprites"
+	| "openrouter";
 
 export const SERVICE_LABEL: Record<ServiceSlug, string> = {
 	vercel: "Vercel",
@@ -102,6 +103,7 @@ export const SERVICE_LABEL: Record<ServiceSlug, string> = {
 	sanity: "Sanity",
 	e2b: "E2B",
 	sprites: "Sprites",
+	openrouter: "OpenRouter",
 };
 
 const SERVICE_SET = new Set<string>(Object.keys(SERVICE_LABEL));
@@ -130,6 +132,7 @@ const FORCE_MONO = new Set<ServiceSlug>([
 	"resend", // black wordmark
 	"notion", // black N mark
 	"exa", // dark purple on dark backgrounds
+	"openrouter", // line-art routing glyph, inherits text color
 ]);
 
 type Props = {

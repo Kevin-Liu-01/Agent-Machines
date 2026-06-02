@@ -10,7 +10,7 @@ export const RETICLE_SIZES = {
 	crossArm: 5,
 	crossStroke: 1,
 	railGap: 24,
-	contentMax: 1200,
+	contentMax: 1400,
 	/**
 	 * Reticle is sharp corners. Kept on the const to preserve the
 	 * symbolic name, but it's zero -- nothing in the system rounds.

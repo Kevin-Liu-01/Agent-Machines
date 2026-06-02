@@ -118,37 +118,18 @@ const TAB_DATA = STEPS.map((s) => ({
 	icon: <s.Icon className="h-3.5 w-3.5" />,
 }));
 
-const STEP_GRADIENTS: ReadonlyArray<string> = [
-	[
-		"radial-gradient(circle at 30% 20%, rgba(139,92,246,0.65) 0%, transparent 50%)",
-		"radial-gradient(circle at 70% 80%, rgba(79,70,229,0.55) 0%, transparent 45%)",
-		"radial-gradient(circle at 85% 25%, rgba(192,132,252,0.4) 0%, transparent 40%)",
-		"#0c0515",
-	].join(", "),
-	[
-		"radial-gradient(circle at 40% 30%, rgba(16,185,129,0.65) 0%, transparent 50%)",
-		"radial-gradient(circle at 75% 70%, rgba(6,182,212,0.55) 0%, transparent 45%)",
-		"radial-gradient(circle at 15% 75%, rgba(52,211,153,0.4) 0%, transparent 40%)",
-		"#020f0a",
-	].join(", "),
-	[
-		"radial-gradient(circle at 50% 25%, rgba(59,130,246,0.65) 0%, transparent 50%)",
-		"radial-gradient(circle at 20% 75%, rgba(99,102,241,0.55) 0%, transparent 45%)",
-		"radial-gradient(circle at 80% 50%, rgba(37,99,235,0.4) 0%, transparent 40%)",
-		"#030815",
-	].join(", "),
-	[
-		"radial-gradient(circle at 60% 40%, rgba(236,72,153,0.65) 0%, transparent 50%)",
-		"radial-gradient(circle at 20% 65%, rgba(168,85,247,0.55) 0%, transparent 45%)",
-		"radial-gradient(circle at 85% 15%, rgba(244,63,94,0.4) 0%, transparent 40%)",
-		"#150510",
-	].join(", "),
-	[
-		"radial-gradient(circle at 35% 30%, rgba(245,158,11,0.65) 0%, transparent 50%)",
-		"radial-gradient(circle at 70% 65%, rgba(249,115,22,0.55) 0%, transparent 45%)",
-		"radial-gradient(circle at 20% 70%, rgba(239,68,68,0.4) 0%, transparent 40%)",
-		"#150a02",
-	].join(", "),
+/**
+ * Per-step circuit-art schematic. White-on-black line art shown as the
+ * hero visual of each step's right column (foreground, not a tint), with
+ * the live terminal docked below it. Replaces the old off-brand colored
+ * gradients now that the system is grayscale.
+ */
+const STEP_ART: ReadonlyArray<string> = [
+	"overview", // dashboard / control plane
+	"agents", // runtime routes
+	"loadout", // tools + mcps
+	"machines", // substrate routes
+	"settings", // environment
 ];
 
 /* ------------------------------------------------------------------ */
@@ -251,13 +232,22 @@ function WorkflowRow({ step, index }: { step: Step; index: number }) {
 				)}
 			</div>
 
-			{/* Gradient + terminal panel */}
-			<div
-				className="relative min-h-[420px] overflow-hidden md:min-h-0"
-				style={{ background: STEP_GRADIENTS[index] }}
-			>
-				<div className="absolute inset-3 overflow-hidden rounded-xl border border-white/[0.08] bg-[#0d0d12]/85 backdrop-blur-xl md:inset-5">
-					<div className="flex h-full flex-col p-4 md:p-5">
+			{/* Circuit-art hero + docked terminal */}
+			<div className="relative flex min-h-[420px] flex-col overflow-hidden border-l border-[var(--ret-border)] bg-[#09090b] md:min-h-0">
+				<div className="relative min-h-[170px] flex-1 overflow-hidden">
+					{/* eslint-disable-next-line @next/next/no-img-element -- local white-on-black schematic, shown as the column's hero visual */}
+					<img
+						src={`/category-art/${STEP_ART[index]}.png`}
+						alt=""
+						aria-hidden="true"
+						className="pointer-events-none absolute inset-0 h-full w-full select-none object-cover opacity-80 [mask-image:linear-gradient(to_bottom,black,black_72%,transparent)] [-webkit-mask-image:linear-gradient(to_bottom,black,black_72%,transparent)]"
+					/>
+					<span className="absolute left-4 top-4 font-mono text-[10px] uppercase tracking-[0.2em] text-white/45 md:left-5 md:top-5">
+						{step.tab}
+					</span>
+				</div>
+				<div className="relative z-10 mx-3 mb-3 overflow-hidden rounded-xl border border-white/[0.1] bg-[#0d0d12]/90 backdrop-blur-md md:mx-5 md:mb-5">
+					<div className="p-4 md:p-5">
 						<StepTerminal index={index} />
 					</div>
 				</div>

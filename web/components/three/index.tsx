@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
+import type { SubstrateId } from "./HeroOrbitScene";
 
 /**
  * Lazy-loaded three.js scenes. SSR is off because three.js touches WebGL
@@ -59,14 +60,16 @@ const HeroOrbitInner = dynamic(
 type FrameProps = {
 	className?: string;
 	children?: ReactNode;
+	/** When false, the frame is transparent so callers can blend it. */
+	bg?: boolean;
 };
 
-function SceneFrame({ className, children }: FrameProps) {
+function SceneFrame({ className, children, bg = true }: FrameProps) {
 	return (
 		<div
 			className={cn(
 				"relative overflow-hidden",
-				"bg-[var(--ret-bg)]",
+				bg && "bg-[var(--ret-bg)]",
 				className,
 			)}
 		>
@@ -197,16 +200,26 @@ export function WireframeMachine({ className }: { className?: string }) {
 export function HeroOrbit({
 	className,
 	activeAgent,
+	activeSubstrate,
+	mode = "portrait",
 }: {
 	className?: string;
 	activeAgent: string | null;
+	activeSubstrate?: SubstrateId;
+	mode?: "portrait" | "gears";
 }) {
+	const gears = mode === "gears";
+	const camPos: [number, number, number] = gears ? [0, 0, 10] : [0, 0, 4.8];
 	return (
-		<SceneFrame className={className}>
-			<SceneCanvas camera={{ position: [0, 0.2, 4.2], fov: 34 }}>
-				<HeroOrbitInner activeAgent={activeAgent} />
+		<SceneFrame className={className} bg={!gears}>
+			<SceneCanvas camera={{ position: camPos, fov: gears ? 42 : 34 }}>
+				<HeroOrbitInner
+					activeAgent={activeAgent}
+					activeSubstrate={activeSubstrate}
+					mode={mode}
+				/>
 			</SceneCanvas>
-			<CrossOverlay />
+			{!gears && <CrossOverlay />}
 		</SceneFrame>
 	);
 }

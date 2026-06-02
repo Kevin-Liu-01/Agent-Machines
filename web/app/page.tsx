@@ -29,7 +29,7 @@ export default function HomePage() {
 
 				<ReticleSpacer />
 
-				<ReticleSection contentClassName="" art="machines">
+				<ReticleSection contentClassName="">
 					<FleetDemo />
 				</ReticleSection>
 
@@ -41,13 +41,13 @@ export default function HomePage() {
 
 				<ReticleSpacer />
 
-				<ReticleBand contentClassName="" art="overview">
+				<ReticleBand contentClassName="">
 					<StatsRow />
 				</ReticleBand>
 
 				<ReticleSpacer />
 
-				<ReticleSection id="workflow" contentClassName="" art="cron">
+				<ReticleSection id="workflow" contentClassName="">
 					<WorkflowNavigator />
 				</ReticleSection>
 
@@ -75,13 +75,13 @@ export default function HomePage() {
 
 				<ReticleSpacer />
 
-				<ReticleSection id="loadout" contentClassName="" art="loadout">
+				<ReticleSection id="loadout" contentClassName="">
 					<LoadoutPreview />
 				</ReticleSection>
 
 				<ReticleSpacer />
 
-				<ReticleBand id="runtime" contentClassName="" art="hero">
+				<ReticleBand id="runtime" contentClassName="">
 					<RuntimeVizGrid />
 				</ReticleBand>
 

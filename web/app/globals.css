@@ -77,7 +77,7 @@
 	 * and ReticleSection so sections can render edge-to-edge borders
 	 * while their inner content stays within `min(viewport, --ret-content-max)`.
 	 */
-	--ret-content-max: 1200px;
+	--ret-content-max: 1400px;
 	/*
 	 * Distance from the viewport edge to the inner content column,
 	 * computed once at the page-grid level. Sections use it to position

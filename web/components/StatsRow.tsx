@@ -2,10 +2,10 @@ import type { SVGProps } from "react";
 
 import { Logo } from "@/components/Logo";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
+import { SchematicPanel } from "@/components/reticle/SchematicPanel";
 import { ServiceIcon, type ServiceSlug } from "@/components/ServiceIcon";
 import { ToolIcon } from "@/components/ToolIcon";
 import type { ToolCategory } from "@/lib/dashboard/loadout";
-import { cn } from "@/lib/cn";
 
 const SPECS: ReadonlyArray<{
 	label: string;
@@ -183,26 +183,39 @@ function StackIconView({
 export function StatsRow() {
 	return (
 		<div>
-			<div className="grid grid-cols-1 gap-6 border-b border-[var(--ret-border)] px-4 py-6 md:px-5 lg:grid-cols-[1fr_1.4fr] lg:gap-8 lg:py-8">
-				<div className="flex flex-col justify-center">
+			{/* Header + control-plane schematic */}
+			<div className="grid grid-cols-1 items-stretch gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[1.05fr_0.95fr]">
+				<div className="flex flex-col justify-center bg-[var(--ret-bg)] px-4 py-8 md:px-6 md:py-12">
 					<ReticleLabel>CONTROL PLANE</ReticleLabel>
-					<h2 className="ret-display mt-3 text-xl tracking-tight md:text-2xl">
+					<h2 className="ret-display mt-3 max-w-[18ch] text-2xl tracking-tight md:text-4xl">
 						OpenRouter for agents and containers.
 					</h2>
+					<p className="mt-4 max-w-[52ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
+						Route the agent runtime and the container substrate from one
+						account, then deploy a persistent worker with its full harness —
+						supervised from a single dashboard.
+					</p>
 				</div>
-				<div className="flex flex-col gap-3">
-					<SpecTerminal label="Routing" specs={SPECS.slice(0, 3)} />
-					<SpecTerminal label="Worker unit" specs={SPECS.slice(3)} />
+				<div className="flex items-center justify-center bg-[var(--ret-bg)] p-4 md:p-6">
+					<SchematicPanel slug="overview" className="w-full max-w-[440px]" />
 				</div>
 			</div>
 
+			{/* Instrument readout grid */}
+			<div className="grid grid-cols-2 gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-3 lg:grid-cols-6">
+				{SPECS.map((spec) => (
+					<ReadoutCell key={spec.label} spec={spec} />
+				))}
+			</div>
+
+			{/* Feature cards */}
 			<div className="grid grid-cols-1 gap-px bg-[var(--ret-border)] md:grid-cols-3">
 				{FEATURES.map(({ Icon, title, body, services, assembly }) => (
 					<div
 						key={title}
 						className="flex flex-col bg-[var(--ret-bg)] p-5 md:p-6"
 					>
-						<div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-[var(--ret-surface)] text-[var(--ret-purple)]">
+						<div className="mb-4 flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--ret-border)] bg-[var(--ret-surface)] text-[var(--ret-text)]">
 							<Icon className="h-4 w-4" />
 						</div>
 						<h3 className="text-[15px] font-semibold tracking-tight text-[var(--ret-text)]">
@@ -212,10 +225,7 @@ export function StatsRow() {
 							{body}
 						</p>
 						<div className="mt-5 flex-1">
-							<ServiceAssembly
-								variant={assembly}
-								services={services}
-							/>
+							<ServiceAssembly variant={assembly} services={services} />
 						</div>
 					</div>
 				))}
@@ -224,51 +234,23 @@ export function StatsRow() {
 	);
 }
 
-/* ── Dark terminal-style spec box ── */
+/* ── Instrument readout cell ── */
 
-function SpecTerminal({
-	label,
-	specs,
-}: {
-	label: string;
-	specs: ReadonlyArray<(typeof SPECS)[number]>;
-}) {
+function ReadoutCell({ spec }: { spec: (typeof SPECS)[number] }) {
 	return (
-		<div className="overflow-hidden rounded-xl border border-[#27272a] bg-[#18181b]">
-			<div className="flex items-center border-b border-[#27272a] px-4 py-2.5">
-				<span className="rounded-md bg-white/[0.07] px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.12em] text-white/50">
-					{label}
+		<div className="flex flex-col gap-1 bg-[var(--ret-bg)] px-4 py-5">
+			<div className="flex items-center gap-1.5">
+				<ToolIcon name={spec.icon} size={11} className="text-[var(--ret-text-muted)]" />
+				<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+					{spec.label}
 				</span>
 			</div>
-			<div
-				className={cn(
-					"grid divide-x divide-[#27272a]",
-					specs.length <= 3
-						? "grid-cols-3"
-						: "grid-cols-2 sm:grid-cols-3",
-				)}
-			>
-				{specs.map((s) => (
-					<div key={s.label} className="px-4 py-4">
-						<div className="flex items-center gap-1.5">
-							<ToolIcon
-								name={s.icon}
-								size={10}
-								className="text-white/30"
-							/>
-							<p className="text-[10px] uppercase tracking-[0.14em] text-white/35">
-								{s.label}
-							</p>
-						</div>
-						<p className="mt-1.5 text-lg font-semibold tabular-nums leading-tight text-white">
-							{s.value}
-						</p>
-						<p className="mt-1 text-[11px] leading-snug text-white/40">
-							{s.description}
-						</p>
-					</div>
-				))}
-			</div>
+			<span className="mt-1 text-[22px] font-semibold leading-none tabular-nums tracking-tight text-[var(--ret-text)]">
+				{spec.value}
+			</span>
+			<span className="text-[11px] leading-snug text-[var(--ret-text-dim)]">
+				{spec.description}
+			</span>
 		</div>
 	);
 }

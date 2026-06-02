@@ -42,6 +42,19 @@ const VARIANTS = {
 		RIGHT_MASK_HEADER,
 	),
 	fill: cn("inset-0 h-full w-full opacity-[0.6] dark:opacity-[0.72]", BOTTOM_MASK),
+	// `feature` — focal diagram for sparse cells: the full schematic hugs the
+	// right edge (`object-right` + `contain`), reads clearly, fades left.
+	feature: cn(
+		"inset-y-1 right-0 w-[62%] object-right",
+		"opacity-[0.6] group-hover:opacity-[0.85] dark:opacity-[0.72] dark:group-hover:opacity-[0.95]",
+		RIGHT_MASK_WIDE,
+	),
+	// `panel` — faint texture behind dense icon walls; never fights content.
+	panel: cn(
+		"inset-y-0 right-0 w-1/2",
+		"opacity-[0.16] group-hover:opacity-[0.28] dark:opacity-[0.24] dark:group-hover:opacity-[0.38]",
+		RIGHT_MASK_WIDE,
+	),
 } as const;
 
 export function CircuitArt({
@@ -49,11 +62,13 @@ export function CircuitArt({
 	src,
 	className,
 	variant = "card",
+	fit = "cover",
 }: {
 	slug?: string | null;
 	src?: string;
 	className?: string;
 	variant?: keyof typeof VARIANTS;
+	fit?: "cover" | "contain";
 }) {
 	const resolved = src ?? getCategoryArt(slug);
 	if (!resolved) return null;
@@ -64,7 +79,8 @@ export function CircuitArt({
 			aria-hidden="true"
 			src={resolved}
 			className={cn(
-				"pointer-events-none absolute select-none object-cover",
+				"pointer-events-none absolute select-none",
+				fit === "contain" ? "object-contain" : "object-cover",
 				"mix-blend-multiply invert transition-opacity duration-300",
 				"dark:mix-blend-screen dark:invert-0",
 				VARIANTS[variant],
