@@ -13,6 +13,7 @@ for (const script of [
 	"sync-harness-counts.mjs",
 	"sync-memory.mjs",
 	"sync-presets.mjs",
+	"sync-defaults.mjs",
 ]) {
 	const path = join(HERE, script);
 	const result = spawnSync(process.execPath, [path], { stdio: "inherit" });

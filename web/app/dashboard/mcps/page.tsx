@@ -15,9 +15,9 @@ export default async function McpsPage() {
 	return (
 		<div className="flex flex-col">
 			<PageHeader
-				kicker={`MCPS -- ${servers.length} SERVERS . ${totalTools} TOOLS`}
+				kicker={`MCPS -- ${servers.length} IN LIBRARY . ${totalTools} TOOLS`}
 				title="Tool servers"
-				description="The MCP servers loaded on your machines: the bundled catalog shipped by default, plus any you add from the Registry. Each exposes callable tools to your agents. The on-VM source of truth lives in ~/.agent-machines/config.yaml."
+				description="The MCP servers loaded on your machines: a curated starter set, plus any you add from the Registry. Each exposes callable tools to your agents. The full catalog lives in the Registry; the on-VM source of truth is ~/.agent-machines/config.yaml."
 			/>
 			{servers.length === 0 ? (
 				<div className="px-6 py-10">

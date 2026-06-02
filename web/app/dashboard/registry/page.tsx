@@ -1,12 +1,20 @@
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { RegistryBrowser } from "@/components/dashboard/RegistryBrowser";
+import { defaultPoolMcpIds, defaultPoolSkillIds } from "@/lib/dashboard/defaults";
+import { slug } from "@/lib/dashboard/loadout";
 import { getUserConfig } from "@/lib/user-config/clerk";
 
 export const dynamic = "force-dynamic";
 
 export default async function RegistryPage() {
 	const config = await getUserConfig();
-	const installedIds = config.customLoadout.map((entry) => entry.id);
+	// Installed = the user's imports plus the curated default starter pool
+	// (already loaded on every machine), so defaults read as installed here.
+	const installedIds = [
+		...config.customLoadout.map((entry) => entry.id),
+		...defaultPoolSkillIds().map((s) => `skill-${s}`),
+		...defaultPoolMcpIds().map((name) => `mcp-server-${slug(name)}`),
+	];
 
 	return (
 		<div className="flex flex-col">

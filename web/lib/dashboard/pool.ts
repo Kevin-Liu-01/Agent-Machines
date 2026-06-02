@@ -1,20 +1,20 @@
 /**
  * The account-global ability pool.
  *
- * The pool is the bundled catalog (shipped, default-loaded on every machine)
- * PLUS anything the user adds from the Registry (`config.customLoadout`). The
- * Skills/MCPs library pages render the pool, and a Memory selects its abilities
- * from it. Built-in tools are runtime-intrinsic (always available), so they are
- * NOT part of the pool -- only skills and MCP servers are.
+ * The pool is the curated default starter set (a subset of the bundled personal
+ * library, loaded on every machine out of the box) PLUS anything the user adds
+ * from the Registry (`config.customLoadout`) -- which can be the rest of the
+ * bundled library or external/custom items. The Skills/MCPs library pages
+ * render the pool, and a Memory selects its abilities from it. Built-in tools
+ * are runtime-intrinsic (always available), so they are NOT part of the pool.
  *
  * Registry id conventions (see buildTrustedAddOnCatalog in loadout.ts):
- *   - bundled skill      -> `skill-<slug>`   (already in the bundled set)
+ *   - bundled skill      -> `skill-<slug>`
  *   - custom skill       -> `custom-skill:custom/<slug>`
- *   - bundled MCP server -> `mcp-server-<slug(name)>` (already bundled)
- * Only non-bundled customLoadout entries (external/custom) are appended; the
- * bundled catalog already covers the rest.
+ *   - bundled MCP server -> `mcp-server-<slug(name)>`
  */
 
+import { defaultPoolMcpIds, defaultPoolSkillIds } from "@/lib/dashboard/defaults";
 import { slug } from "@/lib/dashboard/loadout";
 import { listMcpServers, type McpServerWithBrand } from "@/lib/dashboard/mcps";
 import { listSkills } from "@/lib/dashboard/skills";
@@ -66,36 +66,56 @@ function skillSlugForEntry(entry: CustomLoadoutEntry): string {
 }
 
 /**
- * The pool's skills: the full bundled library (default-loaded) plus any custom
- * or external skills the user added from the Registry.
+ * The pool's skills: the curated default starter set (resolved against the
+ * bundled catalog) plus any skills the user added from the Registry (the rest
+ * of the bundled library, or external/custom skills).
  */
 export function importedSkills(config: UserConfig): SkillSummary[] {
-	const bundled = listSkills();
-	const seen = new Set(bundled.map((s) => s.slug));
-	const out: SkillSummary[] = [...bundled];
+	const catalog = new Map(listSkills().map((s) => [s.slug, s]));
+	const out: SkillSummary[] = [];
+	const seen = new Set<string>();
+	// 1) curated default starter set (bundled, default-loaded)
+	for (const skillSlug of defaultPoolSkillIds()) {
+		const skill = catalog.get(skillSlug);
+		if (skill && !seen.has(skillSlug)) {
+			seen.add(skillSlug);
+			out.push(skill);
+		}
+	}
+	// 2) user additions from the Registry (bundled-beyond-default, or custom)
 	for (const entry of config.customLoadout) {
 		if (entry.kind !== "skill" || !entry.enabled) continue;
 		const slugValue = skillSlugForEntry(entry);
-		if (!slugValue || seen.has(slugValue)) continue; // bundled already covers it
+		if (!slugValue || seen.has(slugValue)) continue;
 		seen.add(slugValue);
-		out.push(syntheticSkill(entry, slugValue));
+		out.push(catalog.get(slugValue) ?? syntheticSkill(entry, slugValue));
 	}
 	return out;
 }
 
 /**
- * The pool's MCP servers: the full bundled catalog (default-loaded) plus any
- * external MCP servers the user added from the Registry.
+ * The pool's MCP servers: the curated default starter set (resolved against the
+ * bundled catalog) plus any MCP servers the user added from the Registry.
  */
 export function importedMcps(config: UserConfig): McpServerWithBrand[] {
-	const bundled = listMcpServers();
-	const bundledIds = new Set(bundled.map((m) => `${MCP_PREFIX}${slug(m.name)}`));
-	const seen = new Set(bundled.map((m) => m.name));
-	const out: McpServerWithBrand[] = [...bundled];
+	const byName = new Map(listMcpServers().map((m) => [m.name, m]));
+	const byRegistryId = new Map(
+		listMcpServers().map((m) => [`${MCP_PREFIX}${slug(m.name)}`, m]),
+	);
+	const out: McpServerWithBrand[] = [];
+	const seen = new Set<string>();
+	// 1) curated default starter set
+	for (const name of defaultPoolMcpIds()) {
+		const server = byName.get(name);
+		if (server && !seen.has(name)) {
+			seen.add(name);
+			out.push(server);
+		}
+	}
+	// 2) user additions from the Registry (bundled-beyond-default, or external)
 	for (const entry of config.customLoadout) {
 		if (entry.kind !== "mcp" || !entry.enabled) continue;
-		if (bundledIds.has(entry.id)) continue; // bundled already covers it
-		const server = syntheticMcp(entry);
+		const server = byRegistryId.get(entry.id) ?? syntheticMcp(entry);
 		if (seen.has(server.name)) continue;
 		seen.add(server.name);
 		out.push(server);

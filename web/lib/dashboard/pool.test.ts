@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { resolveAbilities } from "@/lib/memory/abilities";
 import { newBundle } from "@/lib/memory/bundle";
+import { defaultPoolSkillIds } from "./defaults";
 import { BUILTIN_TOOLS } from "./loadout";
 import { buildPool, importedMcps, importedSkills } from "./pool";
 import { DEFAULT_USER_CONFIG, type CustomLoadoutEntry, type UserConfig } from "@/lib/user-config/schema";
@@ -47,18 +48,27 @@ describe("importedSkills", () => {
 		expect(s?.category).toBe("custom");
 	});
 
-	it("always includes the bundled library; excludes disabled custom + non-skill kinds", () => {
+	it("includes the curated default starter set; excludes disabled custom + non-skill kinds", () => {
 		const skills = importedSkills(
 			configWith([
 				entry({ id: "custom-skill:custom/disabled-one", name: "Disabled", kind: "skill", enabled: false }),
 				entry({ id: "ext-mcp-foo", name: "foo", kind: "mcp" }),
 			]),
 		);
-		// bundled defaults are always present
-		expect(skills.length).toBeGreaterThan(50);
+		// the default starter pool is always present (deepsec is a default)
+		expect(skills.length).toBe(defaultPoolSkillIds().length);
 		expect(skills.some((s) => s.slug === "deepsec")).toBe(true);
 		// the disabled custom skill and the MCP entry are not in the skill pool
 		expect(skills.some((s) => s.slug === "disabled-one")).toBe(false);
+	});
+
+	it("a Registry import adds a non-default bundled skill to the pool", () => {
+		// taste-redesign is in the bundled library but not in the default starter
+		const withImport = importedSkills(
+			configWith([entry({ id: "skill-taste-redesign", name: "taste-redesign", kind: "skill" })]),
+		);
+		expect(withImport.some((s) => s.slug === "taste-redesign")).toBe(true);
+		expect(withImport.length).toBe(defaultPoolSkillIds().length + 1);
 	});
 });
 

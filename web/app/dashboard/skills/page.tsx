@@ -1,5 +1,6 @@
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { SkillsBrowser } from "@/components/dashboard/SkillsBrowser";
+import { importedSkills } from "@/lib/dashboard/pool";
 import { listSkills } from "@/lib/dashboard/skills";
 import type { SkillSummary } from "@/lib/dashboard/types";
 import { getUserConfig } from "@/lib/user-config/clerk";
@@ -10,10 +11,11 @@ export const dynamic = "force-dynamic";
 export default async function SkillsPage() {
 	const config = await getUserConfig();
 
-	// The pool: the full bundled library (default-loaded on every machine) plus
-	// any custom / external skills the user added from the Registry (entries
-	// that aren't a bundled `skill-<slug>`).
-	const bundled: SkillSummary[] = listSkills();
+	// The pool: the curated default starter set + anything imported from the
+	// Registry. Split into catalog-backed skills (have detail pages) and custom
+	// / external ones (rendered from their own entry metadata).
+	const catalogSlugs = new Set(listSkills().map((s) => s.slug));
+	const bundled: SkillSummary[] = importedSkills(config).filter((s) => catalogSlugs.has(s.slug));
 	const custom: CustomLoadoutEntry[] = config.customLoadout.filter(
 		(entry) => entry.kind === "skill" && entry.enabled && !entry.id.startsWith("skill-"),
 	);
@@ -23,9 +25,9 @@ export default async function SkillsPage() {
 	return (
 		<div className="flex flex-col">
 			<PageHeader
-				kicker={`SKILLS -- ${total} AVAILABLE`}
+				kicker={`SKILLS -- ${total} IN LIBRARY`}
 				title="Skill library"
-				description="The skills loaded on your machines: the bundled library shipped by default, plus any you add from the Registry or paste yourself. A Memory selects which of these an agent uses."
+				description="The skills loaded on your machines: a curated starter set from the bundled library, plus anything you add. The full library and external sources live in the Registry; a Memory selects which of these an agent uses."
 			/>
 			<SkillsBrowser skills={bundled} categories={categories} customSkills={custom} />
 		</div>
