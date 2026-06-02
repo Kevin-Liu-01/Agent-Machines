@@ -397,61 +397,6 @@ export const VERCEL_AI_GATEWAY_PROFILE: GatewayProfile = {
 	updatedAt: DEFAULT_CREATED_AT,
 };
 
-export const DEFAULT_AGENT_PROFILES: AgentProfile[] = [
-	{
-		id: "hermes-default",
-		name: "Hermes default",
-		agentKind: "hermes",
-		gatewayProfileId: DEFAULT_GATEWAY_PROFILE.id,
-		model: DEFAULT_MODEL,
-		enabledSkills: [],
-		enabledTools: [],
-		enabledMcpServers: [],
-		environmentProfileId: null,
-		createdAt: DEFAULT_CREATED_AT,
-		updatedAt: DEFAULT_CREATED_AT,
-	},
-	{
-		id: "openclaw-default",
-		name: "OpenClaw default",
-		agentKind: "openclaw",
-		gatewayProfileId: DEFAULT_GATEWAY_PROFILE.id,
-		model: DEFAULT_MODEL,
-		enabledSkills: [],
-		enabledTools: [],
-		enabledMcpServers: [],
-		environmentProfileId: null,
-		createdAt: DEFAULT_CREATED_AT,
-		updatedAt: DEFAULT_CREATED_AT,
-	},
-	{
-		id: "claude-code-default",
-		name: "Claude Code default",
-		agentKind: "claude-code",
-		gatewayProfileId: DEFAULT_GATEWAY_PROFILE.id,
-		model: DEFAULT_MODEL,
-		enabledSkills: [],
-		enabledTools: [],
-		enabledMcpServers: [],
-		environmentProfileId: null,
-		createdAt: DEFAULT_CREATED_AT,
-		updatedAt: DEFAULT_CREATED_AT,
-	},
-	{
-		id: "codex-default",
-		name: "Codex CLI default",
-		agentKind: "codex",
-		gatewayProfileId: DEFAULT_GATEWAY_PROFILE.id,
-		model: DEFAULT_MODEL,
-		enabledSkills: [],
-		enabledTools: [],
-		enabledMcpServers: [],
-		environmentProfileId: null,
-		createdAt: DEFAULT_CREATED_AT,
-		updatedAt: DEFAULT_CREATED_AT,
-	},
-];
-
 export const DEFAULT_BOOTSTRAP_PRESETS: BootstrapPreset[] = [
 	{
 		id: "dedalus-hermes-default",
@@ -603,104 +548,6 @@ export const DEFAULT_LOADOUT_SOURCES: LoadoutSource[] = [
 	},
 ];
 
-export const DEFAULT_LOADOUT_PRESET: LoadoutPreset = {
-	id: "opinionated-default",
-	name: "Opinionated default",
-	description:
-		"Kevin's curated preset: bundled skills, built-in tools, MCPs, service routing, task hierarchy, and any enabled custom entries.",
-	sourceIds: DEFAULT_LOADOUT_SOURCES.map((source) => source.id),
-	customEntryIds: [],
-	enabledSkillIds: ["*"],
-	enabledToolIds: ["*"],
-	enabledMcpServerIds: ["*"],
-	createdAt: DEFAULT_CREATED_AT,
-	updatedAt: DEFAULT_CREATED_AT,
-};
-
-export const DEFAULT_LOADOUT_PRESETS: LoadoutPreset[] = [
-	DEFAULT_LOADOUT_PRESET,
-	{
-		id: "frontend-design-lab",
-		name: "Frontend design lab",
-		description:
-			"Design-heavy preset for taste work, browser QA, Figma, animation libraries, and visual implementation loops.",
-		sourceIds: [
-			"bundled-skills",
-			"builtin-tools",
-			"service-registry",
-			"cursor-skill-packs",
-			"npm-tool-packages",
-		],
-		customEntryIds: [],
-		enabledSkillIds: [
-			"frontend-design",
-			"frontend-design-taste",
-			"design-review",
-			"taste-redesign",
-			"agent-browser",
-			"closed-loop-development",
-		],
-		enabledToolIds: ["browser_*", "vision_analyze", "image_generate"],
-		enabledMcpServerIds: ["plugin-figma-figma", "cursor-bridge"],
-		createdAt: DEFAULT_CREATED_AT,
-		updatedAt: DEFAULT_CREATED_AT,
-	},
-	{
-		id: "production-ops",
-		name: "Production ops",
-		description:
-			"Operational preset for Vercel, GitHub, Datadog, Sentry, Linear, logs, CI, incidents, and deployment work.",
-		sourceIds: [
-			"bundled-skills",
-			"bundled-mcps",
-			"builtin-tools",
-			"service-registry",
-			"official-mcp-registry",
-		],
-		customEntryIds: [],
-		enabledSkillIds: [
-			"production-safety",
-			"closed-loop-development",
-			"gh-fix-ci",
-			"deepsec",
-			"perf",
-		],
-		enabledToolIds: ["terminal", "web_search", "session_search"],
-		enabledMcpServerIds: [
-			"plugin-vercel-vercel",
-			"plugin-linear-linear",
-			"plugin-datadog-datadog",
-		],
-		createdAt: DEFAULT_CREATED_AT,
-		updatedAt: DEFAULT_CREATED_AT,
-	},
-	{
-		id: "research-browser",
-		name: "Research browser",
-		description:
-			"Research preset for web search, page extraction, social reach, browser automation, citation gathering, and live source review.",
-		sourceIds: [
-			"bundled-skills",
-			"builtin-tools",
-			"task-hierarchy",
-			"github-agent-repos",
-			"url-manifests",
-		],
-		customEntryIds: [],
-		enabledSkillIds: [
-			"agent-reach",
-			"closed-loop-development",
-			"rtfm",
-			"read-and-review",
-			"content-strategy",
-		],
-		enabledToolIds: ["web_search", "web_extract", "browser_*"],
-		enabledMcpServerIds: ["cursor-ide-browser"],
-		createdAt: DEFAULT_CREATED_AT,
-		updatedAt: DEFAULT_CREATED_AT,
-	},
-];
-
 export const DEFAULT_USER_CONFIG: UserConfig = {
 	providers: {},
 	aiProviderKeys: {},
@@ -712,13 +559,10 @@ export const DEFAULT_USER_CONFIG: UserConfig = {
 	activeMachineId: null,
 	cursorApiKey: null,
 	gatewayProfiles: [DEFAULT_GATEWAY_PROFILE, VERCEL_AI_GATEWAY_PROFILE],
-	agentProfiles: DEFAULT_AGENT_PROFILES,
 	environmentProfiles: [],
 	bootstrapPresets: DEFAULT_BOOTSTRAP_PRESETS,
 	customLoadout: [],
 	loadoutSources: DEFAULT_LOADOUT_SOURCES,
-	loadoutPresets: DEFAULT_LOADOUT_PRESETS,
-	activeLoadoutPresetId: DEFAULT_LOADOUT_PRESET.id,
 	setupStep: "api-key",
 	draftAgentKind: "hermes",
 	draftProviderKind: "dedalus",
@@ -804,7 +648,6 @@ export function toPublicConfig(config: UserConfig): PublicUserConfig {
 			...profile,
 			hasApiKey: Boolean(apiKey),
 		})),
-		agentProfiles: config.agentProfiles,
 		environmentProfiles: config.environmentProfiles.map(({ vars, ...profile }) => ({
 			...profile,
 			varCount: Object.keys(vars).length,
@@ -812,8 +655,6 @@ export function toPublicConfig(config: UserConfig): PublicUserConfig {
 		bootstrapPresets: config.bootstrapPresets,
 		customLoadout: config.customLoadout,
 		loadoutSources: config.loadoutSources,
-		loadoutPresets: config.loadoutPresets,
-		activeLoadoutPresetId: config.activeLoadoutPresetId,
 		setupStep: config.setupStep,
 		draftAgentKind: config.draftAgentKind,
 		draftProviderKind: config.draftProviderKind,
