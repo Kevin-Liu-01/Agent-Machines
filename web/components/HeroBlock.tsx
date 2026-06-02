@@ -635,18 +635,21 @@ export function HeroBlock() {
 							className="absolute inset-0 bg-[length:auto_300px] opacity-[0.14] mix-blend-multiply invert dark:opacity-[0.2] dark:mix-blend-screen dark:invert-0 [-webkit-mask-image:linear-gradient(to_right,transparent,black_60%)] [mask-image:linear-gradient(to_right,transparent,black_60%)]"
 							style={{ backgroundImage: "url(/brand/circuit-grid.png)" }}
 						/>
-						{/* broad ambient hue wash, centered on the gear cluster */}
+						{/* broad ambient hue wash, centered on the gear hub (≈72% across
+						    this container — where GEAR_OFFSET x=2.25 projects under the
+						    gears camera, not the cell center). */}
 						<div
 							className="absolute inset-0 transition-[background] duration-700"
 							style={{
-								background: `radial-gradient(80% 94% at 66% 50%, ${hue}14, transparent 78%)`,
+								background: `radial-gradient(82% 95% at 72% 50%, ${hue}14, transparent 80%)`,
 							}}
 						/>
-						{/* tighter glow spanning the left-side combo into the wheels */}
+						{/* tighter glow pinned on the hub so the bright core sits behind
+						    the meshing wheels. */}
 						<div
 							className="absolute inset-0 transition-[background] duration-700"
 							style={{
-								background: `radial-gradient(46% 56% at 58% 50%, ${hue}30, transparent 72%)`,
+								background: `radial-gradient(48% 58% at 73% 50%, ${hue}30, transparent 74%)`,
 							}}
 						/>
 						<HeroOrbitScene
