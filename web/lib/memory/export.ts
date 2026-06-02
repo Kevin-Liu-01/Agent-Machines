@@ -4,6 +4,7 @@
  * description, not full skill bodies, so it stays pasteable into any agent).
  */
 
+import type { Pool } from "@/lib/dashboard/pool";
 import type { MemoryBundle } from "@/lib/user-config/schema";
 
 import { resolveAbilities, type AbilityItem } from "./abilities";
@@ -17,7 +18,7 @@ function abilitySection(title: string, items: AbilityItem[]): string[] {
 	return lines;
 }
 
-export function bundleToPrompt(bundle: MemoryBundle): string {
+export function bundleToPrompt(bundle: MemoryBundle, pool: Pool): string {
 	const parts: string[] = [`# ${bundle.name}`];
 	if (bundle.description.trim()) parts.push(bundle.description.trim());
 
@@ -29,7 +30,7 @@ export function bundleToPrompt(bundle: MemoryBundle): string {
 	if (docs.memory.trim()) parts.push(`## Working memory\n\n${docs.memory.trim()}`);
 	if (docs.user.trim()) parts.push(`## Operator profile\n\n${docs.user.trim()}`);
 
-	const { skills, tools, mcps } = resolveAbilities(bundle);
+	const { skills, tools, mcps } = resolveAbilities(bundle, pool);
 	const abilityLines = [
 		...abilitySection("Skills", skills),
 		...(tools.length ? [""] : []),

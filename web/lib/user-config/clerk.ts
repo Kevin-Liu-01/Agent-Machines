@@ -37,7 +37,6 @@ import {
 	activeMachine,
 	AGENT_KINDS,
 	type AgentKind,
-	type AgentProfile,
 	type BootstrapPreset,
 	type BootstrapPhaseId,
 	type BootstrapState,
@@ -51,7 +50,6 @@ import {
 	type GatewayProfile,
 	type CustomLoadoutEntry,
 	type CustomLoadoutKind,
-	type LoadoutPreset,
 	type LoadoutSource,
 	type LoadoutSourceKind,
 	type MachineRef,
@@ -276,29 +274,6 @@ function defaultDedalusGatewayProfile(): GatewayProfile {
 	};
 }
 
-function defaultAgentProfile(agentKind: AgentKind): AgentProfile {
-	const now = new Date().toISOString();
-	const titles: Record<AgentKind, string> = {
-		hermes: "Hermes default",
-		openclaw: "OpenClaw default",
-		"claude-code": "Claude Code default",
-		codex: "Codex CLI default",
-	};
-	return {
-		id: `${agentKind}-default`,
-		name: titles[agentKind],
-		agentKind,
-		gatewayProfileId: "dedalus-default",
-		model: DEFAULT_MODEL,
-		enabledSkills: [],
-		enabledTools: [],
-		enabledMcpServers: [],
-		environmentProfileId: null,
-		createdAt: now,
-		updatedAt: now,
-	};
-}
-
 function defaultBootstrapPreset(): BootstrapPreset {
 	return defaultBootstrapPresetFor("hermes");
 }
@@ -420,6 +395,7 @@ function asWorker(value: unknown): Worker | null {
 	return {
 		id,
 		name: asString(v.name) ?? id,
+		source: asString(v.source) === "default" ? "default" : "custom",
 		agentKind: asAgent(v.agentKind),
 		model: asString(v.model) ?? DEFAULT_MODEL,
 		gatewayProfileId: asString(v.gatewayProfileId) ?? "dedalus-default",
@@ -549,17 +525,6 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
 				.filter((entry): entry is EnvironmentProfile => entry !== null)
 		: [];
 
-	const agentProfiles = Array.isArray(publicMeta.agentProfiles)
-		? publicMeta.agentProfiles
-				.map((entry) => asAgentProfile(entry))
-				.filter((entry): entry is AgentProfile => entry !== null)
-		: [];
-	if (agentProfiles.length === 0) {
-		for (const kind of AGENT_KINDS) {
-			agentProfiles.push(defaultAgentProfile(kind));
-		}
-	}
-
 	const bootstrapPresets = Array.isArray(publicMeta.bootstrapPresets)
 		? publicMeta.bootstrapPresets
 				.map((entry) => asBootstrapPreset(entry))
@@ -583,18 +548,6 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
 	if (loadoutSources.length === 0) {
 		loadoutSources.push(...DEFAULT_USER_CONFIG.loadoutSources);
 	}
-	const loadoutPresets = Array.isArray(publicMeta.loadoutPresets)
-		? publicMeta.loadoutPresets
-				.map((entry) => asLoadoutPreset(entry))
-				.filter((entry): entry is LoadoutPreset => entry !== null)
-		: [];
-	if (loadoutPresets.length === 0) {
-		loadoutPresets.push(...DEFAULT_USER_CONFIG.loadoutPresets);
-	}
-	const activeLoadoutPresetId =
-		asString(publicMeta.activeLoadoutPresetId) ??
-		loadoutPresets[0]?.id ??
-		DEFAULT_USER_CONFIG.activeLoadoutPresetId;
 
 	const activeFromMeta = asString(publicMeta.activeMachineId);
 	const activeMachineId = (() => {
@@ -628,13 +581,10 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
 		cursorApiKey,
 		cloudflareTunnelToken,
 		gatewayProfiles,
-		agentProfiles,
 		environmentProfiles,
 		bootstrapPresets,
 		customLoadout,
 		loadoutSources,
-		loadoutPresets,
-		activeLoadoutPresetId,
 		setupStep: asStep(publicMeta.setupStep),
 		draftAgentKind: asAgent(
 			publicMeta.draftAgentKind ?? publicMeta.agentKind,
@@ -691,16 +641,11 @@ function buildConfigFromSupabase(
 			| undefined) ?? {};
 
 	const hasSupabaseConfig =
-		(Array.isArray(sbRow.agent_profiles) && sbRow.agent_profiles.length > 0) ||
 		(Array.isArray(sbRow.gateway_profiles) && sbRow.gateway_profiles.length > 0) ||
-		(Array.isArray(sbRow.loadout_presets) && sbRow.loadout_presets.length > 0);
+		(Array.isArray(sbRow.custom_loadout) && sbRow.custom_loadout.length > 0) ||
+		(Array.isArray(sbRow.loadout_sources) && sbRow.loadout_sources.length > 0);
 
 	if (hasSupabaseConfig) {
-		const sbAgentProfiles = Array.isArray(sbRow.agent_profiles)
-			? sbRow.agent_profiles
-					.map((entry) => asAgentProfile(entry))
-					.filter((entry): entry is AgentProfile => entry !== null)
-			: [];
 		const sbGatewayProfiles = Array.isArray(sbRow.gateway_profiles)
 			? sbRow.gateway_profiles
 					.map((entry) => asGatewayProfile(entry, gatewayApiKeys))
@@ -726,24 +671,12 @@ function buildConfigFromSupabase(
 					.map((entry) => asLoadoutSource(entry))
 					.filter((entry): entry is LoadoutSource => entry !== null)
 			: [];
-		const sbLoadoutPresets = Array.isArray(sbRow.loadout_presets)
-			? sbRow.loadout_presets
-					.map((entry) => asLoadoutPreset(entry))
-					.filter((entry): entry is LoadoutPreset => entry !== null)
-			: [];
 
-		if (sbAgentProfiles.length > 0) base.agentProfiles = sbAgentProfiles;
 		if (sbGatewayProfiles.length > 0) base.gatewayProfiles = sbGatewayProfiles;
 		if (sbEnvironmentProfiles.length > 0) base.environmentProfiles = sbEnvironmentProfiles;
 		if (sbBootstrapPresets.length > 0) base.bootstrapPresets = sbBootstrapPresets;
 		if (sbCustomLoadout.length > 0) base.customLoadout = sbCustomLoadout;
 		if (sbLoadoutSources.length > 0) base.loadoutSources = sbLoadoutSources;
-		if (sbLoadoutPresets.length > 0) base.loadoutPresets = sbLoadoutPresets;
-
-		base.activeLoadoutPresetId =
-			sbRow.active_loadout_preset_id ??
-			base.loadoutPresets[0]?.id ??
-			DEFAULT_USER_CONFIG.activeLoadoutPresetId;
 	}
 
 	// Memory bundles + workers live in their own jsonb columns and aren't
@@ -818,13 +751,10 @@ type ConfigPatch = {
 	cursorApiKey?: string | null;
 	cloudflareTunnelToken?: string | null;
 	gatewayProfiles?: GatewayProfile[];
-	agentProfiles?: AgentProfile[];
 	environmentProfiles?: EnvironmentProfile[];
 	bootstrapPresets?: BootstrapPreset[];
 	customLoadout?: CustomLoadoutEntry[];
 	loadoutSources?: LoadoutSource[];
-	loadoutPresets?: LoadoutPreset[];
-	activeLoadoutPresetId?: string;
 	setupStep?: SetupStep;
 	draftAgentKind?: AgentKind;
 	draftProviderKind?: ProviderKind;
@@ -854,27 +784,6 @@ function asGatewayProfile(
 		model: asString(v.model) ?? DEFAULT_MODEL,
 		baseUrl: asString(v.baseUrl) ?? null,
 		apiKey: apiKeys[id] ?? null,
-		createdAt: asString(v.createdAt) ?? now,
-		updatedAt: asString(v.updatedAt) ?? now,
-	};
-}
-
-function asAgentProfile(value: unknown): AgentProfile | null {
-	if (!value || typeof value !== "object") return null;
-	const v = value as Record<string, unknown>;
-	const id = asString(v.id);
-	if (!id) return null;
-	const now = new Date().toISOString();
-	return {
-		id,
-		name: asString(v.name) ?? id,
-		agentKind: asAgent(v.agentKind),
-		gatewayProfileId: asString(v.gatewayProfileId) ?? "dedalus-default",
-		model: asString(v.model) ?? DEFAULT_MODEL,
-		enabledSkills: asStringArray(v.enabledSkills),
-		enabledTools: asStringArray(v.enabledTools),
-		enabledMcpServers: asStringArray(v.enabledMcpServers),
-		environmentProfileId: asString(v.environmentProfileId) ?? null,
 		createdAt: asString(v.createdAt) ?? now,
 		updatedAt: asString(v.updatedAt) ?? now,
 	};
@@ -960,31 +869,6 @@ function asLoadoutSource(value: unknown): LoadoutSource | null {
 		createdAt: asString(v.createdAt) ?? now,
 		updatedAt: asString(v.updatedAt) ?? now,
 	};
-}
-
-function asLoadoutPreset(value: unknown): LoadoutPreset | null {
-	if (!value || typeof value !== "object") return null;
-	const v = value as Record<string, unknown>;
-	const id = asString(v.id);
-	if (!id) return null;
-	const now = new Date().toISOString();
-	return {
-		id,
-		name: asString(v.name) ?? id,
-		description: asString(v.description) ?? "",
-		sourceIds: asStringArray(v.sourceIds),
-		customEntryIds: asStringArray(v.customEntryIds),
-		enabledSkillIds: asStringArray(v.enabledSkillIds),
-		enabledToolIds: asStringArray(v.enabledToolIds),
-		enabledMcpServerIds: asStringArray(v.enabledMcpServerIds),
-		createdAt: asString(v.createdAt) ?? now,
-		updatedAt: asString(v.updatedAt) ?? now,
-	};
-}
-
-function asStringArray(value: unknown): string[] {
-	if (!Array.isArray(value)) return [];
-	return value.map((entry) => asString(entry)).filter((entry): entry is string => Boolean(entry));
 }
 
 function publicShape(machines: MachineRef[]): Array<Omit<MachineRef, "apiKey">> {
@@ -1128,16 +1012,12 @@ export async function setUserConfigById(
 	const nextTunnelToken =
 		patch.cloudflareTunnelToken !== undefined ? patch.cloudflareTunnelToken : (current.cloudflareTunnelToken ?? null);
 	const nextGatewayProfiles = patch.gatewayProfiles ?? current.gatewayProfiles;
-	const nextAgentProfiles = patch.agentProfiles ?? current.agentProfiles;
 	const nextEnvironmentProfiles =
 		patch.environmentProfiles ?? current.environmentProfiles;
 	const nextBootstrapPresets =
 		patch.bootstrapPresets ?? current.bootstrapPresets;
 	const nextCustomLoadout = patch.customLoadout ?? current.customLoadout;
 	const nextLoadoutSources = patch.loadoutSources ?? current.loadoutSources;
-	const nextLoadoutPresets = patch.loadoutPresets ?? current.loadoutPresets;
-	const nextActiveLoadoutPresetId =
-		patch.activeLoadoutPresetId ?? current.activeLoadoutPresetId;
 
 	const nextStep = patch.setupStep ?? current.setupStep;
 	const nextDraftAgent = patch.draftAgentKind ?? current.draftAgentKind;
@@ -1190,14 +1070,11 @@ export async function setUserConfigById(
 			await ensureUser(userId, user.emailAddresses?.[0]?.emailAddress);
 
 			await updateUserConfigColumns(userId, {
-				agent_profiles: nextAgentProfiles as unknown[],
 				gateway_profiles: publicGatewayShape(nextGatewayProfiles) as unknown[],
 				environment_profiles: publicEnvironmentShape(nextEnvironmentProfiles) as unknown[],
 				bootstrap_presets: nextBootstrapPresets as unknown[],
 				custom_loadout: nextCustomLoadout as unknown[],
 				loadout_sources: nextLoadoutSources as unknown[],
-				loadout_presets: nextLoadoutPresets as unknown[],
-				active_loadout_preset_id: nextActiveLoadoutPresetId,
 				active_machine_id: nextActive ?? undefined,
 				setup_step: nextStep,
 				draft_agent_kind: nextDraftAgent,
@@ -1243,15 +1120,12 @@ export async function setUserConfigById(
 		...nextPublic,
 		machines: publicShape(nextMachines),
 		gatewayProfiles: publicGatewayShape(nextGatewayProfiles),
-		agentProfiles: nextAgentProfiles,
 		environmentProfiles: publicEnvironmentShape(nextEnvironmentProfiles),
 		bootstrapPresets: nextBootstrapPresets,
 		customLoadout: nextCustomLoadout,
 		loadoutSources: nextLoadoutSources,
-		loadoutPresets: nextLoadoutPresets,
 		memoryBundles: nextMemoryBundles,
 		workers: nextWorkers,
-		activeLoadoutPresetId: nextActiveLoadoutPresetId,
 	};
 	return buildConfig(finalPublic, nextPrivate);
 }

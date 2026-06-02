@@ -12,7 +12,6 @@ import { Logo, type Mark } from "@/components/Logo";
 import { providerLogoMark } from "@/lib/fleet/logos";
 import { ServiceIcon, isServiceSlug } from "@/components/ServiceIcon";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { ToolIcon } from "@/components/ToolIcon";
 import { WingBackground } from "@/components/WingBackground";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
@@ -31,21 +30,12 @@ import {
 	agentUpstreamReadiness,
 	agentUsesRouter,
 } from "@/lib/agents/upstreams";
-import {
-	BUILTIN_TOOLS,
-	CATEGORY_LABEL,
-	type BuiltinTool,
-	type ToolCategory,
-} from "@/lib/dashboard/loadout";
-import type { McpServerWithBrand } from "@/lib/dashboard/mcps";
-import type { SkillSummary } from "@/lib/dashboard/types";
+import type { Preset } from "@/lib/dashboard/presets";
 import {
 	AGENT_LABEL,
 	PROVIDER_KINDS,
 	PROVIDER_LABEL,
 	type AgentKind,
-	type AgentProfile,
-	type LoadoutPreset,
 	type ProviderKind,
 	type PublicUserConfig,
 	type MachineSpec,
@@ -63,21 +53,21 @@ type Defaults = {
 type Props = {
 	initialConfig: PublicUserConfig;
 	defaults: Defaults;
-	skills: SkillSummary[];
-	mcps: McpServerWithBrand[];
-	builtins: BuiltinTool[];
+	presets: Preset[];
 };
 
-type Step = "agent" | "skills" | "tools" | "provider" | "key" | "boot";
+type Step = "agent" | "preset" | "provider" | "key" | "boot";
 
 const STEPS: ReadonlyArray<{ id: Step; label: string; hint: string }> = [
 	{ id: "agent", label: "Agent", hint: "personality" },
-	{ id: "skills", label: "Skills", hint: "auto-loaded knowledge" },
-	{ id: "tools", label: "Tools", hint: "callable surface" },
+	{ id: "preset", label: "Preset", hint: "memory + abilities" },
 	{ id: "provider", label: "Provider", hint: "where it runs" },
 	{ id: "key", label: "Key", hint: "provider token" },
 	{ id: "boot", label: "Boot", hint: "spin up rig" },
 ];
+
+/** Sentinel preset id for "start blank, no preset". */
+const NO_PRESET = "__none__";
 
 const PROVIDERS_META: Record<
 	ProviderKind,
@@ -220,13 +210,7 @@ const AGENT_DESC: Record<
 
 const POLL_MS = 3000;
 
-export function OnboardingFlow({
-	initialConfig,
-	defaults,
-	skills,
-	mcps,
-	builtins,
-}: Props) {
+export function OnboardingFlow({ initialConfig, defaults, presets }: Props) {
 	const router = useRouter();
 	const [step, setStep] = useState<Step>("agent");
 	const [agent, setAgent] = useState<AgentKind>(
@@ -243,14 +227,11 @@ export function OnboardingFlow({
 		conf.dedalus = Boolean(initialConfig.providers?.dedalus?.configured);
 		return conf;
 	}, [initialConfig]);
-	const [skillSel, setSkillSel] = useState<Set<string>>(
-		() => new Set(skills.map((s) => s.slug)),
-	);
-	const [builtinSel, setBuiltinSel] = useState<Set<string>>(
-		() => new Set(builtins.map((t) => t.name)),
-	);
-	const [mcpSel, setMcpSel] = useState<Set<string>>(
-		() => new Set(mcps.map((m) => m.name)),
+	// Default to the first curated preset (the "core starter"); NO_PRESET = blank.
+	const [presetId, setPresetId] = useState<string>(presets[0]?.id ?? NO_PRESET);
+	const selectedPreset = useMemo(
+		() => presets.find((p) => p.id === presetId) ?? null,
+		[presets, presetId],
 	);
 	const [providerKey, setProviderKey] = useState("");
 	const [aiKeys, setAiKeys] = useState({ anthropic: "", openai: "" });
@@ -279,49 +260,10 @@ export function OnboardingFlow({
 		if (i > 0) setStep(order[i - 1]);
 	}
 
-	function toggleSkill(slug: string) {
-		setSkillSel((prev) => {
-			const next = new Set(prev);
-			if (next.has(slug)) next.delete(slug);
-			else next.add(slug);
-			return next;
-		});
-	}
-	function toggleBuiltin(name: string) {
-		setBuiltinSel((prev) => {
-			const next = new Set(prev);
-			if (next.has(name)) next.delete(name);
-			else next.add(name);
-			return next;
-		});
-	}
-	function toggleMcp(name: string) {
-		setMcpSel((prev) => {
-			const next = new Set(prev);
-			if (next.has(name)) next.delete(name);
-			else next.add(name);
-			return next;
-		});
-	}
-
 	const provision = useCallback(async () => {
 		setBusy(true);
 		setError(null);
 		try {
-			const selectedSkills = Array.from(skillSel).sort();
-			const selectedTools = Array.from(builtinSel).sort();
-			const selectedMcps = Array.from(mcpSel).sort();
-			const loadoutPatch = buildOnboardingLoadoutPatch({
-				config: initialConfig,
-				agent,
-				selectedSkills,
-				selectedTools,
-				selectedMcps,
-				skills,
-				builtins,
-				mcps,
-			});
-
 			// Build provider-specific credentials payload.
 			const setupBody: Record<string, unknown> = {
 				draftAgentKind: agent,
@@ -359,20 +301,6 @@ export function OnboardingFlow({
 				throw new Error(body.message ?? `setup failed (HTTP ${setupResp.status})`);
 			}
 
-			const settingsResp = await fetch("/api/dashboard/admin/settings", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(loadoutPatch),
-			});
-			if (!settingsResp.ok) {
-				const body = (await settingsResp.json().catch(() => ({}))) as {
-					message?: string;
-				};
-				throw new Error(
-					body.message ?? `loadout save failed (HTTP ${settingsResp.status})`,
-				);
-			}
-
 			// Provision machine via the selected provider.
 			const provResp = await fetch("/api/dashboard/admin/provision-machine", {
 				method: "POST",
@@ -404,6 +332,31 @@ export function OnboardingFlow({
 			setBootMachineId(provBody.machineId);
 			setBootPhase(provBody.phase ?? "accepted");
 
+			// Apply the chosen preset: import its abilities into the pool, create
+			// the Memory + Worker, and link the Worker to the new machine. Runs
+			// after provision (needs the machine id) and before bootstrap (which
+			// reads the Worker -> Memory to write settings.json + install docs).
+			const applyResp = await fetch("/api/dashboard/admin/apply-preset", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					presetId: presetId === NO_PRESET ? null : presetId,
+					agentKind: agent,
+					gatewayProfileId:
+						agentUsesRouter(agent) && routerId ? routerId : "dedalus-default",
+					machineId: provBody.machineId,
+				}),
+			});
+			if (!applyResp.ok) {
+				const body = (await applyResp.json().catch(() => ({}))) as {
+					message?: string;
+					error?: string;
+				};
+				throw new Error(
+					body.message ?? body.error ?? `preset apply failed (HTTP ${applyResp.status})`,
+				);
+			}
+
 			const bootResp = await fetch("/api/dashboard/admin/bootstrap", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
@@ -427,7 +380,7 @@ export function OnboardingFlow({
 		} finally {
 			setBusy(false);
 		}
-	}, [agent, aiKeys, builtinSel, initialConfig, mcpSel, provider, providerKey, providerSecondary, skillSel]);
+	}, [agent, aiKeys, presetId, provider, providerKey, providerSecondary, routerId]);
 
 	const agentCredDraft: DraftAiKeys = {
 		anthropic: aiKeys.anthropic,
@@ -486,15 +439,6 @@ export function OnboardingFlow({
 		return () => window.clearTimeout(id);
 	}, [bootDone, router]);
 
-	const counts = {
-		skills: skillSel.size,
-		builtins: builtinSel.size,
-		mcps: mcpSel.size,
-		mcpTools: mcps
-			.filter((m) => mcpSel.has(m.name))
-			.reduce((acc, m) => acc + m.tools.length, 0),
-	};
-
 	function handleStartBoot() {
 		setStep("boot");
 		void provision();
@@ -547,26 +491,11 @@ export function OnboardingFlow({
 						{step === "agent" ? (
 							<AgentStep value={agent} onPick={(a) => setAgent(a)} onNext={next} />
 						) : null}
-						{step === "skills" ? (
-							<SkillsStep
-								skills={skills}
-								selected={skillSel}
-								onToggle={toggleSkill}
-								onSelectAll={() => setSkillSel(new Set(skills.map((s) => s.slug)))}
-								onDeselectAll={() => setSkillSel(new Set())}
-								onBack={back}
-								onNext={next}
-							/>
-						) : null}
-						{step === "tools" ? (
-							<ToolsStep
-								agent={agent}
-								builtins={builtins}
-								mcps={mcps}
-								builtinSelected={builtinSel}
-								mcpSelected={mcpSel}
-								onToggleBuiltin={toggleBuiltin}
-								onToggleMcp={toggleMcp}
+						{step === "preset" ? (
+							<PresetStep
+								presets={presets}
+								selectedId={presetId}
+								onPick={setPresetId}
 								onBack={back}
 								onNext={next}
 							/>
@@ -647,10 +576,7 @@ export function OnboardingFlow({
 					<RigPreview
 						agent={agent}
 						provider={provider}
-						counts={counts}
-						skills={skills.filter((s) => skillSel.has(s.slug))}
-						builtins={builtins.filter((b) => builtinSel.has(b.name))}
-						mcps={mcps.filter((m) => mcpSel.has(m.name))}
+						preset={selectedPreset}
 						bootPhase={step === "boot" ? bootPhase : null}
 						bootDone={bootDone}
 					/>
@@ -800,265 +726,101 @@ function AgentStep({
 	);
 }
 
-function SkillsStep({
-	skills,
-	selected,
-	onToggle,
-	onSelectAll,
-	onDeselectAll,
-	onBack,
-	onNext,
-}: {
-	skills: SkillSummary[];
-	selected: Set<string>;
-	onToggle: (slug: string) => void;
-	onSelectAll: () => void;
-	onDeselectAll: () => void;
-	onBack: () => void;
-	onNext: () => void;
-}) {
-	const grouped = useMemo(() => {
-		const m: Record<string, SkillSummary[]> = {};
-		for (const s of skills) (m[s.category] ??= []).push(s);
-		return Object.entries(m).sort(([a], [b]) => a.localeCompare(b));
-	}, [skills]);
-
-	const allSelected = selected.size === skills.length;
-
-	return (
-		<div className="space-y-5">
-			<div>
-				<ReticleLabel>step 2 . skills</ReticleLabel>
-				<h1 className="ret-display mt-1 text-2xl">Pick your skills</h1>
-				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
-					{skills.length} SKILL.md files load on demand when their description matches
-					your prompt. All selected by default -- the agent self-prunes via descriptions,
-					so unused ones cost nothing.
-				</p>
-			</div>
-			<div className="flex items-center justify-between gap-2">
-				<p className="font-mono text-[11px] text-[var(--ret-text-dim)]">
-					{selected.size} of {skills.length} selected
-				</p>
-				<div className="flex gap-2">
-					<button
-						type="button"
-						onClick={onSelectAll}
-						disabled={allSelected}
-						className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-purple)] hover:underline disabled:opacity-40"
-					>
-						select all
-					</button>
-					<span className="text-[var(--ret-text-muted)]">.</span>
-					<button
-						type="button"
-						onClick={onDeselectAll}
-						disabled={selected.size === 0}
-						className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)] hover:text-[var(--ret-red)] disabled:opacity-40"
-					>
-						clear
-					</button>
-				</div>
-			</div>
-			<div className="max-h-[55dvh] space-y-3 overflow-y-auto border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3">
-				{grouped.map(([cat, list]) => (
-					<div key={cat}>
-						<p className="mb-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-							{cat} . {list.length}
-						</p>
-						<div className="grid gap-1 sm:grid-cols-2">
-							{list.map((s) => {
-								const on = selected.has(s.slug);
-								return (
-									<label
-										key={s.slug}
-										className={cn(
-											"flex cursor-pointer items-start gap-2 border px-2 py-1.5",
-											on
-												? "border-[var(--ret-purple)]/40 bg-[var(--ret-purple-glow)]"
-												: "border-[var(--ret-border)] bg-[var(--ret-bg-soft)] hover:bg-[var(--ret-surface)]",
-										)}
-									>
-										<input
-											type="checkbox"
-											checked={on}
-											onChange={() => onToggle(s.slug)}
-											className="mt-0.5 accent-[var(--ret-purple)]"
-										/>
-										<span className="min-w-0 flex-1">
-											<span className="text-[11px] text-[var(--ret-text)]">
-												{s.name}
-											</span>
-											<p className="line-clamp-2 text-[10px] text-[var(--ret-text-dim)]">
-												{s.description}
-											</p>
-										</span>
-									</label>
-								);
-							})}
-						</div>
-					</div>
-				))}
-			</div>
-			<div className="flex items-center justify-between gap-2">
-				<ReticleButton variant="ghost" size="md" onClick={onBack}>
-					← Back
-				</ReticleButton>
-				<ReticleButton variant="primary" size="md" onClick={onNext}>
-					Continue →
-				</ReticleButton>
-			</div>
-		</div>
-	);
+function PresetBrand({ brand, size }: { brand?: string; size: number }) {
+	if (!brand) return null;
+	if (isMark(brand)) return <Logo mark={brand} size={size} />;
+	if (isServiceSlug(brand)) return <ServiceIcon slug={brand} size={size} />;
+	return null;
 }
 
-function ToolsStep({
-	agent,
-	builtins,
-	mcps,
-	builtinSelected,
-	mcpSelected,
-	onToggleBuiltin,
-	onToggleMcp,
+function PresetStep({
+	presets,
+	selectedId,
+	onPick,
 	onBack,
 	onNext,
 }: {
-	agent: AgentKind;
-	builtins: BuiltinTool[];
-	mcps: McpServerWithBrand[];
-	builtinSelected: Set<string>;
-	mcpSelected: Set<string>;
-	onToggleBuiltin: (name: string) => void;
-	onToggleMcp: (name: string) => void;
+	presets: Preset[];
+	selectedId: string;
+	onPick: (id: string) => void;
 	onBack: () => void;
 	onNext: () => void;
 }) {
-	const groupedBuiltins = useMemo(() => {
-		const m: Record<string, BuiltinTool[]> = {};
-		for (const t of builtins) (m[t.category] ??= []).push(t);
-		return Object.entries(m).sort(([a], [b]) => a.localeCompare(b));
-	}, [builtins]);
-
 	return (
 		<div className="space-y-5">
 			<div>
-				<ReticleLabel>step 3 . tools</ReticleLabel>
-				<h1 className="ret-display mt-1 text-2xl">Pick callable tools</h1>
+				<ReticleLabel>step 2 . preset</ReticleLabel>
+				<h1 className="ret-display mt-1 text-2xl">Pick a memory preset</h1>
 				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
-					Tools the agent can call directly -- {builtins.length} built-ins
-					(shell, filesystem, browser, vision, ...) plus {mcps.length} MCP
-					servers. Tools tagged for the other agent are still selectable but
-					won't be wired in this turn.
+					A preset seeds your agent&rsquo;s Memory -- its persona plus a curated set of
+					skills and MCP servers, imported into your library. Start from one and
+					refine it later in Memory, or start blank and add from the Registry.
 				</p>
 			</div>
-
-			<div className="space-y-3">
-				<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-					mcp servers . {mcps.length}
-				</p>
-				<div className="grid gap-2 sm:grid-cols-2">
-					{mcps.map((m) => {
-						const on = mcpSelected.has(m.name);
-						return (
-							<label
-								key={m.name}
-								className={cn(
-									"flex cursor-pointer items-start gap-2 border px-3 py-2",
-									on
-										? "border-[var(--ret-purple)]/40 bg-[var(--ret-purple-glow)]"
-										: "border-[var(--ret-border)] bg-[var(--ret-bg-soft)] hover:bg-[var(--ret-surface)]",
-								)}
-							>
-								<input
-									type="checkbox"
-									checked={on}
-									onChange={() => onToggleMcp(m.name)}
-									className="mt-1 accent-[var(--ret-purple)]"
-								/>
-								<span className="min-w-0 flex-1">
-									<span className="flex items-center gap-1.5">
-										{m.brand ? (
-											isMark(m.brand) ? <Logo mark={m.brand} size={12} /> :
-											isServiceSlug(m.brand) ? <ServiceIcon slug={m.brand} size={12} /> : null
-										) : null}
-										<span className="font-mono text-[11px] text-[var(--ret-text)]">
-											{m.name}
-										</span>
-										<span className="font-mono text-[9px] uppercase text-[var(--ret-text-muted)]">
-											{m.transport}
-										</span>
-									</span>
-									<p className="text-[10px] text-[var(--ret-text-dim)]">
-										{m.tools.length} tools . {m.owner ?? m.source}
-									</p>
-								</span>
-							</label>
-						);
-					})}
-				</div>
-			</div>
-
-			<div className="space-y-3">
-				<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-					built-in tools . {builtins.length}
-				</p>
-				<div className="max-h-[40dvh] space-y-3 overflow-y-auto border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3">
-					{groupedBuiltins.map(([cat, list]) => (
-						<div key={cat}>
-							<p className="mb-1.5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-								<ToolIcon name={cat as ToolCategory} size={11} />
-								{CATEGORY_LABEL[cat as ToolCategory] ?? cat} . {list.length}
-							</p>
-							<div className="grid gap-1 sm:grid-cols-2">
-								{list.map((t) => {
-									const on = builtinSelected.has(t.name);
-									const dim = false;
-									return (
-										<label
-											key={t.name}
-											className={cn(
-												"flex cursor-pointer items-start gap-2 border px-2 py-1.5",
-												on
-													? "border-[var(--ret-purple)]/40 bg-[var(--ret-purple-glow)]"
-													: "border-[var(--ret-border)] bg-[var(--ret-bg-soft)] hover:bg-[var(--ret-surface)]",
-												dim ? "opacity-60" : "",
-											)}
-										>
-											<input
-												type="checkbox"
-												checked={on}
-												onChange={() => onToggleBuiltin(t.name)}
-												className="mt-0.5 accent-[var(--ret-purple)]"
-											/>
-											<span className="min-w-0 flex-1">
-												<span className="flex items-center gap-1.5">
-													<ToolIcon
-														name={t.category}
-														size={11}
-														className="text-[var(--ret-text-muted)]"
-													/>
-													<span className="font-mono text-[11px] text-[var(--ret-text)]">
-														{t.name}
-													</span>
-													{dim ? (
-														<span className="font-mono text-[9px] uppercase text-[var(--ret-amber)]">
-															other agent
-														</span>
-													) : null}
-												</span>
-												<p className="line-clamp-1 pl-[18px] text-[10px] text-[var(--ret-text-dim)]">
-													{t.title}
-												</p>
-											</span>
-										</label>
-									);
-								})}
+			<div className="grid gap-3 md:grid-cols-2">
+				{presets.map((preset) => {
+					const selected = preset.id === selectedId;
+					const skillCount = preset.skillIds.filter((id) => id !== "*").length;
+					const mcpCount = preset.mcpServerIds.filter((id) => id !== "*").length;
+					return (
+						<button
+							key={preset.id}
+							type="button"
+							onClick={() => onPick(preset.id)}
+							className={cn(
+								"flex flex-col gap-2 border p-4 text-left transition-colors",
+								selected
+									? "border-[var(--ret-purple)] bg-[var(--ret-purple-glow)]"
+									: "border-[var(--ret-border)] bg-[var(--ret-bg)] hover:border-[var(--ret-border-hover)]",
+							)}
+						>
+							<div className="flex items-center justify-between gap-2">
+								<div className="flex min-w-0 items-center gap-2">
+									<PresetBrand brand={preset.brand} size={16} />
+									<h2 className="text-[14px] font-medium text-[var(--ret-text)]">
+										{preset.name}
+									</h2>
+								</div>
+								{selected ? (
+									<ReticleBadge variant="accent">selected</ReticleBadge>
+								) : null}
 							</div>
-						</div>
-					))}
-				</div>
+							<p className="text-[12px] text-[var(--ret-text-dim)]">
+								{preset.description}
+							</p>
+							<p className="mt-auto font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
+								{skillCount} skills . {mcpCount} mcp servers
+							</p>
+						</button>
+					);
+				})}
+				<button
+					type="button"
+					onClick={() => onPick(NO_PRESET)}
+					className={cn(
+						"flex flex-col gap-2 border p-4 text-left transition-colors",
+						selectedId === NO_PRESET
+							? "border-[var(--ret-purple)] bg-[var(--ret-purple-glow)]"
+							: "border-dashed border-[var(--ret-border)] bg-[var(--ret-bg)] hover:border-[var(--ret-border-hover)]",
+					)}
+				>
+					<div className="flex items-center justify-between gap-2">
+						<h2 className="text-[14px] font-medium text-[var(--ret-text)]">
+							Start blank
+						</h2>
+						{selectedId === NO_PRESET ? (
+							<ReticleBadge variant="accent">selected</ReticleBadge>
+						) : null}
+					</div>
+					<p className="text-[12px] text-[var(--ret-text-dim)]">
+						No preset. Your library starts empty -- add skills and MCP servers
+						yourself from the Registry, and shape your Memory from there.
+					</p>
+					<p className="mt-auto font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
+						0 skills . 0 mcp servers
+					</p>
+				</button>
 			</div>
-
 			<div className="flex items-center justify-between gap-2">
 				<ReticleButton variant="ghost" size="md" onClick={onBack}>
 					← Back
@@ -1518,118 +1280,23 @@ function BootStep({
 	);
 }
 
-function buildOnboardingLoadoutPatch({
-	config,
-	agent,
-	selectedSkills,
-	selectedTools,
-	selectedMcps,
-	skills,
-	builtins,
-	mcps,
-}: {
-	config: PublicUserConfig;
-	agent: AgentKind;
-	selectedSkills: string[];
-	selectedTools: string[];
-	selectedMcps: string[];
-	skills: SkillSummary[];
-	builtins: BuiltinTool[];
-	mcps: McpServerWithBrand[];
-}) {
-	const now = new Date().toISOString();
-	const profileId = `${agent}-default`;
-	const presetId = `onboarding-${agent}`;
-	const existingProfile = config.agentProfiles.find((p) => p.id === profileId);
-	const fallbackProfile = config.agentProfiles.find((p) => p.agentKind === agent);
-	const gatewayProfileId =
-		existingProfile?.gatewayProfileId ??
-		fallbackProfile?.gatewayProfileId ??
-		config.gatewayProfiles[0]?.id ??
-		"dedalus-default";
-	// Clerk publicMetadata has an 8KB limit. Sending 161 skill slugs +
-	// 30 MCP names + 23 tool names (x2 for profile + preset) blows it.
-	// Use ["*"] as a wildcard meaning "all bundled" when every item is
-	// selected. The dashboard resolves "*" to the full list at read time.
-	const allSkills = selectedSkills.length === skills.length;
-	const allTools = selectedTools.length === builtins.length;
-	const allMcps = selectedMcps.length === mcps.length;
-	const profileSkills = allSkills ? ["*"] : selectedSkills;
-	const profileTools = allTools ? ["*"] : selectedTools;
-	const profileMcps = allMcps ? ["*"] : selectedMcps;
-
-	const nextProfile: AgentProfile = {
-		id: existingProfile?.id ?? fallbackProfile?.id ?? profileId,
-		name: existingProfile?.name ?? fallbackProfile?.name ?? `${AGENT_LABEL[agent]} default`,
-		agentKind: agent,
-		gatewayProfileId,
-		model: existingProfile?.model ?? fallbackProfile?.model ?? config.draftModel,
-		enabledSkills: profileSkills,
-		enabledTools: profileTools,
-		enabledMcpServers: profileMcps,
-		environmentProfileId:
-			existingProfile?.environmentProfileId ??
-			fallbackProfile?.environmentProfileId ??
-			null,
-		createdAt: existingProfile?.createdAt ?? fallbackProfile?.createdAt ?? now,
-		updatedAt: now,
-	};
-	const nextPreset: LoadoutPreset = {
-		id: presetId,
-		name: `${AGENT_LABEL[agent]} onboarding loadout`,
-		description:
-			"Skills, built-in tools, and MCP servers selected in the first-run onboarding flow.",
-		sourceIds: ["bundled-skills", "bundled-mcps", "builtin-tools"],
-		customEntryIds: [],
-		enabledSkillIds: profileSkills,
-		enabledToolIds: profileTools,
-		enabledMcpServerIds: profileMcps,
-		createdAt:
-			config.loadoutPresets.find((preset) => preset.id === presetId)?.createdAt ??
-			now,
-		updatedAt: now,
-	};
-	return {
-		agentProfiles: upsertById(config.agentProfiles, nextProfile),
-		loadoutPresets: upsertById(config.loadoutPresets, nextPreset),
-		activeLoadoutPresetId: presetId,
-	};
-}
-
-function upsertById<T extends { id: string }>(items: T[], next: T): T[] {
-	const index = items.findIndex((item) => item.id === next.id);
-	if (index === -1) return [...items, next];
-	return items.map((item) => (item.id === next.id ? next : item));
-}
-
 function RigPreview({
 	agent,
 	provider,
-	counts,
-	skills,
-	builtins,
-	mcps,
+	preset,
 	bootPhase,
 	bootDone,
 }: {
 	agent: AgentKind;
 	provider: ProviderKind;
-	counts: { skills: number; builtins: number; mcps: number; mcpTools: number };
-	skills: SkillSummary[];
-	builtins: BuiltinTool[];
-	mcps: McpServerWithBrand[];
+	preset: Preset | null;
 	bootPhase: string | null;
 	bootDone: boolean;
 }) {
 	const meta = AGENT_DESC[agent];
-
-	// Pick a couple of skills + tools to spotlight.
-	const spotlight = useMemo(() => skills.slice(0, 6), [skills]);
-	const toolByCat = useMemo(() => {
-		const m: Record<string, BuiltinTool[]> = {};
-		for (const t of builtins) (m[t.category] ??= []).push(t);
-		return Object.entries(m).slice(0, 6);
-	}, [builtins]);
+	const skillIds = (preset?.skillIds ?? []).filter((id) => id !== "*");
+	const mcpIds = (preset?.mcpServerIds ?? []).filter((id) => id !== "*");
+	const spotlight = skillIds.slice(0, 8);
 
 	return (
 		<div className="space-y-4 px-5 py-6">
@@ -1657,99 +1324,71 @@ function RigPreview({
 					</div>
 				</div>
 				<div className="grid grid-cols-2 gap-px bg-[var(--ret-border)]">
-					<Tally label="skills" value={counts.skills} />
-					<Tally label="built-in tools" value={counts.builtins} />
-					<Tally label="mcp servers" value={counts.mcps} />
-					<Tally label="mcp tools" value={counts.mcpTools} />
+					<Tally label="skills" value={skillIds.length} />
+					<Tally label="mcp servers" value={mcpIds.length} />
 				</div>
 			</ReticleFrame>
 
 			<ReticleFrame>
-				<div className="flex items-center justify-between border-b border-[var(--ret-border)] px-4 py-2">
+				<div className="flex items-center gap-2 border-b border-[var(--ret-border)] px-4 py-2">
+					<PresetBrand brand={preset?.brand} size={14} />
 					<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-						mcp servers . {mcps.length}
+						memory preset
 					</p>
 				</div>
-				<ul className="divide-y divide-[var(--ret-border)]">
-					{mcps.length === 0 ? (
-						<li className="px-4 py-3 text-[11px] text-[var(--ret-text-muted)]">
-							no MCP servers selected
-						</li>
-					) : null}
-					{mcps.map((m) => (
-						<li
-							key={m.name}
-							className="flex items-center gap-2 px-4 py-2 font-mono text-[11px]"
-						>
-							{m.brand ? (
-								isMark(m.brand) ? <Logo mark={m.brand} size={12} /> :
-								isServiceSlug(m.brand) ? <ServiceIcon slug={m.brand} size={12} /> : null
-							) : null}
-							<span className="text-[var(--ret-text)]">{m.name}</span>
-							<span className="text-[var(--ret-text-muted)]">.</span>
-							<span className="text-[var(--ret-text-muted)]">
-								{m.tools.length} tools
-							</span>
-						</li>
-					))}
-				</ul>
-			</ReticleFrame>
-
-			<ReticleFrame>
-				<div className="flex items-center justify-between border-b border-[var(--ret-border)] px-4 py-2">
-					<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-						built-in tool categories
+				<div className="px-4 py-3">
+					<p className="text-[12px] text-[var(--ret-text)]">
+						{preset ? preset.name : "Blank start"}
+					</p>
+					<p className="mt-0.5 text-[10px] text-[var(--ret-text-dim)]">
+						{preset
+							? preset.description
+							: "No preset -- your library starts empty; add from the Registry."}
 					</p>
 				</div>
-				<ul className="divide-y divide-[var(--ret-border)]">
-					{toolByCat.map(([cat, list]) => (
-						<li
-							key={cat}
-							className="flex items-center justify-between gap-2 px-4 py-1.5 font-mono text-[11px]"
-						>
-							<span className="flex items-center gap-1.5 text-[var(--ret-text)]">
-								<ToolIcon
-									name={cat as ToolCategory}
-									size={11}
-									className="text-[var(--ret-text-muted)]"
-								/>
-								{CATEGORY_LABEL[cat as ToolCategory] ?? cat}
-							</span>
-							<span className="font-mono tabular-nums text-[var(--ret-text-muted)]">
-								{list.length}
-							</span>
-						</li>
-					))}
-				</ul>
 			</ReticleFrame>
 
-			<ReticleFrame>
-				<div className="flex items-center justify-between border-b border-[var(--ret-border)] px-4 py-2">
-					<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-						skill spotlight
-					</p>
-					<span className="font-mono text-[10px] tabular-nums text-[var(--ret-text-muted)]">
-						{spotlight.length} / {skills.length}
-					</span>
-				</div>
-				<ul className="divide-y divide-[var(--ret-border)]">
-					{spotlight.map((s) => (
-						<li
-							key={s.slug}
-						className="px-4 py-1.5 text-[11px] text-[var(--ret-text)]"
-					>
-						<span className="text-[var(--ret-text-muted)]">.</span> {s.name}
-					</li>
-					))}
-				</ul>
-			</ReticleFrame>
+			{mcpIds.length > 0 ? (
+				<ReticleFrame>
+					<div className="border-b border-[var(--ret-border)] px-4 py-2">
+						<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+							mcp servers . {mcpIds.length}
+						</p>
+					</div>
+					<ul className="divide-y divide-[var(--ret-border)]">
+						{mcpIds.map((name) => (
+							<li
+								key={name}
+								className="px-4 py-2 font-mono text-[11px] text-[var(--ret-text)]"
+							>
+								{name}
+							</li>
+						))}
+					</ul>
+				</ReticleFrame>
+			) : null}
 
-			{!bootPhase ? (
-				<p className="text-[10px] text-[var(--ret-text-muted)]">
-					{counts.skills > 0 || counts.builtins > 0 ? null : (
-						<BrailleSpinner label="building your rig" />
-					)}
-				</p>
+			{spotlight.length > 0 ? (
+				<ReticleFrame>
+					<div className="flex items-center justify-between border-b border-[var(--ret-border)] px-4 py-2">
+						<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+							skill spotlight
+						</p>
+						<span className="font-mono text-[10px] tabular-nums text-[var(--ret-text-muted)]">
+							{spotlight.length} / {skillIds.length}
+						</span>
+					</div>
+					<ul className="divide-y divide-[var(--ret-border)]">
+						{spotlight.map((skillId) => (
+							<li
+								key={skillId}
+								className="px-4 py-1.5 font-mono text-[11px] text-[var(--ret-text)]"
+							>
+								<span className="text-[var(--ret-text-muted)]">.</span> {skillId}
+							</li>
+						))}
+					</ul>
+				</ReticleFrame>
 			) : null}
 		</div>
 	);
@@ -1767,5 +1406,3 @@ function Tally({ label, value }: { label: string; value: number }) {
 		</div>
 	);
 }
-
-void BUILTIN_TOOLS;

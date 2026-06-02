@@ -21,7 +21,6 @@ import path from "node:path";
 import {
 	DEFAULT_USER_CONFIG,
 	type AgentKind,
-	type AgentProfile,
 	type BootstrapPreset,
 	type CronEntry,
 	type MemoryBundle,
@@ -29,7 +28,6 @@ import {
 	type CustomLoadoutEntry,
 	type EnvironmentProfile,
 	type GatewayProfile,
-	type LoadoutPreset,
 	type LoadoutSource,
 	type MachineRef,
 	type MachineSpec,
@@ -55,13 +53,10 @@ type ConfigPatch = {
 	cursorApiKey?: string | null;
 	cloudflareTunnelToken?: string | null;
 	gatewayProfiles?: GatewayProfile[];
-	agentProfiles?: AgentProfile[];
 	environmentProfiles?: EnvironmentProfile[];
 	bootstrapPresets?: BootstrapPreset[];
 	customLoadout?: CustomLoadoutEntry[];
 	loadoutSources?: LoadoutSource[];
-	loadoutPresets?: LoadoutPreset[];
-	activeLoadoutPresetId?: string;
 	setupStep?: SetupStep;
 	draftAgentKind?: AgentKind;
 	draftProviderKind?: ProviderKind;
@@ -89,10 +84,6 @@ async function readDevStore(): Promise<UserConfig | null> {
 				merged.gatewayProfiles.length > 0
 					? merged.gatewayProfiles
 					: DEFAULT_USER_CONFIG.gatewayProfiles,
-			agentProfiles:
-				merged.agentProfiles.length > 0
-					? merged.agentProfiles
-					: DEFAULT_USER_CONFIG.agentProfiles,
 			bootstrapPresets:
 				merged.bootstrapPresets.length > 0
 					? merged.bootstrapPresets
@@ -101,13 +92,6 @@ async function readDevStore(): Promise<UserConfig | null> {
 				merged.loadoutSources.length > 0
 					? merged.loadoutSources
 					: DEFAULT_USER_CONFIG.loadoutSources,
-			loadoutPresets:
-				merged.loadoutPresets.length > 0
-					? merged.loadoutPresets
-					: DEFAULT_USER_CONFIG.loadoutPresets,
-			activeLoadoutPresetId:
-				merged.activeLoadoutPresetId ||
-				DEFAULT_USER_CONFIG.activeLoadoutPresetId,
 		};
 	} catch (err) {
 		if ((err as NodeJS.ErrnoException).code === "ENOENT") return null;
@@ -220,15 +204,11 @@ export async function setDevUserConfig(
 				? patch.cloudflareTunnelToken
 				: (current.cloudflareTunnelToken ?? null),
 		gatewayProfiles: patch.gatewayProfiles ?? current.gatewayProfiles,
-		agentProfiles: patch.agentProfiles ?? current.agentProfiles,
 		environmentProfiles:
 			patch.environmentProfiles ?? current.environmentProfiles,
 		bootstrapPresets: patch.bootstrapPresets ?? current.bootstrapPresets,
 		customLoadout: patch.customLoadout ?? current.customLoadout,
 		loadoutSources: patch.loadoutSources ?? current.loadoutSources,
-		loadoutPresets: patch.loadoutPresets ?? current.loadoutPresets,
-		activeLoadoutPresetId:
-			patch.activeLoadoutPresetId ?? current.activeLoadoutPresetId,
 		setupStep: patch.setupStep ?? current.setupStep,
 		draftAgentKind: patch.draftAgentKind ?? current.draftAgentKind,
 		draftProviderKind: patch.draftProviderKind ?? current.draftProviderKind,

@@ -45,9 +45,6 @@ export async function createMachineForConfig(
 		(isKnownRouter ? opts.gatewayProfileId ?? null : null) ??
 		config.gatewayProfiles.find((profile) => profile.kind === "dedalus")?.id ??
 		null;
-	const agentProfileId =
-		config.agentProfiles.find((profile) => profile.agentKind === opts.agentKind)?.id ??
-		null;
 
 	const ref: MachineRef = {
 		id: result.id,
@@ -56,7 +53,9 @@ export async function createMachineForConfig(
 		name: opts.name,
 		spec: opts.spec,
 		model: opts.model,
-		agentProfileId,
+		// agentProfileId is retired (Memory now carries abilities); kept on the
+		// row as a vestigial nullable column.
+		agentProfileId: null,
 		gatewayProfileId,
 		environmentProfileId: null,
 		bootstrapPresetId: null,

@@ -11,6 +11,7 @@ import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { SchematicPanel } from "@/components/reticle/SchematicPanel";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
+import type { Preset } from "@/lib/dashboard/presets";
 import {
 	AGENT_KINDS,
 	AGENT_LABEL,
@@ -21,7 +22,10 @@ import {
 
 type BundleOpt = { id: string; name: string };
 
-export function WorkersLibrary() {
+/** Worker create source: a curated preset (`preset:<id>`) or an existing memory (`bundle:<id>`). */
+type CreateSource = { kind: "preset"; id: string } | { kind: "bundle"; id: string };
+
+export function WorkersLibrary({ presets }: { presets: Preset[] }) {
 	const router = useRouter();
 	const [workers, setWorkers] = useState<Worker[] | null>(null);
 	const [bundleNames, setBundleNames] = useState<Record<string, string>>({});
@@ -44,13 +48,19 @@ export function WorkersLibrary() {
 	}, [load]);
 
 	const create = useCallback(
-		async (name: string, agentKind: AgentKind, memoryBundleId: string) => {
+		async (name: string, agentKind: AgentKind, source: CreateSource) => {
 			setBusy(true);
 			try {
 				const r = await fetch("/api/dashboard/workers", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ name, agentKind, memoryBundleId }),
+					body: JSON.stringify({
+						name,
+						agentKind,
+						...(source.kind === "preset"
+							? { presetId: source.id }
+							: { memoryBundleId: source.id }),
+					}),
 				});
 				const body = (await r.json()) as { ok?: boolean; worker?: { id: string } };
 				if (body.ok && body.worker) router.push(`/dashboard/workers/${body.worker.id}`);
@@ -122,6 +132,7 @@ export function WorkersLibrary() {
 			{creating ? (
 				<CreateWorkerModal
 					bundles={bundles}
+					presets={presets}
 					busy={busy}
 					onCancel={() => setCreating(false)}
 					onSubmit={create}
@@ -139,18 +150,29 @@ const fieldCls = cn(
 
 function CreateWorkerModal({
 	bundles,
+	presets,
 	busy,
 	onCancel,
 	onSubmit,
 }: {
 	bundles: BundleOpt[];
+	presets: Preset[];
 	busy: boolean;
 	onCancel: () => void;
-	onSubmit: (name: string, agentKind: AgentKind, bundleId: string) => void;
+	onSubmit: (name: string, agentKind: AgentKind, source: CreateSource) => void;
 }) {
 	const [name, setName] = useState("");
 	const [agentKind, setAgentKind] = useState<AgentKind>("hermes");
-	const [bundleId, setBundleId] = useState(DEFAULT_MEMORY_BUNDLE_ID);
+	// Default to the first curated preset, else the default Memory bundle.
+	const [sourceValue, setSourceValue] = useState(
+		presets[0] ? `preset:${presets[0].id}` : `bundle:${DEFAULT_MEMORY_BUNDLE_ID}`,
+	);
+
+	function parseSource(value: string): CreateSource {
+		return value.startsWith("preset:")
+			? { kind: "preset", id: value.slice("preset:".length) }
+			: { kind: "bundle", id: value.slice("bundle:".length) };
+	}
 
 	return (
 		<div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-[12dvh]">
@@ -166,18 +188,31 @@ function CreateWorkerModal({
 							</option>
 						))}
 					</select>
-					<label className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">Memory bundle</label>
-					<select className={fieldCls} value={bundleId} onChange={(e) => setBundleId(e.target.value)}>
-						{bundles.length === 0 ? <option value={DEFAULT_MEMORY_BUNDLE_ID}>Agent Machines default</option> : null}
-						{bundles.map((b) => (
-							<option key={b.id} value={b.id}>
-								{b.name}
-							</option>
-						))}
+					<label className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">Start from</label>
+					<select className={fieldCls} value={sourceValue} onChange={(e) => setSourceValue(e.target.value)}>
+						{presets.length > 0 ? (
+							<optgroup label="Curated presets">
+								{presets.map((p) => (
+									<option key={p.id} value={`preset:${p.id}`}>
+										{p.name}
+									</option>
+								))}
+							</optgroup>
+						) : null}
+						<optgroup label="Your memories">
+							{bundles.length === 0 ? (
+								<option value={`bundle:${DEFAULT_MEMORY_BUNDLE_ID}`}>Agent Machines default</option>
+							) : null}
+							{bundles.map((b) => (
+								<option key={b.id} value={`bundle:${b.id}`}>
+									{b.name}
+								</option>
+							))}
+						</optgroup>
 					</select>
 				</div>
 				<div className="mt-3 flex items-center gap-2">
-					<ReticleButton variant="primary" size="sm" disabled={!name.trim() || busy} onClick={() => onSubmit(name.trim(), agentKind, bundleId)}>
+					<ReticleButton variant="primary" size="sm" disabled={!name.trim() || busy} onClick={() => onSubmit(name.trim(), agentKind, parseSource(sourceValue))}>
 						<Rocket className="h-3.5 w-3.5" strokeWidth={1.75} /> {busy ? "creating…" : "Create"}
 					</ReticleButton>
 					<button type="button" onClick={onCancel} className="font-mono text-[11px] text-[var(--ret-text-muted)] hover:text-[var(--ret-text)]">

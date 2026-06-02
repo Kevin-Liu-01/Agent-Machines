@@ -7,6 +7,8 @@
 
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
+import { BUILTIN_TOOLS } from "@/lib/dashboard/loadout";
+import { buildPool } from "@/lib/dashboard/pool";
 import { resolveAbilities } from "@/lib/memory/abilities";
 import { defaultMemoryBundle, resolveBundle } from "@/lib/memory/bundle";
 import {
@@ -27,7 +29,25 @@ export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
 	const config = await getUserConfig();
 	const bundle = resolveBundle(config, id);
 	if (!bundle) return Response.json({ error: "not_found" }, { status: 404 });
-	return Response.json({ ok: true, bundle, abilities: resolveAbilities(bundle) });
+	const pool = buildPool(config);
+	// The full set of abilities the Memory can select from: imported skills/MCPs
+	// (the pool) + runtime-intrinsic built-in tools. The editor renders these as
+	// a checklist; the resolved `abilities` is the current selection.
+	const available = {
+		skills: pool.skills.map((s) => ({ id: s.slug, name: s.name, description: s.description })),
+		tools: BUILTIN_TOOLS.map((t) => ({ id: t.name, name: t.title, description: t.description })),
+		mcps: pool.mcps.map((m) => ({
+			id: m.name,
+			name: m.name,
+			description: `${m.tools.length} tool${m.tools.length === 1 ? "" : "s"}`,
+		})),
+	};
+	return Response.json({
+		ok: true,
+		bundle,
+		abilities: resolveAbilities(bundle, pool),
+		available,
+	});
 }
 
 export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {

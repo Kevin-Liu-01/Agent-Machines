@@ -72,13 +72,32 @@ export function SkillsBrowser({ skills, categories, customSkills = [] }: Props) 
 		return skills.filter((s) => s.category === active);
 	}, [skills, active]);
 
+	const isEmpty = skills.length === 0 && userSkills.length === 0;
+
 	return (
 		<>
 			<AddSkillPanel
 				customSkills={userSkills}
 				onAdded={() => router.refresh()}
 			/>
-			<div className="px-6 py-6">
+			{isEmpty ? (
+				<div className="px-6 py-10">
+					<div className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-6 py-12 text-center">
+						<p className="text-[13px] text-[var(--ret-text-dim)]">No skills imported yet.</p>
+						<p className="mx-auto mt-1 max-w-[48ch] text-[11px] text-[var(--ret-text-muted)]">
+							Skills you install from the Registry show up here and load on your
+							machines. Browse the full catalog to add some.
+						</p>
+						<Link
+							href="/dashboard/registry"
+							className="mt-4 inline-block border border-[var(--ret-purple)]/40 bg-[var(--ret-purple-glow)] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--ret-purple)] transition-colors hover:bg-[var(--ret-purple)]/20"
+						>
+							Browse the Registry →
+						</Link>
+					</div>
+				</div>
+			) : null}
+			<div className={cn("px-6 py-6", isEmpty && "hidden")}>
 				<div className="flex flex-wrap items-center gap-2">
 					<Chip
 						label={`all (${skills.length + userSkills.length})`}

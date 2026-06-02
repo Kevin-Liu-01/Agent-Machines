@@ -7,10 +7,11 @@ import {
 	Download,
 	HardDriveDownload,
 	Plug2,
+	Plus,
 	Sparkles,
 	Wrench,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
@@ -24,6 +25,22 @@ type Ability = { id: string; name: string; description: string };
 type Abilities = { skills: Ability[]; tools: Ability[]; mcps: Ability[] };
 
 type MachineOpt = { id: string; name: string };
+
+const WILDCARD = "*";
+
+function abilityChecked(ids: string[], id: string): boolean {
+	return ids.includes(WILDCARD) || ids.includes(id);
+}
+
+/** Toggle one ability id, collapsing to ["*"] when the whole pool is selected. */
+function toggleAbility(ids: string[], id: string, allIds: string[]): string[] {
+	const base = ids.includes(WILDCARD) ? allIds : ids;
+	const set = new Set(base);
+	if (set.has(id)) set.delete(id);
+	else set.add(id);
+	if (allIds.length > 0 && allIds.every((x) => set.has(x))) return [WILDCARD];
+	return [...set];
+}
 
 const SOURCE_BADGE: Record<MemoryBundleSource, "accent" | "success" | "default"> = {
 	default: "accent",
@@ -41,6 +58,7 @@ const DOC_FIELDS: ReadonlyArray<{ key: keyof MemoryBundle["docs"]; label: string
 export function MemoryBundleEditor({ bundleId }: { bundleId: string }) {
 	const [bundle, setBundle] = useState<MemoryBundle | null>(null);
 	const [abilities, setAbilities] = useState<Abilities | null>(null);
+	const [available, setAvailable] = useState<Abilities | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [saving, setSaving] = useState(false);
 	const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -61,11 +79,13 @@ export function MemoryBundleEditor({ bundleId }: { bundleId: string }) {
 				ok?: boolean;
 				bundle?: MemoryBundle;
 				abilities?: Abilities;
+				available?: Abilities;
 				error?: string;
 			};
 			if (!r.ok || !body.ok || !body.bundle) throw new Error(body.error ?? `HTTP ${r.status}`);
 			setBundle(body.bundle);
 			setAbilities(body.abilities ?? { skills: [], tools: [], mcps: [] });
+			setAvailable(body.available ?? { skills: [], tools: [], mcps: [] });
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "load_failed");
 		}
@@ -155,7 +175,7 @@ export function MemoryBundleEditor({ bundleId }: { bundleId: string }) {
 			</div>
 		);
 	}
-	if (!bundle || !abilities) {
+	if (!bundle || !abilities || !available) {
 		return (
 			<div className="px-5 py-12">
 				<BrailleSpinner name="orbit" label="loading bundle" className="text-[11px] text-[var(--ret-text-muted)]" />
@@ -220,27 +240,61 @@ export function MemoryBundleEditor({ bundleId }: { bundleId: string }) {
 
 				{/* Abilities */}
 				<section className="space-y-3">
-					<SectionLabel label="Abilities" hint="what this memory can do" />
+					<div className="flex items-baseline justify-between gap-2 border-b border-[var(--ret-border)] pb-1.5">
+						<span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
+							Abilities
+						</span>
+						<Link
+							href="/dashboard/registry"
+							className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ret-accent)] hover:underline"
+						>
+							<Plus className="h-3 w-3" strokeWidth={1.75} /> add from registry
+						</Link>
+					</div>
 					<div className="grid gap-3 lg:grid-cols-3">
 						<AbilityColumn
 							icon={<Sparkles className="h-3.5 w-3.5" strokeWidth={1.75} />}
 							title="Skills"
-							items={abilities.skills}
-							all={bundle.skillIds.includes("*")}
+							items={available.skills}
+							ids={bundle.skillIds}
+							emptyFromRegistry
+							onToggle={(id) =>
+								setBundle({
+									...bundle,
+									skillIds: toggleAbility(bundle.skillIds, id, available.skills.map((s) => s.id)),
+								})
+							}
 							onToggleAll={(on) => setBundle({ ...bundle, skillIds: on ? ["*"] : [] })}
 						/>
 						<AbilityColumn
 							icon={<Wrench className="h-3.5 w-3.5" strokeWidth={1.75} />}
 							title="Tools"
-							items={abilities.tools}
-							all={bundle.toolIds.includes("*")}
+							items={available.tools}
+							ids={bundle.toolIds}
+							onToggle={(id) =>
+								setBundle({
+									...bundle,
+									toolIds: toggleAbility(bundle.toolIds, id, available.tools.map((t) => t.id)),
+								})
+							}
 							onToggleAll={(on) => setBundle({ ...bundle, toolIds: on ? ["*"] : [] })}
 						/>
 						<AbilityColumn
 							icon={<Plug2 className="h-3.5 w-3.5" strokeWidth={1.75} />}
 							title="MCP servers"
-							items={abilities.mcps}
-							all={bundle.mcpServerIds.includes("*")}
+							items={available.mcps}
+							ids={bundle.mcpServerIds}
+							emptyFromRegistry
+							onToggle={(id) =>
+								setBundle({
+									...bundle,
+									mcpServerIds: toggleAbility(
+										bundle.mcpServerIds,
+										id,
+										available.mcps.map((m) => m.id),
+									),
+								})
+							}
 							onToggleAll={(on) => setBundle({ ...bundle, mcpServerIds: on ? ["*"] : [] })}
 						/>
 					</div>
@@ -325,34 +379,69 @@ function AbilityColumn({
 	icon,
 	title,
 	items,
-	all,
+	ids,
+	onToggle,
 	onToggleAll,
+	emptyFromRegistry = false,
 }: {
 	icon: React.ReactNode;
 	title: string;
 	items: Ability[];
-	all: boolean;
+	ids: string[];
+	onToggle: (id: string) => void;
 	onToggleAll: (on: boolean) => void;
+	emptyFromRegistry?: boolean;
 }) {
+	const all = ids.includes(WILDCARD);
+	const selectedCount = all ? items.length : items.filter((it) => ids.includes(it.id)).length;
 	return (
 		<ReticleFrame className="flex flex-col p-3">
 			<div className="mb-2 flex items-center justify-between gap-2">
 				<span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-					{icon} {title} <span className="text-[var(--ret-text-dim)]">{items.length}</span>
+					{icon} {title}{" "}
+					<span className="text-[var(--ret-text-dim)]">
+						{selectedCount}/{items.length}
+					</span>
 				</span>
 				<label className="flex cursor-pointer items-center gap-1 font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
-					<input type="checkbox" checked={all} onChange={(e) => onToggleAll(e.target.checked)} className="accent-[var(--ret-accent)]" />
+					<input
+						type="checkbox"
+						checked={all}
+						onChange={(e) => onToggleAll(e.target.checked)}
+						className="accent-[var(--ret-accent)]"
+					/>
 					all
 				</label>
 			</div>
 			<div className="max-h-44 space-y-0.5 overflow-y-auto">
 				{items.length === 0 ? (
-					<p className="font-mono text-[10px] text-[var(--ret-text-muted)]">none selected</p>
+					<p className="font-mono text-[10px] text-[var(--ret-text-muted)]">
+						{emptyFromRegistry ? (
+							<>
+								none imported --{" "}
+								<Link href="/dashboard/registry" className="text-[var(--ret-accent)] hover:underline">
+									add from Registry
+								</Link>
+							</>
+						) : (
+							"none available"
+						)}
+					</p>
 				) : (
 					items.map((it) => (
-						<p key={it.id} className="truncate font-mono text-[10px] text-[var(--ret-text-dim)]" title={it.description}>
+						<label
+							key={it.id}
+							className="flex cursor-pointer items-center gap-1.5 truncate font-mono text-[10px] text-[var(--ret-text-dim)]"
+							title={it.description}
+						>
+							<input
+								type="checkbox"
+								checked={abilityChecked(ids, it.id)}
+								onChange={() => onToggle(it.id)}
+								className="accent-[var(--ret-accent)]"
+							/>
 							{it.name}
-						</p>
+						</label>
 					))
 				)}
 			</div>

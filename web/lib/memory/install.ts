@@ -46,8 +46,12 @@ export function combinedDoc(bundle: MemoryBundle): string {
 	return parts.join("\n\n");
 }
 
-/** The shell command to install a bundle's memory docs for the given runtime. */
-export function bundleInstallCommand(bundle: MemoryBundle, agentKind: AgentKind): string {
+/**
+ * The shell lines that install a bundle's memory docs for a runtime. Returned
+ * as an array so callers can join with "\n" (standalone exec) or " && " (when
+ * embedding into a larger `&&`-chained bootstrap phase).
+ */
+export function bundleInstallLines(bundle: MemoryBundle, agentKind: AgentKind): string[] {
 	const lines: string[] = [`mkdir -p "${ROOT}"`];
 	for (const [key, file] of DOCS) {
 		lines.push(writeFile(`${ROOT}/${file}`, bundle.docs[key]));
@@ -70,5 +74,10 @@ export function bundleInstallCommand(bundle: MemoryBundle, agentKind: AgentKind)
 	// hermes reads the canonical ~/.agent-machines docs written above.
 
 	lines.push('echo "AM_MEMORY_INSTALLED"');
-	return lines.join("\n");
+	return lines;
+}
+
+/** The shell command to install a bundle's memory docs for the given runtime. */
+export function bundleInstallCommand(bundle: MemoryBundle, agentKind: AgentKind): string {
+	return bundleInstallLines(bundle, agentKind).join("\n");
 }

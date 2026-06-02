@@ -1,6 +1,7 @@
 import { WorkersLibrary } from "@/components/dashboard/WorkersLibrary";
 import { DashboardPageBody } from "@/components/dashboard/DashboardPageBody";
 import { PageHeader } from "@/components/dashboard/PageHeader";
+import { listPresets } from "@/lib/dashboard/presets";
 
 export const dynamic = "force-dynamic";
 
@@ -10,10 +11,10 @@ export default function WorkersPage() {
 			<PageHeader
 				kicker="WORKERS"
 				title="Workers"
-				description="Reusable agent templates — a runtime, a model/router, and an owned-memory bundle. Create one, then deploy it onto any machine."
+				description="Deployable presets — a runtime, a model/router, and a Memory (persona + abilities). Start from a curated preset or an existing Memory, then deploy onto any machine."
 			/>
 			<DashboardPageBody>
-				<WorkersLibrary />
+				<WorkersLibrary presets={listPresets()} />
 			</DashboardPageBody>
 		</div>
 	);

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import type { Pool } from "@/lib/dashboard/pool";
+
 import { newBundle } from "./bundle";
 import { bundleToPrompt } from "./export";
 import { bundleFromPaste } from "./import";
@@ -7,10 +9,27 @@ import { bundleInstallCommand, combinedDoc } from "./install";
 
 const docs = { soul: "SOUL_X", agentDocs: "RULE_X", memory: "MEM_X", user: "USER_X" };
 
+// A small imported pool so wildcard abilities resolve to something.
+const pool: Pool = {
+	skills: [
+		{
+			slug: "deepsec",
+			name: "deepsec",
+			description: "security scan",
+			version: "",
+			category: "review",
+			tags: [],
+			related: [],
+			bytes: 0,
+		},
+	],
+	mcps: [{ name: "vercel", transport: "http", source: "vercel", tools: [] }],
+};
+
 describe("bundleToPrompt", () => {
 	it("includes all four docs and skips the abilities section when empty", () => {
 		const b = newBundle({ name: "T", docs, skillIds: [], toolIds: [], mcpServerIds: [] });
-		const out = bundleToPrompt(b);
+		const out = bundleToPrompt(b, pool);
 		expect(out).toContain("# T");
 		expect(out).toContain("SOUL_X");
 		expect(out).toContain("RULE_X");
@@ -19,16 +38,24 @@ describe("bundleToPrompt", () => {
 		expect(out).not.toContain("## Abilities");
 	});
 
-	it("renders an abilities section for a wildcard bundle", () => {
+	it("renders an abilities section for a wildcard bundle over the pool", () => {
 		const b = newBundle({ name: "W", docs: { soul: "S" } }); // defaults to all abilities
-		const out = bundleToPrompt(b);
+		const out = bundleToPrompt(b, pool);
 		expect(out).toContain("## Abilities");
 		expect(out).toContain("### Skills");
+		expect(out).toContain("deepsec");
+	});
+
+	it("a wildcard bundle over an empty pool has no skills/mcps section", () => {
+		const b = newBundle({ name: "E", docs: { soul: "S" }, toolIds: [] });
+		const out = bundleToPrompt(b, { skills: [], mcps: [] });
+		expect(out).not.toContain("### Skills");
+		expect(out).not.toContain("### MCP servers");
 	});
 
 	it("omits empty docs", () => {
 		const b = newBundle({ name: "P", docs: { agentDocs: "only rules" }, skillIds: [], toolIds: [], mcpServerIds: [] });
-		const out = bundleToPrompt(b);
+		const out = bundleToPrompt(b, pool);
 		expect(out).toContain("only rules");
 		expect(out).not.toContain("## Persona & voice");
 	});

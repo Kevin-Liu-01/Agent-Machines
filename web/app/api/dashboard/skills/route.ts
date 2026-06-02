@@ -1,15 +1,14 @@
 /**
  * GET /api/dashboard/skills
  *
- * Returns the bundled skill library as a list (no body content). Auth-gated.
- * The body of each skill is served by `/dashboard/skills/[slug]` page,
- * which reads the same JSON artifact server-side and renders markdown --
- * no per-skill API endpoint needed.
+ * Returns the user's imported skills (the account-global pool), not the full
+ * bundled catalog -- the catalog is browsable in the Registry. Auth-gated.
  */
 
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
-import { listSkills, skillCategories } from "@/lib/dashboard/skills";
+import { importedSkills } from "@/lib/dashboard/pool";
+import { getUserConfig } from "@/lib/user-config/clerk";
 
 export const runtime = "nodejs";
 
@@ -18,8 +17,8 @@ export async function GET(): Promise<Response> {
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}
-	return Response.json({
-		skills: listSkills(),
-		categories: skillCategories(),
-	});
+	const config = await getUserConfig();
+	const skills = importedSkills(config);
+	const categories = [...new Set(skills.map((s) => s.category))].sort();
+	return Response.json({ skills, categories });
 }

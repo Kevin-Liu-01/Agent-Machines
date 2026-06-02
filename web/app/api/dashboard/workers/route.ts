@@ -6,17 +6,17 @@
  * role prompt). Deployed onto a machine via /workers/[id]/deploy.
  */
 
-import { randomUUID } from "node:crypto";
-
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
+import { findPreset } from "@/lib/dashboard/presets";
 import { listBundles } from "@/lib/memory/bundle";
+import { applyPreset } from "@/lib/onboarding/apply-preset";
+import { newWorker } from "@/lib/workers/resolve";
 import {
 	AGENT_KINDS,
 	DEFAULT_MEMORY_BUNDLE_ID,
 	DEFAULT_MODEL,
 	type AgentKind,
-	type Worker,
 } from "@/lib/user-config/schema";
 
 export const runtime = "nodejs";
@@ -51,23 +51,51 @@ export async function POST(request: Request): Promise<Response> {
 		return Response.json({ error: "invalid_agent_kind" }, { status: 400 });
 	}
 
-	const now = new Date().toISOString();
-	const worker: Worker = {
-		id: randomUUID(),
+	const config = await getUserConfig();
+
+	// Start from a curated preset: import its abilities into the pool, create a
+	// Memory shaped by it, and a Worker on that Memory (reuses the onboarding
+	// helper, machineId null since this worker isn't deployed yet).
+	if (typeof body.presetId === "string" && body.presetId) {
+		const preset = findPreset(body.presetId);
+		if (!preset) return Response.json({ error: "unknown_preset" }, { status: 400 });
+		const application = applyPreset({
+			config,
+			preset,
+			agentKind: body.agentKind,
+			model:
+				typeof body.model === "string" && body.model.trim() ? body.model.trim() : config.draftModel,
+			gatewayProfileId:
+				typeof body.gatewayProfileId === "string" ? body.gatewayProfileId : "dedalus-default",
+			machineId: null,
+		});
+		const workers = application.workers.map((w) =>
+			w.id === application.workerId ? { ...w, name } : w,
+		);
+		await setUserConfig({
+			customLoadout: application.customLoadout,
+			memoryBundles: application.memoryBundles,
+			workers,
+		});
+		const worker = workers.find((w) => w.id === application.workerId);
+		return Response.json({ ok: true, worker });
+	}
+
+	const worker = newWorker({
 		name,
 		agentKind: body.agentKind,
-		model: typeof body.model === "string" && body.model.trim() ? body.model.trim() : DEFAULT_MODEL,
+		model:
+			typeof body.model === "string" && body.model.trim()
+				? body.model.trim()
+				: DEFAULT_MODEL,
 		gatewayProfileId:
 			typeof body.gatewayProfileId === "string" ? body.gatewayProfileId : "dedalus-default",
 		memoryBundleId:
 			typeof body.memoryBundleId === "string" ? body.memoryBundleId : DEFAULT_MEMORY_BUNDLE_ID,
 		rolePrompt: typeof body.rolePrompt === "string" ? body.rolePrompt : null,
-		lastMachineId: null,
-		createdAt: now,
-		updatedAt: now,
-	};
+		source: "custom",
+	});
 
-	const config = await getUserConfig();
 	await setUserConfig({ workers: [...(config.workers ?? []), worker] });
 	return Response.json({ ok: true, worker });
 }

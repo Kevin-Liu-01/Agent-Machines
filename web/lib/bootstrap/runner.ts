@@ -27,6 +27,11 @@ import {
 	wrapPhaseCommand,
 } from "@/lib/bootstrap/bootstrap-log";
 import { migrateLegacyPathsShell } from "@/lib/platform/runtime";
+import { buildPool } from "@/lib/dashboard/pool";
+import { resolveAbilities } from "@/lib/memory/abilities";
+import { defaultMemoryBundle, resolveBundle } from "@/lib/memory/bundle";
+import { bundleInstallLines } from "@/lib/memory/install";
+import { resolveMachineWorker } from "@/lib/workers/resolve";
 import {
 	BOOTSTRAP_PHASES,
 	CORE_BOOTSTRAP_PHASES,
@@ -35,6 +40,7 @@ import {
 	type BootstrapState,
 	type GatewayProfile,
 	type MachineRef,
+	type MemoryBundle,
 	type ProviderKind,
 	type UserConfig,
 } from "@/lib/user-config/schema";
@@ -614,6 +620,9 @@ function commandFor(
 				// Only link when the paths actually differ.
 				`[ "${p.HERMES_HOME}/scripts/reload-from-git.sh" = "${p.APP_HOME}/scripts/reload-from-git.sh" ] || ln -sfn ${p.HERMES_HOME}/scripts/reload-from-git.sh ${p.APP_HOME}/scripts/reload-from-git.sh`,
 				`${p.HERMES_HOME}/scripts/reload-from-git.sh`,
+				// Install the deployed Worker's Memory docs LAST, so a custom Memory
+				// wins over the repo-default knowledge/*.md the reload script copies.
+				...bundleInstallLines(machineMemory(config, machine), machine.agentKind),
 			].join(" && ");
 		}
 		case "install-cursor-bridge":
@@ -972,32 +981,49 @@ function configureCliAgent(
 	].join(" && ");
 }
 
+/** The Memory bundle that governs a machine, via its deployed Worker. */
+function machineMemory(config: UserConfig, machine: MachineRef): MemoryBundle {
+	const worker = resolveMachineWorker(config, machine);
+	return resolveBundle(config, worker.memoryBundleId) ?? defaultMemoryBundle();
+}
+
+/**
+ * The on-VM settings.json. Driven by the machine's deployed Worker -> its
+ * Memory -> the resolved abilities over the imported pool. Replaces the old
+ * global activeLoadoutPreset + agentProfile model.
+ */
 function machineSettingsJson(machine: MachineRef, config: UserConfig): string {
-	const agentProfile =
-		config.agentProfiles.find((profile) => profile.id === machine.agentProfileId) ??
-		config.agentProfiles.find((profile) => profile.agentKind === machine.agentKind) ??
-		null;
-	const loadoutPreset =
-		config.loadoutPresets.find(
-			(preset) => preset.id === config.activeLoadoutPresetId,
-		) ??
-		config.loadoutPresets[0] ??
-		null;
-	const sourceIds = new Set(loadoutPreset?.sourceIds ?? []);
-	const customEntryIds = new Set(loadoutPreset?.customEntryIds ?? []);
+	const worker = resolveMachineWorker(config, machine);
+	const memory = resolveBundle(config, worker.memoryBundleId) ?? defaultMemoryBundle();
+	const abilities = resolveAbilities(memory, buildPool(config));
 	const settings = {
-		version: 1,
+		version: 2,
 		machineId: machine.id,
 		agentKind: machine.agentKind,
 		model: machine.model,
-		agentProfile,
-		loadoutPreset,
-		loadoutSources: config.loadoutSources.filter((source) =>
-			sourceIds.has(source.id),
-		),
-		customLoadout: config.customLoadout.filter((entry) =>
-			customEntryIds.has(entry.id),
-		),
+		worker: {
+			id: worker.id,
+			name: worker.name,
+			source: worker.source,
+			agentKind: worker.agentKind,
+			model: worker.model,
+			gatewayProfileId: worker.gatewayProfileId,
+			memoryBundleId: worker.memoryBundleId,
+			rolePrompt: worker.rolePrompt,
+		},
+		memory: {
+			id: memory.id,
+			name: memory.name,
+			description: memory.description,
+			source: memory.source,
+			skillIds: memory.skillIds,
+			toolIds: memory.toolIds,
+			mcpServerIds: memory.mcpServerIds,
+		},
+		abilities,
+		// The account-global imported pool (what's installed on the box).
+		customLoadout: config.customLoadout.filter((entry) => entry.enabled),
+		loadoutSources: config.loadoutSources.filter((source) => source.enabled),
 		createdAt: new Date().toISOString(),
 	};
 	return JSON.stringify(settings, null, 2);

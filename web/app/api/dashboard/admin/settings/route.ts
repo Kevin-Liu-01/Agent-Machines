@@ -17,13 +17,11 @@ import { getEffectiveUserId } from "@/lib/user-config/identity";
 import {
 	DEFAULT_MODEL,
 	toPublicConfig,
-	type AgentProfile,
 	type AiProviderKeys,
 	type BootstrapPreset,
 	type CustomLoadoutEntry,
 	type EnvironmentProfile,
 	type GatewayProfile,
-	type LoadoutPreset,
 	type LoadoutSource,
 	type ProviderCredentials,
 } from "@/lib/user-config/schema";
@@ -37,13 +35,10 @@ type SettingsBody = Partial<{
 	aiProviderKeys: AiProviderKeys;
 	cursorApiKey: string | null;
 	gatewayProfiles: Array<Partial<GatewayProfile>>;
-	agentProfiles: AgentProfile[];
 	environmentProfiles: Array<Partial<EnvironmentProfile>>;
 	bootstrapPresets: BootstrapPreset[];
 	customLoadout: CustomLoadoutEntry[];
 	loadoutSources: LoadoutSource[];
-	loadoutPresets: LoadoutPreset[];
-	activeLoadoutPresetId: string;
 	syncFromMachine: boolean;
 }>;
 
@@ -114,7 +109,6 @@ export async function POST(request: Request): Promise<Response> {
 				mergeGatewayProfile(profile, current.gatewayProfiles),
 			);
 		}
-		if (body.agentProfiles) patch.agentProfiles = body.agentProfiles;
 		if (body.environmentProfiles) {
 			patch.environmentProfiles = body.environmentProfiles.map((profile) =>
 				mergeEnvironmentProfile(profile, current.environmentProfiles),
@@ -123,10 +117,6 @@ export async function POST(request: Request): Promise<Response> {
 		if (body.bootstrapPresets) patch.bootstrapPresets = body.bootstrapPresets;
 		if (body.customLoadout) patch.customLoadout = body.customLoadout;
 		if (body.loadoutSources) patch.loadoutSources = body.loadoutSources;
-		if (body.loadoutPresets) patch.loadoutPresets = body.loadoutPresets;
-		if (body.activeLoadoutPresetId) {
-			patch.activeLoadoutPresetId = body.activeLoadoutPresetId;
-		}
 
 		const next = await setUserConfig(patch);
 		return Response.json({ config: toPublicConfig(next) });

@@ -55,6 +55,13 @@ const VARIANTS = {
 		"opacity-[0.16] group-hover:opacity-[0.28] dark:opacity-[0.24] dark:group-hover:opacity-[0.38]",
 		RIGHT_MASK_WIDE,
 	),
+	// `reveal` — invisible at rest, fades in centered on hover of the enclosing
+	// `group`. For "empty" instrument cells that disclose a schematic on hover.
+	reveal: cn(
+		"inset-0 h-full w-full object-cover object-center",
+		"opacity-0 group-hover:opacity-[0.5] dark:opacity-0 dark:group-hover:opacity-[0.66]",
+		"[-webkit-mask-image:radial-gradient(circle_at_center,#000_42%,transparent_82%)] [mask-image:radial-gradient(circle_at_center,#000_42%,transparent_82%)]",
+	),
 } as const;
 
 export function CircuitArt({

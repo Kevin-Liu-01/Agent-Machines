@@ -265,15 +265,6 @@ export function MachineFleetCard({
 	const isActualError = stateName === "error";
 	const memGib = (machine.spec.memoryMib / 1024).toFixed(1);
 
-	const preset = useMemo(() => {
-		if (!loadout) return null;
-		return (
-			loadout.config.loadoutPresets.find(
-				(p) => p.id === loadout.config.activeLoadoutPresetId,
-			) ?? loadout.config.loadoutPresets[0] ?? null
-		);
-	}, [loadout]);
-
 	const loadoutBadges = useMemo(() => {
 		if (!loadout) {
 			return {
@@ -281,11 +272,11 @@ export function MachineFleetCard({
 					(t): LoadoutDisplayBadge =>
 						t.kind === "service" ? t : { kind: "tool", name: t.name },
 				),
-				skillCount: 155,
-				mcpCount: 17,
+				skillCount: 0,
+				mcpCount: 0,
 			};
 		}
-		const resolved = resolveMachineLoadoutBadges(preset, loadout.mcps, machine.agentKind);
+		const resolved = resolveMachineLoadoutBadges(loadout.mcps, machine.agentKind);
 		return {
 			tools:
 				resolved.tools.length > 0
@@ -297,7 +288,7 @@ export function MachineFleetCard({
 			skillCount: loadout.skillCount,
 			mcpCount: resolved.mcpCount,
 		};
-	}, [loadout, preset, machine.agentKind, card.tools]);
+	}, [loadout, machine.agentKind, card.tools]);
 
 	function handleOpen() {
 		if (!machine.archived) router.push(`/dashboard/machines/${machine.id}`);

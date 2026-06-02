@@ -3,7 +3,7 @@ import type { ServiceSlug } from "@/components/ServiceIcon";
 import { AGENTS } from "@/lib/agents";
 import type { McpServerWithBrand } from "@/lib/dashboard/mcps";
 import type { ToolCategory } from "@/lib/dashboard/loadout";
-import type { AgentKind, LoadoutPreset } from "@/lib/user-config/schema";
+import type { AgentKind } from "@/lib/user-config/schema";
 
 const SERVICE_SLUGS = new Set<string>([
 	"vercel",
@@ -52,15 +52,6 @@ const NATIVE_TOOL_MAP: Record<string, ToolCategory | "skill" | "task"> = {
 	execute_code: "code",
 };
 
-function mcpEnabled(id: string, serverName: string): boolean {
-	if (id === "*") return true;
-	if (id.endsWith("*")) return serverName.startsWith(id.slice(0, -1));
-	if (id === serverName) return true;
-	const tail = id.split("-").pop();
-	if (tail && tail.length > 2 && serverName.includes(tail)) return true;
-	return serverName.includes(id) || id.includes(serverName);
-}
-
 function badgeKey(b: LoadoutDisplayBadge): string {
 	if (b.kind === "service") return `s:${b.slug}`;
 	if (b.kind === "mark") return `m:${b.mark}`;
@@ -68,12 +59,11 @@ function badgeKey(b: LoadoutDisplayBadge): string {
 }
 
 export function resolveMachineLoadoutBadges(
-	preset: LoadoutPreset | null,
 	mcps: McpServerWithBrand[],
 	agentKind: AgentKind,
 ): { tools: LoadoutDisplayBadge[]; mcpCount: number } {
-	const enabledMcpIds = preset?.enabledMcpServerIds ?? ["*"];
-	const enabledMcps = mcps.filter((m) => enabledMcpIds.some((id) => mcpEnabled(id, m.name)));
+	// `mcps` is already the machine's imported MCP set (pool) -- all enabled.
+	const enabledMcps = mcps;
 
 	const mcpBadges: LoadoutDisplayBadge[] = [];
 	for (const mcp of enabledMcps) {

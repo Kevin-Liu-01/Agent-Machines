@@ -1,9 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { OnboardingFlow } from "@/components/dashboard/OnboardingFlow";
-import { listMcpServers } from "@/lib/dashboard/mcps";
-import { listSkills } from "@/lib/dashboard/skills";
-import { BUILTIN_TOOLS } from "@/lib/dashboard/loadout";
+import { listPresets } from "@/lib/dashboard/presets";
 import { getOwnerDefaults, getUserConfig } from "@/lib/user-config/clerk";
 import { toPublicConfig } from "@/lib/user-config/schema";
 
@@ -24,8 +22,6 @@ export default async function OnboardingPage({
 	}
 
 	const defaults = getOwnerDefaults();
-	const skills = listSkills();
-	const mcps = listMcpServers();
 
 	return (
 		<OnboardingFlow
@@ -35,9 +31,7 @@ export default async function OnboardingPage({
 				model: defaults.draftModel,
 				hasOwnerDedalusKey: Boolean(defaults.providers.dedalus?.apiKey),
 			}}
-			skills={skills}
-			mcps={mcps}
-			builtins={[...BUILTIN_TOOLS]}
+			presets={listPresets()}
 		/>
 	);
 }

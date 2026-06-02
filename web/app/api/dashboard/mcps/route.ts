@@ -1,15 +1,14 @@
 /**
  * GET /api/dashboard/mcps
  *
- * Returns the static MCP server registry the agent has wired in.
- * Auth-gated. The on-VM source of truth is `~/.agent-machines/config.toml`;
- * this is the documentation reflection so the dashboard renders without
- * needing to round-trip the gateway.
+ * Returns the user's imported MCP servers (the account-global pool), not the
+ * full catalog -- the catalog is browsable in the Registry. Auth-gated.
  */
 
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
-import { listMcpServers } from "@/lib/dashboard/mcps";
+import { importedMcps } from "@/lib/dashboard/pool";
+import { getUserConfig } from "@/lib/user-config/clerk";
 
 export const runtime = "nodejs";
 
@@ -18,5 +17,6 @@ export async function GET(): Promise<Response> {
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}
-	return Response.json({ servers: listMcpServers() });
+	const config = await getUserConfig();
+	return Response.json({ servers: importedMcps(config) });
 }

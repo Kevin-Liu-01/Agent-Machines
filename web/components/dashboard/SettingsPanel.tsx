@@ -20,12 +20,10 @@ import {
 	PROVIDER_LABEL,
 } from "@/lib/user-config/schema";
 import type {
-	AgentProfile,
 	BootstrapPreset,
 	CustomLoadoutEntry,
 	EnvironmentProfile,
 	GatewayProfile,
-	LoadoutPreset,
 	LoadoutSource,
 	ProviderCredentials,
 	PublicUserConfig,
@@ -62,14 +60,10 @@ export function SettingsPanel({ initialConfig }: Props) {
 	const [gatewayJson, setGatewayJson] = useState(
 		json(config.gatewayProfiles),
 	);
-	const [agentJson, setAgentJson] = useState(json(config.agentProfiles));
 	const [envJson, setEnvJson] = useState(json(config.environmentProfiles));
 	const [presetJson, setPresetJson] = useState(json(config.bootstrapPresets));
 	const [loadoutJson, setLoadoutJson] = useState(json(config.customLoadout));
 	const [sourceJson, setSourceJson] = useState(json(config.loadoutSources));
-	const [loadoutPresetJson, setLoadoutPresetJson] = useState(
-		json(config.loadoutPresets),
-	);
 	const [state, setState] = useState<SaveState>({ phase: "idle" });
 	// Which instant-save Active-configuration control is mid-flight.
 	const [savingField, setSavingField] = useState<string | null>(null);
@@ -153,12 +147,10 @@ export function SettingsPanel({ initialConfig }: Props) {
 					aiProviderKeys: Object.keys(aiProviderKeys).length > 0 ? aiProviderKeys : undefined,
 					cursorApiKey: cursorApiKey.trim() || undefined,
 					gatewayProfiles: parse<GatewayProfile[]>(gatewayJson),
-					agentProfiles: parse<AgentProfile[]>(agentJson),
 					environmentProfiles: parse<EnvironmentProfile[]>(envJson),
 					bootstrapPresets: parse<BootstrapPreset[]>(presetJson),
 					customLoadout: parse<CustomLoadoutEntry[]>(loadoutJson),
 					loadoutSources: parse<LoadoutSource[]>(sourceJson),
-					loadoutPresets: parse<LoadoutPreset[]>(loadoutPresetJson),
 				}),
 			});
 			const body = (await response.json().catch(() => ({}))) as {
@@ -195,12 +187,10 @@ export function SettingsPanel({ initialConfig }: Props) {
 			}
 			setConfig(body.config);
 			setGatewayJson(json(body.config.gatewayProfiles));
-			setAgentJson(json(body.config.agentProfiles));
 			setEnvJson(json(body.config.environmentProfiles));
 			setPresetJson(json(body.config.bootstrapPresets));
 			setLoadoutJson(json(body.config.customLoadout));
 			setSourceJson(json(body.config.loadoutSources));
-			setLoadoutPresetJson(json(body.config.loadoutPresets));
 			setState({ phase: "ok", message: "synced from machine settings.json" });
 		} catch (err) {
 			setState({
@@ -231,7 +221,6 @@ export function SettingsPanel({ initialConfig }: Props) {
 					<Summary label="ai keys" value={aiProviderCount(config.aiProviders)} />
 					<Summary label="hosts" value={configuredCount(config.providers)} />
 					<Summary label="gateways" value={config.gatewayProfiles.length} />
-					<Summary label="agents" value={config.agentProfiles.length} />
 					<Summary label="sources" value={config.loadoutSources.length} />
 					<Summary label="custom" value={config.customLoadout.length} />
 				</div>
@@ -254,9 +243,9 @@ export function SettingsPanel({ initialConfig }: Props) {
 			<Section
 				kicker="ACTIVE CONFIGURATION"
 				title="Defaults for new machines"
-				description="What every new machine inherits, plus the active loadout preset. These save instantly. Per-machine model/agent and the router are chosen at deploy time."
+				description="What every new machine inherits. These save instantly. Per-machine model/agent and the router are chosen at deploy time; abilities come from the deployed Worker's Memory."
 			>
-				<div className="grid gap-px bg-[var(--ret-border)] sm:grid-cols-2 lg:grid-cols-4">
+				<div className="grid gap-px bg-[var(--ret-border)] sm:grid-cols-2 lg:grid-cols-3">
 					<ConfigSelect
 						label="Agent"
 						value={config.draftAgentKind}
@@ -287,32 +276,6 @@ export function SettingsPanel({ initialConfig }: Props) {
 						onChange={(value) =>
 							void applyConfigPatch("setup", { draftModel: value }, "model")
 						}
-					/>
-					<ConfigSelect
-						label="Loadout preset"
-						value={config.activeLoadoutPresetId}
-						saving={savingField === "loadout preset"}
-						onChange={(value) =>
-							void applyConfigPatch(
-								"settings",
-								{ activeLoadoutPresetId: value },
-								"loadout preset",
-							)
-						}
-						options={
-							config.loadoutPresets.length > 0
-								? config.loadoutPresets.map((preset) => ({
-										value: preset.id,
-										label: preset.name || preset.id,
-									}))
-								: [
-										{
-											value: config.activeLoadoutPresetId || "default",
-											label: config.activeLoadoutPresetId || "default",
-										},
-									]
-						}
-						hint={`${config.loadoutPresets.length} preset${config.loadoutPresets.length === 1 ? "" : "s"} \u00b7 edit in Advanced`}
 					/>
 				</div>
 			</Section>
@@ -471,12 +434,10 @@ export function SettingsPanel({ initialConfig }: Props) {
 					</p>
 					<CatalogHint />
 					<JsonEditor label="Gateway profiles (routers)" value={gatewayJson} onChange={setGatewayJson} />
-					<JsonEditor label="Agent profiles" value={agentJson} onChange={setAgentJson} />
 					<JsonEditor label="Environment profiles" value={envJson} onChange={setEnvJson} />
 					<JsonEditor label="Bootstrap presets" value={presetJson} onChange={setPresetJson} />
 					<JsonEditor label="Loadout sources" value={sourceJson} onChange={setSourceJson} />
-					<JsonEditor label="Loadout presets" value={loadoutPresetJson} onChange={setLoadoutPresetJson} />
-					<JsonEditor label="Custom skills / tools / MCP / CLI / plugins" value={loadoutJson} onChange={setLoadoutJson} />
+					<JsonEditor label="Imported pool (skills / tools / MCP / CLI / plugins)" value={loadoutJson} onChange={setLoadoutJson} />
 				</div>
 			</details>
 
@@ -715,10 +676,9 @@ function CatalogHint() {
 			<div className="bg-[var(--ret-bg)] p-3">
 				<ReticleLabel>AVAILABLE CATALOG</ReticleLabel>
 				<p className="mt-2 text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
-					{TRUSTED_ADDONS.length} trusted add-ons are shown on the Loadout
-					page. To add one, copy its source into `loadoutSources` or create a
-					`customLoadout` entry, then include that ID in a `loadoutPresets`
-					record.
+					{TRUSTED_ADDONS.length} trusted add-ons are browsable in the Registry.
+					Installing one adds a `customLoadout` entry to your imported pool;
+					a Memory then selects from that pool (or `*` for all of it).
 				</p>
 				<pre className="mt-3 overflow-x-auto border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-2 font-mono text-[10px] text-[var(--ret-text-dim)]">
 					{`{

@@ -6,6 +6,7 @@
 
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
+import { buildPool } from "@/lib/dashboard/pool";
 import { abilityCounts } from "@/lib/memory/abilities";
 import { listBundles, newBundle } from "@/lib/memory/bundle";
 import type { MemoryBundleDocs } from "@/lib/user-config/schema";
@@ -18,12 +19,13 @@ export async function GET(): Promise<Response> {
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
 	const config = await getUserConfig();
+	const pool = buildPool(config);
 	const bundles = listBundles(config).map((b) => ({
 		id: b.id,
 		name: b.name,
 		description: b.description,
 		source: b.source,
-		counts: abilityCounts(b),
+		counts: abilityCounts(b, pool),
 		createdAt: b.createdAt,
 		updatedAt: b.updatedAt,
 	}));

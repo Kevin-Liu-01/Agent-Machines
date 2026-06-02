@@ -5,6 +5,7 @@
 
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 import { getUserConfig } from "@/lib/user-config/clerk";
+import { buildPool } from "@/lib/dashboard/pool";
 import { resolveBundle } from "@/lib/memory/bundle";
 import { bundleToPrompt } from "@/lib/memory/export";
 
@@ -21,7 +22,7 @@ export async function POST(_req: Request, ctx: Ctx): Promise<Response> {
 	const bundle = resolveBundle(config, id);
 	if (!bundle) return Response.json({ error: "not_found" }, { status: 404 });
 
-	const prompt = bundleToPrompt(bundle);
+	const prompt = bundleToPrompt(bundle, buildPool(config));
 	const slug = bundle.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 	return Response.json({
 		ok: true,

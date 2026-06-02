@@ -2258,7 +2258,7 @@ function dedupeAddOns(items: TrustedAddOn[]): TrustedAddOn[] {
 	return deduped;
 }
 
-function slug(value: string): string {
+export function slug(value: string): string {
 	return value
 		.toLowerCase()
 		.replace(/[^a-z0-9]+/g, "-")

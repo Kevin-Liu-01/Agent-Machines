@@ -25,7 +25,6 @@ import { ServiceIcon, SERVICE_LABEL, type ServiceSlug } from "@/components/Servi
 import { CircuitArt } from "@/components/reticle/CircuitArt";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
-import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { ProviderRouteBanner } from "@/components/ProviderRouteBanner";
 import type { SubstrateId } from "@/components/three/HeroOrbitScene";
 import { cn } from "@/lib/cn";
@@ -424,16 +423,12 @@ function BrandTile({
 
 /* ── Cell primitives ── */
 
-/** Full-bleed hairline spanning the viewport (escapes the content column). */
-function BleedLine({ pos }: { pos: "top" | "bottom" }) {
+/** Viewport-wide hairline on a zero-height grid row (spans side rails + content). */
+function HeroSeam() {
 	return (
-		<div
-			aria-hidden="true"
-			className={cn(
-				"pointer-events-none absolute left-[-50vw] z-20 h-px w-[200vw] bg-[var(--ret-border)]",
-				pos === "top" ? "top-0" : "bottom-0",
-			)}
-		/>
+		<div aria-hidden className="relative col-span-full h-0">
+			<div className="pointer-events-none absolute top-0 left-1/2 z-20 h-px w-screen -translate-x-1/2 bg-[var(--ret-border)]" />
+		</div>
 	);
 }
 
@@ -469,22 +464,14 @@ function CircuitGrid() {
 function Cell({
 	className,
 	circuit,
-	bleed,
 	children,
 }: {
 	className?: string;
 	circuit?: boolean;
-	bleed?: boolean;
 	children?: React.ReactNode;
 }) {
 	return (
 		<div className={cn("relative border-[var(--ret-border)]", className)}>
-			{bleed ? (
-				<>
-					<BleedLine pos="top" />
-					<BleedLine pos="bottom" />
-				</>
-			) : null}
 			<div className="h-full p-1.5">
 				<div className="relative h-full overflow-hidden rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)]">
 					{circuit ? <CircuitGrid /> : null}
@@ -492,6 +479,45 @@ function Cell({
 				</div>
 			</div>
 		</div>
+	);
+}
+
+/** Status-row links — empty inset cards that reveal a diagram + label on hover. */
+const HERO_LINKS: ReadonlyArray<{ href: string; slug: string; label: string }> = [
+	{ href: "/registry", slug: "registry", label: "Registry" },
+	{ href: "/#workflow", slug: "overview", label: "Workflow" },
+	{ href: "/#loadout", slug: "loadout", label: "Loadout" },
+	{ href: "https://github.com/Kevin-Liu-01/agent-machines", slug: "console", label: "Source" },
+];
+
+/**
+ * "Empty" status-row link, rendered as a self-contained inset card so a row of
+ * them can be split into equal `flex-1` columns. Blank at rest; discloses a
+ * schematic diagram + its label only on hover. The anchor is the `group`, so
+ * both the `reveal` art (`group-hover` in CircuitArt) and the label fade in.
+ */
+function HoverDiagram({
+	href,
+	slug,
+	label,
+}: {
+	href: string;
+	slug: string;
+	label: string;
+}) {
+	const external = href.startsWith("http");
+	return (
+		<a
+			href={href}
+			{...(external ? { target: "_blank", rel: "noreferrer" } : {})}
+			aria-label={label}
+			className="group relative flex h-full items-center justify-center overflow-hidden rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)] px-2 py-3 transition-colors hover:bg-[var(--ret-surface)]"
+		>
+			<CircuitArt slug={slug} variant="reveal" />
+			<span className="pointer-events-none relative z-10 font-mono text-[9px] uppercase tracking-[0.24em] text-[var(--ret-text-muted)] opacity-0 transition-all duration-300 group-hover:tracking-[0.3em] group-hover:text-[var(--ret-text)] group-hover:opacity-100">
+				{label}
+			</span>
+		</a>
 	);
 }
 
@@ -564,22 +590,18 @@ export function HeroBlock() {
 		<div className="relative">
 			<ProviderRouteBanner />
 
-			<div className="grid grid-cols-1 md:grid-cols-[4.5rem_repeat(7,1fr)_4.5rem]">
+			<div className="relative grid grid-cols-1 overflow-visible md:grid-cols-[4.5rem_repeat(7,1fr)_4.5rem]">
 				{/* ═══ Row 1: status ═══ */}
 				<Cell className="hidden border-b border-r md:block" circuit />
-				<Cell className="col-span-1 border-b border-r md:col-span-5">
-					<div className="flex h-full flex-wrap items-center gap-3 px-4 py-3">
-						<ReticleLabel>DEVELOPED BY</ReticleLabel>
-						<a
-							href="https://kevin-liu.tech"
-							target="_blank"
-							rel="noreferrer"
-							className="inline-flex transition-opacity hover:opacity-80"
-						>
-							<ReticleBadge variant="accent">KEVIN LIU</ReticleBadge>
-						</a>
+				<div className="relative hidden border-b border-r border-[var(--ret-border)] md:col-span-5 md:block">
+					<div className="flex h-full">
+						{HERO_LINKS.map((link) => (
+							<div key={link.href} className="h-full flex-1 p-1.5">
+								<HoverDiagram {...link} />
+							</div>
+						))}
 					</div>
-				</Cell>
+				</div>
 				<Cell className="hidden border-b border-r md:block">
 					<div className="flex h-full flex-col items-center justify-center gap-0.5">
 						<span className="font-mono text-[8px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
@@ -601,8 +623,8 @@ export function HeroBlock() {
 				<Cell className="hidden border-b md:block" circuit />
 
 				{/* ═══ Row 2: one wide cell — heading + tilted "galaxy" orbit ═══ */}
-				<Cell className="hidden border-b border-r md:block" circuit />
-				<Cell className="col-span-1 border-b border-r md:col-span-7 md:min-h-[520px]" bleed>
+				<Cell className="hidden border-r md:block" circuit />
+				<Cell className="col-span-1 border-r md:col-span-7 md:min-h-[520px]">
 					{/* The galaxy: same core + logos, on a continuously spinning tilted
 					    disc, dissolved into the cell from the right (gradient + hue glow). */}
 					<div className="pointer-events-none absolute inset-y-0 right-0 hidden overflow-hidden md:block md:w-[66%]">
@@ -698,7 +720,9 @@ export function HeroBlock() {
 						</div>
 					</div>
 				</Cell>
-				<Cell className="hidden border-b md:block" circuit />
+				<Cell className="hidden md:block" circuit />
+
+				<HeroSeam />
 
 				{/* ═══ Agents — lineup (left) + capability features (right) ═══ */}
 				<Cell className="hidden border-b border-r md:block" circuit />
@@ -737,8 +761,8 @@ export function HeroBlock() {
 				<Cell className="hidden border-b md:block" circuit />
 
 				{/* ═══ Substrates — lineup (left) + capability features (right) ═══ */}
-				<Cell className="hidden border-b border-r md:block" circuit />
-				<Cell className="col-span-1 border-b border-r md:col-span-2">
+				<Cell className="hidden border-r md:block" circuit />
+				<Cell className="col-span-1 border-r md:col-span-2">
 					<CircuitArt slug="machines" variant="feature" fit="contain" />
 					<div className="relative z-10 flex h-full flex-col gap-3 p-4">
 						<span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
@@ -759,14 +783,16 @@ export function HeroBlock() {
 						</div>
 					</div>
 				</Cell>
-				<Cell className="col-span-1 border-b border-r md:col-span-5">
+				<Cell className="col-span-1 border-r md:col-span-5">
 					<div className="grid h-full grid-cols-2 gap-px bg-[var(--ret-border)] sm:grid-cols-3">
 						{SUBSTRATE_FEATURES.map((f) => (
 							<FeatureCell key={f.label} {...f} />
 						))}
 					</div>
 				</Cell>
-				<Cell className="hidden border-b md:block" circuit />
+				<Cell className="hidden md:block" circuit />
+
+				<HeroSeam />
 
 				{/* ═══ The registry — every router + tool we support, in color ═══ */}
 				<Cell className="hidden border-r md:block" circuit />

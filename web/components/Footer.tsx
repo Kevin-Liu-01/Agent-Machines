@@ -10,6 +10,14 @@ export function Footer() {
 					<div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-5">
 						<BrandMark size={18} gap="tight" withLabel={false} />
 						<span>agent-machines . MIT . Reticle / Sigil UI</span>
+						<a
+							href="https://kevin-liu.tech"
+							target="_blank"
+							rel="noreferrer"
+							className="hover:text-[var(--ret-text)]"
+						>
+							Kevin Liu
+						</a>
 						<span className="hidden items-center gap-2 text-[var(--ret-text-muted)] md:flex">
 							<span>substrates:</span>
 							<span className="inline-flex items-center gap-1.5">
