@@ -29,6 +29,8 @@ export type ChatSummary = {
 
 export type ChatRecord = ChatSummary & {
 	messages: Message[];
+	/** Session attach packages active for this conversation. */
+	sessionPackageIds?: string[];
 };
 
 function chatsDir(ctx: MachineStorageContext): string {

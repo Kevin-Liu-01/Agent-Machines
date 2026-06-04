@@ -1,17 +1,17 @@
 /**
  * Cursor plugin skill packs adapter.
  *
- * Scans the user's ~/.cursor/plugins/cache directory on the machine
- * via execOnMachine. Each plugin folder contains skill descriptors
- * that can be added to the user's loadout.
+ * Surfaces every plugin from the synced Cursor Marketplace catalog
+ * (web/data/cursor-plugins.json). Replaces the old hardcoded SEED list.
  */
 
 import type { ServiceSlug } from "@/components/ServiceIcon";
+import { listCursorPlugins, type CursorPluginRecord } from "@/lib/dashboard/cursor-plugins-data";
 
 import { cacheGet, cacheKey, cacheSet } from "./cache";
 import type { RegistryAdapter, RegistryItem, RegistrySearchOptions } from "./types";
 
-type PluginSkillEntry = {
+export type PluginSkillEntry = {
 	name: string;
 	slug: string;
 	description: string;
@@ -19,31 +19,31 @@ type PluginSkillEntry = {
 	skillCount: number;
 };
 
-/**
- * We scan via execOnMachine dynamically at search time. The caller
- * (the search API route) injects the scan results via setScanResults
- * so the adapter doesn't import server-only modules at the type level.
- */
+/** @deprecated Use listCursorPlugins() — kept for machine scan injection. */
 let scanResults: PluginSkillEntry[] | null = null;
 
 export function setCursorPluginScanResults(results: PluginSkillEntry[]): void {
 	scanResults = results;
 }
 
-function normalize(entry: PluginSkillEntry): RegistryItem {
+function toRegistryItem(plugin: CursorPluginRecord): RegistryItem {
+	const brand =
+		plugin.brand && typeof plugin.brand === "string"
+			? (plugin.brand as ServiceSlug)
+			: null;
 	return {
-		id: `cursor-plugin:${entry.slug}`,
-		name: entry.name,
+		id: `cursor-plugin:${plugin.id}`,
+		name: plugin.name,
 		kind: "plugin",
-		description: entry.description || `${entry.skillCount} skills from ${entry.vendor}`,
-		provider: entry.vendor || "Cursor Plugin",
+		description: plugin.description,
+		provider: "Cursor Marketplace",
 		source: "cursor-plugins",
 		installCommand: null,
-		logoUrl: null,
-		brand: null,
+		logoUrl: plugin.logoUrl,
+		brand,
 		stars: null,
 		version: null,
-		homepage: null,
+		homepage: plugin.docsUrl ?? plugin.homepage ?? plugin.marketplaceUrl,
 		installed: false,
 	};
 }
@@ -79,42 +79,6 @@ export function parseScanOutput(stdout: string): PluginSkillEntry[] {
 		.filter((e): e is PluginSkillEntry => e !== null);
 }
 
-function seedPlugin(slug: string, name: string, description: string, brand: ServiceSlug | null): RegistryItem {
-	return {
-		id: `cursor-plugin:${slug}`,
-		name,
-		kind: "plugin",
-		description,
-		provider: "Cursor Marketplace",
-		source: "cursor-plugins",
-		installCommand: null,
-		logoUrl: null,
-		brand,
-		stars: null,
-		version: null,
-		homepage: "https://cursor.com/marketplace",
-		installed: false,
-	};
-}
-
-const SEED: RegistryItem[] = [
-	seedPlugin("vercel", "Vercel", "28 skills for Next.js, AI SDK, caching, deployments, functions, and storage.", "vercel"),
-	seedPlugin("stripe", "Stripe", "Best practices for payments, Connect platforms, subscriptions, and API upgrades.", "stripe"),
-	seedPlugin("supabase", "Supabase", "Database, auth, Edge Functions, RLS policies, and SSR integration skills.", "supabase"),
-	seedPlugin("figma", "Figma", "Read design files, Code Connect mapping, diagram generation, and library building.", "figma"),
-	seedPlugin("firebase", "Firebase", "Auth, Firestore, App Hosting, Genkit AI, and Data Connect skills.", "firebase"),
-	seedPlugin("datadog", "Datadog", "MCP server setup, configuration management, and toolset administration.", "datadog"),
-	seedPlugin("sanity", "Sanity", "Content modeling, GROQ queries, Visual Editing, SEO, and experimentation.", null),
-	seedPlugin("clickhouse", "ClickHouse", "28 query optimization and schema best-practice rules for ClickHouse.", "clickhouse"),
-	seedPlugin("linear", "Linear", "Issue tracking, project management, cycles, and workflow automation.", "linear"),
-	seedPlugin("slack", "Slack", "Channel messaging, workspace search, threads, and notification management.", "slack"),
-	seedPlugin("shopify", "Shopify", "Admin API, Hydrogen storefronts, Liquid templates, Polaris UI, and checkout.", "shopify"),
-	seedPlugin("posthog", "PostHog", "Product analytics, feature flags, experiments, session replays, and LLM tracing.", "posthog"),
-	seedPlugin("sentry", "Sentry", "Error tracking, performance monitoring, alerts, and SDK setup for 15+ platforms.", "sentry"),
-	seedPlugin("clerk", "Clerk", "Authentication, user management, organizations, webhooks, and Next.js middleware.", "clerk"),
-	seedPlugin("grafana", "Grafana", "Dashboard queries, alert management, log exploration, and observability tooling.", "grafana"),
-];
-
 export const cursorPluginsAdapter: RegistryAdapter = {
 	id: "cursor-plugins",
 	label: "Cursor Plugins",
@@ -123,28 +87,48 @@ export const cursorPluginsAdapter: RegistryAdapter = {
 		const cached = cacheGet<RegistryItem[]>(key);
 		if (cached) return cached;
 
-		if (!scanResults) {
-			if (!opts.query) return SEED;
-			const q = opts.query.toLowerCase();
-			return SEED.filter(
-				(s) =>
-					s.name.toLowerCase().includes(q) ||
-					s.description.toLowerCase().includes(q) ||
-					(s.brand?.toLowerCase().includes(q) ?? false),
+		if (scanResults) {
+			let items = scanResults.map((entry) =>
+				toRegistryItem({
+					id: entry.slug,
+					cursorVendor: entry.vendor,
+					name: entry.name,
+					description: entry.description || `${entry.skillCount} skills`,
+					homepage: "https://cursor.com/marketplace",
+					docsUrl: "https://cursor.com/docs/plugins",
+					marketplaceUrl: "https://cursor.com/marketplace",
+					brand: null,
+					logoUrl: null,
+					mcpServerIds: [],
+					skillSlugs: [],
+					registryItemIds: [],
+					triggers: [],
+				}),
 			);
+			if (opts.query) {
+				const q = opts.query.toLowerCase();
+				items = items.filter(
+					(i) =>
+						i.name.toLowerCase().includes(q) ||
+						i.description.toLowerCase().includes(q),
+				);
+			}
+			items = items.slice(0, opts.limit ?? 40);
+			cacheSet(key, items);
+			return items;
 		}
 
-		let items = scanResults.map(normalize);
+		let items = listCursorPlugins().map(toRegistryItem);
 		if (opts.query) {
 			const q = opts.query.toLowerCase();
 			items = items.filter(
 				(i) =>
 					i.name.toLowerCase().includes(q) ||
 					i.description.toLowerCase().includes(q) ||
-					i.provider.toLowerCase().includes(q),
+					(i.brand?.toLowerCase().includes(q) ?? false),
 			);
 		}
-		items = items.slice(0, opts.limit ?? 40);
+		items = items.slice(0, opts.limit ?? 80);
 		cacheSet(key, items);
 		return items;
 	},

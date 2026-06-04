@@ -169,6 +169,8 @@ export type Conversation = {
 	model: string | null;
 	createdAt: string;
 	updatedAt: string;
+	/** Session attach packages (Add ___ chips) active for this chat. */
+	sessionPackageIds?: string[];
 	pinned?: boolean;
 	archived?: boolean;
 	tags?: string[];

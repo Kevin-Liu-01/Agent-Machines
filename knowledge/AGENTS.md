@@ -4,7 +4,9 @@ This file loads into the system prompt every session. Combined with `SOUL.md` (p
 
 ## What this rig is
 
-**Agent Machines** is **OpenRouter for agents and containers** — a control plane for persistent agent workers. Route Hermes, OpenClaw, Claude Code, or Codex on E2B, Sprites.dev, or Dedalus Machines. Runtime state lives under `~/.agent-machines/`. This repo ships the Next.js dashboard + CLI.
+**Agent Machines** is **OpenRouter for agents and containers** — a control plane for persistent agent workers. Route Hermes, OpenClaw, Claude Code, or Codex on E2B, Sprites.dev, Dedalus Machines, or Vercel Sandbox. Runtime state lives under `~/.agent-machines/`. This repo ships the Next.js dashboard + CLI.
+
+**Operator surfaces:** Machines (provision, **Browser Agent Console**), Workers (presets), Memory (bundles), Registry (install catalog), Loadout (active stack), Cron, Usage. Docs: `knowledge/VISION.md`, `web/docs/sandbox-terminal-gateway.md`.
 
 Read `MEMORY.md` and `~/.agent-machines/mcps/catalog.json` for paths, tools, and MCP registry.
 

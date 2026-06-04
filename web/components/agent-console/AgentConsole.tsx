@@ -25,6 +25,7 @@ import {
 	makeEventId,
 } from "@/lib/agents/protocol";
 import { processAgentEvent, readSseStream } from "@/lib/agents/parser";
+import type { PackageSuggestion } from "@/lib/packages/types";
 
 import { ActivityStream } from "./ActivityStream";
 import { ArtifactPanel } from "./ArtifactPanel";
@@ -57,10 +58,13 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 	const [health, setHealth] = useState<HealthInfo | null>(null);
 	const [rightPanelOpen, setRightPanelOpen] = useState(false);
 	const [machineOk, setMachineOk] = useState(false);
+	const [sessionPackageIds, setSessionPackageIds] = useState<string[]>([]);
 
 	const abortRef = useRef<AbortController | null>(null);
 	const turnsRef = useRef(turns);
 	turnsRef.current = turns;
+	const sessionPackageIdsRef = useRef(sessionPackageIds);
+	sessionPackageIdsRef.current = sessionPackageIds;
 
 	useEffect(() => {
 		const params = activeMachineId
@@ -129,6 +133,8 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 				setTurns(loadedTurns);
 				setArtifacts([]);
 				setSelectedArtifact(null);
+				const loadedSession = (body.chat as { sessionPackageIds?: string[] }).sessionPackageIds;
+				setSessionPackageIds(Array.isArray(loadedSession) ? loadedSession : []);
 			}
 		} catch { /* load failed */ }
 	}, []);
@@ -138,6 +144,7 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 		setTurns([]);
 		setArtifacts([]);
 		setSelectedArtifact(null);
+		setSessionPackageIds([]);
 	}, []);
 
 	const deleteConversation = useCallback(async (convoId: string) => {
@@ -204,6 +211,9 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 				body: JSON.stringify({
 					messages: upstream,
 					...(activeMachineId ? { machineId: activeMachineId } : {}),
+					...(sessionPackageIdsRef.current.length > 0
+						? { sessionPackageIds: sessionPackageIdsRef.current }
+						: {}),
 				}),
 				signal: ctrl.signal,
 			});
@@ -265,7 +275,26 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 		} finally {
 			abortRef.current = null;
 		}
-	}, [streamState, model, agentKind, rightPanelOpen]);
+	}, [streamState, model, agentKind, rightPanelOpen, activeMachineId]);
+
+	const acceptSuggestion = useCallback(async (suggestion: PackageSuggestion) => {
+		const response = await fetch("/api/dashboard/packages/attach", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ packageId: suggestion.packageId }),
+		});
+		const body = await response.json();
+		if (!response.ok || !body.ok) {
+			throw new Error(body.message || body.error || "attach_failed");
+		}
+		setSessionPackageIds((prev) =>
+			prev.includes(suggestion.packageId) ? prev : [...prev, suggestion.packageId],
+		);
+	}, []);
+
+	const removeSessionPackage = useCallback((packageId: string) => {
+		setSessionPackageIds((prev) => prev.filter((id) => id !== packageId));
+	}, []);
 
 	const persistConversation = useCallback(async (allTurns: ConversationTurn[]) => {
 		if (!activeConvoId || !machineOk) return;
@@ -295,6 +324,7 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 			updatedAt: new Date().toISOString(),
 			messageCount: allTurns.length,
 			messages,
+			sessionPackageIds: sessionPackageIdsRef.current,
 		};
 
 		try {
@@ -352,6 +382,9 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 						setSelectedArtifact(a);
 						setRightPanelOpen(true);
 					}}
+					sessionPackageIds={sessionPackageIds}
+					onAcceptSuggestion={acceptSuggestion}
+					onRemoveSessionPackage={removeSessionPackage}
 				/>
 			</main>
 

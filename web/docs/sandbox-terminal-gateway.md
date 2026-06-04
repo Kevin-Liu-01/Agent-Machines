@@ -121,3 +121,13 @@ OnboardingFlow / SetupWizard / DeployAndTalk
 - `web/app/api/dashboard/bootstrap/stream/route.ts` — setup SSE
 - `web/components/dashboard/TerminalPanel.tsx` — operator shell UI
 - `web/components/dashboard/BootTranscript.tsx` — setup transcript UI
+- `web/components/dashboard/CommandPalette.tsx` — ⌘K navigation to terminal/machines/registry
+- `web/docs/README.md` — internal doc index
+
+## Related dashboard APIs (not terminal-specific)
+
+| API | Purpose |
+|-----|---------|
+| `POST /api/internal/cron/tick` | Vercel Cron (every 5 min): user crons + metrics collection |
+| `POST /api/dashboard/metrics/collect` | on-demand usage/machine metrics → Supabase |
+| `GET /api/dashboard/registry/search` | unified install catalog (MCP registry, skills.sh, npm, bundled) |

@@ -12,5 +12,9 @@ out
 .machine-state.json
 .benchmarks
 
+# Internal fundraising / YC prep (private wiki: agent-machines-fundraising-prep)
+yc-application-s26.md
+knowledge/YC-PARTNER-PREP.md
+
 # Playwright MCP scratch output (screenshots, snapshots, console logs)
 .playwright-mcp/

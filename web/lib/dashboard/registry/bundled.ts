@@ -21,6 +21,7 @@ import {
 	buildTrustedAddOnCatalog,
 	type TrustedAddOn,
 } from "@/lib/dashboard/loadout";
+import { findCursorPlugin } from "@/lib/dashboard/cursor-plugins-data";
 import { listMcpServers } from "@/lib/dashboard/mcps";
 import { listSkills } from "@/lib/dashboard/skills";
 
@@ -52,6 +53,10 @@ function homepageFromSource(source: string): string | null {
 }
 
 function toRegistryItem(addon: TrustedAddOn): RegistryItem {
+	const plugin =
+		addon.id.startsWith("plugin-") ? findCursorPlugin(addon.id.slice("plugin-".length)) : null;
+	const homepage =
+		plugin?.docsUrl ?? plugin?.homepage ?? plugin?.marketplaceUrl ?? homepageFromSource(addon.source);
 	return {
 		id: addon.id,
 		name: addon.name,
@@ -60,11 +65,11 @@ function toRegistryItem(addon: TrustedAddOn): RegistryItem {
 		provider: addon.provider,
 		source: "bundled",
 		installCommand: addon.command,
-		logoUrl: null,
+		logoUrl: plugin?.logoUrl ?? null,
 		brand: addon.brand ?? null,
 		stars: null,
 		version: null,
-		homepage: homepageFromSource(addon.source),
+		homepage,
 		installed: false,
 	};
 }
@@ -82,6 +87,11 @@ function buildCatalog(): RegistryItem[] {
 	});
 	catalogCache = addons.map(toRegistryItem);
 	return catalogCache;
+}
+
+/** Lookup a bundled catalog item by stable registry id (e.g. `mcp-stripe`). */
+export function lookupRegistryItem(id: string): RegistryItem | null {
+	return buildCatalog().find((item) => item.id === id) ?? null;
 }
 
 export const bundledAdapter: RegistryAdapter = {

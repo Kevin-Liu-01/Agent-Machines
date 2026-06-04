@@ -12,10 +12,12 @@
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 import type { NextRequest } from "next/server";
 
-import type { ChatRequestBody } from "@/lib/types";
+import { buildPool } from "@/lib/dashboard/pool";
 import { resolveMachine } from "@/lib/dashboard/exec";
 import { resolveGatewayForUser } from "@/lib/gateway/resolver";
+import { injectSessionAbilities } from "@/lib/packages/inject";
 import { getUserConfig } from "@/lib/user-config/clerk";
+import type { ChatRequestBody } from "@/lib/types";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
@@ -77,6 +79,27 @@ export async function POST(request: NextRequest): Promise<Response> {
 		);
 	}
 
+	let messages = body.messages;
+	const sessionPackageIds = Array.isArray(body.sessionPackageIds)
+		? body.sessionPackageIds.filter((id) => typeof id === "string" && id.length > 0)
+		: [];
+
+	if (sessionPackageIds.length > 0) {
+		const config = await getUserConfig();
+		const pool = buildPool(config);
+		const lastIdx = messages.length - 1;
+		if (lastIdx >= 0 && messages[lastIdx]?.role === "user") {
+			const last = messages[lastIdx]!;
+			messages = [
+				...messages.slice(0, lastIdx),
+				{
+					...last,
+					content: injectSessionAbilities(last.content, sessionPackageIds, pool),
+				},
+			];
+		}
+	}
+
 	const upstream = await fetch(`${env.apiUrl}/chat/completions`, {
 		method: "POST",
 		headers: {
@@ -85,7 +108,7 @@ export async function POST(request: NextRequest): Promise<Response> {
 		},
 		body: JSON.stringify({
 			model: env.model,
-			messages: body.messages,
+			messages,
 			stream: true,
 		}),
 	});

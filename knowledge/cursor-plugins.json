@@ -1,0 +1,780 @@
+{
+  "description": "Cursor Marketplace plugins — synced from local plugin cache with verified doc links.",
+  "syncedAt": "2026-06-03T19:47:32.894Z",
+  "plugins": [
+    {
+      "id": "clerk",
+      "cursorVendor": "clerk",
+      "name": "Clerk",
+      "description": "Clerk authentication toolkit for Cursor - setup guides, MCP server, and specialized skills for frameworks, mobile apps, organizations, billing, webhooks, testing, and more.",
+      "homepage": "https://clerk.com",
+      "docsUrl": "https://clerk.com/docs",
+      "marketplaceUrl": "https://cursor.com/marketplace/clerk",
+      "brand": "clerk",
+      "logoUrl": "/brand/services/clerk.svg",
+      "mcpServerIds": [
+        "clerk"
+      ],
+      "skillSlugs": [
+        "clerk",
+        "clerk-android",
+        "clerk-astro-patterns",
+        "clerk-backend-api",
+        "clerk-billing",
+        "clerk-chrome-extension-patterns",
+        "clerk-custom-ui",
+        "clerk-expo",
+        "clerk-expo-patterns",
+        "clerk-nextjs-patterns",
+        "clerk-nuxt-patterns",
+        "clerk-orgs",
+        "clerk-react-patterns",
+        "clerk-react-router-patterns",
+        "clerk-setup",
+        "clerk-swift",
+        "clerk-tanstack-patterns",
+        "clerk-testing",
+        "clerk-vue-patterns",
+        "clerk-webhooks"
+      ],
+      "registryItemIds": [
+        "plugin-clerk",
+        "mcp-clerk"
+      ],
+      "triggers": [
+        "clerk",
+        "authentication",
+        "sign in",
+        "organization",
+        "webhook",
+        "jwt"
+      ]
+    },
+    {
+      "id": "clickhouse",
+      "cursorVendor": "clickhouse-cursor-plugin",
+      "name": "ClickHouse",
+      "description": "ClickHouse Cursor plugin: skills (ClickHouse best practices), rules and MCP.",
+      "homepage": "https://clickhouse.com",
+      "docsUrl": "https://clickhouse.com/docs",
+      "marketplaceUrl": "https://cursor.com/marketplace/clickhouse",
+      "brand": "clickhouse",
+      "logoUrl": "/brand/services/clickhouse.svg",
+      "mcpServerIds": [
+        "clickhouse"
+      ],
+      "skillSlugs": [
+        "chdb-datastore",
+        "chdb-sql",
+        "clickhouse-architecture-advisor",
+        "clickhouse-best-practices",
+        "clickhouse-js-node-troubleshooting",
+        "clickhousectl-cloud-deploy",
+        "clickhousectl-local-dev"
+      ],
+      "registryItemIds": [
+        "plugin-clickhouse",
+        "mcp-clickhouse"
+      ],
+      "triggers": [
+        "clickhouse",
+        "clickhouse-cursor",
+        "olap",
+        "columnar",
+        "chdb"
+      ]
+    },
+    {
+      "id": "context7",
+      "cursorVendor": "context7-plugin",
+      "name": "Context7",
+      "description": "Upstash Context7 MCP server for up-to-date documentation lookup. Pull version-specific documentation and code examples directly from source repositories into your LLM context.",
+      "homepage": "https://context7.com",
+      "docsUrl": "https://github.com/upstash/context7",
+      "marketplaceUrl": "https://cursor.com/marketplace/context7",
+      "brand": "context7",
+      "logoUrl": null,
+      "mcpServerIds": [
+        "context7"
+      ],
+      "skillSlugs": [
+        "context7-mcp"
+      ],
+      "registryItemIds": [
+        "plugin-context7",
+        "mcp-context7"
+      ],
+      "triggers": [
+        "context7",
+        "library docs",
+        "documentation lookup",
+        "upstash"
+      ]
+    },
+    {
+      "id": "datadog",
+      "cursorVendor": "datadog",
+      "name": "Datadog",
+      "description": "Use Datadog directly in Cursor through a preconfigured Datadog MCP server. Query logs, metrics, traces, dashboards, and more through natural conversation. This plugin is in preview.",
+      "homepage": "https://www.datadoghq.com",
+      "docsUrl": "https://docs.datadoghq.com",
+      "marketplaceUrl": "https://cursor.com/marketplace/datadog",
+      "brand": "datadog",
+      "logoUrl": null,
+      "mcpServerIds": [
+        "datadog"
+      ],
+      "skillSlugs": [
+        "ddconfig",
+        "ddsetup",
+        "ddtoolsets"
+      ],
+      "registryItemIds": [
+        "plugin-datadog",
+        "mcp-datadog"
+      ],
+      "triggers": [
+        "datadog",
+        "logs",
+        "metrics",
+        "apm",
+        "monitor",
+        "trace"
+      ]
+    },
+    {
+      "id": "figma",
+      "cursorVendor": "figma",
+      "name": "Figma",
+      "description": "Plugin that includes the Figma MCP server and Skills for common workflows",
+      "homepage": "https://www.figma.com",
+      "docsUrl": "https://developers.figma.com",
+      "marketplaceUrl": "https://cursor.com/marketplace/figma",
+      "brand": "figma",
+      "logoUrl": "/brand/services/figma.svg",
+      "mcpServerIds": [
+        "figma"
+      ],
+      "skillSlugs": [
+        "figma-code-connect",
+        "figma-create-new-file",
+        "figma-generate-design",
+        "figma-generate-diagram",
+        "figma-generate-library",
+        "figma-use",
+        "figma-use-figjam",
+        "figma-use-slides"
+      ],
+      "registryItemIds": [
+        "plugin-figma",
+        "mcp-figma"
+      ],
+      "triggers": [
+        "figma",
+        "design file",
+        "component",
+        "figjam",
+        "code connect"
+      ]
+    },
+    {
+      "id": "firebase",
+      "cursorVendor": "firebase",
+      "name": "Firebase",
+      "description": "The official Firebase Cursor plugin. Prototype, build, and run modern apps with Firebase's backend and AI infrastructure.",
+      "homepage": "https://firebase.google.com",
+      "docsUrl": "https://firebase.google.com/docs",
+      "marketplaceUrl": "https://cursor.com/marketplace/firebase",
+      "brand": "firebase",
+      "logoUrl": "/brand/services/firebase.svg",
+      "mcpServerIds": [
+        "firebase"
+      ],
+      "skillSlugs": [
+        "developing-genkit-dart",
+        "developing-genkit-js",
+        "firebase-ai-logic-basics",
+        "firebase-app-hosting-basics",
+        "firebase-auth-basics",
+        "firebase-basics",
+        "firebase-data-connect-basics",
+        "firebase-firestore-enterprise-native-mode",
+        "firebase-firestore-standard",
+        "firebase-hosting-basics",
+        "firebase-local-env-setup"
+      ],
+      "registryItemIds": [
+        "plugin-firebase",
+        "mcp-firebase"
+      ],
+      "triggers": [
+        "firebase",
+        "firestore",
+        "genkit",
+        "app hosting"
+      ]
+    },
+    {
+      "id": "firecrawl",
+      "cursorVendor": "firecrawl",
+      "name": "Firecrawl",
+      "description": "Web scraping, crawling, and search for AI agents. Gives Cursor full access to web content through the Firecrawl CLI.",
+      "homepage": "https://www.firecrawl.dev",
+      "docsUrl": "https://docs.firecrawl.dev",
+      "marketplaceUrl": "https://cursor.com/marketplace/firecrawl",
+      "brand": "firecrawl",
+      "logoUrl": "/brand/services/firecrawl.svg",
+      "mcpServerIds": [],
+      "skillSlugs": [
+        "firecrawl"
+      ],
+      "registryItemIds": [
+        "plugin-firecrawl",
+        "cli-firecrawl"
+      ],
+      "triggers": [
+        "firecrawl",
+        "scrape",
+        "crawl",
+        "web search",
+        "research"
+      ]
+    },
+    {
+      "id": "granola",
+      "cursorVendor": "granola",
+      "name": "Granola",
+      "description": "Your meetings in your workflow. Granola gives Cursor access to what your team discussed, decided, and committed to.",
+      "homepage": "https://granola.ai",
+      "docsUrl": "https://granola.ai",
+      "marketplaceUrl": "https://cursor.com/marketplace/granola",
+      "brand": "granola",
+      "logoUrl": null,
+      "mcpServerIds": [
+        "granola"
+      ],
+      "skillSlugs": [
+        "granola-context",
+        "granola-prep",
+        "granola-review"
+      ],
+      "registryItemIds": [
+        "plugin-granola",
+        "mcp-granola"
+      ],
+      "triggers": [
+        "granola",
+        "meeting",
+        "notes.granola.ai",
+        "action items",
+        "decided"
+      ]
+    },
+    {
+      "id": "huggingface",
+      "cursorVendor": "huggingface-skills",
+      "name": "Hugging Face",
+      "description": "Agent Skills for AI/ML tasks including dataset creation, model training, evaluation, and research paper publishing on Hugging Face Hub",
+      "homepage": "https://huggingface.co",
+      "docsUrl": "https://huggingface.co/docs",
+      "marketplaceUrl": "https://cursor.com/marketplace/huggingface",
+      "brand": "huggingface",
+      "logoUrl": null,
+      "mcpServerIds": [
+        "huggingface-skills"
+      ],
+      "skillSlugs": [
+        "hf-cli",
+        "hugging-face-dataset-viewer",
+        "hugging-face-datasets",
+        "hugging-face-evaluation",
+        "hugging-face-jobs",
+        "hugging-face-model-trainer",
+        "hugging-face-paper-publisher",
+        "hugging-face-tool-builder",
+        "hugging-face-trackio",
+        "huggingface-gradio"
+      ],
+      "registryItemIds": [
+        "plugin-huggingface",
+        "mcp-huggingface"
+      ],
+      "triggers": [
+        "huggingface",
+        "huggingface-skills",
+        "model",
+        "dataset",
+        "hub",
+        "gradio",
+        "training"
+      ]
+    },
+    {
+      "id": "linear",
+      "cursorVendor": "linear",
+      "name": "Linear",
+      "description": "Cursor Plugin for Linear - enables AI assistants to manage issues, projects, documents, and more across your Linear workspace",
+      "homepage": "https://linear.app",
+      "docsUrl": "https://linear.app/docs",
+      "marketplaceUrl": "https://cursor.com/marketplace/linear",
+      "brand": "linear",
+      "logoUrl": "/brand/services/linear.svg",
+      "mcpServerIds": [
+        "linear"
+      ],
+      "skillSlugs": [],
+      "registryItemIds": [
+        "plugin-linear",
+        "mcp-linear"
+      ],
+      "triggers": [
+        "linear",
+        "issue",
+        "ticket",
+        "cycle",
+        "project"
+      ]
+    },
+    {
+      "id": "posthog",
+      "cursorVendor": "posthog",
+      "name": "PostHog",
+      "description": "Access PostHog analytics, feature flags, experiments, error tracking, and insights directly from Cursor",
+      "homepage": "https://posthog.com",
+      "docsUrl": "https://posthog.com/docs",
+      "marketplaceUrl": "https://cursor.com/marketplace/posthog",
+      "brand": "posthog",
+      "logoUrl": "/brand/services/posthog.svg",
+      "mcpServerIds": [
+        "posthog"
+      ],
+      "skillSlugs": [
+        "analyzing-experiment-session-replays",
+        "auditing-experiments-flags",
+        "auditing-warehouse-data-health",
+        "authoring-log-alerts",
+        "cleaning-up-stale-feature-flags",
+        "configuring-experiment-analytics",
+        "configuring-experiment-rollout",
+        "copying-flags-across-projects",
+        "creating-experiments",
+        "debugging-local-replay",
+        "diagnosing-experiment-results",
+        "diagnosing-failed-warehouse-syncs",
+        "diagnosing-missing-recordings",
+        "diagnosing-sdk-health",
+        "diagnosing-stacktrace-symbolication",
+        "downloading-batch-export-files",
+        "exploring-apm-traces",
+        "exploring-autocapture-events",
+        "exploring-live-traffic",
+        "exploring-llm-clusters",
+        "exploring-llm-costs",
+        "exploring-llm-evaluations",
+        "exploring-llm-traces",
+        "feature-usage-feed",
+        "finding-deleted-feature-flags",
+        "finding-experiments",
+        "finding-replay-for-issue",
+        "formatting-insight-axes",
+        "grouping-noisy-errors",
+        "inbox-exploration",
+        "instrument-error-tracking",
+        "instrument-feature-flags",
+        "instrument-integration",
+        "instrument-llm-analytics",
+        "instrument-logs",
+        "instrument-product-analytics",
+        "investigate-metric",
+        "investigating-error-issue",
+        "investigating-replay",
+        "managing-experiment-lifecycle",
+        "managing-path-cleaning-rules",
+        "managing-subscriptions",
+        "planning-user-interviews",
+        "querying-posthog-data",
+        "setting-up-a-data-warehouse-source",
+        "signals",
+        "signals-scout-general",
+        "skills-store",
+        "suggesting-data-imports",
+        "suppressing-noisy-errors",
+        "triaging-error-issues",
+        "triaging-visual-review-runs",
+        "tuning-incremental-sync-config",
+        "working-with-skills"
+      ],
+      "registryItemIds": [
+        "plugin-posthog",
+        "mcp-posthog"
+      ],
+      "triggers": [
+        "posthog",
+        "analytics",
+        "feature flag",
+        "experiment",
+        "hogql",
+        "session replay",
+        "funnel",
+        "llm trace"
+      ]
+    },
+    {
+      "id": "render",
+      "cursorVendor": "render",
+      "name": "Render",
+      "description": "Deploy, debug, and monitor applications on Render. Includes skills, rules, commands, an agent, MCP config, and hooks for the full Render workflow.",
+      "homepage": "https://render.com",
+      "docsUrl": "https://render.com/docs",
+      "marketplaceUrl": "https://cursor.com/marketplace/render",
+      "brand": "render",
+      "logoUrl": "/brand/services/render.svg",
+      "mcpServerIds": [
+        "render"
+      ],
+      "skillSlugs": [
+        "render-background-workers",
+        "render-blueprints",
+        "render-cli",
+        "render-cron-jobs",
+        "render-debug",
+        "render-deploy",
+        "render-disks",
+        "render-docker",
+        "render-domains",
+        "render-env-vars",
+        "render-keyvalue",
+        "render-mcp",
+        "render-migrate-from-heroku",
+        "render-monitor",
+        "render-networking",
+        "render-postgres",
+        "render-private-services",
+        "render-scaling",
+        "render-static-sites",
+        "render-web-services",
+        "render-workflows"
+      ],
+      "registryItemIds": [
+        "plugin-render",
+        "mcp-render"
+      ],
+      "triggers": [
+        "render",
+        "blueprint",
+        "web service",
+        "postgres",
+        "cron job"
+      ]
+    },
+    {
+      "id": "sanity",
+      "cursorVendor": "sanity",
+      "name": "Sanity",
+      "description": "Sanity plugin for Cursor with MCP server, agent skills, agent rules, and commands.",
+      "homepage": "https://www.sanity.io",
+      "docsUrl": "https://www.sanity.io/docs",
+      "marketplaceUrl": "https://cursor.com/marketplace/sanity",
+      "brand": "sanity",
+      "logoUrl": "/brand/services/sanity.svg",
+      "mcpServerIds": [
+        "sanity"
+      ],
+      "skillSlugs": [
+        "content-experimentation-best-practices",
+        "content-modeling-best-practices",
+        "sanity-best-practices",
+        "seo-aeo-best-practices"
+      ],
+      "registryItemIds": [
+        "plugin-sanity",
+        "mcp-sanity"
+      ],
+      "triggers": [
+        "sanity",
+        "groq",
+        "content model",
+        "visual editing"
+      ]
+    },
+    {
+      "id": "sentry",
+      "cursorVendor": "sentry",
+      "name": "Sentry",
+      "description": "Sentry Plugin for Cursor to help with debugging including MCP, commands, and skill capabilities.",
+      "homepage": "https://sentry.io",
+      "docsUrl": "https://docs.sentry.io",
+      "marketplaceUrl": "https://cursor.com/marketplace/sentry",
+      "brand": "sentry",
+      "logoUrl": "/brand/services/sentry.svg",
+      "mcpServerIds": [
+        "sentry"
+      ],
+      "skillSlugs": [
+        "sentry-android-sdk",
+        "sentry-browser-sdk",
+        "sentry-cloudflare-sdk",
+        "sentry-cocoa-sdk",
+        "sentry-code-review",
+        "sentry-create-alert",
+        "sentry-dotnet-sdk",
+        "sentry-elixir-sdk",
+        "sentry-feature-setup",
+        "sentry-fix-issues",
+        "sentry-flutter-sdk",
+        "sentry-go-sdk",
+        "sentry-nestjs-sdk",
+        "sentry-nextjs-sdk",
+        "sentry-node-sdk",
+        "sentry-otel-exporter-setup",
+        "sentry-php-sdk",
+        "sentry-pr-code-review",
+        "sentry-python-sdk",
+        "sentry-react-native-sdk",
+        "sentry-react-router-framework-sdk",
+        "sentry-react-sdk",
+        "sentry-ruby-sdk",
+        "sentry-sdk-setup",
+        "sentry-sdk-skill-creator",
+        "sentry-sdk-upgrade",
+        "sentry-setup-ai-monitoring",
+        "sentry-svelte-sdk",
+        "sentry-tanstack-start-sdk",
+        "sentry-workflow"
+      ],
+      "registryItemIds": [
+        "plugin-sentry",
+        "mcp-sentry"
+      ],
+      "triggers": [
+        "sentry",
+        "error tracking",
+        "stack trace",
+        "production issue",
+        "release health"
+      ]
+    },
+    {
+      "id": "shopify",
+      "cursorVendor": "shopify-plugin",
+      "name": "Shopify",
+      "description": "Shopify developer tools for Cursor — search Shopify docs, generate and validate GraphQL, Liquid, and UI extension code. Skill scripts send usage telemetry (queries, code, model/client identifiers) to shopify.dev by default; set OPT_OUT_INSTRUMENTATION=true to disable.",
+      "homepage": "https://www.shopify.com",
+      "docsUrl": "https://shopify.dev/docs",
+      "marketplaceUrl": "https://cursor.com/marketplace/shopify",
+      "brand": "shopify",
+      "logoUrl": "/brand/services/shopify.svg",
+      "mcpServerIds": [],
+      "skillSlugs": [
+        "shopify-admin",
+        "shopify-app-store-review",
+        "shopify-custom-data",
+        "shopify-customer",
+        "shopify-dev",
+        "shopify-functions",
+        "shopify-hydrogen",
+        "shopify-liquid",
+        "shopify-onboarding-dev",
+        "shopify-onboarding-merchant",
+        "shopify-partner",
+        "shopify-payments-apps",
+        "shopify-polaris-admin-extensions",
+        "shopify-polaris-app-home",
+        "shopify-polaris-checkout-extensions",
+        "shopify-polaris-customer-account-extensions",
+        "shopify-pos-ui",
+        "shopify-storefront-graphql",
+        "shopify-use-shopify-cli",
+        "ucp"
+      ],
+      "registryItemIds": [
+        "plugin-shopify"
+      ],
+      "triggers": [
+        "shopify",
+        "liquid",
+        "hydrogen",
+        "polaris",
+        "storefront"
+      ]
+    },
+    {
+      "id": "slack",
+      "cursorVendor": "slack",
+      "name": "Slack",
+      "description": "Slack MCP server. Search channels, send messages, and perform other Slack actions through MCP-compatible clients.",
+      "homepage": "https://slack.com",
+      "docsUrl": "https://api.slack.com",
+      "marketplaceUrl": "https://cursor.com/marketplace/slack",
+      "brand": "slack",
+      "logoUrl": null,
+      "mcpServerIds": [
+        "slack"
+      ],
+      "skillSlugs": [],
+      "registryItemIds": [
+        "plugin-slack",
+        "mcp-slack"
+      ],
+      "triggers": [
+        "slack",
+        "channel",
+        "message",
+        "workspace"
+      ]
+    },
+    {
+      "id": "stripe",
+      "cursorVendor": "stripe",
+      "name": "Stripe",
+      "description": "Stripe plugin for Cursor to help with Stripe integrations including best practices, API/SDK upgrade guidance, and the Stripe MCP server.",
+      "homepage": "https://stripe.com",
+      "docsUrl": "https://docs.stripe.com",
+      "marketplaceUrl": "https://cursor.com/marketplace/stripe",
+      "brand": "stripe",
+      "logoUrl": null,
+      "mcpServerIds": [
+        "stripe"
+      ],
+      "skillSlugs": [
+        "stripe-best-practices",
+        "stripe-projects",
+        "upgrade-stripe"
+      ],
+      "registryItemIds": [
+        "plugin-stripe",
+        "mcp-stripe"
+      ],
+      "triggers": [
+        "stripe",
+        "subscription",
+        "invoice",
+        "payment",
+        "checkout",
+        "billing",
+        "webhook",
+        "customer"
+      ]
+    },
+    {
+      "id": "supabase",
+      "cursorVendor": "supabase",
+      "name": "Supabase",
+      "description": "Access your Supabase projects and perform tasks like managing tables, fetching config, and querying data.",
+      "homepage": "https://supabase.com",
+      "docsUrl": "https://supabase.com/docs",
+      "marketplaceUrl": "https://cursor.com/marketplace/supabase",
+      "brand": "supabase",
+      "logoUrl": null,
+      "mcpServerIds": [
+        "supabase"
+      ],
+      "skillSlugs": [
+        "supabase",
+        "supabase-postgres-best-practices"
+      ],
+      "registryItemIds": [
+        "plugin-supabase",
+        "mcp-supabase"
+      ],
+      "triggers": [
+        "supabase",
+        "postgres",
+        "rls",
+        "row level",
+        "edge function",
+        "auth"
+      ]
+    },
+    {
+      "id": "superpowers",
+      "cursorVendor": "superpowers",
+      "name": "Superpowers",
+      "description": "Core skills library: TDD, debugging, collaboration patterns, and proven techniques",
+      "homepage": "https://github.com/obra/superpowers",
+      "docsUrl": "https://github.com/obra/superpowers/blob/main/README.md",
+      "marketplaceUrl": "https://cursor.com/marketplace/superpowers",
+      "brand": null,
+      "logoUrl": null,
+      "mcpServerIds": [],
+      "skillSlugs": [
+        "brainstorming",
+        "dispatching-parallel-agents",
+        "executing-plans",
+        "finishing-a-development-branch",
+        "receiving-code-review",
+        "requesting-code-review",
+        "subagent-driven-development",
+        "systematic-debugging",
+        "test-driven-development",
+        "using-git-worktrees",
+        "using-superpowers",
+        "verification-before-completion",
+        "writing-plans",
+        "writing-skills"
+      ],
+      "registryItemIds": [
+        "plugin-superpowers"
+      ],
+      "triggers": [
+        "superpowers",
+        "tdd",
+        "brainstorm",
+        "writing-plans",
+        "systematic-debugging"
+      ]
+    },
+    {
+      "id": "vercel",
+      "cursorVendor": "vercel",
+      "name": "Vercel",
+      "description": "Build and deploy web apps and agents",
+      "homepage": "https://vercel.com",
+      "docsUrl": "https://vercel.com/docs",
+      "marketplaceUrl": "https://cursor.com/marketplace/vercel",
+      "brand": "vercel",
+      "logoUrl": "/brand/services/vercel.svg",
+      "mcpServerIds": [
+        "vercel"
+      ],
+      "skillSlugs": [
+        "ai-gateway",
+        "ai-sdk",
+        "auth",
+        "bootstrap",
+        "chat-sdk",
+        "deployments-cicd",
+        "env-vars",
+        "knowledge-update",
+        "marketplace",
+        "next-cache-components",
+        "next-forge",
+        "next-upgrade",
+        "nextjs",
+        "react-best-practices",
+        "routing-middleware",
+        "runtime-cache",
+        "shadcn",
+        "turbopack",
+        "vercel-agent",
+        "vercel-cli",
+        "vercel-functions",
+        "vercel-sandbox",
+        "vercel-storage",
+        "verification",
+        "workflow"
+      ],
+      "registryItemIds": [
+        "plugin-vercel",
+        "mcp-vercel"
+      ],
+      "triggers": [
+        "vercel",
+        "deploy",
+        "deployment",
+        "preview url",
+        "next.js"
+      ]
+    }
+  ]
+}

@@ -2107,6 +2107,197 @@ export const TRUSTED_ADDONS: ReadonlyArray<TrustedAddOn> = [
 		brand: "supabase",
 
 	},
+	{
+		id: "plugin-clerk",
+		name: "Clerk skill pack",
+		kind: "plugin",
+		provider: "Clerk",
+		description:
+			"20 skills: setup, orgs, billing, webhooks, testing, and framework patterns (Next.js, React, Vue, Expo, Swift, Android).",
+		source: "cursor-public/clerk",
+		command: null,
+		brand: "clerk",
+
+	},
+	{
+		id: "plugin-posthog",
+		name: "PostHog skill pack",
+		kind: "plugin",
+		provider: "PostHog",
+		description:
+			"54 skills: HogQL, experiments, feature flags, LLM traces, warehouse, signals, instrumentation, and error triage.",
+		source: "cursor-public/posthog",
+		command: null,
+		brand: "posthog",
+
+	},
+	{
+		id: "plugin-sentry",
+		name: "Sentry skill pack",
+		kind: "plugin",
+		provider: "Sentry",
+		description:
+			"30 skills: SDK setup and review across 15+ platforms, alerts, AI monitoring, and workflow automation.",
+		source: "cursor-public/sentry",
+		command: null,
+		brand: "sentry",
+
+	},
+	{
+		id: "plugin-linear",
+		name: "Linear skill pack",
+		kind: "plugin",
+		provider: "Linear",
+		description:
+			"Cursor plugin for Linear — issues, projects, documents, and team workflows via MCP.",
+		source: "cursor-public/linear",
+		command: null,
+		brand: "linear",
+
+	},
+	{
+		id: "plugin-granola",
+		name: "Granola skill pack",
+		kind: "plugin",
+		provider: "Granola",
+		description:
+			"Meeting context skills (context, prep, review), commands for specs/plans/PRs, and Granola MCP for notes and transcripts.",
+		source: "cursor-public/granola",
+		command: null,
+		brand: "granola",
+
+	},
+	{
+		id: "plugin-firecrawl",
+		name: "Firecrawl skill pack",
+		kind: "plugin",
+		provider: "Firecrawl",
+		description:
+			"Web scrape, crawl, map, and search via the Firecrawl CLI — optimized markdown for agent context.",
+		source: "cursor-public/firecrawl",
+		command: null,
+		brand: "firecrawl",
+
+	},
+	{
+		id: "plugin-render",
+		name: "Render skill pack",
+		kind: "plugin",
+		provider: "Render",
+		description:
+			"21 skills: deploy, blueprints, Postgres, cron jobs, Docker, domains, scaling, and Render MCP operations.",
+		source: "cursor-public/render",
+		command: null,
+		brand: "render",
+
+	},
+	{
+		id: "plugin-huggingface",
+		name: "Hugging Face skill pack",
+		kind: "plugin",
+		provider: "Hugging Face",
+		description:
+			"Dataset viewer, model training, evaluation, Hub CLI, Gradio, and Jobs for ML workflows on Hugging Face.",
+		source: "cursor-public/huggingface-skills",
+		command: null,
+		brand: "huggingface",
+
+	},
+	{
+		id: "plugin-context7",
+		name: "Context7 skill pack",
+		kind: "plugin",
+		provider: "Upstash",
+		description:
+			"Up-to-date library documentation lookup via Context7 MCP — version-specific docs from source repos.",
+		source: "cursor-public/context7-plugin",
+		command: null,
+		brand: "context7",
+
+	},
+	{
+		id: "plugin-superpowers",
+		name: "Superpowers skill pack",
+		kind: "plugin",
+		provider: "obra",
+		description:
+			"14 skills: TDD, systematic debugging, planning, code review, git worktrees, and verification-before-completion.",
+		source: "cursor-public/superpowers",
+		command: null,
+
+	},
+	{
+		id: "plugin-slack",
+		name: "Slack skill pack",
+		kind: "plugin",
+		provider: "Slack",
+		description:
+			"Slack MCP — search channels, send messages, and automate workspace actions from the agent.",
+		source: "cursor-public/slack",
+		command: null,
+		brand: "slack",
+
+	},
+	{
+		id: "mcp-granola",
+		name: "Granola MCP",
+		kind: "mcp",
+		provider: "Granola",
+		description:
+			"Query meetings, list folders, fetch transcripts, and search notes from Granola via MCP.",
+		source: "plugin-granola-granola",
+		command: null,
+		brand: "granola",
+
+	},
+	{
+		id: "mcp-render",
+		name: "Render MCP",
+		kind: "mcp",
+		provider: "Render",
+		description:
+			"Deploy, inspect logs, manage services, Postgres, and blueprints on Render through MCP.",
+		source: "plugin-render-render",
+		command: null,
+		brand: "render",
+
+	},
+	{
+		id: "mcp-context7",
+		name: "Context7 MCP",
+		kind: "mcp",
+		provider: "Upstash",
+		description:
+			"Resolve library IDs and query up-to-date documentation for any framework or package.",
+		source: "plugin-context7-plugin-context7",
+		command: null,
+		brand: "context7",
+
+	},
+	{
+		id: "mcp-huggingface",
+		name: "Hugging Face MCP",
+		kind: "mcp",
+		provider: "Hugging Face",
+		description:
+			"Hugging Face Hub operations — models, datasets, spaces, and inference via MCP.",
+		source: "plugin-huggingface-skills",
+		command: null,
+		brand: "huggingface",
+
+	},
+	{
+		id: "cli-firecrawl",
+		name: "Firecrawl CLI",
+		kind: "cli",
+		provider: "Firecrawl",
+		description:
+			"Scrape, crawl, map, and search the web with agent-optimized markdown output.",
+		source: "https://docs.firecrawl.dev",
+		command: "npm install -g firecrawl-cli",
+		brand: "firecrawl",
+
+	},
 	// -- Misc agent utilities --
 	{
 		id: "tool-floci",

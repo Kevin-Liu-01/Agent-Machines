@@ -34,6 +34,10 @@ import type {
 } from "@/lib/agents/protocol";
 
 import { EventCard } from "./EventCard";
+import { AddAbilityChip } from "./AddAbilityChip";
+import { usePackageSuggestions } from "./usePackageSuggestions";
+import type { PackageSuggestion } from "@/lib/packages/types";
+import { findPackage } from "@/lib/packages/catalog";
 
 type HealthInfo = {
 	ok: boolean;
@@ -57,6 +61,9 @@ export type ActivityStreamProps = {
 	onSend: (text: string) => void;
 	onStop: () => void;
 	onSelectArtifact: (artifact: ConversationArtifact) => void;
+	sessionPackageIds?: string[];
+	onAcceptSuggestion?: (suggestion: PackageSuggestion) => void | Promise<void>;
+	onRemoveSessionPackage?: (packageId: string) => void;
 };
 
 export function ActivityStream({
@@ -74,11 +81,32 @@ export function ActivityStream({
 	onSend,
 	onStop,
 	onSelectArtifact,
+	sessionPackageIds = [],
+	onAcceptSuggestion,
+	onRemoveSessionPackage,
 }: ActivityStreamProps) {
 	const [input, setInput] = useState("");
 	const [streamDuration, setStreamDuration] = useState(0);
+	const [attaching, setAttaching] = useState(false);
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const streamStartRef = useRef(0);
+
+	const { topSuggestion } = usePackageSuggestions({
+		draft: input,
+		machineId: activeMachineId,
+		sessionPackageIds,
+		disabled: disabled || streaming || !onAcceptSuggestion,
+	});
+
+	const acceptSuggestion = useCallback(async () => {
+		if (!topSuggestion || !onAcceptSuggestion || attaching) return;
+		setAttaching(true);
+		try {
+			await onAcceptSuggestion(topSuggestion);
+		} finally {
+			setAttaching(false);
+		}
+	}, [topSuggestion, onAcceptSuggestion, attaching]);
 
 	useEffect(() => {
 		const node = scrollRef.current;
@@ -110,6 +138,11 @@ export function ActivityStream({
 
 	const handleKeyDown = useCallback(
 		(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+			if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && topSuggestion && onAcceptSuggestion) {
+				e.preventDefault();
+				void acceptSuggestion();
+				return;
+			}
 			if (e.key === "Enter" && !e.shiftKey) {
 				e.preventDefault();
 				const text = input.trim();
@@ -119,7 +152,7 @@ export function ActivityStream({
 				}
 			}
 		},
-		[input, onSend],
+		[input, onSend, topSuggestion, onAcceptSuggestion, acceptSuggestion],
 	);
 
 	return (
@@ -208,10 +241,48 @@ export function ActivityStream({
 			</div>
 
 			{/* Prompt input */}
-			<form
-				onSubmit={handleSubmit}
-				className="flex shrink-0 items-end gap-3 border-t border-[var(--ret-border)] p-4"
-			>
+			<div className="flex shrink-0 flex-col gap-2 border-t border-[var(--ret-border)] p-4">
+				{sessionPackageIds.length > 0 ? (
+					<div className="flex flex-wrap items-center gap-2">
+						<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+							attached
+						</span>
+						{sessionPackageIds.map((id) => {
+							const pkg = findPackage(id);
+							if (!pkg) return null;
+							return (
+								<span
+									key={id}
+									className="inline-flex items-center gap-1.5 rounded-full border border-[var(--ret-purple)]/30 bg-[var(--ret-purple-glow)] px-2 py-0.5 font-mono text-[10px] text-[var(--ret-text)]"
+								>
+									{pkg.name}
+									{onRemoveSessionPackage ? (
+										<button
+											type="button"
+											className="text-[var(--ret-text-muted)] transition-colors hover:text-[var(--ret-text)]"
+											onClick={() => onRemoveSessionPackage(id)}
+											aria-label={`Remove ${pkg.name}`}
+										>
+											×
+										</button>
+									) : null}
+								</span>
+							);
+						})}
+					</div>
+				) : null}
+
+				{topSuggestion && onAcceptSuggestion ? (
+					<div className="flex flex-wrap items-center gap-2">
+						<AddAbilityChip
+							suggestion={topSuggestion}
+							onAccept={() => void acceptSuggestion()}
+							disabled={streaming || disabled || attaching}
+						/>
+					</div>
+				) : null}
+
+				<form onSubmit={handleSubmit} className="flex items-end gap-3">
 				<textarea
 					className={cn(
 						"min-h-[44px] max-h-[200px] flex-1 resize-none",
@@ -240,7 +311,8 @@ export function ActivityStream({
 				>
 					Send
 				</ReticleButton>
-			</form>
+				</form>
+			</div>
 		</div>
 	);
 }

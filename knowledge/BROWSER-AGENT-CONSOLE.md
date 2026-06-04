@@ -249,7 +249,7 @@ These are product tradeoffs, not failures. The goal is **operate agent runtimes*
 ## Related docs
 
 - [Four-paragraph explainer (shareable)](./BROWSER-AGENT-CONSOLE-EXPLAINER.md)
-- [YC partner prep — runtime risk / substrate copy / who pays](./YC-PARTNER-PREP.md)
+- [Technical whitepaper — primitives, patterns, positioning](../docs/WHITEPAPER.md)
 - [Fleet dashboard notes](./FLEET-DASHBOARD-2026-05-22.md)
 - Demo script in repo root [`memory.md`](../memory.md)
 

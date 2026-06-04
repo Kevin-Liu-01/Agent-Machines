@@ -14,6 +14,8 @@ for (const script of [
 	"sync-memory.mjs",
 	"sync-presets.mjs",
 	"sync-defaults.mjs",
+	"sync-packages.mjs",
+	"sync-cursor-plugins.mjs",
 ]) {
 	const path = join(HERE, script);
 	const result = spawnSync(process.execPath, [path], { stdio: "inherit" });

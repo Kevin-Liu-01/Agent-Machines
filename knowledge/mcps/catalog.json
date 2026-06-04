@@ -368,6 +368,50 @@
       "transport": "stdio",
       "owner": "Cursor",
       "toolCount": 2
+    },
+    {
+      "id": "granola",
+      "name": "granola",
+      "tier": "bundled",
+      "transport": "http",
+      "owner": "Granola",
+      "link": "https://granola.ai",
+      "installCommand": null,
+      "requiredEnv": [],
+      "toolCount": 5
+    },
+    {
+      "id": "render",
+      "name": "render",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Render",
+      "link": "https://render.com/docs",
+      "installCommand": "npx -y @render/mcp-server",
+      "requiredEnv": ["RENDER_API_KEY"],
+      "toolCount": 8
+    },
+    {
+      "id": "context7",
+      "name": "context7",
+      "tier": "bundled",
+      "transport": "http",
+      "owner": "Upstash",
+      "link": "https://github.com/upstash/context7",
+      "installCommand": null,
+      "requiredEnv": [],
+      "toolCount": 2
+    },
+    {
+      "id": "huggingface",
+      "name": "huggingface",
+      "tier": "bundled",
+      "transport": "stdio",
+      "owner": "Hugging Face",
+      "link": "https://huggingface.co/docs",
+      "installCommand": null,
+      "requiredEnv": ["HF_TOKEN"],
+      "toolCount": 6
     }
   ]
 }

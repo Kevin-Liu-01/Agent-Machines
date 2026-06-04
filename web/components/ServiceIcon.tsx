@@ -61,7 +61,12 @@ export type ServiceSlug =
 	| "sanity"
 	| "e2b"
 	| "sprites"
-	| "openrouter";
+	| "openrouter"
+	| "render"
+	| "firecrawl"
+	| "granola"
+	| "context7"
+	| "huggingface";
 
 export const SERVICE_LABEL: Record<ServiceSlug, string> = {
 	vercel: "Vercel",
@@ -104,6 +109,11 @@ export const SERVICE_LABEL: Record<ServiceSlug, string> = {
 	e2b: "E2B",
 	sprites: "Sprites",
 	openrouter: "OpenRouter",
+	render: "Render",
+	firecrawl: "Firecrawl",
+	granola: "Granola",
+	context7: "Context7",
+	huggingface: "Hugging Face",
 };
 
 const SERVICE_SET = new Set<string>(Object.keys(SERVICE_LABEL));

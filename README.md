@@ -30,6 +30,7 @@ Source: <https://github.com/Kevin-Liu-01/agent-machines>
 - [Quick start](#quick-start)
 - [CLI](#cli)
 - [Web app](#web-app)
+- [Dashboard surfaces](#dashboard-surfaces)
 - [Repository layout](#repository-layout)
 - [Data boundaries and security](#data-boundaries-and-security)
 - [Further reading](#further-reading)
@@ -169,8 +170,13 @@ A worker is a runtime **plus** a composable harness. Counts are derived from the
 | **Service routes** | loadout registry | MCP → CLI → skill preference per vendor |
 | **CLIs** | bootstrap install | agent-browser, Playwright, gh, curl, jq, sqlite3, and more |
 | **Agent-native tools** | per runtime | vary by runtime; Hermes is richest (terminal, fs, browser, vision, cron, memory, delegate) |
+| **Registry (install)** | `web/lib/dashboard/registry/*` | **1,400+** searchable items — official MCP registry (paginated cache), skills.sh, npm CLIs, bundled loadout catalog, Cursor plugin scan, GitHub/URL manifests |
+| **Workers** | preset + Memory bundle | deployable specialist templates (runtime, router, persona) — distinct from raw machine provisioning |
+| **Memory bundles** | portable harness slice | persona, rules, abilities — install into any runtime or export as a prompt |
 
 Skills follow the **SKILL.md protocol**: procedures saved to the machine compound over time and cannot be exported out of a stateless chat product.
+
+**Loadout vs registry:** **Loadout** is what is already active on a machine (skills, MCPs, service routes). **Registry** is the install catalog — search, add to loadout, sync on deploy/reload.
 
 ---
 
@@ -268,14 +274,44 @@ CLERK_SECRET_KEY=...
 
 | Route | Purpose |
 |-------|---------|
-| `/` | landing: fleet demo, activity grid, loadout, architecture |
-| `/dashboard` | fleet overview, gateway health, telemetry |
+| `/` | landing — dual-gear hero (runtime × substrate), capabilities, loadout, architecture |
+| `/dashboard` | fleet overview, activity, gateway health, usage summary |
 | `/dashboard/setup` | route runtime + substrate, credentials, provision |
-| `/dashboard/machines` | fleet supervision, per-machine focus |
+| `/dashboard/machines` | fleet supervision, stats/heatmaps, per-machine focus (`?focus=`) |
+| `/dashboard/machines/[id]` | machine detail — usage charts, gateway, bootstrap, quick actions |
 | `/dashboard/machines/[id]/terminal` | **Browser Agent Console** (interactive + one-shot) |
 | `/dashboard/machines/[id]/chat` | gateway chat for a machine |
-| `/dashboard/loadout` | skills, MCP catalog, service and task routes |
-| `/dashboard/skills` `/mcps` `/cron` `/logs` `/sessions` `/artifacts` | harness + observation surfaces |
+| `/dashboard/machines/[id]/agents` | per-machine agent/runtime context |
+| `/dashboard/workers` | deployable presets (runtime + router + Memory bundle) |
+| `/dashboard/memory` | owned Memory bundles (persona, rules, abilities) |
+| `/dashboard/registry` | browse/install tools, skills, MCPs, CLIs (1,400+ catalog) |
+| `/dashboard/loadout` | active stack on a machine — skills, MCPs, service/task routes |
+| `/dashboard/skills` `/mcps` `/cron` | harness libraries + scheduled jobs |
+| `/dashboard/usage` | cost and utilization rollups (Supabase-backed) |
+| `/dashboard/benchmarks` | cross-substrate boot/exec matrix |
+| `/dashboard/settings` | per-account API keys and router defaults |
+| `/dashboard/sessions` `/logs` `/artifacts` `/cursor` | observation surfaces |
+
+Command palette (`⌘K`) jumps across machines, registry, loadout, and console routes.
+
+---
+
+## Dashboard surfaces
+
+Beyond provision-and-chat, the control plane is a **fleet operations desk**:
+
+| Surface | What it does |
+|---------|----------------|
+| **Machines** | Live state, bootstrap phase, gateway probe, split-view chat (`?focus=`), deploy-and-talk entry |
+| **Workers** | Curated presets — pick runtime, model/router, and a Memory bundle, then deploy to any substrate |
+| **Memory** | Portable persona + rules + abilities; import/export; referenced by Workers |
+| **Registry** | Unified search over MCP registry, skills.sh, npm, bundled catalog, Cursor plugins — add to loadout |
+| **Loadout** | Ranked service routes (MCP → CLI → skill), task routes, trusted add-ons already on the machine |
+| **Cron** | User-defined schedules stored in config; **`/api/internal/cron/tick`** (Vercel Cron every 5 min) evaluates and execs on machines |
+| **Usage / metrics** | Supabase-backed utilization, activity timeline, per-machine charts; collector runs on cron tick + on-demand |
+| **Benchmarks** | Compare E2B, Sprites, Dedalus, Vercel on boot, exec, streaming tier |
+
+**Supabase** is required for durable metrics, usage, and activity — without it the app falls back to Clerk metadata only. See `web/.env.local.example`.
 
 ---
 
@@ -285,11 +321,17 @@ CLERK_SECRET_KEY=...
 agent-machines/
   src/           CLI + bootstrap (tsx)
   web/           Next.js control plane (site + dashboard + provider adapters)
-    app/api/dashboard/terminal/*   interactive console routes
-    lib/providers/*                MachineProvider implementations
-    lib/bootstrap/runner.ts        browser bootstrap (phase recipes)
+    app/api/dashboard/terminal/*     Browser Agent Console
+    app/api/dashboard/registry/*     unified install catalog search
+    app/api/internal/cron/tick       scheduler + metrics collector (Vercel Cron)
+    lib/providers/*                  MachineProvider (e2b | sprites | dedalus | vercel)
+    lib/dashboard/registry/*         MCP registry, skills.sh, npm, bundled adapters
+    lib/bootstrap/runner.ts          browser bootstrap (phase recipes)
     lib/dashboard/terminal-session.ts  tmux-over-exec session logic
-    docs/sandbox-terminal-gateway.md   engineering spec
+    lib/metrics/collector.ts         usage + machine metrics → Supabase
+    docs/WHITEPAPER.md               public technical whitepaper
+    docs/sandbox-terminal-gateway.md engineering spec
+    docs/README.md                   internal doc index
   knowledge/     skills, mcps, VISION.md, AGENTS.md, BROWSER-AGENT-CONSOLE.md
   mcp/           cursor-bridge MCP server
 ```
@@ -311,12 +353,15 @@ agent-machines/
 
 | Doc | What it covers |
 |-----|----------------|
+| [`docs/WHITEPAPER.md`](docs/WHITEPAPER.md) | technical whitepaper — primitives, patterns, architecture |
 | [`knowledge/VISION.md`](knowledge/VISION.md) | product vision and defensibility |
 | [`knowledge/BROWSER-AGENT-CONSOLE.md`](knowledge/BROWSER-AGENT-CONSOLE.md) | full Browser Agent Console architecture + positioning |
 | [`knowledge/BROWSER-AGENT-CONSOLE-EXPLAINER.md`](knowledge/BROWSER-AGENT-CONSOLE-EXPLAINER.md) | four-paragraph plain-language explainer |
 | [`knowledge/AGENT-MACHINES-EXPLAINER.md`](knowledge/AGENT-MACHINES-EXPLAINER.md) | three-paragraph whole-product explainer |
 | [`web/docs/sandbox-terminal-gateway.md`](web/docs/sandbox-terminal-gateway.md) | streaming gateway engineering spec |
+| [`web/docs/README.md`](web/docs/README.md) | internal doc index (engineering + knowledge) |
 | [`web/README.md`](web/README.md) | control-plane app details |
+| [`knowledge/FLEET-DASHBOARD-2026-05-22.md`](knowledge/FLEET-DASHBOARD-2026-05-22.md) | fleet UX research + live-fire notes |
 
 ---
 

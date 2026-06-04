@@ -10,20 +10,25 @@ Agent Machines is the **product layer** above sandboxes: a control plane that de
 
 **Fleet:** Provision design, news, code, or ops agents from opinionated presets (Hermes, OpenClaw, Claude Code, Codex). Vendor SKUs are UI + skills + MCPs + prompts; we ship that composable, one click per specialist, one dashboard for the fleet.
 
-**Providers:** E2B, Sprites.dev, Dedalus Machines, and Vercel Sandbox (interchangeable). Dedalus benchmarks best on boot/sleep in our harness — strong default, not the product.
+**Providers:** E2B, Sprites.dev, Dedalus Machines, Vercel Sandbox (interchangeable). Dedalus benchmarks best on boot/sleep — strong default, not the product.
 
-Open source (MIT): <https://github.com/Kevin-Liu-01/agent-machines>
+Open source (MIT): <https://github.com/Kevin-Liu-01/agent-machines>  
+Whitepaper: <https://github.com/Kevin-Liu-01/Agent-Machines/blob/main/docs/WHITEPAPER.md>
 
 ## Core facts
 
 - **Product:** dual routing + persistent workers + fleet supervision — not VM hosting, not chat sessions
-- **Persistence:** `~/.agent-machines/` on `/home/machine` — chats, skills, cron, sessions, MCP config
+- **Browser Agent Console:** real agent CLIs (Codex, Claude Code, Hermes, OpenClaw) in the browser via tmux-over-exec + SSE — no local terminal, no tunnel on the console path
+- **Persistence:** `~/.agent-machines/` on the provider home dir — chats, skills, cron, sessions, MCP config
 - **Agents:** Hermes, OpenClaw, Claude Code, Codex CLI
+- **Routers:** Dedalus, OpenRouter, Vercel AI Gateway, native keys, OpenAI-compatible gateways
 - **Harness** (registry-derived — `web/lib/platform/harness.ts`):
   - **161** SKILL.md skills
   - **27** service routes · **35** MCP servers · **23+** CLIs
   - **9–23** agent-native tools by runtime
-- **Observation:** activity, sessions, tool calls, logs, cost
+- **Registry:** **1,400+** installable items (MCP registry, skills.sh, npm, bundled catalog, Cursor plugins)
+- **Workers + Memory:** deployable presets and portable persona bundles
+- **Observation:** Supabase metrics, usage, activity, sessions, logs, cron (Vercel tick every 5 min)
 - **Roadmap:** MCP/CLI for agent-to-agent fleet orchestration
 
 ## Important pages

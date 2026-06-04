@@ -85,4 +85,6 @@ export type Message = {
 export type ChatRequestBody = {
 	messages: Array<{ role: Role; content: string }>;
 	machineId?: string;
+	/** Session attach package ids — injected into the last user message server-side. */
+	sessionPackageIds?: string[];
 };

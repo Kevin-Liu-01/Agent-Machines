@@ -8,7 +8,7 @@ Agent Machines is the **product layer** above sandboxes — not another containe
 
 runtime · skills · MCP · integrations · cron · observation · fleet management
 
-…on any substrate you route to (E2B, Sprites.dev, Dedalus Machines).
+…on any substrate you route to (E2B, Sprites.dev, Dedalus Machines, Vercel Sandbox).
 
 | Analogy | Meaning |
 |---------|---------|
@@ -17,7 +17,7 @@ runtime · skills · MCP · integrations · cron · observation · fleet managem
 
 People don't want a bare sandbox. They want a worker that audits code, runs on a schedule, and gets smarter over time. **That's what we ship.** Substrate vendors get a primary use case; our value stays in the harness and control plane.
 
-**Dedalus** is one of three live providers and currently benchmarks best on boot latency (~250ms) and sleep/wake — a competitive default, **not the product**. Sandboxed environments are exceedingly hard to build; we prefer **routing** over native infra for now.
+**Dedalus** is one of four live providers and currently benchmarks best on boot latency (~250ms) and sleep/wake — a competitive default, **not the product**. Sandboxed environments are exceedingly hard to build; we prefer **routing** over native infra for now.
 
 ## Specialist fleet
 
@@ -29,6 +29,17 @@ Named vendor products (e.g. Anthropic design modes) are **UI + skills + MCPs + s
 
 1. **Humans** — Route runtime + substrate, provision presets, supervise fleet.
 2. **Other agents (endgame)** — MCP + CLI so head agents provision, route, observe, tear down workers.
+
+## Control plane surfaces (dashboard)
+
+| Surface | Role |
+|---------|------|
+| **Machines** | Provision, bootstrap, Browser Agent Console, gateway chat, fleet supervision |
+| **Workers** | One-click specialist presets (runtime + router + Memory bundle) |
+| **Memory** | Portable persona/rules/abilities — owned by the account, not the vendor |
+| **Registry** | 1,400+ installable tools (MCP registry, skills.sh, npm, bundled catalog) |
+| **Loadout** | Active harness on a machine (distinct from registry browse) |
+| **Cron + metrics** | Scheduled exec on machines; Supabase-backed usage and activity |
 
 ## The harness (registry-driven)
 
