@@ -22,6 +22,7 @@ import {
 	type TrustedAddOn,
 } from "@/lib/dashboard/loadout";
 import { findCursorPlugin } from "@/lib/dashboard/cursor-plugins-data";
+import marketplaceRegistryData from "@/data/cursor-marketplace-registry.json";
 import { listMcpServers } from "@/lib/dashboard/mcps";
 import { listSkills } from "@/lib/dashboard/skills";
 
@@ -74,6 +75,40 @@ function toRegistryItem(addon: TrustedAddOn): RegistryItem {
 	};
 }
 
+type MarketplaceRegistryShape = {
+	items: Array<{
+		id: string;
+		name: string;
+		kind: TrustedAddOn["kind"];
+		provider: string;
+		description: string;
+		source: string;
+		command: string | null;
+		brand: string | null;
+		logoUrl: string | null;
+		homepage: string | null;
+	}>;
+};
+
+function marketplaceRegistryItems(): RegistryItem[] {
+	const data = marketplaceRegistryData as MarketplaceRegistryShape;
+	return (data.items ?? []).map((item) => ({
+		id: item.id,
+		name: item.name,
+		kind: item.kind,
+		description: item.description,
+		provider: item.provider,
+		source: "bundled",
+		installCommand: item.command,
+		logoUrl: item.logoUrl,
+		brand: (item.brand as RegistryItem["brand"]) ?? null,
+		stars: null,
+		version: null,
+		homepage: item.homepage,
+		installed: false,
+	}));
+}
+
 let catalogCache: RegistryItem[] | null = null;
 
 function buildCatalog(): RegistryItem[] {
@@ -85,7 +120,10 @@ function buildCatalog(): RegistryItem[] {
 		services: SERVICES,
 		tasks: TASKS,
 	});
-	catalogCache = addons.map(toRegistryItem);
+	const byId = new Map<string, RegistryItem>();
+	for (const item of marketplaceRegistryItems()) byId.set(item.id, item);
+	for (const addon of addons) byId.set(addon.id, toRegistryItem(addon));
+	catalogCache = Array.from(byId.values());
 	return catalogCache;
 }
 

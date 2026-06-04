@@ -91,18 +91,24 @@ export const cursorPluginsAdapter: RegistryAdapter = {
 			let items = scanResults.map((entry) =>
 				toRegistryItem({
 					id: entry.slug,
+					cursorPluginId: entry.slug,
 					cursorVendor: entry.vendor,
 					name: entry.name,
 					description: entry.description || `${entry.skillCount} skills`,
 					homepage: "https://cursor.com/marketplace",
 					docsUrl: "https://cursor.com/docs/plugins",
 					marketplaceUrl: "https://cursor.com/marketplace",
+					repositoryUrl: null,
 					brand: null,
 					logoUrl: null,
 					mcpServerIds: [],
 					skillSlugs: [],
+					skillDetails: [],
 					registryItemIds: [],
 					triggers: [],
+					publisher: null,
+					isVerified: false,
+					tags: [],
 				}),
 			);
 			if (opts.query) {
@@ -128,7 +134,7 @@ export const cursorPluginsAdapter: RegistryAdapter = {
 					(i.brand?.toLowerCase().includes(q) ?? false),
 			);
 		}
-		items = items.slice(0, opts.limit ?? 80);
+		items = items.slice(0, opts.limit ?? 200);
 		cacheSet(key, items);
 		return items;
 	},

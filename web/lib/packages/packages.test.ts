@@ -9,11 +9,12 @@ import { injectSessionAbilities, formatAbilityInfoBlock, resolveSessionPackages 
 import { collectActiveAbilityIds, matchPackages, scorePackageMatch } from "./match";
 
 describe("listPackages", () => {
-	it("loads synced Cursor marketplace packages", () => {
-		expect(listPackages().length).toBeGreaterThanOrEqual(20);
+	it("loads full Cursor marketplace catalog from API sync", () => {
+		expect(listPackages().length).toBeGreaterThanOrEqual(140);
 		expect(findPackage("stripe")).toBeTruthy();
-		expect(findPackage("granola")).toBeTruthy();
+		expect(findPackage("heygen")).toBeTruthy();
 		expect(findPackage("stripe")?.docsUrl).toMatch(/^https:\/\//);
+		expect(findPackage("heygen")?.logoUrl).toMatch(/^https:\/\//);
 	});
 });
 
