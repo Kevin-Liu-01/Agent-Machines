@@ -69,7 +69,7 @@ const guarded = clerkMiddleware(async (auth, request) => {
 	return NextResponse.redirect(signInUrl);
 });
 
-export default async function middleware(
+export default async function proxy(
 	request: NextRequest,
 	event: NextFetchEvent,
 ) {
