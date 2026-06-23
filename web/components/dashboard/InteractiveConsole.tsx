@@ -12,6 +12,11 @@ import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
 import { agentLabel, agentLaunchCommand, isCliAgent } from "@/lib/dashboard/agent-launch";
+import {
+	isPrintableInput,
+	stripSuppressedEcho,
+	stripTerminalDeviceResponses,
+} from "@/lib/dashboard/terminal-input";
 
 type Status = "connecting" | "ready" | "offline" | "error";
 
@@ -128,23 +133,20 @@ export function InteractiveConsole({
 		let inputTimer: ReturnType<typeof setTimeout> | null = null;
 		const offsetRef = { current: 0 };
 		let pendingWrite = "";
-		let pendingBytes = 0;
 		let writeScheduled = false;
+		let optimisticLine = "";
+		let suppressedEcho = "";
 
 		const flushPendingWrite = () => {
 			writeScheduled = false;
 			if (!pendingWrite || !term) return;
 			const chunk = pendingWrite;
-			const bytes = pendingBytes;
 			pendingWrite = "";
-			pendingBytes = 0;
 			term.write(chunk);
-			offsetRef.current += bytes;
 		};
 
-		const scheduleWrite = (data: string, bytes: number) => {
+		const scheduleWrite = (data: string) => {
 			pendingWrite += data;
-			pendingBytes += bytes;
 			if (writeScheduled) return;
 			writeScheduled = true;
 			requestAnimationFrame(flushPendingWrite);
@@ -175,8 +177,13 @@ export function InteractiveConsole({
 						{ signal: streamAbort.signal },
 					);
 					if (!r.ok || !r.body) {
-						await sleep(400);
-						continue;
+						setStatus(r.status === 503 ? "offline" : "error");
+						setDetail(
+							r.status === 503
+								? "Machine is not awake."
+								: `Terminal stream failed with HTTP ${r.status}.`,
+						);
+						return;
 					}
 					const reader = r.body.getReader();
 					const dec = new TextDecoder();
@@ -194,14 +201,29 @@ export function InteractiveConsole({
 								if (line.startsWith("event:")) ev = line.slice(6).trim();
 								else if (line.startsWith("data:")) ds = line.slice(5).trim();
 							}
-							if (ev !== "output" || !ds) continue;
+							if (!ds) continue;
 							try {
-								const o = JSON.parse(ds) as { data?: string; bytes?: number };
-								if (o.data) {
-									scheduleWrite(
-										o.data,
-										o.bytes ?? new TextEncoder().encode(o.data).length,
-									);
+								const o = JSON.parse(ds) as {
+									data?: string;
+									bytes?: number;
+									message?: string;
+								};
+								if (ev === "offline") {
+									setStatus("offline");
+									setDetail(o.message ?? "Machine is not awake.");
+									return;
+								}
+								if (ev === "error") {
+									setStatus("error");
+									setDetail(o.message ?? "Terminal stream failed.");
+									return;
+								}
+								if (ev === "output" && o.data) {
+									offsetRef.current +=
+										o.bytes ?? new TextEncoder().encode(o.data).length;
+									const stripped = stripSuppressedEcho(o.data, suppressedEcho);
+									suppressedEcho = stripped.pendingEcho;
+									if (stripped.data) scheduleWrite(stripped.data);
 								}
 							} catch {
 								// skip malformed frame
@@ -252,9 +274,10 @@ export function InteractiveConsole({
 				if (!data) return;
 				sendInputRef.current(data);
 			};
-			term.onData((d) => {
-				inputBuf += d;
-				if (shouldFlushInputImmediately(d)) {
+
+			const queueRawInput = (data: string) => {
+				inputBuf += data;
+				if (shouldFlushInputImmediately(data)) {
 					if (inputTimer) {
 						clearTimeout(inputTimer);
 						inputTimer = null;
@@ -263,6 +286,45 @@ export function InteractiveConsole({
 					return;
 				}
 				if (!inputTimer) inputTimer = setTimeout(flushInput, INPUT_COALESCE_MS);
+			};
+
+			const flushOptimisticLine = () => {
+				if (!optimisticLine) return;
+				suppressedEcho += optimisticLine;
+				queueRawInput(optimisticLine);
+				optimisticLine = "";
+			};
+
+			const commitOptimisticLine = () => {
+				suppressedEcho += `${optimisticLine}\r\n`;
+				term?.write("\r\n");
+				queueRawInput(`${optimisticLine}\r`);
+				optimisticLine = "";
+			};
+
+			term.onData((d) => {
+				const data = stripTerminalDeviceResponses(d);
+				if (!data) return;
+
+				if (data === "\r") {
+					commitOptimisticLine();
+					return;
+				}
+
+				if (data === "\x7f" && optimisticLine.length > 0) {
+					optimisticLine = Array.from(optimisticLine).slice(0, -1).join("");
+					term?.write("\b \b");
+					return;
+				}
+
+				if (isPrintableInput(data)) {
+					optimisticLine += data;
+					term?.write(data);
+					return;
+				}
+
+				flushOptimisticLine();
+				queueRawInput(data);
 			});
 
 			try {

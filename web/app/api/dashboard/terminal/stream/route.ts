@@ -20,7 +20,21 @@ export const maxDuration = 120;
 
 const STREAM_BUDGET_MS = 110_000;
 
+function terminalStreamEventResponse(
+	event: string,
+	data: unknown,
+	init?: ResponseInit,
+): Response {
+	return new Response(sseFrame(event, data), {
+		status: 200,
+		headers: SSE_HEADERS,
+		...init,
+	});
+}
+
 export async function GET(request: Request): Promise<Response> {
+	const start = Date.now();
+	const requestId = request.headers.get("x-vercel-id");
 	const userId = await getEffectiveUserId();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 
@@ -29,9 +43,14 @@ export async function GET(request: Request): Promise<Response> {
 	const offset = Math.max(0, Number.parseInt(url.searchParams.get("offset") ?? "0", 10) || 0);
 
 	if (!(await isMachineRunningCached(machineId))) {
-		return Response.json(
-			{ error: "machine_offline", message: "Machine is not awake." },
-			{ status: 503 },
+		return terminalStreamEventResponse(
+			"offline",
+			{
+				error: "machine_offline",
+				message: "Machine is not awake.",
+				offset,
+			},
+			{ headers: { ...SSE_HEADERS, "Cache-Control": "no-cache, no-transform, no-store" } },
 		);
 	}
 
@@ -67,6 +86,17 @@ export async function GET(request: Request): Promise<Response> {
 				write(sseFrame("idle", {}));
 			} catch (err) {
 				const message = err instanceof Error ? err.message : "stream failed";
+				console.error(
+					JSON.stringify({
+						level: "error",
+						msg: "terminal_stream_failed",
+						route: "/api/dashboard/terminal/stream",
+						requestId,
+						machineId: machineId ?? null,
+						error: message,
+						ms: Date.now() - start,
+					}),
+				);
 				write(sseFrame("error", { message }));
 			} finally {
 				closed = true;
