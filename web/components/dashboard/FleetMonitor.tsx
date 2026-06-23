@@ -1,7 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+	useCallback,
+	useEffect,
+	useMemo,
+	useState,
+	type KeyboardEvent as ReactKeyboardEvent,
+	type MouseEvent as ReactMouseEvent,
+} from "react";
 
 import { Logo } from "@/components/Logo";
 import { AgentInfoPanel, GateBanner, MachineInfoPanel } from "@/components/dashboard/AgentMachineInfo";
@@ -402,6 +409,7 @@ function MachineRow({
 	onChange: () => Promise<void>;
 	onOpenDetails: () => void;
 }) {
+	const router = useRouter();
 	const stateName = machine.live.ok ? machine.live.state : "unknown";
 	const tone = STATE_TONE[stateName] ?? "muted";
 	const providerMessage =
@@ -421,22 +429,50 @@ function MachineRow({
 			: ageHrs < 24 * 30
 				? `${Math.round(ageHrs / 24)}d`
 				: `${Math.round(ageHrs / (24 * 30))}mo`;
+	const machineHref = `/dashboard/machines/${machine.id}`;
+
+	const openMachine = useCallback((): void => {
+		router.push(machineHref);
+	}, [machineHref, router]);
+
+	const openDetails = useCallback(
+		(event: ReactMouseEvent<HTMLElement>): void => {
+			event.stopPropagation();
+			onOpenDetails();
+		},
+		[onOpenDetails],
+	);
+
+	const stopCardNavigation = useCallback(
+		(event: ReactMouseEvent<HTMLElement> | ReactKeyboardEvent<HTMLElement>): void => {
+			event.stopPropagation();
+		},
+		[],
+	);
+
+	function handleCardKeyDown(event: ReactKeyboardEvent<HTMLLIElement>): void {
+		if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return;
+		if (event.key !== "Enter" && event.key !== " ") return;
+		event.preventDefault();
+		openMachine();
+	}
+
 	return (
 		<li
+			role="link"
+			tabIndex={0}
+			aria-label={`Open ${machine.name}`}
+			onClick={openMachine}
+			onKeyDown={handleCardKeyDown}
 			className={cn(
-				"relative flex flex-col gap-2 bg-[var(--ret-bg)] px-3 py-3 transition-colors",
+				"relative flex cursor-pointer flex-col gap-2 bg-[var(--ret-bg)] px-3 py-3 transition-[background,border-color,box-shadow,transform] duration-150 focus:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--ret-text)]",
 				active
 					? "ring-1 ring-inset ring-[var(--ret-purple)]/40"
 					: "hover:bg-[var(--ret-surface)]",
 			)}
 		>
 			<div className="flex items-center justify-between gap-2">
-				<button
-					type="button"
-					onClick={onOpenDetails}
-					className="flex min-w-0 items-center gap-1.5 text-left"
-					title="View machine details"
-				>
+				<div className="flex min-w-0 items-center gap-1.5 text-left">
 					{providerMark ? <Logo mark={providerMark} size={12} /> : null}
 					<span className="truncate text-[12px] text-[var(--ret-text)] transition-colors hover:text-[var(--ret-purple)]">
 						{machine.name}
@@ -446,7 +482,7 @@ function MachineRow({
 							active
 						</ReticleBadge>
 					) : null}
-				</button>
+				</div>
 				<StateChip tone={tone}>{stateName}</StateChip>
 			</div>
 			<dl className="grid grid-cols-3 gap-1 text-[10px] text-[var(--ret-text-muted)]">
@@ -497,21 +533,26 @@ function MachineRow({
 				</p>
 			) : null}
 			<div className="flex items-center justify-between gap-2">
-				<Link
-					href={`/dashboard/machines/${machine.id}`}
-					className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)] transition-colors hover:text-[var(--ret-text)]"
+				<button
+					type="button"
+					onClick={openDetails}
+					onKeyDown={stopCardNavigation}
+					className="ret-pressable inline-flex min-h-8 items-center gap-2 border border-[var(--ret-border-hover)] bg-[var(--ret-text)] px-3 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-bg)] transition-[background,transform] duration-150 hover:-translate-y-px hover:bg-[var(--ret-text-dim)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--ret-text)]"
+					aria-label={`Open details for ${machine.name}`}
 				>
-					open →
-				</Link>
-				<MachineActions
-					machineId={machine.id}
-					state={stateName as MachineActionState}
-					capabilities={machine.capabilities}
-					active={active}
-					archived={machine.archived ?? false}
-					allowDestroy
-					onChange={onChange}
-				/>
+					open <span aria-hidden="true">→</span>
+				</button>
+				<div onClick={stopCardNavigation} onKeyDown={stopCardNavigation}>
+					<MachineActions
+						machineId={machine.id}
+						state={stateName as MachineActionState}
+						capabilities={machine.capabilities}
+						active={active}
+						archived={machine.archived ?? false}
+						allowDestroy
+						onChange={onChange}
+					/>
+				</div>
 			</div>
 		</li>
 	);
