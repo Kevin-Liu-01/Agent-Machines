@@ -34,7 +34,13 @@ import {
 	type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { type CSSProperties, useEffect, useMemo, useState } from "react";
+import {
+	type CSSProperties,
+	type ReactNode,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 
 import { SignedIn, SignedOut } from "@/components/AuthSwitch";
 import { BrandHomeLockup } from "@/components/BrandHomeLockup";
@@ -161,8 +167,10 @@ const MENU_GROUPS: ReadonlyArray<MenuGroup> = [
 
 export function PublicNavbar({
 	githubRepo,
+	githubLink,
 }: {
 	githubRepo: string;
+	githubLink?: ReactNode;
 }) {
 	const [openMenu, setOpenMenu] = useState<MenuId | null>(null);
 	const [mobileOpen, setMobileOpen] = useState(false);
@@ -235,16 +243,18 @@ export function PublicNavbar({
 					</nav>
 
 					<div className="relative z-10 ml-auto hidden shrink-0 items-center gap-2 md:flex">
-						<a
-							href={`https://github.com/${githubRepo}`}
-							target="_blank"
-							rel="noreferrer"
-							title="GitHub"
-							className="ret-nav-trigger inline-flex h-8 items-center gap-1.5 border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2.5 text-[12px] font-medium text-[var(--ret-text-dim)] hover:border-[var(--ret-border-hover)] hover:bg-[var(--ret-surface)] hover:text-[var(--ret-text)]"
-						>
-							<ServiceIcon slug="github" size={12} tone="mono" />
-							<span className="hidden lg:inline">GitHub</span>
-						</a>
+						{githubLink ?? (
+							<a
+								href={`https://github.com/${githubRepo}`}
+								target="_blank"
+								rel="noreferrer"
+								title="GitHub"
+								className="ret-nav-trigger inline-flex h-8 items-center gap-1.5 border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2.5 text-[12px] font-medium text-[var(--ret-text-dim)] hover:border-[var(--ret-border-hover)] hover:bg-[var(--ret-surface)] hover:text-[var(--ret-text)]"
+							>
+								<ServiceIcon slug="github" size={12} tone="mono" />
+								<span className="hidden lg:inline">GitHub</span>
+							</a>
+						)}
 						<ThemeToggle />
 						<SignedIn>
 							<ReticleButton as="a" href="/dashboard" variant="secondary" size="sm" className="h-8">

@@ -2,6 +2,7 @@ import { CheckCircle2 } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Footer } from "@/components/Footer";
+import { GitHubStarLink } from "@/components/GitHubStarLink";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
@@ -29,7 +30,10 @@ export function PublicDocPage({
 }: PublicDocPageProps) {
 	return (
 		<ReticlePageGrid>
-			<PublicNavbar githubRepo={SITE.githubRepo} />
+			<PublicNavbar
+				githubRepo={SITE.githubRepo}
+				githubLink={<GitHubStarLink repo={SITE.githubRepo} />}
+			/>
 			<main id="top">
 				<ReticleSection contentClassName="px-5 pt-10 pb-12 md:px-6 md:pt-16 md:pb-16">
 					<div className="border border-[var(--ret-border)] bg-[var(--ret-bg)]">

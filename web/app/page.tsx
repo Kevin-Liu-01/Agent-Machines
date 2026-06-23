@@ -5,6 +5,7 @@ import { FleetDemo } from "@/components/FleetDemo";
 import { RuntimeVizGrid } from "@/components/RuntimeVizGrid";
 import { FaqSection } from "@/components/FaqSection";
 import { Footer } from "@/components/Footer";
+import { GitHubStarLink } from "@/components/GitHubStarLink";
 import { HeroBlock } from "@/components/HeroBlock";
 import { LoadoutPreview } from "@/components/LoadoutPreview";
 import { PublicNavbar } from "@/components/PublicNavbar";
@@ -16,11 +17,15 @@ import { ReticleSpacer } from "@/components/reticle/ReticleSpacer";
 import { StatsRow } from "@/components/StatsRow";
 import { StickyRuntimeStory } from "@/components/StickyRuntimeStory";
 import { WorkflowNavigator } from "@/components/WorkflowNavigator";
+import { SITE } from "@/lib/seo/config";
 
 export default function HomePage() {
 	return (
 		<ReticlePageGrid>
-			<PublicNavbar githubRepo="Kevin-Liu-01/agent-machines" />
+			<PublicNavbar
+				githubRepo={SITE.githubRepo}
+				githubLink={<GitHubStarLink repo={SITE.githubRepo} />}
+			/>
 
 			<main id="top">
 				<ReticleSection contentClassName="" >

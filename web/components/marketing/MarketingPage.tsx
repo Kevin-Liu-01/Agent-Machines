@@ -8,6 +8,7 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 
 import { Footer } from "@/components/Footer";
+import { GitHubStarLink } from "@/components/GitHubStarLink";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import { PublicIcon } from "@/components/marketing/PublicIcon";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
@@ -26,7 +27,10 @@ type ShellProps = {
 export function MarketingShell({ children }: ShellProps) {
 	return (
 		<ReticlePageGrid>
-			<PublicNavbar githubRepo={SITE.githubRepo} />
+			<PublicNavbar
+				githubRepo={SITE.githubRepo}
+				githubLink={<GitHubStarLink repo={SITE.githubRepo} />}
+			/>
 			{children}
 			<Footer />
 		</ReticlePageGrid>
