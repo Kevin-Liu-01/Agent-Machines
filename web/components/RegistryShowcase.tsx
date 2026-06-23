@@ -25,13 +25,13 @@ const KIND_TO_CATEGORY: Record<TrustedAddOnKind, ToolCategory> = {
 	source: "search",
 };
 
-const KIND_BADGE: Record<TrustedAddOnKind, "default" | "accent" | "success" | "warning"> = {
-	skill: "accent",
-	mcp: "success",
-	cli: "warning",
+const KIND_BADGE: Record<TrustedAddOnKind, "default"> = {
+	skill: "default",
+	mcp: "default",
+	cli: "default",
 	tool: "default",
-	plugin: "accent",
-	provider: "success",
+	plugin: "default",
+	provider: "default",
 	source: "default",
 };
 
@@ -119,7 +119,7 @@ export function RegistryShowcase() {
 						className="group flex flex-col items-center gap-2 bg-[var(--ret-bg)] px-3 py-4 transition-colors hover:bg-[var(--ret-surface)]"
 					>
 						{item.brand ? (
-							<ServiceIcon slug={item.brand} size={28} tone="color" />
+							<ServiceIcon slug={item.brand} size={28} tone="mono" />
 						) : (
 							<ToolIcon
 								name={KIND_TO_CATEGORY[item.kind]}
@@ -127,7 +127,7 @@ export function RegistryShowcase() {
 								className="text-[var(--ret-text-muted)]"
 							/>
 						)}
-						<p className="text-center font-mono text-[11px] text-[var(--ret-text)] group-hover:text-[var(--ret-purple)]">
+						<p className="text-center font-mono text-[11px] text-[var(--ret-text)] group-hover:text-[var(--ret-text)]">
 							{item.name}
 						</p>
 						<ReticleBadge
@@ -194,9 +194,9 @@ export function RegistryShowcase() {
 						/>
 						<div className="mt-3 flex items-center gap-2 font-mono text-[10px] text-[var(--ret-text-muted)]">
 							<span>config</span>
-							<span className="text-[var(--ret-purple)]">{"→"}</span>
+							<span className="text-[var(--ret-text-muted)]">{"→"}</span>
 							<span>install</span>
-							<span className="text-[var(--ret-purple)]">{"→"}</span>
+							<span className="text-[var(--ret-text-muted)]">{"→"}</span>
 							<span>loadout</span>
 						</div>
 					</div>

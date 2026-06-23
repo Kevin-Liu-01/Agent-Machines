@@ -36,6 +36,7 @@ type Props = {
 	/** Source/docs URL used to derive a favicon or GitHub owner avatar. */
 	homepage?: string | null;
 	size?: number;
+	tone?: "color" | "mono";
 	className?: string;
 };
 
@@ -62,6 +63,7 @@ export function RegistryLogo({
 	name,
 	homepage,
 	size = 18,
+	tone = "color",
 	className,
 }: Props) {
 	const [failed, setFailed] = useState(0);
@@ -69,7 +71,7 @@ export function RegistryLogo({
 
 	if (brand && isServiceSlug(brand)) {
 		return (
-			<ServiceIcon slug={brand} size={size} tone="color" className={className} />
+			<ServiceIcon slug={brand} size={size} tone={tone} className={className} />
 		);
 	}
 

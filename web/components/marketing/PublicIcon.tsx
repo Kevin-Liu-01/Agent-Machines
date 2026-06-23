@@ -62,5 +62,5 @@ type Props = {
 
 export function PublicIcon({ name, className }: Props) {
 	const Icon = ICONS[name];
-	return <Icon className={className} aria-hidden="true" />;
+	return <Icon className={className} strokeWidth={1.5} aria-hidden="true" />;
 }

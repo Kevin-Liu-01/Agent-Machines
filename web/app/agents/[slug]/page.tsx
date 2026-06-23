@@ -77,27 +77,38 @@ export default async function AgentTemplatePage({ params }: Params) {
 				<SectionBand label="Template" title="Runtime, route, and tools stay explicit.">
 					<div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
 						<MetricGrid metrics={agent.metrics} />
-						<div className="rounded-[var(--ret-card-radius)] border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-5">
-							<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-								Loadout
-							</p>
-							<div className="mt-4 flex flex-wrap gap-2">
+						<div className="border border-[var(--ret-border)] bg-[var(--ret-bg)]">
+							<div className="border-b border-[var(--ret-border)] px-4 py-3">
+								<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+									Loadout
+								</p>
+							</div>
+							<div className="flex flex-wrap gap-2 border-b border-[var(--ret-border)] p-4">
 								{agent.loadout.map((item) => (
-									<ReticleBadge key={item} variant="accent" className="rounded-[var(--ret-card-radius)]">
+									<ReticleBadge key={item} variant="default">
 										{item}
 									</ReticleBadge>
 								))}
 							</div>
-							<div className="mt-6 grid gap-3 text-[13px] text-[var(--ret-text-dim)]">
-								<p>
-									<span className="text-[var(--ret-text)]">Runtime:</span> {agent.runtime}
-								</p>
-								<p>
-									<span className="text-[var(--ret-text)]">Model route:</span> {agent.modelPath}
-								</p>
-								<p>
-									<span className="text-[var(--ret-text)]">Provider lane:</span> {agent.providerLane}
-								</p>
+							<div className="font-mono text-[11px] text-[var(--ret-text-dim)]">
+								<div className="grid grid-cols-[128px_minmax(0,1fr)] border-b border-[var(--ret-border)] last:border-b-0">
+									<span className="border-r border-[var(--ret-border)] px-4 py-3 uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
+										Runtime
+									</span>
+									<span className="truncate px-4 py-3 text-[var(--ret-text)]">{agent.runtime}</span>
+								</div>
+								<div className="grid grid-cols-[128px_minmax(0,1fr)] border-b border-[var(--ret-border)] last:border-b-0">
+									<span className="border-r border-[var(--ret-border)] px-4 py-3 uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
+										Model
+									</span>
+									<span className="truncate px-4 py-3 text-[var(--ret-text)]">{agent.modelPath}</span>
+								</div>
+								<div className="grid grid-cols-[128px_minmax(0,1fr)] border-b border-[var(--ret-border)] last:border-b-0">
+									<span className="border-r border-[var(--ret-border)] px-4 py-3 uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
+										Provider
+									</span>
+									<span className="truncate px-4 py-3 text-[var(--ret-text)]">{agent.providerLane}</span>
+								</div>
 							</div>
 						</div>
 					</div>

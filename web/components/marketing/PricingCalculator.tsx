@@ -45,20 +45,20 @@ export function PricingCalculator() {
 	}, [mode]);
 
 	return (
-		<div className="rounded-[var(--ret-card-radius)] border border-[var(--ret-border-hover)] bg-[var(--ret-bg)]">
+		<div className="border border-[var(--ret-border-hover)] bg-[var(--ret-bg)]">
 			<div className="flex flex-col gap-4 border-b border-[var(--ret-border)] p-5 md:flex-row md:items-center md:justify-between">
 				<div>
-					<h2 className="text-[20px] font-semibold tracking-tight text-[var(--ret-text)]">
+					<h2 className="text-[18px] font-semibold tracking-tight text-[var(--ret-text)]">
 						Compute model
 					</h2>
 					<p className="mt-1 text-[13px] text-[var(--ret-text-dim)]">
 						Example lane. Actual provider rates and model usage can differ.
 					</p>
 				</div>
-				<div className="relative grid grid-cols-2 rounded-[var(--ret-card-radius)] border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-1">
+				<div className="relative grid grid-cols-2 border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-1">
 					<span
 						aria-hidden="true"
-						className="ret-segmented-indicator absolute top-1 bottom-1 left-1 rounded-[var(--ret-card-radius)] bg-[var(--ret-accent)]"
+						className="ret-segmented-indicator absolute top-1 bottom-1 left-1 bg-[var(--ret-accent)]"
 						style={{
 							width: "calc(50% - 4px)",
 							transform:
@@ -70,7 +70,7 @@ export function PricingCalculator() {
 						aria-pressed={mode === "second"}
 						onClick={() => setMode("second")}
 						className={cn(
-							"ret-pressable relative z-10 min-h-10 rounded-[var(--ret-card-radius)] px-4 font-mono text-[13px]",
+							"ret-pressable relative z-10 min-h-10 px-4 font-mono text-[13px]",
 							mode === "second"
 								? "text-[var(--ret-bg)]"
 								: "text-[var(--ret-text-dim)] hover:text-[var(--ret-text)]",
@@ -83,7 +83,7 @@ export function PricingCalculator() {
 						aria-pressed={mode === "hour"}
 						onClick={() => setMode("hour")}
 						className={cn(
-							"ret-pressable relative z-10 min-h-10 rounded-[var(--ret-card-radius)] px-4 font-mono text-[13px]",
+							"ret-pressable relative z-10 min-h-10 px-4 font-mono text-[13px]",
 							mode === "hour"
 								? "text-[var(--ret-bg)]"
 								: "text-[var(--ret-text-dim)] hover:text-[var(--ret-text)]",
@@ -107,13 +107,16 @@ export function PricingCalculator() {
 							? rate.unit
 							: rate.unit.replace("hour", "second");
 					return (
-					<div key={rate.label} className="grid gap-4 p-5 tabular-nums md:grid-cols-[1fr_auto] md:items-center">
-							<div className="flex items-center gap-4">
-								<span className="flex h-12 w-12 items-center justify-center rounded-[var(--ret-card-radius)] border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] text-[var(--ret-text)]">
-									<Icon className="h-6 w-6" />
-								</span>
+						<div
+							key={rate.label}
+							className="grid tabular-nums md:grid-cols-[64px_minmax(0,1fr)_180px]"
+						>
+							<div className="flex min-h-20 items-center justify-center border-b border-[var(--ret-border)] bg-[var(--ret-bg-soft)] md:border-b-0 md:border-r">
+								<Icon className="h-5 w-5 text-[var(--ret-text-dim)]" strokeWidth={1.5} />
+							</div>
+							<div className="flex min-h-20 items-center px-4 py-4 md:px-5">
 								<div>
-									<h3 className="text-[17px] font-semibold text-[var(--ret-text)]">
+									<h3 className="text-[15px] font-semibold text-[var(--ret-text)]">
 										{rate.label}
 									</h3>
 									<p className="text-[13px] text-[var(--ret-text-dim)]">
@@ -121,8 +124,8 @@ export function PricingCalculator() {
 									</p>
 								</div>
 							</div>
-							<div className="font-mono md:text-right">
-								<p className="text-[28px] font-semibold text-[var(--ret-text)]">
+							<div className="border-t border-[var(--ret-border)] px-4 pb-4 font-mono md:border-l md:border-t-0 md:px-5 md:py-4 md:text-right">
+								<p className="text-[24px] font-semibold text-[var(--ret-text)] md:text-[28px]">
 									${formatRate(shown)}
 								</p>
 								<p className="text-[12px] text-[var(--ret-text-muted)]">

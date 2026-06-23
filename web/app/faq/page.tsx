@@ -20,7 +20,7 @@ export default function FaqPage() {
 		<PublicDocPage
 			kicker="FAQ"
 			title="Common questions."
-			description="Short answers about the current product state. No séance. No vibes-only architecture diagram. Just the machine, the agent, the tools, and the parts that are still landing."
+			description="Short answers about the current product state. The machine, agent, tools, provider lanes, and runtime boundaries stay explicit."
 			badge={`${FAQ.length} answers`}
 			aside={
 				<div className="space-y-3">

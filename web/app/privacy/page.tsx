@@ -20,7 +20,7 @@ export default function PrivacyPage() {
 		<PublicDocPage
 			kicker="PRIVACY"
 			title="Privacy Policy."
-			description="This page explains what Agent Machines stores, where it lives, and which third-party services may process it. Tiny goblin footnote: the machine is durable, so delete what you do not want preserved."
+			description="This page explains what Agent Machines stores, where it lives, and which third-party services may process it. Durable machines preserve files, so delete anything you do not want retained."
 			badge={`effective ${LEGAL_EFFECTIVE_DATE}`}
 			aside={
 				<div className="space-y-3">
