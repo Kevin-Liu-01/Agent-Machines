@@ -42,6 +42,7 @@ const VARIANTS = {
 		RIGHT_MASK_HEADER,
 	),
 	fill: cn("inset-0 h-full w-full opacity-[0.6] dark:opacity-[0.72]", BOTTOM_MASK),
+	dropdown: cn("inset-0 h-full w-full opacity-[0.34] dark:opacity-[0.44]", BOTTOM_MASK),
 	// `feature` — focal diagram for sparse cells: the full schematic hugs the
 	// right edge (`object-right` + `contain`), reads clearly, fades left.
 	feature: cn(

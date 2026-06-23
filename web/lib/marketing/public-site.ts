@@ -561,6 +561,21 @@ export const AGENT_TEMPLATES: ReadonlyArray<AgentTemplate> = [
 	},
 ];
 
+const NAV_AGENT_SLUGS = [
+	"code-reviewer",
+	"coding-agent",
+	"deep-research",
+	"data-analyst",
+	"computer-use",
+	"support-agent",
+] as const;
+
+export const NAV_AGENT_TEMPLATES: ReadonlyArray<AgentTemplate> =
+	NAV_AGENT_SLUGS.flatMap((slug) => {
+		const template = AGENT_TEMPLATES.find((agent) => agent.slug === slug);
+		return template ? [template] : [];
+	});
+
 export const RESOURCE_PAGES: ReadonlyArray<ResourcePage> = [
 	{
 		slug: "docs",

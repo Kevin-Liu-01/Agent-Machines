@@ -52,6 +52,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/cn";
 import {
 	AGENT_TEMPLATES,
+	NAV_AGENT_TEMPLATES,
 	PRODUCT_FEATURES,
 	RESOURCE_PAGES,
 	type PublicIconName,
@@ -113,7 +114,7 @@ const PRODUCT_ENTRIES: ReadonlyArray<MenuEntry> = PRODUCT_FEATURES.map((item) =>
 	icon: item.icon,
 }));
 
-const AGENT_ENTRIES: ReadonlyArray<MenuEntry> = AGENT_TEMPLATES.slice(0, 6).map(
+const AGENT_ENTRIES: ReadonlyArray<MenuEntry> = NAV_AGENT_TEMPLATES.map(
 	(item) => ({
 		href: item.href,
 		title: item.navTitle,
@@ -380,7 +381,7 @@ function MegaMenu({
 					))}
 				</div>
 				<div className="group/menu relative overflow-hidden border-t border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-5 lg:border-l lg:border-t-0">
-					<CircuitArt slug={menuCircuitSlug(group.id)} variant="fill" fit="cover" />
+					<CircuitArt slug={menuCircuitSlug(group.id)} variant="dropdown" fit="cover" />
 					<div className="relative z-10 flex h-full flex-col">
 						<p className="font-mono text-[12px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 							{group.eyebrow}
