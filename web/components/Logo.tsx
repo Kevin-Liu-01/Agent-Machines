@@ -1,5 +1,6 @@
 import Image from "next/image";
 
+import { VercelMark } from "@/components/VercelMark";
 import { cn } from "@/lib/cn";
 
 export type Mark =
@@ -162,6 +163,10 @@ export function Logo({ mark, size = 18, className, tone }: Props) {
 	const resolved = tone ?? DEFAULT_TONE[mark as Mark];
 	const dim = `${size}px`;
 	const aria = ARIA_LABEL[mark as Mark] ?? String(mark);
+
+	if (mark === "vercel" && resolved === "currentColor") {
+		return <VercelMark size={size} className={className} />;
+	}
 
 	if (resolved === "currentColor") {
 		// The Nous mark's source SVG paints a rectangular frame at its

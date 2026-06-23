@@ -1,5 +1,6 @@
 import Image from "next/image";
 
+import { VercelMark } from "@/components/VercelMark";
 import { cn } from "@/lib/cn";
 
 /**
@@ -164,6 +165,10 @@ export function ServiceIcon({
 	const label = SERVICE_LABEL[slug];
 	const resolvedTone: "color" | "mono" =
 		FORCE_MONO.has(slug) ? "mono" : (tone ?? "color");
+
+	if (slug === "vercel" && resolvedTone === "mono") {
+		return <VercelMark size={size} className={className} />;
+	}
 
 	if (resolvedTone === "mono") {
 		return (
