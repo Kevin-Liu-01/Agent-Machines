@@ -8,10 +8,12 @@ import { listSkills } from "./skills";
 const WILDCARD = "*";
 
 describe("listPresets", () => {
-	it("returns at least the core starter and exposes unique ids", () => {
+	it("returns the deployable worker catalog and exposes unique ids", () => {
 		const presets = listPresets();
-		expect(presets.length).toBeGreaterThan(0);
-		expect(presets.some((p) => p.id === "core")).toBe(true);
+		expect(presets.length).toBeGreaterThanOrEqual(10);
+		expect(presets.some((p) => p.id === "code-reviewer")).toBe(true);
+		expect(presets.some((p) => p.id === "deep-research")).toBe(true);
+		expect(presets.some((p) => p.id === "qa-browser")).toBe(true);
 		const ids = presets.map((p) => p.id);
 		expect(new Set(ids).size).toBe(ids.length);
 	});
@@ -26,7 +28,7 @@ describe("listPresets", () => {
 
 describe("findPreset", () => {
 	it("resolves a known id and returns null otherwise", () => {
-		expect(findPreset("core")?.id).toBe("core");
+		expect(findPreset("coding-agent")?.id).toBe("coding-agent");
 		expect(findPreset("does-not-exist")).toBeNull();
 	});
 });

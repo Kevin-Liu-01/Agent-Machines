@@ -1,78 +1,208 @@
 [
   {
-    "id": "core",
-    "name": "Core starter",
-    "description": "A balanced, general-purpose loadout: closed-loop development, code review, planning, browser, and shipping. A solid default for any project.",
-    "brand": "am",
-    "agentKind": "hermes",
-    "rolePrompt": null,
+    "id": "code-reviewer",
+    "name": "Code Reviewer",
+    "description": "Reviews diffs, flags regressions, runs focused checks, and returns prioritized findings with file context.",
+    "brand": "github",
+    "agentKind": "codex",
+    "rolePrompt": "You are a code review worker. Prioritize bugs, regressions, security issues, and missing tests. Lead with findings and cite exact file context.",
     "skillIds": [
-      "closed-loop-development",
-      "production-safety",
       "code-review",
-      "plan-mode-review",
-      "agent-browser",
-      "rtfm",
-      "commit",
-      "pr",
+      "gstack-review",
       "deepsec",
-      "perf",
-      "content-strategy",
-      "cursor-coding"
+      "plan-mode-review",
+      "rtfm",
+      "production-safety"
     ],
     "toolIds": ["*"],
     "mcpServerIds": ["cursor-bridge", "playwright"]
   },
   {
-    "id": "frontend-design",
-    "name": "Frontend design lab",
-    "description": "Design-heavy preset for taste work, browser QA, Figma, and visual implementation loops.",
-    "brand": "figma",
-    "agentKind": "hermes",
-    "rolePrompt": "You are a senior frontend design engineer. Bias toward distinctive, production-grade UI with strong motion and accessibility. Verify every change in the browser before claiming it works.",
+    "id": "coding-agent",
+    "name": "Coding Agent",
+    "description": "Implements scoped code changes with repo search, patching, terminal access, tests, and saved artifacts.",
+    "brand": "cursor",
+    "agentKind": "codex",
+    "rolePrompt": "You are a coding worker for scoped implementation tasks. Read the repo first, make the smallest correct change, run the nearest checks, and report changed files plus verification.",
     "skillIds": [
-      "frontend-design",
-      "frontend-design-taste",
-      "design-review",
-      "taste-redesign",
-      "agent-browser",
-      "closed-loop-development"
-    ],
-    "toolIds": ["*"],
-    "mcpServerIds": ["figma", "cursor-bridge", "playwright"]
-  },
-  {
-    "id": "production-ops",
-    "name": "Production ops",
-    "description": "Operational preset for Vercel, GitHub, Datadog, Linear, logs, CI, incidents, and deployment work.",
-    "brand": "vercel",
-    "agentKind": "hermes",
-    "rolePrompt": "You are a production operations engineer. Treat production infra as sacred, fail closed, and close the loop by verifying with logs and metrics before reporting done.",
-    "skillIds": [
-      "production-safety",
       "closed-loop-development",
-      "gh-fix-ci",
-      "deepsec",
-      "perf"
+      "cursor-coding",
+      "rtfm",
+      "commit",
+      "pr",
+      "production-safety"
     ],
     "toolIds": ["*"],
-    "mcpServerIds": ["vercel", "linear", "datadog"]
+    "mcpServerIds": ["cursor-bridge", "playwright"]
   },
   {
-    "id": "research-browser",
-    "name": "Research browser",
-    "description": "Research preset for web search, page extraction, social reach, browser automation, and citation gathering.",
+    "id": "deep-research",
+    "name": "Deep Research",
+    "description": "Gathers sources, extracts pages, keeps citations, and produces inspectable research briefs.",
     "brand": "exa",
     "agentKind": "hermes",
-    "rolePrompt": "You are a research analyst. Gather from primary sources, cite everything, and prefer empirical reads over assumptions.",
+    "rolePrompt": "You are a research worker. Start from primary sources, preserve citations, separate facts from inference, and save source notes as artifacts.",
     "skillIds": [
       "agent-reach",
-      "closed-loop-development",
-      "rtfm",
+      "last30days",
       "read-and-review",
+      "rtfm",
       "content-strategy"
     ],
     "toolIds": ["*"],
-    "mcpServerIds": ["cursor-ide-browser", "exa", "playwright"]
+    "mcpServerIds": ["exa", "brave-search", "playwright"]
+  },
+  {
+    "id": "data-analyst",
+    "name": "Data Analyst",
+    "description": "Asks connected data tools questions, checks assumptions, and saves tables or charts as artifacts.",
+    "brand": "supabase",
+    "agentKind": "hermes",
+    "rolePrompt": "You are a data analysis worker. Use scoped connectors, explain every query, validate assumptions, and save output tables or charts as artifacts.",
+    "skillIds": [
+      "db",
+      "db-write",
+      "rtfm",
+      "closed-loop-development"
+    ],
+    "toolIds": ["*"],
+    "mcpServerIds": ["supabase", "memory"]
+  },
+  {
+    "id": "computer-use",
+    "name": "Computer Use",
+    "description": "Uses browser and desktop-style tools inside the worker boundary with screenshots and verification.",
+    "brand": "openclaw",
+    "agentKind": "openclaw",
+    "rolePrompt": "You are a computer-use worker. Observe before acting, take one deliberate browser step at a time, and verify every state change with screenshots or DOM evidence.",
+    "skillIds": [
+      "computer-use",
+      "agent-browser",
+      "playwright",
+      "closed-loop-development",
+      "production-safety"
+    ],
+    "toolIds": ["*"],
+    "mcpServerIds": ["playwright", "cursor-bridge"]
+  },
+  {
+    "id": "support-agent",
+    "name": "Support Agent",
+    "description": "Triages tickets, searches knowledge, drafts replies, and routes uncertain cases with context.",
+    "brand": "slack",
+    "agentKind": "hermes",
+    "rolePrompt": "You are a support operations worker. Read the full customer context, draft concise replies, and escalate uncertain cases with the evidence needed by a human.",
+    "skillIds": [
+      "linear",
+      "slack",
+      "read-and-review",
+      "rtfm",
+      "closed-loop-development"
+    ],
+    "toolIds": ["*"],
+    "mcpServerIds": ["linear", "slack", "notion"]
+  },
+  {
+    "id": "runbook-operator",
+    "name": "Runbook Operator",
+    "description": "Runs operational playbooks with logs, approvals, deployment checks, and rollback notes.",
+    "brand": "vercel",
+    "agentKind": "hermes",
+    "rolePrompt": "You are a production runbook worker. Treat production systems as sacred, stop on unsafe ambiguity, keep command logs visible, and verify with logs or metrics before reporting done.",
+    "skillIds": [
+      "production-safety",
+      "gh-fix-ci",
+      "vercel-react-best-practices",
+      "ci-cd-best-practices",
+      "deepsec"
+    ],
+    "toolIds": ["*"],
+    "mcpServerIds": ["vercel", "linear", "datadog", "sentry"]
+  },
+  {
+    "id": "qa-browser",
+    "name": "QA Browser",
+    "description": "Walks product flows, captures screenshots, checks console output, and reports reproducible UI failures.",
+    "brand": "playwright",
+    "agentKind": "openclaw",
+    "rolePrompt": "You are a browser QA worker. Exercise real user flows, capture proof, report reproducible failures, and include console or network evidence when relevant.",
+    "skillIds": [
+      "gstack-qa",
+      "qa",
+      "dogfood",
+      "agent-browser",
+      "playwright"
+    ],
+    "toolIds": ["*"],
+    "mcpServerIds": ["playwright", "cursor-bridge"]
+  },
+  {
+    "id": "knowledge-curator",
+    "name": "Knowledge Curator",
+    "description": "Turns docs, notes, transcripts, and artifacts into reusable machine context and indexed memory.",
+    "brand": "notion",
+    "agentKind": "hermes",
+    "rolePrompt": "You are a knowledge curator worker. Normalize raw notes into durable context, preserve source links, and keep indexes and handoff docs current.",
+    "skillIds": [
+      "update-docs",
+      "mintlify-mdx",
+      "read-and-review",
+      "rtfm",
+      "content-strategy"
+    ],
+    "toolIds": ["*"],
+    "mcpServerIds": ["notion", "memory", "cursor-bridge"]
+  },
+  {
+    "id": "security-auditor",
+    "name": "Security Auditor",
+    "description": "Reviews dependencies, secrets, config, and exposed surfaces with a threat-model lens.",
+    "brand": "sentry",
+    "agentKind": "codex",
+    "rolePrompt": "You are a security audit worker. Define assets and trust boundaries, inspect config and code paths, and prioritize risks by exploitability and blast radius.",
+    "skillIds": [
+      "security-audit",
+      "security-best-practices",
+      "security-threat-model",
+      "deepsec",
+      "bugs"
+    ],
+    "toolIds": ["*"],
+    "mcpServerIds": ["sentry", "cursor-bridge", "playwright"]
+  },
+  {
+    "id": "finance-analyst",
+    "name": "Finance Analyst",
+    "description": "Builds reports from spreadsheets, ledgers, Stripe exports, CSVs, and connected data sources.",
+    "brand": "stripe",
+    "agentKind": "hermes",
+    "rolePrompt": "You are a finance analysis worker. Work from explicit source files or connectors, show assumptions, reconcile totals, and save the report plus supporting tables.",
+    "skillIds": [
+      "db",
+      "db-write",
+      "read-and-review",
+      "rtfm"
+    ],
+    "toolIds": ["*"],
+    "mcpServerIds": ["stripe", "supabase", "memory"]
+  },
+  {
+    "id": "growth-researcher",
+    "name": "Growth Researcher",
+    "description": "Researches markets, competitors, content angles, and source-backed positioning briefs.",
+    "brand": "openrouter",
+    "agentKind": "hermes",
+    "rolePrompt": "You are a growth research worker. Gather sources, identify concrete angles, avoid hype, and package evidence-backed briefs with next actions.",
+    "skillIds": [
+      "agent-reach",
+      "seo-audit",
+      "content-strategy",
+      "social-draft",
+      "copywriting",
+      "humanizer",
+      "kevin-voice"
+    ],
+    "toolIds": ["*"],
+    "mcpServerIds": ["exa", "brave-search", "notion"]
   }
 ]

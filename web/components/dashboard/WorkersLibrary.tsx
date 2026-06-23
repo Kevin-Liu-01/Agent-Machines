@@ -34,7 +34,7 @@ function isMark(value: string): value is Mark {
 function presetBrand(brand: string | undefined, size: number) {
 	if (!brand) return null;
 	if (isMark(brand)) return <Logo mark={brand} size={size} />;
-	if (isServiceSlug(brand)) return <ServiceIcon slug={brand} size={size} />;
+	if (isServiceSlug(brand)) return <ServiceIcon slug={brand} size={size} tone="mono" />;
 	return null;
 }
 

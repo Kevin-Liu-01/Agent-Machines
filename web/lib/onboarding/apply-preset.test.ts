@@ -14,7 +14,7 @@ const baseConfig: UserConfig = { ...DEFAULT_USER_CONFIG };
 
 describe("applyPreset", () => {
 	it("creates a Worker bound to the preset's synthesized Memory, linked to the machine", () => {
-		const preset = findPreset("frontend-design")!;
+		const preset = findPreset("deep-research")!;
 		const out = applyPreset({
 			config: baseConfig,
 			preset,
@@ -23,9 +23,9 @@ describe("applyPreset", () => {
 			gatewayProfileId: "dedalus-default",
 			machineId: "machine-123",
 		});
-		expect(out.memoryBundleId).toBe(`${PRESET_MEMORY_PREFIX}frontend-design`);
+		expect(out.memoryBundleId).toBe(`${PRESET_MEMORY_PREFIX}deep-research`);
 		const worker = out.workers.find((w) => w.id === out.workerId);
-		expect(worker?.memoryBundleId).toBe(`${PRESET_MEMORY_PREFIX}frontend-design`);
+		expect(worker?.memoryBundleId).toBe(`${PRESET_MEMORY_PREFIX}deep-research`);
 		expect(worker?.lastMachineId).toBe("machine-123");
 		expect(worker?.rolePrompt).toBe(preset.rolePrompt);
 		expect(worker?.source).toBe("custom");
@@ -47,7 +47,7 @@ describe("applyPreset", () => {
 	});
 
 	it("appends to existing workers without dropping them", () => {
-		const preset = findPreset("core")!;
+		const preset = findPreset("coding-agent")!;
 		const first = applyPreset({
 			config: baseConfig,
 			preset,
