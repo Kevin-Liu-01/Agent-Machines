@@ -22,6 +22,8 @@ export const maxDuration = 60;
 
 const DEFAULT_N = 200;
 const MAX_N = 500;
+const INVENTORY_TIMEOUT_MS = 8_000;
+const TAIL_TIMEOUT_MS = 10_000;
 
 function parseLevel(message: string): LogLine["level"] {
 	const upper = message.slice(0, 80).toUpperCase();
@@ -44,6 +46,26 @@ function parseLine(raw: string, source: string): LogLine {
 		source,
 		message: message.slice(0, 1000),
 	};
+}
+
+function telemetryLine(message: string, level: LogLine["level"] = "warn"): LogLine {
+	return {
+		at: new Date().toISOString(),
+		level,
+		source: "telemetry",
+		message: message.slice(0, 1000),
+	};
+}
+
+function errorMessage(err: unknown): string {
+	return err instanceof Error ? err.message : "exec failed";
+}
+
+function tailToLines(stdout: string, source: string): LogLine[] {
+	return stdout
+		.split("\n")
+		.filter((line) => line.length > 0 && !line.startsWith("=="))
+		.map((line) => parseLine(line, source));
 }
 
 export async function GET(request: Request): Promise<Response> {
@@ -70,54 +92,71 @@ export async function GET(request: Request): Promise<Response> {
 		return Response.json(envelope);
 	}
 
+	// Inventory: list every log file under the agent runtime
+	// (~/.agent-machines/logs/*) plus their sizes in one shot so the
+	// UI can show "you have N log files totalling X MiB". `find -printf`
+	// is GNU-only; the VM image ships GNU findutils so we lean on it.
+	const errors: string[] = [];
+	let files: LogsPayload["files"] = [];
 	try {
-		// Inventory: list every log file under the agent runtime
-		// (~/.agent-machines/logs/*) plus their sizes in one shot so the
-		// UI can show "you have N log files totalling X MiB". `find -printf`
-		// is GNU-only; the VM image ships GNU findutils so we lean on it.
 		const inventoryOut = await execOnMachine(
 			[
 				"mkdir -p $HOME/.agent-machines/logs",
 				"find $HOME/.agent-machines/logs -maxdepth 2 -type f \\( -name '*.log' -o -name 'gateway.log' \\) -printf '%p\\t%s\\n' 2>/dev/null | sort",
 			].join(" && "),
-			{ machineId },
+			{ machineId, timeoutMs: INVENTORY_TIMEOUT_MS },
 		);
-		const files = inventoryOut.stdout
+		const invalidLines: string[] = [];
+		files = inventoryOut.stdout
 			.split("\n")
 			.filter(Boolean)
-			.map((line) => {
+			.flatMap((line) => {
+				if (!line.includes("\t")) {
+					invalidLines.push(line);
+					return [];
+				}
 				const [rawPath, size] = line.split("\t");
+				if (!rawPath.startsWith("/")) {
+					invalidLines.push(line);
+					return [];
+				}
 				const path = rawPath
 					.replace(/\/home\/[^/]+\/\.agent-machines/, "~/.agent-machines");
-				return {
+				return [{
 					path,
 					bytes: Number.parseInt(size ?? "0", 10) || 0,
-				};
+				}];
 			});
+		if (invalidLines.length > 0) {
+			errors.push(`log inventory returned provider noise: ${invalidLines[0]}`);
+		}
+		if (inventoryOut.exitCode !== 0) {
+			errors.push(`log inventory exited ${inventoryOut.exitCode}`);
+		}
+	} catch (err) {
+		errors.push(`log inventory unavailable: ${errorMessage(err)}`);
+	}
 
-		// Tail agent log files. tailLines is the budget -- so the caller
-		// asking for n=200 can see up to 200 lines from the runtime.
+	// Tail agent log files. tailLines is the budget -- so the caller
+	// asking for n=200 can see up to 200 lines from the runtime.
+	let lines: LogLine[] = [];
+	try {
 		const agentOut = await execOnMachine(
 			`if compgen -G "$HOME/.agent-machines/logs/*.log" > /dev/null; then tail -n ${tailLines} $HOME/.agent-machines/logs/*.log 2>/dev/null; else echo ""; fi`,
-			{ machineId },
+			{ machineId, timeoutMs: TAIL_TIMEOUT_MS },
 		);
-
-		function tailToLines(stdout: string, source: string): LogLine[] {
-			return stdout
-				.split("\n")
-				.filter((line) => line.length > 0 && !line.startsWith("=="))
-				.map((line) => parseLine(line, source));
-		}
-
 		const hermesLines = tailToLines(agentOut.stdout, "agent");
 		const openclawLines: LogLine[] = [];
+		if (agentOut.exitCode !== 0) {
+			errors.push(`log tail exited ${agentOut.exitCode}`);
+		}
 
 		// Merge by parsed timestamp. Lines without a parseable
 		// timestamp keep their relative position within their agent
 		// stream so they don't bunch at the top. We allocate the
 		// merged result up to the requested tailLines so the response
 		// stays bounded regardless of how chatty either agent is.
-		const merged = [...hermesLines, ...openclawLines]
+		lines = [...hermesLines, ...openclawLines]
 			.sort((a, b) => {
 				const aT = a.at ?? "";
 				const bT = b.at ?? "";
@@ -127,21 +166,30 @@ export async function GET(request: Request): Promise<Response> {
 				return aT.localeCompare(bT);
 			})
 			.slice(-tailLines);
-
-		const envelope: LiveDataEnvelope<LogsPayload> = {
-			ok: true,
-			data: { lines: merged, files, tailLines },
-			fetchedAt: new Date().toISOString(),
-		};
-		return Response.json(envelope, {
-			headers: { "Cache-Control": "no-store" },
-		});
 	} catch (err) {
-		const envelope: LiveDataEnvelope<LogsPayload> = {
-			ok: false,
-			reason: "exec_failed",
-			message: err instanceof Error ? err.message : "exec failed",
-		};
-		return Response.json(envelope);
+		errors.push(`log tail unavailable: ${errorMessage(err)}`);
 	}
+
+	if (lines.length === 0 && errors.length > 0) {
+		lines = [
+			telemetryLine(
+				`${errors[0]}. Gateway health may still be available from /api/dashboard/gateway.`,
+			),
+		];
+	}
+
+	const envelope: LiveDataEnvelope<LogsPayload> = {
+		ok: true,
+		data: {
+			lines,
+			files,
+			tailLines,
+			status: errors.length > 0 ? "degraded" : "live",
+			message: errors.length > 0 ? errors.join(" | ") : undefined,
+		},
+		fetchedAt: new Date().toISOString(),
+	};
+	return Response.json(envelope, {
+		headers: { "Cache-Control": "no-store" },
+	});
 }

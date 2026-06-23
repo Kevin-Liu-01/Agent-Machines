@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useOptionalMachineContext } from "@/components/dashboard/MachineProvider";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
+import { cn } from "@/lib/cn";
 import { agentLabel, agentLaunchCommand, isCliAgent } from "@/lib/dashboard/agent-launch";
 
 type Status = "connecting" | "ready" | "offline" | "error";
@@ -23,6 +24,12 @@ type SessionPayload = {
 	cursorCol?: number;
 	message?: string;
 	error?: string;
+};
+
+type InteractiveConsoleProps = {
+	autoLaunch?: boolean;
+	heightClassName?: string;
+	showFooter?: boolean;
 };
 
 /** Printable coalesce window — control keys flush immediately. */
@@ -57,12 +64,16 @@ function prefetchXterm(): void {
  * rendered by xterm.js. This is the "talk to the agent as if local"
  * surface -- run the agent CLI in it and interact line-by-line.
  */
-export function InteractiveConsole() {
+export function InteractiveConsole({
+	autoLaunch: autoLaunchProp = false,
+	heightClassName = "h-[60dvh] min-h-[360px]",
+	showFooter = true,
+}: InteractiveConsoleProps = {}) {
 	const machineCtx = useOptionalMachineContext();
 	const machineId = machineCtx?.machineId;
 	const agentKind = machineCtx?.machine?.agentKind ?? null;
 	const searchParams = useSearchParams();
-	const autoLaunch = searchParams.get("launch") === "1";
+	const autoLaunch = autoLaunchProp || searchParams.get("launch") === "1";
 	const hostRef = useRef<HTMLDivElement>(null);
 	const [status, setStatus] = useState<Status>("connecting");
 	const [detail, setDetail] = useState<string>("");
@@ -146,13 +157,13 @@ export function InteractiveConsole() {
 				body: JSON.stringify({ machineId: scopedMachineId, cols, rows }),
 			});
 			if (!alive) return null;
-			if (!created.ok) {
-				const e = (await created.json().catch(() => ({}))) as SessionPayload;
-				setStatus(created.status === 503 ? "offline" : "error");
-				setDetail(e.message ?? e.error ?? `HTTP ${created.status}`);
+			const payload = (await created.json().catch(() => ({}))) as SessionPayload;
+			if (!created.ok || payload.ok === false) {
+				setStatus(payload.error === "machine_offline" || created.status === 503 ? "offline" : "error");
+				setDetail(payload.message ?? payload.error ?? `HTTP ${created.status}`);
 				return null;
 			}
-			return (await created.json()) as SessionPayload;
+			return payload;
 		}
 
 		async function streamLoop(): Promise<void> {
@@ -328,7 +339,7 @@ export function InteractiveConsole() {
 			flushPendingWrite();
 			term?.dispose();
 		};
-	}, [machineId]);
+	}, [machineId, autoLaunch, agentKind]);
 
 	return (
 		<div className="flex flex-col gap-2">
@@ -360,7 +371,7 @@ export function InteractiveConsole() {
 			</div>
 
 			<div className="relative border border-[var(--ret-border)] bg-[#0a0a0e]">
-				<div ref={hostRef} className="h-[60dvh] min-h-[360px] w-full px-2 py-2" />
+				<div ref={hostRef} className={cn("w-full px-2 py-2", heightClassName)} />
 				{status !== "ready" ? (
 					<div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[#0a0a0e]/80">
 						<div className="flex flex-col items-center gap-2 text-center">
@@ -386,9 +397,11 @@ export function InteractiveConsole() {
 				) : null}
 			</div>
 
-			<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-				type to interact · run the agent CLI and talk to it · ctrl-c / arrows / tab supported
-			</p>
+			{showFooter ? (
+				<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+					type to interact · run the agent CLI and talk to it · ctrl-c / arrows / tab supported
+				</p>
+			) : null}
 		</div>
 	);
 }

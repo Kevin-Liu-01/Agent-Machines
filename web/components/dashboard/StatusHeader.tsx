@@ -163,16 +163,17 @@ export function StatusHeader({ agentKind, machines }: Props) {
 				</div>
 			</div>
 
-			<div className="flex shrink-0 items-center gap-2">
+			<div className="hidden shrink-0 items-center gap-2 md:flex">
 				{inMachineView ? (
 					<>
 						<GatewayStrip data={gateway} />
 						<span className={headerDivider} aria-hidden />
 						<ModelSwitcher activeMachineId={scopedMachineId} />
-						<MachineSwitcher />
+						<MachineSwitcher currentMachineId={scopedMachineId} />
 						<AgentSwitcher
 							value={urlMachine?.agentKind ?? agentKind}
 							activeMachineId={scopedMachineId ?? undefined}
+							machines={machines}
 						/>
 					</>
 				) : (

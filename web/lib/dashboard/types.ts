@@ -164,6 +164,8 @@ export type LogsPayload = {
 	lines: LogLine[];
 	files: Array<{ path: string; bytes: number }>;
 	tailLines: number;
+	status?: "live" | "degraded";
+	message?: string;
 };
 
 export type CursorRun = {

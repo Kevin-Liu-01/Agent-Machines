@@ -43,6 +43,8 @@ type Body = {
 	force?: boolean;
 	/** Chosen model router (gateway profile id) for hermes/openclaw. */
 	gatewayProfileId?: string;
+	/** Saved environment profile whose vars should be installed on the VM. */
+	environmentProfileId?: string | null;
 };
 
 function isProvider(value: unknown): value is ProviderKind {
@@ -152,6 +154,7 @@ export async function POST(request: Request): Promise<Response> {
 			model,
 			name,
 			gatewayProfileId: body.gatewayProfileId ?? null,
+			environmentProfileId: body.environmentProfileId ?? null,
 		});
 		return Response.json({
 			ok: true,

@@ -674,7 +674,7 @@ function EntryRow({ entry }: { entry: Entry }) {
 	return (
 		<li
 			className={cn(
-				"overflow-hidden border transition-all duration-150",
+				"overflow-hidden border transition-[background-color,border-color,box-shadow] duration-[var(--ret-duration-hover)] [transition-timing-function:var(--ret-ease-out)]",
 				isRunning
 					? "border-[var(--ret-purple)]/30 bg-[var(--ret-purple-glow)]"
 					: entry.state === "error" || (entry.exitCode !== null && entry.exitCode !== 0)

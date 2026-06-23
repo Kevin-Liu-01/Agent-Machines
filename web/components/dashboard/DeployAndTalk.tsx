@@ -11,12 +11,22 @@ import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { RouterSelect } from "@/components/dashboard/RouterSelect";
 import { DEFAULT_ROUTER_ID, agentUpstreamReadiness, agentUsesRouter } from "@/lib/agents/upstreams";
 import { cn } from "@/lib/cn";
-import type { ProviderKind } from "@/lib/user-config/schema";
+import type { ProviderKind, PublicUserConfig } from "@/lib/user-config/schema";
 
 type Phase = "idle" | "provisioning" | "bootstrapping" | "ready" | "error";
 
-const PROVIDERS = ["sprites", "e2b", "vercel", "dedalus"] as const;
-const AGENTS = ["codex", "claude-code", "openclaw", "hermes"] as const;
+const PROVIDERS = ["dedalus", "sprites", "e2b", "vercel"] as const;
+const AGENTS = ["openclaw", "hermes", "codex", "claude-code"] as const;
+
+type EnvironmentOption = PublicUserConfig["environmentProfiles"][number];
+
+function isProvider(value: unknown): value is (typeof PROVIDERS)[number] {
+	return typeof value === "string" && (PROVIDERS as readonly string[]).includes(value);
+}
+
+function isAgent(value: unknown): value is (typeof AGENTS)[number] {
+	return typeof value === "string" && (AGENTS as readonly string[]).includes(value);
+}
 
 function sleep(ms: number): Promise<void> {
 	return new Promise((r) => setTimeout(r, ms));
@@ -29,14 +39,16 @@ function sleep(ms: number): Promise<void> {
  */
 export function DeployAndTalk() {
 	const router = useRouter();
-	const [provider, setProvider] = useState<(typeof PROVIDERS)[number]>("sprites");
-	const [agent, setAgent] = useState<(typeof AGENTS)[number]>("codex");
+	const [provider, setProvider] = useState<(typeof PROVIDERS)[number]>("dedalus");
+	const [agent, setAgent] = useState<(typeof AGENTS)[number]>("openclaw");
 	const [phase, setPhase] = useState<Phase>("idle");
 	const [detail, setDetail] = useState<string>("");
 	// null until loaded so the credential gate doesn't pre-block.
 	const [aiConfigured, setAiConfigured] = useState<Record<string, boolean> | null>(null);
 	const [providerConfigured, setProviderConfigured] = useState<Record<string, boolean> | null>(null);
 	const [gatewayProfileId, setGatewayProfileId] = useState<string>(DEFAULT_ROUTER_ID);
+	const [environmentProfiles, setEnvironmentProfiles] = useState<EnvironmentOption[]>([]);
+	const [environmentProfileId, setEnvironmentProfileId] = useState<string>("");
 	const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
 	const busy = phase === "provisioning" || phase === "bootstrapping";
@@ -48,15 +60,22 @@ export function DeployAndTalk() {
 			.then((r) => (r.ok ? r.json() : null))
 			.then((j) => {
 				if (!alive || !j?.config) return;
-				const ai = (j.config.aiProviders ?? {}) as Record<string, { configured?: boolean }>;
+				const config = j.config as PublicUserConfig;
+				const ai = (config.aiProviders ?? {}) as Record<string, { configured?: boolean }>;
 				const conf: Record<string, boolean> = {};
 				for (const k of Object.keys(ai)) conf[k] = Boolean(ai[k]?.configured);
-				conf.dedalus = Boolean(j.config.providers?.dedalus?.configured);
+				conf.dedalus = Boolean(config.providers?.dedalus?.configured);
 				setAiConfigured(conf);
-				const provs = (j.config.providers ?? {}) as Record<string, { configured?: boolean }>;
+				const provs = (config.providers ?? {}) as Record<string, { configured?: boolean }>;
 				const pconf: Record<string, boolean> = {};
 				for (const k of Object.keys(provs)) pconf[k] = Boolean(provs[k]?.configured);
 				setProviderConfigured(pconf);
+				setEnvironmentProfiles(config.environmentProfiles ?? []);
+				setEnvironmentProfileId((current) =>
+					current || config.environmentProfiles[0]?.id || "",
+				);
+				if (isProvider(config.draftProviderKind)) setProvider(config.draftProviderKind);
+				if (isAgent(config.draftAgentKind)) setAgent(config.draftAgentKind);
 			})
 			.catch(() => {});
 		return () => {
@@ -86,6 +105,7 @@ export function DeployAndTalk() {
 					agentKind: agent,
 					force: true,
 					...(agentUsesRouter(agent) && gatewayProfileId ? { gatewayProfileId } : {}),
+					...(environmentProfileId ? { environmentProfileId } : {}),
 				}),
 			});
 			const provJson = (await prov.json()) as { ok?: boolean; machineId?: string; message?: string; error?: string };
@@ -128,13 +148,13 @@ export function DeployAndTalk() {
 			setPhase("ready");
 			setDetail("agent ready — opening console...");
 			await sleep(150);
-			router.push(`/dashboard/machines/${machineId}/terminal?launch=1`);
+			router.push(`/dashboard/machines/${machineId}/console`);
 		} catch (err) {
 			if (pollRef.current) clearInterval(pollRef.current);
 			setPhase("error");
 			setDetail(err instanceof Error ? err.message : "deploy failed");
 		}
-	}, [provider, agent, router, gatewayProfileId, blocked]);
+	}, [provider, agent, router, gatewayProfileId, environmentProfileId, blocked]);
 
 	return (
 		<div className="grid gap-3 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-4">
@@ -164,6 +184,23 @@ export function DeployAndTalk() {
 						options={AGENTS.map((a) => ({ value: a, label: a }))}
 					/>
 				</label>
+				{environmentProfiles.length > 0 ? (
+					<label className="grid w-44 gap-1">
+						<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">env</span>
+						<ReticleSelect
+							ariaLabel="environment profile"
+							value={environmentProfileId}
+							onChange={setEnvironmentProfileId}
+							options={[
+								{ value: "", label: "none" },
+								...environmentProfiles.map((profile) => ({
+									value: profile.id,
+									label: `${profile.name} · ${profile.varCount}`,
+								})),
+							]}
+						/>
+					</label>
+				) : null}
 				<ReticleButton
 					as="button"
 					type="button"

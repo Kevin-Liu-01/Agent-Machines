@@ -23,9 +23,9 @@ export function agentLaunchCommand(
 		case "claude-code":
 			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null; claude`;
 		case "hermes":
-			return `${cd} export HERMES_HOME="$HOME/.agent-machines"; export PATH="$HOME/.agent-machines/venv/bin:$PATH"; hermes chat`;
+			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null; export HERMES_HOME="$HOME/.agent-machines"; export PATH="$HOME/.agent-machines/venv/bin:$PATH"; hermes chat`;
 		case "openclaw":
-			return `${cd} export PATH="$HOME/.npm-global/bin:$PATH"; openclaw chat`;
+			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null; export PATH="$HOME/.npm-global/bin:$PATH"; export OPENCLAW_STATE_DIR="$HOME/.openclaw"; export OPENCLAW_NO_RESPAWN=1; openclaw chat`;
 		default:
 			return null;
 	}
@@ -68,9 +68,9 @@ export function agentOneShotInvocation(
 		case "claude-code":
 			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null; claude -p "$AM_CRON_PROMPT"`;
 		case "hermes":
-			return `${cd} export HERMES_HOME="$HOME/.agent-machines"; export PATH="$HOME/.agent-machines/venv/bin:$PATH"; hermes run "$AM_CRON_PROMPT"`;
+			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null; export HERMES_HOME="$HOME/.agent-machines"; export PATH="$HOME/.agent-machines/venv/bin:$PATH"; hermes run "$AM_CRON_PROMPT"`;
 		case "openclaw":
-			return `${cd} export PATH="$HOME/.npm-global/bin:$PATH"; openclaw run "$AM_CRON_PROMPT"`;
+			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null; export PATH="$HOME/.npm-global/bin:$PATH"; export OPENCLAW_STATE_DIR="$HOME/.openclaw"; export OPENCLAW_NO_RESPAWN=1; openclaw run "$AM_CRON_PROMPT"`;
 		default:
 			return null;
 	}

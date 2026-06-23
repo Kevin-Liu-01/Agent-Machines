@@ -88,7 +88,7 @@ export function TerminalStream({
 					<div
 						key={`${i}-${line.slice(0, 32)}`}
 						className={cn(
-							"whitespace-nowrap text-[10px] leading-[1.6] transition-all duration-300",
+							"whitespace-nowrap text-[10px] leading-[1.6] transition-[transform,opacity] duration-[var(--ret-duration-page)] [transition-timing-function:var(--ret-ease-out)]",
 							i <= visible ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0",
 							isIdentity && "text-[var(--ret-text-muted)]",
 						)}

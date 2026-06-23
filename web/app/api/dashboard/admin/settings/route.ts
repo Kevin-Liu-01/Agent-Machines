@@ -99,8 +99,15 @@ export async function POST(request: Request): Promise<Response> {
 		}
 
 		const patch: Parameters<typeof setUserConfig>[0] = {};
-		if (body.providers) patch.providers = body.providers;
-		if (body.aiProviderKeys) patch.aiProviderKeys = body.aiProviderKeys;
+		if (body.providers) {
+			patch.providers = mergeProviderCredentials(body.providers, current.providers);
+		}
+		if (body.aiProviderKeys) {
+			patch.aiProviderKeys = mergeAiProviderKeys(
+				body.aiProviderKeys,
+				current.aiProviderKeys,
+			);
+		}
 		if (body.cursorApiKey !== undefined) {
 			patch.cursorApiKey = body.cursorApiKey;
 		}
@@ -153,11 +160,12 @@ function mergeGatewayProfile(
 	const id = partial.id ?? existing?.id ?? crypto.randomUUID();
 	return {
 		id,
-		name: partial.name ?? existing?.name ?? id,
+		name: clean(partial.name) ?? existing?.name ?? id,
 		kind: partial.kind ?? existing?.kind ?? "openai-compatible",
-		model: partial.model ?? existing?.model ?? DEFAULT_MODEL,
-		baseUrl: partial.baseUrl ?? existing?.baseUrl ?? null,
-		apiKey: partial.apiKey ?? existing?.apiKey ?? null,
+		model: clean(partial.model) ?? existing?.model ?? DEFAULT_MODEL,
+		baseUrl:
+			clean(partial.baseUrl ?? undefined) ?? existing?.baseUrl ?? null,
+		apiKey: clean(partial.apiKey ?? undefined) ?? existing?.apiKey ?? null,
 		createdAt: partial.createdAt ?? existing?.createdAt ?? now,
 		updatedAt: now,
 	};
@@ -177,4 +185,63 @@ function mergeEnvironmentProfile(
 		createdAt: partial.createdAt ?? existing?.createdAt ?? now,
 		updatedAt: now,
 	};
+}
+
+function clean(value: string | undefined): string | undefined {
+	const trimmed = value?.trim();
+	return trimmed ? trimmed : undefined;
+}
+
+function mergeProviderCredentials(
+	partial: ProviderCredentials,
+	current: ProviderCredentials,
+): ProviderCredentials {
+	const next: ProviderCredentials = {};
+	if (partial.dedalus || current.dedalus) {
+		const apiKey = clean(partial.dedalus?.apiKey) ?? current.dedalus?.apiKey;
+		const baseUrl = clean(partial.dedalus?.baseUrl) ?? current.dedalus?.baseUrl;
+		if (apiKey || baseUrl) next.dedalus = { apiKey: apiKey ?? "", ...(baseUrl ? { baseUrl } : {}) };
+	}
+	if (partial.e2b || current.e2b) {
+		const apiKey = clean(partial.e2b?.apiKey) ?? current.e2b?.apiKey;
+		if (apiKey) next.e2b = { apiKey };
+	}
+	if (partial.sprites || current.sprites) {
+		const apiKey = clean(partial.sprites?.apiKey) ?? current.sprites?.apiKey;
+		if (apiKey) next.sprites = { apiKey };
+	}
+	if (partial.vercel || current.vercel) {
+		const token = clean(partial.vercel?.token) ?? current.vercel?.token;
+		const teamId = clean(partial.vercel?.teamId) ?? current.vercel?.teamId;
+		const projectId = clean(partial.vercel?.projectId) ?? current.vercel?.projectId;
+		if (token && teamId && projectId) next.vercel = { token, teamId, projectId };
+	}
+	return next;
+}
+
+function mergeAiProviderKeys(
+	partial: AiProviderKeys,
+	current: AiProviderKeys,
+): AiProviderKeys {
+	const next: AiProviderKeys = {};
+	const anthropic = clean(partial.anthropic) ?? current.anthropic;
+	const openai = clean(partial.openai) ?? current.openai;
+	const openrouter = clean(partial.openrouter) ?? current.openrouter;
+	const google = clean(partial.google) ?? current.google;
+	const vercelAiGateway =
+		clean(partial.vercelAiGateway) ?? current.vercelAiGateway;
+	if (anthropic) next.anthropic = anthropic;
+	if (openai) next.openai = openai;
+	if (openrouter) next.openrouter = openrouter;
+	if (google) next.google = google;
+	if (vercelAiGateway) next.vercelAiGateway = vercelAiGateway;
+
+	if (partial.custom || current.custom) {
+		const url = clean(partial.custom?.url) ?? current.custom?.url;
+		const key = clean(partial.custom?.key) ?? current.custom?.key;
+		const label = clean(partial.custom?.label) ?? current.custom?.label;
+		if (url && key) next.custom = { url, key, ...(label ? { label } : {}) };
+	}
+
+	return next;
 }

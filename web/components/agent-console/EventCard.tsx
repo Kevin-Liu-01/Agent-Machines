@@ -72,7 +72,7 @@ function ThinkingCard({
 
 	return (
 		<div className={cn(
-			"group border bg-[var(--ret-bg)] transition-all duration-200",
+			"group border bg-[var(--ret-bg)] transition-[background-color,border-color,box-shadow] duration-[var(--ret-duration-hover)] [transition-timing-function:var(--ret-ease-out)]",
 			active ? "border-[var(--ret-purple)]/40 shadow-[0_0_12px_rgba(var(--ret-purple-rgb),0.08)]" : "border-[var(--ret-border)]",
 		)}>
 			<button type="button" onClick={() => setExpanded((v) => !v)} className="flex w-full items-center gap-2.5 px-3 py-2 text-left">
@@ -120,7 +120,7 @@ function ToolCallCard({
 
 	return (
 		<div className={cn(
-			"group border transition-all duration-200",
+			"group border transition-[background-color,border-color,box-shadow] duration-[var(--ret-duration-hover)] [transition-timing-function:var(--ret-ease-out)]",
 			active ? "border-[var(--ret-amber)]/40 bg-[var(--ret-amber)]/5" : event.status === "error" ? "border-[var(--ret-red)]/30 bg-[var(--ret-red)]/5" : "border-[var(--ret-border)] bg-[var(--ret-bg)]",
 		)}>
 			<button type="button" onClick={() => setExpanded((v) => !v)} className="flex w-full items-center gap-2.5 px-3 py-2 text-left">
@@ -221,7 +221,7 @@ function ShellExecCard({
 
 	return (
 		<div className={cn(
-			"group border transition-all duration-200",
+			"group border transition-[background-color,border-color,box-shadow] duration-[var(--ret-duration-hover)] [transition-timing-function:var(--ret-ease-out)]",
 			active ? "border-[var(--ret-amber)]/40 bg-[var(--ret-amber)]/5" : "border-[var(--ret-border)] bg-[var(--ret-bg)]",
 		)}>
 			<button type="button" onClick={() => setExpanded((v) => !v)} className="flex w-full items-center gap-2.5 px-3 py-2 text-left">

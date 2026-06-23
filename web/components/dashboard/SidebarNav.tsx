@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+	Activity,
 	BarChart3,
 	Bot,
 	Boxes,
@@ -97,6 +98,7 @@ const SETUP_ITEM: NavItem = {
 function machineWorkItems(base: string): ReadonlyArray<NavItem> {
 	return [
 		{ href: base, label: "Overview", icon: LayoutGrid, exact: true },
+		{ href: `${base}/view`, label: "View", icon: Activity, badge: "live" },
 		{ href: `${base}/console`, label: "Console", icon: MessagesSquare, badge: "new" },
 		{ href: `${base}/terminal`, label: "Terminal", icon: SquareTerminal },
 		{ href: `${base}/agents`, label: "Agents", icon: Bot },

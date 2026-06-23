@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -12,15 +13,18 @@ import {
 	headerPopoverTitle,
 } from "@/lib/dashboard/header-chrome";
 import { cn } from "@/lib/cn";
-import { AGENT_KINDS, type AgentKind } from "@/lib/user-config/schema";
+import {
+	AGENT_KINDS,
+	type AgentKind,
+	type PublicMachineRef,
+} from "@/lib/user-config/schema";
 
 type Props = {
 	value: AgentKind;
-	/** Active machine id, when one is provisioned. When present, the
-	 *  switch PATCHes that machine's agentKind in addition to flipping
-	 *  the draft -- so the dashboard immediately reflects the chosen
-	 *  agent for the live machine. */
+	/** Current route machine id. Used to avoid selecting the same machine
+	 * when another real machine already runs the requested agent. */
 	activeMachineId?: string;
+	machines?: PublicMachineRef[];
 };
 
 const LABEL: Record<AgentKind, string> = {
@@ -33,8 +37,8 @@ const LABEL: Record<AgentKind, string> = {
 const TAGLINE: Record<AgentKind, string> = {
 	hermes: "self-improving . persistent memory . MCP-native",
 	openclaw: "computer-use . shell . browser . vision",
-	"claude-code": "agentic coding . file edit . SDK . headless",
-	codex: "agentic coding . sandbox . exec mode",
+	"claude-code": "edit repos . run shell . SDK . headless",
+	codex: "execute tasks . sandbox . JSONL . CI",
 };
 
 const MARK: Record<AgentKind, "nous" | "openclaw" | "anthropic" | "openai"> = {
@@ -62,17 +66,14 @@ const SOURCE: Record<AgentKind, string> = {
  *
  *   1. POST /api/dashboard/admin/setup with `draftAgentKind` so the
  *      next provisioned machine ships with the chosen agent.
- *   2. If there's an active machine, PATCH /api/dashboard/machines/<id>
- *      with `agentKind` so the dashboard's gateway / status / chat
- *      surfaces flip to that agent immediately.
+ *   2. If a real machine already runs that agent, open its console and set it
+ *      active in the background.
  *
- * The agent install on the live VM is whatever was bootstrapped (we
- * don't auto-reinstall here). When the active agent kind is changed
- * to one that isn't installed yet, the user runs `npm run
- * deploy:openclaw` (or equivalent) once, then the dashboard tracks
- * the new agent.
+ * We intentionally do not mutate the current machine's `agentKind`. That field
+ * describes what was bootstrapped on the VM; changing it here would relabel a
+ * Hermes box as OpenClaw without installing OpenClaw.
  */
-export function AgentSwitcher({ value, activeMachineId }: Props) {
+export function AgentSwitcher({ value, activeMachineId, machines = [] }: Props) {
 	const router = useRouter();
 	const [open, setOpen] = useState(false);
 	const [pending, setPending] = useState<AgentKind | null>(null);
@@ -90,6 +91,48 @@ export function AgentSwitcher({ value, activeMachineId }: Props) {
 		return () => document.removeEventListener("mousedown", handler);
 	}, [open]);
 
+	async function machineForAgent(next: AgentKind): Promise<string | null> {
+		const known = machines.filter((machine) => !machine.archived);
+		if (known.length > 0) return bestMachineForAgent(known, next, activeMachineId);
+
+		const response = await fetch("/api/dashboard/machines", { cache: "no-store" });
+		if (!response.ok) return null;
+		const body = (await response.json().catch(() => ({}))) as {
+			machines?: Array<{
+				id: string;
+				agentKind: AgentKind;
+				providerKind?: string;
+				archived?: boolean;
+				apiUrl?: string | null;
+				bootstrapState?: { phase: string; lastError?: string | null };
+				live?: { ok: boolean; state?: string };
+			}>;
+		};
+		const liveMachines = body.machines?.filter((machine) => !machine.archived) ?? [];
+		return bestMachineForAgent(liveMachines, next, activeMachineId);
+	}
+
+	async function saveDraft(next: AgentKind): Promise<void> {
+		const response = await fetch("/api/dashboard/admin/setup", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ draftAgentKind: next }),
+		});
+		if (!response.ok) {
+			throw new Error(`setup HTTP ${response.status}`);
+		}
+		if (response.body) await response.body.cancel().catch(() => undefined);
+	}
+
+	async function activateMachine(machineId: string): Promise<void> {
+		const response = await fetch(`/api/dashboard/machines/${machineId}`, {
+			method: "PATCH",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ active: true }),
+		});
+		if (!response.ok) throw new Error(`machine HTTP ${response.status}`);
+	}
+
 	async function pick(next: AgentKind) {
 		if (next === value || pending) {
 			setOpen(false);
@@ -97,38 +140,27 @@ export function AgentSwitcher({ value, activeMachineId }: Props) {
 		}
 		setPending(next);
 		setError(null);
+		let keepOpen = false;
 		try {
-			// Always update the draft so the next provisioned machine
-			// ships with the chosen agent.
-			const draftResponse = await fetch("/api/dashboard/admin/setup", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ draftAgentKind: next }),
-			});
-			if (!draftResponse.ok) {
-				throw new Error(`setup HTTP ${draftResponse.status}`);
+			const targetMachineId = await machineForAgent(next);
+			if (targetMachineId) {
+				setOpen(false);
+				router.push(`/dashboard/machines/${targetMachineId}/console`);
+				void activateMachine(targetMachineId)
+					.then(() => saveDraft(next))
+					.catch(() => undefined);
+			} else {
+				await saveDraft(next);
+				keepOpen = true;
+				setError(`No ${LABEL[next]} machine yet. Draft saved.`);
+				router.refresh();
 			}
-			// If there's an active machine, flip its agent label so the
-			// dashboard's chat / status / gateway surfaces follow.
-			if (activeMachineId) {
-				const machineResponse = await fetch(
-					`/api/dashboard/machines/${activeMachineId}`,
-					{
-						method: "PATCH",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({ agentKind: next }),
-					},
-				);
-				if (!machineResponse.ok) {
-					throw new Error(`machine HTTP ${machineResponse.status}`);
-				}
-			}
-			router.refresh();
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "switch failed");
+			keepOpen = true;
 		} finally {
 			setPending(null);
-			setOpen(false);
+			setOpen(keepOpen);
 		}
 	}
 
@@ -173,22 +205,27 @@ export function AgentSwitcher({ value, activeMachineId }: Props) {
 					<li className={cn(headerPopoverTitle, "list-none uppercase tracking-[0.12em]")}>
 						Pick an agent
 					</li>
-					{AGENT_KINDS.map((kind) => {
-						const selected = kind === value;
-						const inFlight = pending === kind;
-						return (
-							<li key={kind}>
-								<button
-									type="button"
-									onClick={() => void pick(kind)}
-									disabled={inFlight}
-									className={cn(
-										"flex w-full items-start gap-3 border-b border-[var(--ret-border)] px-3 py-2.5 text-left transition-colors last:border-b-0",
-										selected
-											? "bg-[var(--ret-purple-glow)] text-[var(--ret-purple)]"
-											: "hover:bg-[var(--ret-surface)]",
-									)}
-								>
+						{AGENT_KINDS.map((kind) => {
+							const selected = kind === value;
+							const inFlight = pending === kind;
+							const targetMachineId = selected
+								? null
+								: bestMachineForAgent(
+										machines.filter((machine) => !machine.archived),
+										kind,
+										activeMachineId,
+									);
+							const targetHref = targetMachineId
+								? `/dashboard/machines/${targetMachineId}/console`
+								: null;
+							const className = cn(
+								"flex w-full items-start gap-3 border-b border-[var(--ret-border)] px-3 py-2.5 text-left transition-colors last:border-b-0",
+								selected
+									? "bg-[var(--ret-purple-glow)] text-[var(--ret-purple)]"
+									: "hover:bg-[var(--ret-surface)]",
+							);
+							const option = (
+								<>
 									<Logo mark={MARK[kind]} size={20} className="mt-0.5" />
 									<span className="min-w-0 flex-1">
 										<span className="flex items-center gap-2">
@@ -208,9 +245,40 @@ export function AgentSwitcher({ value, activeMachineId }: Props) {
 											active
 										</span>
 									) : null}
-								</button>
-							</li>
-						);
+								</>
+							);
+							if (targetHref && targetMachineId) {
+								return (
+									<li key={kind}>
+										<Link
+											href={targetHref}
+											onClick={() => {
+												setPending(kind);
+												setOpen(false);
+												void activateMachine(targetMachineId)
+													.then(() => saveDraft(kind))
+													.catch(() => undefined)
+													.finally(() => setPending(null));
+											}}
+											className={className}
+										>
+											{option}
+										</Link>
+									</li>
+								);
+							}
+							return (
+								<li key={kind}>
+									<button
+										type="button"
+										onClick={() => void pick(kind)}
+										disabled={inFlight}
+										className={className}
+									>
+										{option}
+									</button>
+								</li>
+							);
 					})}
 					{error ? (
 						<li className="border-t border-[var(--ret-red)]/40 bg-[var(--ret-red)]/10 px-3 py-1.5 font-mono text-[10px] text-[var(--ret-red)]">
@@ -219,11 +287,50 @@ export function AgentSwitcher({ value, activeMachineId }: Props) {
 					) : null}
 					<li className="border-t border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-3 py-1.5 font-mono text-[10px] text-[var(--ret-text-muted)]">
 						{activeMachineId
-							? "flips the active machine's agent label + the draft for the next machine"
+							? "switches to that agent's machine, or saves the draft"
 							: "sets the agent for the next provisioned machine"}
 					</li>
 				</ul>
 			) : null}
 		</div>
+	);
+}
+
+function bestMachineForAgent(
+	machines: Array<{
+		id: string;
+		agentKind: AgentKind;
+		providerKind?: string;
+		apiUrl?: string | null;
+		bootstrapState?: { phase: string; lastError?: string | null };
+		live?: { ok: boolean; state?: string };
+	}>,
+	agentKind: AgentKind,
+	currentMachineId?: string,
+): string | null {
+	const matches = machines
+		.filter((machine) => machine.agentKind === agentKind)
+		.sort((a, b) => machineScore(b) - machineScore(a));
+	const target =
+		matches.find((machine) => machine.id !== currentMachineId) ?? matches[0];
+	return target?.id ?? null;
+}
+
+function machineScore(machine: {
+	providerKind?: string;
+	apiUrl?: string | null;
+	bootstrapState?: { phase: string; lastError?: string | null };
+	live?: { ok: boolean; state?: string };
+}): number {
+	const ready = machine.live?.ok && machine.live.state === "ready";
+	const booted = machine.bootstrapState?.phase === "succeeded";
+	const reachable = Boolean(machine.apiUrl);
+	const cleanBootstrap = !machine.bootstrapState?.lastError;
+	return (
+		(ready ? 8 : 0) +
+		(reachable ? 4 : 0) +
+		(booted ? 4 : 0) +
+		(cleanBootstrap ? 2 : 0) +
+		(machine.providerKind === "sprites" ? 1 : 0)
 	);
 }

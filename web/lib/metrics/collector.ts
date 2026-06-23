@@ -128,9 +128,7 @@ export async function collectAndStore(
 		if (!error) transitions = transitionRows.length;
 	}
 
-	const runningSamples = samples.filter(
-		(s) => s.snapshot && s.phase === "ready",
-	);
+	const runningSamples = samples.filter((s) => s.phase === "ready");
 
 	await Promise.all(
 		runningSamples.map((s) => upsertDailyUsage(db, userId, s, today, intervalSeconds)),
@@ -249,11 +247,18 @@ export async function probeMachine(
 		if (summary.state !== "ready") {
 			return { ...base, phase: summary.rawPhase, snapshot: null };
 		}
-		const exec = await provider.exec(machine.id, RESOURCE_CMD, {
-			timeoutMs: EXEC_TIMEOUT_MS,
-		});
-		const snapshot = exec.exitCode === 0 ? parseResourceSnapshot(exec.stdout) : null;
-		return { ...base, phase: summary.rawPhase, snapshot };
+		let snapshot: ResourceSnapshot | null = null;
+		try {
+			const exec = await provider.exec(machine.id, RESOURCE_CMD, {
+				timeoutMs: EXEC_TIMEOUT_MS,
+			});
+			snapshot = exec.exitCode === 0 ? parseResourceSnapshot(exec.stdout) : null;
+		} catch {
+			// Usage rollups are spec-based; keep the machine ready even when the
+			// optional resource probe fails so billing/usage does not silently stop.
+			snapshot = null;
+		}
+		return { ...base, phase: summary.state, snapshot };
 	} catch (err) {
 		const phase = err instanceof MachineProviderError ? "provider_error" : "unreachable";
 		return { ...base, phase, snapshot: null };

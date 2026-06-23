@@ -181,7 +181,7 @@ const AGENT_DESC: Record<
 	"claude-code": {
 		name: "Claude Code",
 		mark: "anthropic",
-		tagline: "Agentic coding. File edit + shell + SDK.",
+		tagline: "Edit repos. Run shell. Use SDK.",
 		bullets: [
 			"Terminal coding agent with deep repo awareness and multi-step tool use",
 			"Headless execution via claude -p for automation and cron workflows",
@@ -195,7 +195,7 @@ const AGENT_DESC: Record<
 	codex: {
 		name: "Codex CLI",
 		mark: "openai",
-		tagline: "Agentic coding. Sandbox + exec mode.",
+		tagline: "Execute tasks. Sandbox runs. CI-ready.",
 		bullets: [
 			"Terminal coding agent with sandbox isolation and workspace-write modes",
 			"Non-interactive via codex exec for CI/CD pipelines and automation",

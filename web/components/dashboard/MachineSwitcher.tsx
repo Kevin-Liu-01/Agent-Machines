@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Logo } from "@/components/Logo";
@@ -84,8 +84,13 @@ const AGENT_MARK: Record<AgentKind, "nous" | "openclaw" | "anthropic" | "openai"
 	codex: "openai",
 };
 
-export function MachineSwitcher() {
+type Props = {
+	currentMachineId?: string | null;
+};
+
+export function MachineSwitcher({ currentMachineId = null }: Props) {
 	const router = useRouter();
+	const pathname = usePathname();
 	const [data, setData] = useState<Payload | null>(null);
 	const [open, setOpen] = useState(false);
 	const [pendingId, setPendingId] = useState<string | null>(null);
@@ -133,6 +138,17 @@ export function MachineSwitcher() {
 		};
 	}, [open]);
 
+	const targetPathFor = useCallback(
+		(machineId: string): string | null => {
+			if (!currentMachineId) return null;
+			return pathname.replace(
+				/^\/dashboard\/machines\/[^/]+/,
+				`/dashboard/machines/${machineId}`,
+			);
+		},
+		[currentMachineId, pathname],
+	);
+
 	const setActive = useCallback(
 		async (machineId: string): Promise<void> => {
 			setPendingId(machineId);
@@ -144,7 +160,9 @@ export function MachineSwitcher() {
 				});
 				if (!response.ok) throw new Error(`HTTP ${response.status}`);
 				await refresh();
-				router.refresh();
+				const targetPath = targetPathFor(machineId);
+				if (targetPath && targetPath !== pathname) router.push(targetPath);
+				else router.refresh();
 				setOpen(false);
 			} catch {
 				// Surface failure via the spinner staying down; the
@@ -153,11 +171,13 @@ export function MachineSwitcher() {
 				setPendingId(null);
 			}
 		},
-		[refresh, router],
+		[pathname, refresh, router, targetPathFor],
 	);
 
 	const machines = data?.machines.filter((m) => !m.archived) ?? [];
 	const active = machines.find((m) => m.id === data?.activeMachineId) ?? null;
+	const displayed =
+		machines.find((m) => m.id === currentMachineId) ?? active ?? null;
 
 	return (
 		<div className="relative">
@@ -169,18 +189,18 @@ export function MachineSwitcher() {
 				aria-expanded={open}
 				className={headerControlTrigger(open)}
 				title={
-					active
-						? `Active: ${active.name}. Click to switch machine.`
+					displayed
+						? `${currentMachineId ? "Viewing" : "Active"}: ${displayed.name}. Click to switch machine.`
 						: "Pick a machine"
 				}
 			>
 				<span className={headerControlKicker}>Machine</span>
 				<span className={cn(headerControlValue, "hidden max-w-[140px] md:inline")}>
-					{active?.name ?? "none"}
+					{displayed?.name ?? "none"}
 				</span>
-				{active ? (
+				{displayed ? (
 					<StateDot
-						state={active.live.ok ? active.live.state : "unknown"}
+						state={displayed.live.ok ? displayed.live.state : "unknown"}
 					/>
 				) : null}
 				<svg
@@ -222,16 +242,17 @@ export function MachineSwitcher() {
 						) : null}
 						{machines.map((machine) => {
 							const isActive = machine.id === data?.activeMachineId;
+							const isViewing = machine.id === displayed?.id;
 							const stateName = machine.live.ok ? machine.live.state : "unknown";
 							const memGib = (machine.spec.memoryMib / 1024).toFixed(1);
 							return (
 								<li
 									key={machine.id}
 									role="option"
-									aria-selected={isActive}
+									aria-selected={isViewing}
 									className={cn(
 										"flex flex-col gap-1 border-b border-[var(--ret-border)] px-3 py-2 transition-colors",
-										isActive
+										isViewing
 											? "bg-[var(--ret-purple-glow)]"
 											: "hover:bg-[var(--ret-surface)]",
 										pendingId === machine.id && "opacity-60",
@@ -249,14 +270,19 @@ export function MachineSwitcher() {
 									<button
 										type="button"
 										onClick={() => void setActive(machine.id)}
-										disabled={pendingId === machine.id || isActive}
+										disabled={pendingId === machine.id || (isViewing && isActive)}
 										className="flex w-full items-start gap-2 text-left disabled:cursor-default"
 									>
 										<StateDot state={stateName} className="mt-1" />
 										<div className="min-w-0 flex-1">
 											<p className="flex items-center gap-1.5 font-mono text-[12px] text-[var(--ret-text)]">
 												<span className="truncate">{machine.name}</span>
-												{isActive ? (
+												{isViewing ? (
+													<span className="shrink-0 border border-[var(--ret-purple)]/45 bg-[var(--ret-purple-glow)] px-1 text-[8px] uppercase tracking-[0.22em] text-[var(--ret-purple)]">
+														viewing
+													</span>
+												) : null}
+												{isActive && !isViewing ? (
 													<span className="shrink-0 border border-[var(--ret-purple)]/45 bg-[var(--ret-purple-glow)] px-1 text-[8px] uppercase tracking-[0.22em] text-[var(--ret-purple)]">
 														active
 													</span>
@@ -286,7 +312,7 @@ export function MachineSwitcher() {
 									<MachineActions
 										machineId={machine.id}
 										state={stateName as MachineActionState}
-											capabilities={machine.capabilities}
+										capabilities={machine.capabilities}
 										active={isActive}
 										compact
 										onChange={async () => {
@@ -294,6 +320,13 @@ export function MachineSwitcher() {
 											router.refresh();
 										}}
 									/>
+									<Link
+										href={`/dashboard/machines/${machine.id}/console`}
+										onClick={() => setOpen(false)}
+										className="self-end font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-purple)] hover:underline"
+									>
+										talk
+									</Link>
 								</li>
 							);
 						})}

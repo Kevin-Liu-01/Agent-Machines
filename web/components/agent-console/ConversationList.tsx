@@ -18,7 +18,6 @@ import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
 import type { ConversationSummary } from "@/lib/agents/protocol";
 import type { AgentProfile, MachineIntrospection } from "@/lib/agents/machine-introspection";
-import { INTROSPECTION_COMMAND, parseIntrospection } from "@/lib/agents/machine-introspection";
 
 import { CronManager } from "./CronManager";
 
@@ -505,23 +504,25 @@ function AgentIntrospectionView({
 
 	const fetchIntrospection = useCallback(async () => {
 		if (!machineOk) return;
+		if (!machineId) {
+			setError("Machine not selected");
+			return;
+		}
 		setLoading(true);
 		setError(null);
 		try {
-			const response = await fetch("/api/dashboard/exec", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				// Scope introspection to THIS console's machine — without the
-				// machineId the exec route falls back to the active machine.
-				body: JSON.stringify({
-					command: INTROSPECTION_COMMAND,
-					timeoutMs: 15000,
-					...(machineId ? { machineId } : {}),
-				}),
-			});
-			const body = await response.json();
-			if (body.stdout) {
-				setData(parseIntrospection(body.stdout));
+			const response = await fetch(
+				`/api/dashboard/machines/${encodeURIComponent(machineId)}/introspection`,
+				{ cache: "no-store" },
+			);
+			const body = (await response.json()) as {
+				ok?: boolean;
+				data?: MachineIntrospection;
+				error?: string;
+				message?: string;
+			};
+			if (body.data) {
+				setData(body.data);
 			} else {
 				setError(body.error ?? body.message ?? "exec failed");
 			}
@@ -824,7 +825,7 @@ function CapacityBar({
 			</div>
 			<div className="mt-1 h-1.5 w-full bg-[var(--ret-border)]">
 				<div
-					className={cn("h-full transition-all duration-500", color)}
+					className={cn("h-full transition-[width] duration-[var(--ret-duration-page)] [transition-timing-function:var(--ret-ease-out)]", color)}
 					style={{ width: `${Math.min(100, percent)}%` }}
 				/>
 			</div>

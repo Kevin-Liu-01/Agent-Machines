@@ -24,6 +24,8 @@ export type CreateMachineOpts = {
 	name: string;
 	/** Router preset id or saved gateway-profile id (hermes/openclaw). */
 	gatewayProfileId?: string | null;
+	/** Optional saved environment profile whose vars are installed on the VM. */
+	environmentProfileId?: string | null;
 };
 
 export type CreatedMachine = { machineId: string; phase: string; state: string };
@@ -45,6 +47,11 @@ export async function createMachineForConfig(
 		(isKnownRouter ? opts.gatewayProfileId ?? null : null) ??
 		config.gatewayProfiles.find((profile) => profile.kind === "dedalus")?.id ??
 		null;
+	const environmentProfileId =
+		typeof opts.environmentProfileId === "string" &&
+		config.environmentProfiles.some((p) => p.id === opts.environmentProfileId)
+			? opts.environmentProfileId
+			: (config.environmentProfiles[0]?.id ?? null);
 
 	const ref: MachineRef = {
 		id: result.id,
@@ -57,7 +64,7 @@ export async function createMachineForConfig(
 		// row as a vestigial nullable column.
 		agentProfileId: null,
 		gatewayProfileId,
-		environmentProfileId: null,
+		environmentProfileId,
 		bootstrapPresetId: null,
 		createdAt: new Date().toISOString(),
 		apiUrl: null,

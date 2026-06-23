@@ -112,7 +112,7 @@ export function LogsTail() {
 		);
 	}
 
-	const { lines, files, tailLines } = envelope.data;
+	const { lines, files, tailLines, status, message } = envelope.data;
 
 	return (
 		<div className="flex flex-col gap-4 px-6 py-6">
@@ -124,6 +124,16 @@ export function LogsTail() {
 					{tailLines}
 					<span className="ml-3 text-[var(--ret-text-muted)]">lines</span>{" "}
 					{lines.length}
+					<span className="ml-3 text-[var(--ret-text-muted)]">status</span>{" "}
+					<span
+						className={cn(
+							status === "degraded"
+								? "text-[var(--ret-amber)]"
+								: "text-[var(--ret-green)]",
+						)}
+					>
+						{status ?? "live"}
+					</span>
 				</div>
 				<div className="ml-auto flex items-center gap-2">
 					<span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
@@ -138,6 +148,12 @@ export function LogsTail() {
 					</ReticleButton>
 				</div>
 			</div>
+
+			{status === "degraded" && message ? (
+				<div className="border border-[var(--ret-amber)]/30 bg-[var(--ret-amber)]/5 px-4 py-2 font-mono text-[10px] text-[var(--ret-amber)]">
+					{message}
+				</div>
+			) : null}
 
 			<div
 				ref={tailRef}

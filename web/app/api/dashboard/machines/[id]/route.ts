@@ -31,6 +31,7 @@ type PatchBody = {
 	apiKey?: string | null;
 	active?: boolean;
 	gatewayProfileId?: string | null;
+	environmentProfileId?: string | null;
 };
 
 function isAgent(value: unknown): value is AgentKind {
@@ -110,6 +111,12 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
 		patch.gatewayProfileId =
 			typeof body.gatewayProfileId === "string" && body.gatewayProfileId.trim().length > 0
 				? body.gatewayProfileId.trim()
+				: null;
+	}
+	if (body.environmentProfileId !== undefined) {
+		patch.environmentProfileId =
+			typeof body.environmentProfileId === "string" && body.environmentProfileId.trim().length > 0
+				? body.environmentProfileId.trim()
 				: null;
 	}
 

@@ -35,7 +35,7 @@ export async function POST(): Promise<Response> {
 				error: "too_soon",
 				message: `Last collection was ${Math.round((now - prev) / 1000)}s ago. Wait at least 15s.`,
 			},
-			{ status: 429 },
+			{ headers: { "Cache-Control": "no-store" } },
 		);
 	}
 	lastCollectAt.set(userId, now);
