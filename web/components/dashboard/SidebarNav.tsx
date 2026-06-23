@@ -136,7 +136,7 @@ export function SidebarNav({ setupComplete, machines }: Props) {
 		return (
 			<nav
 				aria-label="Machine dashboard"
-				className="flex flex-col gap-5 px-3 pb-6 pt-4 text-[13px]"
+				className="flex min-w-0 flex-col gap-5 overflow-x-hidden px-3 pb-6 pt-4 text-[13px]"
 			>
 				<MachineScopeHeader
 					machineId={machineId}
@@ -166,7 +166,7 @@ export function SidebarNav({ setupComplete, machines }: Props) {
 	return (
 		<nav
 			aria-label="Dashboard"
-			className="flex flex-col gap-5 px-3 pb-6 pt-4 text-[13px]"
+			className="flex min-w-0 flex-col gap-5 overflow-x-hidden px-3 pb-6 pt-4 text-[13px]"
 		>
 			{sections.map((section) => (
 				<Section key={section.id} section={section} pathname={pathname} />
@@ -189,7 +189,7 @@ function MachineScopeHeader({
 	const activeAgent = machine?.agentKind ?? ("hermes" satisfies AgentKind);
 
 	return (
-		<div className="flex flex-col gap-3">
+		<div className="flex min-w-0 flex-col gap-3">
 			<Link
 				href="/dashboard/machines"
 				className="group flex items-center gap-2 px-3 pb-1 text-[11px] text-[var(--ret-text-muted)] transition-colors hover:text-[var(--ret-text)]"
@@ -198,25 +198,27 @@ function MachineScopeHeader({
 				<span className="truncate">Fleet</span>
 			</Link>
 
-			<div className="px-3">
+			<div className="min-w-0 px-3">
 				<p
-					className="truncate text-[18px] leading-none tracking-tight text-[var(--ret-text)]"
+					className="block max-w-full truncate text-[18px] leading-none tracking-tight text-[var(--ret-text)]"
 					style={{ fontFamily: "var(--font-display-serif)" }}
+					title={machineName}
 				>
 					{machineName}
 				</p>
-				<p className="mt-1 font-mono text-[9px] text-[var(--ret-text-muted)]">
+				<p className="mt-1 truncate font-mono text-[9px] text-[var(--ret-text-muted)]">
 					{machineId.slice(0, 18)}
 				</p>
 			</div>
 
-			<div className="grid gap-1.5 border-y border-[var(--ret-border)] px-3 py-3 [&>div>button]:w-full [&>div>button]:justify-between [&>div>button]:px-2">
-				<ModelSwitcher activeMachineId={machineId} />
-				<MachineSwitcher currentMachineId={machineId} />
+			<div className="grid min-w-0 gap-1.5 border-y border-[var(--ret-border)] px-2 py-3">
+				<ModelSwitcher activeMachineId={machineId} surface="sidebar" />
+				<MachineSwitcher currentMachineId={machineId} surface="sidebar" />
 				<AgentSwitcher
 					value={activeAgent}
 					activeMachineId={machineId}
 					machines={machines}
+					surface="sidebar"
 				/>
 			</div>
 		</div>

@@ -16,6 +16,7 @@ import {
 	headerPopover,
 	headerPopoverTitle,
 } from "@/lib/dashboard/header-chrome";
+import { useSidebarPopoverStyle } from "@/lib/dashboard/sidebar-popover";
 import { cn } from "@/lib/cn";
 import {
 	AGENT_LABEL,
@@ -86,9 +87,13 @@ const AGENT_MARK: Record<AgentKind, "nous" | "openclaw" | "anthropic" | "openai"
 
 type Props = {
 	currentMachineId?: string | null;
+	surface?: "header" | "sidebar";
 };
 
-export function MachineSwitcher({ currentMachineId = null }: Props) {
+export function MachineSwitcher({
+	currentMachineId = null,
+	surface = "header",
+}: Props) {
 	const router = useRouter();
 	const pathname = usePathname();
 	const [data, setData] = useState<Payload | null>(null);
@@ -178,24 +183,48 @@ export function MachineSwitcher({ currentMachineId = null }: Props) {
 	const active = machines.find((m) => m.id === data?.activeMachineId) ?? null;
 	const displayed =
 		machines.find((m) => m.id === currentMachineId) ?? active ?? null;
+	const sidebar = surface === "sidebar";
+	const sidebarPopoverStyle = useSidebarPopoverStyle({
+		anchorRef: triggerRef,
+		enabled: sidebar,
+		open,
+		width: 320,
+	});
 
 	return (
-		<div className="relative">
+		<div className="relative min-w-0 max-w-full">
 			<button
 				ref={triggerRef}
 				type="button"
 				onClick={() => setOpen((v) => !v)}
 				aria-haspopup="listbox"
 				aria-expanded={open}
-				className={headerControlTrigger(open)}
+				className={cn(
+					headerControlTrigger(open),
+					sidebar && "h-8 w-full min-w-0 justify-start overflow-hidden px-2",
+				)}
 				title={
 					displayed
 						? `${currentMachineId ? "Viewing" : "Active"}: ${displayed.name}. Click to switch machine.`
-						: "Pick a machine"
+					: "Pick a machine"
 				}
 			>
-				<span className={headerControlKicker}>Machine</span>
-				<span className={cn(headerControlValue, "hidden max-w-[140px] md:inline")}>
+				<span
+					className={cn(
+						headerControlKicker,
+						sidebar && "w-[58px] shrink-0 tracking-[0.16em]",
+					)}
+				>
+					Machine
+				</span>
+				<span
+					className={cn(
+						headerControlValue,
+						sidebar
+							? "min-w-0 flex-1 text-right"
+							: "hidden max-w-[140px] md:inline",
+					)}
+				>
 					{displayed?.name ?? "none"}
 				</span>
 				{displayed ? (
@@ -206,7 +235,7 @@ export function MachineSwitcher({ currentMachineId = null }: Props) {
 				<svg
 					viewBox="0 0 12 12"
 					className={cn(
-						"h-2.5 w-2.5 transition-transform",
+						"h-2.5 w-2.5 shrink-0 transition-transform",
 						open ? "rotate-180" : "rotate-0",
 					)}
 					fill="none"
@@ -223,7 +252,17 @@ export function MachineSwitcher({ currentMachineId = null }: Props) {
 				<div
 					ref={popoverRef}
 					role="listbox"
-					className={cn(headerPopover, "mt-1 w-[320px]")}
+					style={sidebarPopoverStyle}
+					className={cn(
+						headerPopover,
+						"mt-1 max-w-[calc(100vw-24px)] overflow-hidden",
+						sidebar
+							? cn(
+								"!fixed !right-auto !top-auto w-auto",
+								!sidebarPopoverStyle && "pointer-events-none invisible",
+							)
+							: "w-[320px]",
+					)}
 				>
 					<header
 						className={cn(
@@ -234,7 +273,7 @@ export function MachineSwitcher({ currentMachineId = null }: Props) {
 						<span>fleet</span>
 						<span>{machines.length} total</span>
 					</header>
-					<ul className="max-h-[420px] overflow-y-auto">
+					<ul className="max-h-[min(420px,55dvh)] overflow-y-auto">
 						{machines.length === 0 ? (
 							<li className="px-3 py-4 text-[12px] italic text-[var(--ret-text-muted)]">
 								No machines yet. Use Spin up below.
@@ -271,12 +310,14 @@ export function MachineSwitcher({ currentMachineId = null }: Props) {
 										type="button"
 										onClick={() => void setActive(machine.id)}
 										disabled={pendingId === machine.id || (isViewing && isActive)}
-										className="flex w-full items-start gap-2 text-left disabled:cursor-default"
+										className="flex w-full min-w-0 items-start gap-2 text-left disabled:cursor-default"
 									>
 										<StateDot state={stateName} className="mt-1" />
 										<div className="min-w-0 flex-1">
-											<p className="flex items-center gap-1.5 font-mono text-[12px] text-[var(--ret-text)]">
-												<span className="truncate">{machine.name}</span>
+											<p className="flex min-w-0 items-center gap-1.5 font-mono text-[12px] text-[var(--ret-text)]">
+												<span className="min-w-0 truncate" title={machine.name}>
+													{machine.name}
+												</span>
 												{isViewing ? (
 													<span className="shrink-0 border border-[var(--ret-purple)]/45 bg-[var(--ret-purple-glow)] px-1 text-[8px] uppercase tracking-[0.22em] text-[var(--ret-purple)]">
 														viewing
@@ -288,18 +329,19 @@ export function MachineSwitcher({ currentMachineId = null }: Props) {
 													</span>
 												) : null}
 											</p>
-											<p className="mt-0.5 flex items-center gap-1.5 font-mono text-[10px] text-[var(--ret-text-muted)]">
+											<p className="mt-0.5 flex min-w-0 items-center gap-1.5 font-mono text-[10px] text-[var(--ret-text-muted)]">
 												<Logo
 													mark={AGENT_MARK[machine.agentKind]}
 													size={10}
+													className="shrink-0"
 												/>
-												<span>{AGENT_LABEL[machine.agentKind]}</span>
+												<span className="truncate">{AGENT_LABEL[machine.agentKind]}</span>
 												<span>.</span>
-												<span>
+												<span className="shrink-0">
 													{machine.spec.vcpu}v . {memGib}G
 												</span>
 												<span>.</span>
-												<span className="capitalize">{stateName}</span>
+												<span className="shrink-0 capitalize">{stateName}</span>
 											</p>
 											<p
 												className="truncate font-mono text-[9px] text-[var(--ret-text-muted)]"

@@ -20,7 +20,7 @@ export function DashboardShell({ children, config }: Props) {
 	return (
 		<DashboardReticleProvider>
 		<div className="relative grid min-h-[100dvh] bg-[var(--ret-bg-soft)] lg:grid-cols-[220px_1fr]">
-			<aside className="sticky top-0 z-10 hidden h-[100dvh] self-start border-r border-[var(--ret-border)] bg-[var(--ret-bg)] lg:flex lg:flex-col">
+			<aside className="sticky top-0 z-30 hidden h-[100dvh] self-start border-r border-[var(--ret-border)] bg-[var(--ret-bg)] lg:flex lg:flex-col">
 				<div
 					className={cn(
 						DASHBOARD_SHELL_HEADER_ROW,

@@ -43,7 +43,7 @@ export const DEFAULT_MACHINE_SPEC: MachineSpec = {
 	storageGib: 10,
 };
 
-export const DEFAULT_MODEL = "anthropic/claude-opus-4-7";
+export const DEFAULT_MODEL = "anthropic/claude-opus-4-8";
 
 /**
  * Bootstrap phases the wizard executes after a machine is provisioned.

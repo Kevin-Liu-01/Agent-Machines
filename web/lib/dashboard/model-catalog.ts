@@ -25,10 +25,23 @@ export const MODEL_PROVIDER_LABEL: Record<ModelProviderGroup, string> = {
 /** Curated slugs for the dashboard model picker (Dedalus router format). */
 export const MODEL_CATALOG: readonly ModelOption[] = [
 	{
+		id: "anthropic/claude-opus-4-8",
+		label: "Opus 4.8",
+		group: "anthropic",
+		hint: "default · deepest reasoning",
+		mark: "anthropic",
+	},
+	{
+		id: "anthropic/claude-opus-4-8-fast",
+		label: "Opus 4.8 Fast",
+		group: "anthropic",
+		hint: "faster",
+		mark: "anthropic",
+	},
+	{
 		id: "anthropic/claude-opus-4-7",
 		label: "Opus 4.7",
 		group: "anthropic",
-		hint: "default · deepest reasoning",
 		mark: "anthropic",
 	},
 	{
@@ -120,8 +133,15 @@ const GROUP_ORDER: ModelProviderGroup[] = [
 	"other",
 ];
 
-export function modelDisplayLabel(modelId: string): string {
-	return CATALOG_BY_ID.get(modelId)?.label ?? formatModelSlug(modelId);
+export function modelDisplayLabel(
+	modelId: string,
+	catalog: readonly ModelOption[] = MODEL_CATALOG,
+): string {
+	return (
+		catalog.find((m) => m.id === modelId)?.label ??
+		CATALOG_BY_ID.get(modelId)?.label ??
+		formatModelSlug(modelId)
+	);
 }
 
 export function modelProviderMark(modelId: string): Mark | null {
@@ -132,13 +152,46 @@ export function modelProviderMark(modelId: string): Mark | null {
 	return null;
 }
 
-export function groupedModelCatalog(): Array<{
+export function modelProviderGroup(
+	modelId: string,
+	ownedBy?: string | null,
+	name?: string | null,
+): ModelProviderGroup {
+	const text = `${modelId} ${ownedBy ?? ""} ${name ?? ""}`.toLowerCase();
+	if (text.includes("anthropic") || text.includes("claude")) return "anthropic";
+	if (text.includes("openai") || text.includes("gpt-") || text.includes("/o")) return "openai";
+	if (text.includes("google") || text.includes("gemini")) return "google";
+	if (text.includes("meta") || text.includes("llama")) return "meta";
+	return "other";
+}
+
+export function modelOptionFromId(input: {
+	id: string;
+	name?: string | null;
+	ownedBy?: string | null;
+	hint?: string;
+}): ModelOption {
+	const known = CATALOG_BY_ID.get(input.id);
+	if (known) return known;
+	const group = modelProviderGroup(input.id, input.ownedBy, input.name);
+	return {
+		id: input.id,
+		label: formatModelName(input.id, input.name),
+		group,
+		hint: input.hint,
+		mark: group === "anthropic" || group === "openai" ? group : undefined,
+	};
+}
+
+export function groupedModelCatalog(
+	catalog: readonly ModelOption[] = MODEL_CATALOG,
+): Array<{
 	group: ModelProviderGroup;
 	label: string;
 	models: ModelOption[];
 }> {
 	const buckets = new Map<ModelProviderGroup, ModelOption[]>();
-	for (const option of MODEL_CATALOG) {
+	for (const option of catalog) {
 		const list = buckets.get(option.group) ?? [];
 		list.push(option);
 		buckets.set(option.group, list);
@@ -150,10 +203,20 @@ export function groupedModelCatalog(): Array<{
 	}));
 }
 
+function formatModelName(modelId: string, name?: string | null): string {
+	const clean = name
+		?.replace(/^[^:]+:\s*/, "")
+		.replace(/^Claude\s+/i, "")
+		.replace(/^OpenAI\s+/i, "")
+		.trim();
+	return clean || formatModelSlug(modelId);
+}
+
 function formatModelSlug(modelId: string): string {
 	const slug = modelId.includes("/") ? modelId.split("/").pop()! : modelId;
 	return slug
 		.replace(/^claude-/, "")
+		.replace(/-(\d)-(\d)(?=$|-)/g, "-$1.$2")
 		.replace(/-/g, " ")
 		.replace(/\b\w/g, (c) => c.toUpperCase());
 }

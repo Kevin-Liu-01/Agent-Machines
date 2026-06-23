@@ -5,10 +5,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Logo } from "@/components/Logo";
 import {
+	MODEL_CATALOG,
+	type ModelOption,
 	groupedModelCatalog,
 	modelDisplayLabel,
+	modelOptionFromId,
 	modelProviderMark,
 } from "@/lib/dashboard/model-catalog";
+import { useSidebarPopoverStyle } from "@/lib/dashboard/sidebar-popover";
 import {
 	headerControlKicker,
 	headerControlTrigger,
@@ -26,20 +30,31 @@ type Payload = {
 	activeMachineId: string | null;
 };
 
+type ModelsPayload = {
+	ok: boolean;
+	source: string;
+	fallback: boolean;
+	models: ModelOption[];
+	fetchedAt: string;
+};
+
 type Props = {
 	activeMachineId?: string | null;
+	surface?: "header" | "sidebar";
 };
 
 /**
  * Header control to change the inference model on the active machine
  * (and the draft for the next provision).
  */
-export function ModelSwitcher({ activeMachineId }: Props) {
+export function ModelSwitcher({ activeMachineId, surface = "header" }: Props) {
 	const router = useRouter();
 	const [data, setData] = useState<Payload | null>(null);
 	const [open, setOpen] = useState(false);
 	const [pending, setPending] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [catalog, setCatalog] = useState<readonly ModelOption[]>(MODEL_CATALOG);
+	const [catalogSource, setCatalogSource] = useState("local fallback");
 	const rootRef = useRef<HTMLDivElement>(null);
 
 	const refresh = useCallback(async () => {
@@ -53,6 +68,25 @@ export function ModelSwitcher({ activeMachineId }: Props) {
 			// retry on next tick
 		}
 	}, []);
+
+	const targetId = activeMachineId ?? data?.activeMachineId ?? null;
+
+	const refreshCatalog = useCallback(async () => {
+		try {
+			const qs = targetId ? `?machineId=${encodeURIComponent(targetId)}` : "";
+			const response = await fetch(`/api/dashboard/models${qs}`, {
+				cache: "no-store",
+			});
+			if (!response.ok) return;
+			const payload = (await response.json()) as ModelsPayload;
+			if (payload.ok && payload.models.length > 0) {
+				setCatalog(payload.models);
+				setCatalogSource(payload.source);
+			}
+		} catch {
+			// keep local fallback
+		}
+	}, [targetId]);
 
 	useEffect(() => {
 		void refresh();
@@ -78,8 +112,11 @@ export function ModelSwitcher({ activeMachineId }: Props) {
 		};
 	}, [open]);
 
+	useEffect(() => {
+		if (open) void refreshCatalog();
+	}, [open, refreshCatalog]);
+
 	const machines = data?.machines.filter((m) => !m.archived) ?? [];
-	const targetId = activeMachineId ?? data?.activeMachineId ?? null;
 	const active = machines.find((m) => m.id === targetId) ?? null;
 	const currentModel = active?.model ?? null;
 	const mark = currentModel ? modelProviderMark(currentModel) : null;
@@ -117,32 +154,79 @@ export function ModelSwitcher({ activeMachineId }: Props) {
 		}
 	}
 
-	const groups = groupedModelCatalog();
+	const pickerCatalog =
+		currentModel && !catalog.some((option) => option.id === currentModel)
+			? [
+				modelOptionFromId({
+					id: currentModel,
+					hint: "current",
+				}),
+				...catalog,
+			]
+			: catalog;
+	const groups = groupedModelCatalog(pickerCatalog);
+	const sidebar = surface === "sidebar";
+	const sidebarPopoverStyle = useSidebarPopoverStyle({
+		anchorRef: rootRef,
+		enabled: sidebar,
+		open,
+		width: 340,
+	});
 
 	return (
-		<div className="relative" ref={rootRef}>
+		<div className="relative min-w-0 max-w-full" ref={rootRef}>
 			<button
 				type="button"
 				onClick={() => setOpen((v) => !v)}
 				aria-haspopup="listbox"
 				aria-expanded={open}
-				className={headerControlTrigger(open)}
+				className={cn(
+					headerControlTrigger(open),
+					sidebar && "h-8 w-full min-w-0 justify-start overflow-hidden px-2",
+				)}
 				title={
 					currentModel
 						? `Model: ${currentModel}. Click to change.`
-						: "Pick a model for the active machine"
+					: "Pick a model for the active machine"
 				}
 			>
-				<span className={headerControlKicker}>Model</span>
-				{mark ? <Logo mark={mark} size={13} /> : null}
-				<span className={cn(headerControlValue, "max-w-[120px]")}>
-					{currentModel ? modelDisplayLabel(currentModel) : "—"}
+				<span
+					className={cn(
+						headerControlKicker,
+						sidebar && "w-[58px] shrink-0 tracking-[0.16em]",
+					)}
+				>
+					Model
+				</span>
+				{mark ? <Logo mark={mark} size={13} className="shrink-0" /> : null}
+				<span
+					className={cn(
+						headerControlValue,
+						sidebar
+							? "min-w-0 flex-1 text-right"
+							: "max-w-[120px]",
+					)}
+				>
+					{currentModel ? modelDisplayLabel(currentModel, pickerCatalog) : "—"}
 				</span>
 				<Chevron open={open} />
 			</button>
 
 			{open ? (
-				<div role="listbox" className={cn(headerPopover, "w-[280px]")}>
+				<div
+					role="listbox"
+					style={sidebarPopoverStyle}
+					className={cn(
+						headerPopover,
+						"max-w-[calc(100vw-24px)] overflow-hidden",
+						sidebar
+							? cn(
+								"!fixed !right-auto !top-auto w-auto",
+								!sidebarPopoverStyle && "pointer-events-none invisible",
+							)
+							: "w-[280px]",
+					)}
+				>
 					<p className={headerPopoverTitle}>Inference model</p>
 					<ul className="max-h-[min(420px,55dvh)] overflow-y-auto py-1">
 						{groups.map(({ group, label, models }) => (
@@ -171,12 +255,12 @@ export function ModelSwitcher({ activeMachineId }: Props) {
 													)}
 												>
 													{option.mark ? (
-														<Logo mark={option.mark} size={14} />
+														<Logo mark={option.mark} size={14} className="shrink-0" />
 													) : (
 														<span className="h-3.5 w-3.5 shrink-0 bg-[var(--ret-border)]" />
 													)}
 													<span className="min-w-0 flex-1">
-														<span className="block text-[12px] text-[var(--ret-text)]">
+														<span className="block truncate text-[12px] text-[var(--ret-text)]">
 															{option.label}
 														</span>
 														<span className="block truncate font-mono text-[10px] text-[var(--ret-text-muted)]">
@@ -189,7 +273,7 @@ export function ModelSwitcher({ activeMachineId }: Props) {
 														) : null}
 													</span>
 													{selected ? (
-														<span className="text-[10px] font-medium text-[var(--ret-purple)]">
+														<span className="shrink-0 text-[10px] font-medium text-[var(--ret-purple)]">
 															active
 														</span>
 													) : null}
@@ -208,8 +292,8 @@ export function ModelSwitcher({ activeMachineId }: Props) {
 					) : null}
 					<p className="border-t border-[var(--ret-border)] px-3 py-2 text-[11px] leading-relaxed text-[var(--ret-text-muted)]">
 						{targetId
-							? "Updates this machine and the draft for the next spin-up."
-							: "Sets the model for your next provisioned machine."}
+							? `Live list from ${catalogSource}.`
+							: "Sets your next machine model."}
 					</p>
 				</div>
 			) : null}

@@ -56,7 +56,12 @@ import {
 	normalizeMachineUsagePayload,
 	type NormalizedMachineUsage,
 } from "@/lib/dashboard/usage-metrics";
-import { AGENT_LABEL, PROVIDER_LABEL } from "@/lib/user-config/schema";
+import {
+	AGENT_KINDS,
+	AGENT_LABEL,
+	PROVIDER_LABEL,
+	type AgentKind,
+} from "@/lib/user-config/schema";
 
 type MachineRouteResponse =
 	| {
@@ -114,6 +119,27 @@ type SnapshotState = {
 	fetchedAt: string | null;
 };
 
+type AgentRuntimeProfile = {
+	kind: AgentKind;
+	label: string;
+	mode: string;
+	home: string;
+	configPath: string;
+	entrypoint: string;
+	routesThroughGateway: boolean;
+	observes: string;
+};
+
+type SurfaceTone = "good" | "warn" | "muted";
+
+type ObservabilitySurface = {
+	icon: ReactNode;
+	label: string;
+	value: string;
+	detail: string;
+	tone: SurfaceTone;
+};
+
 const EMPTY_SNAPSHOT: SnapshotState = {
 	machineState: null,
 	machineRawPhase: null,
@@ -129,6 +155,57 @@ const EMPTY_SNAPSHOT: SnapshotState = {
 
 const POLL_MS = 7_000;
 const USAGE_DAYS = 7;
+const DEFAULT_AGENT_KIND: AgentKind = "hermes";
+
+const AGENT_RUNTIME_PROFILES: Record<AgentKind, AgentRuntimeProfile> = {
+	hermes: {
+		kind: "hermes",
+		label: AGENT_LABEL.hermes,
+		mode: "memory runtime",
+		home: "~/.agent-machines",
+		configPath: "~/.agent-machines/config.yaml",
+		entrypoint: "hermes chat",
+		routesThroughGateway: true,
+		observes: "memory, cron, MCP",
+	},
+	openclaw: {
+		kind: "openclaw",
+		label: AGENT_LABEL.openclaw,
+		mode: "computer-use runtime",
+		home: "~/.openclaw",
+		configPath: "~/.openclaw/config.json",
+		entrypoint: "openclaw chat",
+		routesThroughGateway: true,
+		observes: "browser, shell, vision",
+	},
+	"claude-code": {
+		kind: "claude-code",
+		label: AGENT_LABEL["claude-code"],
+		mode: "native coding CLI",
+		home: "~/.claude",
+		configPath: "~/.claude/settings.json",
+		entrypoint: "claude",
+		routesThroughGateway: false,
+		observes: "repo, shell, edits",
+	},
+	codex: {
+		kind: "codex",
+		label: AGENT_LABEL.codex,
+		mode: "native task CLI",
+		home: "~/.codex",
+		configPath: "~/.codex/config.toml",
+		entrypoint: "codex",
+		routesThroughGateway: false,
+		observes: "tasks, sandbox, CI",
+	},
+};
+
+function runtimeProfileFor(agentKind: string | null | undefined): AgentRuntimeProfile {
+	if (AGENT_KINDS.includes(agentKind as AgentKind)) {
+		return AGENT_RUNTIME_PROFILES[agentKind as AgentKind];
+	}
+	return AGENT_RUNTIME_PROFILES[DEFAULT_AGENT_KIND];
+}
 
 export function AgentViewScreen() {
 	const { machineId, machine, isActive } = useMachineContext();
@@ -309,9 +386,10 @@ export function AgentViewScreen() {
 
 			const launchCommand = agentLaunchCommand(machine.agentKind);
 			const hasCli = isCliAgent(machine.agentKind);
+			const runtimeProfile = runtimeProfileFor(machine.agentKind);
 			const shouldBootstrap =
 				forceBootstrap ||
-				(agentNeedsGatewayBootstrap(machine.agentKind) &&
+				(runtimeProfile.routesThroughGateway &&
 					machine.bootstrapState.phase !== "succeeded");
 
 			try {
@@ -359,7 +437,11 @@ export function AgentViewScreen() {
 				if (shouldBootstrap || wake.needsBootstrap) {
 					markLaunchStep("bootstrap", {
 						status: "running",
-						detail: forceBootstrap ? "repairing bootstrap" : "starting gateway",
+						detail: forceBootstrap
+							? "repairing runtime"
+							: runtimeProfile.routesThroughGateway
+								? "starting route"
+								: "checking runtime",
 					});
 					await fetchJson<MutateRouteResponse>("/api/dashboard/admin/bootstrap", {
 						method: "POST",
@@ -373,7 +455,9 @@ export function AgentViewScreen() {
 				} else {
 					markLaunchStep("bootstrap", {
 						status: "skipped",
-						detail: "bootstrap current",
+						detail: runtimeProfile.routesThroughGateway
+							? "route current"
+							: "runtime current",
 					});
 				}
 
@@ -456,19 +540,98 @@ export function AgentViewScreen() {
 	const logStatus = snapshot.logs?.status ?? "live";
 
 	if (!machine) return null;
+	const runtimeProfile = runtimeProfileFor(machine.agentKind);
 	const launchCommand = agentLaunchCommand(machine.agentKind);
 	const launchTerminalHref = `${base}/terminal?launch=1`;
 	const agentDisplay = agentLabel(machine.agentKind);
+	const detectedAgent = snapshot.introspection?.detectedAgent ?? null;
+	const detectedAgentLabel =
+		detectedAgent && detectedAgent !== "unknown"
+			? agentLabel(detectedAgent)
+			: "unknown";
+	const activeModel = snapshot.gateway?.model ?? snapshot.introspection?.model ?? machine.model;
+	const routeValue = gatewayOk
+		? `${snapshot.gateway?.latencyMs ?? 0}ms`
+		: runtimeProfile.routesThroughGateway
+			? "check"
+			: "direct";
+	const routeTone = gatewayOk
+		? "good"
+		: runtimeProfile.routesThroughGateway
+			? "warn"
+			: "muted";
+	const routeFootnote = gatewayOk
+		? (snapshot.gateway?.apiHost ?? "gateway ready")
+		: runtimeProfile.routesThroughGateway
+			? (snapshot.gatewayError ?? "not probed")
+			: `${agentDisplay} uses native CLI`;
+	const observabilitySurfaces: ObservabilitySurface[] = [
+		{
+			icon: <Bot size={14} />,
+			label: "Configured",
+			value: agentDisplay,
+			detail: `${runtimeProfile.mode} · ${runtimeProfile.observes}`,
+			tone: "good" as const,
+		},
+		{
+			icon: <Brain size={14} />,
+			label: "Detected",
+			value: detectedAgentLabel,
+			detail: snapshot.introspection?.configPath ?? runtimeProfile.configPath,
+			tone: snapshot.introspection
+				? "good"
+				: snapshot.introspectionError
+					? "warn"
+					: "muted",
+		},
+		{
+			icon: <Wifi size={14} />,
+			label: "Route",
+			value: routeValue,
+			detail: routeFootnote,
+			tone: routeTone,
+		},
+		{
+			icon: <Terminal size={14} />,
+			label: "Terminal",
+			value: launchCommand ? "ready" : "manual",
+			detail: launchCommand ?? runtimeProfile.entrypoint,
+			tone: launchCommand ? "good" : "muted",
+		},
+		{
+			icon: <Gauge size={14} />,
+			label: "Usage",
+			value: usageTotals.active,
+			detail: collectFootnote(collectState),
+			tone: usageTotals.hasUsage ? "good" : "muted",
+		},
+		{
+			icon: <ScrollText size={14} />,
+			label: "Logs",
+			value: snapshot.logs ? `${snapshot.logs.lines.length} lines` : "loading",
+			detail: snapshot.logs?.message ?? `${snapshot.logs?.files.length ?? 0} files`,
+			tone: logStatus === "degraded" ? "warn" : "good",
+		},
+	];
 
 	return (
 		<div className="flex flex-col">
 			<PageHeader
 				artSlug="machines"
-				kicker={`AGENT VIEW -- ${machine.name}`}
-				title={`${agentName} control plane`}
-				description={`${PROVIDER_LABEL[machine.providerKind]} wrapper with live gateway, usage, logs, and runtime state.`}
+				kicker={`OBSERVABILITY -- ${machine.name}`}
+				title={`${agentName} runtime view`}
+				description="Inspect state, logs, usage, and config. Hermes stays the default."
 				right={
 					<div className="flex flex-wrap items-center gap-2">
+						<ReticleButton
+							as="a"
+							href={`${base}/agents`}
+							variant="secondary"
+							size="sm"
+						>
+							<Bot size={14} />
+							Configure
+						</ReticleButton>
 						<ReticleButton
 							as="a"
 							href={`${base}/console`}
@@ -523,10 +686,10 @@ export function AgentViewScreen() {
 					/>
 					<SignalTile
 						icon={<Wifi size={14} />}
-						label="Gateway"
-						value={gatewayOk ? `${snapshot.gateway?.latencyMs ?? 0}ms` : "offline"}
-						tone={gatewayOk ? "good" : "warn"}
-						footnote={snapshot.gateway?.apiHost ?? snapshot.gatewayError ?? "not probed"}
+						label="Route"
+						value={routeValue}
+						tone={routeTone}
+						footnote={routeFootnote}
 						loading={loading && !snapshot.gateway && !snapshot.gatewayError}
 					/>
 					<SignalTile
@@ -563,7 +726,7 @@ export function AgentViewScreen() {
 					launchSteps={launchSteps}
 					launchTerminalHref={launchTerminalHref}
 					machineId={machineId}
-					model={snapshot.gateway?.model ?? machine.model}
+					model={activeModel}
 					onOpenConsole={() => {
 						setConsoleAutoLaunch(false);
 						setConsoleVisible(true);
@@ -571,29 +734,66 @@ export function AgentViewScreen() {
 					onStart={() => void startAgentSession()}
 					onRepair={() => void startAgentSession({ forceBootstrap: true })}
 					provider={PROVIDER_LABEL[machine.providerKind]}
+					runtimeProfile={runtimeProfile}
 					runtime={snapshot.introspection?.detectedAgent ?? machine.agentKind}
 				/>
 
+				<Panel
+					title="Observability"
+					icon={<Activity size={13} />}
+					right={
+						<ReticleBadge variant={snapshot.introspection ? "success" : "default"}>
+							{snapshot.introspection ? "live" : "probing"}
+						</ReticleBadge>
+					}
+				>
+					<SurfaceGrid surfaces={observabilitySurfaces} />
+					<KeyGrid
+						rows={[
+							["configured", agentDisplay],
+							["detected", detectedAgentLabel],
+							["default", agentLabel(DEFAULT_AGENT_KIND)],
+							["agent home", runtimeProfile.home],
+							["model", activeModel],
+							["configure", `${base}/agents`],
+						]}
+					/>
+				</Panel>
+
 				<div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
 					<Panel
-						title="Gateway"
+						title="Route"
 						icon={<Cloud size={13} />}
 						right={
-							<ReticleBadge variant={gatewayOk ? "success" : "warning"}>
-								{gatewayOk ? "online" : "check"}
+							<ReticleBadge
+								variant={
+									gatewayOk
+										? "success"
+										: runtimeProfile.routesThroughGateway
+											? "warning"
+											: "default"
+								}
+							>
+								{gatewayOk
+									? "online"
+									: runtimeProfile.routesThroughGateway
+										? "check"
+										: "optional"}
 							</ReticleBadge>
 						}
 					>
 						<div className="grid gap-3 md:grid-cols-3">
-							<Metric label="Model" value={snapshot.gateway?.model ?? machine.model} />
+							<Metric label="Model" value={activeModel} />
 							<Metric
-								label="Status"
-								value={snapshot.gateway ? String(snapshot.gateway.status) : "none"}
+								label="Mode"
+								value={runtimeProfile.routesThroughGateway ? "gateway" : "native"}
 							/>
 							<Metric
 								label="Models"
 								value={
-									snapshot.gateway?.modelCount == null
+									!runtimeProfile.routesThroughGateway
+										? "direct"
+										: snapshot.gateway?.modelCount == null
 										? "unknown"
 										: String(snapshot.gateway.modelCount)
 								}
@@ -601,10 +801,22 @@ export function AgentViewScreen() {
 						</div>
 						<KeyGrid
 							rows={[
-								["api host", snapshot.gateway?.apiHost ?? machine.apiUrl ?? "not set"],
-								["api key", machine.hasApiKey ? "stored" : "missing"],
+								[
+									"api host",
+									runtimeProfile.routesThroughGateway
+										? (snapshot.gateway?.apiHost ?? machine.apiUrl ?? "not set")
+										: "native cli",
+								],
+								[
+									"api key",
+									runtimeProfile.routesThroughGateway
+										? machine.hasApiKey
+											? "stored"
+											: "missing"
+										: "provider key",
+								],
 								["active", isActive ? "yes" : "no"],
-								["error", snapshot.gatewayError ?? "none"],
+								["error", runtimeProfile.routesThroughGateway ? (snapshot.gatewayError ?? "none") : "none"],
 							]}
 						/>
 					</Panel>
@@ -620,11 +832,14 @@ export function AgentViewScreen() {
 					>
 						<KeyGrid
 							rows={[
-								["agent", snapshot.introspection?.detectedAgent ?? machine.agentKind],
+								["configured", agentDisplay],
+								["detected", detectedAgentLabel],
 								["version", snapshot.introspection?.agentVersion ?? "unknown"],
-								["config", snapshot.introspection?.configPath ?? "unknown"],
+								["home", runtimeProfile.home],
+								["config", snapshot.introspection?.configPath ?? runtimeProfile.configPath],
 								["sandbox", snapshot.introspection?.sandboxMode ?? "unknown"],
 								["approval", snapshot.introspection?.approvalPolicy ?? "unknown"],
+								["default", agentLabel(DEFAULT_AGENT_KIND)],
 								["exec", snapshot.introspectionError ? "degraded" : "available"],
 							]}
 						/>
@@ -713,9 +928,9 @@ export function AgentViewScreen() {
 							</div>
 							<KeyGrid
 								rows={[
-									["agent", machine.agentKind],
-									["model", machine.model],
-									["gateway", gatewayOk ? "online" : "check"],
+									["agent", agentDisplay],
+									["model", activeModel],
+									["route", routeValue],
 									["logs", logStatus],
 								]}
 							/>
@@ -766,6 +981,7 @@ function AgentLauncherPanel({
 	onRepair,
 	onStart,
 	provider,
+	runtimeProfile,
 	runtime,
 }: {
 	agentName: string;
@@ -788,15 +1004,26 @@ function AgentLauncherPanel({
 	onRepair: () => void;
 	onStart: () => void;
 	provider: string;
+	runtimeProfile: AgentRuntimeProfile;
 	runtime: string;
 }) {
+	const routeLabel = runtimeProfile.routesThroughGateway ? "gateway" : "native";
+	const routeValue = runtimeProfile.routesThroughGateway
+		? (apiHost ?? "not exposed")
+		: "native cli";
 	const runRows = [
 		{ label: "command", value: command ?? "no interactive cli", copy: command },
 		{ label: "terminal", value: launchTerminalHref, href: launchTerminalHref },
-		{ label: "gateway", value: apiHost ?? "not exposed", copy: apiHost ?? undefined },
-		{ label: "config", value: configPath ?? "unknown", copy: configPath ?? undefined },
+		{
+			label: "route",
+			value: routeValue,
+			copy: runtimeProfile.routesThroughGateway ? (apiHost ?? undefined) : undefined,
+		},
+		{ label: "home", value: runtimeProfile.home, copy: runtimeProfile.home },
+		{ label: "config", value: configPath ?? runtimeProfile.configPath, copy: configPath ?? runtimeProfile.configPath },
 		{ label: "model", value: model, copy: model },
 		{ label: "machine", value: machineId, copy: machineId },
+		{ label: "configure", value: `${base}/agents`, href: `${base}/agents` },
 		{ label: "logs", value: `${base}/logs`, href: `${base}/logs` },
 		{ label: "artifacts", value: `${base}/artifacts`, href: `${base}/artifacts` },
 	];
@@ -807,7 +1034,13 @@ function AgentLauncherPanel({
 			icon={<Rocket size={13} />}
 			right={
 				<ReticleBadge variant={launching ? "accent" : gatewayOk ? "success" : "default"}>
-					{launching ? "booting" : gatewayOk ? "gateway ready" : bootstrapPhase}
+					{launching
+						? "booting"
+						: gatewayOk
+							? "route ready"
+							: runtimeProfile.routesThroughGateway
+								? bootstrapPhase
+								: "cli ready"}
 				</ReticleBadge>
 			}
 		>
@@ -846,12 +1079,21 @@ function AgentLauncherPanel({
 						</ReticleButton>
 						<ReticleButton
 							as="a"
+							href={`${base}/agents`}
+							variant="secondary"
+							size="sm"
+						>
+							<Bot size={14} />
+							Configure
+						</ReticleButton>
+						<ReticleButton
+							as="a"
 							href={launchTerminalHref}
 							variant="secondary"
 							size="sm"
 						>
 							<SquareTerminal size={14} />
-							Open terminal
+							Terminal
 						</ReticleButton>
 						<ReticleButton
 							type="button"
@@ -869,7 +1111,7 @@ function AgentLauncherPanel({
 					<div className="grid gap-3 border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-3 py-3">
 						<div className="grid grid-cols-3 gap-px border border-[var(--ret-border)] bg-[var(--ret-border)] font-mono text-[10px]">
 							<MiniDatum label="agent" value={agentName} />
-							<MiniDatum label="runtime" value={runtime} />
+							<MiniDatum label={routeLabel} value={runtime} />
 							<MiniDatum label="provider" value={provider} />
 						</div>
 						<RunSheet rows={runRows} />
@@ -1061,10 +1303,6 @@ function defaultLaunchSteps(): LaunchStep[] {
 	];
 }
 
-function agentNeedsGatewayBootstrap(agentKind: string): boolean {
-	return agentKind === "hermes" || agentKind === "openclaw";
-}
-
 function launchStatusClass(status: LaunchStatus): string {
 	if (status === "running") return "text-[var(--ret-text)]";
 	if (status === "done") return "text-[var(--ret-text)]";
@@ -1105,6 +1343,43 @@ function collectFootnote(state: CollectState): string {
 		return `${state.collected} samples, ${state.transitions} transitions`;
 	}
 	return state.message ?? state.status;
+}
+
+function SurfaceGrid({ surfaces }: { surfaces: ObservabilitySurface[] }) {
+	return (
+		<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+			{surfaces.map((surface) => (
+				<div
+					key={surface.label}
+					className="min-h-[112px] border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-3 py-3 transition-colors hover:border-[var(--ret-border-hover)]"
+				>
+					<div className="flex items-center justify-between gap-3">
+						<ReticleLabel className="flex items-center gap-1.5 text-[9px]">
+							<span className="text-[var(--ret-text-muted)]">{surface.icon}</span>
+							{surface.label}
+						</ReticleLabel>
+						<span
+							className={cn(
+								"h-2 w-2 rounded-full",
+								surface.tone === "good" && "bg-[var(--ret-border-strong)]",
+								surface.tone === "warn" && "bg-[var(--ret-amber)]",
+								surface.tone === "muted" && "bg-[var(--ret-border-hover)]",
+							)}
+						/>
+					</div>
+					<p className="mt-4 truncate text-[18px] font-semibold tracking-tight text-[var(--ret-text)]">
+						{surface.value}
+					</p>
+					<p
+						className="mt-1 truncate font-mono text-[10px] text-[var(--ret-text-muted)]"
+						title={surface.detail}
+					>
+						{surface.detail}
+					</p>
+				</div>
+			))}
+		</div>
+	);
 }
 
 function SignalTile({

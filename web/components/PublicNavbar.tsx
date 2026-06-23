@@ -44,7 +44,6 @@ import {
 
 import { SignedIn, SignedOut } from "@/components/AuthSwitch";
 import { BrandHomeLockup } from "@/components/BrandHomeLockup";
-import { CircuitArt } from "@/components/reticle/CircuitArt";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleNavbar } from "@/components/reticle/ReticleNavbar";
 import { ServiceIcon } from "@/components/ServiceIcon";
@@ -130,6 +129,8 @@ const RESOURCE_ENTRIES: ReadonlyArray<MenuEntry> = RESOURCE_PAGES.map((item) => 
 	icon: item.icon,
 }));
 
+const HERO_CIRCUIT_BG_SIZE = "auto 468px";
+
 const MENU_GROUPS: ReadonlyArray<MenuGroup> = [
 	{
 		id: "product",
@@ -144,12 +145,12 @@ const MENU_GROUPS: ReadonlyArray<MenuGroup> = [
 	},
 	{
 		id: "agents",
-		label: "Agents",
-		eyebrow: "./AGENTS",
-		title: `${AGENT_TEMPLATES.length} templates, one worker model.`,
+		label: "Workers",
+		eyebrow: "./WORKERS",
+		title: `${AGENT_TEMPLATES.length} workers. Four agent runtimes.`,
 		body:
-			"Research, coding, browser, data, support, and ops workers launch with explicit runtime and loadout choices.",
-		cta: "Browse agents",
+			"Agents are runtimes. Workers are deployable presets. Each worker stores model, provider, memory, loadout.",
+		cta: "Browse workers",
 		ctaHref: "/agents",
 		entries: AGENT_ENTRIES,
 	},
@@ -381,7 +382,7 @@ function MegaMenu({
 					))}
 				</div>
 				<div className="group/menu relative overflow-hidden border-t border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-5 lg:border-l lg:border-t-0">
-					<CircuitArt slug={menuCircuitSlug(group.id)} variant="dropdown" fit="cover" />
+					<DropdownCircuitBackground />
 					<div className="relative z-10 flex h-full flex-col">
 						<p className="font-mono text-[12px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 							{group.eyebrow}
@@ -392,20 +393,7 @@ function MegaMenu({
 						<p className="mt-4 max-w-[30ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
 							{group.body}
 						</p>
-						<div className="mt-5 grid grid-cols-3 border border-[var(--ret-border)] bg-[var(--ret-bg)] font-mono text-[10px] text-[var(--ret-text-muted)]">
-							<div className="border-r border-[var(--ret-border)] p-2">
-								<p className="text-[var(--ret-text)]">runtime</p>
-								<p className="mt-1">4 routes</p>
-							</div>
-							<div className="border-r border-[var(--ret-border)] p-2">
-								<p className="text-[var(--ret-text)]">provider</p>
-								<p className="mt-1">4 lanes</p>
-							</div>
-							<div className="p-2">
-								<p className="text-[var(--ret-text)]">state</p>
-								<p className="mt-1">saved</p>
-							</div>
-						</div>
+						<MenuFacts group={group} />
 						<Link
 							href={group.ctaHref}
 							className="ret-pressable mt-auto inline-flex min-h-9 items-center justify-center gap-2 rounded-[var(--ret-card-radius)] border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 text-[13px] font-semibold text-[var(--ret-text)] hover:border-[var(--ret-border-hover)] hover:bg-[var(--ret-surface-hover)]"
@@ -426,6 +414,54 @@ function MegaMenu({
 				</div>
 			</div>
 		</div>
+	);
+}
+
+function MenuFacts({ group }: { group: MenuGroup }) {
+	const facts =
+		group.id === "agents"
+			? [
+				{ label: "agent", value: "runtime" },
+				{ label: "worker", value: "preset" },
+				{ label: "machine", value: "sandbox" },
+			]
+			: [
+				{ label: "runtime", value: "4 routes" },
+				{ label: "provider", value: "4 lanes" },
+				{ label: "state", value: "saved" },
+			];
+
+	return (
+		<div className="mt-5 grid grid-cols-3 border border-[var(--ret-border)] bg-[var(--ret-bg)] font-mono text-[10px] text-[var(--ret-text-muted)]">
+			{facts.map((fact, index) => (
+				<div
+					key={fact.label}
+					className={cn(index < facts.length - 1 && "border-r border-[var(--ret-border)]", "p-2")}
+				>
+					<p className="text-[var(--ret-text)]">{fact.label}</p>
+					<p className="mt-1">{fact.value}</p>
+				</div>
+			))}
+		</div>
+	);
+}
+
+function DropdownCircuitBackground() {
+	return (
+		<>
+			<div
+				aria-hidden="true"
+				className="pointer-events-none absolute inset-0 bg-center opacity-[0.12] mix-blend-multiply invert transition-opacity duration-300 group-hover/menu:opacity-[0.18] dark:opacity-[0.18] dark:mix-blend-screen dark:invert-0 dark:group-hover/menu:opacity-[0.24]"
+				style={{
+					backgroundImage: "url(/brand/circuit-grid.png)",
+					backgroundSize: HERO_CIRCUIT_BG_SIZE,
+				}}
+			/>
+			<div
+				aria-hidden="true"
+				className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,transparent_0%,transparent_44%,var(--ret-bg-soft)_100%)] opacity-75"
+			/>
+		</>
 	);
 }
 
@@ -473,12 +509,6 @@ function MobileMenuLink({
 			<span>{entry.title}</span>
 		</Link>
 	);
-}
-
-function menuCircuitSlug(id: MenuId): string {
-	if (id === "agents") return "agents";
-	if (id === "resources") return "registry";
-	return "machines";
 }
 
 function NavToggleIcon({ open }: { open: boolean }) {

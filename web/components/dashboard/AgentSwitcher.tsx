@@ -16,6 +16,7 @@ import {
 	type AgentMachineCandidate,
 	selectAgentMachine,
 } from "@/lib/dashboard/agent-switching";
+import { useSidebarPopoverStyle } from "@/lib/dashboard/sidebar-popover";
 import {
 	AGENT_KINDS,
 	type AgentKind,
@@ -28,6 +29,7 @@ type Props = {
 	 * when another real machine already runs the requested agent. */
 	activeMachineId?: string;
 	machines?: PublicMachineRef[];
+	surface?: "header" | "sidebar";
 };
 
 const LABEL: Record<AgentKind, string> = {
@@ -85,13 +87,25 @@ type MachineCatalogResponse = {
  * describes what was bootstrapped on the VM; changing it here would relabel a
  * Hermes box as OpenClaw without installing OpenClaw.
  */
-export function AgentSwitcher({ value, activeMachineId, machines = [] }: Props) {
+export function AgentSwitcher({
+	value,
+	activeMachineId,
+	machines = [],
+	surface = "header",
+}: Props) {
 	const router = useRouter();
 	const [open, setOpen] = useState(false);
 	const [pending, setPending] = useState<AgentKind | null>(null);
 	const [message, setMessage] = useState<SwitcherMessage | null>(null);
 	const [catalog, setCatalog] = useState<AgentMachineCandidate[]>([]);
 	const ref = useRef<HTMLDivElement | null>(null);
+	const sidebar = surface === "sidebar";
+	const sidebarPopoverStyle = useSidebarPopoverStyle({
+		anchorRef: ref,
+		enabled: sidebar,
+		open,
+		width: 320,
+	});
 
 	useEffect(() => {
 		if (!open) return;
@@ -198,26 +212,43 @@ export function AgentSwitcher({ value, activeMachineId, machines = [] }: Props) 
 	}
 
 	return (
-		<div className="relative" ref={ref}>
+		<div className="relative min-w-0 max-w-full" ref={ref}>
 			<button
 				type="button"
 				onClick={() => setOpen((prev) => !prev)}
-				className={headerControlTrigger(open)}
+				className={cn(
+					headerControlTrigger(open),
+					sidebar && "h-8 w-full min-w-0 justify-start overflow-hidden px-2",
+				)}
 				aria-haspopup="listbox"
 				aria-expanded={open}
 				title="Switch agent runtime"
 			>
-				<span className={cn(headerControlKicker, "hidden md:inline")}>
-					Agent
-				</span>
-				<Logo mark={MARK[value]} size={14} />
-				<span className={headerControlValue}>{LABEL[value]}</span>
 				<span
 					className={cn(
-						"flex items-center gap-0.5 text-[10px] font-medium text-[var(--ret-purple)]",
+						headerControlKicker,
+						sidebar
+							? "w-[58px] shrink-0 tracking-[0.16em]"
+							: "hidden md:inline",
 					)}
 				>
-					<span className="hidden sm:inline">Swap</span>
+					Agent
+				</span>
+				<Logo mark={MARK[value]} size={14} className="shrink-0" />
+				<span
+					className={cn(
+						headerControlValue,
+						sidebar && "min-w-0 flex-1 text-right",
+					)}
+				>
+					{LABEL[value]}
+				</span>
+				<span
+					className={cn(
+						"flex shrink-0 items-center gap-0.5 text-[10px] font-medium text-[var(--ret-purple)]",
+					)}
+				>
+					<span className={sidebar ? "sr-only" : "hidden sm:inline"}>Swap</span>
 					<svg
 						viewBox="0 0 10 10"
 						className={cn(
@@ -233,7 +264,17 @@ export function AgentSwitcher({ value, activeMachineId, machines = [] }: Props) 
 			{open ? (
 				<ul
 					role="listbox"
-					className={cn(headerPopover, "w-72")}
+					style={sidebarPopoverStyle}
+					className={cn(
+						headerPopover,
+						"max-w-[calc(100vw-24px)] overflow-hidden",
+						sidebar
+							? cn(
+								"!fixed !right-auto !top-auto w-auto",
+								!sidebarPopoverStyle && "pointer-events-none invisible",
+							)
+							: "w-72",
+					)}
 				>
 					<li className={cn(headerPopoverTitle, "list-none uppercase tracking-[0.12em]")}>
 						Pick an agent
@@ -250,24 +291,27 @@ export function AgentSwitcher({ value, activeMachineId, machines = [] }: Props) 
 										currentMachineId: activeMachineId,
 									});
 							const className = cn(
-								"flex w-full items-start gap-3 border-b border-[var(--ret-border)] px-3 py-2.5 text-left transition-colors last:border-b-0",
+								"flex w-full min-w-0 items-start gap-3 overflow-hidden border-b border-[var(--ret-border)] px-3 py-2.5 text-left transition-colors last:border-b-0",
 								selected
 									? "bg-[var(--ret-purple-glow)] text-[var(--ret-purple)]"
 									: "hover:bg-[var(--ret-surface)]",
 							);
 							const option = (
 								<>
-									<Logo mark={MARK[kind]} size={20} className="mt-0.5" />
+									<Logo mark={MARK[kind]} size={20} className="mt-0.5 shrink-0" />
 									<span className="min-w-0 flex-1">
-										<span className="flex items-center gap-2">
-											<span className="font-mono text-[12px] text-[var(--ret-text)]">
+										<span className="flex min-w-0 items-center gap-2">
+											<span className="shrink-0 font-mono text-[12px] text-[var(--ret-text)]">
 												{LABEL[kind]}
 											</span>
-											<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+											<span className="min-w-0 truncate font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 												by {SOURCE[kind]}
 											</span>
 										</span>
-										<span className="mt-0.5 block font-mono text-[10px] text-[var(--ret-text-muted)]">
+										<span
+											className="mt-0.5 block truncate font-mono text-[10px] text-[var(--ret-text-muted)]"
+											title={TAGLINE[kind]}
+										>
 											{inFlight ? "switching..." : TAGLINE[kind]}
 										</span>
 										{targetMachine ? (
@@ -277,7 +321,7 @@ export function AgentSwitcher({ value, activeMachineId, machines = [] }: Props) 
 										) : null}
 									</span>
 									{selected ? (
-										<span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ret-purple)]">
+										<span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ret-purple)]">
 											active
 										</span>
 									) : null}
@@ -299,7 +343,7 @@ export function AgentSwitcher({ value, activeMachineId, machines = [] }: Props) 
 					{message ? (
 						<li
 							className={cn(
-								"border-t px-3 py-1.5 font-mono text-[10px]",
+								"break-words border-t px-3 py-1.5 font-mono text-[10px]",
 								message.tone === "error"
 									? "border-[var(--ret-red)]/40 bg-[var(--ret-red)]/10 text-[var(--ret-red)]"
 									: "border-[var(--ret-border)] bg-[var(--ret-surface)] text-[var(--ret-text-muted)]",
@@ -308,7 +352,7 @@ export function AgentSwitcher({ value, activeMachineId, machines = [] }: Props) 
 							{message.text}
 						</li>
 					) : null}
-					<li className="border-t border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-3 py-1.5 font-mono text-[10px] text-[var(--ret-text-muted)]">
+					<li className="break-words border-t border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-3 py-1.5 font-mono text-[10px] leading-relaxed text-[var(--ret-text-muted)]">
 						{activeMachineId
 							? "switches to that agent's machine, or saves the draft"
 							: "sets the agent for the next provisioned machine"}
