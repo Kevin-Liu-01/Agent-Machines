@@ -1,6 +1,6 @@
 {
   "description": "Session attach packages for Add ___ composer chips — one per Cursor Marketplace plugin.",
-  "syncedAt": "2026-06-04T15:41:37.230Z",
+  "syncedAt": "2026-06-23T10:24:19.835Z",
   "packages": [
     {
       "id": "1password",
@@ -18,6 +18,45 @@
       "mcpServerIds": [],
       "registryItemIds": [
         "plugin-1password"
+      ]
+    },
+    {
+      "id": "app-builder",
+      "name": "Adobe Developer App Builder",
+      "description": "Development, customization, testing, and deployment skills for Adobe App Builder projects. Covers project initialization, action scaffolding, React Spectrum UI scaffolding, Jest unit and integration testing, Playwright E2E testing, and GitHub Actions / Azure DevOps / GitLab CI deployment pipelines.",
+      "brand": null,
+      "homepage": "https://developer.adobe.com/app-builder/",
+      "docsUrl": "https://github.com/adobe/skills",
+      "marketplaceUrl": "https://cursor.com/marketplace/app-builder",
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/adobe-logo-2.png",
+      "triggers": [
+        "app-builder",
+        "adobe developer app builder",
+        "adobe",
+        "appbuilder-action-scaffolder",
+        "appbuilder-cicd-pipeline",
+        "appbuilder-e2e-testing",
+        "appbuilder-project-init",
+        "appbuilder-testing",
+        "appbuilder-ui-scaffolder"
+      ],
+      "skillIds": [
+        "appbuilder-action-scaffolder",
+        "appbuilder-cicd-pipeline",
+        "appbuilder-e2e-testing",
+        "appbuilder-project-init",
+        "appbuilder-testing",
+        "appbuilder-ui-scaffolder"
+      ],
+      "mcpServerIds": [],
+      "registryItemIds": [
+        "plugin-app-builder",
+        "skill-appbuilder-action-scaffolder",
+        "skill-appbuilder-cicd-pipeline",
+        "skill-appbuilder-e2e-testing",
+        "skill-appbuilder-project-init",
+        "skill-appbuilder-testing",
+        "skill-appbuilder-ui-scaffolder"
       ]
     },
     {
@@ -55,14 +94,24 @@
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/aikido-logo.png",
       "triggers": [
         "aikido",
-        "aikido-cursor-plugin"
+        "aikido-cursor-plugin",
+        "aikido-issues",
+        "scan",
+        "setup"
       ],
-      "skillIds": [],
+      "skillIds": [
+        "aikido-issues",
+        "scan",
+        "setup"
+      ],
       "mcpServerIds": [
         "aikido"
       ],
       "registryItemIds": [
         "plugin-aikido",
+        "skill-aikido-issues",
+        "skill-scan",
+        "skill-setup",
         "mcp-aikido"
       ]
     },
@@ -313,6 +362,95 @@
       ]
     },
     {
+      "id": "arize",
+      "name": "Arize",
+      "description": "Add Arize AX observability to LLM applications — auto-instrumentation, trace export, dataset management, experiment workflows, prompt optimization, and deep linking via the ax CLI.",
+      "brand": null,
+      "homepage": "https://arize.com/",
+      "docsUrl": "https://github.com/Arize-ai/arize-skills",
+      "marketplaceUrl": "https://cursor.com/marketplace/arize-skills",
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/arize.png",
+      "triggers": [
+        "arize",
+        "arize-skills",
+        "arize-ai",
+        "arize ai",
+        "arize-admin",
+        "arize-ai-provider-integration",
+        "arize-annotation",
+        "arize-compliance-audit",
+        "arize-dataset",
+        "arize-evaluator",
+        "arize-experiment",
+        "arize-instrumentation",
+        "arize-link",
+        "arize-prompt-optimization",
+        "arize-prompts",
+        "arize-trace"
+      ],
+      "skillIds": [
+        "arize-admin",
+        "arize-ai-provider-integration",
+        "arize-annotation",
+        "arize-compliance-audit",
+        "arize-dataset",
+        "arize-evaluator",
+        "arize-experiment",
+        "arize-instrumentation",
+        "arize-link",
+        "arize-prompt-optimization",
+        "arize-prompts",
+        "arize-trace"
+      ],
+      "mcpServerIds": [],
+      "registryItemIds": [
+        "plugin-arize",
+        "skill-arize-admin",
+        "skill-arize-ai-provider-integration",
+        "skill-arize-annotation",
+        "skill-arize-compliance-audit",
+        "skill-arize-dataset",
+        "skill-arize-evaluator",
+        "skill-arize-experiment",
+        "skill-arize-instrumentation",
+        "skill-arize-link",
+        "skill-arize-prompt-optimization",
+        "skill-arize-prompts",
+        "skill-arize-trace"
+      ]
+    },
+    {
+      "id": "asana",
+      "name": "Asana",
+      "description": "Connect Cursor to Asana. Create tasks, update projects, search your workspace, and manage work — directly from the editor.",
+      "brand": null,
+      "homepage": "https://asana.com/",
+      "docsUrl": "https://github.com/Asana/cursor-marketplace-plugin",
+      "marketplaceUrl": "https://cursor.com/marketplace/asana",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e78cc4326f836c98.png",
+      "triggers": [
+        "asana",
+        "asana-mcp-troubleshooting",
+        "asana-setup",
+        "asana-usage"
+      ],
+      "skillIds": [
+        "asana-mcp-troubleshooting",
+        "asana-setup",
+        "asana-usage"
+      ],
+      "mcpServerIds": [
+        "asana"
+      ],
+      "registryItemIds": [
+        "plugin-asana",
+        "skill-asana-mcp-troubleshooting",
+        "skill-asana-setup",
+        "skill-asana-usage",
+        "mcp-asana"
+      ]
+    },
+    {
       "id": "astronomer-data",
       "name": "Astronomer",
       "description": "Data engineering plugin - warehouse exploration, pipeline authoring, Airflow integration",
@@ -424,13 +562,14 @@
       "homepage": "https://www.atlassian.com",
       "docsUrl": "https://developer.atlassian.com",
       "marketplaceUrl": "https://cursor.com/marketplace/atlassian",
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/420e1cf62179d5e3.png",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/bf7719b83588a5fa.png",
       "triggers": [
         "atlassian",
         "jira",
         "confluence",
         "capture-tasks-from-meeting-notes",
         "generate-status-report",
+        "jira-sprint-dashboard",
         "search-company-knowledge",
         "spec-to-backlog",
         "triage-issue"
@@ -438,6 +577,7 @@
       "skillIds": [
         "capture-tasks-from-meeting-notes",
         "generate-status-report",
+        "jira-sprint-dashboard",
         "search-company-knowledge",
         "spec-to-backlog",
         "triage-issue"
@@ -449,6 +589,7 @@
         "plugin-atlassian",
         "skill-capture-tasks-from-meeting-notes",
         "skill-generate-status-report",
+        "skill-jira-sprint-dashboard",
         "skill-search-company-knowledge",
         "skill-spec-to-backlog",
         "skill-triage-issue",
@@ -471,12 +612,14 @@
         "atlassian",
         "forge-app-builder",
         "forge-app-review",
+        "forge-connector",
         "forge-debugger",
         "ads-mcp"
       ],
       "skillIds": [
         "forge-app-builder",
         "forge-app-review",
+        "forge-connector",
         "forge-debugger"
       ],
       "mcpServerIds": [
@@ -487,6 +630,7 @@
         "plugin-forge",
         "skill-forge-app-builder",
         "skill-forge-app-review",
+        "skill-forge-connector",
         "skill-forge-debugger",
         "mcp-forge",
         "mcp-ads-mcp"
@@ -495,7 +639,7 @@
     {
       "id": "auth0",
       "name": "Auth0",
-      "description": "Auth0 skills for quickstarts, migration, MFA, branding, custom domains, Advanced Custom Universal Login (ACUL) screen generation, and framework-specific SDK integrations for React, Next.js, Vue, Nuxt, Angular, Express, Fastify, FastAPI, Flask, Go, Spring Boot, Java MVC, Swift, Android, ASP.NET Core, React Native, Expo, Ionic React (Capacitor), Ionic Angular (Capacitor), and Ionic Vue (Capacitor).",
+      "description": "Auth0 skills for quickstarts, migration, MFA, branding, custom domains, Advanced Custom Universal Login (ACUL) screen generation, and framework-specific SDK integrations for React, Next.js, Vue, Nuxt, Angular, Express, Fastify, FastAPI, Flask, Go, Spring Boot, Java MVC, Swift, Android, Flutter, Flutter Web, ASP.NET Core, React Native, Expo, Ionic React (Capacitor), Ionic Angular (Capacitor), and Ionic Vue (Capacitor).",
       "brand": "auth0",
       "homepage": "https://github.com/auth0/agent-skills",
       "docsUrl": "https://github.com/auth0/agent-skills",
@@ -517,15 +661,15 @@
         "auth0-fastify",
         "auth0-fastify-api",
         "auth0-flask",
+        "auth0-flutter-native",
+        "auth0-flutter-web",
         "auth0-ionic-angular",
         "auth0-ionic-react",
         "auth0-ionic-vue",
         "auth0-java-mvc-common",
         "auth0-laravel",
         "auth0-laravel-api",
-        "auth0-maui",
-        "auth0-mfa",
-        "auth0-migration"
+        "auth0-maui"
       ],
       "skillIds": [
         "acul-screen-generator",
@@ -542,6 +686,8 @@
         "auth0-fastify",
         "auth0-fastify-api",
         "auth0-flask",
+        "auth0-flutter-native",
+        "auth0-flutter-web",
         "auth0-ionic-angular",
         "auth0-ionic-react",
         "auth0-ionic-vue",
@@ -586,6 +732,8 @@
         "skill-auth0-fastify",
         "skill-auth0-fastify-api",
         "skill-auth0-flask",
+        "skill-auth0-flutter-native",
+        "skill-auth0-flutter-web",
         "skill-auth0-ionic-angular",
         "skill-auth0-ionic-react",
         "skill-auth0-ionic-vue",
@@ -615,6 +763,52 @@
       ]
     },
     {
+      "id": "aws-agents",
+      "name": "AWS Agents",
+      "description": "Build, deploy, and operate AI agents on AWS. Skills for scaffolding agents with Amazon Bedrock AgentCore (Strands, LangGraph), connecting tools via Gateway and MCP, multi-agent and A2A orchestration, memory, Cedar policies, evaluation, observability, debugging traces and logs, and production hardening (inbound auth, IAM, rate limiting, cold-start tuning).",
+      "brand": "aws",
+      "homepage": "https://aws.amazon.com/",
+      "docsUrl": "https://github.com/aws/agent-toolkit-for-aws",
+      "marketplaceUrl": "https://cursor.com/marketplace/aws-agents",
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/aws-2x.png",
+      "triggers": [
+        "aws-agents",
+        "aws agents",
+        "aws",
+        "agents-build",
+        "agents-connect",
+        "agents-debug",
+        "agents-deploy",
+        "agents-get-started",
+        "agents-harden",
+        "agents-optimize",
+        "awsknowledge"
+      ],
+      "skillIds": [
+        "agents-build",
+        "agents-connect",
+        "agents-debug",
+        "agents-deploy",
+        "agents-get-started",
+        "agents-harden",
+        "agents-optimize"
+      ],
+      "mcpServerIds": [
+        "awsknowledge"
+      ],
+      "registryItemIds": [
+        "plugin-aws-agents",
+        "skill-agents-build",
+        "skill-agents-connect",
+        "skill-agents-debug",
+        "skill-agents-deploy",
+        "skill-agents-get-started",
+        "skill-agents-harden",
+        "skill-agents-optimize",
+        "mcp-awsknowledge"
+      ]
+    },
+    {
       "id": "aws",
       "name": "AWS Amplify",
       "description": "Build full-stack apps with AWS Amplify Gen 2 using guided workflows for authentication, data models, storage, GraphQL APIs, and Lambda functions.",
@@ -639,6 +833,122 @@
       "registryItemIds": [
         "plugin-aws",
         "skill-amplify-workflow",
+        "mcp-aws-mcp"
+      ]
+    },
+    {
+      "id": "aws-core",
+      "name": "AWS Core",
+      "description": "Build, deploy, and operate applications on AWS. Skills to author infrastructure-as-code (CDK, CloudFormation), use core services (Lambda, API Gateway, Step Functions, ECS/Fargate, ECR, IAM, Amazon Bedrock with Knowledge Bases and Guardrails, Amplify), and complete common tasks across observability (CloudWatch, X-Ray, CloudTrail, ADOT), messaging and streaming (SQS, SNS, EventBridge, Kinesis, MSK), AWS SDKs (boto3, JS v3, Swift), and cost optimization.",
+      "brand": "aws",
+      "homepage": "https://aws.amazon.com/",
+      "docsUrl": "https://github.com/aws/agent-toolkit-for-aws",
+      "marketplaceUrl": "https://cursor.com/marketplace/aws-core",
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/aws-2x.png",
+      "triggers": [
+        "aws-core",
+        "aws core",
+        "aws",
+        "amazon-bedrock",
+        "aws-amplify",
+        "aws-billing-and-cost-management",
+        "aws-cdk",
+        "aws-cloudformation",
+        "aws-containers",
+        "aws-iam",
+        "aws-messaging-and-streaming",
+        "aws-observability",
+        "aws-sdk-js-v3-usage",
+        "aws-sdk-python-usage",
+        "aws-sdk-swift-usage",
+        "aws-secrets-manager",
+        "aws-serverless",
+        "signing-in-to-aws",
+        "aws-mcp"
+      ],
+      "skillIds": [
+        "amazon-bedrock",
+        "aws-amplify",
+        "aws-billing-and-cost-management",
+        "aws-cdk",
+        "aws-cloudformation",
+        "aws-containers",
+        "aws-iam",
+        "aws-messaging-and-streaming",
+        "aws-observability",
+        "aws-sdk-js-v3-usage",
+        "aws-sdk-python-usage",
+        "aws-sdk-swift-usage",
+        "aws-secrets-manager",
+        "aws-serverless",
+        "signing-in-to-aws"
+      ],
+      "mcpServerIds": [
+        "aws-mcp"
+      ],
+      "registryItemIds": [
+        "plugin-aws-core",
+        "skill-amazon-bedrock",
+        "skill-aws-amplify",
+        "skill-aws-billing-and-cost-management",
+        "skill-aws-cdk",
+        "skill-aws-cloudformation",
+        "skill-aws-containers",
+        "skill-aws-iam",
+        "skill-aws-messaging-and-streaming",
+        "skill-aws-observability",
+        "skill-aws-sdk-js-v3-usage",
+        "skill-aws-sdk-python-usage",
+        "skill-aws-sdk-swift-usage",
+        "skill-aws-secrets-manager",
+        "skill-aws-serverless",
+        "skill-signing-in-to-aws",
+        "mcp-aws-mcp"
+      ]
+    },
+    {
+      "id": "aws-data-analytics",
+      "name": "AWS Data Analytics",
+      "description": "Data lake, analytics, and ETL workflows with S3 Tables, AWS Glue, and Athena. Covers managed Iceberg tables on S3 Tables, ingestion from JDBC databases (Oracle, SQL Server, PostgreSQL, MySQL, RDS), Amazon Redshift, Snowflake, BigQuery, and DynamoDB, AWS Glue Data Catalog inventory and asset discovery, federated Athena queries, and vector storage and semantic search on Amazon S3 Vectors.",
+      "brand": "aws",
+      "homepage": "https://aws.amazon.com/",
+      "docsUrl": "https://github.com/aws/agent-toolkit-for-aws",
+      "marketplaceUrl": "https://cursor.com/marketplace/aws-data-analytics",
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/aws-2x.png",
+      "triggers": [
+        "aws-data-analytics",
+        "aws data analytics",
+        "aws",
+        "connecting-to-data-source",
+        "creating-data-lake-table",
+        "exploring-data-catalog",
+        "finding-data-lake-assets",
+        "ingesting-into-data-lake",
+        "querying-data-lake",
+        "storing-and-querying-vectors",
+        "aws-mcp"
+      ],
+      "skillIds": [
+        "connecting-to-data-source",
+        "creating-data-lake-table",
+        "exploring-data-catalog",
+        "finding-data-lake-assets",
+        "ingesting-into-data-lake",
+        "querying-data-lake",
+        "storing-and-querying-vectors"
+      ],
+      "mcpServerIds": [
+        "aws-mcp"
+      ],
+      "registryItemIds": [
+        "plugin-aws-data-analytics",
+        "skill-connecting-to-data-source",
+        "skill-creating-data-lake-table",
+        "skill-exploring-data-catalog",
+        "skill-finding-data-lake-assets",
+        "skill-ingesting-into-data-lake",
+        "skill-querying-data-lake",
+        "skill-storing-and-querying-vectors",
         "mcp-aws-mcp"
       ]
     },
@@ -676,7 +986,7 @@
     {
       "id": "aws",
       "name": "AWS Deployments",
-      "description": "Deploy applications to AWS with architecture recommendations, cost estimates, and IaC deployment.",
+      "description": "Deploy applications to AWS with architecture recommendations, cost estimates, and IaC deployment. Generate validated AWS architecture diagrams as draw.io XML.",
       "brand": "aws",
       "homepage": "https://aws.amazon.com",
       "docsUrl": "https://docs.aws.amazon.com",
@@ -687,13 +997,17 @@
         "deploy-on-aws",
         "aws deployments",
         "amazon",
+        "aws-architecture-diagram",
         "deploy",
+        "elastic-beanstalk",
         "awsiac",
         "awsknowledge",
         "awspricing"
       ],
       "skillIds": [
-        "deploy"
+        "aws-architecture-diagram",
+        "deploy",
+        "elastic-beanstalk"
       ],
       "mcpServerIds": [
         "awsiac",
@@ -702,7 +1016,9 @@
       ],
       "registryItemIds": [
         "plugin-aws",
+        "skill-aws-architecture-diagram",
         "skill-deploy",
+        "skill-elastic-beanstalk",
         "mcp-awsiac",
         "mcp-awsknowledge",
         "mcp-awspricing"
@@ -725,13 +1041,20 @@
         "dataset-transformation",
         "directory-management",
         "finetuning",
-        "finetuning-setup",
+        "finetuning-technique",
+        "hyperpod-cluster-debugger",
         "hyperpod-issue-report",
+        "hyperpod-nccl",
+        "hyperpod-node-debugger",
+        "hyperpod-performance-debugger",
+        "hyperpod-slurm-debugger",
         "hyperpod-ssm",
         "hyperpod-version-checker",
         "model-deployment",
         "model-evaluation",
+        "model-selection",
         "planning",
+        "sdk-getting-started",
         "use-case-specification",
         "aws-mcp"
       ],
@@ -740,13 +1063,20 @@
         "dataset-transformation",
         "directory-management",
         "finetuning",
-        "finetuning-setup",
+        "finetuning-technique",
+        "hyperpod-cluster-debugger",
         "hyperpod-issue-report",
+        "hyperpod-nccl",
+        "hyperpod-node-debugger",
+        "hyperpod-performance-debugger",
+        "hyperpod-slurm-debugger",
         "hyperpod-ssm",
         "hyperpod-version-checker",
         "model-deployment",
         "model-evaluation",
+        "model-selection",
         "planning",
+        "sdk-getting-started",
         "use-case-specification"
       ],
       "mcpServerIds": [
@@ -758,13 +1088,20 @@
         "skill-dataset-transformation",
         "skill-directory-management",
         "skill-finetuning",
-        "skill-finetuning-setup",
+        "skill-finetuning-technique",
+        "skill-hyperpod-cluster-debugger",
         "skill-hyperpod-issue-report",
+        "skill-hyperpod-nccl",
+        "skill-hyperpod-node-debugger",
+        "skill-hyperpod-performance-debugger",
+        "skill-hyperpod-slurm-debugger",
         "skill-hyperpod-ssm",
         "skill-hyperpod-version-checker",
         "skill-model-deployment",
         "skill-model-evaluation",
+        "skill-model-selection",
         "skill-planning",
+        "skill-sdk-getting-started",
         "skill-use-case-specification",
         "mcp-aws-mcp"
       ]
@@ -785,14 +1122,18 @@
         "api-gateway",
         "aws-lambda",
         "aws-lambda-durable-functions",
+        "aws-lambda-managed-instances",
         "aws-serverless-deployment",
+        "aws-step-functions",
         "aws-serverless-mcp"
       ],
       "skillIds": [
         "api-gateway",
         "aws-lambda",
         "aws-lambda-durable-functions",
-        "aws-serverless-deployment"
+        "aws-lambda-managed-instances",
+        "aws-serverless-deployment",
+        "aws-step-functions"
       ],
       "mcpServerIds": [
         "aws-serverless-mcp"
@@ -802,7 +1143,9 @@
         "skill-api-gateway",
         "skill-aws-lambda",
         "skill-aws-lambda-durable-functions",
+        "skill-aws-lambda-managed-instances",
         "skill-aws-serverless-deployment",
+        "skill-aws-step-functions",
         "mcp-aws-serverless-mcp"
       ]
     },
@@ -1708,26 +2051,64 @@
       ]
     },
     {
-      "id": "coding-tutor",
-      "name": "Coding Tutor",
-      "description": "Personalized coding tutorials that use your actual codebase for examples with spaced repetition quizzes",
+      "id": "confidence",
+      "name": "Confidence by Spotify",
+      "description": "Access Confidence feature flags, experiments, and migration tools directly from Cursor.",
       "brand": null,
-      "homepage": "https://every.to/",
-      "docsUrl": "https://github.com/EveryInc/compound-engineering-plugin",
-      "marketplaceUrl": "https://cursor.com/marketplace/coding-tutor",
-      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/every-2x.png",
+      "homepage": "https://confidence.spotify.com/",
+      "docsUrl": "https://github.com/spotify/confidence-ai-plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/confidence",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/0be96be581bbd21c.png",
       "triggers": [
-        "coding-tutor",
-        "coding tutor",
-        "every"
+        "confidence",
+        "confidence by spotify",
+        "spotify",
+        "migrate-eppo",
+        "migrate-optimizely",
+        "migrate-posthog",
+        "migrate-statsig",
+        "onboard-confidence",
+        "onboard-confidence-dry-run",
+        "setup-warehouse",
+        "setup-warehouse-bigquery",
+        "setup-warehouse-databricks",
+        "setup-warehouse-redshift",
+        "setup-warehouse-snowflake",
+        "confidence-flags",
+        "confidence-docs"
       ],
       "skillIds": [
-        "coding-tutor"
+        "migrate-eppo",
+        "migrate-optimizely",
+        "migrate-posthog",
+        "migrate-statsig",
+        "onboard-confidence",
+        "onboard-confidence-dry-run",
+        "setup-warehouse",
+        "setup-warehouse-bigquery",
+        "setup-warehouse-databricks",
+        "setup-warehouse-redshift",
+        "setup-warehouse-snowflake"
       ],
-      "mcpServerIds": [],
+      "mcpServerIds": [
+        "confidence-flags",
+        "confidence-docs"
+      ],
       "registryItemIds": [
-        "plugin-coding-tutor",
-        "skill-coding-tutor"
+        "plugin-confidence",
+        "skill-migrate-eppo",
+        "skill-migrate-optimizely",
+        "skill-migrate-posthog",
+        "skill-migrate-statsig",
+        "skill-onboard-confidence",
+        "skill-onboard-confidence-dry-run",
+        "skill-setup-warehouse",
+        "skill-setup-warehouse-bigquery",
+        "skill-setup-warehouse-databricks",
+        "skill-setup-warehouse-redshift",
+        "skill-setup-warehouse-snowflake",
+        "mcp-confidence-flags",
+        "mcp-confidence-docs"
       ]
     },
     {
@@ -1821,6 +2202,36 @@
         "skill-migration-helper",
         "skill-schema-builder",
         "mcp-convex"
+      ]
+    },
+    {
+      "id": "coralogix",
+      "name": "Coralogix",
+      "description": "Connects Cursor to the Coralogix Observability MCP Server, letting your AI agent query logs, metrics, traces, and RUM, manage alerts and dashboards — all without leaving the editor.",
+      "brand": null,
+      "homepage": "https://coralogix.com/",
+      "docsUrl": "https://github.com/coralogix/coralogix-cursor-plugin",
+      "marketplaceUrl": "https://cursor.com/marketplace/coralogix-mcp",
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/coralogix.png",
+      "triggers": [
+        "coralogix",
+        "coralogix-mcp",
+        "coralogix-ltd",
+        "cx-config",
+        "cx-setup"
+      ],
+      "skillIds": [
+        "cx-config",
+        "cx-setup"
+      ],
+      "mcpServerIds": [
+        "coralogix"
+      ],
+      "registryItemIds": [
+        "plugin-coralogix",
+        "skill-cx-config",
+        "skill-cx-setup",
+        "mcp-coralogix"
       ]
     },
     {
@@ -1971,6 +2382,34 @@
       ]
     },
     {
+      "id": "dnb-risk-analytics",
+      "name": "D&B Risk Analytics",
+      "description": "Dun & Bradstreet empowers teams to execute risk workflows such as KYC/KYB, entity resolution, screening, alert triage, and more using relationship-aware business context from the D&B Commercial Graph™. Verified risk data, anchored in the global standard D-U-N-S® Number business identifier, and policy-driven logic provide the foundation for consistent decisioning across systems of record and scalable risk operations in regulated environments.",
+      "brand": null,
+      "homepage": "https://dnb.com",
+      "docsUrl": "https://github.com/dnb-public/dnb-risk-analytics-plugin-cursor",
+      "marketplaceUrl": "https://cursor.com/marketplace/dnb-risk-analytics",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/8cf8e307e5417a89.png",
+      "triggers": [
+        "dnb-risk-analytics",
+        "d&b risk analytics",
+        "dun-bradstreet",
+        "dun & bradstreet",
+        "complete-workflow"
+      ],
+      "skillIds": [
+        "complete-workflow"
+      ],
+      "mcpServerIds": [
+        "dnb-risk-analytics"
+      ],
+      "registryItemIds": [
+        "plugin-dnb-risk-analytics",
+        "skill-complete-workflow",
+        "mcp-dnb-risk-analytics"
+      ]
+    },
+    {
       "id": "dagster-expert",
       "name": "Dagster",
       "description": "Expert guidance for working with Dagster and the dg CLI.",
@@ -1995,15 +2434,15 @@
     {
       "id": "databricks",
       "name": "Databricks",
-      "description": "Databricks skills for CLI, Apps, Unity Catalog, Model Serving, Declarative Automation Bundles (DABs), and more.",
+      "description": "Databricks skills for the CLI, Apps, Lakebase, Model Serving, Lakeflow Jobs, Spark Declarative Pipelines, Declarative Automation Bundles (DABs), and classic-to-serverless migration.",
       "brand": "databricks",
       "homepage": "https://www.databricks.com/",
       "docsUrl": "https://github.com/databricks/databricks-agent-skills",
-      "marketplaceUrl": "https://cursor.com/marketplace/databricks-skills",
+      "marketplaceUrl": "https://cursor.com/marketplace/databricks",
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/databricks-2x.png",
       "triggers": [
         "databricks",
-        "databricks-skills",
+        "databricks-app-design",
         "databricks-apps",
         "databricks-core",
         "databricks-dabs",
@@ -2011,9 +2450,11 @@
         "databricks-lakebase",
         "databricks-model-serving",
         "databricks-pipelines",
-        "databricks-serverless-migration"
+        "databricks-serverless-migration",
+        "databricks-vector-search"
       ],
       "skillIds": [
+        "databricks-app-design",
         "databricks-apps",
         "databricks-core",
         "databricks-dabs",
@@ -2021,11 +2462,13 @@
         "databricks-lakebase",
         "databricks-model-serving",
         "databricks-pipelines",
-        "databricks-serverless-migration"
+        "databricks-serverless-migration",
+        "databricks-vector-search"
       ],
       "mcpServerIds": [],
       "registryItemIds": [
         "plugin-databricks",
+        "skill-databricks-app-design",
         "skill-databricks-apps",
         "skill-databricks-core",
         "skill-databricks-dabs",
@@ -2033,7 +2476,8 @@
         "skill-databricks-lakebase",
         "skill-databricks-model-serving",
         "skill-databricks-pipelines",
-        "skill-databricks-serverless-migration"
+        "skill-databricks-serverless-migration",
+        "skill-databricks-vector-search"
       ]
     },
     {
@@ -2089,7 +2533,8 @@
         "datarobot-model-explainability",
         "datarobot-model-monitoring",
         "datarobot-model-training",
-        "datarobot-predictions"
+        "datarobot-predictions",
+        "datarobot-setup"
       ],
       "skillIds": [
         "datarobot-agent-assist",
@@ -2101,7 +2546,8 @@
         "datarobot-model-explainability",
         "datarobot-model-monitoring",
         "datarobot-model-training",
-        "datarobot-predictions"
+        "datarobot-predictions",
+        "datarobot-setup"
       ],
       "mcpServerIds": [],
       "registryItemIds": [
@@ -2115,7 +2561,8 @@
         "skill-datarobot-model-explainability",
         "skill-datarobot-model-monitoring",
         "skill-datarobot-model-training",
-        "skill-datarobot-predictions"
+        "skill-datarobot-predictions",
+        "skill-datarobot-setup"
       ]
     },
     {
@@ -2492,47 +2939,47 @@
       "logoUrl": "/brand/services/firebase.svg",
       "triggers": [
         "firebase",
-        "developing-genkit-dart",
-        "developing-genkit-js",
-        "firebase-ai-logic",
+        "firebase-ai-logic-basics",
         "firebase-app-hosting-basics",
         "firebase-auth-basics",
         "firebase-basics",
+        "firebase-crashlytics",
         "firebase-data-connect",
-        "firebase-firestore-enterprise-native-mode",
-        "firebase-firestore-standard",
+        "firebase-firestore",
         "firebase-hosting-basics",
-        "firebase-local-env-setup"
+        "firebase-remote-config-basics",
+        "firebase-security-rules-auditor",
+        "xcode-project-setup"
       ],
       "skillIds": [
-        "developing-genkit-dart",
-        "developing-genkit-js",
-        "firebase-ai-logic",
+        "firebase-ai-logic-basics",
         "firebase-app-hosting-basics",
         "firebase-auth-basics",
         "firebase-basics",
+        "firebase-crashlytics",
         "firebase-data-connect",
-        "firebase-firestore-enterprise-native-mode",
-        "firebase-firestore-standard",
+        "firebase-firestore",
         "firebase-hosting-basics",
-        "firebase-local-env-setup"
+        "firebase-remote-config-basics",
+        "firebase-security-rules-auditor",
+        "xcode-project-setup"
       ],
       "mcpServerIds": [
         "firebase"
       ],
       "registryItemIds": [
         "plugin-firebase",
-        "skill-developing-genkit-dart",
-        "skill-developing-genkit-js",
-        "skill-firebase-ai-logic",
+        "skill-firebase-ai-logic-basics",
         "skill-firebase-app-hosting-basics",
         "skill-firebase-auth-basics",
         "skill-firebase-basics",
+        "skill-firebase-crashlytics",
         "skill-firebase-data-connect",
-        "skill-firebase-firestore-enterprise-native-mode",
-        "skill-firebase-firestore-standard",
+        "skill-firebase-firestore",
         "skill-firebase-hosting-basics",
-        "skill-firebase-local-env-setup",
+        "skill-firebase-remote-config-basics",
+        "skill-firebase-security-rules-auditor",
+        "skill-xcode-project-setup",
         "mcp-firebase"
       ]
     },
@@ -2930,21 +3377,31 @@
     {
       "id": "hex",
       "name": "Hex",
-      "description": "MCP server integration for Hex - connect Cursor to your Hex workspace for data analysis and notebook collaboration",
+      "description": "AI analytics and data collaboration - connect Cursor to your Hex workspace with MCP",
       "brand": null,
       "homepage": "https://hex.tech/",
       "docsUrl": "https://github.com/hex-inc/hex-cursor-plugin",
       "marketplaceUrl": "https://cursor.com/marketplace/hex",
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/b375fbd9af719cb1.png",
       "triggers": [
-        "hex"
+        "hex",
+        "hex-business-analytics-question",
+        "hex-notebook-authoring",
+        "hex-to-canvas"
       ],
-      "skillIds": [],
+      "skillIds": [
+        "hex-business-analytics-question",
+        "hex-notebook-authoring",
+        "hex-to-canvas"
+      ],
       "mcpServerIds": [
         "hex"
       ],
       "registryItemIds": [
         "plugin-hex",
+        "skill-hex-business-analytics-question",
+        "skill-hex-notebook-authoring",
+        "skill-hex-to-canvas",
         "mcp-hex"
       ]
     },
@@ -3023,27 +3480,43 @@
         "hugging face",
         "hugging",
         "hf-cli",
-        "hugging-face-dataset-viewer",
-        "hugging-face-datasets",
-        "hugging-face-evaluation",
-        "hugging-face-jobs",
-        "hugging-face-model-trainer",
-        "hugging-face-paper-publisher",
-        "hugging-face-tool-builder",
-        "hugging-face-trackio",
-        "gradio"
+        "huggingface-best",
+        "huggingface-community-evals",
+        "huggingface-datasets",
+        "huggingface-gradio",
+        "huggingface-llm-trainer",
+        "huggingface-local-models",
+        "huggingface-lora-space-builder",
+        "huggingface-paper-publisher",
+        "huggingface-papers",
+        "huggingface-spaces",
+        "huggingface-tool-builder",
+        "huggingface-trackio",
+        "huggingface-vision-trainer",
+        "huggingface-zerogpu",
+        "train-sentence-transformers",
+        "transformers-js",
+        "trl-training"
       ],
       "skillIds": [
         "hf-cli",
-        "hugging-face-dataset-viewer",
-        "hugging-face-datasets",
-        "hugging-face-evaluation",
-        "hugging-face-jobs",
-        "hugging-face-model-trainer",
-        "hugging-face-paper-publisher",
-        "hugging-face-tool-builder",
-        "hugging-face-trackio",
-        "gradio"
+        "huggingface-best",
+        "huggingface-community-evals",
+        "huggingface-datasets",
+        "huggingface-gradio",
+        "huggingface-llm-trainer",
+        "huggingface-local-models",
+        "huggingface-lora-space-builder",
+        "huggingface-paper-publisher",
+        "huggingface-papers",
+        "huggingface-spaces",
+        "huggingface-tool-builder",
+        "huggingface-trackio",
+        "huggingface-vision-trainer",
+        "huggingface-zerogpu",
+        "train-sentence-transformers",
+        "transformers-js",
+        "trl-training"
       ],
       "mcpServerIds": [
         "huggingface"
@@ -3051,15 +3524,23 @@
       "registryItemIds": [
         "plugin-huggingface",
         "skill-hf-cli",
-        "skill-hugging-face-dataset-viewer",
-        "skill-hugging-face-datasets",
-        "skill-hugging-face-evaluation",
-        "skill-hugging-face-jobs",
-        "skill-hugging-face-model-trainer",
-        "skill-hugging-face-paper-publisher",
-        "skill-hugging-face-tool-builder",
-        "skill-hugging-face-trackio",
-        "skill-gradio",
+        "skill-huggingface-best",
+        "skill-huggingface-community-evals",
+        "skill-huggingface-datasets",
+        "skill-huggingface-gradio",
+        "skill-huggingface-llm-trainer",
+        "skill-huggingface-local-models",
+        "skill-huggingface-lora-space-builder",
+        "skill-huggingface-paper-publisher",
+        "skill-huggingface-papers",
+        "skill-huggingface-spaces",
+        "skill-huggingface-tool-builder",
+        "skill-huggingface-trackio",
+        "skill-huggingface-vision-trainer",
+        "skill-huggingface-zerogpu",
+        "skill-train-sentence-transformers",
+        "skill-transformers-js",
+        "skill-trl-training",
         "mcp-huggingface"
       ]
     },
@@ -3109,6 +3590,153 @@
         "skill-jfrog",
         "skill-jfrog-package-safety-and-download",
         "mcp-jfrog"
+      ]
+    },
+    {
+      "id": "kraken-cli",
+      "name": "Kraken",
+      "description": "Agent-first CLI for trading crypto, stocks, forex, and derivatives on Kraken. Paper trading by default; live trading opt-in via API keys.",
+      "brand": null,
+      "homepage": "https://www.kraken.com/",
+      "docsUrl": "https://github.com/krakenfx/kraken-cli",
+      "marketplaceUrl": "https://cursor.com/marketplace/kraken-cli",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/5910be8b495a116e.png",
+      "triggers": [
+        "kraken-cli",
+        "kraken",
+        "kraken-alert-patterns",
+        "kraken-autonomy-levels",
+        "kraken-basis-trading",
+        "kraken-dca-strategy",
+        "kraken-earn-staking",
+        "kraken-error-recovery",
+        "kraken-fee-optimization",
+        "kraken-funding-carry",
+        "kraken-funding-ops",
+        "kraken-futures-risk",
+        "kraken-futures-trading",
+        "kraken-grid-trading",
+        "kraken-liquidation-guard",
+        "kraken-market-intel",
+        "kraken-mcp-integration",
+        "kraken-multi-pair",
+        "kraken-order-types",
+        "kraken-paper-strategy",
+        "kraken-paper-to-live",
+        "kraken-portfolio-intel",
+        "kraken-rate-limits",
+        "kraken-rebalancing"
+      ],
+      "skillIds": [
+        "kraken-alert-patterns",
+        "kraken-autonomy-levels",
+        "kraken-basis-trading",
+        "kraken-dca-strategy",
+        "kraken-earn-staking",
+        "kraken-error-recovery",
+        "kraken-fee-optimization",
+        "kraken-funding-carry",
+        "kraken-funding-ops",
+        "kraken-futures-risk",
+        "kraken-futures-trading",
+        "kraken-grid-trading",
+        "kraken-liquidation-guard",
+        "kraken-market-intel",
+        "kraken-mcp-integration",
+        "kraken-multi-pair",
+        "kraken-order-types",
+        "kraken-paper-strategy",
+        "kraken-paper-to-live",
+        "kraken-portfolio-intel",
+        "kraken-rate-limits",
+        "kraken-rebalancing",
+        "kraken-risk-operations",
+        "kraken-setup",
+        "kraken-shared",
+        "kraken-spot-execution",
+        "kraken-stop-take-profit",
+        "kraken-subaccount-ops",
+        "kraken-tax-export",
+        "kraken-twap-execution",
+        "kraken-ws-streaming",
+        "recipe-basis-trade-entry",
+        "recipe-daily-pnl-report",
+        "recipe-drawdown-circuit-breaker",
+        "recipe-earn-yield-compare",
+        "recipe-emergency-flatten",
+        "recipe-fee-tier-progress",
+        "recipe-funding-rate-scan",
+        "recipe-futures-hedge-spot",
+        "recipe-launch-grid-bot",
+        "recipe-morning-market-brief",
+        "recipe-multi-pair-breakout-watch",
+        "recipe-paper-strategy-backtest",
+        "recipe-portfolio-snapshot-csv",
+        "recipe-price-level-alerts",
+        "recipe-start-dca-bot",
+        "recipe-subaccount-capital-rotation",
+        "recipe-track-orderbook-depth",
+        "recipe-trailing-stop-runner",
+        "recipe-weekly-rebalance",
+        "recipe-withdrawal-to-cold-storage"
+      ],
+      "mcpServerIds": [
+        "kraken"
+      ],
+      "registryItemIds": [
+        "plugin-kraken-cli",
+        "skill-kraken-alert-patterns",
+        "skill-kraken-autonomy-levels",
+        "skill-kraken-basis-trading",
+        "skill-kraken-dca-strategy",
+        "skill-kraken-earn-staking",
+        "skill-kraken-error-recovery",
+        "skill-kraken-fee-optimization",
+        "skill-kraken-funding-carry",
+        "skill-kraken-funding-ops",
+        "skill-kraken-futures-risk",
+        "skill-kraken-futures-trading",
+        "skill-kraken-grid-trading",
+        "skill-kraken-liquidation-guard",
+        "skill-kraken-market-intel",
+        "skill-kraken-mcp-integration",
+        "skill-kraken-multi-pair",
+        "skill-kraken-order-types",
+        "skill-kraken-paper-strategy",
+        "skill-kraken-paper-to-live",
+        "skill-kraken-portfolio-intel",
+        "skill-kraken-rate-limits",
+        "skill-kraken-rebalancing",
+        "skill-kraken-risk-operations",
+        "skill-kraken-setup",
+        "skill-kraken-shared",
+        "skill-kraken-spot-execution",
+        "skill-kraken-stop-take-profit",
+        "skill-kraken-subaccount-ops",
+        "skill-kraken-tax-export",
+        "skill-kraken-twap-execution",
+        "skill-kraken-ws-streaming",
+        "skill-recipe-basis-trade-entry",
+        "skill-recipe-daily-pnl-report",
+        "skill-recipe-drawdown-circuit-breaker",
+        "skill-recipe-earn-yield-compare",
+        "skill-recipe-emergency-flatten",
+        "skill-recipe-fee-tier-progress",
+        "skill-recipe-funding-rate-scan",
+        "skill-recipe-futures-hedge-spot",
+        "skill-recipe-launch-grid-bot",
+        "skill-recipe-morning-market-brief",
+        "skill-recipe-multi-pair-breakout-watch",
+        "skill-recipe-paper-strategy-backtest",
+        "skill-recipe-portfolio-snapshot-csv",
+        "skill-recipe-price-level-alerts",
+        "skill-recipe-start-dca-bot",
+        "skill-recipe-subaccount-capital-rotation",
+        "skill-recipe-track-orderbook-depth",
+        "skill-recipe-trailing-stop-runner",
+        "skill-recipe-weekly-rebalance",
+        "skill-recipe-withdrawal-to-cold-storage",
+        "mcp-kraken"
       ]
     },
     {
@@ -3223,6 +3851,86 @@
       ]
     },
     {
+      "id": "lovable",
+      "name": "Lovable",
+      "description": "Drive Lovable from Cursor: create projects, send work to the Lovable agent, manage Lovable Cloud databases, and deploy, all through the Lovable MCP server.",
+      "brand": null,
+      "homepage": "https://lovable.dev",
+      "docsUrl": "https://github.com/lovablelabs/lovable-cursor-plugin",
+      "marketplaceUrl": "https://cursor.com/marketplace/lovable",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/8343722c851c00e9.png",
+      "triggers": [
+        "lovable",
+        "enable-lovable-cloud-database",
+        "deploy-lovable-project",
+        "iterate-with-lovable-agent",
+        "scaffold-lovable-project"
+      ],
+      "skillIds": [
+        "enable-lovable-cloud-database",
+        "deploy-lovable-project",
+        "iterate-with-lovable-agent",
+        "scaffold-lovable-project"
+      ],
+      "mcpServerIds": [
+        "lovable"
+      ],
+      "registryItemIds": [
+        "plugin-lovable",
+        "skill-enable-lovable-cloud-database",
+        "skill-deploy-lovable-project",
+        "skill-iterate-with-lovable-agent",
+        "skill-scaffold-lovable-project",
+        "mcp-lovable"
+      ]
+    },
+    {
+      "id": "magicpath",
+      "name": "MagicPath",
+      "description": "Give Cursor a multiplayer canvas for your code with MagicPath. Bring existing UI into the canvas, create component libraries, apply design-system themes, and ship components back into production code.",
+      "brand": null,
+      "homepage": "https://www.magicpath.ai/",
+      "docsUrl": "https://github.com/MagicPathAI/agent-skills",
+      "marketplaceUrl": "https://cursor.com/marketplace/magicpath",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/2b33d6ddc6d1aa2c.png",
+      "triggers": [
+        "magicpath"
+      ],
+      "skillIds": [
+        "magicpath"
+      ],
+      "mcpServerIds": [],
+      "registryItemIds": [
+        "plugin-magicpath",
+        "skill-magicpath"
+      ]
+    },
+    {
+      "id": "mainframe",
+      "name": "Mainframe",
+      "description": "Create and share short video updates from agent work.",
+      "brand": null,
+      "homepage": "https://mainframe.app/",
+      "docsUrl": "https://github.com/mainframecomputer/mainframe-plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/mainframe",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/c9332481fa50268d.png",
+      "triggers": [
+        "mainframe",
+        "share-video"
+      ],
+      "skillIds": [
+        "share-video"
+      ],
+      "mcpServerIds": [
+        "mainframe"
+      ],
+      "registryItemIds": [
+        "plugin-mainframe",
+        "skill-share-video",
+        "mcp-mainframe"
+      ]
+    },
+    {
       "id": "merge-agent-handler",
       "name": "Merge",
       "description": "Connect Cursor to hundreds of enterprise tools (Jira, Salesforce, Slack, Gong, Workday, etc.) via the Merge CLI",
@@ -3306,6 +4014,79 @@
       ]
     },
     {
+      "id": "dataverse",
+      "name": "Microsoft Dataverse",
+      "description": "Microsoft Dataverse plugin for coding agents — powering CRUD, bulk data operations, advanced queries, schema lifecycle, and environment management through intelligent skills that unify MCP, CLI, and SDK workflows.",
+      "brand": null,
+      "homepage": "https://www.microsoft.com/",
+      "docsUrl": "https://github.com/microsoft/Dataverse-skills",
+      "marketplaceUrl": "https://cursor.com/marketplace/dataverse",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/1fe3e38947ab2acc.png",
+      "triggers": [
+        "dataverse",
+        "microsoft dataverse",
+        "microsoft-dataverse",
+        "dv-admin",
+        "dv-connect",
+        "dv-data",
+        "dv-metadata",
+        "dv-overview",
+        "dv-query",
+        "dv-security",
+        "dv-solution"
+      ],
+      "skillIds": [
+        "dv-admin",
+        "dv-connect",
+        "dv-data",
+        "dv-metadata",
+        "dv-overview",
+        "dv-query",
+        "dv-security",
+        "dv-solution"
+      ],
+      "mcpServerIds": [],
+      "registryItemIds": [
+        "plugin-dataverse",
+        "skill-dv-admin",
+        "skill-dv-connect",
+        "skill-dv-data",
+        "skill-dv-metadata",
+        "skill-dv-overview",
+        "skill-dv-query",
+        "skill-dv-security",
+        "skill-dv-solution"
+      ]
+    },
+    {
+      "id": "mintlify",
+      "name": "Mintlify",
+      "description": "Comprehensive reference for building Mintlify documentation sites.",
+      "brand": null,
+      "homepage": "https://www.mintlify.com/",
+      "docsUrl": "https://github.com/mintlify/cursor-plugin",
+      "marketplaceUrl": "https://cursor.com/marketplace/mintlify-cursor-plugin",
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/mintlify-logo-1.png",
+      "triggers": [
+        "mintlify",
+        "mintlify-cursor-plugin",
+        "mintlify-mcp"
+      ],
+      "skillIds": [
+        "mintlify"
+      ],
+      "mcpServerIds": [
+        "mintlify",
+        "mintlify-mcp"
+      ],
+      "registryItemIds": [
+        "plugin-mintlify",
+        "skill-mintlify",
+        "mcp-mintlify",
+        "mcp-mintlify-mcp"
+      ]
+    },
+    {
       "id": "miro",
       "name": "Miro",
       "description": "Secure access to Miro boards. Enables AI to read board context, create diagrams, and generate code with enterprise-grade security.",
@@ -3344,11 +4125,13 @@
         "mixpanel-mcp",
         "create-dashboard",
         "deep-research",
+        "manage-lexicon",
         "tracking-implementation"
       ],
       "skillIds": [
         "create-dashboard",
         "deep-research",
+        "manage-lexicon",
         "tracking-implementation"
       ],
       "mcpServerIds": [
@@ -3358,6 +4141,7 @@
         "plugin-mixpanel",
         "skill-create-dashboard",
         "skill-deep-research",
+        "skill-manage-lexicon",
         "skill-tracking-implementation",
         "mcp-mixpanel"
       ]
@@ -3390,25 +4174,47 @@
       ]
     },
     {
-      "id": "monday-com",
+      "id": "monday-crm",
       "name": "Monday.com",
-      "description": "Connect your AI agents to monday.com — your work OS for managing projects, tasks, and everyday work.",
+      "description": "Seven skills for monday CRM users — first-run setup, morning briefings, forecast dashboards, board diagnosis, bulk data hygiene, workspace setup, and meeting-to-opportunity sync. Each skill publishes a monday artifact (update, doc, or dashboard) so work stays inside monday. Composes the official monday MCP connector; no custom server, no new auth.",
       "brand": null,
       "homepage": "https://monday.com",
       "docsUrl": "https://github.com/mondaycom/mcp",
-      "marketplaceUrl": "https://cursor.com/marketplace/monday.com",
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/f10a246168e21de8.png",
+      "marketplaceUrl": "https://cursor.com/marketplace/monday-crm",
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/monday.com.png",
       "triggers": [
-        "monday-com",
+        "monday-crm",
         "monday.com",
-        "monday"
+        "monday",
+        "board-diagnosis",
+        "bulk-data-hygiene",
+        "forecast-dashboard",
+        "meeting-to-opportunity",
+        "morning-briefing",
+        "setup",
+        "workspace-builder"
       ],
-      "skillIds": [],
+      "skillIds": [
+        "board-diagnosis",
+        "bulk-data-hygiene",
+        "forecast-dashboard",
+        "meeting-to-opportunity",
+        "morning-briefing",
+        "setup",
+        "workspace-builder"
+      ],
       "mcpServerIds": [
         "monday"
       ],
       "registryItemIds": [
-        "plugin-monday-com",
+        "plugin-monday-crm",
+        "skill-board-diagnosis",
+        "skill-bulk-data-hygiene",
+        "skill-forecast-dashboard",
+        "skill-meeting-to-opportunity",
+        "skill-morning-briefing",
+        "skill-setup",
+        "skill-workspace-builder",
         "mcp-monday"
       ]
     },
@@ -3502,6 +4308,65 @@
       "registryItemIds": [
         "plugin-neon",
         "mcp-neon"
+      ]
+    },
+    {
+      "id": "netlify",
+      "name": "Netlify",
+      "description": "Netlify platform skills — functions, edge functions, blobs, database, identity, image CDN, forms, config, CLI, frameworks, caching, AI gateway, and deployment",
+      "brand": null,
+      "homepage": "https://www.netlify.com/",
+      "docsUrl": "https://github.com/netlify/context-and-tools",
+      "marketplaceUrl": "https://cursor.com/marketplace/netlify-skills",
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/netlify.png",
+      "triggers": [
+        "netlify",
+        "netlify-skills",
+        "netlify-ai-gateway",
+        "netlify-blobs",
+        "netlify-caching",
+        "netlify-cli-and-deploy",
+        "netlify-config",
+        "netlify-database",
+        "netlify-deploy",
+        "netlify-edge-functions",
+        "netlify-forms",
+        "netlify-frameworks",
+        "netlify-functions",
+        "netlify-identity",
+        "netlify-image-cdn"
+      ],
+      "skillIds": [
+        "netlify-ai-gateway",
+        "netlify-blobs",
+        "netlify-caching",
+        "netlify-cli-and-deploy",
+        "netlify-config",
+        "netlify-database",
+        "netlify-deploy",
+        "netlify-edge-functions",
+        "netlify-forms",
+        "netlify-frameworks",
+        "netlify-functions",
+        "netlify-identity",
+        "netlify-image-cdn"
+      ],
+      "mcpServerIds": [],
+      "registryItemIds": [
+        "plugin-netlify",
+        "skill-netlify-ai-gateway",
+        "skill-netlify-blobs",
+        "skill-netlify-caching",
+        "skill-netlify-cli-and-deploy",
+        "skill-netlify-config",
+        "skill-netlify-database",
+        "skill-netlify-deploy",
+        "skill-netlify-edge-functions",
+        "skill-netlify-forms",
+        "skill-netlify-frameworks",
+        "skill-netlify-functions",
+        "skill-netlify-identity",
+        "skill-netlify-image-cdn"
       ]
     },
     {
@@ -3616,7 +4481,7 @@
     {
       "id": "opensearch-agent",
       "name": "OpenSearch",
-      "description": "Build and deploy search applications with semantic, hybrid, neural sparse, and agentic search strategies using OpenSearch. Analyze observability data including log analytics with PPL and Query DSL, and distributed trace analysis with OpenTelemetry. Deploy to Amazon OpenSearch Service or OpenSearch Serverless with Bedrock integration for embeddings and RAG. Just ask your AI assistant to set up a search app, query logs, investigate traces, or deploy to AWS.",
+      "description": "OpenSearch skills to help set up and deploy OpenSearch for a variety of use cases: build search applications with semantic, hybrid, neural sparse, and agentic search strategies; analyze observability data with log analytics (PPL and Query DSL) and distributed traces (OpenTelemetry); deploy to Amazon OpenSearch Service or OpenSearch Serverless with Bedrock integration for embeddings and RAG. Just ask your AI assistant to set up a search app, query logs, investigate traces, or deploy to AWS.",
       "brand": null,
       "homepage": "https://opensearch.org",
       "docsUrl": "https://github.com/opensearch-project/opensearch-agent-skills",
@@ -3627,15 +4492,13 @@
         "opensearch-agent-skills",
         "opensearch",
         "opensearch-skills",
-        "solr-opensearch-migration-advisor",
         "opensearch-mcp-server",
         "ddg-search",
         "awslabs.aws-api-mcp-server",
         "aws-knowledge-mcp-server"
       ],
       "skillIds": [
-        "opensearch-skills",
-        "solr-opensearch-migration-advisor"
+        "opensearch-skills"
       ],
       "mcpServerIds": [
         "opensearch-mcp-server",
@@ -3646,7 +4509,6 @@
       "registryItemIds": [
         "plugin-opensearch-agent",
         "skill-opensearch-skills",
-        "skill-solr-opensearch-migration-advisor",
         "mcp-opensearch-mcp-server",
         "mcp-ddg-search",
         "mcp-awslabs-aws-api-mcp-server",
@@ -3983,6 +4845,27 @@
       ]
     },
     {
+      "id": "port",
+      "name": "Port",
+      "description": "Port MCP Server Gives Cursor's AI agent full engineering context. Port is your system of record for every service, team, dependency, and standard - connect it to Cursor so the agent understands not just your code, but who owns it, what depends on it, and what actions are available to take.",
+      "brand": null,
+      "homepage": "https://www.port.io/",
+      "docsUrl": "https://github.com/port-labs/cursor-plugin",
+      "marketplaceUrl": "https://cursor.com/marketplace/port",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/77261ffb84018daa.png",
+      "triggers": [
+        "port"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "port"
+      ],
+      "registryItemIds": [
+        "plugin-port",
+        "mcp-port"
+      ]
+    },
+    {
       "id": "posthog",
       "name": "PostHog",
       "description": "Access PostHog analytics, feature flags, experiments, error tracking, and insights directly from Cursor",
@@ -3994,40 +4877,48 @@
       "triggers": [
         "posthog",
         "analyzing-experiment-session-replays",
+        "assessing-heatmaps",
+        "auditing-endpoints",
         "auditing-experiments-flags",
         "auditing-warehouse-data-health",
         "authoring-log-alerts",
+        "authoring-signals-scouts",
         "cleaning-up-stale-feature-flags",
         "configuring-experiment-analytics",
         "configuring-experiment-rollout",
+        "consuming-endpoints-from-client-code",
         "copying-flags-across-projects",
+        "creating-an-endpoint",
         "creating-experiments",
+        "creating-replay-vision-scanners",
         "debugging-local-replay",
+        "debugging-signals-pipeline",
+        "diagnosing-endpoint-performance",
         "diagnosing-experiment-results",
         "diagnosing-failed-warehouse-syncs",
         "diagnosing-missing-recordings",
         "diagnosing-sdk-health",
-        "diagnosing-stacktrace-symbolication",
-        "downloading-batch-export-files",
-        "exploring-apm-traces",
-        "exploring-autocapture-events",
-        "exploring-live-traffic",
-        "exploring-llm-clusters",
-        "exploring-llm-costs",
-        "exploring-llm-evaluations",
-        "exploring-llm-traces"
+        "diagnosing-stacktrace-symbolication"
       ],
       "skillIds": [
         "analyzing-experiment-session-replays",
+        "assessing-heatmaps",
+        "auditing-endpoints",
         "auditing-experiments-flags",
         "auditing-warehouse-data-health",
         "authoring-log-alerts",
+        "authoring-signals-scouts",
         "cleaning-up-stale-feature-flags",
         "configuring-experiment-analytics",
         "configuring-experiment-rollout",
+        "consuming-endpoints-from-client-code",
         "copying-flags-across-projects",
+        "creating-an-endpoint",
         "creating-experiments",
+        "creating-replay-vision-scanners",
         "debugging-local-replay",
+        "debugging-signals-pipeline",
+        "diagnosing-endpoint-performance",
         "diagnosing-experiment-results",
         "diagnosing-failed-warehouse-syncs",
         "diagnosing-missing-recordings",
@@ -4041,10 +4932,12 @@
         "exploring-llm-costs",
         "exploring-llm-evaluations",
         "exploring-llm-traces",
+        "exploring-signals-scouts",
         "feature-usage-feed",
         "finding-deleted-feature-flags",
         "finding-experiments",
         "finding-replay-for-issue",
+        "finding-sessions-to-watch",
         "formatting-insight-axes",
         "grouping-noisy-errors",
         "inbox-exploration",
@@ -4057,6 +4950,7 @@
         "investigate-metric",
         "investigating-error-issue",
         "investigating-replay",
+        "managing-endpoint-versions",
         "managing-experiment-lifecycle",
         "managing-path-cleaning-rules",
         "managing-subscriptions",
@@ -4064,7 +4958,15 @@
         "querying-posthog-data",
         "setting-up-a-data-warehouse-source",
         "signals",
+        "signals-scout-ai-observability",
+        "signals-scout-anomaly-detection",
+        "signals-scout-csp-violations",
+        "signals-scout-error-tracking",
         "signals-scout-general",
+        "signals-scout-logs",
+        "signals-scout-observability-gaps",
+        "signals-scout-revenue-analytics",
+        "signals-scout-surveys",
         "skills-store",
         "suggesting-data-imports",
         "suppressing-noisy-errors",
@@ -4079,15 +4981,23 @@
       "registryItemIds": [
         "plugin-posthog",
         "skill-analyzing-experiment-session-replays",
+        "skill-assessing-heatmaps",
+        "skill-auditing-endpoints",
         "skill-auditing-experiments-flags",
         "skill-auditing-warehouse-data-health",
         "skill-authoring-log-alerts",
+        "skill-authoring-signals-scouts",
         "skill-cleaning-up-stale-feature-flags",
         "skill-configuring-experiment-analytics",
         "skill-configuring-experiment-rollout",
+        "skill-consuming-endpoints-from-client-code",
         "skill-copying-flags-across-projects",
+        "skill-creating-an-endpoint",
         "skill-creating-experiments",
+        "skill-creating-replay-vision-scanners",
         "skill-debugging-local-replay",
+        "skill-debugging-signals-pipeline",
+        "skill-diagnosing-endpoint-performance",
         "skill-diagnosing-experiment-results",
         "skill-diagnosing-failed-warehouse-syncs",
         "skill-diagnosing-missing-recordings",
@@ -4101,10 +5011,12 @@
         "skill-exploring-llm-costs",
         "skill-exploring-llm-evaluations",
         "skill-exploring-llm-traces",
+        "skill-exploring-signals-scouts",
         "skill-feature-usage-feed",
         "skill-finding-deleted-feature-flags",
         "skill-finding-experiments",
         "skill-finding-replay-for-issue",
+        "skill-finding-sessions-to-watch",
         "skill-formatting-insight-axes",
         "skill-grouping-noisy-errors",
         "skill-inbox-exploration",
@@ -4117,6 +5029,7 @@
         "skill-investigate-metric",
         "skill-investigating-error-issue",
         "skill-investigating-replay",
+        "skill-managing-endpoint-versions",
         "skill-managing-experiment-lifecycle",
         "skill-managing-path-cleaning-rules",
         "skill-managing-subscriptions",
@@ -4124,7 +5037,15 @@
         "skill-querying-posthog-data",
         "skill-setting-up-a-data-warehouse-source",
         "skill-signals",
+        "skill-signals-scout-ai-observability",
+        "skill-signals-scout-anomaly-detection",
+        "skill-signals-scout-csp-violations",
+        "skill-signals-scout-error-tracking",
         "skill-signals-scout-general",
+        "skill-signals-scout-logs",
+        "skill-signals-scout-observability-gaps",
+        "skill-signals-scout-revenue-analytics",
+        "skill-signals-scout-surveys",
         "skill-skills-store",
         "skill-suggesting-data-imports",
         "skill-suppressing-noisy-errors",
@@ -4331,6 +5252,7 @@
         "architect",
         "arena",
         "automate-me",
+        "blast-radius",
         "figure-it-out",
         "how",
         "interrogate",
@@ -4348,13 +5270,13 @@
         "principle-migrate-callers-then-delete-legacy-apis",
         "principle-minimize-reader-load",
         "principle-never-block-on-the-human",
-        "principle-outcome-oriented-execution",
-        "principle-prove-it-works"
+        "principle-outcome-oriented-execution"
       ],
       "skillIds": [
         "architect",
         "arena",
         "automate-me",
+        "blast-radius",
         "figure-it-out",
         "how",
         "interrogate",
@@ -4376,9 +5298,12 @@
         "principle-prove-it-works",
         "principle-redesign-from-first-principles",
         "principle-separate-before-serializing-shared-state",
+        "principle-sequence-verifiable-units",
         "principle-subtract-before-you-add",
         "principle-type-system-discipline",
+        "recall",
         "reflect",
+        "setup-pstack",
         "show-me-your-work",
         "tdd",
         "typescript-best-practices",
@@ -4391,6 +5316,7 @@
         "skill-architect",
         "skill-arena",
         "skill-automate-me",
+        "skill-blast-radius",
         "skill-figure-it-out",
         "skill-how",
         "skill-interrogate",
@@ -4412,14 +5338,69 @@
         "skill-principle-prove-it-works",
         "skill-principle-redesign-from-first-principles",
         "skill-principle-separate-before-serializing-shared-state",
+        "skill-principle-sequence-verifiable-units",
         "skill-principle-subtract-before-you-add",
         "skill-principle-type-system-discipline",
+        "skill-recall",
         "skill-reflect",
+        "skill-setup-pstack",
         "skill-show-me-your-work",
         "skill-tdd",
         "skill-typescript-best-practices",
         "skill-unslop",
         "skill-why"
+      ]
+    },
+    {
+      "id": "quiverai",
+      "name": "QuiverAI",
+      "description": "Create, refine, and vectorize SVG assets with the hosted QuiverAI MCP server.",
+      "brand": null,
+      "homepage": "https://quiver.ai/",
+      "docsUrl": "https://github.com/quiverai/cursor-plugin",
+      "marketplaceUrl": "https://cursor.com/marketplace/quiverai",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/54aabae13bcfbf4e.png",
+      "triggers": [
+        "quiverai"
+      ],
+      "skillIds": [
+        "quiverai"
+      ],
+      "mcpServerIds": [
+        "quiverai"
+      ],
+      "registryItemIds": [
+        "plugin-quiverai",
+        "skill-quiverai",
+        "mcp-quiverai"
+      ]
+    },
+    {
+      "id": "raisely",
+      "name": "Raisely",
+      "description": "Connect Cursor to Raisely. Ships the Raisely MCP server so you can query and manage campaigns, donations, supporters, and more from chat.",
+      "brand": null,
+      "homepage": "https://www.raisely.com/",
+      "docsUrl": "https://github.com/raisely/cursor-plugin",
+      "marketplaceUrl": "https://cursor.com/marketplace/raisely",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/development/b49bee725113e9f7.png",
+      "triggers": [
+        "raisely",
+        "raisely-ensure-cli",
+        "raisely-start-local"
+      ],
+      "skillIds": [
+        "raisely-ensure-cli",
+        "raisely-start-local"
+      ],
+      "mcpServerIds": [
+        "raisely"
+      ],
+      "registryItemIds": [
+        "plugin-raisely",
+        "skill-raisely-ensure-cli",
+        "skill-raisely-start-local",
+        "mcp-raisely"
       ]
     },
     {
@@ -4566,6 +5547,150 @@
       ]
     },
     {
+      "id": "revenuecat",
+      "name": "RevenueCat",
+      "description": "Configure your RevenueCat integration and access data from your RevenueCat projects.",
+      "brand": null,
+      "homepage": "https://www.revenuecat.com/",
+      "docsUrl": "https://github.com/RevenueCat/ai-toolkit",
+      "marketplaceUrl": "https://cursor.com/marketplace/revenuecat",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/af5f7399e562c864.png",
+      "triggers": [
+        "revenuecat",
+        "create-revenuecat-project",
+        "integrate-revenuecat",
+        "revenuecat-charts",
+        "revenuecat-customer-center",
+        "revenuecat-entitlements-gate",
+        "experiment-analysis",
+        "revenuecat-identify-user",
+        "revenuecat-migrate",
+        "revenuecat-paywall",
+        "revenuecat-purchase-flow",
+        "revenuecat-status",
+        "revenuecat-testing-setup",
+        "revenuecat-troubleshoot"
+      ],
+      "skillIds": [
+        "create-revenuecat-project",
+        "integrate-revenuecat",
+        "revenuecat",
+        "revenuecat-charts",
+        "revenuecat-customer-center",
+        "revenuecat-entitlements-gate",
+        "experiment-analysis",
+        "revenuecat-identify-user",
+        "revenuecat-migrate",
+        "revenuecat-paywall",
+        "revenuecat-purchase-flow",
+        "revenuecat-status",
+        "revenuecat-testing-setup",
+        "revenuecat-troubleshoot"
+      ],
+      "mcpServerIds": [
+        "revenuecat"
+      ],
+      "registryItemIds": [
+        "plugin-revenuecat",
+        "skill-create-revenuecat-project",
+        "skill-integrate-revenuecat",
+        "skill-revenuecat",
+        "skill-revenuecat-charts",
+        "skill-revenuecat-customer-center",
+        "skill-revenuecat-entitlements-gate",
+        "skill-experiment-analysis",
+        "skill-revenuecat-identify-user",
+        "skill-revenuecat-migrate",
+        "skill-revenuecat-paywall",
+        "skill-revenuecat-purchase-flow",
+        "skill-revenuecat-status",
+        "skill-revenuecat-testing-setup",
+        "skill-revenuecat-troubleshoot",
+        "mcp-revenuecat"
+      ]
+    },
+    {
+      "id": "revenuecat-play-billing",
+      "name": "RevenueCat Play Billing",
+      "description": "Deep Google Play subscription lifecycle skills for the RevenueCat Android SDK — purchases, plan and price changes, payment recovery, webhooks, security.",
+      "brand": null,
+      "homepage": "https://www.revenuecat.com/",
+      "docsUrl": "https://github.com/RevenueCat/ai-toolkit",
+      "marketplaceUrl": "https://cursor.com/marketplace/revenuecat-play-billing",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/4501ac701da45d46.png",
+      "triggers": [
+        "revenuecat-play-billing",
+        "revenuecat play billing",
+        "revenuecat",
+        "rc-alternative-billing",
+        "rc-backend",
+        "rc-cancellations-pauses-winback",
+        "rc-catalog-management",
+        "rc-configuring-the-sdk",
+        "rc-error-handling",
+        "rc-one-time-products",
+        "rc-payment-recovery",
+        "rc-plan-changes",
+        "rc-price-changes",
+        "rc-purchase-flow",
+        "rc-revenuecat-api-quick-reference",
+        "rc-revenuecat-vs-raw-billing",
+        "rc-security",
+        "rc-setup",
+        "rc-subscription-states",
+        "rc-subscriptions",
+        "rc-testing",
+        "rc-understanding-revenuecat",
+        "rc-webhooks"
+      ],
+      "skillIds": [
+        "rc-alternative-billing",
+        "rc-backend",
+        "rc-cancellations-pauses-winback",
+        "rc-catalog-management",
+        "rc-configuring-the-sdk",
+        "rc-error-handling",
+        "rc-one-time-products",
+        "rc-payment-recovery",
+        "rc-plan-changes",
+        "rc-price-changes",
+        "rc-purchase-flow",
+        "rc-revenuecat-api-quick-reference",
+        "rc-revenuecat-vs-raw-billing",
+        "rc-security",
+        "rc-setup",
+        "rc-subscription-states",
+        "rc-subscriptions",
+        "rc-testing",
+        "rc-understanding-revenuecat",
+        "rc-webhooks"
+      ],
+      "mcpServerIds": [],
+      "registryItemIds": [
+        "plugin-revenuecat-play-billing",
+        "skill-rc-alternative-billing",
+        "skill-rc-backend",
+        "skill-rc-cancellations-pauses-winback",
+        "skill-rc-catalog-management",
+        "skill-rc-configuring-the-sdk",
+        "skill-rc-error-handling",
+        "skill-rc-one-time-products",
+        "skill-rc-payment-recovery",
+        "skill-rc-plan-changes",
+        "skill-rc-price-changes",
+        "skill-rc-purchase-flow",
+        "skill-rc-revenuecat-api-quick-reference",
+        "skill-rc-revenuecat-vs-raw-billing",
+        "skill-rc-security",
+        "skill-rc-setup",
+        "skill-rc-subscription-states",
+        "skill-rc-subscriptions",
+        "skill-rc-testing",
+        "skill-rc-understanding-revenuecat",
+        "skill-rc-webhooks"
+      ]
+    },
+    {
       "id": "revolut-x",
       "name": "Revolut X",
       "description": "Use the Revolut X CLI (revx) for crypto trading, market data, monitoring, and grid bot strategies",
@@ -4605,6 +5730,49 @@
         "skill-revx-strategy",
         "skill-revx-telegram",
         "skill-revx-trading"
+      ]
+    },
+    {
+      "id": "roboflow",
+      "name": "Roboflow",
+      "description": "Roboflow computer vision skills and MCP tools for datasets, annotation, training, workflows, inference, and deployment.",
+      "brand": null,
+      "homepage": "https://roboflow.com/",
+      "docsUrl": "https://github.com/roboflow/computer-vision-skills",
+      "marketplaceUrl": "https://cursor.com/marketplace/roboflow",
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/roboflow.png",
+      "triggers": [
+        "roboflow",
+        "roboflow-api-reference",
+        "roboflow-data-management",
+        "roboflow-inference",
+        "roboflow-plans-and-pricing",
+        "roboflow-product-navigation",
+        "roboflow-training-and-evaluation",
+        "roboflow-universe"
+      ],
+      "skillIds": [
+        "roboflow-api-reference",
+        "roboflow-data-management",
+        "roboflow-inference",
+        "roboflow-plans-and-pricing",
+        "roboflow-product-navigation",
+        "roboflow-training-and-evaluation",
+        "roboflow-universe"
+      ],
+      "mcpServerIds": [
+        "roboflow"
+      ],
+      "registryItemIds": [
+        "plugin-roboflow",
+        "skill-roboflow-api-reference",
+        "skill-roboflow-data-management",
+        "skill-roboflow-inference",
+        "skill-roboflow-plans-and-pricing",
+        "skill-roboflow-product-navigation",
+        "skill-roboflow-training-and-evaluation",
+        "skill-roboflow-universe",
+        "mcp-roboflow"
       ]
     },
     {
@@ -4685,41 +5853,53 @@
         "barcode-capture-capacitor",
         "barcode-capture-cordova",
         "barcode-capture-flutter",
+        "barcode-capture-ios",
         "barcode-capture-maui",
         "barcode-capture-net-android",
         "barcode-capture-net-ios",
         "barcode-capture-rn",
         "barcode-capture-web",
         "data-capture-sdk",
+        "id-capture-capacitor",
+        "id-capture-cordova",
+        "id-capture-flutter",
+        "id-capture-ios",
+        "id-capture-net-android",
+        "id-capture-net-ios",
+        "id-capture-net-maui",
+        "id-capture-rn",
         "label-capture-android",
         "label-capture-capacitor",
-        "label-capture-cordova",
-        "label-capture-flutter",
-        "label-capture-ios",
-        "label-capture-rn",
-        "label-capture-web",
-        "matrixscan-ar-android",
-        "matrixscan-ar-annotation-ios",
-        "matrixscan-ar-capacitor",
-        "matrixscan-ar-cordova",
-        "matrixscan-ar-flutter"
+        "label-capture-cordova"
       ],
       "skillIds": [
         "barcode-capture-android",
         "barcode-capture-capacitor",
         "barcode-capture-cordova",
         "barcode-capture-flutter",
+        "barcode-capture-ios",
         "barcode-capture-maui",
         "barcode-capture-net-android",
         "barcode-capture-net-ios",
         "barcode-capture-rn",
         "barcode-capture-web",
         "data-capture-sdk",
+        "id-capture-capacitor",
+        "id-capture-cordova",
+        "id-capture-flutter",
+        "id-capture-ios",
+        "id-capture-net-android",
+        "id-capture-net-ios",
+        "id-capture-net-maui",
+        "id-capture-rn",
         "label-capture-android",
         "label-capture-capacitor",
         "label-capture-cordova",
         "label-capture-flutter",
         "label-capture-ios",
+        "label-capture-net-android",
+        "label-capture-net-ios",
+        "label-capture-net-maui",
         "label-capture-rn",
         "label-capture-web",
         "matrixscan-ar-android",
@@ -4729,6 +5909,9 @@
         "matrixscan-ar-flutter",
         "matrixscan-ar-highlight-ios",
         "matrixscan-ar-ios",
+        "matrixscan-ar-maui",
+        "matrixscan-ar-net-android",
+        "matrixscan-ar-net-ios",
         "matrixscan-ar-rn",
         "matrixscan-ar-web",
         "matrixscan-batch-android",
@@ -4736,17 +5919,27 @@
         "matrixscan-batch-cordova",
         "matrixscan-batch-flutter",
         "matrixscan-batch-ios",
+        "matrixscan-batch-maui",
+        "matrixscan-batch-net-android",
+        "matrixscan-batch-net-ios",
         "matrixscan-batch-rn",
         "matrixscan-batch-web",
         "matrixscan-count-capacitor",
         "matrixscan-count-cordova",
         "matrixscan-count-flutter",
+        "matrixscan-count-maui",
+        "matrixscan-count-net-android",
+        "matrixscan-count-net-ios",
         "matrixscan-count-rn",
+        "matrixscan-pick-ios",
         "sparkscan-android",
         "sparkscan-capacitor",
         "sparkscan-cordova",
         "sparkscan-flutter",
         "sparkscan-ios",
+        "sparkscan-maui",
+        "sparkscan-net-android",
+        "sparkscan-net-ios",
         "sparkscan-rn",
         "sparkscan-web"
       ],
@@ -4757,17 +5950,29 @@
         "skill-barcode-capture-capacitor",
         "skill-barcode-capture-cordova",
         "skill-barcode-capture-flutter",
+        "skill-barcode-capture-ios",
         "skill-barcode-capture-maui",
         "skill-barcode-capture-net-android",
         "skill-barcode-capture-net-ios",
         "skill-barcode-capture-rn",
         "skill-barcode-capture-web",
         "skill-data-capture-sdk",
+        "skill-id-capture-capacitor",
+        "skill-id-capture-cordova",
+        "skill-id-capture-flutter",
+        "skill-id-capture-ios",
+        "skill-id-capture-net-android",
+        "skill-id-capture-net-ios",
+        "skill-id-capture-net-maui",
+        "skill-id-capture-rn",
         "skill-label-capture-android",
         "skill-label-capture-capacitor",
         "skill-label-capture-cordova",
         "skill-label-capture-flutter",
         "skill-label-capture-ios",
+        "skill-label-capture-net-android",
+        "skill-label-capture-net-ios",
+        "skill-label-capture-net-maui",
         "skill-label-capture-rn",
         "skill-label-capture-web",
         "skill-matrixscan-ar-android",
@@ -4777,6 +5982,9 @@
         "skill-matrixscan-ar-flutter",
         "skill-matrixscan-ar-highlight-ios",
         "skill-matrixscan-ar-ios",
+        "skill-matrixscan-ar-maui",
+        "skill-matrixscan-ar-net-android",
+        "skill-matrixscan-ar-net-ios",
         "skill-matrixscan-ar-rn",
         "skill-matrixscan-ar-web",
         "skill-matrixscan-batch-android",
@@ -4784,17 +5992,27 @@
         "skill-matrixscan-batch-cordova",
         "skill-matrixscan-batch-flutter",
         "skill-matrixscan-batch-ios",
+        "skill-matrixscan-batch-maui",
+        "skill-matrixscan-batch-net-android",
+        "skill-matrixscan-batch-net-ios",
         "skill-matrixscan-batch-rn",
         "skill-matrixscan-batch-web",
         "skill-matrixscan-count-capacitor",
         "skill-matrixscan-count-cordova",
         "skill-matrixscan-count-flutter",
+        "skill-matrixscan-count-maui",
+        "skill-matrixscan-count-net-android",
+        "skill-matrixscan-count-net-ios",
         "skill-matrixscan-count-rn",
+        "skill-matrixscan-pick-ios",
         "skill-sparkscan-android",
         "skill-sparkscan-capacitor",
         "skill-sparkscan-cordova",
         "skill-sparkscan-flutter",
         "skill-sparkscan-ios",
+        "skill-sparkscan-maui",
+        "skill-sparkscan-net-android",
+        "skill-sparkscan-net-ios",
         "skill-sparkscan-rn",
         "skill-sparkscan-web"
       ]
@@ -4877,6 +6095,7 @@
         "sentry-fix-issues",
         "sentry-flutter-sdk",
         "sentry-go-sdk",
+        "sentry-instrumentation-guide",
         "sentry-nestjs-sdk",
         "sentry-nextjs-sdk",
         "sentry-node-sdk",
@@ -4886,8 +6105,7 @@
         "sentry-python-sdk",
         "sentry-react-native-sdk",
         "sentry-react-router-framework-sdk",
-        "sentry-react-sdk",
-        "sentry-ruby-sdk"
+        "sentry-react-sdk"
       ],
       "skillIds": [
         "sentry-android-sdk",
@@ -4902,6 +6120,7 @@
         "sentry-fix-issues",
         "sentry-flutter-sdk",
         "sentry-go-sdk",
+        "sentry-instrumentation-guide",
         "sentry-nestjs-sdk",
         "sentry-nextjs-sdk",
         "sentry-node-sdk",
@@ -4938,6 +6157,7 @@
         "skill-sentry-fix-issues",
         "skill-sentry-flutter-sdk",
         "skill-sentry-go-sdk",
+        "skill-sentry-instrumentation-guide",
         "skill-sentry-nestjs-sdk",
         "skill-sentry-nextjs-sdk",
         "skill-sentry-node-sdk",
@@ -5206,6 +6426,87 @@
       ]
     },
     {
+      "id": "snyk-api-web",
+      "name": "Snyk API & Web",
+      "description": "Snyk API & Web MCP Server — onboard scan targets, configure authentication, run DAST scans, and triage findings through natural language. Built on FastMCP 2.0.",
+      "brand": null,
+      "homepage": "https://snyk.io",
+      "docsUrl": "https://github.com/snyk/saw-mcp",
+      "marketplaceUrl": "https://cursor.com/marketplace/snyk-api-web",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/07b6e19adc0d8333.webp",
+      "triggers": [
+        "snyk-api-web",
+        "snyk api & web",
+        "snyk",
+        "saw-api-target-configuration",
+        "saw-web-target-configuration",
+        "saw"
+      ],
+      "skillIds": [
+        "saw-api-target-configuration",
+        "saw-web-target-configuration"
+      ],
+      "mcpServerIds": [
+        "saw"
+      ],
+      "registryItemIds": [
+        "plugin-snyk-api-web",
+        "skill-saw-api-target-configuration",
+        "skill-saw-web-target-configuration",
+        "mcp-saw"
+      ]
+    },
+    {
+      "id": "sonarqube",
+      "name": "SonarQube",
+      "description": "Automatically enforce SonarQube code quality and security in the agent coding loop — 7,000+ rules, secrets scanning, agentic analysis, and quality gates across 40+ languages.",
+      "brand": null,
+      "homepage": "https://www.sonarsource.com/",
+      "docsUrl": "https://github.com/SonarSource/sonarqube-agent-plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/sonarqube",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/dd8a1ddaf2d92bb7.png",
+      "triggers": [
+        "sonarqube",
+        "sonarsource",
+        "sonar-analyze",
+        "sonar-coverage",
+        "sonar-dependency-risks",
+        "sonar-duplication",
+        "sonar-fix-issue",
+        "sonar-integrate",
+        "sonar-list-issues",
+        "sonar-list-projects",
+        "sonar-quality-gate"
+      ],
+      "skillIds": [
+        "sonar-analyze",
+        "sonar-coverage",
+        "sonar-dependency-risks",
+        "sonar-duplication",
+        "sonar-fix-issue",
+        "sonar-integrate",
+        "sonar-list-issues",
+        "sonar-list-projects",
+        "sonar-quality-gate"
+      ],
+      "mcpServerIds": [
+        "sonarqube"
+      ],
+      "registryItemIds": [
+        "plugin-sonarqube",
+        "skill-sonar-analyze",
+        "skill-sonar-coverage",
+        "skill-sonar-dependency-risks",
+        "skill-sonar-duplication",
+        "skill-sonar-fix-issue",
+        "skill-sonar-integrate",
+        "skill-sonar-list-issues",
+        "skill-sonar-list-projects",
+        "skill-sonar-quality-gate",
+        "mcp-sonarqube"
+      ]
+    },
+    {
       "id": "sonatype",
       "name": "Sonatype",
       "description": "AI-powered dependency intelligence. Check vulnerabilities, find safer versions, and make better dependency decisions using Sonatype's component data.",
@@ -5276,11 +6577,13 @@
       "triggers": [
         "stripe",
         "stripe-best-practices",
+        "stripe-directory",
         "stripe-projects",
         "upgrade-stripe"
       ],
       "skillIds": [
         "stripe-best-practices",
+        "stripe-directory",
         "stripe-projects",
         "upgrade-stripe"
       ],
@@ -5290,6 +6593,7 @@
       "registryItemIds": [
         "plugin-stripe",
         "skill-stripe-best-practices",
+        "skill-stripe-directory",
         "skill-stripe-projects",
         "skill-upgrade-stripe",
         "mcp-stripe"
@@ -5516,7 +6820,7 @@
     {
       "id": "ctx",
       "name": "Tabnine Context Engine",
-      "description": "Query the Context Engine knowledge graph from your agent via ctx-cli — semantic + lexical search across services and code, graph adjacency traversal, and CVE triage with ready-to-apply fix diffs.",
+      "description": "Context Engine CLI (ctx-cli) as focused skills — code & knowledge-graph search, service investigation, CVE & SAST triage with ready-to-apply fixes, and coding-guideline checks.",
       "brand": null,
       "homepage": "https://www.tabnine.com/",
       "docsUrl": "https://github.com/tabnine/skills",
@@ -5525,15 +6829,27 @@
       "triggers": [
         "ctx",
         "tabnine context engine",
-        "tabnine"
+        "tabnine",
+        "ctx-guidelines",
+        "ctx-investigate",
+        "ctx-search",
+        "ctx-security"
       ],
       "skillIds": [
-        "ctx"
+        "ctx",
+        "ctx-guidelines",
+        "ctx-investigate",
+        "ctx-search",
+        "ctx-security"
       ],
       "mcpServerIds": [],
       "registryItemIds": [
         "plugin-ctx",
-        "skill-ctx"
+        "skill-ctx",
+        "skill-ctx-guidelines",
+        "skill-ctx-investigate",
+        "skill-ctx-search",
+        "skill-ctx-security"
       ]
     },
     {

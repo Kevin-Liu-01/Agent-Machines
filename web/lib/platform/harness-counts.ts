@@ -7,6 +7,6 @@
 export const HARNESS_COUNTS = {
 	skillCount: 161,
 	serviceRouteCount: 27,
-	cliCount: 23,
-	mcpServerCount: 35,
+	cliCount: 24,
+	mcpServerCount: 39,
 } as const;

@@ -58,7 +58,12 @@ describe("matchPackages", () => {
 	it("does not suggest when all package abilities are already active in memory", () => {
 		const stripeMemory = newBundle({
 			name: "pay",
-			skillIds: ["stripe-best-practices", "stripe-projects", "upgrade-stripe"],
+			skillIds: [
+				"stripe-best-practices",
+				"stripe-directory",
+				"stripe-projects",
+				"upgrade-stripe",
+			],
 			mcpServerIds: ["stripe"],
 		});
 		const hits = matchPackages({
