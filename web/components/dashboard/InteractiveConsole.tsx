@@ -37,24 +37,12 @@ type InteractiveConsoleProps = {
 	showFooter?: boolean;
 };
 
-/** Printable coalesce window — control keys flush immediately. */
-const INPUT_COALESCE_MS = 8;
 const RECONNECT_MS = 100;
 const DEFAULT_COLS = 120;
 const DEFAULT_ROWS = 32;
 
 function sleep(ms: number): Promise<void> {
 	return new Promise((r) => setTimeout(r, ms));
-}
-
-/** Keys that must reach tmux without waiting for the coalesce timer. */
-function shouldFlushInputImmediately(data: string): boolean {
-	for (let i = 0; i < data.length; i += 1) {
-		const code = data.charCodeAt(i);
-		if (code === 0x1b || code === 0x0d || code === 0x09 || code === 0x7f) return true;
-		if (code < 0x20) return true;
-	}
-	return false;
 }
 
 function prefetchXterm(): void {
@@ -129,12 +117,13 @@ export function InteractiveConsole({
 		let fit: FitAddonType | null = null;
 		let resizeObs: ResizeObserver | null = null;
 		let streamAbort: AbortController | null = null;
-		let inputBuf = "";
-		let inputTimer: ReturnType<typeof setTimeout> | null = null;
 		const offsetRef = { current: 0 };
 		let pendingWrite = "";
 		let writeScheduled = false;
-		let optimisticLine = "";
+		let localLine = "";
+		let localCursor = 0;
+		let historyIndex: number | null = null;
+		const commandHistory: string[] = [];
 		let suppressedEcho = "";
 
 		const flushPendingWrite = () => {
@@ -267,64 +256,188 @@ export function InteractiveConsole({
 			term.loadAddon(fit);
 			term.open(hostRef.current);
 
-			const flushInput = () => {
-				const data = inputBuf;
-				inputBuf = "";
-				inputTimer = null;
-				if (!data) return;
+			const localLength = () => Array.from(localLine).length;
+			const moveLeft = (count: number) => {
+				if (count > 0) term?.write(`\x1b[${count}D`);
+			};
+			const moveRight = (count: number) => {
+				if (count > 0) term?.write(`\x1b[${count}C`);
+			};
+			const replaceLocalLine = (next: string, cursor = Array.from(next).length) => {
+				const oldLength = localLength();
+				moveLeft(localCursor);
+				if (oldLength > 0) {
+					term?.write(" ".repeat(oldLength));
+					moveLeft(oldLength);
+				}
+				localLine = next;
+				localCursor = Math.min(Math.max(0, cursor), localLength());
+				if (localLine) term?.write(localLine);
+				moveLeft(localLength() - localCursor);
+			};
+			const insertPrintable = (text: string) => {
+				const inserted = Array.from(text);
+				if (inserted.length === 0) return;
+				const chars = Array.from(localLine);
+				const before = chars.slice(0, localCursor);
+				const after = chars.slice(localCursor);
+				localLine = [...before, ...inserted, ...after].join("");
+				localCursor += inserted.length;
+				term?.write(`${text}${after.join("")}`);
+				moveLeft(after.length);
+			};
+			const deleteBeforeCursor = () => {
+				if (localCursor <= 0) return;
+				const chars = Array.from(localLine);
+				const after = chars.slice(localCursor);
+				chars.splice(localCursor - 1, 1);
+				localLine = chars.join("");
+				localCursor -= 1;
+				term?.write(`\b${after.join("")} `);
+				moveLeft(after.length + 1);
+			};
+			const deleteAtCursor = () => {
+				const chars = Array.from(localLine);
+				if (localCursor >= chars.length) return;
+				const after = chars.slice(localCursor + 1);
+				chars.splice(localCursor, 1);
+				localLine = chars.join("");
+				term?.write(`${after.join("")} `);
+				moveLeft(after.length + 1);
+			};
+			const clearLocalLine = () => {
+				replaceLocalLine("");
+				historyIndex = null;
+			};
+			const sendLocalLineWithoutEnter = () => {
+				if (!localLine) return;
+				suppressedEcho += localLine;
+				sendInputRef.current(localLine);
+				localLine = "";
+				localCursor = 0;
+				historyIndex = null;
+			};
+			const submitLocalLine = () => {
+				moveRight(localLength() - localCursor);
+				const submitted = localLine;
+				if (submitted.trim() && commandHistory[commandHistory.length - 1] !== submitted) {
+					commandHistory.push(submitted);
+				}
+				historyIndex = null;
+				suppressedEcho += `${submitted}\r\n`;
+				term?.write("\r\n");
+				sendInputRef.current(`${submitted}\r`);
+				localLine = "";
+				localCursor = 0;
+			};
+			const showHistory = (direction: -1 | 1) => {
+				if (commandHistory.length === 0) return;
+				if (historyIndex === null) {
+					if (direction > 0) return;
+					historyIndex = commandHistory.length - 1;
+				} else {
+					historyIndex += direction;
+					if (historyIndex < 0) historyIndex = 0;
+					if (historyIndex >= commandHistory.length) {
+						historyIndex = null;
+						replaceLocalLine("");
+						return;
+					}
+				}
+				replaceLocalLine(commandHistory[historyIndex]);
+			};
+			const sendControl = (data: string) => {
+				sendLocalLineWithoutEnter();
 				sendInputRef.current(data);
 			};
-
-			const queueRawInput = (data: string) => {
-				inputBuf += data;
-				if (shouldFlushInputImmediately(data)) {
-					if (inputTimer) {
-						clearTimeout(inputTimer);
-						inputTimer = null;
+			const handleEscapeSequence = (data: string, index: number): number => {
+				const rest = data.slice(index);
+				if (rest.startsWith("\x1b[D")) {
+					if (localCursor > 0) {
+						localCursor -= 1;
+						moveLeft(1);
 					}
-					flushInput();
-					return;
+					return index + 3;
 				}
-				if (!inputTimer) inputTimer = setTimeout(flushInput, INPUT_COALESCE_MS);
-			};
-
-			const flushOptimisticLine = () => {
-				if (!optimisticLine) return;
-				suppressedEcho += optimisticLine;
-				queueRawInput(optimisticLine);
-				optimisticLine = "";
-			};
-
-			const commitOptimisticLine = () => {
-				suppressedEcho += `${optimisticLine}\r\n`;
-				term?.write("\r\n");
-				queueRawInput(`${optimisticLine}\r`);
-				optimisticLine = "";
+				if (rest.startsWith("\x1b[C")) {
+					if (localCursor < localLength()) {
+						localCursor += 1;
+						moveRight(1);
+					}
+					return index + 3;
+				}
+				if (rest.startsWith("\x1b[A")) {
+					showHistory(-1);
+					return index + 3;
+				}
+				if (rest.startsWith("\x1b[B")) {
+					showHistory(1);
+					return index + 3;
+				}
+				if (
+					rest.startsWith("\x1b[H") ||
+					rest.startsWith("\x1bOH") ||
+					rest.startsWith("\x1b[1~") ||
+					rest.startsWith("\x1b[7~")
+				) {
+					moveLeft(localCursor);
+					localCursor = 0;
+					return index + (rest.startsWith("\x1bO") ? 3 : rest.startsWith("\x1b[H") ? 3 : 4);
+				}
+				if (
+					rest.startsWith("\x1b[F") ||
+					rest.startsWith("\x1bOF") ||
+					rest.startsWith("\x1b[4~") ||
+					rest.startsWith("\x1b[8~")
+				) {
+					moveRight(localLength() - localCursor);
+					localCursor = localLength();
+					return index + (rest.startsWith("\x1bO") ? 3 : rest.startsWith("\x1b[F") ? 3 : 4);
+				}
+				if (rest.startsWith("\x1b[3~")) {
+					deleteAtCursor();
+					return index + 4;
+				}
+				sendControl(rest);
+				return data.length;
 			};
 
 			term.onData((d) => {
 				const data = stripTerminalDeviceResponses(d);
 				if (!data) return;
 
-				if (data === "\r") {
-					commitOptimisticLine();
-					return;
-				}
+				let index = 0;
+				while (index < data.length) {
+					if (data[index] === "\x1b") {
+						index = handleEscapeSequence(data, index);
+						continue;
+					}
 
-				if (data === "\x7f" && optimisticLine.length > 0) {
-					optimisticLine = Array.from(optimisticLine).slice(0, -1).join("");
-					term?.write("\b \b");
-					return;
-				}
+					const code = data.codePointAt(index) ?? 0;
+					const char = String.fromCodePoint(code);
+					index += char.length;
 
-				if (isPrintableInput(data)) {
-					optimisticLine += data;
-					term?.write(data);
-					return;
+					if (char === "\r" || char === "\n") {
+						submitLocalLine();
+					} else if (char === "\x7f" || char === "\b") {
+						deleteBeforeCursor();
+					} else if (char === "\x03") {
+						clearLocalLine();
+						sendInputRef.current(char);
+					} else if (char === "\x01") {
+						moveLeft(localCursor);
+						localCursor = 0;
+					} else if (char === "\x05") {
+						moveRight(localLength() - localCursor);
+						localCursor = localLength();
+					} else if (char === "\t") {
+						sendControl(char);
+					} else if (isPrintableInput(char)) {
+						insertPrintable(char);
+					} else {
+						sendControl(char);
+					}
 				}
-
-				flushOptimisticLine();
-				queueRawInput(data);
 			});
 
 			try {
@@ -397,7 +510,6 @@ export function InteractiveConsole({
 			alive = false;
 			streamAbort?.abort();
 			resizeObs?.disconnect();
-			if (inputTimer) clearTimeout(inputTimer);
 			flushPendingWrite();
 			term?.dispose();
 		};

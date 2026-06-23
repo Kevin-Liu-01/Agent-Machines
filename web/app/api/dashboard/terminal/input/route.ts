@@ -9,6 +9,7 @@
  */
 
 import { execOnMachine } from "@/lib/dashboard/exec";
+import { stripTerminalDeviceResponses } from "@/lib/dashboard/terminal-input";
 import { sendKeysCommand } from "@/lib/dashboard/terminal-session";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
@@ -26,7 +27,10 @@ export async function POST(request: Request): Promise<Response> {
 
 	const body = (await request.json().catch(() => ({}))) as Body;
 	const machineId = typeof body.machineId === "string" ? body.machineId : undefined;
-	const data = typeof body.data === "string" ? body.data : "";
+	const data =
+		typeof body.data === "string"
+			? stripTerminalDeviceResponses(body.data)
+			: "";
 	if (!data) return Response.json({ error: "empty_input" }, { status: 400 });
 	if (Buffer.byteLength(data, "utf8") > MAX_INPUT_BYTES) {
 		return Response.json({ error: "input_too_large" }, { status: 400 });
