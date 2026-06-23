@@ -78,6 +78,8 @@ export async function POST(request: Request): Promise<Response> {
 			`hermes config set model.provider custom`,
 			`hermes config set model.base_url ${baseUrl}`,
 			`hermes config set model.api_key ${upstreamKey}`,
+			`hermes config set display.streaming true`,
+			`hermes config set display.tool_progress all`,
 			`grep -q 'base_url' ${hermesHome}/config.yaml`,
 		].join("\n");
 	}

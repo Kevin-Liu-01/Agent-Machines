@@ -219,6 +219,28 @@ export class SpritesProvider implements MachineProvider {
 		}
 	}
 
+	async execBackground(spriteName: string, command: string): Promise<void> {
+		try {
+			const sprite = await this.spriteHandle(spriteName);
+			const proc = sprite.spawn("/bin/bash", ["-lc", command], {});
+			proc.stdout.on("data", () => {
+				// Drain output so a chatty gateway cannot block on a full pipe.
+			});
+			proc.stderr.on("data", () => {
+				// Drain output so a chatty gateway cannot block on a full pipe.
+			});
+			void proc.wait().catch(() => {
+				// Background process failures are surfaced by gateway log probes.
+			});
+		} catch (err: unknown) {
+			throw new MachineProviderError(
+				"sprites",
+				"transient",
+				`sprites execBackground failed: ${err instanceof Error ? err.message : String(err)}`,
+			);
+		}
+	}
+
 	/**
 	 * Native streaming via the Sprites WebSocket process API. `spawn` opens a
 	 * WS-backed process whose stdout/stderr are Node `Readable` streams; we

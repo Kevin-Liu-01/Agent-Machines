@@ -598,7 +598,7 @@ function commandFor(
 			return [
 				"set -e",
 				`mkdir -p ${p.HERMES_HOME}/skills ${p.HERMES_HOME}/crons ${p.HERMES_HOME}/mcps ${p.APP_HOME}`,
-				`cat > ${p.APP_HOME}/settings.json <<'EOF'\n${machineSettingsJson(machine, config)}\nEOF`,
+				writeRemoteFile(`${p.APP_HOME}/settings.json`, machineSettingsJson(machine, config)),
 				writeRemoteFile(`${p.APP_HOME}/.agent-env`, machineAgentEnvFile(machine, config)),
 				`chmod 600 ${p.APP_HOME}/.agent-env`,
 			].join(" && ");
@@ -764,11 +764,14 @@ async function startGatewaySandbox(
 	if (machine.agentKind === "claude-code" || machine.agentKind === "codex") return;
 
 	const gw = gatewayConfigFor(machine, paths);
+	const isSprites = machine.providerKind === "sprites";
+	const probeTimeoutMs = isSprites ? 25_000 : 5_000;
+	const cleanupTimeoutMs = isSprites ? 25_000 : 10_000;
 
 	const alreadyUp = await provider.exec(
 		machine.id,
 		`ss -ltn 2>/dev/null | grep -q ":${gw.port} " && echo ready || echo waiting`,
-		{ timeoutMs: 15_000 },
+		{ timeoutMs: isSprites ? 25_000 : 15_000 },
 	);
 	if (alreadyUp.stdout.trim() === "ready") return;
 
@@ -779,7 +782,7 @@ async function startGatewaySandbox(
 		`ps -eo pid,cmd 2>/dev/null | awk '/${gw.killPattern}/ && !/awk/ {print \\$1}' | xargs -r kill 2>/dev/null || true`,
 		"sleep 1",
 		`mkdir -p ${paths.MACHINE_HOME}/logs/services`,
-	].join(" && "), { timeoutMs: 10_000 });
+	].join(" && "), { timeoutMs: cleanupTimeoutMs });
 
 	// 2. Start gateway in background — use the SDK's native background mode
 	// when available (E2B), fall back to & disown (Sprites)
@@ -799,19 +802,19 @@ async function startGatewaySandbox(
 	}
 
 	// 3. Poll for readiness instead of blind sleep
-	const MAX_POLLS = 45;
+	const MAX_POLLS = isSprites ? 12 : 45;
 	for (let i = 0; i < MAX_POLLS; i++) {
 		const probe = await provider.exec(machine.id,
 			`ss -ltn 2>/dev/null | grep -q ":${gw.port}" && echo ready || echo waiting`,
-			{ timeoutMs: 5_000 },
+			{ timeoutMs: probeTimeoutMs },
 		);
 		if (probe.stdout.trim() === "ready") return;
-		await new Promise(resolve => setTimeout(resolve, 1_000));
+		await new Promise(resolve => setTimeout(resolve, isSprites ? 2_000 : 1_000));
 	}
 
 	const log = await provider.exec(machine.id,
 		`tail -20 ${gw.logFile} 2>/dev/null || echo "no log"`,
-		{ timeoutMs: 5_000 },
+		{ timeoutMs: probeTimeoutMs },
 	);
 	throw new Error(
 		`Gateway did not start on :${gw.port} after ${MAX_POLLS}s. Log:\n${log.stdout.slice(-300)}`,
@@ -862,6 +865,8 @@ function configureHermes(
 	cmds.push(
 		`hermes config set model.model ${model}`,
 		`hermes config set first_run_complete true`,
+		`hermes config set display.streaming true`,
+		`hermes config set display.tool_progress all`,
 		`cat > ${p.HERMES_HOME}/.env <<EOF\nAPI_SERVER_ENABLED=true\nAPI_SERVER_KEY=${gatewayKey}\nAPI_SERVER_HOST=0.0.0.0\nAPI_SERVER_PORT=${port}\nGATEWAY_ALLOW_ALL_USERS=true\nEOF`,
 	);
 	return cmds.join(" && ");

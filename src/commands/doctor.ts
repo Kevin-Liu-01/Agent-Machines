@@ -94,6 +94,81 @@ function localCmd(cmd: string, cwd?: string): string | null {
 	}
 }
 
+type JsonObject = Record<string, unknown>;
+
+type ChatProbe = {
+	content: string;
+	streamed: boolean;
+	parsedJson: boolean;
+	id?: string;
+	model?: string;
+	usageTokens?: number;
+	error?: unknown;
+};
+
+function isRecord(value: unknown): value is JsonObject {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function firstChoice(payload: JsonObject): JsonObject | null {
+	const choices = payload.choices;
+	if (!Array.isArray(choices)) return null;
+	const [choice] = choices;
+	return isRecord(choice) ? choice : null;
+}
+
+function chatContentFrom(choice: JsonObject | null): string {
+	if (!choice) return "";
+	const delta = isRecord(choice.delta) ? choice.delta : null;
+	const message = isRecord(choice.message) ? choice.message : null;
+	const deltaContent = typeof delta?.content === "string" ? delta.content : "";
+	const messageContent = typeof message?.content === "string" ? message.content : "";
+	return deltaContent || messageContent;
+}
+
+function parseChatProbe(raw: string): ChatProbe {
+	const probe: ChatProbe = {
+		content: "",
+		streamed: false,
+		parsedJson: false,
+	};
+	const collect = (payload: JsonObject): void => {
+		if (payload.error) probe.error = payload.error;
+		if (!probe.id && typeof payload.id === "string") probe.id = payload.id;
+		if (!probe.model && typeof payload.model === "string") probe.model = payload.model;
+		const usage = isRecord(payload.usage) ? payload.usage : null;
+		if (usage && typeof usage.total_tokens === "number") {
+			probe.usageTokens = usage.total_tokens;
+		}
+		probe.content += chatContentFrom(firstChoice(payload));
+	};
+
+	try {
+		const parsed = JSON.parse(raw) as unknown;
+		if (isRecord(parsed)) {
+			probe.parsedJson = true;
+			collect(parsed);
+			return probe;
+		}
+	} catch {
+		// Fall through to streaming SSE parsing.
+	}
+
+	probe.streamed = true;
+	for (const line of raw.split(/\r?\n/)) {
+		if (!line.startsWith("data:")) continue;
+		const payload = line.slice(5).trim();
+		if (!payload || payload === "[DONE]") continue;
+		try {
+			const parsed = JSON.parse(payload) as unknown;
+			if (isRecord(parsed)) collect(parsed);
+		} catch {
+			// Ignore malformed progress lines and keep reading the stream.
+		}
+	}
+	return probe;
+}
+
 // ═══════════════════════════════════════════════════════════════════
 // 1. Local environment
 // ═══════════════════════════════════════════════════════════════════
@@ -873,32 +948,26 @@ async function checkEndToEnd(
 				`-H "Authorization: Bearer ${state.apiServerKey}" ` +
 				`-H "Content-Type: application/json" ` +
 				`http://127.0.0.1:${PORT_API}/v1/chat/completions ` +
-				`-d '{"model":"hermes-agent","messages":[{"role":"user","content":"reply with exactly the word: DOCTOR_OK"}],"stream":false}'`,
+				`-d '{"model":"hermes-agent","messages":[{"role":"user","content":"reply with exactly the word: DOCTOR_OK"}],"stream":true}'`,
 			{ timeoutMs: 90_000 },
 		);
 
-		// Parse raw response
-		try {
-			const parsed = JSON.parse(response);
-			if (parsed.error) {
-				FAIL("Chat completion", `API error: ${JSON.stringify(parsed.error).slice(0, 200)}`);
-				return;
-			}
-			const content = parsed.choices?.[0]?.message?.content ?? "";
-			if (content.toLowerCase().includes("doctor_ok")) {
-				pass("Chat completion", `agent replied: ${content.slice(0, 80)}`);
-			} else if (content.length > 0) {
-				pass("Chat completion", `agent replied (inexact): ${content.slice(0, 80)}`);
-			} else {
-				FAIL("Chat completion", "empty response");
-			}
-			// Verify response has expected OpenAI-compatible fields
-			parsed.id ? pass("Response has id field") : WARN("Response id", "missing");
-			parsed.model ? pass("Response has model field", parsed.model) : WARN("Response model", "missing");
-			parsed.usage ? pass("Response has usage field", `${parsed.usage.total_tokens ?? "?"} tokens`) : dim("  No usage field");
-		} catch {
-			FAIL("Chat completion", `non-JSON response: ${response.slice(0, 200)}`);
+		const parsed = parseChatProbe(response);
+		if (parsed.error) {
+			FAIL("Chat completion", `API error: ${JSON.stringify(parsed.error).slice(0, 200)}`);
+			return;
 		}
+		const content = parsed.content.trim();
+		if (content.toLowerCase().includes("doctor_ok")) {
+			pass("Chat completion", `agent replied: ${content.slice(0, 80)}`);
+		} else if (content.length > 0) {
+			pass("Chat completion", `agent replied (inexact): ${content.slice(0, 80)}`);
+		} else {
+			FAIL("Chat completion", "empty response");
+		}
+		parsed.id ? pass("Response has id field") : WARN("Response id", "missing");
+		parsed.model ? pass("Response has model field", parsed.model) : WARN("Response model", "missing");
+		parsed.usageTokens ? pass("Response has usage field", `${parsed.usageTokens} tokens`) : dim("  No usage field");
 	} catch (err) {
 		FAIL("Chat completion", (err instanceof Error ? err.message : String(err)).slice(0, 300));
 	}

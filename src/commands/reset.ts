@@ -97,6 +97,37 @@ export async function reset(): Promise<void> {
 	});
 
 	await phase("Verify the agent answers a fresh prompt", async () => {
+		const parseChatProbe = `python3 -c 'exec("""import json, sys
+raw = sys.stdin.read()
+out = []
+try:
+    data = json.loads(raw)
+    if data.get("error"):
+        print(json.dumps(data.get("error")))
+        sys.exit(0)
+    choice = (data.get("choices") or [{}])[0]
+    message = choice.get("message") or {}
+    print((message.get("content") or "(none)").strip())
+except Exception:
+    for line in raw.splitlines():
+        if not line.startswith("data:"):
+            continue
+        payload = line[5:].strip()
+        if not payload or payload == "[DONE]":
+            continue
+        try:
+            data = json.loads(payload)
+        except Exception:
+            continue
+        if data.get("error"):
+            print(json.dumps(data.get("error")))
+            sys.exit(0)
+        choice = (data.get("choices") or [{}])[0]
+        delta = choice.get("delta") or {}
+        message = choice.get("message") or {}
+        out.append(delta.get("content") or message.get("content") or "")
+    print(("".join(out)).strip() or "(none)")
+""")'`;
 		const probe = await execOut(
 			client,
 			state.machineId,
@@ -104,8 +135,8 @@ export async function reset(): Promise<void> {
 				`-H "Authorization: Bearer ${state.apiServerKey}" ` +
 				`-H "Content-Type: application/json" ` +
 				`http://127.0.0.1:${PORT_API}/v1/chat/completions ` +
-				`-d '{"model":"hermes-agent","messages":[{"role":"user","content":"reply with the single word: ok"}],"stream":false}' ` +
-				`| python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('choices',[{}])[0].get('message',{}).get('content','(none)'))"`,
+				`-d '{"model":"hermes-agent","messages":[{"role":"user","content":"reply with the single word: ok"}],"stream":true}' ` +
+				`| ${parseChatProbe}`,
 			{ timeoutMs: 60_000 },
 		);
 		info(`  agent says: ${probe.trim().slice(0, 200)}`);
