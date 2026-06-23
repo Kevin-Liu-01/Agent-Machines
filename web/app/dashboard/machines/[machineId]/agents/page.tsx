@@ -9,7 +9,7 @@ import {
 	requiredNativeUpstream,
 } from "@/lib/agents/upstreams";
 import { getUserConfig } from "@/lib/user-config/clerk";
-import { AGENT_KINDS, AGENT_LABEL } from "@/lib/user-config/schema";
+import { AGENT_KINDS, AGENT_LABEL, toPublicConfig } from "@/lib/user-config/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +62,7 @@ export default async function MachineAgentsPage({ params }: Params) {
 			model={machine.model}
 			agents={agents}
 			cursorHasKey={Boolean(config.cursorApiKey)}
+			machines={toPublicConfig(config).machines}
 		/>
 	);
 }

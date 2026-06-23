@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Logo } from "@/components/Logo";
 import {
@@ -13,6 +12,10 @@ import {
 	headerPopoverTitle,
 } from "@/lib/dashboard/header-chrome";
 import { cn } from "@/lib/cn";
+import {
+	type AgentMachineCandidate,
+	selectAgentMachine,
+} from "@/lib/dashboard/agent-switching";
 import {
 	AGENT_KINDS,
 	type AgentKind,
@@ -55,6 +58,15 @@ const SOURCE: Record<AgentKind, string> = {
 	codex: "OpenAI",
 };
 
+type SwitcherMessage = {
+	tone: "info" | "error";
+	text: string;
+};
+
+type MachineCatalogResponse = {
+	machines?: AgentMachineCandidate[];
+};
+
 /**
  * Header dropdown that lets the user swap their agent personality.
  * The trigger always reads as a swap control (chevron + "swap" hint)
@@ -77,7 +89,8 @@ export function AgentSwitcher({ value, activeMachineId, machines = [] }: Props) 
 	const router = useRouter();
 	const [open, setOpen] = useState(false);
 	const [pending, setPending] = useState<AgentKind | null>(null);
-	const [error, setError] = useState<string | null>(null);
+	const [message, setMessage] = useState<SwitcherMessage | null>(null);
+	const [catalog, setCatalog] = useState<AgentMachineCandidate[]>([]);
 	const ref = useRef<HTMLDivElement | null>(null);
 
 	useEffect(() => {
@@ -91,25 +104,36 @@ export function AgentSwitcher({ value, activeMachineId, machines = [] }: Props) 
 		return () => document.removeEventListener("mousedown", handler);
 	}, [open]);
 
-	async function machineForAgent(next: AgentKind): Promise<string | null> {
-		const known = machines.filter((machine) => !machine.archived);
-		if (known.length > 0) return bestMachineForAgent(known, next, activeMachineId);
-
+	const loadCatalog = useCallback(async (): Promise<AgentMachineCandidate[]> => {
 		const response = await fetch("/api/dashboard/machines", { cache: "no-store" });
-		if (!response.ok) return null;
-		const body = (await response.json().catch(() => ({}))) as {
-			machines?: Array<{
-				id: string;
-				agentKind: AgentKind;
-				providerKind?: string;
-				archived?: boolean;
-				apiUrl?: string | null;
-				bootstrapState?: { phase: string; lastError?: string | null };
-				live?: { ok: boolean; state?: string };
-			}>;
-		};
-		const liveMachines = body.machines?.filter((machine) => !machine.archived) ?? [];
-		return bestMachineForAgent(liveMachines, next, activeMachineId);
+		if (!response.ok) return [];
+		const body = (await response.json().catch(() => ({}))) as MachineCatalogResponse;
+		const nextCatalog = body.machines ?? [];
+		setCatalog(nextCatalog);
+		return nextCatalog;
+	}, []);
+
+	useEffect(() => {
+		if (!open || catalog.length > 0) return;
+		void loadCatalog().catch(() => undefined);
+	}, [catalog.length, loadCatalog, open]);
+
+	async function machineForAgent(next: AgentKind): Promise<AgentMachineCandidate | null> {
+		const localTarget = selectAgentMachine({
+			knownMachines: machines,
+			catalogMachines: catalog,
+			agentKind: next,
+			currentMachineId: activeMachineId,
+		});
+		if (localTarget) return localTarget;
+
+		const freshCatalog = await loadCatalog();
+		return selectAgentMachine({
+			knownMachines: [],
+			catalogMachines: freshCatalog,
+			agentKind: next,
+			currentMachineId: activeMachineId,
+		});
 	}
 
 	async function saveDraft(next: AgentKind): Promise<void> {
@@ -125,7 +149,7 @@ export function AgentSwitcher({ value, activeMachineId, machines = [] }: Props) 
 	}
 
 	async function activateMachine(machineId: string): Promise<void> {
-		const response = await fetch(`/api/dashboard/machines/${machineId}`, {
+		const response = await fetch(`/api/dashboard/machines/${encodeURIComponent(machineId)}`, {
 			method: "PATCH",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ active: true }),
@@ -139,24 +163,33 @@ export function AgentSwitcher({ value, activeMachineId, machines = [] }: Props) 
 			return;
 		}
 		setPending(next);
-		setError(null);
+		setMessage(null);
 		let keepOpen = false;
 		try {
-			const targetMachineId = await machineForAgent(next);
-			if (targetMachineId) {
+			const targetMachine = await machineForAgent(next);
+			if (targetMachine) {
 				setOpen(false);
-				router.push(`/dashboard/machines/${targetMachineId}/console`);
-				void activateMachine(targetMachineId)
-					.then(() => saveDraft(next))
-					.catch(() => undefined);
+				router.push(
+					`/dashboard/machines/${encodeURIComponent(targetMachine.id)}/console`,
+				);
+				void Promise.allSettled([
+					activateMachine(targetMachine.id),
+					saveDraft(next),
+				]).then(() => router.refresh());
 			} else {
 				await saveDraft(next);
 				keepOpen = true;
-				setError(`No ${LABEL[next]} machine yet. Draft saved.`);
+				setMessage({
+					tone: "info",
+					text: `No ${LABEL[next]} machine yet. Draft saved.`,
+				});
 				router.refresh();
 			}
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "switch failed");
+			setMessage({
+				tone: "error",
+				text: err instanceof Error ? err.message : "switch failed",
+			});
 			keepOpen = true;
 		} finally {
 			setPending(null);
@@ -172,7 +205,7 @@ export function AgentSwitcher({ value, activeMachineId, machines = [] }: Props) 
 				className={headerControlTrigger(open)}
 				aria-haspopup="listbox"
 				aria-expanded={open}
-				title="Switch agent (Hermes <-> OpenClaw)"
+				title="Switch agent runtime"
 			>
 				<span className={cn(headerControlKicker, "hidden md:inline")}>
 					Agent
@@ -208,16 +241,14 @@ export function AgentSwitcher({ value, activeMachineId, machines = [] }: Props) 
 						{AGENT_KINDS.map((kind) => {
 							const selected = kind === value;
 							const inFlight = pending === kind;
-							const targetMachineId = selected
+							const targetMachine = selected
 								? null
-								: bestMachineForAgent(
-										machines.filter((machine) => !machine.archived),
-										kind,
-										activeMachineId,
-									);
-							const targetHref = targetMachineId
-								? `/dashboard/machines/${targetMachineId}/console`
-								: null;
+								: selectAgentMachine({
+										knownMachines: machines,
+										catalogMachines: catalog,
+										agentKind: kind,
+										currentMachineId: activeMachineId,
+									});
 							const className = cn(
 								"flex w-full items-start gap-3 border-b border-[var(--ret-border)] px-3 py-2.5 text-left transition-colors last:border-b-0",
 								selected
@@ -239,6 +270,11 @@ export function AgentSwitcher({ value, activeMachineId, machines = [] }: Props) 
 										<span className="mt-0.5 block font-mono text-[10px] text-[var(--ret-text-muted)]">
 											{inFlight ? "switching..." : TAGLINE[kind]}
 										</span>
+										{targetMachine ? (
+											<span className="mt-1 block truncate font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--ret-text-muted)]">
+												opens {targetMachine.name ?? targetMachine.id}
+											</span>
+										) : null}
 									</span>
 									{selected ? (
 										<span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ret-purple)]">
@@ -247,32 +283,12 @@ export function AgentSwitcher({ value, activeMachineId, machines = [] }: Props) 
 									) : null}
 								</>
 							);
-							if (targetHref && targetMachineId) {
-								return (
-									<li key={kind}>
-										<Link
-											href={targetHref}
-											onClick={() => {
-												setPending(kind);
-												setOpen(false);
-												void activateMachine(targetMachineId)
-													.then(() => saveDraft(kind))
-													.catch(() => undefined)
-													.finally(() => setPending(null));
-											}}
-											className={className}
-										>
-											{option}
-										</Link>
-									</li>
-								);
-							}
 							return (
 								<li key={kind}>
 									<button
 										type="button"
 										onClick={() => void pick(kind)}
-										disabled={inFlight}
+										disabled={Boolean(pending)}
 										className={className}
 									>
 										{option}
@@ -280,9 +296,16 @@ export function AgentSwitcher({ value, activeMachineId, machines = [] }: Props) 
 								</li>
 							);
 					})}
-					{error ? (
-						<li className="border-t border-[var(--ret-red)]/40 bg-[var(--ret-red)]/10 px-3 py-1.5 font-mono text-[10px] text-[var(--ret-red)]">
-							{error}
+					{message ? (
+						<li
+							className={cn(
+								"border-t px-3 py-1.5 font-mono text-[10px]",
+								message.tone === "error"
+									? "border-[var(--ret-red)]/40 bg-[var(--ret-red)]/10 text-[var(--ret-red)]"
+									: "border-[var(--ret-border)] bg-[var(--ret-surface)] text-[var(--ret-text-muted)]",
+							)}
+						>
+							{message.text}
 						</li>
 					) : null}
 					<li className="border-t border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-3 py-1.5 font-mono text-[10px] text-[var(--ret-text-muted)]">
@@ -293,44 +316,5 @@ export function AgentSwitcher({ value, activeMachineId, machines = [] }: Props) 
 				</ul>
 			) : null}
 		</div>
-	);
-}
-
-function bestMachineForAgent(
-	machines: Array<{
-		id: string;
-		agentKind: AgentKind;
-		providerKind?: string;
-		apiUrl?: string | null;
-		bootstrapState?: { phase: string; lastError?: string | null };
-		live?: { ok: boolean; state?: string };
-	}>,
-	agentKind: AgentKind,
-	currentMachineId?: string,
-): string | null {
-	const matches = machines
-		.filter((machine) => machine.agentKind === agentKind)
-		.sort((a, b) => machineScore(b) - machineScore(a));
-	const target =
-		matches.find((machine) => machine.id !== currentMachineId) ?? matches[0];
-	return target?.id ?? null;
-}
-
-function machineScore(machine: {
-	providerKind?: string;
-	apiUrl?: string | null;
-	bootstrapState?: { phase: string; lastError?: string | null };
-	live?: { ok: boolean; state?: string };
-}): number {
-	const ready = machine.live?.ok && machine.live.state === "ready";
-	const booted = machine.bootstrapState?.phase === "succeeded";
-	const reachable = Boolean(machine.apiUrl);
-	const cleanBootstrap = !machine.bootstrapState?.lastError;
-	return (
-		(ready ? 8 : 0) +
-		(reachable ? 4 : 0) +
-		(booted ? 4 : 0) +
-		(cleanBootstrap ? 2 : 0) +
-		(machine.providerKind === "sprites" ? 1 : 0)
 	);
 }

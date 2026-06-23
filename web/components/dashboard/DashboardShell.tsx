@@ -15,8 +15,6 @@ type Props = {
 };
 
 export function DashboardShell({ children, config }: Props) {
-	const active = config.machines.find((m) => m.id === config.activeMachineId);
-	const agentKind = active?.agentKind ?? config.draftAgentKind;
 	const setupComplete = config.machines.some((m) => !m.archived);
 
 	return (
@@ -36,7 +34,7 @@ export function DashboardShell({ children, config }: Props) {
 				</div>
 			</aside>
 			<div className="relative z-10 flex min-h-[100dvh] min-w-0 flex-col bg-[var(--ret-bg)]">
-				<StatusHeader agentKind={agentKind} machines={config.machines} />
+				<StatusHeader machines={config.machines} />
 				<main className="flex-1">{children}</main>
 			</div>
 		</div>
