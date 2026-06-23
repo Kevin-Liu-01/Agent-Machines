@@ -117,11 +117,11 @@ export function StatusHeader({ agentKind, machines }: Props) {
 		<header
 			className={cn(
 				DASHBOARD_SHELL_HEADER_ROW,
-				"sticky top-0 z-40 justify-between gap-3",
-				"bg-[var(--ret-bg)]/90 px-4 backdrop-blur-md md:px-5",
+				"sticky top-0 z-40 flex-wrap content-center justify-between gap-x-3 gap-y-2",
+				"bg-[var(--ret-bg)]/90 px-4 py-1.5 backdrop-blur-md md:px-5",
 			)}
 		>
-			<div className="flex min-w-0 flex-1 items-center gap-3">
+			<div className="flex min-w-0 flex-[1_1_340px] items-center gap-3">
 				<Link
 					href="/"
 					className="shrink-0 transition-opacity hover:opacity-80 lg:hidden"
@@ -155,15 +155,15 @@ export function StatusHeader({ agentKind, machines }: Props) {
 				{inMachineView ? (
 					<StatusPill
 						phase={machinePhase}
-						className="shrink-0 text-[12px] font-medium"
+						className="shrink-0 whitespace-nowrap text-[12px] font-medium"
 					/>
 				) : null}
-				<div className="ml-1 hidden shrink-0 sm:block">
+				<div className="ml-1 hidden min-w-[150px] flex-1 sm:block md:max-w-[240px] xl:max-w-[280px]">
 					<CommandPalette />
 				</div>
 			</div>
 
-			<div className="hidden shrink-0 items-center gap-2 md:flex">
+			<div className="hidden min-w-0 flex-[1_1_520px] flex-wrap items-center justify-end gap-2 md:flex">
 				{inMachineView ? (
 					<>
 						<GatewayStrip data={gateway} />
@@ -255,7 +255,7 @@ function GatewayStrip({ data }: { data: GatewaySummary | null }) {
 	const ok = data.ok;
 	return (
 		<div
-			className="hidden items-center gap-2 text-[12px] text-[var(--ret-text-muted)] md:flex"
+			className="hidden shrink-0 items-center gap-2 whitespace-nowrap text-[12px] text-[var(--ret-text-muted)] md:flex"
 			title={data.apiHost}
 		>
 			<span

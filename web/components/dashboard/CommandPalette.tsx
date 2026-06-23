@@ -308,18 +308,15 @@ export function CommandPalette() {
 				aria-label={triggerLabel}
 				title={`${triggerLabel} (Cmd/Ctrl+K)`}
 				className={cn(
-					"flex shrink-0 items-center gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] px-2.5 py-1 text-[12px] leading-none transition-colors",
+					"flex w-full min-w-0 items-center justify-between gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] px-2.5 py-1 text-[12px] leading-none transition-colors",
 					"hover:border-[var(--ret-purple)]/45 hover:bg-[var(--ret-surface)]",
-					// Fixed, non-squishing width that scales with viewport. The
-					// breadcrumb (min-w-0) yields space instead of the search box.
-					"md:w-[180px] md:justify-between lg:w-[220px] xl:w-[260px]",
 				)}
 			>
-				<span className="flex items-center gap-2 text-[var(--ret-text-muted)]">
+				<span className="flex min-w-0 items-center gap-2 text-[var(--ret-text-muted)]">
 					<Search className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-					<span className="hidden md:inline">Search…</span>
+					<span className="hidden truncate md:inline">Search…</span>
 				</span>
-				<kbd className="hidden items-center gap-0.5 border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-1 font-mono text-[10px] text-[var(--ret-text-muted)] md:inline-flex">
+				<kbd className="hidden shrink-0 items-center gap-0.5 border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-1 font-mono text-[10px] text-[var(--ret-text-muted)] xl:inline-flex">
 					⌘K
 				</kbd>
 			</button>
@@ -425,4 +422,3 @@ export function CommandPalette() {
 		</>
 	);
 }
-

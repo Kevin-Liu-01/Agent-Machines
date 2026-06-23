@@ -23,8 +23,10 @@ type Props = {
 	contentMax?: number;
 };
 
-const MARGIN_HATCH =
+const LEFT_MARGIN_HATCH =
 	"repeating-linear-gradient(45deg, var(--ret-rail) 0 1px, transparent 1px 6px)";
+const RIGHT_MARGIN_HATCH =
+	"repeating-linear-gradient(135deg, var(--ret-rail) 0 1px, transparent 1px 6px)";
 
 export function ReticlePageGrid({
 	children,
@@ -46,7 +48,7 @@ export function ReticlePageGrid({
 					className="pointer-events-none absolute top-0 bottom-0 z-[2] w-[var(--ret-rail-offset)] border-x border-[var(--ret-border)]"
 					style={{
 						left: "calc(50% - var(--ret-content-max) / 2 - var(--ret-rail-offset))",
-						backgroundImage: MARGIN_HATCH,
+						backgroundImage: LEFT_MARGIN_HATCH,
 					}}
 				/>
 				{/* Left gutter: empty strip outside the margin */}
@@ -63,7 +65,7 @@ export function ReticlePageGrid({
 					className="pointer-events-none absolute top-0 bottom-0 z-[2] w-[var(--ret-rail-offset)] border-x border-[var(--ret-border)]"
 					style={{
 						left: "calc(50% + var(--ret-content-max) / 2)",
-						backgroundImage: MARGIN_HATCH,
+						backgroundImage: RIGHT_MARGIN_HATCH,
 					}}
 				/>
 				{/* Right gutter: empty strip outside the margin */}
