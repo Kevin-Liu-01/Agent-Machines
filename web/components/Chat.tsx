@@ -883,7 +883,7 @@ function ThinkingCard({
 	return (
 		<div
 			className={cn(
-				"group border bg-[var(--ret-bg)] transition-all duration-200",
+				"group border bg-[var(--ret-bg)] transition-[background-color,border-color,box-shadow] duration-[var(--ret-duration-hover)] [transition-timing-function:var(--ret-ease-out)]",
 				active
 					? "border-[var(--ret-purple)]/40 shadow-[0_0_12px_rgba(var(--ret-purple-rgb),0.08)]"
 					: "border-[var(--ret-border)]",
@@ -980,7 +980,7 @@ function ToolCallCard({
 	return (
 		<div
 			className={cn(
-				"group border transition-all duration-200",
+				"group border transition-[background-color,border-color,box-shadow] duration-[var(--ret-duration-hover)] [transition-timing-function:var(--ret-ease-out)]",
 				active
 					? "border-[var(--ret-amber)]/40 bg-[var(--ret-amber)]/5"
 					: toolCall.status === "error"

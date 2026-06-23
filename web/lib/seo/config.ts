@@ -67,16 +67,16 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "Can I run multiple agents for different jobs?",
 		answer:
-			"Yes. Provision a fleet of specialist machines from opinionated presets — e.g. Hermes for research/cron, OpenClaw for browser work, Claude Code or Codex for coding. Each preset bundles runtime, skills, MCPs, and system prompts (the same stack vendors ship as single-purpose products like design or research modes). One dashboard supervises every machine: activity, chat, cron, logs, and cost.",
+			"Yes. Provision specialist machines from opinionated presets: Hermes for memory and scheduled work, OpenClaw for browser work, Claude Code or Codex for coding tasks. Each preset bundles runtime, model route, memory, and loadout. One dashboard supervises activity, chat, cron, logs, usage, and artifacts.",
 	},
 	{
 		question: "What is Agent Machines?",
-		answer: `${PRODUCT.summary} Think OpenRouter for agents and containers: pick Hermes, OpenClaw, Claude Code, or Codex and pick E2B, Sprites.dev, Dedalus Machines, or Vercel Sandbox in one account. ${PRODUCT.fleet} The dashboard supervises the fleet; MCP/CLI (roadmap) lets other agents orchestrate workers programmatically.`,
+		answer: `${PRODUCT.summary} Pick Hermes, OpenClaw, Claude Code, or Codex, then pick E2B, Sprites.dev, Dedalus Machines, or Vercel Sandbox. ${PRODUCT.fleet} The dashboard supervises the fleet. The long-term control surface is dashboard for humans, MCP/CLI for agent-to-agent orchestration.`,
 	},
 	{
 		question: "How is this different from a regular chatbot?",
 		answer:
-			"A regular chatbot usually stores memory in browser state or a vendor-owned memory layer. Agent Machines persists operational state to a real machine filesystem: chat records, artifacts, USER.md, MEMORY.md, agent sessions, cron schedules, skills, and the runtime venv.",
+			"A regular chatbot mostly returns messages. Agent Machines gives the agent a machine record, runtime root, terminal, filesystem, logs, usage, cron schedules, sessions, artifacts, and installable tools. State lives with the worker instead of disappearing after one request.",
 	},
 	{
 		question: "Which agents can I run?",
@@ -86,7 +86,12 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "Which providers can host the machine?",
 		answer:
-			"E2B Sandbox, Sprites.dev, Dedalus Machines, and Vercel Sandbox are live provider implementations. Each exposes provision, exec, public URL, and bootstrap through the same MachineProvider abstraction. Dedalus currently benchmarks best on boot latency (~250ms) and sleep/wake in our harness; E2B, Sprites, and Vercel Sandbox are fully supported alternatives.",
+			"E2B Sandbox, Sprites.dev, Dedalus Machines, and Vercel Sandbox are live provider implementations. Each plugs into the same MachineProvider abstraction for provision, state, lifecycle, exec, streaming where available, and public URLs where supported.",
+	},
+	{
+		question: "How is this different from a sandbox like E2B or Daytona?",
+		answer:
+			"Those are machine substrates. Agent Machines is the product layer above them: route to E2B, Sprites.dev, Vercel Sandbox, or Dedalus and get runtime install, loadout, gateway, cron, logs, usage, artifacts, and the browser console in one worker. Provider-specific features like sleep, snapshots, and public URLs are surfaced when the selected lane supports them.",
 	},
 	{
 		question: "How do I get my own machine today?",

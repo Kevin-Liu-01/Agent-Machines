@@ -27,7 +27,7 @@ const STATIONS: StationDef[] = [
 	{ agent: "hermes", mark: "nous", tone: "currentColor", theta: 0, phi: 0, hue: "#7c8cf8", label: "Hermes", href: "https://github.com/NousResearch/hermes-agent" },
 	{ agent: "openclaw", mark: "openclaw", tone: "currentColor", theta: (Math.PI * 2) / 5, phi: 0, hue: "#e5443b", label: "OpenClaw", href: "https://github.com/openclaw/openclaw" },
 	{ agent: "claude-code", mark: "anthropic", tone: "currentColor", theta: (Math.PI * 4) / 5, phi: 0, hue: "#d4a574", label: "Claude Code", href: "https://www.anthropic.com/claude-code" },
-	{ agent: "codex", mark: "openai", tone: "currentColor", theta: (Math.PI * 6) / 5, phi: 0, hue: "#4ae0a0", label: "Codex CLI", href: "https://github.com/openai/codex" },
+	{ agent: "codex", mark: "openai", tone: "currentColor", theta: (Math.PI * 6) / 5, phi: 0, hue: "#a1a1aa", label: "Codex CLI", href: "https://github.com/openai/codex" },
 	{ agent: null, mark: "cursor", tone: "currentColor", theta: (Math.PI * 8) / 5, phi: 0, hue: "#d2beff", label: "Cursor", href: "https://cursor.com" },
 ];
 
@@ -74,7 +74,7 @@ const SUBSTRATE_VISUAL: Record<SubstrateId, SubstrateModel> = {
 	sprites: {
 		outer: () => new THREE.IcosahedronGeometry(0.62, 1),
 		inner: () => new THREE.IcosahedronGeometry(0.32, 0),
-		hue: "#22c55e",
+		hue: "#a1a1aa",
 		spin: 0.26,
 	},
 	dedalus: {

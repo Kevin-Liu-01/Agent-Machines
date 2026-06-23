@@ -104,10 +104,10 @@ export default async function OpengraphImage() {
 					}}
 				>
 					<span style={{ fontSize: 72, color: COLOR.text }}>
-						OpenRouter for agents
+						Persistent agents
 					</span>
 					<span style={{ fontSize: 72, color: COLOR.textDim }}>
-						and containers.
+						on any substrate.
 					</span>
 				</div>
 
@@ -121,8 +121,8 @@ export default async function OpengraphImage() {
 						maxWidth: 980,
 					}}
 				>
-					Route runtime + substrate. Deploy persistent workers with skills, MCP,
-					cron, and fleet supervision — one click per specialist.
+					Route runtime, provider lane, model path, loadout, logs, usage,
+					cron, and artifacts from one account.
 				</div>
 
 				{/* Feature strip */}
@@ -141,7 +141,7 @@ export default async function OpengraphImage() {
 						{ label: `${HARNESS_COUNTS.serviceRouteCount} service routes` },
 						{ label: `${HARNESS_COUNTS.cliCount}+ CLIs` },
 						{ label: `${HARNESS_COUNTS.mcpServerCount} MCP servers` },
-						{ label: "route runtime + substrate" },
+						{ label: "route runtime + provider" },
 					].map((f) => (
 						<div
 							key={f.label}

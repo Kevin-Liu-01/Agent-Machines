@@ -34,7 +34,7 @@ const STEPS: ReadonlyArray<Step> = [
 		tab: "dashboard",
 		kicker: "AGENT MACHINES · CONTROL PLANE",
 		title: "Configure once, supervise the whole fleet.",
-		body: "Settings, setup, worker lifecycle, terminal, logs, artifacts, and chat all read from the same account objects — not one-off wizard state.",
+		body: "Setup, lifecycle, terminal, logs, artifacts, usage, and chat all read from the same account objects. The dashboard shows what is configured, running, and saved.",
 		Icon: IconPanel,
 		bullets: [
 			["Route ", "runtime + substrate", " from one account settings model"],
@@ -51,7 +51,7 @@ const STEPS: ReadonlyArray<Step> = [
 		tab: "agent",
 		kicker: "AGENT MACHINES · RUNTIME ROUTES",
 		title: "Four runtimes, two operation models, one worker.",
-		body: "Autonomous agents wake on schedule with built-in drivers. Task-driven CLIs run per job but automate via headless flags and cron — same gateway and disk boundary.",
+		body: "Hermes and OpenClaw run as longer-lived agent routes. Claude Code and Codex run as task CLIs. Each lands inside the same machine record and persistent runtime root.",
 		Icon: IconAgent,
 		bullets: [
 			["Autonomous routes: ", "Hermes · OpenClaw"],
@@ -68,7 +68,7 @@ const STEPS: ReadonlyArray<Step> = [
 		tab: "tools + mcps",
 		kicker: "AGENT MACHINES · LOADOUT",
 		title: "Skills, MCP servers, CLIs, and plugins — one harness.",
-		body: "Built-ins and custom loadout entries live in the same account settings model so terminal edits sync back into the dashboard.",
+		body: "Loadout is the active stack on a machine: skills, MCPs, service routes, CLIs, plugins, and source entries. Registry is where new entries get added.",
 		Icon: IconTools,
 		bullets: [
 			["", `${HARNESS.skillCount} skills`, " in SKILL.md protocol"],
@@ -83,7 +83,7 @@ const STEPS: ReadonlyArray<Step> = [
 		tab: "providers",
 		kicker: "AGENT MACHINES · SUBSTRATE ROUTES",
 		title: "Four substrate lanes — E2B, Sprites, Dedalus, and Vercel.",
-		body: "OpenRouter-style substrate routing — same bootstrap, gateway, and dashboard surfaces. Pick the host shape; lifecycle actions follow what each lane supports.",
+		body: "Each lane implements the same MachineProvider shape. The UI shows only the lifecycle actions and streaming behavior that provider supports.",
 		Icon: IconProvider,
 		bullets: [
 			["", "E2B", " — sandbox with pause/resume"],
@@ -142,12 +142,12 @@ export function WorkflowNavigator() {
 			<div className="px-4 py-10 text-center md:px-5 md:py-14">
 				<ReticleLabel className="mx-auto">WORKFLOW</ReticleLabel>
 				<h2 className="ret-display mx-auto mt-4 max-w-[24ch] text-2xl md:text-4xl">
-					Route runtime, substrate, and loadout in one surface
+					The worker is runtime, substrate, and loadout together.
 				</h2>
 				<p className="mx-auto mt-4 max-w-[54ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
-					The control plane unifies dashboard, agent runtimes, tools, substrate
-					lanes, and environment into one account — OpenRouter for agents and
-					containers.
+					The control plane turns account settings into a machine recipe:
+					agent runtime, provider lane, model route, environment profile, and
+					active tools.
 				</p>
 			</div>
 
@@ -315,7 +315,7 @@ function AgentTerminal() {
 				cols={["Codex CLI", "task-driven", "sandbox + exec"]}
 			/>
 			<TSpacer />
-			<TLine success>✓ 2 autonomous drivers active</TLine>
+			<TLine success>✓ Runtime routes ready</TLine>
 		</TerminalShell>
 	);
 }
@@ -438,7 +438,7 @@ function TLine({
 		<div
 			className={cn(
 				dim && "text-white/35",
-				success && "text-emerald-400",
+				success && "text-white/80",
 				!dim && !success && "text-white/65",
 			)}
 		>
@@ -459,7 +459,7 @@ function TRow({
 	return (
 		<div className="flex gap-2">
 			<span className="w-28 shrink-0 text-white/35">{label}</span>
-			<span className={success ? "text-emerald-400" : "text-white/70"}>
+			<span className={success ? "text-white/80" : "text-white/70"}>
 				{value}
 			</span>
 		</div>
@@ -492,7 +492,7 @@ function TTableRow({
 					key={i}
 					className={cn(
 						"flex-1",
-						accent?.[i] && "text-emerald-400",
+						accent?.[i] && "text-white/80",
 					)}
 				>
 					{c}

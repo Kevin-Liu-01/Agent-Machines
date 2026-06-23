@@ -27,14 +27,14 @@ const SPECS: ReadonlyArray<{
 	},
 	{
 		label: "Model routes",
-		value: "200+",
-		description: "OpenAI-compatible endpoints via AI Gateway.",
+		value: "BYOK",
+		description: "Dedalus, OpenRouter, AI Gateway, or native keys.",
 		icon: "memory",
 	},
 	{
-		label: "Deploy",
-		value: "~30 seconds",
-		description: "One worker unit: runtime, skills, MCP, and cron.",
+		label: "Bootstrap",
+		value: "phased",
+		description: "Runtime, env, gateway, skills, MCP, and cron.",
 		icon: "schedule",
 	},
 	{
@@ -45,8 +45,8 @@ const SPECS: ReadonlyArray<{
 	},
 	{
 		label: "Fleet model",
-		value: "Per-account",
-		description: "One identity, many specialist workers. Clerk-backed.",
+		value: "account",
+		description: "One identity, many machines. Clerk-backed.",
 		icon: "delegate",
 	},
 ];
@@ -78,7 +78,7 @@ const FEATURES: ReadonlyArray<Feature> = [
 		assembly: "stack",
 		Icon: IconRoute,
 		title: "Route runtime and substrate",
-		body: "OpenRouter-style dual routing in one account. Pick an agent runtime, pick a substrate lane, deploy a persistent worker — Vercel on AWS for sandboxes.",
+		body: "Pick the agent runtime and provider lane separately. Agent Machines wires the same worker surface on top: console, gateway, loadout, cron, logs, and usage.",
 		services: [
 			{
 				id: "e2b",
@@ -114,7 +114,7 @@ const FEATURES: ReadonlyArray<Feature> = [
 		assembly: "pills",
 		Icon: IconFleet,
 		title: "Supervise a specialist fleet",
-		body: "One Clerk sign-in. Preset workers for code, design, and ops. Same account on every device — keys, runtime choice, and fleet metadata travel with you.",
+		body: "One Clerk sign-in stores provider credentials, runtime choices, machine records, and profile metadata. The dashboard shows the fleet instead of one local terminal.",
 		services: [
 			{
 				id: "clerk",
@@ -143,7 +143,7 @@ const FEATURES: ReadonlyArray<Feature> = [
 		assembly: "logos",
 		Icon: IconToolStack,
 		title: "One worker, full harness",
-		body: "Not a bare sandbox — runtime, skills, MCP, cron, gateway, and observation in one deployable unit. State persists under /home/machine across sleep cycles.",
+		body: "Not a bare sandbox. The worker carries runtime, skills, MCP, cron, gateway, logs, usage, artifacts, and the browser console in one deployable unit.",
 		services: [
 			{
 				id: "hermes",

@@ -79,7 +79,7 @@ export const AGENTS: ReadonlyArray<AgentMeta> = [
 		name: "Claude Code",
 		by: "Anthropic",
 		operationModel: "task-driven",
-		tagline: "agentic coding . file edit . shell . SDK",
+		tagline: "edit repos . run shell . SDK . headless",
 		capabilities: "Terminal coding agent with deep repo awareness, multi-step tool use, and the Agent SDK for programmatic headless execution. Can be automated via cron + claude -p --dangerously-skip-permissions.",
 		providerKeys: ["ANTHROPIC_API_KEY"],
 		providerOptions: [
@@ -105,7 +105,7 @@ export const AGENTS: ReadonlyArray<AgentMeta> = [
 		name: "Codex CLI",
 		by: "OpenAI",
 		operationModel: "task-driven",
-		tagline: "agentic coding . sandbox . exec mode",
+		tagline: "execute tasks . sandbox . JSONL . CI",
 		capabilities: "Terminal coding agent with sandbox isolation, workspace-write and full-access modes. Non-interactive via codex exec for CI/CD and automation. JSONL output for programmatic parsing.",
 		providerKeys: ["OPENAI_API_KEY"],
 		providerOptions: [

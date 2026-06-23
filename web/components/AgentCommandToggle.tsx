@@ -93,7 +93,7 @@ const TERMINAL_OUTPUT: Record<AgentKind, string[]> = {
 		"  │ → 247 passed, 0 failed (12.4s)",
 		"  └─────────────────────────────────────────────",
 		"",
-		"  hermes › All green. Production deploy is live,",
+		"  hermes › All clear. Production deploy is live,",
 		"  247 tests passing. Want me to schedule a",
 		"  follow-up check in 30 minutes?",
 	],
@@ -224,7 +224,7 @@ function TerminalPanel({ agentId, meta }: { agentId: AgentKind; meta: AgentMeta 
 	return (
 		<div className="flex h-[420px] flex-col bg-[#0a0a0c]">
 			<div className="flex items-center gap-2 border-b border-[#222] px-4 py-2">
-				<span className="h-2 w-2 rounded-full bg-[var(--ret-green)]" />
+				<span className="h-2 w-2 rounded-full bg-[var(--ret-border-strong)]" />
 				<span className="text-[9px] uppercase tracking-[0.18em] text-[#555]">
 					{meta.name.toLowerCase()} — terminal
 				</span>
@@ -246,13 +246,13 @@ function TerminalPanel({ agentId, meta }: { agentId: AgentKind; meta: AgentMeta 
 							key={`${agentId}-${i}`}
 							className={cn(
 								"block",
-								line.startsWith("$") && "text-[var(--ret-green)]",
+								line.startsWith("$") && "text-[var(--ret-text)]",
 								line.startsWith("  you ›") && "text-[#e0e0e0] font-medium",
 								(line.includes("hermes ›") || line.includes("openclaw ›") || line.includes("claude ›") || line.includes("codex ›")) && "text-[var(--ret-purple)]",
 								(line.startsWith("  ┌") || line.startsWith("  │") || line.startsWith("  └")) && "text-[#555]",
 								(line.startsWith("  ◈") || line.startsWith("  ◆")) && "text-[#666]",
 								(line.includes("Read ") || line.includes("Edit ")) && "text-[var(--ret-amber)]",
-								line.includes("Created ") && "text-[var(--ret-green)]",
+								line.includes("Created ") && "text-[var(--ret-text)]",
 								line.includes("Modified ") && "text-[var(--ret-amber)]",
 							)}
 						>
@@ -353,7 +353,7 @@ export function AgentCommandToggle() {
 								className="flex items-center gap-2 bg-[var(--ret-bg)] px-4 py-1.5"
 							>
 								{i === 0 ? (
-									<span className="h-1.5 w-1.5 shrink-0 bg-[var(--ret-green)]" />
+									<span className="h-1.5 w-1.5 shrink-0 bg-[var(--ret-border-strong)]" />
 								) : (
 									<span className="h-1.5 w-1.5 shrink-0 bg-[var(--ret-border)]" />
 								)}

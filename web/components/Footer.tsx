@@ -9,7 +9,7 @@ export function Footer() {
 				<div className="flex flex-col gap-4 px-6 py-8 md:flex-row md:items-center md:justify-between">
 					<div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-5">
 						<BrandMark size={18} gap="tight" withLabel={false} />
-						<span>agent-machines . MIT . Reticle / Sigil UI</span>
+						<span>Copyright 2026 Agent Machines . MIT . Reticle / Sigil UI</span>
 						<a
 							href="https://kevin-liu.tech"
 							target="_blank"
@@ -24,7 +24,7 @@ export function Footer() {
 								<ServiceIcon slug="e2b" size={14} tone="color" />
 								<ServiceIcon slug="sprites" size={14} tone="color" />
 								<Logo mark="dedalus" size={14} />
-								<ServiceIcon slug="vercel" size={14} tone="color" />
+								<ServiceIcon slug="vercel" size={14} />
 							</span>
 							<span>·</span>
 							<span>agents:</span>
@@ -51,6 +51,21 @@ export function Footer() {
 						</span>
 					</div>
 					<span className="flex flex-wrap items-center gap-3">
+						<a href="/product" className="hover:text-[var(--ret-text)]">
+							product
+						</a>
+						<a href="/agents" className="hover:text-[var(--ret-text)]">
+							agents
+						</a>
+						<a href="/pricing" className="hover:text-[var(--ret-text)]">
+							pricing
+						</a>
+						<a href="/docs" className="hover:text-[var(--ret-text)]">
+							docs
+						</a>
+						<a href="/blog" className="hover:text-[var(--ret-text)]">
+							blog
+						</a>
 						<a
 							href="https://github.com/Kevin-Liu-01/agent-machines"
 							className="hover:text-[var(--ret-text)]"

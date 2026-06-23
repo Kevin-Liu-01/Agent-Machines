@@ -142,7 +142,7 @@ function AgentFlowDiagram() {
 				<IconGateway className="h-5 w-5" />
 			</FlowBox>
 			<FlowArrow />
-			<FlowBox label="Agent" sub="Hermes / OC" accent="var(--ret-green)">
+			<FlowBox label="Agent" sub="Hermes / OC" accent="var(--ret-text)">
 				<Logo mark="agent" size={18} />
 			</FlowBox>
 			<FlowArrow />

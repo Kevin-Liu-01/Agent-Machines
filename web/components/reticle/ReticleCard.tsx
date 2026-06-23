@@ -25,7 +25,7 @@ export function ReticleCard({
 			className={cn(
 				"border border-[var(--ret-border)] bg-[var(--ret-surface)]",
 				hoverable &&
-					"transition-colors duration-200 hover:border-[var(--ret-border-hover)]",
+					"ret-interactive-card hover:border-[var(--ret-border-hover)]",
 				className,
 			)}
 		>

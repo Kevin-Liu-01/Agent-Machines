@@ -28,9 +28,9 @@ export const PRODUCT = {
 	/** Site title suffix, OG, GitHub — lead with the routing analogy. */
 	tagline: "OpenRouter for agents and containers.",
 	oneLiner:
-		"Route runtimes and substrates in one account — deploy persistent agent workers with skills, MCP, cron, observation, and fleet supervision.",
+		"Route agent runtimes, model paths, and machine providers in one account, then deploy persistent workers with skills, MCP, cron, logs, usage, and fleet controls already wired.",
 	summary:
-		"Agent Machines is the product layer above sandboxes: a control plane that provisions a full persistent agent in one unit — runtime, skills, MCP, integrations, cron, observation, and fleet management — on any substrate.",
+		"Agent Machines is the product layer above sandboxes: a control plane that provisions a persistent agent worker as one unit — runtime, model route, skills, MCP, integrations, cron, observation, and fleet management — on the machine provider you choose.",
 	analogies: {
 		primary: "OpenRouter for agents and containers",
 		substrate:
@@ -43,7 +43,7 @@ export const PRODUCT = {
 			"MCP + CLI surface so a head agent can provision, route, observe, and tear down worker machines (the endgame).",
 	},
 	fleet:
-		"Spin up design, news, code, or ops agents from opinionated presets (Hermes, OpenClaw, Claude Code, Codex). Vendor SKUs (e.g. Anthropic design modes) are UI + skills + MCPs + system prompts — we ship that stack composable, one click per specialist, one pane of glass for the fleet.",
+		"Provision specialist workers from opinionated presets (Hermes, OpenClaw, Claude Code, Codex). Each preset is runtime + model route + memory bundle + loadout, visible from one fleet dashboard.",
 	substrateNote:
 		"Dedalus Machines is one of four live providers (with E2B, Sprites.dev, and Vercel Sandbox) and currently benchmarks best on boot latency and sleep/wake — a strong default, not the product. Sandboxed environments are hard; we route rather than rebuild infra.",
 	moat: [

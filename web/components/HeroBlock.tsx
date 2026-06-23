@@ -42,7 +42,7 @@ const AGENT_HUE: Record<HeroAgent, string> = {
 	hermes: "#7c8cf8",
 	openclaw: "#e5443b",
 	"claude-code": "#d4a574",
-	codex: "#4ae0a0",
+	codex: "#a1a1aa",
 };
 
 const AGENT_LABEL: Record<HeroAgent, string> = {
@@ -206,11 +206,11 @@ const RAIL_AGENTS: ReadonlyArray<{
 	id: HeroAgent | null;
 	word: string;
 }> = [
-	{ mark: "nous", label: "Hermes", id: "hermes", word: "Persistent" },
-	{ mark: "openclaw", label: "OpenClaw", id: "openclaw", word: "Autonomous" },
-	{ mark: "anthropic", label: "Claude", id: "claude-code", word: "Agentic" },
-	{ mark: "openai", label: "Codex", id: "codex", word: "Sandboxed" },
-	{ mark: "cursor", label: "Cursor", id: null, word: "Routed" },
+	{ mark: "nous", label: "Hermes", id: "hermes", word: "Run" },
+	{ mark: "openclaw", label: "OpenClaw", id: "openclaw", word: "Automate" },
+	{ mark: "anthropic", label: "Claude", id: "claude-code", word: "Build" },
+	{ mark: "openai", label: "Codex", id: "codex", word: "Execute" },
+	{ mark: "cursor", label: "Cursor", id: null, word: "Route" },
 ];
 
 const ALL_WORDS = RAIL_AGENTS.map((a) => a.word);
@@ -237,7 +237,7 @@ const SUBSTRATES: ReadonlyArray<{
 	hue: string;
 }> = [
 	{ id: "e2b", item: svc("e2b"), label: "E2B", hue: "#ff8800" },
-	{ id: "sprites", item: svc("sprites"), label: "Sprites", hue: "#22c55e" },
+	{ id: "sprites", item: svc("sprites"), label: "Sprites", hue: "#a1a1aa" },
 	{ id: "dedalus", item: dedalus, label: "Dedalus", hue: "#aaa5e6" },
 	{ id: "vercel", item: svc("vercel"), label: "Vercel", hue: "#ededed" },
 ];
@@ -281,21 +281,21 @@ type Feat = {
 };
 
 const AGENT_FEATURES: Feat[] = [
-	{ Icon: Network, label: "Any router", value: "200+ models", logos: ["openrouter", "anthropic", "openai"] },
-	{ Icon: Boxes, label: "Live registry", value: "1,400+ tools", logos: ["figma", "slack", "react"] },
+	{ Icon: Network, label: "Router profiles", value: "BYOK model paths", logos: ["openrouter", "anthropic", "openai"] },
+	{ Icon: Boxes, label: "Install catalog", value: "1,400+ entries", logos: ["figma", "slack", "react"] },
 	{ Icon: Terminal, label: "Browser terminal", value: "live PTY", logos: ["googlechrome", "playwright", "brave"] },
 	{ Icon: Plug, label: "Tools & MCPs", value: "auto-wired", logos: ["linear", "slack", "github"] },
 	{ Icon: Clock, label: "Crons", value: "scheduled", logos: ["cloudflare", "upstash", "datadog"] },
-	{ Icon: Rocket, label: "One-click deploy", value: "no setup", logos: ["vercel", "cloudflare", "firebase"] },
+	{ Icon: Rocket, label: "Guided deploy", value: "phase-tracked", logos: ["vercel", "cloudflare", "firebase"] },
 ];
 
 const SUBSTRATE_FEATURES: Feat[] = [
 	{ Icon: Brain, label: "Owned memory", value: "portable", logos: ["supabase", "neon", "upstash"] },
 	{ Icon: HardDrive, label: "Persistent state", value: "survives sleep", logos: ["e2b", "sprites", "vercel"] },
-	{ Icon: KeyRound, label: "One account", value: "one key", logos: ["clerk", "stripe", "supabase"] },
-	{ Icon: Zap, label: "Instant boot", value: "cold-start fast", logos: ["sprites", "e2b", "cloudflare"] },
-	{ Icon: History, label: "Snapshots", value: "resume anytime", logos: ["turso", "e2b", "vercel"] },
-	{ Icon: Globe, label: "Run anywhere", value: "any region", logos: ["cloudflare", "amazonwebservices", "vercel"] },
+	{ Icon: KeyRound, label: "Credential gate", value: "fail closed", logos: ["clerk", "stripe", "supabase"] },
+	{ Icon: Zap, label: "Benchmarked lanes", value: "boot · exec · IO", logos: ["sprites", "e2b", "cloudflare"] },
+	{ Icon: History, label: "Provider snapshots", value: "where supported", logos: ["turso", "e2b", "vercel"] },
+	{ Icon: Globe, label: "Four providers", value: "one interface", logos: ["cloudflare", "amazonwebservices", "vercel"] },
 ];
 
 function GroupIcon({ item, size = 14 }: { item: GroupItem; size?: number }) {
@@ -351,7 +351,7 @@ function FeatureLogoStack({ slugs }: { slugs: ServiceSlug[] }) {
 			className="pointer-events-none absolute inset-y-0 right-0 flex items-center overflow-hidden pr-2.5"
 		>
 			<span className="absolute inset-y-0 right-0 w-36 bg-[linear-gradient(to_left,var(--ret-surface),transparent)] opacity-70" />
-			<div className="relative flex items-center -space-x-2.5 opacity-80 transition-all duration-300 [mask-image:linear-gradient(to_right,transparent,#000_32%)] group-hover/feat:-space-x-1.5 group-hover/feat:opacity-100">
+			<div className="relative flex items-center -space-x-2.5 opacity-80 transition-opacity duration-[var(--ret-duration-hover)] [mask-image:linear-gradient(to_right,transparent,#000_32%)] [transition-timing-function:var(--ret-ease-out)] group-hover/feat:opacity-100">
 				{slugs.map((slug, i) => (
 					<span
 						key={slug}
@@ -408,7 +408,7 @@ function BrandTile({
 			onClick={onClick}
 			title={title}
 			className={cn(
-				"flex h-10 w-10 items-center justify-center rounded-lg border bg-[var(--ret-surface)] transition-all",
+				"ret-pressable flex h-10 w-10 items-center justify-center rounded-lg border bg-[var(--ret-surface)]",
 				onClick && "cursor-pointer hover:bg-[var(--ret-bg)]",
 			)}
 			style={{
@@ -511,10 +511,10 @@ function HoverDiagram({
 			href={href}
 			{...(external ? { target: "_blank", rel: "noreferrer" } : {})}
 			aria-label={label}
-			className="group relative flex h-full items-center justify-center overflow-hidden rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)] px-2 py-3 transition-colors hover:bg-[var(--ret-surface)]"
+			className="ret-pressable group relative flex h-full items-center justify-center overflow-hidden rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)] px-2 py-3 hover:bg-[var(--ret-surface)]"
 		>
 			<CircuitArt slug={slug} variant="reveal" />
-			<span className="pointer-events-none relative z-10 font-mono text-[9px] uppercase tracking-[0.24em] text-[var(--ret-text-muted)] opacity-0 transition-all duration-300 group-hover:tracking-[0.3em] group-hover:text-[var(--ret-text)] group-hover:opacity-100">
+			<span className="pointer-events-none relative z-10 translate-y-1 font-mono text-[9px] uppercase tracking-[0.24em] text-[var(--ret-text-muted)] opacity-0 transition-[transform,opacity,color] duration-[var(--ret-duration-hover)] [transition-timing-function:var(--ret-ease-out)] group-hover:translate-y-0 group-hover:text-[var(--ret-text)] group-hover:opacity-100">
 				{label}
 			</span>
 		</a>
@@ -614,8 +614,8 @@ export function HeroBlock() {
 				</Cell>
 				<Cell className="hidden border-b border-r md:block">
 					<div className="flex h-full items-center justify-center gap-1.5">
-						<span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--ret-green)]" />
-						<ReticleBadge variant="success" className="!py-0 !text-[8px]">
+						<span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--ret-border-strong)]" />
+						<ReticleBadge variant="default" className="!py-0 !text-[8px]">
 							LIVE
 						</ReticleBadge>
 					</div>
@@ -639,7 +639,7 @@ export function HeroBlock() {
 						    this container — where GEAR_OFFSET x=2.25 projects under the
 						    gears camera, not the cell center). */}
 						<div
-							className="absolute inset-0 transition-[background] duration-700"
+							className="absolute inset-0 transition-[background] duration-[var(--ret-duration-page)] [transition-timing-function:var(--ret-ease-out)]"
 							style={{
 								background: `radial-gradient(82% 95% at 72% 50%, ${hue}14, transparent 80%)`,
 							}}
@@ -647,7 +647,7 @@ export function HeroBlock() {
 						{/* tighter glow pinned on the hub so the bright core sits behind
 						    the meshing wheels. */}
 						<div
-							className="absolute inset-0 transition-[background] duration-700"
+							className="absolute inset-0 transition-[background] duration-[var(--ret-duration-page)] [transition-timing-function:var(--ret-ease-out)]"
 							style={{
 								background: `radial-gradient(48% 58% at 73% 50%, ${hue}30, transparent 74%)`,
 							}}
@@ -680,7 +680,7 @@ export function HeroBlock() {
 							<span className="-mx-6 flex items-center whitespace-nowrap md:-mx-9">
 								<span className="mr-3 h-px w-3 shrink-0 border-t border-dashed border-[var(--ret-border)] md:mr-2 md:w-7" />
 								<span>
-									<AnimatedWord word={activeWord} hue={hue} /> Agents
+									<AnimatedWord word={activeWord} hue={hue} /> agents
 								</span>
 								<span className="ml-3 h-px flex-1 border-t border-dashed border-[var(--ret-border)] md:ml-4" />
 							</span>
@@ -690,11 +690,13 @@ export function HeroBlock() {
 								<span className="ml-3 h-px flex-1 border-t border-dashed border-[var(--ret-border)] md:ml-4" />
 							</span>
 						</h1>
-						<p className="max-w-[50ch] text-[15px] leading-relaxed text-[var(--ret-text-dim)]">
-							Route runtime and substrate in one account.{" "}
+						<p className="max-w-[52ch] text-[15px] leading-relaxed text-[var(--ret-text-dim)]">
+							Choose the runtime, provider, and model path from one account —
+							the home base for persistent workers.{" "}
 							<strong className="font-medium text-[var(--ret-text)]">
-								Deploy persistent agent workers with tools and supervise your
-								fleet from one dashboard.
+								Provision the worker, install its loadout, keep its disk-backed
+								state, and watch console, logs, usage, cron, and artifacts from one
+								dashboard.
 							</strong>
 						</p>
 						<div className="flex flex-wrap items-center gap-2.5">
@@ -807,7 +809,7 @@ export function HeroBlock() {
 								Use any tool
 							</span>
 							<span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
-								200+ models · 1,400+ skills · MCPs · CLIs
+								model routers · registry catalog · MCPs · CLIs
 							</span>
 						</div>
 						<div className="flex flex-wrap items-start gap-x-5 gap-y-4">

@@ -1,156 +1,490 @@
+"use client";
+
 import { UserButton } from "@clerk/nextjs";
-import type { SVGProps } from "react";
+import {
+	Activity,
+	ArrowRight,
+	BarChart3,
+	BookOpen,
+	Bot,
+	Boxes,
+	Braces,
+	ChevronDown,
+	Code2,
+	Cpu,
+	Database,
+	FileText,
+	GitBranch,
+	HardDrive,
+	KeyRound,
+	Layers,
+	LifeBuoy,
+	Menu,
+	MessageSquare,
+	MousePointerClick,
+	Newspaper,
+	Route,
+	Search,
+	Server,
+	ShieldCheck,
+	SquareTerminal,
+	Terminal,
+	X,
+	Zap,
+	type LucideIcon,
+} from "lucide-react";
+import Link from "next/link";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
 
 import { SignedIn, SignedOut } from "@/components/AuthSwitch";
 import { BrandHomeLockup } from "@/components/BrandHomeLockup";
-import { GitHubStarLink } from "@/components/GitHubStarLink";
+import { CircuitArt } from "@/components/reticle/CircuitArt";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleNavbar } from "@/components/reticle/ReticleNavbar";
+import { ServiceIcon } from "@/components/ServiceIcon";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/cn";
+import {
+	AGENT_TEMPLATES,
+	PRODUCT_FEATURES,
+	RESOURCE_PAGES,
+	type PublicIconName,
+} from "@/lib/marketing/public-site";
 
 const CLERK_READY = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
-type NavItem = {
+type MenuId = "product" | "agents" | "resources";
+
+type MenuEntry = {
 	href: string;
-	label: string;
-	icon: (props: SVGProps<SVGSVGElement>) => React.ReactElement;
+	title: string;
+	description: string;
+	icon: PublicIconName;
 };
 
-/**
- * Public site navbar — landing and other marketing surfaces.
- */
-export async function PublicNavbar({
+type MenuGroup = {
+	id: MenuId;
+	label: string;
+	eyebrow: string;
+	title: string;
+	body: string;
+	cta: string;
+	ctaHref: string;
+	entries: ReadonlyArray<MenuEntry>;
+};
+
+const ICONS: Record<PublicIconName, LucideIcon> = {
+	activity: Activity,
+	"bar-chart": BarChart3,
+	book: BookOpen,
+	bot: Bot,
+	boxes: Boxes,
+	braces: Braces,
+	code: Code2,
+	cpu: Cpu,
+	database: Database,
+	file: FileText,
+	"git-branch": GitBranch,
+	"hard-drive": HardDrive,
+	key: KeyRound,
+	layers: Layers,
+	"life-buoy": LifeBuoy,
+	message: MessageSquare,
+	mouse: MousePointerClick,
+	newspaper: Newspaper,
+	route: Route,
+	search: Search,
+	server: Server,
+	shield: ShieldCheck,
+	terminal: Terminal,
+	zap: Zap,
+};
+
+const PRODUCT_ENTRIES: ReadonlyArray<MenuEntry> = PRODUCT_FEATURES.map((item) => ({
+	href: item.href,
+	title: item.navTitle,
+	description: item.description,
+	icon: item.icon,
+}));
+
+const AGENT_ENTRIES: ReadonlyArray<MenuEntry> = AGENT_TEMPLATES.slice(0, 6).map(
+	(item) => ({
+		href: item.href,
+		title: item.navTitle,
+		description: item.description,
+		icon: item.icon,
+	}),
+);
+
+const RESOURCE_ENTRIES: ReadonlyArray<MenuEntry> = RESOURCE_PAGES.map((item) => ({
+	href: item.href,
+	title: item.navTitle,
+	description: item.description,
+	icon: item.icon,
+}));
+
+const MENU_GROUPS: ReadonlyArray<MenuGroup> = [
+	{
+		id: "product",
+		label: "Product",
+		eyebrow: "./PERSISTENCE",
+		title: "A control plane for agent workers.",
+		body:
+			"Route runtime, provider, model path, loadout, logs, usage, cron, and artifacts from one account.",
+		cta: "Why persistence",
+		ctaHref: "/product/persistent-machines",
+		entries: PRODUCT_ENTRIES,
+	},
+	{
+		id: "agents",
+		label: "Agents",
+		eyebrow: "./AGENTS",
+		title: `${AGENT_TEMPLATES.length} templates, one worker model.`,
+		body:
+			"Research, coding, browser, data, support, and ops workers launch with explicit runtime and loadout choices.",
+		cta: "Browse agents",
+		ctaHref: "/agents",
+		entries: AGENT_ENTRIES,
+	},
+	{
+		id: "resources",
+		label: "Resources",
+		eyebrow: "./RESOURCES",
+		title: "Docs, API notes, and operator playbooks.",
+		body:
+			"Read the setup path, inspect the dashboard API shape, and follow notes from real agent-fleet work.",
+		cta: "Read the blog",
+		ctaHref: "/blog",
+		entries: RESOURCE_ENTRIES,
+	},
+];
+
+export function PublicNavbar({
 	githubRepo,
 }: {
 	githubRepo: string;
 }) {
-	const items: ReadonlyArray<NavItem> = [
-		{ href: "/#capabilities", label: "Features", icon: IconFeatures },
-		{ href: "/#runtime", label: "Live", icon: IconLive },
-		{ href: "/#loadout", label: "Tools", icon: IconTools },
-		{ href: "/registry", label: "Registry", icon: IconRegistry },
-		{ href: "/#skills", label: "Skills", icon: IconSkills },
-		{ href: "/#architecture", label: "Stack", icon: IconStack },
-		{ href: "/faq", label: "FAQ", icon: IconFaq },
-	];
+	const [openMenu, setOpenMenu] = useState<MenuId | null>(null);
+	const [mobileOpen, setMobileOpen] = useState(false);
+
+	const activeGroup = useMemo(
+		() => MENU_GROUPS.find((group) => group.id === openMenu) ?? null,
+		[openMenu],
+	);
+
+	useEffect(() => {
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key === "Escape") {
+				setOpenMenu(null);
+				setMobileOpen(false);
+			}
+		};
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	}, []);
 
 	return (
-		<ReticleNavbar>
-			<div className="relative flex h-14 items-center gap-2 px-3 sm:gap-3 md:px-4 lg:px-5">
-				<BrandHomeLockup
-					density="navbar"
-					className="relative z-10 shrink-0"
-				/>
+		<ReticleNavbar className="z-50">
+			<div
+				className="relative"
+				onPointerLeave={() => setOpenMenu(null)}
+				onMouseLeave={() => setOpenMenu(null)}
+			>
+				<div className="relative flex h-14 items-center gap-2 px-3 sm:gap-3 md:px-4 lg:px-5">
+					<BrandHomeLockup density="navbar" className="relative z-10 shrink-0" />
 
-				<nav
-					aria-label="Sections"
-					className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] md:flex"
-				>
-					{items.map((item) => {
-						const Icon = item.icon;
-						return (
-							<a
-								key={item.href}
-								href={item.href}
+					<nav
+						aria-label="Marketing navigation"
+						className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] md:flex"
+					>
+						{MENU_GROUPS.map((group) => (
+							<button
+								key={group.id}
+								type="button"
+								aria-expanded={openMenu === group.id}
+								aria-controls={`nav-menu-${group.id}`}
+								onPointerEnter={() => setOpenMenu(group.id)}
+								onMouseEnter={() => setOpenMenu(group.id)}
+								onFocus={() => setOpenMenu(group.id)}
+								onClick={() => setOpenMenu(group.id)}
 								className={cn(
-									"flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-[var(--ret-text-dim)] transition-colors",
-									"hover:bg-[var(--ret-surface)] hover:text-[var(--ret-text)]",
+									"inline-flex h-8 items-center gap-1.5 px-2.5 text-[12px] font-medium text-[var(--ret-text-dim)]",
+									"ret-nav-trigger hover:bg-[var(--ret-surface-hover)] hover:text-[var(--ret-text)]",
+									"focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-border-strong)]",
+									openMenu === group.id
+										? "bg-[var(--ret-surface-hover)] text-[var(--ret-text)]"
+										: null,
 								)}
 							>
-								<Icon className="h-3 w-3 shrink-0 text-[var(--ret-text-muted)]" />
-								<span>{item.label}</span>
-							</a>
-						);
-					})}
-				</nav>
+								<span>{group.label}</span>
+								<ChevronDown
+									className={cn(
+										"h-3.5 w-3.5 transition-transform duration-[var(--ret-duration-hover)] [transition-timing-function:var(--ret-ease-out)]",
+										openMenu === group.id ? "rotate-180" : null,
+									)}
+									aria-hidden="true"
+								/>
+							</button>
+						))}
+						<Link
+							href="/pricing"
+							className="ret-nav-trigger inline-flex h-8 items-center px-2.5 text-[12px] font-medium text-[var(--ret-text-dim)] hover:bg-[var(--ret-surface-hover)] hover:text-[var(--ret-text)]"
+						>
+							Pricing
+						</Link>
+					</nav>
 
-				<div className="relative z-10 ml-auto flex shrink-0 items-center justify-end gap-2">
-					<GitHubStarLink repo={githubRepo} className="hidden md:flex" />
-					<ThemeToggle className="h-8" />
-					<SignedIn>
-						<ReticleButton as="a" href="/dashboard" variant="primary" size="sm">
-							Dashboard
-						</ReticleButton>
-						{CLERK_READY ? (
-							<UserButton
-								appearance={{ elements: { avatarBox: "h-7 w-7" } }}
-							/>
-						) : null}
-					</SignedIn>
-					<SignedOut>
-						<ReticleButton as="a" href="/sign-in" variant="primary" size="sm">
-							Sign in
-						</ReticleButton>
-					</SignedOut>
+					<div className="relative z-10 ml-auto hidden shrink-0 items-center gap-2 md:flex">
+						<a
+							href={`https://github.com/${githubRepo}`}
+							target="_blank"
+							rel="noreferrer"
+							title="GitHub"
+							className="ret-nav-trigger inline-flex h-8 items-center gap-1.5 border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2.5 text-[12px] font-medium text-[var(--ret-text-dim)] hover:border-[var(--ret-border-hover)] hover:bg-[var(--ret-surface)] hover:text-[var(--ret-text)]"
+						>
+							<ServiceIcon slug="github" size={12} tone="mono" />
+							<span className="hidden lg:inline">GitHub</span>
+						</a>
+						<ThemeToggle />
+						<SignedIn>
+							<ReticleButton as="a" href="/dashboard" variant="secondary" size="sm" className="h-8">
+								Dashboard
+							</ReticleButton>
+							{CLERK_READY ? (
+								<UserButton
+									appearance={{ elements: { avatarBox: "h-8 w-8" } }}
+								/>
+							) : null}
+						</SignedIn>
+						<SignedOut>
+							<Link
+								href="/sign-in"
+								className="ret-nav-trigger inline-flex h-8 items-center px-2.5 text-[12px] font-medium text-[var(--ret-text-dim)] hover:text-[var(--ret-text)]"
+							>
+								Sign in
+							</Link>
+							<ReticleButton as="a" href="/sign-in" variant="primary" size="sm" className="h-8 px-3 text-[12px]">
+								Start for free
+							</ReticleButton>
+						</SignedOut>
+					</div>
+
+					<button
+						type="button"
+						aria-label="Open navigation"
+						aria-expanded={mobileOpen}
+						onClick={() => setMobileOpen((open) => !open)}
+						className="ret-pressable ml-auto inline-flex h-9 w-9 items-center justify-center border border-[var(--ret-border)] text-[var(--ret-text)] md:hidden"
+					>
+						<NavToggleIcon open={mobileOpen} />
+					</button>
 				</div>
+
+				{activeGroup ? (
+					<div
+						id={`nav-menu-${activeGroup.id}`}
+						className="absolute left-1/2 top-full z-50 hidden w-[min(960px,calc(100vw-32px))] -translate-x-1/2 pt-2 md:block"
+						onPointerEnter={() => setOpenMenu(activeGroup.id)}
+						onMouseEnter={() => setOpenMenu(activeGroup.id)}
+					>
+						<MegaMenu group={activeGroup} githubRepo={githubRepo} />
+					</div>
+				) : null}
+
+				{mobileOpen ? (
+					<div className="ret-popover-panel border-t border-[var(--ret-border)] bg-[var(--ret-bg)] px-4 pb-4 md:hidden">
+						<div className="grid gap-3 pt-3">
+							{MENU_GROUPS.map((group) => (
+								<details
+									key={group.id}
+									className="rounded-[var(--ret-card-radius)] border border-[var(--ret-border)] bg-[var(--ret-bg-soft)]"
+								>
+									<summary className="ret-pressable flex min-h-12 cursor-pointer list-none items-center justify-between rounded-[var(--ret-card-radius)] px-4 text-[14px] font-semibold text-[var(--ret-text)]">
+										<span>{group.label}</span>
+										<ChevronDown className="ret-details-chevron h-4 w-4 text-[var(--ret-text-muted)] transition-transform duration-[var(--ret-duration-hover)] [transition-timing-function:var(--ret-ease-out)]" />
+									</summary>
+									<div className="ret-details-content grid gap-1 border-t border-[var(--ret-border)] p-2">
+										{group.entries.map((entry, index) => (
+											<MobileMenuLink
+												key={entry.href}
+												entry={entry}
+												index={index}
+												onClick={() => setMobileOpen(false)}
+											/>
+										))}
+										<Link
+											href={group.ctaHref}
+											onClick={() => setMobileOpen(false)}
+											className="ret-pressable mt-1 inline-flex min-h-11 items-center gap-2 rounded-[var(--ret-card-radius)] px-3 text-[13px] font-semibold text-[var(--ret-text)] hover:bg-[var(--ret-surface-hover)]"
+										>
+											{group.cta}
+											<ArrowRight className="h-4 w-4" />
+										</Link>
+									</div>
+								</details>
+							))}
+							<Link
+								href="/pricing"
+								onClick={() => setMobileOpen(false)}
+								className="ret-pressable flex min-h-12 items-center rounded-[var(--ret-card-radius)] border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-4 text-[14px] font-semibold text-[var(--ret-text)]"
+							>
+								Pricing
+							</Link>
+							<div className="grid grid-cols-2 gap-2 pt-1">
+								<Link
+									href="/sign-in"
+									onClick={() => setMobileOpen(false)}
+									className="ret-pressable inline-flex min-h-12 items-center justify-center rounded-[var(--ret-card-radius)] border border-[var(--ret-border)] text-[14px] font-semibold text-[var(--ret-text)]"
+								>
+									Sign in
+								</Link>
+								<Link
+									href="/sign-in"
+									onClick={() => setMobileOpen(false)}
+									className="ret-pressable inline-flex min-h-12 items-center justify-center rounded-[var(--ret-card-radius)] bg-[var(--ret-accent)] px-4 text-[14px] font-semibold text-[var(--ret-bg)]"
+								>
+									Start free
+								</Link>
+							</div>
+						</div>
+					</div>
+				) : null}
 			</div>
 		</ReticleNavbar>
 	);
 }
 
-function IconFeatures(props: SVGProps<SVGSVGElement>) {
+function MegaMenu({
+	group,
+	githubRepo,
+}: {
+	group: MenuGroup;
+	githubRepo: string;
+}) {
 	return (
-		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
-			<rect x="2" y="2" width="5" height="5" />
-			<rect x="9" y="2" width="5" height="5" />
-			<rect x="2" y="9" width="5" height="5" />
-			<rect x="9" y="9" width="5" height="5" />
-		</svg>
+		<div className="ret-mega-menu overflow-hidden rounded-[var(--ret-card-radius)] border border-[var(--ret-border-hover)] bg-[var(--ret-bg)] shadow-[0_18px_60px_var(--ret-purple-glow)]">
+			<div className="grid min-h-[328px] lg:grid-cols-[minmax(0,1fr)_300px]">
+				<div className="grid gap-x-3 gap-y-2 p-4 lg:grid-cols-2">
+					{group.entries.map((entry, index) => (
+						<MenuLink key={entry.href} entry={entry} index={index} />
+					))}
+				</div>
+				<div className="group/menu relative overflow-hidden border-t border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-5 lg:border-l lg:border-t-0">
+					<CircuitArt slug={menuCircuitSlug(group.id)} variant="fill" fit="cover" />
+					<div className="relative z-10 flex h-full flex-col">
+						<p className="font-mono text-[12px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+							{group.eyebrow}
+						</p>
+						<h2 className="ret-display mt-6 max-w-[14ch] text-[20px] leading-tight text-[var(--ret-text)]">
+							{group.title}
+						</h2>
+						<p className="mt-4 max-w-[30ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
+							{group.body}
+						</p>
+						<div className="mt-5 grid grid-cols-3 border border-[var(--ret-border)] bg-[var(--ret-bg)] font-mono text-[10px] text-[var(--ret-text-muted)]">
+							<div className="border-r border-[var(--ret-border)] p-2">
+								<p className="text-[var(--ret-text)]">runtime</p>
+								<p className="mt-1">4 routes</p>
+							</div>
+							<div className="border-r border-[var(--ret-border)] p-2">
+								<p className="text-[var(--ret-text)]">provider</p>
+								<p className="mt-1">4 lanes</p>
+							</div>
+							<div className="p-2">
+								<p className="text-[var(--ret-text)]">state</p>
+								<p className="mt-1">saved</p>
+							</div>
+						</div>
+						<Link
+							href={group.ctaHref}
+							className="ret-pressable mt-auto inline-flex min-h-9 items-center justify-center gap-2 rounded-[var(--ret-card-radius)] border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 text-[13px] font-semibold text-[var(--ret-text)] hover:border-[var(--ret-border-hover)] hover:bg-[var(--ret-surface-hover)]"
+						>
+							{group.cta}
+							<ArrowRight className="h-4 w-4" />
+						</Link>
+						<a
+							href={`https://github.com/${githubRepo}`}
+							target="_blank"
+							rel="noreferrer"
+							className="ret-pressable mt-3 inline-flex min-h-8 items-center gap-2 rounded-[var(--ret-card-radius)] text-[11px] text-[var(--ret-text-muted)] hover:text-[var(--ret-text)]"
+						>
+							<SquareTerminal className="h-3.5 w-3.5" />
+							<span>source visible</span>
+						</a>
+					</div>
+				</div>
+			</div>
+		</div>
 	);
 }
 
-function IconLive(props: SVGProps<SVGSVGElement>) {
+function MenuLink({ entry, index }: { entry: MenuEntry; index: number }) {
+	const Icon = ICONS[entry.icon];
 	return (
-		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
-			<path d="M2 8h2.5l1.5-4 3 8 1.5-4H14" />
-		</svg>
+		<Link
+			href={entry.href}
+			className="ret-interactive-card ret-pressable ret-stagger-item group grid grid-cols-[40px_minmax(0,1fr)] gap-3 rounded-[var(--ret-card-radius)] p-2.5 hover:bg-[var(--ret-surface-hover)]"
+			style={{ "--item-index": index } as CSSProperties}
+		>
+			<span className="ret-card-icon flex h-10 w-10 items-center justify-center rounded-[var(--ret-card-radius)] border border-[var(--ret-border)] bg-[var(--ret-bg)] text-[var(--ret-text-muted)] group-hover:border-[var(--ret-border-hover)] group-hover:text-[var(--ret-text)]">
+				<Icon className="h-4 w-4" />
+			</span>
+			<span className="min-w-0">
+				<span className="block text-[14px] font-semibold tracking-tight text-[var(--ret-text)]">
+					{entry.title}
+				</span>
+				<span className="mt-1 block max-w-[34ch] text-[12px] leading-5 text-[var(--ret-text-dim)]">
+					{entry.description}
+				</span>
+			</span>
+		</Link>
 	);
 }
 
-function IconTools(props: SVGProps<SVGSVGElement>) {
+function MobileMenuLink({
+	entry,
+	index,
+	onClick,
+}: {
+	entry: MenuEntry;
+	index: number;
+	onClick: () => void;
+}) {
+	const Icon = ICONS[entry.icon];
 	return (
-		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
-			<path d="M9 4l3 3-7 7H2v-3l7-7z" />
-			<path d="M11 2l3 3" />
-		</svg>
+		<Link
+			href={entry.href}
+			onClick={onClick}
+			className="ret-pressable ret-stagger-item grid min-h-12 grid-cols-[32px_minmax(0,1fr)] items-center gap-3 rounded-[var(--ret-card-radius)] px-3 py-2 text-[13px] text-[var(--ret-text-dim)] hover:bg-[var(--ret-surface-hover)] hover:text-[var(--ret-text)]"
+			style={{ "--item-index": index } as CSSProperties}
+		>
+			<Icon className="h-4 w-4 text-[var(--ret-text-muted)]" />
+			<span>{entry.title}</span>
+		</Link>
 	);
 }
 
-function IconRegistry(props: SVGProps<SVGSVGElement>) {
-	return (
-		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
-			<rect x="2" y="2" width="12" height="12" />
-			<path d="M2 6h12M6 6v8" />
-		</svg>
-	);
+function menuCircuitSlug(id: MenuId): string {
+	if (id === "agents") return "agents";
+	if (id === "resources") return "registry";
+	return "machines";
 }
 
-function IconSkills(props: SVGProps<SVGSVGElement>) {
+function NavToggleIcon({ open }: { open: boolean }) {
 	return (
-		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
-			<path d="M3 3h7l3 3v7H3z" />
-			<path d="M5 6h6M5 8.5h6M5 11h4" />
-		</svg>
-	);
-}
-
-function IconStack(props: SVGProps<SVGSVGElement>) {
-	return (
-		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
-			<path d="M8 2L2 5l6 3 6-3z" />
-			<path d="M2 11l6 3 6-3" />
-			<path d="M2 8l6 3 6-3" />
-		</svg>
-	);
-}
-
-function IconFaq(props: SVGProps<SVGSVGElement>) {
-	return (
-		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
-			<path d="M5.5 6a2.5 2.5 0 1 1 4 2c-.7.5-1 1-1 2" />
-			<line x1="8.5" y1="12.5" x2="8.5" y2="12.5" />
-			<rect x="2" y="2" width="12" height="12" />
-		</svg>
+		<span className="relative flex h-5 w-5 items-center justify-center">
+			<span
+				className="ret-icon-swap absolute inset-0 flex items-center justify-center"
+				data-active={open ? "true" : "false"}
+			>
+				<X className="h-5 w-5" />
+			</span>
+			<span
+				className="ret-icon-swap flex items-center justify-center"
+				data-active={open ? "false" : "true"}
+			>
+				<Menu className="h-5 w-5" />
+			</span>
+		</span>
 	);
 }

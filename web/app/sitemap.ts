@@ -1,5 +1,10 @@
 import type { MetadataRoute } from "next";
 
+import {
+	AGENT_TEMPLATES,
+	PRODUCT_FEATURES,
+	RESOURCE_PAGES,
+} from "@/lib/marketing/public-site";
 import { SITE } from "@/lib/seo/config";
 
 /**
@@ -15,6 +20,27 @@ import { SITE } from "@/lib/seo/config";
 
 export default function sitemap(): MetadataRoute.Sitemap {
 	const now = new Date();
+	const publicRoutes = [
+		{ path: "/product", priority: 0.8, changeFrequency: "monthly" as const },
+		...PRODUCT_FEATURES.map((feature) => ({
+			path: feature.href,
+			priority: 0.75,
+			changeFrequency: "monthly" as const,
+		})),
+		{ path: "/agents", priority: 0.85, changeFrequency: "weekly" as const },
+		...AGENT_TEMPLATES.map((agent) => ({
+			path: agent.href,
+			priority: agent.slug === "deep-research" ? 0.85 : 0.72,
+			changeFrequency: "weekly" as const,
+		})),
+		{ path: "/pricing", priority: 0.85, changeFrequency: "monthly" as const },
+		{ path: "/registry", priority: 0.75, changeFrequency: "weekly" as const },
+		...RESOURCE_PAGES.map((page) => ({
+			path: page.href,
+			priority: page.slug === "docs" ? 0.78 : 0.66,
+			changeFrequency: "monthly" as const,
+		})),
+	];
 	return [
 		{
 			url: SITE.url,
@@ -22,6 +48,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
 			changeFrequency: "daily",
 			priority: 1.0,
 		},
+		...publicRoutes.map((route) => ({
+			url: `${SITE.url}${route.path}`,
+			lastModified: now,
+			changeFrequency: route.changeFrequency,
+			priority: route.priority,
+		})),
 		{
 			url: `${SITE.url}/sign-in`,
 			lastModified: now,

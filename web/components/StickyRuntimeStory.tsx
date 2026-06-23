@@ -25,28 +25,28 @@ const STAGES: ReadonlyArray<Stage> = [
 	{
 		kicker: "stage 02",
 		title: "The runtime router chooses the host shape.",
-		body: "E2B, Sprites.dev, Dedalus Machines, and Vercel Sandbox are interchangeable substrate routes — OpenRouter-style dual routing. Dedalus benchmarks best on boot and sleep/wake; the UI only shows lifecycle actions each lane supports.",
+		body: "E2B, Sprites.dev, Dedalus Machines, and Vercel Sandbox are substrate routes behind one provider interface. The UI exposes lifecycle actions only when that lane supports them.",
 		nodes: ["provider", "capability", "host"],
 		art: "machines",
 	},
 	{
 		kicker: "stage 03",
 		title: "Four agents install into the same durable boundary.",
-		body: "Autonomous agents (Hermes, OpenClaw) have built-in drivers that wake on schedule. Task-driven CLIs (Claude Code, Codex) run per-task. All share the same gateway surface and persist state under /home/machine.",
+		body: "Hermes, OpenClaw, Claude Code, and Codex install into the same runtime root. Gateway agents and CLI agents use different launch paths, but share machine state.",
 		nodes: ["agent", "gateway", "disk"],
 		art: "agents",
 	},
 	{
 		kicker: "stage 04",
 		title: "The dashboard reads the same system the agent writes.",
-		body: "Chats, artifacts, logs, terminal, sessions, and settings all converge on the same storage and provider execution model.",
+		body: "Chats, artifacts, logs, terminal snapshots, sessions, usage, and settings all converge on the same storage and provider execution model.",
 		nodes: ["chat", "artifacts", "observability"],
 		art: "overview",
 	},
 	{
 		kicker: "stage 05",
 		title: "Browse and install from six live registries.",
-		body: "skills.sh, the MCP server registry, npm, Cursor plugins, GitHub repos, and URL manifests -- all searchable from one page. Click Add to write config and install on the machine.",
+		body: "skills.sh, the MCP server registry, npm, Cursor plugins, GitHub repos, and URL manifests are searchable from Registry. Add entries to loadout, then sync on deploy or reload.",
 		nodes: ["skills", "mcps", "tools"],
 		art: "registry",
 	},
@@ -62,10 +62,9 @@ export function StickyRuntimeStory() {
 						Watch the agent machine assemble.
 					</h2>
 					<p className="mt-4 max-w-[50ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
-						This section behaves like a locked product diagram: the copy stays
-						stable while each workflow panel slides into place as you scroll.
-						No fake dashboard screenshots, just the actual account → provider
-						→ agent → storage → registry model.
+						Account settings become a machine recipe. The provider creates the
+						host, the runtime installs the agent, the loadout defines its tools,
+						and observability proves what is running.
 					</p>
 					<ReticleFrame className="mt-6" corners={false}>
 						<div className="grid gap-px bg-[var(--ret-border)]">
@@ -153,7 +152,7 @@ function StageMeta({ index }: { index: number }) {
 				<ServiceIcon slug="e2b" size={16} tone="color" />
 				<ServiceIcon slug="sprites" size={16} tone="color" />
 				<Logo mark="dedalus" size={16} />
-				<ServiceIcon slug="vercel" size={16} tone="color" />
+				<ServiceIcon slug="vercel" size={16} />
 				<span className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					four substrate lanes
 				</span>

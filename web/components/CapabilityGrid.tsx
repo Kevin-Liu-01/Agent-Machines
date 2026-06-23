@@ -17,23 +17,23 @@ const CAPABILITIES: ReadonlyArray<Capability> = [
 	{
 		kicker: "ROUTING",
 		title: "Agents and containers",
-		body: `${PRODUCT.analogies.primary}. Pick Hermes, OpenClaw, Claude Code, or Codex and pick E2B, Sprites.dev, Dedalus Machines, or Vercel Sandbox — one account, one control plane. ${PRODUCT.analogies.substrate}.`,
+		body: `${PRODUCT.analogies.primary}. Pick Hermes, OpenClaw, Claude Code, or Codex, then pick E2B, Sprites.dev, Dedalus Machines, or Vercel Sandbox. One account stores the route and supervises the worker.`,
 		notes: ["OpenRouter-style", "dual routing", "one account"],
 		mark: "agent",
 		nyx: "nyx-waves",
 	},
 	{
 		kicker: "FLEET",
-		title: "Specialists, one click each",
-		body: "Design agent, news agent, code agent — provision each from opinionated presets (Hermes, OpenClaw, Claude Code, Codex) with skills, MCPs, and system prompts already wired. Vendor SKUs are the same recipe: UI on top of harness. Here you supervise the whole fleet from one dashboard.",
+		title: "Specialist workers",
+		body: "Provision opinionated presets for research, browser work, coding, and ops. Each preset carries runtime, model route, memory, and loadout, then reports back to the same fleet dashboard.",
 		notes: ["presets", "multi-machine", "one pane"],
 		mark: "agent",
 	},
 	{
 		kicker: "RUNTIME",
-		title: "Sleep / wake by second",
-		body: "Dedalus VMs hibernate idle, wake on first prompt -- <30s cold, <5s warm. Billed by the second. Wake-on-read wired into chat and dashboard.",
-		notes: ["VM", "wake-on-read", "second-billed"],
+		title: "Lifecycle by provider",
+		body: "Wake, sleep, stream, and public URL behavior depends on the selected substrate. The dashboard shows supported actions instead of pretending every lane behaves the same.",
+		notes: ["wake", "sleep", "streaming"],
 		mark: "am",
 		nyx: "nyx-lines",
 	},
@@ -46,8 +46,8 @@ const CAPABILITIES: ReadonlyArray<Capability> = [
 	{
 		kicker: "AGENTS",
 		title: "Four agent runtimes",
-		body: "Hermes, OpenClaw, Claude Code, or Codex on the same machine. Hermes/OpenClaw expose /v1; all persist under ~/.agent-machines/.",
-		notes: ["/v1/chat", "swap any time"],
+		body: "Hermes, OpenClaw, Claude Code, or Codex install into the same worker shape. Gateway agents expose chat endpoints; CLI agents run through terminal and one-shot exec.",
+		notes: ["gateway", "terminal", "exec"],
 		mark: "agent",
 	},
 	{
@@ -66,9 +66,9 @@ const CAPABILITIES: ReadonlyArray<Capability> = [
 	},
 	{
 		kicker: "OBSERVE",
-		title: "Watch every decision",
-		body: "Sessions, tool calls, skill invocations, logs, cost — the observation layer that turns a black-box agent into something you can orchestrate. Built because benchmarking substrates wasn't enough; seeing agents work is the feature.",
-		notes: ["sessions", "tool calls", "cost"],
+		title: "Inspect the worker",
+		body: "Sessions, logs, usage, terminal snapshots, artifacts, gateway health, and transitions make the machine inspectable before orchestration gets fancy.",
+		notes: ["sessions", "logs", "usage"],
 		mark: "am",
 	},
 	{

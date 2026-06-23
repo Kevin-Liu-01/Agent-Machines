@@ -74,7 +74,7 @@ export function ReticleSelect({
 				onClick={() => setOpen((o) => !o)}
 				className={cn(
 					"flex w-full items-center justify-between gap-2 border bg-[var(--ret-bg)] px-2.5 py-1.5",
-					"font-mono text-[12px] text-[var(--ret-text)] transition-colors",
+					"ret-pressable font-mono text-[12px] text-[var(--ret-text)]",
 					open
 						? "border-[var(--ret-accent)]"
 						: "border-[var(--ret-border)] hover:border-[var(--ret-border-hover)]",
@@ -85,7 +85,7 @@ export function ReticleSelect({
 				</span>
 				<ChevronDown
 					className={cn(
-						"h-3.5 w-3.5 shrink-0 text-[var(--ret-text-muted)] transition-transform",
+						"h-3.5 w-3.5 shrink-0 text-[var(--ret-text-muted)] transition-transform duration-[var(--ret-duration-hover)] [transition-timing-function:var(--ret-ease-out)]",
 						open && "rotate-180",
 					)}
 					strokeWidth={1.75}
@@ -95,7 +95,7 @@ export function ReticleSelect({
 				<div
 					id={listId}
 					role="listbox"
-					className="absolute left-0 right-0 z-50 mt-1 max-h-64 overflow-y-auto border border-[var(--ret-border)] bg-[var(--ret-bg)] shadow-[0_16px_48px_rgba(0,0,0,0.45)]"
+					className="ret-popover-panel absolute left-0 right-0 z-50 mt-1 max-h-64 overflow-y-auto border border-[var(--ret-border)] bg-[var(--ret-bg)] shadow-[0_16px_48px_rgba(0,0,0,0.45)]"
 				>
 					{groups.map((g) => (
 						<div key={g.group ?? "_"}>
@@ -120,7 +120,7 @@ export function ReticleSelect({
 											setOpen(false);
 										}}
 										className={cn(
-											"block w-full truncate px-2.5 py-1.5 text-left font-mono text-[12px] transition-colors",
+											"ret-pressable block w-full truncate px-2.5 py-1.5 text-left font-mono text-[12px]",
 											opt.disabled
 												? "cursor-not-allowed text-[var(--ret-text-muted)] opacity-60"
 												: active

@@ -28,7 +28,7 @@ function pickLcp(latency: number): Lcp {
 }
 
 const LCP_COLOR: Record<Lcp, string> = {
-	good: "var(--ret-green)",
+	good: "var(--ret-text)",
 	ok: "var(--ret-amber)",
 	bad: "var(--ret-red)",
 };
@@ -38,22 +38,22 @@ export function RuntimeVizGrid() {
 		<>
 			<div className="flex items-baseline justify-between gap-3 px-4 md:px-5">
 				<div>
-					<ReticleLabel>RUNTIME -- LIVE</ReticleLabel>
+					<ReticleLabel>OBSERVABILITY -- DASHBOARD</ReticleLabel>
 					<h2 className="ret-display mt-2 text-xl md:text-2xl">
-						What you watch on the dashboard.
+						The worker state you can inspect.
 					</h2>
 				</div>
 				<p className="hidden text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)] md:block">
-					6 panels . live every 5s
+					6 panels . API-shaped examples
 				</p>
 			</div>
 
 			<div className="mt-5 grid grid-cols-1 gap-px overflow-hidden bg-[var(--ret-border)] sm:grid-cols-2 lg:grid-cols-3">
 				<RuntimeCard
 					icon="filesystem"
-					label="disk"
-					hint="/home/machine . persists"
-					footer="2.1 GiB used . 7.9 GiB free"
+					label="runtime root"
+					hint="~/.agent-machines"
+					footer="skills . chats . artifacts . logs"
 					variant="nyx-lines"
 				>
 					<DiskBar usedPct={21} segments={SEGMENTS} />
@@ -61,9 +61,9 @@ export function RuntimeVizGrid() {
 
 				<RuntimeCard
 					icon="schedule"
-					label="latency"
-					hint="last 32 chat completions"
-					footer="p50 412ms . p95 1.3s"
+					label="gateway"
+					hint="/api/dashboard/gateway"
+					footer="status 200 . model openclaw"
 					variant="nyx-waves"
 				>
 					<Sparkline points={LATENCY_POINTS} />
@@ -71,9 +71,9 @@ export function RuntimeVizGrid() {
 
 				<RuntimeCard
 					icon="memory"
-					label="awake"
-					hint="last 24h . second-billed"
-					footer="3 wakes . 19m awake"
+					label="usage"
+					hint="daily rollups"
+					footer="CPU . memory . storage"
 					variant="cloud"
 				>
 					<AwakeStrip cells={AWAKE_24H} />
@@ -81,18 +81,18 @@ export function RuntimeVizGrid() {
 
 				<RuntimeCard
 					icon="code"
-					label="tokens"
-					hint="this conversation"
-					footer="prompt 1.2k . completion 3.1k"
+					label="logs"
+					hint="tail + telemetry"
+					footer="gateway log . provider fallback"
 				>
-					<StackedBar segments={TOKEN_SEGMENTS} />
+					<StackedBar segments={LOG_SEGMENTS} />
 				</RuntimeCard>
 
 				<RuntimeCard
 					icon="memory"
-					label="loaded"
-					hint="skills active in context"
-					footer="6 of 96 . by intent match"
+					label="loadout"
+					hint="active stack"
+					footer="skills . MCPs . CLIs . plugins"
 				>
 					<ChipStack chips={SKILL_CHIPS} />
 				</RuntimeCard>
@@ -100,16 +100,16 @@ export function RuntimeVizGrid() {
 				<RuntimeCard
 					icon="schedule"
 					label="next cron"
-					hint="weekly-skill-audit"
-					footer="fires in 3d 04:00 utc"
+					hint="cron tick"
+					footer="durable schedule . machine exec"
 				>
 					<Dial fraction={0.31} />
 				</RuntimeCard>
 			</div>
 
 			<p className="mt-3 text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-				every panel above is rendered from the same /api endpoints the
-				dashboard polls
+				illustrative panels, matched to the dashboard APIs for gateway, logs,
+				usage, loadout, and cron
 			</p>
 		</>
 	);
@@ -188,7 +188,7 @@ function DiskBar({
 		"#9aa6c4",
 		"#c9b48a",
 		"var(--ret-amber)",
-		"var(--ret-green)",
+		"var(--ret-border-strong)",
 		"#e8e6dc",
 	];
 	return (
@@ -317,11 +317,11 @@ function AwakeStrip({ cells }: { cells: ReadonlyArray<0 | 1> }) {
 	);
 }
 
-const TOKEN_SEGMENTS: ReadonlyArray<{ pct: number; label: string; color: string }> =
+const LOG_SEGMENTS: ReadonlyArray<{ pct: number; label: string; color: string }> =
 	[
-		{ pct: 28, label: "system", color: "#9aa6c4" },
-		{ pct: 12, label: "user", color: "var(--ret-purple)" },
-		{ pct: 60, label: "assistant", color: "var(--ret-amber)" },
+		{ pct: 62, label: "info", color: "#9aa6c4" },
+		{ pct: 28, label: "warn", color: "var(--ret-amber)" },
+		{ pct: 10, label: "error", color: "var(--ret-red)" },
 	];
 
 function StackedBar({
@@ -354,12 +354,12 @@ function StackedBar({
 }
 
 const SKILL_CHIPS: ReadonlyArray<string> = [
-	"agent-ethos",
-	"empirical-verification",
-	"taste-output",
-	"reticle-design-system",
-	"vercel-react-best-practices",
-	"counterfactual",
+	"skills",
+	"mcp",
+	"cli",
+	"plugin",
+	"source",
+	"service route",
 ];
 
 function ChipStack({ chips }: { chips: ReadonlyArray<string> }) {
@@ -432,7 +432,7 @@ function Dial({ fraction }: { fraction: number }) {
 			</svg>
 			<div className="flex flex-col text-[10px] tabular-nums">
 				<span className="text-base text-[var(--ret-text)]">3d 04h</span>
-				<span className="text-[var(--ret-text-muted)]">until next fire</span>
+				<span className="text-[var(--ret-text-muted)]">until cron tick</span>
 			</div>
 		</div>
 	);

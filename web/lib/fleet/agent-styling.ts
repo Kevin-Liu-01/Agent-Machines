@@ -11,7 +11,7 @@ export const AGENT_HUE: Record<AgentKind, string> = {
 	hermes: "#7c8cf8",
 	openclaw: "#e5443b",
 	"claude-code": "#d4a574",
-	codex: "#4ae0a0",
+	codex: "#a1a1aa",
 };
 
 const PROVIDER_REGION: Partial<Record<ProviderKind, string>> = {
