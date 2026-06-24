@@ -1,10 +1,22 @@
 {
   "name": "agent-machines",
   "version": "0.2.0",
-  "private": true,
   "description": "OpenRouter for agents and containers — control plane for persistent agent workers. Route runtime + substrate, provision specialist presets, supervise the fleet. 161 skills · 35 MCP servers.",
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "scripts": {
+    "build:sdk": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.sdk.json",
+    "prepack": "npm run build:sdk",
     "deploy": "tsx src/cli.ts deploy",
     "deploy:openclaw": "tsx src/cli.ts deploy:openclaw",
     "chat": "tsx src/cli.ts chat",

@@ -1,10 +1,17 @@
 import { auth } from "@clerk/nextjs/server";
+import { timingSafeEqual } from "node:crypto";
+import { headers } from "next/headers";
 
 /**
  * Auth identity resolver for the dashboard.
  *
  * Production: every request comes from a Clerk-authenticated user.
  * `getEffectiveUserId()` returns the Clerk `userId`.
+ *
+ * SDK/API access: when `AGENT_MACHINES_API_KEY` (or `AM_API_KEY`) matches a
+ * bearer token, requests resolve to `AGENT_MACHINES_API_USER_ID` (or
+ * `AM_API_USER_ID`). This lets server-side SDK callers use the same routing
+ * architecture as the dashboard without a browser Clerk session.
  *
  * Local development: when `ALLOW_DEV_AUTH=1` and `NODE_ENV=development`,
  * unauthenticated requests resolve to a stable `DEV_USER_ID`. The
@@ -31,10 +38,47 @@ export function isDevBypassEnabled(): boolean {
 	);
 }
 
+function bearerToken(value: string | null): string | null {
+	const trimmed = value?.trim();
+	if (!trimmed) return null;
+	const match = /^Bearer\s+(.+)$/i.exec(trimmed);
+	return match?.[1]?.trim() || null;
+}
+
+function safeTokenEquals(a: string, b: string): boolean {
+	const left = Buffer.from(a);
+	const right = Buffer.from(b);
+	return left.length === right.length && timingSafeEqual(left, right);
+}
+
+async function getSdkUserId(): Promise<string | null> {
+	const expectedToken = (
+		process.env.AGENT_MACHINES_API_KEY ??
+		process.env.AM_API_KEY ??
+		""
+	).trim();
+	const userId = (
+		process.env.AGENT_MACHINES_API_USER_ID ??
+		process.env.AM_API_USER_ID ??
+		process.env.AGENT_MACHINES_OWNER_USER_ID ??
+		process.env.CLERK_OWNER_USER_ID ??
+		""
+	).trim();
+	if (!expectedToken || !userId) return null;
+
+	try {
+		const token = bearerToken((await headers()).get("authorization"));
+		return token && safeTokenEquals(token, expectedToken) ? userId : null;
+	} catch {
+		return null;
+	}
+}
+
 /**
  * Resolve the effective user id for the current request.
  *
  * - Returns the Clerk `userId` when the user is signed in.
+ * - Returns the SDK/API user id when an owner-scoped bearer token is present.
  * - Returns `DEV_USER_ID` when dev bypass is enabled and no one is
  *   signed in.
  * - Returns `null` otherwise; callers should respond with 401.
@@ -52,6 +96,8 @@ export async function getEffectiveUserId(): Promise<string | null> {
 		// or on transient Clerk SDK errors. Return null so the route
 		// handler responds 401 instead of crashing with a 502.
 	}
+	const sdkUserId = await getSdkUserId();
+	if (sdkUserId) return sdkUserId;
 	return isDevBypassEnabled() ? DEV_USER_ID : null;
 }
 
