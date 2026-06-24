@@ -175,7 +175,13 @@ function StackIconView({
 	size = 16,
 }: { icon: StackIcon; size?: number }) {
 	if (icon.kind === "logo") {
-		return <Logo mark={icon.mark} size={size} />;
+		return (
+			<Logo
+				mark={icon.mark}
+				size={size}
+				tone={icon.mark === "nous" || icon.mark === "openclaw" ? "native" : undefined}
+			/>
+		);
 	}
 	return <ServiceIcon slug={icon.slug} size={size} />;
 }

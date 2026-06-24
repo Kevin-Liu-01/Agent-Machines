@@ -54,8 +54,8 @@ const NATIVE_SRC: Record<Mark, { light: string; dark: string }> = {
 		dark: "/brand/dedalus-logo.svg",
 	},
 	nous: {
-		light: "/brand/nous-mark.png",
-		dark: "/brand/nous-mark.png",
+		light: "/brand/nous-mark-clean.png",
+		dark: "/brand/nous-mark-clean.png",
 	},
 	cursor: {
 		light: "/brand/cursor-mark.svg",
@@ -113,11 +113,11 @@ const MASK_SRC: Record<Mark, string> = {
 const DEFAULT_TONE: Record<Mark, NonNullable<Props["tone"]>> = {
 	am: "auto",
 	dedalus: "auto",
-	nous: "native",
+	nous: "currentColor",
 	cursor: "auto",
-	openclaw: "native",
-	claudecode: "native",
-	codex: "native",
+	openclaw: "currentColor",
+	claudecode: "currentColor",
+	codex: "currentColor",
 	anthropic: "currentColor",
 	openai: "currentColor",
 	e2b: "native",
@@ -164,12 +164,12 @@ export function Logo({ mark, size = 18, className, tone }: Props) {
 				className={cn("inline-flex items-center", className)}
 				style={{ width: `${pairWidth}px`, height: `${size}px` }}
 			>
-				<Logo mark="nous" size={size} />
+				<Logo mark="nous" size={size} tone={tone} />
 				<span
 					className="inline-flex"
 					style={{ marginLeft: `-${overlap}px` }}
 				>
-					<Logo mark="openclaw" size={size} />
+					<Logo mark="openclaw" size={size} tone={tone} />
 				</span>
 			</span>
 		);

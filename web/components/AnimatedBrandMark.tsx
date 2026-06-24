@@ -144,7 +144,11 @@ export function AnimatedBrandMark({
 									opacity,
 								}}
 							>
-								<Logo mark={a.mark} size={size} />
+								<Logo
+									mark={a.mark}
+									size={size}
+									tone={a.mark === "cursor" ? "auto" : "native"}
+								/>
 							</span>
 						);
 					})}

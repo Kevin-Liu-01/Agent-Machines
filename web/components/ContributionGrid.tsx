@@ -71,6 +71,12 @@ const LOGO_MARK: Partial<Record<PartnerKey, Mark>> = {
 	codex: "codex",
 };
 const SERVICE_PARTNER: Record<string, ServiceSlug> = {};
+const COLOR_LOGO_PARTNERS = new Set<PartnerKey>([
+	"nous",
+	"openclaw",
+	"claude-code",
+	"codex",
+]);
 
 const ALL_PARTNERS: ReadonlyArray<PartnerKey> = [
 	"dedalus",
@@ -97,7 +103,13 @@ const KIND_LABEL: Record<ContributionEvent["kind"], string> = {
 
 function PartnerIcon({ partner, size }: { partner: PartnerKey; size: number }) {
 	if (LOGO_PARTNERS.has(partner)) {
-		return <Logo mark={LOGO_MARK[partner]!} size={size} />;
+		return (
+			<Logo
+				mark={LOGO_MARK[partner]!}
+				size={size}
+				tone={COLOR_LOGO_PARTNERS.has(partner) ? "native" : undefined}
+			/>
+		);
 	}
 	const slug = SERVICE_PARTNER[partner];
 	if (slug) return <ServiceIcon slug={slug} size={size} />;
@@ -158,7 +170,13 @@ function BrandChip({
 function EventRow({ event }: { event: ContributionEvent }) {
 	function icon(): React.ReactNode {
 		if (event.brand && PARTNER_MARKS.has(event.brand as Mark)) {
-			return <Logo mark={event.brand as Mark} size={12} />;
+			return (
+				<Logo
+					mark={event.brand as Mark}
+					size={12}
+					tone={COLOR_LOGO_PARTNERS.has(event.brand as PartnerKey) ? "native" : undefined}
+				/>
+			);
 		}
 		if (event.brand && isServiceSlug(event.brand)) {
 			return <ServiceIcon slug={event.brand} size={12} />;

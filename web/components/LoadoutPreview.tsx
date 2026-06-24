@@ -243,22 +243,22 @@ export function LoadoutPreview() {
 				<div className="relative z-10 flex flex-wrap items-center gap-3 text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					<span>callable by</span>
 					<span className="flex items-center gap-1.5">
-						<Logo mark="nous" size={14} />
+						<Logo mark="nous" size={14} tone="native" />
 						hermes
 					</span>
 					<span>/</span>
 					<span className="flex items-center gap-1.5">
-						<Logo mark="openclaw" size={14} />
+						<Logo mark="openclaw" size={14} tone="native" />
 						openclaw
 					</span>
 					<span>/</span>
 					<span className="flex items-center gap-1.5">
-						<Logo mark="claudecode" size={14} />
+						<Logo mark="claudecode" size={14} tone="native" />
 						claude code
 					</span>
 					<span>/</span>
 					<span className="flex items-center gap-1.5">
-						<Logo mark="codex" size={14} />
+						<Logo mark="codex" size={14} tone="native" />
 						codex
 					</span>
 				</div>

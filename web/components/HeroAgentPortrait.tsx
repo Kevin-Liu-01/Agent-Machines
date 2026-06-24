@@ -95,7 +95,7 @@ export function HeroAgentPortrait({ agent, onToggle }: Props) {
 						)}
 						aria-hidden="true"
 					>
-						<Logo mark={META[a].mark} size={9} />
+						<Logo mark={META[a].mark} size={9} tone="native" />
 					</span>
 				))}
 			</span>

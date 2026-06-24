@@ -219,7 +219,11 @@ function WorkflowRow({ step, index }: { step: Step; index: number }) {
 								className="inline-flex items-center gap-1.5 rounded-full bg-[var(--ret-surface)] px-2.5 py-1"
 							>
 								{p.kind === "logo" ? (
-									<Logo mark={p.mark} size={14} />
+									<Logo
+										mark={p.mark}
+										size={14}
+										tone={p.mark === "nous" || p.mark === "openclaw" ? "native" : undefined}
+									/>
 								) : (
 									<ServiceIcon slug={p.slug} size={14} tone="color" />
 								)}

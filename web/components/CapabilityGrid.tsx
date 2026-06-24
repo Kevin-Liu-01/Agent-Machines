@@ -13,6 +13,18 @@ type Capability = {
 	nyx?: "nyx-lines" | "nyx-waves";
 };
 
+const PUBLIC_NATIVE_MARKS = new Set<CompositeMark>([
+	"agent",
+	"nous",
+	"openclaw",
+	"claudecode",
+	"codex",
+]);
+
+function publicLogoTone(mark: CompositeMark): "native" | undefined {
+	return PUBLIC_NATIVE_MARKS.has(mark) ? "native" : undefined;
+}
+
 const CAPABILITIES: ReadonlyArray<Capability> = [
 	{
 		kicker: "ROUTING",
@@ -116,7 +128,9 @@ export function CapabilityGrid() {
 							<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 								{c.kicker}
 							</p>
-							{c.mark ? <Logo mark={c.mark} size={14} /> : null}
+							{c.mark ? (
+								<Logo mark={c.mark} size={14} tone={publicLogoTone(c.mark)} />
+							) : null}
 						</div>
 						<MiniGlyph index={index} />
 						<h3 className="relative z-10 text-sm font-semibold leading-snug tracking-tight">

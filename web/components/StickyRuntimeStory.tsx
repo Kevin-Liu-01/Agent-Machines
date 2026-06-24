@@ -162,10 +162,10 @@ function StageMeta({ index }: { index: number }) {
 	if (index === 2) {
 		return (
 			<div className="mt-6 flex items-center gap-2">
-				<Logo mark="nous" size={18} />
-				<Logo mark="openclaw" size={18} />
-				<Logo mark="claudecode" size={18} />
-				<Logo mark="codex" size={18} />
+				<Logo mark="nous" size={18} tone="native" />
+				<Logo mark="openclaw" size={18} tone="native" />
+				<Logo mark="claudecode" size={18} tone="native" />
+				<Logo mark="codex" size={18} tone="native" />
 				<span className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					same /v1 gateway
 				</span>
@@ -186,7 +186,11 @@ function StageMeta({ index }: { index: number }) {
 	}
 	return (
 		<div className="mt-6 flex items-center gap-2">
-			<Logo mark={index === 0 ? "am" : "agent"} size={18} />
+			<Logo
+				mark={index === 0 ? "am" : "agent"}
+				size={18}
+				tone={index === 0 ? "auto" : "native"}
+			/>
 			<span className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 				control plane route
 			</span>

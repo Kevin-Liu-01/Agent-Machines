@@ -143,7 +143,7 @@ function AgentFlowDiagram() {
 			</FlowBox>
 			<FlowArrow />
 			<FlowBox label="Agent" sub="Hermes / OC" accent="var(--ret-text)">
-				<Logo mark="agent" size={18} />
+				<Logo mark="agent" size={18} tone="native" />
 			</FlowBox>
 			<FlowArrow />
 			<FlowBox label="Container" sub="/home/machine" accent="var(--ret-amber)">
@@ -163,8 +163,8 @@ function GatewayDiagram() {
 				<MiniCell label="Tunnel" value="Cloudflare / preview URL" />
 			</div>
 			<div className="flex items-center gap-2">
-				<Logo mark="nous" size={14} />
-				<Logo mark="openclaw" size={14} />
+				<Logo mark="nous" size={14} tone="native" />
+				<Logo mark="openclaw" size={14} tone="native" />
 				<ServiceIcon slug="cloudflare" size={14} />
 				<Logo mark="am" size={14} />
 			</div>

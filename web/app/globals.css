@@ -201,6 +201,13 @@ body {
 	text-rendering: optimizeLegibility;
 }
 
+.ret-circuit-texture {
+	background-image: url("/brand/circuit-board.svg");
+	background-position: center;
+	background-repeat: repeat;
+	background-size: var(--ret-circuit-size, 384px 512px);
+}
+
 /*
  * Force native form controls to inherit the active theme's
  * background/text instead of falling back to the browser's
@@ -461,6 +468,15 @@ details[open] .ret-details-chevron {
 
 *::-webkit-scrollbar-corner {
 	background: var(--ret-scrollbar-track);
+}
+
+.ret-scrollbar-hidden {
+	-ms-overflow-style: none;
+	scrollbar-width: none;
+}
+
+.ret-scrollbar-hidden::-webkit-scrollbar {
+	display: none;
 }
 
 ::selection {

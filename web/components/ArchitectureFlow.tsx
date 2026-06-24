@@ -109,6 +109,18 @@ type NodeData = {
 	status?: NodeStatus;
 };
 
+const PUBLIC_NATIVE_MARKS = new Set<CompositeMark>([
+	"agent",
+	"nous",
+	"openclaw",
+	"claudecode",
+	"codex",
+]);
+
+function publicLogoTone(mark: CompositeMark): "native" | undefined {
+	return PUBLIC_NATIVE_MARKS.has(mark) ? "native" : undefined;
+}
+
 const NODE_SIZE: Record<NonNullable<NodeData["size"]>, string> = {
 	sm: "w-[230px]",
 	md: "w-[260px]",
@@ -153,7 +165,7 @@ function FlowNode({ data, selected }: NodeProps<NodeData>) {
 					<div className="mt-1 flex items-center gap-1.5">
 						{data.mark ? (
 							<span className="text-[var(--ret-text)]">
-								<Logo mark={data.mark} size={14} />
+								<Logo mark={data.mark} size={14} tone={publicLogoTone(data.mark)} />
 							</span>
 						) : null}
 						<h3 className="truncate text-[13px] font-semibold tracking-tight text-[var(--ret-text)]">
@@ -1097,7 +1109,11 @@ export function ArchitectureFlow() {
 								</div>
 								<div className="mt-1 flex items-center gap-1.5 text-[var(--ret-text)]">
 									{active.data.mark ? (
-										<Logo mark={active.data.mark} size={14} />
+										<Logo
+											mark={active.data.mark}
+											size={14}
+											tone={publicLogoTone(active.data.mark)}
+										/>
 									) : null}
 									<strong className="text-[13px]">{active.data.title}</strong>
 								</div>

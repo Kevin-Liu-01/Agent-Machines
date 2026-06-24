@@ -59,7 +59,11 @@ export function StackRow() {
 					const inner = (
 						<>
 							<div className="flex items-center justify-between">
-								<Logo mark={s.mark} size={28} />
+								<Logo
+									mark={s.mark}
+									size={28}
+									tone={s.mark === "agent" ? "native" : undefined}
+								/>
 								<span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
 									{s.tag}
 								</span>

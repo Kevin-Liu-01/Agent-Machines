@@ -23,10 +23,17 @@ type Props = {
 	contentMax?: number;
 };
 
-const LEFT_MARGIN_HATCH =
-	"repeating-linear-gradient(45deg, var(--ret-rail) 0 1px, transparent 1px 6px)";
-const RIGHT_MARGIN_HATCH =
-	"repeating-linear-gradient(135deg, var(--ret-rail) 0 1px, transparent 1px 6px)";
+const LEFT_MARGIN_HATCH: CSSProperties = {
+	backgroundImage:
+		"repeating-linear-gradient(45deg, transparent 0 4px, var(--ret-rail) 4px 5px, transparent 5px 8px)",
+	backgroundClip: "padding-box",
+};
+
+const RIGHT_MARGIN_HATCH: CSSProperties = {
+	backgroundImage:
+		"repeating-linear-gradient(135deg, transparent 0 4px, var(--ret-rail) 4px 5px, transparent 5px 8px)",
+	backgroundClip: "padding-box",
+};
 
 export function ReticlePageGrid({
 	children,
@@ -48,7 +55,7 @@ export function ReticlePageGrid({
 					className="pointer-events-none absolute top-0 bottom-0 z-[2] w-[var(--ret-rail-offset)] border-x border-[var(--ret-border)]"
 					style={{
 						left: "calc(50% - var(--ret-content-max) / 2 - var(--ret-rail-offset))",
-						backgroundImage: LEFT_MARGIN_HATCH,
+						...LEFT_MARGIN_HATCH,
 					}}
 				/>
 				{/* Left gutter: empty strip outside the margin */}
@@ -65,7 +72,7 @@ export function ReticlePageGrid({
 					className="pointer-events-none absolute top-0 bottom-0 z-[2] w-[var(--ret-rail-offset)] border-x border-[var(--ret-border)]"
 					style={{
 						left: "calc(50% + var(--ret-content-max) / 2)",
-						backgroundImage: RIGHT_MARGIN_HATCH,
+						...RIGHT_MARGIN_HATCH,
 					}}
 				/>
 				{/* Right gutter: empty strip outside the margin */}

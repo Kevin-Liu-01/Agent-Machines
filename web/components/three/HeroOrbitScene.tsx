@@ -266,11 +266,19 @@ function LogoChip({
 }
 
 /** Agent brand face (cursor gets its bespoke glyph). */
-function AgentFace({ mark, size }: { mark: Mark; size: number }) {
+function AgentFace({
+	mark,
+	size,
+	tone,
+}: {
+	mark: Mark;
+	size: number;
+	tone: StationDef["tone"];
+}) {
 	return mark === "cursor" ? (
 		<CursorIcon size={size} />
 	) : (
-		<Logo mark={mark} size={size} tone="currentColor" />
+		<Logo mark={mark} size={size} tone={tone} />
 	);
 }
 
@@ -315,7 +323,7 @@ function LogoStation({
 					}}
 				>
 					<LogoChip glow={active} hue={station.hue} size={56}>
-						<AgentFace mark={station.mark} size={32} />
+						<AgentFace mark={station.mark} size={32} tone={station.tone} />
 					</LogoChip>
 				</div>
 			</Html>
@@ -858,7 +866,7 @@ function AgentGear({
 								title={active ? `Open ${s.label} ↗` : `Show ${s.label}`}
 								onClick={() => (active ? openSite(s.href) : onSelect?.(i))}
 							>
-								<AgentFace mark={s.mark} size={active ? 40 : 32} />
+								<AgentFace mark={s.mark} size={active ? 40 : 32} tone={s.tone} />
 							</GearChip>
 						</group>
 					</group>

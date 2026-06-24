@@ -73,7 +73,7 @@ export function ReticleSelect({
 				aria-label={ariaLabel}
 				onClick={() => setOpen((o) => !o)}
 				className={cn(
-					"flex w-full items-center justify-between gap-2 border bg-[var(--ret-bg)] px-2.5 py-1.5",
+					"flex min-h-10 w-full items-center justify-between gap-2 border bg-[var(--ret-bg)] px-2.5 py-1.5",
 					"ret-pressable font-mono text-[12px] text-[var(--ret-text)]",
 					open
 						? "border-[var(--ret-accent)]"
@@ -120,7 +120,7 @@ export function ReticleSelect({
 											setOpen(false);
 										}}
 										className={cn(
-											"ret-pressable block w-full truncate px-2.5 py-1.5 text-left font-mono text-[12px]",
+											"ret-pressable block min-h-10 w-full truncate px-2.5 py-2 text-left font-mono text-[12px]",
 											opt.disabled
 												? "cursor-not-allowed text-[var(--ret-text-muted)] opacity-60"
 												: active

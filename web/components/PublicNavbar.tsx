@@ -129,7 +129,7 @@ const RESOURCE_ENTRIES: ReadonlyArray<MenuEntry> = RESOURCE_PAGES.map((item) => 
 	icon: item.icon,
 }));
 
-const HERO_CIRCUIT_BG_SIZE = "auto 468px";
+const CIRCUIT_TEXTURE_SIZE = "384px 512px";
 
 const MENU_GROUPS: ReadonlyArray<MenuGroup> = [
 	{
@@ -451,11 +451,8 @@ function DropdownCircuitBackground() {
 		<>
 			<div
 				aria-hidden="true"
-				className="pointer-events-none absolute inset-0 bg-center opacity-[0.12] mix-blend-multiply invert transition-opacity duration-300 group-hover/menu:opacity-[0.18] dark:opacity-[0.18] dark:mix-blend-screen dark:invert-0 dark:group-hover/menu:opacity-[0.24]"
-				style={{
-					backgroundImage: "url(/brand/circuit-grid.png)",
-					backgroundSize: HERO_CIRCUIT_BG_SIZE,
-				}}
+				className="ret-circuit-texture pointer-events-none absolute inset-0 opacity-[0.16] mix-blend-multiply invert transition-opacity duration-300 group-hover/menu:opacity-[0.22] dark:opacity-[0.24] dark:mix-blend-screen dark:invert-0 dark:group-hover/menu:opacity-[0.32]"
+				style={{ "--ret-circuit-size": CIRCUIT_TEXTURE_SIZE } as CSSProperties}
 			/>
 			<div
 				aria-hidden="true"

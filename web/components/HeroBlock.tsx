@@ -16,7 +16,7 @@ import {
 	Zap,
 } from "lucide-react";
 import dynamic from "next/dynamic";
-import { type SVGProps, useEffect, useRef, useState } from "react";
+import { type CSSProperties, type SVGProps, useEffect, useRef, useState } from "react";
 
 import { SignedIn, SignedOut } from "@/components/AuthSwitch";
 import { type HeroAgent } from "@/components/HeroAgentPortrait";
@@ -51,6 +51,18 @@ const AGENT_LABEL: Record<HeroAgent, string> = {
 	"claude-code": "Claude Code",
 	codex: "Codex CLI",
 };
+
+const PUBLIC_NATIVE_MARKS = new Set<CompositeMark>([
+	"agent",
+	"nous",
+	"openclaw",
+	"claudecode",
+	"codex",
+]);
+
+function publicLogoTone(mark: CompositeMark): "native" | undefined {
+	return PUBLIC_NATIVE_MARKS.has(mark) ? "native" : undefined;
+}
 
 /* ── Animated heading word (typewriter delete + retype with per-char animation) ── */
 
@@ -215,6 +227,21 @@ const RAIL_AGENTS: ReadonlyArray<{
 
 const ALL_WORDS = RAIL_AGENTS.map((a) => a.word);
 
+const SDK_EXAMPLE = `import { am as AgentMachines } from "agent-machines"
+
+const am = new AgentMachines()
+
+// any machine, any agent
+// lives as long as you need
+const agent = await am.create({
+  agent: "hermes",
+  sandbox: "e2b",
+  model: "claude-opus-4.8",
+  persistent: true,
+})
+
+await agent.run("review my code")`;
+
 /* The tool universe, grouped by job — agents + substrates fold in as the
  * first two groups so the whole stack reads as one symmetric panel. */
 type GroupItem =
@@ -305,7 +332,7 @@ function GroupIcon({ item, size = 14 }: { item: GroupItem; size?: number }) {
 	return item.kind === "service" ? (
 		<ServiceIcon slug={item.slug} size={size} />
 	) : (
-		<Logo mark={item.mark} size={size} />
+		<Logo mark={item.mark} size={size} tone={publicLogoTone(item.mark)} />
 	);
 }
 
@@ -432,26 +459,15 @@ function HeroSeam() {
 	);
 }
 
-/**
- * Fixed render size for the decorative circuit texture (source art is
- * 1024×682). Pinning the height — instead of `bg-cover` — holds the trace
- * zoom constant across cells of any height: short rail cells now show the
- * same zoomed-in crop as the tall heading-row cell, rather than a shrunk-down
- * (denser) version. ~468px matches the scale the tallest rail cell already
- * read at under `cover` (≈467px tall → ~0.69× of native).
- */
-const CIRCUIT_BG_SIZE = "auto 468px";
+const CIRCUIT_TEXTURE_SIZE = "384px 512px";
 
 /** Decorative circuit-board texture, theme-adaptive blend. */
 function CircuitGrid() {
 	return (
 		<div
 			aria-hidden="true"
-			className="pointer-events-none absolute inset-0 bg-center opacity-[0.1] mix-blend-multiply invert dark:opacity-[0.16] dark:mix-blend-screen dark:invert-0"
-			style={{
-				backgroundImage: "url(/brand/circuit-grid.png)",
-				backgroundSize: CIRCUIT_BG_SIZE,
-			}}
+			className="ret-circuit-texture pointer-events-none absolute inset-0 opacity-[0.14] mix-blend-multiply invert dark:opacity-[0.2] dark:mix-blend-screen dark:invert-0"
+			style={{ "--ret-circuit-size": CIRCUIT_TEXTURE_SIZE } as CSSProperties}
 		/>
 	);
 }
@@ -518,6 +534,41 @@ function HoverDiagram({
 				{label}
 			</span>
 		</a>
+	);
+}
+
+function HeroSdkExample() {
+	return (
+		<div className="group/sdk max-w-[560px] overflow-hidden rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)] text-left shadow-[0_18px_60px_rgba(0,0,0,0.08)] transition-colors hover:border-[var(--ret-border-hover)] dark:shadow-[0_18px_60px_rgba(0,0,0,0.35)]">
+			<div className="flex items-center justify-between border-b border-[var(--ret-border)] bg-[var(--ret-surface)] px-3 py-2">
+				<span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
+					SDK
+				</span>
+				<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+					route · boot · run
+				</span>
+			</div>
+			<pre className="ret-scrollbar-hidden overflow-x-auto px-3 py-3 font-mono text-[11px] leading-relaxed text-[var(--ret-text-dim)]">
+				<code>{SDK_EXAMPLE}</code>
+			</pre>
+			<div className="grid grid-cols-3 border-t border-[var(--ret-border)] text-[10px]">
+				{[
+					["agent", "Hermes"],
+					["sandbox", "E2B"],
+					["state", "persistent"],
+				].map(([label, value]) => (
+					<div
+						key={label}
+						className="border-r border-[var(--ret-border)] px-3 py-2 last:border-r-0"
+					>
+						<div className="font-mono uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+							{label}
+						</div>
+						<div className="mt-0.5 truncate text-[var(--ret-text)]">{value}</div>
+					</div>
+				))}
+			</div>
+		</div>
 	);
 }
 
@@ -628,12 +679,10 @@ export function HeroBlock() {
 					{/* The galaxy: same core + logos, on a continuously spinning tilted
 					    disc, dissolved into the cell from the right (gradient + hue glow). */}
 					<div className="pointer-events-none absolute inset-y-0 right-0 hidden overflow-hidden md:block md:w-[66%]">
-						{/* circuit-board texture, fading in from the right edge.
-						    Anchor the tile height + auto width so the 1024×682 art
-						    keeps its aspect ratio (no horizontal squish). */}
+						{/* vector circuit-board texture, fading in from the right edge. */}
 						<div
-							className="absolute inset-0 bg-[length:auto_300px] opacity-[0.14] mix-blend-multiply invert dark:opacity-[0.2] dark:mix-blend-screen dark:invert-0 [-webkit-mask-image:linear-gradient(to_right,transparent,black_60%)] [mask-image:linear-gradient(to_right,transparent,black_60%)]"
-							style={{ backgroundImage: "url(/brand/circuit-grid.png)" }}
+							className="ret-circuit-texture absolute inset-0 opacity-[0.18] mix-blend-multiply invert dark:opacity-[0.24] dark:mix-blend-screen dark:invert-0 [-webkit-mask-image:linear-gradient(to_right,transparent,black_60%)] [mask-image:linear-gradient(to_right,transparent,black_60%)]"
+							style={{ "--ret-circuit-size": "360px 512px" } as CSSProperties}
 						/>
 						{/* broad ambient hue wash, centered on the gear hub (≈72% across
 						    this container — where GEAR_OFFSET x=2.25 projects under the
@@ -723,6 +772,7 @@ export function HeroBlock() {
 								GitHub
 							</ReticleButton>
 						</div>
+						<HeroSdkExample />
 					</div>
 				</Cell>
 				<Cell className="hidden md:block" circuit />
@@ -749,7 +799,7 @@ export function HeroBlock() {
 										hue={agentHue}
 										onClick={() => selectRailIndex(idx)}
 									>
-										<Logo mark={a.mark} size={20} />
+										<Logo mark={a.mark} size={20} tone={publicLogoTone(a.mark)} />
 									</BrandTile>
 								);
 							})}

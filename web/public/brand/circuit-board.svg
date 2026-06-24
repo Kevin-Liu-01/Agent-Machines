@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="384" height="512" viewBox="0 0 384 512" fill="none">
+  <title>Agent Machines circuit texture</title>
+  <defs>
+    <style>
+      .trace{stroke:#fff;stroke-width:2;stroke-linecap:square;stroke-linejoin:miter;vector-effect:non-scaling-stroke}
+      .fine{stroke:#fff;stroke-width:1;stroke-linecap:square;stroke-linejoin:miter;vector-effect:non-scaling-stroke}
+      .pad{stroke:#fff;stroke-width:2;vector-effect:non-scaling-stroke}
+      .chip{stroke:#fff;stroke-width:2;vector-effect:non-scaling-stroke}
+    </style>
+  </defs>
+  <rect width="384" height="512" fill="transparent"/>
+
+  <g opacity=".34">
+    <path class="fine" d="M24 0v50h58l30 30h52"/>
+    <path class="fine" d="M0 34h54l18 18h42"/>
+    <path class="fine" d="M0 78h42l38 38h78"/>
+    <path class="fine" d="M350 0v62l-28 28h-64"/>
+    <path class="fine" d="M384 46h-46l-22 22h-72"/>
+    <path class="fine" d="M384 112h-76l-42 42h-58"/>
+    <path class="fine" d="M0 462h74l42-42h64"/>
+    <path class="fine" d="M34 512v-52l30-30h52"/>
+    <path class="fine" d="M384 428h-58l-28 28h-84"/>
+    <path class="fine" d="M338 512v-58l-28-28h-62"/>
+  </g>
+
+  <g opacity=".58">
+    <path class="trace" d="M34 146h48l34 34h72"/>
+    <path class="trace" d="M0 170h54l38 38h56"/>
+    <path class="trace" d="M0 204h94l30 30h92"/>
+    <path class="trace" d="M28 254h82l40 40h72"/>
+    <path class="trace" d="M0 312h64l42-42h64"/>
+    <path class="trace" d="M0 350h84l32 32h84"/>
+    <path class="trace" d="M384 178h-54l-40 40h-70"/>
+    <path class="trace" d="M384 224h-86l-26 26h-52"/>
+    <path class="trace" d="M352 276h-64l-36 36h-72"/>
+    <path class="trace" d="M384 338h-96l-30 30h-70"/>
+  </g>
+
+  <g opacity=".72">
+    <rect class="chip" x="210" y="52" width="52" height="52" rx="0"/>
+    <path class="fine" d="M222 44v8M236 44v8M250 44v8M222 104v8M236 104v8M250 104v8M202 64h8M202 78h8M202 92h8M262 64h8M262 78h8M262 92h8"/>
+
+    <rect class="chip" x="118" y="322" width="64" height="64" rx="0"/>
+    <path class="fine" d="M132 310v12M150 310v12M168 310v12M132 386v12M150 386v12M168 386v12M106 336h12M106 354h12M106 372h12M182 336h12M182 354h12M182 372h12"/>
+
+    <rect class="chip" x="266" y="398" width="50" height="50" rx="0"/>
+    <path class="fine" d="M278 388v10M292 388v10M306 388v10M278 448v10M292 448v10M306 448v10M256 410h10M256 424h10M256 438h10M316 410h10M316 424h10M316 438h10"/>
+  </g>
+
+  <g opacity=".8">
+    <circle class="pad" cx="82" cy="50" r="7"/>
+    <circle class="pad" cx="164" cy="80" r="7"/>
+    <circle class="pad" cx="82" cy="116" r="7"/>
+    <circle class="pad" cx="188" cy="180" r="7"/>
+    <circle class="pad" cx="216" cy="234" r="7"/>
+    <circle class="pad" cx="170" cy="270" r="7"/>
+    <circle class="pad" cx="222" cy="294" r="7"/>
+    <circle class="pad" cx="84" cy="350" r="7"/>
+    <circle class="pad" cx="200" cy="382" r="7"/>
+    <circle class="pad" cx="214" cy="456" r="7"/>
+    <circle class="pad" cx="298" cy="218" r="7"/>
+    <circle class="pad" cx="288" cy="276" r="7"/>
+    <circle class="pad" cx="258" cy="368" r="7"/>
+    <circle class="pad" cx="326" cy="456" r="7"/>
+  </g>
+
+  <g opacity=".48">
+    <path class="fine" d="M62 146v-34h20"/>
+    <path class="fine" d="M116 180v-28h34"/>
+    <path class="fine" d="M124 234v-24h24"/>
+    <path class="fine" d="M108 270v-38h42"/>
+    <path class="fine" d="M116 382v32h40"/>
+    <path class="fine" d="M214 456v-44h52"/>
+    <path class="fine" d="M258 368v-56h30"/>
+    <path class="fine" d="M326 456v-30h-10"/>
+  </g>
+
+  <g opacity=".42">
+    <rect class="pad" x="52" y="238" width="12" height="12"/>
+    <rect class="pad" x="78" y="238" width="12" height="12"/>
+    <rect class="pad" x="72" y="414" width="12" height="12"/>
+    <rect class="pad" x="96" y="414" width="12" height="12"/>
+    <rect class="pad" x="314" y="126" width="12" height="12"/>
+    <rect class="pad" x="338" y="126" width="12" height="12"/>
+    <path class="trace" d="M52 244H28v46h80"/>
+    <path class="trace" d="M84 420H42v46h74"/>
+    <path class="trace" d="M320 132h32v-40h32"/>
+  </g>
+</svg>
