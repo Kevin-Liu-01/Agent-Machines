@@ -34,8 +34,8 @@ type AgentPortraitMeta = {
 const META: Record<HeroAgent, AgentPortraitMeta> = {
 	hermes: { label: "Hermes", mark: "nous", accent: "default" },
 	openclaw: { label: "OpenClaw", mark: "openclaw", accent: "purple" },
-	"claude-code": { label: "Claude Code", mark: "anthropic", accent: "amber" },
-	codex: { label: "Codex CLI", mark: "openai", accent: "neutral" },
+	"claude-code": { label: "Claude Code", mark: "claudecode", accent: "amber" },
+	codex: { label: "Codex CLI", mark: "codex", accent: "neutral" },
 };
 
 const ACCENT_BORDER: Record<AgentPortraitMeta["accent"], string> = {

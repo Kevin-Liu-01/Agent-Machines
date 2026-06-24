@@ -53,18 +53,24 @@ const PARTNER_LABEL: Record<PartnerKey, string> = {
 	codex: "codex cli",
 };
 
-const LOGO_PARTNERS = new Set<PartnerKey>(["dedalus", "nous", "cursor", "openclaw"]);
+const LOGO_PARTNERS = new Set<PartnerKey>([
+	"dedalus",
+	"nous",
+	"cursor",
+	"openclaw",
+	"claude-code",
+	"codex",
+]);
 const LOGO_MARK: Partial<Record<PartnerKey, Mark>> = {
 	dedalus: "dedalus",
 	am: "am",
 	nous: "nous",
 	cursor: "cursor",
 	openclaw: "openclaw",
+	"claude-code": "claudecode",
+	codex: "codex",
 };
-const SERVICE_PARTNER: Record<string, ServiceSlug> = {
-	"claude-code": "anthropic",
-	codex: "openai",
-};
+const SERVICE_PARTNER: Record<string, ServiceSlug> = {};
 
 const ALL_PARTNERS: ReadonlyArray<PartnerKey> = [
 	"dedalus",

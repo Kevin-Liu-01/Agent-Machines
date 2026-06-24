@@ -9,6 +9,8 @@ export type Mark =
 	| "nous"
 	| "cursor"
 	| "openclaw"
+	| "claudecode"
+	| "codex"
 	| "anthropic"
 	| "openai"
 	| "e2b"
@@ -52,8 +54,8 @@ const NATIVE_SRC: Record<Mark, { light: string; dark: string }> = {
 		dark: "/brand/dedalus-logo.svg",
 	},
 	nous: {
-		light: "/brand/nous-mark.svg",
-		dark: "/brand/nous-mark.svg",
+		light: "/brand/nous-mark.png",
+		dark: "/brand/nous-mark.png",
 	},
 	cursor: {
 		light: "/brand/cursor-mark.svg",
@@ -62,6 +64,14 @@ const NATIVE_SRC: Record<Mark, { light: string; dark: string }> = {
 	openclaw: {
 		light: "/brand/openclaw-mark-color.svg",
 		dark: "/brand/openclaw-mark-color.svg",
+	},
+	claudecode: {
+		light: "/brand/claudecode-color.svg",
+		dark: "/brand/claudecode-color.svg",
+	},
+	codex: {
+		light: "/brand/codex-color.svg",
+		dark: "/brand/codex-color.svg",
 	},
 	anthropic: {
 		light: "/brand/services/anthropic.svg",
@@ -91,6 +101,8 @@ const MASK_SRC: Record<Mark, string> = {
 	nous: "/brand/nous-mark.svg",
 	cursor: "/brand/cursor-mark.svg",
 	openclaw: "/brand/openclaw-mark.svg",
+	claudecode: "/brand/claudecode-color.svg",
+	codex: "/brand/codex-color.svg",
 	anthropic: "/brand/services/anthropic.svg",
 	openai: "/brand/services/openai.svg",
 	e2b: "/brand/services/e2b.svg",
@@ -101,9 +113,11 @@ const MASK_SRC: Record<Mark, string> = {
 const DEFAULT_TONE: Record<Mark, NonNullable<Props["tone"]>> = {
 	am: "auto",
 	dedalus: "auto",
-	nous: "currentColor",
+	nous: "native",
 	cursor: "auto",
-	openclaw: "currentColor",
+	openclaw: "native",
+	claudecode: "native",
+	codex: "native",
 	anthropic: "currentColor",
 	openai: "currentColor",
 	e2b: "native",
@@ -120,6 +134,8 @@ const ARIA_LABEL: Record<Mark, string> = {
 	nous: "Nous Research",
 	cursor: "Cursor",
 	openclaw: "OpenClaw",
+	claudecode: "Claude Code",
+	codex: "Codex CLI",
 	anthropic: "Anthropic",
 	openai: "OpenAI",
 	e2b: "E2B",

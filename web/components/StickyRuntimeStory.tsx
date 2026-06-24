@@ -164,8 +164,8 @@ function StageMeta({ index }: { index: number }) {
 			<div className="mt-6 flex items-center gap-2">
 				<Logo mark="nous" size={18} />
 				<Logo mark="openclaw" size={18} />
-				<Logo mark="anthropic" size={18} />
-				<Logo mark="openai" size={18} />
+				<Logo mark="claudecode" size={18} />
+				<Logo mark="codex" size={18} />
 				<span className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					same /v1 gateway
 				</span>

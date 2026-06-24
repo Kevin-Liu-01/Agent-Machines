@@ -208,8 +208,8 @@ const RAIL_AGENTS: ReadonlyArray<{
 }> = [
 	{ mark: "nous", label: "Hermes", id: "hermes", word: "Run" },
 	{ mark: "openclaw", label: "OpenClaw", id: "openclaw", word: "Automate" },
-	{ mark: "anthropic", label: "Claude", id: "claude-code", word: "Build" },
-	{ mark: "openai", label: "Codex", id: "codex", word: "Execute" },
+	{ mark: "claudecode", label: "Claude", id: "claude-code", word: "Build" },
+	{ mark: "codex", label: "Codex", id: "codex", word: "Execute" },
 	{ mark: "cursor", label: "Cursor", id: null, word: "Route" },
 ];
 

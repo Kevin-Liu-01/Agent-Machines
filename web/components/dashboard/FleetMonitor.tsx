@@ -103,11 +103,11 @@ const PROVIDER_MARK: Record<ProviderKind, "dedalus" | "e2b" | "sprites" | "verce
 	vercel: "vercel",
 };
 
-const AGENT_MARK: Record<AgentKind, "nous" | "openclaw" | "anthropic" | "openai"> = {
+const AGENT_MARK: Record<AgentKind, "nous" | "openclaw" | "claudecode" | "codex"> = {
 	hermes: "nous",
 	openclaw: "openclaw",
-	"claude-code": "anthropic",
-	codex: "openai",
+	"claude-code": "claudecode",
+	codex: "codex",
 };
 
 export function FleetMonitor() {

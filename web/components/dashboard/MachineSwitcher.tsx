@@ -78,11 +78,11 @@ const STATE_TONE: Record<string, string> = {
 	unknown: "muted",
 };
 
-const AGENT_MARK: Record<AgentKind, "nous" | "openclaw" | "anthropic" | "openai"> = {
+const AGENT_MARK: Record<AgentKind, "nous" | "openclaw" | "claudecode" | "codex"> = {
 	hermes: "nous",
 	openclaw: "openclaw",
-	"claude-code": "anthropic",
-	codex: "openai",
+	"claude-code": "claudecode",
+	codex: "codex",
 };
 
 type Props = {

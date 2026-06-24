@@ -144,7 +144,7 @@ const AGENT_DESC: Record<
 	AgentKind,
 	{
 		name: string;
-		mark: "nous" | "openclaw" | "anthropic" | "openai";
+		mark: "nous" | "openclaw" | "claudecode" | "codex";
 		tagline: string;
 		bullets: string[];
 		links: ReadonlyArray<{ label: string; href: string }>;
@@ -180,7 +180,7 @@ const AGENT_DESC: Record<
 	},
 	"claude-code": {
 		name: "Claude Code",
-		mark: "anthropic",
+		mark: "claudecode",
 		tagline: "Edit repos. Run shell. Use SDK.",
 		bullets: [
 			"Terminal coding agent with deep repo awareness and multi-step tool use",
@@ -194,7 +194,7 @@ const AGENT_DESC: Record<
 	},
 	codex: {
 		name: "Codex CLI",
-		mark: "openai",
+		mark: "codex",
 		tagline: "Execute tasks. Sandbox runs. CI-ready.",
 		bullets: [
 			"Terminal coding agent with sandbox isolation and workspace-write modes",

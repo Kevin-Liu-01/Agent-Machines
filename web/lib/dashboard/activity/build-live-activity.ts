@@ -36,8 +36,8 @@ type TransitionRow = {
 const AGENT_CHIP: Record<AgentKind, { id: string; label: string; mark: Mark }> = {
 	hermes: { id: "nous", label: "Nous", mark: "nous" },
 	openclaw: { id: "openclaw", label: "OpenClaw", mark: "openclaw" },
-	"claude-code": { id: "claude-code", label: "Claude Code", mark: "anthropic" },
-	codex: { id: "codex", label: "Codex CLI", mark: "openai" },
+	"claude-code": { id: "claude-code", label: "Claude Code", mark: "claudecode" },
+	codex: { id: "codex", label: "Codex CLI", mark: "codex" },
 };
 
 const PROVIDER_CHIP: Record<ProviderKind, { id: string; label: string; mark: Mark }> = {

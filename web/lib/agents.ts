@@ -91,7 +91,7 @@ export const AGENTS: ReadonlyArray<AgentMeta> = [
 		headlessCmd: 'claude -p "task description"',
 		docsUrl: "https://code.claude.com/docs/",
 		githubUrl: "https://github.com/anthropics/claude-code",
-		logoMark: "anthropic",
+		logoMark: "claudecode",
 		serviceSlug: "anthropic",
 		nativeToolNames: [
 			"terminal", "read_file", "write_file", "patch", "search",
@@ -117,7 +117,7 @@ export const AGENTS: ReadonlyArray<AgentMeta> = [
 		headlessCmd: 'codex exec "task description"',
 		docsUrl: "https://developers.openai.com/codex/",
 		githubUrl: "https://github.com/openai/codex",
-		logoMark: "openai",
+		logoMark: "codex",
 		serviceSlug: "openai",
 		nativeToolNames: [
 			"terminal", "read_file", "write_file", "patch", "search",

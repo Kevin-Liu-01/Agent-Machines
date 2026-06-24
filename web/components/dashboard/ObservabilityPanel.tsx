@@ -28,11 +28,11 @@ const AGENT_SOURCE: Record<AgentKind, string> = {
 	codex: "by OpenAI",
 };
 
-const AGENT_MARK: Record<AgentKind, "nous" | "openclaw" | "anthropic" | "openai"> = {
+const AGENT_MARK: Record<AgentKind, "nous" | "openclaw" | "claudecode" | "codex"> = {
 	hermes: "nous",
 	openclaw: "openclaw",
-	"claude-code": "anthropic",
-	codex: "openai",
+	"claude-code": "claudecode",
+	codex: "codex",
 };
 
 const HermesBustScene = dynamic(

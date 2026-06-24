@@ -253,12 +253,12 @@ export function LoadoutPreview() {
 					</span>
 					<span>/</span>
 					<span className="flex items-center gap-1.5">
-						<Logo mark="anthropic" size={14} />
+						<Logo mark="claudecode" size={14} />
 						claude code
 					</span>
 					<span>/</span>
 					<span className="flex items-center gap-1.5">
-						<Logo mark="openai" size={14} />
+						<Logo mark="codex" size={14} />
 						codex
 					</span>
 				</div>

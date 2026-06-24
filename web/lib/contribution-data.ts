@@ -1,4 +1,3 @@
-import type { Mark } from "@/components/Logo";
 import type { ServiceSlug } from "@/components/ServiceIcon";
 import type { ToolCategory } from "@/lib/dashboard/loadout";
 
@@ -21,7 +20,19 @@ export type ContributionEvent = {
 	category?: ToolCategory;
 };
 
-export type PartnerKey = Mark | "dedalus" | "claude-code" | "codex";
+export type PartnerKey =
+	| "am"
+	| "dedalus"
+	| "nous"
+	| "cursor"
+	| "openclaw"
+	| "anthropic"
+	| "openai"
+	| "e2b"
+	| "sprites"
+	| "vercel"
+	| "claude-code"
+	| "codex";
 
 export type ContributionDay = {
 	date: string;

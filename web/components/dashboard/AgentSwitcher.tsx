@@ -46,11 +46,11 @@ const TAGLINE: Record<AgentKind, string> = {
 	codex: "execute tasks . sandbox . JSONL . CI",
 };
 
-const MARK: Record<AgentKind, "nous" | "openclaw" | "anthropic" | "openai"> = {
+const MARK: Record<AgentKind, "nous" | "openclaw" | "claudecode" | "codex"> = {
 	hermes: "nous",
 	openclaw: "openclaw",
-	"claude-code": "anthropic",
-	codex: "openai",
+	"claude-code": "claudecode",
+	codex: "codex",
 };
 
 const SOURCE: Record<AgentKind, string> = {
