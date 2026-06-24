@@ -157,16 +157,16 @@ export function DeployAndTalk() {
 	}, [provider, agent, router, gatewayProfileId, environmentProfileId, blocked]);
 
 	return (
-		<div className="grid gap-3 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-4">
-			<div className="flex items-center justify-between gap-2">
+		<div className="grid min-w-0 gap-3 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-4">
+			<div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
 				<ReticleLabel>one-click — deploy, bootstrap, talk</ReticleLabel>
-				<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				<span className="min-w-0 break-words font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)] sm:text-right">
 					provision → bootstrap → interactive agent CLI
 				</span>
 			</div>
 
-			<div className="flex flex-wrap items-end gap-3">
-				<label className="grid w-40 gap-1">
+			<div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end">
+				<label className="grid min-w-0 gap-1 lg:w-40">
 					<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">substrate</span>
 					<ReticleSelect
 						ariaLabel="substrate"
@@ -175,7 +175,7 @@ export function DeployAndTalk() {
 						options={PROVIDERS.map((p) => ({ value: p, label: p }))}
 					/>
 				</label>
-				<label className="grid w-40 gap-1">
+				<label className="grid min-w-0 gap-1 lg:w-40">
 					<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">agent</span>
 					<ReticleSelect
 						ariaLabel="agent"
@@ -185,7 +185,7 @@ export function DeployAndTalk() {
 					/>
 				</label>
 				{environmentProfiles.length > 0 ? (
-					<label className="grid w-44 gap-1">
+					<label className="grid min-w-0 gap-1 lg:w-44">
 						<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">env</span>
 						<ReticleSelect
 							ariaLabel="environment profile"
@@ -209,6 +209,7 @@ export function DeployAndTalk() {
 					disabled={busy || blocked}
 					title={blocked ? "Add the missing key in Settings to deploy" : undefined}
 					onClick={() => void run()}
+					className="w-full sm:w-auto lg:self-end"
 				>
 					{busy ? "deploying..." : blocked ? "missing key" : "Deploy & Talk"}
 				</ReticleButton>
@@ -239,7 +240,7 @@ export function DeployAndTalk() {
 			{phase !== "idle" ? (
 				<p
 					className={cn(
-						"font-mono text-[11px]",
+						"min-w-0 break-words font-mono text-[11px]",
 						phase === "error" ? "text-[var(--ret-red)]" : "text-[var(--ret-text-dim)]",
 					)}
 				>

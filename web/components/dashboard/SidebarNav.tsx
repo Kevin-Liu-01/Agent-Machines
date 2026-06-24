@@ -175,6 +175,46 @@ export function SidebarNav({ setupComplete, machines }: Props) {
 	);
 }
 
+export function MobileDashboardNav({ setupComplete, machines }: Props) {
+	const pathname = usePathname();
+	const machineMatch = MACHINE_PATH_RE.exec(pathname);
+	const setupItem: NavItem = { ...SETUP_ITEM, dot: !setupComplete };
+
+	const items: ReadonlyArray<NavItem> = machineMatch
+		? [
+				{
+					href: "/dashboard/machines",
+					label: "Fleet",
+					icon: ChevronLeft,
+					exact: true,
+				},
+				...machineWorkItems(`/dashboard/machines/${machineMatch[1]}`),
+				...machineLiveItems(`/dashboard/machines/${machineMatch[1]}`),
+			]
+		: [
+				...FLEET_ITEMS,
+				...LIBRARY_ITEMS,
+				...ACCOUNT_ITEMS,
+				setupItem,
+			];
+
+	return (
+		<nav
+			aria-label={machineMatch ? "Machine dashboard sections" : "Dashboard sections"}
+			className="border-b border-[var(--ret-border)] bg-[var(--ret-bg)] lg:hidden"
+		>
+			<div className="ret-scrollbar-hidden flex gap-px overflow-x-auto px-2 py-2">
+				{items.map((item) => {
+					const active = item.exact
+						? pathname === item.href
+						: pathname === item.href || pathname.startsWith(`${item.href}/`);
+					return <MobileRow key={item.href} item={item} active={active} />;
+				})}
+			</div>
+		</nav>
+	);
+}
+
 function MachineScopeHeader({
 	machineId,
 	machineName,
@@ -303,6 +343,45 @@ function Row({ item, active }: { item: NavItem; active: boolean }) {
 			) : null}
 			{item.badge === "new" ? (
 				<span className="shrink-0 border border-[var(--ret-purple)]/45 bg-[var(--ret-purple-glow)] px-1 text-[8px] uppercase tracking-[0.22em] text-[var(--ret-purple)]">
+					new
+				</span>
+			) : null}
+		</Link>
+	);
+}
+
+function MobileRow({ item, active }: { item: NavItem; active: boolean }) {
+	const Icon = item.icon;
+	return (
+		<Link
+			href={item.href}
+			aria-current={active ? "page" : undefined}
+			className={cn(
+				"group flex min-h-11 shrink-0 items-center gap-2 border px-3 text-[12px] transition-colors",
+				active
+					? "border-[var(--ret-purple)]/45 bg-[var(--ret-purple-glow)] text-[var(--ret-purple)]"
+					: "border-[var(--ret-border)] bg-[var(--ret-bg-soft)] text-[var(--ret-text-dim)] hover:text-[var(--ret-text)]",
+			)}
+		>
+			<Icon
+				strokeWidth={1.75}
+				className={cn(
+					"h-4 w-4 shrink-0",
+					active ? "text-[var(--ret-purple)]" : "text-[var(--ret-text-muted)]",
+				)}
+			/>
+			<span className="whitespace-nowrap">{item.label}</span>
+			{item.dot ? (
+				<span
+					aria-label="needs setup"
+					className="h-1.5 w-1.5 shrink-0 bg-[var(--ret-amber)]"
+				/>
+			) : null}
+			{item.badge === "live" ? (
+				<span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--ret-green)]" aria-label="live" />
+			) : null}
+			{item.badge === "new" ? (
+				<span className="shrink-0 border border-[var(--ret-purple)]/45 px-1 font-mono text-[8px] uppercase tracking-[0.18em]">
 					new
 				</span>
 			) : null}

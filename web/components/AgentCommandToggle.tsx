@@ -289,7 +289,7 @@ export function AgentCommandToggle() {
 								: "bg-[var(--ret-bg)] text-[var(--ret-text-muted)] hover:bg-[var(--ret-bg-soft)] hover:text-[var(--ret-text)]",
 						)}
 					>
-						<Logo mark={a.logoMark} size={13} />
+						<Logo mark={a.logoMark} size={13} tone="native" />
 						<span className="hidden sm:inline">{a.name}</span>
 					</button>
 				))}
@@ -304,7 +304,7 @@ export function AgentCommandToggle() {
 					{/* Agent header */}
 					<div className="flex items-center justify-between bg-[var(--ret-bg)] px-4 py-3">
 						<div className="flex items-center gap-2">
-							<Logo mark={meta.logoMark} size={16} />
+							<Logo mark={meta.logoMark} size={16} tone="native" />
 							<span className="text-xs font-semibold text-[var(--ret-text)]">
 								{meta.name}
 							</span>

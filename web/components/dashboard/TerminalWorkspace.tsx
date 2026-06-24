@@ -21,8 +21,8 @@ export function TerminalWorkspace() {
 	}, []);
 
 	return (
-		<section className="grid gap-3">
-			<div className="flex w-fit items-center gap-px border border-[var(--ret-border)] bg-[var(--ret-border)]">
+		<section className="grid min-w-0 gap-3">
+			<div className="grid w-full grid-cols-2 items-center gap-px border border-[var(--ret-border)] bg-[var(--ret-border)] sm:flex sm:w-fit">
 				{TABS.map((tab) => (
 					<button
 						key={tab.id}
@@ -30,7 +30,7 @@ export function TerminalWorkspace() {
 						onClick={() => setMode(tab.id)}
 						title={tab.hint}
 						className={cn(
-							"px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] transition-colors",
+							"min-h-11 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] transition-colors sm:min-h-0",
 							mode === tab.id
 								? "bg-[var(--ret-bg)] text-[var(--ret-purple)]"
 								: "bg-[var(--ret-bg-soft)] text-[var(--ret-text-muted)] hover:text-[var(--ret-text-dim)]",

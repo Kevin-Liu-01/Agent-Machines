@@ -6,7 +6,7 @@ import { cn } from "@/lib/cn";
 import type { PublicUserConfig } from "@/lib/user-config/schema";
 
 import { DashboardReticleProvider } from "./DashboardReticleProvider";
-import { SidebarNav } from "./SidebarNav";
+import { MobileDashboardNav, SidebarNav } from "./SidebarNav";
 import { StatusHeader } from "./StatusHeader";
 
 type Props = {
@@ -35,6 +35,7 @@ export function DashboardShell({ children, config }: Props) {
 			</aside>
 			<div className="relative z-10 flex min-h-[100dvh] min-w-0 flex-col bg-[var(--ret-bg)]">
 				<StatusHeader machines={config.machines} />
+				<MobileDashboardNav setupComplete={setupComplete} machines={config.machines} />
 				<main className="flex-1">{children}</main>
 			</div>
 		</div>

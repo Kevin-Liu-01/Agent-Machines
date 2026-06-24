@@ -59,7 +59,7 @@ function prefetchXterm(): void {
  */
 export function InteractiveConsole({
 	autoLaunch: autoLaunchProp = false,
-	heightClassName = "h-[60dvh] min-h-[360px]",
+	heightClassName = "h-[58dvh] min-h-[340px] sm:h-[60dvh] sm:min-h-[360px]",
 	showFooter = true,
 }: InteractiveConsoleProps = {}) {
 	const machineCtx = useOptionalMachineContext();
@@ -240,7 +240,7 @@ export function InteractiveConsole({
 
 			term = new Terminal({
 				cursorBlink: true,
-				fontSize: 12,
+				fontSize: window.innerWidth < 640 ? 10 : 12,
 				fontFamily:
 					'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
 				theme: {
@@ -517,25 +517,26 @@ export function InteractiveConsole({
 
 	return (
 		<div className="flex flex-col gap-2">
-			<div className="flex items-center justify-between gap-2">
-				<div className="flex items-center gap-2">
+			<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+				<div className="flex min-w-0 flex-wrap items-center gap-2">
 					<ReticleBadge variant={status === "ready" ? "accent" : "default"}>
 						{status === "ready" ? "live PTY" : status}
 					</ReticleBadge>
-					<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+					<span className="min-w-0 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 						tmux console · send-keys / pane tail
 					</span>
 				</div>
-				<div className="flex items-center gap-2">
+				<div className="flex w-full items-center gap-2 sm:w-auto">
 					{isCliAgent(agentKind) ? (
 						<button
 							type="button"
 							onClick={launchAgent}
 							disabled={status !== "ready"}
 							title={`Start the ${agentLabel(agentKind)} CLI in this console`}
-							className="border border-[var(--ret-purple)]/40 bg-[var(--ret-purple-glow)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-purple)] transition-colors hover:border-[var(--ret-purple)] disabled:cursor-not-allowed disabled:opacity-50"
+							className="min-h-10 w-full border border-[var(--ret-purple)]/40 bg-[var(--ret-purple-glow)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-purple)] transition-colors hover:border-[var(--ret-purple)] disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
 						>
-							launch {agentLabel(agentKind)} CLI
+							<span className="sm:hidden">launch CLI</span>
+							<span className="hidden sm:inline">launch {agentLabel(agentKind)} CLI</span>
 						</button>
 					) : null}
 					{status === "connecting" ? (
@@ -544,10 +545,17 @@ export function InteractiveConsole({
 				</div>
 			</div>
 
-			<div className="relative border border-[var(--ret-border)] bg-[#0a0a0e]">
-				<div ref={hostRef} className={cn("w-full px-2 py-2", heightClassName)} />
+			<div className="relative overflow-hidden border border-[var(--ret-border)] bg-[#0a0a0e]">
+				<div
+					ref={hostRef}
+					className={cn("w-full max-w-full overflow-hidden px-1.5 py-2 sm:px-2", heightClassName)}
+				/>
 				{status !== "ready" ? (
-					<div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[#0a0a0e]/80">
+					<div
+						className="pointer-events-none absolute inset-0 flex items-center justify-center bg-[#0a0a0e]/80 px-4"
+						role={status === "connecting" ? "status" : "alert"}
+						aria-live={status === "connecting" ? "polite" : "assertive"}
+					>
 						<div className="flex flex-col items-center gap-2 text-center">
 							{status === "connecting" ? (
 								<>
@@ -561,7 +569,7 @@ export function InteractiveConsole({
 									<p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--ret-amber)]">
 										{status === "offline" ? "machine offline" : "console error"}
 									</p>
-									<p className="max-w-[48ch] font-mono text-[11px] text-[var(--ret-text-muted)]">
+									<p className="max-w-[min(48ch,calc(100vw-3rem))] break-words font-mono text-[11px] text-[var(--ret-text-muted)]">
 										{detail}
 									</p>
 								</>
@@ -572,7 +580,7 @@ export function InteractiveConsole({
 			</div>
 
 			{showFooter ? (
-				<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				<p className="font-mono text-[10px] uppercase leading-relaxed tracking-[0.18em] text-[var(--ret-text-muted)]">
 					type to interact · run the agent CLI and talk to it · ctrl-c / arrows / tab supported
 				</p>
 			) : null}

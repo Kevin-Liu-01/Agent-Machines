@@ -5,6 +5,7 @@ import {
 	CONSOLE_SESSION,
 	clampDim,
 	ensureSessionCommand,
+	isExpectedConsoleStreamEnd,
 	resizeCommand,
 	sendKeysCommand,
 	toHexKeys,
@@ -76,5 +77,27 @@ describe("clampDim", () => {
 		expect(clampDim(9999, 20, 500, 120)).toBe(500);
 		expect(clampDim("nope", 20, 500, 120)).toBe(120);
 		expect(clampDim(40.9, 20, 500, 120)).toBe(40);
+	});
+});
+
+describe("isExpectedConsoleStreamEnd", () => {
+	it("treats provider deadlines from tail -f as reconnect boundaries", () => {
+		expect(
+			isExpectedConsoleStreamEnd(
+				new Error(
+					"e2b streamExec failed on sbx: [deadline_exceeded] the operation timed out",
+				),
+			),
+		).toBe(true);
+		expect(
+			isExpectedConsoleStreamEnd(
+				new Error("sprites streamExec timed out after 110000ms"),
+			),
+		).toBe(true);
+	});
+
+	it("keeps real stream failures visible", () => {
+		expect(isExpectedConsoleStreamEnd(new Error("missing credentials"))).toBe(false);
+		expect(isExpectedConsoleStreamEnd(new Error("machine not found"))).toBe(false);
 	});
 });

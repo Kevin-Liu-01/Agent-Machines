@@ -11,7 +11,10 @@
 
 import { isMachineRunningCached } from "@/lib/dashboard/machine-running-cache";
 import { SSE_HEADERS, sseFrame } from "@/lib/dashboard/sse";
-import { streamConsoleOutput } from "@/lib/dashboard/terminal-session";
+import {
+	isExpectedConsoleStreamEnd,
+	streamConsoleOutput,
+} from "@/lib/dashboard/terminal-session";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 export const runtime = "nodejs";
@@ -86,6 +89,21 @@ export async function GET(request: Request): Promise<Response> {
 				write(sseFrame("idle", {}));
 			} catch (err) {
 				const message = err instanceof Error ? err.message : "stream failed";
+				if (isExpectedConsoleStreamEnd(err)) {
+					console.info(
+						JSON.stringify({
+							level: "info",
+							msg: "terminal_stream_reconnect",
+							route: "/api/dashboard/terminal/stream",
+							requestId,
+							machineId: machineId ?? null,
+							error: message,
+							ms: Date.now() - start,
+						}),
+					);
+					write(sseFrame("idle", { reason: "stream_timeout" }));
+					return;
+				}
 				console.error(
 					JSON.stringify({
 						level: "error",

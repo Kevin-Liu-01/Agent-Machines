@@ -63,10 +63,10 @@ export function AgentInfoPanel({
 }) {
 	const meta = getAgentMeta(agentKind);
 	return (
-		<div className="grid content-start gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3">
-			<div className="flex flex-wrap items-center gap-2">
-				<Logo mark={meta.logoMark} size={14} />
-				<span className="text-[13px] text-[var(--ret-text)]">{meta.name}</span>
+		<div className="grid min-w-0 content-start gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3">
+			<div className="flex min-w-0 flex-wrap items-center gap-2">
+				<Logo mark={meta.logoMark} size={14} className="shrink-0" />
+				<span className="min-w-0 text-[13px] text-[var(--ret-text)]">{meta.name}</span>
 				<span className="font-mono text-[10px] text-[var(--ret-text-muted)]">
 					by {meta.by}
 				</span>
@@ -111,9 +111,9 @@ export function MachineInfoPanel({
 	configured?: boolean;
 }) {
 	return (
-		<div className="grid content-start gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3">
-			<div className="flex flex-wrap items-center gap-2">
-				<Logo mark={PROVIDER_MARK[provider]} size={14} />
+		<div className="grid min-w-0 content-start gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3">
+			<div className="flex min-w-0 flex-wrap items-center gap-2">
+				<Logo mark={PROVIDER_MARK[provider]} size={14} className="shrink-0" />
 				<span className="text-[13px] text-[var(--ret-text)]">
 					{PROVIDER_LABEL[provider]}
 				</span>
@@ -175,13 +175,13 @@ function InfoRow({
 	mono?: boolean;
 }) {
 	return (
-		<div className="flex items-baseline gap-2">
-			<dt className="w-16 shrink-0 font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+		<div className="grid min-w-0 grid-cols-[4.5rem_minmax(0,1fr)] items-baseline gap-2">
+			<dt className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 				{label}
 			</dt>
 			<dd
 				className={cn(
-					"min-w-0 truncate text-[11px] text-[var(--ret-text-dim)]",
+					"min-w-0 break-words text-[11px] text-[var(--ret-text-dim)]",
 					mono && "font-mono text-[10px] text-[var(--ret-text)]",
 				)}
 				title={value}

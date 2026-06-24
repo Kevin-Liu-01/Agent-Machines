@@ -28,6 +28,14 @@ export const CONSOLE_LOG = "/tmp/am-console.log";
 
 const DEFAULT_COLS = 120;
 const DEFAULT_ROWS = 32;
+const EXPECTED_STREAM_END_PATTERNS = [
+	/deadline_exceeded/i,
+	/operation timed out/i,
+	/timed out after \d+ms/i,
+	/streamExec timed out/i,
+	/AbortError/i,
+	/The operation was aborted/i,
+];
 
 export function clampDim(value: unknown, min: number, max: number, fallback: number): number {
 	const n = Math.floor(Number(value));
@@ -95,6 +103,16 @@ export function cursorPosCommand(): string {
 
 export function logSizeCommand(): string {
 	return `[ -f ${CONSOLE_LOG} ] && wc -c < ${CONSOLE_LOG} || echo 0`;
+}
+
+/**
+ * Long-running `tail -f` commands end when the provider-enforced deadline
+ * fires. That is a normal reconnect boundary for the browser console, not a
+ * terminal failure the user needs to see.
+ */
+export function isExpectedConsoleStreamEnd(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : String(error ?? "");
+	return EXPECTED_STREAM_END_PATTERNS.some((pattern) => pattern.test(message));
 }
 
 /**

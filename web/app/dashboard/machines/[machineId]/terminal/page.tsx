@@ -11,7 +11,7 @@ export default function MachineTerminalPage() {
 				title="Talk to this machine."
 				description="Interactive mode attaches a real tmux PTY over the streaming gateway — type, run the agent CLI, and interact as if you were SSH'd in. One-shot mode fires single commands with streamed output."
 			/>
-			<div className="px-5 py-5">
+			<div className="px-4 py-4 sm:px-5 sm:py-5">
 				<TerminalWorkspace />
 			</div>
 		</div>

@@ -30,7 +30,7 @@ export function PageHeader({ kicker, title, description, right, artSlug }: Props
 	return (
 		<header className="group relative overflow-hidden border-b border-[var(--ret-border)]">
 			{hasArt ? <CircuitArt slug={slug} variant="ambient" /> : null}
-			<div className="relative z-10 flex flex-wrap items-start justify-between gap-4 px-5 pt-5 pb-4">
+			<div className="relative z-10 flex flex-wrap items-start justify-between gap-4 px-4 pt-5 pb-4 sm:px-5">
 				<div className="min-w-0 flex-1">
 					<ReticleLabel>{kicker}</ReticleLabel>
 					<h1 className="ret-display mt-1.5 text-lg md:text-xl">{title}</h1>
@@ -41,7 +41,7 @@ export function PageHeader({ kicker, title, description, right, artSlug }: Props
 					) : null}
 				</div>
 				{right ? (
-					<div className="flex shrink-0 items-center gap-2">{right}</div>
+					<div className="flex w-full shrink-0 items-center gap-2 sm:w-auto">{right}</div>
 				) : null}
 			</div>
 		</header>

@@ -32,13 +32,13 @@ export default function MachinesPage() {
 					</ReticleButton>
 				}
 			/>
-			<div className="px-5 pt-5">
+			<div className="px-4 pt-5 sm:px-5">
 				<DeployAndTalk />
 			</div>
 			<Suspense fallback={null}>
 				<MachinesPanel />
 			</Suspense>
-			<div className="px-5 pb-6">
+			<div className="px-4 pb-6 sm:px-5">
 				<ActivityOverviewPanel />
 			</div>
 		</div>

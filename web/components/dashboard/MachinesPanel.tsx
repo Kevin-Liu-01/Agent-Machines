@@ -201,18 +201,19 @@ export function MachinesPanel() {
 
 			{/* Quick provision controls */}
 			{!loading ? (
-				<div className="flex flex-wrap items-center justify-between gap-2">
-					<div className="flex items-center gap-3">
+				<div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+					<div className="flex min-w-0 items-center gap-3">
 						<h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
 							Fleet
 						</h2>
 						<ViewToggle view={view} onChange={selectView} />
 					</div>
-					<div className="flex items-center gap-2">
+					<div className="grid min-w-0 grid-cols-1 gap-2 sm:flex sm:items-center">
 						<ReticleButton
 							variant="primary"
 							size="sm"
 							onClick={() => setShowProvision((v) => !v)}
+							className="w-full sm:w-auto"
 						>
 							{showProvision ? "Cancel" : "+ New machine"}
 						</ReticleButton>
@@ -221,6 +222,7 @@ export function MachinesPanel() {
 							href="/dashboard/setup"
 							variant="ghost"
 							size="sm"
+							className="w-full sm:w-auto"
 						>
 							Setup wizard
 						</ReticleButton>
@@ -658,10 +660,10 @@ function QuickProvisionForm({
 					Quick provision
 				</p>
 				{err ? (
-					<p className="text-[11px] text-[var(--ret-red)]">{err}</p>
+					<p className="break-words text-[11px] text-[var(--ret-red)]">{err}</p>
 				) : null}
 				{result ? (
-					<p className="text-[11px] text-[var(--ret-green)]">{result}</p>
+					<p className="break-words text-[11px] text-[var(--ret-green)]">{result}</p>
 				) : null}
 				<div className="grid gap-3 md:grid-cols-3">
 					<label className="flex flex-col gap-1.5">
@@ -697,11 +699,11 @@ function QuickProvisionForm({
 					<EditField label="RAM (MiB)" value={memoryMib} onChange={setMemoryMib} placeholder="2048" />
 					<EditField label="Disk (GiB)" value={storageGib} onChange={setStorageGib} placeholder="10" />
 				</div>
-				<div className="flex justify-end gap-2">
-					<ReticleButton variant="ghost" size="sm" onClick={onCancel} disabled={busy}>
+				<div className="grid grid-cols-1 gap-2 sm:flex sm:justify-end">
+					<ReticleButton variant="ghost" size="sm" onClick={onCancel} disabled={busy} className="w-full sm:w-auto">
 						Cancel
 					</ReticleButton>
-					<ReticleButton variant="primary" size="sm" onClick={() => void provision()} disabled={busy}>
+					<ReticleButton variant="primary" size="sm" onClick={() => void provision()} disabled={busy} className="w-full sm:w-auto">
 						{busy ? "Provisioning..." : "Provision"}
 					</ReticleButton>
 				</div>
@@ -726,7 +728,7 @@ function EditField({
 	colSpan?: boolean;
 }) {
 	return (
-		<label className={cn("flex flex-col gap-1.5", colSpan ? "md:col-span-2" : "")}>
+		<label className={cn("flex min-w-0 flex-col gap-1.5", colSpan ? "md:col-span-2" : "")}>
 			<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 				{label}
 			</span>
@@ -736,7 +738,7 @@ function EditField({
 				value={value}
 				placeholder={placeholder}
 				onChange={(e) => onChange(e.target.value)}
-				className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-[12px] text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)] focus:border-[var(--ret-purple)] focus:outline-none"
+				className="min-h-10 min-w-0 border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-[12px] text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)] focus:border-[var(--ret-purple)] focus:outline-none"
 			/>
 		</label>
 	);
