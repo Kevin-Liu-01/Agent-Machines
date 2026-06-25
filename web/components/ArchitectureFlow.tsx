@@ -393,7 +393,7 @@ const INITIAL_NODES: Node<NodeData>[] = [
 			subtitle: "persistent Linux sandbox",
 			body: "Full Linux sandboxes via E2B with pause/resume, snapshots, and public URLs. Best for stable agent work with fast cold starts.",
 			bullets: [
-				"create / pause / resume / exec",
+				"create / pause / resume / command",
 				"snapshot-ready bootstrap",
 				"public URLs",
 			],
@@ -431,10 +431,10 @@ const INITIAL_NODES: Node<NodeData>[] = [
 			eyebrow: "provider",
 			title: "Dedalus Machines",
 			subtitle: "default VM provider",
-			body: "Provisions, wakes, sleeps, executes commands. Second-billed; ~30s cold boot, <5s warm.",
+			body: "Provisions, wakes, sleeps, and runs commands. Second-billed; ~30s cold boot, <5s warm.",
 			bullets: [
 				"provision / wake / sleep",
-				"state / exec / destroy",
+				"state / command / destroy",
 				"second-billed VM",
 			],
 			mark: "dedalus",
@@ -453,7 +453,7 @@ const INITIAL_NODES: Node<NodeData>[] = [
 			subtitle: "Sprites compute",
 			body: "Sprites.dev hosts with public URL proxy on port 8080. Bootstrap installs agents into ~/.agent-machines/ on the sprite filesystem.",
 			bullets: [
-				"create / exec / destroy",
+				"create / command / destroy",
 				"public URL proxy",
 				"persistent sprite disk",
 			],
@@ -631,7 +631,7 @@ const INITIAL_NODES: Node<NodeData>[] = [
 			bullets: [
 				"terminal . fs_read/write",
 				"browser_* . vision",
-				"execute_code . delegate",
+				"run_code . delegate",
 			],
 			tone: "tools",
 			size: "sm",
@@ -643,7 +643,7 @@ const INITIAL_NODES: Node<NodeData>[] = [
 		position: { x: COL.c1, y: Y.tools },
 		data: {
 			eyebrow: "tool surface",
-			title: `${HARNESS.serviceRouteCount} service routes`,
+			title: `${HARNESS.serviceRouteCount} service lanes`,
 			subtitle: "ranked interfaces per vendor",
 			body: "Each service entry ranks MCP → CLI → plugin skill → personal skill. Mirrors kevin-wiki tool-hierarchy. Credential-gated MCPs register from mcps/catalog.json.",
 			bullets: [
@@ -807,7 +807,7 @@ const EDGES: Edge[] = [
 		id: "e-dedalus-machine",
 		source: "provider-dedalus",
 		target: "machine",
-		label: "provision / exec",
+		label: "provision / command",
 	},
 	// Machine -> gateway (single vertical drop)
 	{
@@ -1001,7 +1001,7 @@ export function ArchitectureFlow() {
 					<p className="mt-3 max-w-[78ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
 						{nodes.length} nodes, ten rows. The persistent Linux machine
 						in the middle is the product boundary -- everything above
-						provisions and routes to it, everything below runs inside it.
+						provisions and plugs into it, everything below runs inside it.
 						Click any node to inspect; drag to rearrange.
 					</p>
 				</div>

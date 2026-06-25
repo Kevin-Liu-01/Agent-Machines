@@ -16,7 +16,7 @@ function commandsFor(a: AgentMeta): CommandRow[] {
 		{ label: "interactive", value: a.runCmd },
 	];
 	if (a.headlessCmd) {
-		rows.push({ label: "headless / exec", value: a.headlessCmd });
+		rows.push({ label: "headless / command", value: a.headlessCmd });
 	}
 	rows.push(
 		{ label: "docs", value: a.docsUrl },

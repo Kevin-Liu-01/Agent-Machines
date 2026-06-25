@@ -221,8 +221,8 @@ const RAIL_AGENTS: ReadonlyArray<{
 	{ mark: "nous", label: "Hermes", id: "hermes", word: "Run" },
 	{ mark: "openclaw", label: "OpenClaw", id: "openclaw", word: "Automate" },
 	{ mark: "claudecode", label: "Claude", id: "claude-code", word: "Build" },
-	{ mark: "codex", label: "Codex", id: "codex", word: "Execute" },
-	{ mark: "cursor", label: "Cursor", id: null, word: "Route" },
+	{ mark: "codex", label: "Codex", id: "codex", word: "Ship" },
+	{ mark: "cursor", label: "Cursor", id: null, word: "Patch" },
 ];
 
 const ALL_WORDS = RAIL_AGENTS.map((a) => a.word);
@@ -258,7 +258,7 @@ const SUBSTRATES: ReadonlyArray<{
  * The registry wall, grouped by the job each cluster does. Every group renders
  * as a row of brand marks with a flat "[" bracket + mono verb beneath it (see
  * `ToolGroupBracket`), so the colorful logo wall doubles as a legend of what
- * the platform reaches: Route · Automate · Code · Data · Observe · Browse ·
+ * the platform reaches: Switch · Automate · Code · Data · Observe · Browse ·
  * Render · Sell.
  */
 type ToolGroup = {
@@ -272,8 +272,8 @@ type ToolGroup = {
 };
 
 const REGISTRY_GROUPS: ToolGroup[] = [
-	// Routers — one key, any upstream.
-	{ id: "route", label: "Route", hue: "#a78bfa", items: [svc("openrouter"), svc("vercel"), dedalus, svc("openai"), svc("anthropic")] },
+	// Model paths — one key, any upstream.
+	{ id: "route", label: "Switch", hue: "#a78bfa", items: [svc("openrouter"), svc("vercel"), dedalus, svc("openai"), svc("anthropic")] },
 	{ id: "automate", label: "Automate", hue: "#60a5fa", items: [svc("github"), svc("slack"), svc("linear"), svc("cloudflare")] },
 	{ id: "code", label: "Code", hue: "#22d3ee", items: [svc("typescript"), svc("nextdotjs"), svc("react"), svc("tailwindcss")] },
 	{ id: "data", label: "Data", hue: "#34d399", items: [svc("supabase"), svc("neon"), svc("upstash"), svc("turso"), svc("firebase"), svc("clickhouse")] },
@@ -293,7 +293,7 @@ type Feat = {
 };
 
 const AGENT_FEATURES: Feat[] = [
-	{ Icon: Network, label: "Router profiles", value: "BYOK model paths", logos: ["openrouter", "anthropic", "openai"] },
+	{ Icon: Network, label: "Model paths", value: "BYOK upstreams", logos: ["openrouter", "anthropic", "openai"] },
 	{ Icon: Boxes, label: "Install catalog", value: "1,400+ entries", logos: ["figma", "slack", "react"] },
 	{ Icon: Terminal, label: "Browser terminal", value: "live PTY", logos: ["googlechrome", "playwright", "brave"] },
 	{ Icon: Plug, label: "Tools & MCPs", value: "auto-wired", logos: ["linear", "slack", "github"] },
@@ -305,7 +305,7 @@ const SUBSTRATE_FEATURES: Feat[] = [
 	{ Icon: Brain, label: "Owned memory", value: "portable", logos: ["supabase", "neon", "upstash"] },
 	{ Icon: HardDrive, label: "Persistent state", value: "survives sleep", logos: ["e2b", "sprites", "vercel"] },
 	{ Icon: KeyRound, label: "Credential gate", value: "fail closed", logos: ["clerk", "stripe", "supabase"] },
-	{ Icon: Zap, label: "Benchmarked lanes", value: "boot · exec · IO", logos: ["sprites", "e2b", "cloudflare"] },
+	{ Icon: Zap, label: "Benchmarked lanes", value: "boot · shell · IO", logos: ["sprites", "e2b", "cloudflare"] },
 	{ Icon: History, label: "Provider snapshots", value: "where supported", logos: ["turso", "e2b", "vercel"] },
 	{ Icon: Globe, label: "Four providers", value: "one interface", logos: ["cloudflare", "amazonwebservices", "vercel"] },
 ];

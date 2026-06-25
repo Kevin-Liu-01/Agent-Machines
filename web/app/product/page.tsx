@@ -14,7 +14,7 @@ import { PRODUCT_FEATURES } from "@/lib/marketing/public-site";
 export const metadata: Metadata = {
 	title: "Product",
 	description:
-		"Explore Agent Machines product capabilities: persistent workers, model routing, lifecycle controls, isolation, snapshots, volumes, and machine APIs.",
+		"Explore Agent Machines product capabilities: persistent workers, model paths, lifecycle controls, isolation, snapshots, volumes, and machine APIs.",
 	alternates: { canonical: "/product" },
 };
 
@@ -25,7 +25,7 @@ export default function ProductPage() {
 				<MarketingHero
 					kicker="./PRODUCT"
 					title="Agent workers with inspectable state."
-					description="Agent Machines combines runtime, provider lane, model route, environment profile, loadout, logs, usage, cron, and artifacts into one worker control plane."
+					description="Agent Machines combines runtime, provider lane, model path, environment profile, loadout, logs, usage, cron, and artifacts into one worker control plane."
 					badges={["runtimes", "providers", "loadouts", "usage"]}
 					icon="server"
 					actions={

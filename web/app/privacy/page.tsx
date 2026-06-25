@@ -74,7 +74,7 @@ export default function PrivacyPage() {
 				<DocSection title="how data is used">
 					<DocList>
 						<DocListItem>
-							Authenticate you and route you to your dashboard.
+							Authenticate you and send you to your dashboard.
 						</DocListItem>
 						<DocListItem>
 							Provision, wake, sleep, inspect, and select machines.
@@ -94,7 +94,7 @@ export default function PrivacyPage() {
 					<p>
 						Agent Machines does not sell personal data. Data is shared with
 						service providers only as needed to run the product, host machines,
-						authenticate users, route requests, or execute tools you invoke.
+						authenticate users, send requests, or run tools you invoke.
 					</p>
 					<p>
 						Model providers and tool providers may receive prompts, files,

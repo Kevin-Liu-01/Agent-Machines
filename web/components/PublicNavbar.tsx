@@ -138,7 +138,7 @@ const MENU_GROUPS: ReadonlyArray<MenuGroup> = [
 		eyebrow: "./PERSISTENCE",
 		title: "A control plane for agent workers.",
 		body:
-			"Route runtime, provider, model path, loadout, logs, usage, cron, and artifacts from one account.",
+			"Pair runtime, provider, model path, loadout, logs, usage, cron, and artifacts from one account.",
 		cta: "Why persistence",
 		ctaHref: "/product/persistent-machines",
 		entries: PRODUCT_ENTRIES,
@@ -426,7 +426,7 @@ function MenuFacts({ group }: { group: MenuGroup }) {
 				{ label: "machine", value: "sandbox" },
 			]
 			: [
-				{ label: "runtime", value: "4 routes" },
+				{ label: "runtime", value: "4 lanes" },
 				{ label: "provider", value: "4 lanes" },
 				{ label: "state", value: "saved" },
 			];

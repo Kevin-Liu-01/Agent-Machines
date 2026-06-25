@@ -143,7 +143,7 @@ export function PricingCalculator() {
 						${formatRate(example)} / {mode}
 					</span>{" "}
 					while active in this example. Model tokens are tracked separately by
-					the selected model route.
+					the selected model path.
 				</p>
 			</div>
 		</div>

@@ -56,7 +56,7 @@ export function LoadoutPreview() {
 					</h2>
 					<p className="mt-2 max-w-[82ch] text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
 						Mirrors <code>tool-hierarchy.mdc</code>: built-ins fire immediately,
-						MCP servers spawn at bootstrap, service entries pick the best route,
+						MCP servers spawn at bootstrap, service entries pick the best lane,
 						and tasks choose the right skill or tool.
 					</p>
 				</div>

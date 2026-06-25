@@ -3,7 +3,7 @@ import { SchematicPanel } from "@/components/reticle/SchematicPanel";
 import { ERROR_ART } from "@/lib/dashboard/category-art";
 
 /**
- * Global 404. Framed schematic graphic (recipe B) keeps the missing-route
+ * Global 404. Framed schematic graphic (recipe B) keeps the missing-page
  * page on-brand and intentional in both themes.
  */
 export default function NotFound() {
@@ -17,7 +17,7 @@ export default function NotFound() {
 				<p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
 					Error 404
 				</p>
-				<h1 className="ret-display mt-2 text-2xl">This route went missing</h1>
+				<h1 className="ret-display mt-2 text-2xl">This page slipped off-grid</h1>
 				<p className="mx-auto mt-3 max-w-[46ch] text-sm leading-relaxed text-[var(--ret-text-dim)]">
 					The page you&apos;re looking for isn&apos;t on any machine. Check the
 					address, or head back to the fleet.

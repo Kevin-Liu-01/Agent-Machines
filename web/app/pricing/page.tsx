@@ -15,18 +15,18 @@ import { ReticleButton } from "@/components/reticle/ReticleButton";
 export const metadata: Metadata = {
 	title: "Pricing",
 	description:
-		"Agent Machines pricing model for provider-backed workers, usage tracking, compute, memory, storage, and model route costs.",
+		"Agent Machines pricing model for provider-backed workers, usage tracking, compute, memory, storage, and model path costs.",
 	alternates: { canonical: "/pricing" },
 };
 
 const PRICING_METRICS = [
 	{ label: "Seat pricing", value: "$0", detail: "workers are the unit" },
 	{ label: "Usage tracking", value: "daily", detail: "CPU, memory, storage rollups" },
-	{ label: "Model costs", value: "BYOK", detail: "billed by the selected route" },
+	{ label: "Model costs", value: "BYOK", detail: "billed by the selected path" },
 ];
 
 const PRICING_FLOW = [
-	{ label: "Choose lane", body: "Pick the provider, runtime, machine spec, and model route." },
+	{ label: "Choose lane", body: "Pick the provider, runtime, machine spec, and model path." },
 	{ label: "Run worker", body: "Active compute, reserved memory, storage, and model calls are tracked." },
 	{ label: "Inspect usage", body: "Dashboard usage panels expose rollups without hiding the source." },
 ];
@@ -38,7 +38,7 @@ export default function PricingPage() {
 				<MarketingHero
 					kicker="./PRICING"
 					title="Pay for the worker you run."
-					description="Agent Machines is designed around provider-backed workers, not seats. Bring provider and model credentials, then inspect compute, memory, storage, logs, and model-route usage from the dashboard."
+					description="Agent Machines is designed around provider-backed workers, not seats. Bring provider and model credentials, then inspect compute, memory, storage, logs, and model-path usage from the dashboard."
 					badges={["BYOK", "usage", "providers", "models"]}
 					icon="cpu"
 					actions={
@@ -59,7 +59,7 @@ export default function PricingPage() {
 								"cpu_seconds rolled up daily",
 								"memory_gib_seconds rolled up daily",
 								"storage_gib_month estimated",
-								"model route usage tracked separately",
+								"model path usage tracked separately",
 							]}
 							className="h-full rounded-none border-0"
 						/>

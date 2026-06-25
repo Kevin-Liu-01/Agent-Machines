@@ -108,7 +108,7 @@ export function RuntimeVizGrid() {
 					icon="schedule"
 					label="next cron"
 					hint="cron tick"
-					footer="durable schedule . machine exec"
+					footer="durable schedule . machine command"
 				>
 					<Dial fraction={0.31} />
 				</RuntimeCard>
@@ -379,7 +379,7 @@ const SKILL_CHIPS: ReadonlyArray<string> = [
 	"cli",
 	"plugin",
 	"source",
-	"service route",
+	"service lane",
 ];
 
 function ChipStack({ chips }: { chips: ReadonlyArray<string> }) {

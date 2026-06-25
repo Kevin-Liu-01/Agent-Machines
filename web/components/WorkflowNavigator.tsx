@@ -1,4 +1,4 @@
-import type { SVGProps } from "react";
+import type { CSSProperties, SVGProps } from "react";
 
 import { Logo, type Mark } from "@/components/Logo";
 import { CircuitArt } from "@/components/reticle/CircuitArt";
@@ -19,6 +19,10 @@ type PoweredByEntry =
 	| { kind: "service"; name: string; slug: ServiceSlug };
 
 type Metric = readonly [label: string, value: string, hint?: string];
+
+type CircuitStyle = CSSProperties & {
+	"--ret-circuit-size": string;
+};
 
 type Step = {
 	id: string;
@@ -45,12 +49,12 @@ const STEPS: ReadonlyArray<Step> = [
 		Icon: IconPanel,
 		art: "overview",
 		bullets: [
-			["Route ", "runtime + substrate", " from one account settings model"],
+			["Pair ", "runtime + substrate", " from one account settings model"],
 			["Worker lifecycle: ", "wake · sleep · destroy", " (per substrate capability)"],
 			["Persistent state in ", "/home/machine/.agent-machines"],
 		],
 		metrics: [
-			["route", "runtime + substrate", "account object"],
+			["recipe", "runtime + substrate", "account object"],
 			["state", "disk-backed", "/home/machine"],
 			["actions", "wake · sleep · destroy", "capability gated"],
 		],
@@ -63,19 +67,19 @@ const STEPS: ReadonlyArray<Step> = [
 		id: "agent",
 		tab: "agent",
 		stage: "02",
-		kicker: "AGENT MACHINES · RUNTIME ROUTES",
+		kicker: "AGENT MACHINES · RUNTIME LANES",
 		title: "Four runtimes, two operation models, one worker.",
-		body: "Hermes and OpenClaw run as longer-lived agent routes. Claude Code and Codex run as task CLIs. Each lands inside the same machine record and persistent runtime root.",
+		body: "Hermes and OpenClaw run as longer-lived agent drivers. Claude Code and Codex run as task CLIs. Each lands inside the same machine record and persistent runtime root.",
 		Icon: IconAgent,
 		art: "agents",
 		bullets: [
-			["Autonomous routes: ", "Hermes · OpenClaw"],
-			["Task-driven routes: ", "Claude Code · Codex"],
+			["Always-on agents: ", "Hermes · OpenClaw"],
+			["Task CLIs: ", "Claude Code · Codex"],
 			["Reusable per-account ", "agent profiles"],
 		],
 		metrics: [
 			["autonomous", "Hermes · OpenClaw", "gateway workers"],
-			["task cli", "Claude Code · Codex", "headless exec"],
+			["task cli", "Claude Code · Codex", "headless commands"],
 			["profile", "per account", "saved default"],
 		],
 		poweredBy: [
@@ -89,18 +93,18 @@ const STEPS: ReadonlyArray<Step> = [
 		stage: "03",
 		kicker: "AGENT MACHINES · LOADOUT",
 		title: "Skills, MCP servers, CLIs, and plugins — one harness.",
-		body: "Loadout is the active stack on a machine: skills, MCPs, service routes, CLIs, plugins, and source entries. Registry is where new entries get added.",
+		body: "Loadout is the active stack on a machine: skills, MCPs, service lanes, CLIs, plugins, and source entries. Registry is where new entries get added.",
 		Icon: IconTools,
 		art: "loadout",
 		bullets: [
 			["", `${HARNESS.skillCount} skills`, " in SKILL.md protocol"],
-			["", `${HARNESS.serviceRouteCount} service routes`, " · MCP → CLI → skills"],
+			["", `${HARNESS.serviceRouteCount} service lanes`, " · MCP → CLI → skills"],
 			["", `${HARNESS.cliCount}+ CLIs`, " · closed-loop verification"],
 			["Custom loadout: ", "skill · tool · mcp · cli · plugin"],
 		],
 		metrics: [
 			["skills", `${HARNESS.skillCount}`, "SKILL.md"],
-			["services", `${HARNESS.serviceRouteCount}`, "ranked routes"],
+			["services", `${HARNESS.serviceRouteCount}`, "ranked lanes"],
 			["tools", `${HARNESS.rigToolSurfaceCount}`, "callable"],
 		],
 		poweredBy: [{ kind: "logo", name: "Agent Machines", mark: "am" }],
@@ -109,7 +113,7 @@ const STEPS: ReadonlyArray<Step> = [
 		id: "providers",
 		tab: "providers",
 		stage: "04",
-		kicker: "AGENT MACHINES · SUBSTRATE ROUTES",
+		kicker: "AGENT MACHINES · SUBSTRATE LANES",
 		title: "Four substrate lanes — E2B, Sprites, Dedalus, and Vercel.",
 		body: "Each lane implements the same MachineProvider shape. The UI shows only the lifecycle actions and streaming behavior that provider supports.",
 		Icon: IconProvider,
@@ -142,7 +146,7 @@ const STEPS: ReadonlyArray<Step> = [
 			["Phase-tracked ", "bootstrap", " presets"],
 		],
 		metrics: [
-			["gateway", "ai gateway", "default route"],
+			["gateway", "ai gateway", "default path"],
 			["env", "profiles", "named sets"],
 			["bootstrap", "phased", "visible steps"],
 		],
@@ -174,7 +178,7 @@ export function WorkflowNavigator() {
 					</h2>
 					<p className="mt-4 max-w-[58ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
 						Account settings compile into a runnable worker: runtime,
-						substrate, model route, environment, loadout, and observable state.
+						substrate, model path, environment, loadout, and observable state.
 					</p>
 				</div>
 				<div className="grid grid-cols-2 gap-px bg-[var(--ret-border)] sm:grid-cols-4">
@@ -280,16 +284,22 @@ function WorkflowRow({ step, index }: { step: Step; index: number }) {
 				)}
 			</div>
 
-			{/* Transparent diagram + concrete readout */}
+			{/* Circuit diagram + concrete readout */}
 			<div className="grid min-h-[440px] gap-px border-l border-[var(--ret-border)] bg-[var(--ret-border)] md:min-h-0 lg:grid-rows-[0.54fr_0.46fr]">
 				<div className="grid gap-px bg-[var(--ret-border)] lg:grid-cols-[0.86fr_1.14fr]">
 					<div className="group relative min-h-[230px] overflow-hidden bg-[var(--ret-bg)]">
-						<CircuitArt slug={step.art} variant="fill" fit="cover" />
-						<div className="ret-circuit-texture pointer-events-none absolute inset-0 opacity-[0.08] mix-blend-multiply invert dark:opacity-[0.14] dark:mix-blend-screen dark:invert-0" />
+						<div
+							className="ret-circuit-texture pointer-events-none absolute inset-0 opacity-[0.22] mix-blend-multiply invert dark:opacity-[0.34] dark:mix-blend-screen dark:invert-0"
+							style={{ "--ret-circuit-size": "320px 426px" } as CircuitStyle}
+						/>
+						<div
+							className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_58%_42%,transparent_0,transparent_36%,var(--ret-bg)_82%)] opacity-75"
+							aria-hidden="true"
+						/>
 						<div className="relative z-10 flex h-full flex-col justify-between p-4 md:p-5">
 							<div className="flex items-center justify-between gap-3">
 								<span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
-									transparent schematic
+									stage {step.stage}
 								</span>
 								<step.Icon className="h-5 w-5 text-[var(--ret-text-muted)]" />
 							</div>
@@ -415,10 +425,10 @@ function AgentTerminal() {
 				cols={["Claude Code", "task-driven", "coding + SDK"]}
 			/>
 			<TTableRow
-				cols={["Codex CLI", "task-driven", "sandbox + exec"]}
+				cols={["Codex CLI", "task-driven", "sandbox + command"]}
 			/>
 			<TSpacer />
-			<TLine success>✓ Runtime routes ready</TLine>
+			<TLine success>✓ Runtime lanes ready</TLine>
 		</TerminalShell>
 	);
 }
@@ -431,7 +441,7 @@ function ToolsTerminal() {
 			<TRow label="Built-ins" value={`${HARNESS.rigToolSurfaceCount} tools`} />
 			<TRow label="Skills" value={`${HARNESS.skillCount} synced`} />
 			<TRow label="MCP servers" value={`${HARNESS.mcpServerCount} catalog entries`} />
-			<TRow label="Services" value={`${HARNESS.serviceRouteCount} routes`} />
+			<TRow label="Services" value={`${HARNESS.serviceRouteCount} lanes`} />
 			<TSpacer />
 			<TLine dim>
 				Categories: frontend · security · research · design · ops ·

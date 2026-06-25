@@ -6,7 +6,7 @@ import { resourcePageBySlug } from "@/lib/marketing/public-site";
 export const metadata: Metadata = {
 	title: "API Reference",
 	description:
-		"Agent Machines API reference notes for machine records, gateway calls, lifecycle routes, logs, metrics, and artifacts.",
+		"Agent Machines API reference notes for machine records, gateway calls, lifecycle lanes, logs, metrics, and artifacts.",
 	alternates: { canonical: "/api-reference" },
 };
 

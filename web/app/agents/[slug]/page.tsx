@@ -74,7 +74,7 @@ export default async function AgentTemplatePage({ params }: Params) {
 					}
 				/>
 				<ReticleSpacer />
-				<SectionBand label="Template" title="Runtime, route, and tools stay explicit.">
+				<SectionBand label="Template" title="Runtime, model path, and tools stay explicit.">
 					<div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
 						<MetricGrid metrics={agent.metrics} />
 						<div className="border border-[var(--ret-border)] bg-[var(--ret-bg)]">

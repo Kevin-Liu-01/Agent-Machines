@@ -67,7 +67,7 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "Can I run multiple agents for different jobs?",
 		answer:
-			"Yes. Provision specialist machines from opinionated presets: Hermes for memory and scheduled work, OpenClaw for browser work, Claude Code or Codex for coding tasks. Each preset bundles runtime, model route, memory, and loadout. One dashboard supervises activity, chat, cron, logs, usage, and artifacts.",
+			"Yes. Provision specialist machines from opinionated presets: Hermes for memory and scheduled work, OpenClaw for browser work, Claude Code or Codex for coding tasks. Each preset bundles runtime, model path, memory, and loadout. One dashboard supervises activity, chat, cron, logs, usage, and artifacts.",
 	},
 	{
 		question: "What is Agent Machines?",
@@ -86,12 +86,12 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "Which providers can host the machine?",
 		answer:
-			"E2B Sandbox, Sprites.dev, Dedalus Machines, and Vercel Sandbox are live provider implementations. Each plugs into the same MachineProvider abstraction for provision, state, lifecycle, exec, streaming where available, and public URLs where supported.",
+			"E2B Sandbox, Sprites.dev, Dedalus Machines, and Vercel Sandbox are live provider implementations. Each plugs into the same MachineProvider abstraction for provision, state, lifecycle, command streaming where available, and public URLs where supported.",
 	},
 	{
 		question: "How is this different from a sandbox like E2B or Daytona?",
 		answer:
-			"Those are machine substrates. Agent Machines is the product layer above them: route to E2B, Sprites.dev, Vercel Sandbox, or Dedalus and get runtime install, loadout, gateway, cron, logs, usage, artifacts, and the browser console in one worker. Provider-specific features like sleep, snapshots, and public URLs are surfaced when the selected lane supports them.",
+			"Those are machine substrates. Agent Machines is the product layer above them: pick E2B, Sprites.dev, Vercel Sandbox, or Dedalus and get runtime install, loadout, gateway, cron, logs, usage, artifacts, and the browser console in one worker. Provider-specific features like sleep, snapshots, and public URLs are surfaced when the selected lane supports them.",
 	},
 	{
 		question: "How do I get my own machine today?",
@@ -115,7 +115,7 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "What inference providers are supported?",
 		answer:
-			"Models route through any OpenAI-compatible /v1 endpoint. The CLI defaults to a vendor-agnostic inference URL; override with DEDALUS_CHAT_BASE_URL or configure model.base_url on the machine. The dashboard stores a model slug per machine.",
+			"Models can use any OpenAI-compatible /v1 endpoint. The CLI defaults to a vendor-agnostic inference URL; override with DEDALUS_CHAT_BASE_URL or configure model.base_url on the machine. The dashboard stores a model slug per machine.",
 	},
 	{
 		question: "What happens when a machine sleeps?",

@@ -6,7 +6,7 @@ import { resourcePageBySlug } from "@/lib/marketing/public-site";
 export const metadata: Metadata = {
 	title: "Blog",
 	description:
-		"Agent Machines engineering notes about persistent agents, runtime routes, provider lanes, usage tracking, and fleet operations.",
+		"Agent Machines engineering notes about persistent agents, runtime lanes, provider lanes, usage tracking, and fleet operations.",
 	alternates: { canonical: "/blog" },
 };
 

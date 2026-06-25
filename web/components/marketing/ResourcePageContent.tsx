@@ -12,7 +12,7 @@ import type { ResourcePage } from "@/lib/marketing/public-site";
 
 const RESOURCE_METRICS = [
 	{ label: "Control plane", value: "public", detail: "human-readable setup path" },
-	{ label: "Dashboard", value: "linked", detail: "routes map to real surfaces" },
+	{ label: "Dashboard", value: "linked", detail: "pages map to real surfaces" },
 	{ label: "State", value: "explicit", detail: "logs, usage, artifacts, cron" },
 ];
 

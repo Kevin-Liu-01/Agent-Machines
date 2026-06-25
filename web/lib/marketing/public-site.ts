@@ -88,7 +88,7 @@ export const PRODUCT_FEATURES: ReadonlyArray<ProductFeature> = [
 		description:
 			"Dedicated worker records keep runtime state, files, logs, cron, and artifacts together.",
 		longDescription:
-			"Agent Machines treats the worker as the product object. The selected runtime, provider lane, model route, environment profile, and loadout are stored together, then replayed when the machine starts again.",
+			"Agent Machines treats the worker as the product object. The selected runtime, provider lane, model path, environment profile, and loadout are stored together, then replayed when the machine starts again.",
 		icon: "server",
 		badges: ["runtime root", "logs", "cron", "artifacts"],
 		metrics: [
@@ -112,13 +112,13 @@ export const PRODUCT_FEATURES: ReadonlyArray<ProductFeature> = [
 	{
 		slug: "model-routing",
 		href: "/product/model-routing",
-		title: "Model routing",
-		navTitle: "Model routing",
+		title: "Model paths",
+		navTitle: "Model paths",
 		eyebrow: "Models",
 		description:
-			"Route agents through Dedalus, OpenRouter, Vercel AI Gateway, native keys, or your own OpenAI-compatible endpoint.",
+			"Send agents through Dedalus, OpenRouter, Vercel AI Gateway, native keys, or your own OpenAI-compatible endpoint.",
 		longDescription:
-			"Model choice is a machine setting, not a hardcoded agent assumption. Store route profiles once, then switch the active model path without rebuilding the worker or leaking credentials to the browser.",
+			"Model choice is a machine setting, not a hardcoded agent assumption. Store model path profiles once, then switch the active upstream without rebuilding the worker or leaking credentials to the browser.",
 		icon: "boxes",
 		badges: ["BYOK", "OpenAI-compatible", "router profiles"],
 		metrics: [
@@ -128,8 +128,8 @@ export const PRODUCT_FEATURES: ReadonlyArray<ProductFeature> = [
 		],
 		steps: [
 			{ label: "Store", body: "Add model credentials to the account credential gate." },
-			{ label: "Select", body: "Attach a route profile to each machine or runtime preset." },
-			{ label: "Inspect", body: "Usage panels show which route handled the work." },
+			{ label: "Select", body: "Attach a model path profile to each machine or runtime preset." },
+			{ label: "Inspect", body: "Usage panels show which model path carried the work." },
 		],
 		terminal: [
 			"gateway profile: research",
@@ -187,13 +187,13 @@ export const PRODUCT_FEATURES: ReadonlyArray<ProductFeature> = [
 		],
 		steps: [
 			{ label: "Create", body: "Provision the worker with a selected spec and runtime." },
-			{ label: "Operate", body: "Use lane-specific wake, pause, stream, and exec controls." },
+			{ label: "Drive", body: "Use lane-specific wake, pause, stream, and command controls." },
 			{ label: "Recover", body: "Open logs and artifacts when a step fails." },
 		],
 		terminal: [
 			"machine.lifecycle",
 			"provision -> ready",
-			"exec -> streamed",
+			"command -> streamed",
 			"usage -> recorded",
 			"pause -> provider-supported",
 		],
@@ -236,17 +236,17 @@ export const PRODUCT_FEATURES: ReadonlyArray<ProductFeature> = [
 		description:
 			"Create, run, and inspect agent machines through dashboard APIs and typed machine records.",
 		longDescription:
-			"The dashboard is the human control plane. Under it, machine records, gateway profiles, logs, metrics, and lifecycle routes are shaped so the same model can support an SDK and agent-to-agent orchestration.",
+			"The dashboard is the human control plane. Under it, machine records, gateway profiles, logs, metrics, and lifecycle lanes are shaped so the same model can support an SDK and agent-to-agent orchestration.",
 		icon: "terminal",
 		badges: ["typed records", "logs", "metrics", "gateway"],
 		metrics: [
 			{ label: "Primary object", value: "machine", detail: "runtime plus provider plus loadout" },
 			{ label: "Observability", value: "built in", detail: "logs and usage APIs" },
-			{ label: "Gateway", value: "routeable", detail: "chat and task entrypoints" },
+			{ label: "Gateway", value: "switchable", detail: "chat and task entrypoints" },
 		],
 		steps: [
 			{ label: "Record", body: "Store machine identity, provider lane, runtime, and profile." },
-			{ label: "Route", body: "Send chat or task traffic through the selected runtime." },
+			{ label: "Launch", body: "Send chat or task traffic through the selected runtime." },
 			{ label: "Observe", body: "Read logs, usage, state, artifacts, and cron status." },
 		],
 		terminal: [
@@ -405,8 +405,8 @@ export const AGENT_TEMPLATES: ReadonlyArray<AgentTemplate> = [
 		],
 		workflow: [
 			{ label: "Read", body: "Pull ticket context and relevant knowledge." },
-			{ label: "Resolve", body: "Draft replies or execute approved browser steps." },
-			{ label: "Escalate", body: "Route uncertain cases with full context." },
+			{ label: "Resolve", body: "Draft replies or run approved browser steps." },
+			{ label: "Escalate", body: "Hand off uncertain cases with full context." },
 		],
 	},
 	{
@@ -430,7 +430,7 @@ export const AGENT_TEMPLATES: ReadonlyArray<AgentTemplate> = [
 		],
 		workflow: [
 			{ label: "Load", body: "Attach the runbook, env profile, and cloud tooling." },
-			{ label: "Execute", body: "Run steps with checkpoints and logs." },
+			{ label: "Run", body: "Move through steps with checkpoints and logs." },
 			{ label: "Close", body: "Save outputs, risks, and rollback notes." },
 		],
 	},
@@ -599,11 +599,11 @@ export const RESOURCE_PAGES: ReadonlyArray<ResourcePage> = [
 		navTitle: "API reference",
 		eyebrow: "API",
 		description:
-			"Reference notes for dashboard routes, gateway calls, machine records, logs, metrics, and future SDK shapes.",
+			"Reference notes for dashboard APIs, gateway calls, machine records, logs, metrics, and future SDK shapes.",
 		icon: "braces",
 		sections: [
 			{ label: "Machines", body: "List, inspect, provision, and update machine records." },
-			{ label: "Gateway", body: "Send chat or task traffic through the selected runtime route." },
+			{ label: "Gateway", body: "Send chat or task traffic through the selected runtime lane." },
 			{ label: "Telemetry", body: "Read logs, daily usage rollups, artifacts, and cron state." },
 		],
 	},

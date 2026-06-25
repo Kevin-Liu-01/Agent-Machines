@@ -121,7 +121,7 @@ export default async function OpengraphImage() {
 						maxWidth: 980,
 					}}
 				>
-					Route runtime, provider lane, model path, loadout, logs, usage,
+					Pair runtime, provider lane, model path, loadout, logs, usage,
 					cron, and artifacts from one account.
 				</div>
 
@@ -138,10 +138,10 @@ export default async function OpengraphImage() {
 				>
 					{[
 						{ label: `${HARNESS_COUNTS.skillCount} skills` },
-						{ label: `${HARNESS_COUNTS.serviceRouteCount} service routes` },
+						{ label: `${HARNESS_COUNTS.serviceRouteCount} service lanes` },
 						{ label: `${HARNESS_COUNTS.cliCount}+ CLIs` },
 						{ label: `${HARNESS_COUNTS.mcpServerCount} MCP servers` },
-						{ label: "route runtime + provider" },
+						{ label: "pair runtime + provider" },
 					].map((f) => (
 						<div
 							key={f.label}

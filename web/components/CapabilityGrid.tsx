@@ -27,17 +27,17 @@ function publicLogoTone(mark: CompositeMark): "native" | undefined {
 
 const CAPABILITIES: ReadonlyArray<Capability> = [
 	{
-		kicker: "ROUTING",
-		title: "Agents and containers",
-		body: `${PRODUCT.analogies.primary}. Pick Hermes, OpenClaw, Claude Code, or Codex, then pick E2B, Sprites.dev, Dedalus Machines, or Vercel Sandbox. One account stores the route and supervises the worker.`,
-		notes: ["OpenRouter-style", "dual routing", "one account"],
+		kicker: "SWITCHBOARD",
+		title: "Agents and machine lanes",
+		body: `${PRODUCT.analogies.primary}. Pick Hermes, OpenClaw, Claude Code, or Codex, then pick E2B, Sprites.dev, Dedalus Machines, or Vercel Sandbox. One account stores the worker recipe and supervises the run.`,
+		notes: ["OpenRouter-style", "runtime + host", "one account"],
 		mark: "agent",
 		nyx: "nyx-waves",
 	},
 	{
 		kicker: "FLEET",
 		title: "Specialist workers",
-		body: "Provision opinionated presets for research, browser work, coding, and ops. Each preset carries runtime, model route, memory, and loadout, then reports back to the same fleet dashboard.",
+		body: "Provision opinionated presets for research, browser work, coding, and ops. Each preset carries runtime, model path, memory, and loadout, then reports back to the same fleet dashboard.",
 		notes: ["presets", "multi-machine", "one pane"],
 		mark: "agent",
 	},
@@ -52,20 +52,20 @@ const CAPABILITIES: ReadonlyArray<Capability> = [
 	{
 		kicker: "PROVIDERS",
 		title: "Four live hosts",
-		body: "Dedalus Machines, E2B Sandbox, Sprites.dev, and Vercel Sandbox each implement provision, exec, wake/sleep (where supported), and public URL through the same MachineProvider interface.",
+		body: "Dedalus Machines, E2B Sandbox, Sprites.dev, and Vercel Sandbox each implement spin-up, command streaming, wake/sleep where supported, and public URLs through the same MachineProvider interface.",
 		notes: ["dedalus", "e2b", "sprites", "vercel"],
 	},
 	{
 		kicker: "AGENTS",
 		title: "Four agent runtimes",
-		body: "Hermes, OpenClaw, Claude Code, or Codex install into the same worker shape. Gateway agents expose chat endpoints; CLI agents run through terminal and one-shot exec.",
-		notes: ["gateway", "terminal", "exec"],
+		body: "Hermes, OpenClaw, Claude Code, or Codex install into the same worker shape. Gateway agents expose chat endpoints; CLI agents run through terminal and one-shot commands.",
+		notes: ["gateway", "terminal", "command"],
 		mark: "agent",
 	},
 	{
 		kicker: "HARNESS",
 		title: "Registry-driven loadout",
-		body: `${HARNESS.serviceRouteCount} service routes, ${HARNESS.mcpServerCount} MCP servers, ${HARNESS.cliCount}+ CLIs, ${HARNESS.taskRouteCount} task routes — ranked like tool-hierarchy.mdc. Native tool count varies by agent runtime (${HARNESS.nativeToolMin}–${HARNESS.nativeToolMax}).`,
+		body: `${HARNESS.serviceRouteCount} service lanes, ${HARNESS.mcpServerCount} MCP servers, ${HARNESS.cliCount}+ CLIs, ${HARNESS.taskRouteCount} task lanes — ranked like tool-hierarchy.mdc. Native tool count varies by agent runtime (${HARNESS.nativeToolMin}–${HARNESS.nativeToolMax}).`,
 		notes: ["MCP → CLI → skill", "catalog.json", "loadout.ts"],
 		mark: "agent",
 		nyx: "nyx-waves",
@@ -100,7 +100,7 @@ export function CapabilityGrid() {
 				<div>
 					<ReticleLabel>CAPABILITIES</ReticleLabel>
 					<h2 className="ret-display mt-2 text-xl md:text-2xl">
-						Route agents. Route substrates. Supervise the fleet.
+						Pick agents. Pick machines. Watch the fleet.
 					</h2>
 				</div>
 				<p className="hidden font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)] md:block">
@@ -161,7 +161,7 @@ function MiniGlyph({ index }: { index: number }) {
 		["hermes", "e2b", "dedalus"],
 		["clerk", "fleet", "active"],
 		["sleep", "wake", "bill"],
-		["host", "exec", "disk"],
+		["host", "shell", "disk"],
 		["agent", "gateway", "chat"],
 		["tool", "mcp", "skill"],
 		["intent", "skill", "reload"],

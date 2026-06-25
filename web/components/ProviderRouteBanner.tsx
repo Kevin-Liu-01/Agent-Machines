@@ -63,8 +63,8 @@ export function ProviderRouteBanner() {
 				</div>
 
 				<p className="hidden min-w-0 truncate text-[11px] font-normal leading-snug text-[var(--ret-text-dim)] lg:block">
-					Route runtime and substrate in one account — deploy persistent agent workers
-					with tools and supervise your fleet from one dashboard.
+					Pair runtime and machine lane in one account. Spin up persistent
+					workers with tools, then watch the fleet from one dashboard.
 				</p>
 			</div>
 
@@ -76,7 +76,7 @@ export function ProviderRouteBanner() {
 					"transition-colors group-hover/banner:border-[var(--ret-purple)]/45 group-hover/banner:bg-[var(--ret-purple)]/12",
 				)}
 			>
-				Provision
+				Launch
 				<IconArrowRight className="h-2.5 w-2.5 transition-transform group-hover/banner:translate-x-0.5" />
 			</span>
 		</a>

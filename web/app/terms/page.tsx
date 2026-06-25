@@ -84,7 +84,7 @@ export default function TermsPage() {
 					<p>
 						You keep rights to content you upload, create, or process through
 						your machine. You grant Agent Machines the limited permission needed
-						to operate the dashboard, route requests, store configuration, and
+						to operate the dashboard, send requests, store configuration, and
 						display machine data back to you.
 					</p>
 					<p>

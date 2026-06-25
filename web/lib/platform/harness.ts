@@ -1,7 +1,7 @@
 /**
  * Agent Machines harness — registry-derived stats and product framing.
  *
- * OpenRouter for agents and containers: route runtime + substrate, deploy a
+ * OpenRouter for agents and containers: choose runtime + substrate, deploy a
  * persistent agent worker (skills, MCP, cron, observation, fleet management).
  *
  * Counts come from live registries (loadout, MCP catalog, skills manifest).
@@ -25,14 +25,14 @@ import type { AgentKind } from "@/lib/types";
 
 export const PRODUCT = {
 	name: "Agent Machines",
-	/** Site title suffix, OG, GitHub — lead with the routing analogy. */
-	tagline: "OpenRouter for agents and containers.",
+	/** Site title suffix, OG, GitHub — lead with the switchboard analogy. */
+	tagline: "Switchboard for agents and machines.",
 	oneLiner:
-		"Route agent runtimes, model paths, and machine providers in one account, then deploy persistent workers with skills, MCP, cron, logs, usage, and fleet controls already wired.",
+		"Pick agent runtimes, model paths, and machine providers in one account, then deploy persistent workers with skills, MCP, cron, logs, usage, and fleet controls already wired.",
 	summary:
-		"Agent Machines is the product layer above sandboxes: a control plane that provisions a persistent agent worker as one unit — runtime, model route, skills, MCP, integrations, cron, observation, and fleet management — on the machine provider you choose.",
+		"Agent Machines is the product layer above sandboxes: a control plane that provisions a persistent agent worker as one unit — runtime, model path, skills, MCP, integrations, cron, observation, and fleet management — on the machine provider you choose.",
 	analogies: {
-		primary: "OpenRouter for agents and containers",
+		primary: "A switchboard for agents and containers",
 		substrate:
 			"Vercel on AWS — Agent Machines is the product layer; E2B, Sprites.dev, Dedalus Machines, and Vercel Sandbox are interchangeable infrastructure underneath",
 	},
@@ -40,16 +40,16 @@ export const PRODUCT = {
 		humans:
 			"Pick runtime + substrate in clicks. Provision specialist agents from presets (design, news, code, ops). Supervise the fleet from one dashboard.",
 		agents:
-			"MCP + CLI surface so a head agent can provision, route, observe, and tear down worker machines (the endgame).",
+			"MCP + CLI surface so a head agent can launch, switch, observe, and tear down worker machines (the endgame).",
 	},
 	fleet:
-		"Provision specialist workers from opinionated presets (Hermes, OpenClaw, Claude Code, Codex). Each preset is runtime + model route + memory bundle + loadout, visible from one fleet dashboard.",
+		"Provision specialist workers from opinionated presets (Hermes, OpenClaw, Claude Code, Codex). Each preset is runtime + model path + memory bundle + loadout, visible from one fleet dashboard.",
 	substrateNote:
-		"Dedalus Machines is one of four live providers (with E2B, Sprites.dev, and Vercel Sandbox) and currently benchmarks best on boot latency and sleep/wake — a strong default, not the product. Sandboxed environments are hard; we route rather than rebuild infra.",
+		"Dedalus Machines is one of four live providers (with E2B, Sprites.dev, and Vercel Sandbox) and currently benchmarks best on boot latency and sleep/wake — a strong default, not the product. Sandboxed environments are hard; we pick lanes rather than rebuild every host.",
 	moat: [
 		"SKILL.md protocol — versioned agent procedures that compound every session",
 		"Combined harness — runtime + skills + services + CLIs + observation in one deploy",
-		"Dual routing — agent runtime and container substrate, OpenRouter-style",
+		"Dual switchboard — agent runtime and container substrate, OpenRouter-style",
 		"Programmatic control plane — dashboard for humans, MCP/CLI for agent-to-agent orchestration",
 	],
 } as const;
@@ -63,7 +63,7 @@ export const HARNESS_LAYERS = [
 	},
 	{
 		id: "services",
-		label: "Service routes",
+		label: "Service lanes",
 		description:
 			"Per-vendor interface rankings (MCP → CLI → plugin skill → personal skill). Mirrors tool-hierarchy.mdc.",
 	},
@@ -87,7 +87,7 @@ export const HARNESS_LAYERS = [
 	},
 	{
 		id: "tasks",
-		label: "Task routes",
+		label: "Task lanes",
 		description:
 			"Category-level rankings for browser automation, QA, security, design review, research, SEO, animation, 3D, etc.",
 	},
@@ -151,7 +151,7 @@ export const HARNESS = {
 /** One-line harness summary for SEO / OG / hero pills. */
 export const HARNESS_SUMMARY = [
 	`${HARNESS.skillCount} skills`,
-	`${HARNESS.serviceRouteCount} service routes`,
+	`${HARNESS.serviceRouteCount} service lanes`,
 	`${HARNESS.cliCount}+ CLIs`,
 	`${HARNESS.mcpServerCount} MCP servers`,
 	"agent-native tools",
@@ -163,7 +163,7 @@ export const HARNESS_DEPLOY_LINE =
 
 /** FAQ-safe tools answer — registry-aware, not a fake single number. */
 export const HARNESS_TOOLS_ANSWER =
-	`The harness ships ${HARNESS.skillCount} SKILL.md files, ${HARNESS.serviceRouteCount} ranked service routes (MCP → CLI → skills per vendor), ${HARNESS.mcpServerCount} MCP catalog entries (${HARNESS.mcpTiers.core} core + ${HARNESS.mcpTiers.bundled} bundled + ${HARNESS.mcpTiers.ide} IDE), ${HARNESS.cliCount}+ closed-loop CLIs, and ${HARNESS.nativeToolMin}–${HARNESS.nativeToolMax} agent-native tools depending on runtime (Hermes, OpenClaw, Claude Code, Codex). The loadout registry — not static marketing copy — is the source of truth.`;
+	`The harness ships ${HARNESS.skillCount} SKILL.md files, ${HARNESS.serviceRouteCount} ranked service lanes (MCP → CLI → skills per vendor), ${HARNESS.mcpServerCount} MCP catalog entries (${HARNESS.mcpTiers.core} core + ${HARNESS.mcpTiers.bundled} bundled + ${HARNESS.mcpTiers.ide} IDE), ${HARNESS.cliCount}+ closed-loop CLIs, and ${HARNESS.nativeToolMin}–${HARNESS.nativeToolMax} agent-native tools depending on runtime (Hermes, OpenClaw, Claude Code, Codex). The loadout registry — not static marketing copy — is the source of truth.`;
 
 export function nativeToolsLabel(agent: AgentKind = "hermes"): string {
 	const n = HARNESS.nativeToolsByAgent[agent];

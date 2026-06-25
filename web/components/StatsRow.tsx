@@ -95,11 +95,11 @@ const READOUTS: ReadonlyArray<{
 	{
 		label: "package",
 		value: "1 install",
-		description: "A typed client for the route.",
+		description: "A typed client for the worker.",
 		icon: "code",
 	},
 	{
-		label: "route",
+		label: "recipe",
 		value: "agent + box",
 		description: "Runtime and sandbox stay separate.",
 		icon: "delegate",
@@ -119,7 +119,7 @@ const READOUTS: ReadonlyArray<{
 	{
 		label: "run",
 		value: "one call",
-		description: "Gateway first, exec fallback.",
+		description: "Gateway first, command fallback.",
 		icon: "shell",
 	},
 	{
@@ -147,7 +147,7 @@ const PIPELINE: ReadonlyArray<{
 	{
 		icon: "delegate",
 		kicker: "02",
-		title: "Declare the route",
+		title: "Shape the worker",
 		body: "Pick runtime, substrate, and model.",
 		code: "am.create({ agent, sandbox, model })",
 	},
@@ -178,7 +178,7 @@ export function StatsRow() {
 							Create the worker in code.
 						</h2>
 						<p className="mt-4 max-w-[54ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
-							Agent Machines turns a small route object into a persistent agent
+							Agent Machines turns a small worker recipe into a persistent agent
 							worker. Pick the runtime, sandbox, model, and state policy. The
 							control plane handles boot, gateway, logs, and usage.
 						</p>
@@ -240,7 +240,7 @@ function CodePanel() {
 					</span>
 				</div>
 				<span className="font-mono text-[10px] text-[var(--ret-text-muted)]">
-					{"route -> worker"}
+					{"recipe -> worker"}
 				</span>
 			</div>
 			<pre className="relative z-10 m-0 overflow-hidden bg-[var(--ret-bg)]/82 px-3 py-4 font-mono text-[11px] leading-6 text-[var(--ret-text)] backdrop-blur-sm md:px-5 md:py-5 md:text-[12px]">
