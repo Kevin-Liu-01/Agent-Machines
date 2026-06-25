@@ -5,12 +5,34 @@
       .bus{stroke:#fff;stroke-width:2;stroke-linecap:square;stroke-linejoin:miter;vector-effect:non-scaling-stroke}
       .trace{stroke:#fff;stroke-width:1.45;stroke-linecap:square;stroke-linejoin:miter;vector-effect:non-scaling-stroke}
       .fine{stroke:#fff;stroke-width:1;stroke-linecap:square;stroke-linejoin:miter;vector-effect:non-scaling-stroke}
-      .pad{stroke:#fff;stroke-width:1.6;vector-effect:non-scaling-stroke}
+      .pad{fill:none;stroke:#fff;stroke-width:1.6;vector-effect:non-scaling-stroke}
       .pin{fill:#fff}
       .chip{stroke:#fff;stroke-width:1.6;vector-effect:non-scaling-stroke}
     </style>
+    <mask id="trace-clearance" x="0" y="0" width="384" height="512" maskUnits="userSpaceOnUse">
+      <rect width="384" height="512" fill="#fff"/>
+      <g fill="#000">
+        <circle cx="118" cy="48" r="8.8"/>
+        <circle cx="166" cy="88" r="8.8"/>
+        <circle cx="196" cy="152" r="8.8"/>
+        <circle cx="258" cy="152" r="8.8"/>
+        <circle cx="66" cy="228" r="8.8"/>
+        <circle cx="70" cy="274" r="8.8"/>
+        <circle cx="288" cy="230" r="8.8"/>
+        <circle cx="300" cy="278" r="8.8"/>
+        <circle cx="186" cy="348" r="8.8"/>
+        <circle cx="248" cy="406" r="8.8"/>
+        <circle cx="166" cy="462" r="8.8"/>
+        <circle cx="252" cy="462" r="8.8"/>
+        <rect x="28.5" y="212.5" width="17" height="17" rx="2.5"/>
+        <rect x="30.5" y="282.5" width="17" height="17" rx="2.5"/>
+        <rect x="336.5" y="184.5" width="17" height="17" rx="2.5"/>
+        <rect x="338.5" y="290.5" width="17" height="17" rx="2.5"/>
+      </g>
+    </mask>
   </defs>
   <rect width="384" height="512" fill="transparent"/>
+  <g mask="url(#trace-clearance)">
 
   <!-- Edge buses. These terminate cleanly at tile edges so repeats stay crisp. -->
   <g opacity=".34">
@@ -84,6 +106,7 @@
     <path class="fine" d="M252 164h50l28-28h54"/>
     <path class="fine" d="M248 462h46l26 26h64"/>
     <path class="fine" d="M170 462h-46l-22 22H54"/>
+  </g>
   </g>
 
   <!-- Pads and small terminals. Pads sit on endpoints, not intersections. -->
