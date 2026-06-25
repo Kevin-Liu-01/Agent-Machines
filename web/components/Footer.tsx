@@ -137,12 +137,21 @@ export function Footer() {
 					<span>Copyright 2026 Agent Machines</span>
 					<span>MIT . Reticle / Sigil UI</span>
 				</div>
-				<div className="overflow-hidden border-x border-t border-[var(--ret-border)] px-5 pb-6 pt-8">
+				<div className="relative overflow-hidden border-x border-t border-[var(--ret-border)] px-5 pb-6 pt-8">
 					<div
-						className="inline-block select-none whitespace-nowrap text-[clamp(46px,12.5vw,180px)] font-semibold leading-[0.82] tracking-normal text-[var(--ret-text)] opacity-[0.08] dark:opacity-[0.12]"
+						aria-hidden="true"
+						className="ret-circuit-texture pointer-events-none absolute inset-0 opacity-[0.08] mix-blend-multiply invert dark:opacity-[0.12] dark:mix-blend-screen dark:invert-0"
+					/>
+					<div
+						className="relative z-10 flex justify-center overflow-visible"
 						aria-label="Agent Machines"
 					>
-						agent machines
+						<span
+							className="ret-footer-glass-word select-none whitespace-nowrap text-center text-[clamp(48px,12.2vw,178px)] font-semibold leading-[0.82] tracking-normal"
+							data-text="agent machines"
+						>
+							agent machines
+						</span>
 					</div>
 				</div>
 			</div>

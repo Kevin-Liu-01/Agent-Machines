@@ -235,7 +235,7 @@ export function LoadoutPreview() {
 				</ReticleFrame>
 			</div>
 
-			<div className="mt-px grid grid-cols-2 gap-px overflow-hidden bg-[var(--ret-border)] sm:grid-cols-3 lg:grid-cols-7">
+			<div className="mt-px grid grid-cols-2 gap-px overflow-hidden bg-[var(--ret-border)] sm:grid-cols-3 lg:grid-cols-4">
 				{skillEntries.map(([cat, count]) => (
 					<div
 						key={cat}

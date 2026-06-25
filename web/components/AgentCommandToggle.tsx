@@ -222,7 +222,7 @@ function TerminalPanel({ agentId, meta }: { agentId: AgentKind; meta: AgentMeta 
 	}, [visibleCount]);
 
 	return (
-		<div className="flex h-[420px] flex-col bg-[#0a0a0c]">
+		<div className="flex h-full min-h-[520px] w-full flex-col bg-[#0a0a0c]">
 			<div className="flex items-center gap-2 border-b border-[#222] px-4 py-2">
 				<span className="h-2 w-2 rounded-full bg-[var(--ret-border-strong)]" />
 				<span className="text-[9px] uppercase tracking-[0.18em] text-[#555]">
@@ -274,7 +274,7 @@ export function AgentCommandToggle() {
 	const rows = commandsFor(meta);
 
 	return (
-		<div className="grid gap-px overflow-hidden bg-[var(--ret-border)]">
+		<div className="grid h-full min-h-[620px] w-full grid-rows-[auto_minmax(0,1fr)] gap-px overflow-hidden bg-[var(--ret-border)]">
 			{/* Tab bar */}
 			<div className="grid grid-cols-4 gap-px bg-[var(--ret-border)]">
 				{AGENTS.map((a) => (
@@ -296,11 +296,11 @@ export function AgentCommandToggle() {
 			</div>
 
 			{/* Two-panel body: terminal left, info right */}
-			<div className="grid gap-px bg-[var(--ret-border)] md:grid-cols-[1.4fr_0.6fr]">
+			<div className="grid min-h-0 w-full gap-px bg-[var(--ret-border)] md:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]">
 				<TerminalPanel agentId={active} meta={meta} />
 
 				{/* Info sidebar */}
-				<div className="flex flex-col gap-px bg-[var(--ret-border)]">
+				<div className="flex min-h-0 w-full flex-col gap-px bg-[var(--ret-border)]">
 					{/* Agent header */}
 					<div className="flex items-center justify-between bg-[var(--ret-bg)] px-4 py-3">
 						<div className="flex items-center gap-2">
@@ -362,6 +362,58 @@ export function AgentCommandToggle() {
 								</span>
 							</div>
 						))}
+					</div>
+
+					<div className="min-h-0 flex-1 bg-[var(--ret-bg)] px-4 py-4">
+						<div className="flex items-center justify-between gap-3">
+							<span className="text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+								worker state
+							</span>
+							<span className="font-mono text-[9px] text-[var(--ret-text-muted)]">
+								.agent-machines
+							</span>
+						</div>
+						<div className="mt-3 grid grid-cols-3 border border-[var(--ret-border)]">
+							<div className="border-r border-[var(--ret-border)] px-3 py-2">
+								<div className="font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
+									tools
+								</div>
+								<div className="mt-1 text-sm font-semibold text-[var(--ret-text)]">
+									{meta.nativeToolNames.length}
+								</div>
+							</div>
+							<div className="border-r border-[var(--ret-border)] px-3 py-2">
+								<div className="font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
+									lanes
+								</div>
+								<div className="mt-1 text-sm font-semibold text-[var(--ret-text)]">
+									{meta.providerOptions.length}
+								</div>
+							</div>
+							<div className="px-3 py-2">
+								<div className="font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
+									state
+								</div>
+								<div className="mt-1 text-sm font-semibold text-[var(--ret-text)]">
+									saved
+								</div>
+							</div>
+						</div>
+						<div className="mt-4 grid gap-px bg-[var(--ret-border)]">
+							{["memory", "cron", "logs", "artifacts"].map((item) => (
+								<div
+									key={item}
+									className="flex items-center justify-between bg-[var(--ret-bg)] py-1.5"
+								>
+									<span className="font-mono text-[10px] text-[var(--ret-text)]">
+										{item}
+									</span>
+									<span className="font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
+										visible
+									</span>
+								</div>
+							))}
+						</div>
 					</div>
 				</div>
 			</div>

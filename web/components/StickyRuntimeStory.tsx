@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type MouseEvent, useEffect, useRef, useState } from "react";
 
 import { AgentCommandToggle } from "@/components/AgentCommandToggle";
 import { LoadoutPreview } from "@/components/LoadoutPreview";
@@ -75,6 +75,19 @@ export function StickyRuntimeStory() {
 	const activeChapter = STORY_CHAPTERS[activeIndex] ?? STORY_CHAPTERS[0];
 	const activeAgent = getAgentMeta(activeChapter.agentId);
 
+	const scrollToChapter = (id: string) => {
+		setActiveId(id);
+		sectionRefs.current[id]?.scrollIntoView({
+			behavior: "smooth",
+			block: "start",
+		});
+	};
+
+	const handleChapterClick = (id: string) => (event: MouseEvent<HTMLAnchorElement>) => {
+		event.preventDefault();
+		scrollToChapter(id);
+	};
+
 	useEffect(() => {
 		const ratios = new Map<string, number>();
 		const nodes = [
@@ -107,8 +120,8 @@ export function StickyRuntimeStory() {
 			},
 			{
 				root: null,
-				rootMargin: "-34% 0px -42% 0px",
-				threshold: [0, 0.2, 0.4, 0.6, 0.8, 1],
+				rootMargin: "-42% 0px -46% 0px",
+				threshold: [0, 0.01, 0.18, 0.34, 0.55, 0.72, 0.9, 1],
 			},
 		);
 
@@ -120,13 +133,13 @@ export function StickyRuntimeStory() {
 	}, []);
 
 	return (
-		<section className="relative">
+		<section className="relative overflow-x-clip">
 			<div
 				ref={introRef}
 				data-story-id={STORY_CHAPTERS[0]?.id}
-				className="grid gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[0.7fr_1.3fr]"
+				className="grid gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[448px_minmax(0,1fr)]"
 			>
-				<div className="relative overflow-hidden bg-[var(--ret-bg)] px-4 py-7 md:px-6 md:py-9">
+				<div className="relative overflow-hidden bg-[var(--ret-bg)] px-4 py-7 md:px-6 md:py-10">
 					<CircuitArt
 						slug="agents"
 						variant="ambient"
@@ -149,12 +162,19 @@ export function StickyRuntimeStory() {
 							key={chapter.id}
 							href={`#agent-story-${chapter.id}`}
 							aria-current={chapter.id === activeId ? "step" : undefined}
-							onClick={() => setActiveId(chapter.id)}
+							onClick={handleChapterClick(chapter.id)}
 							className={cn(
-								"group flex min-h-[128px] flex-col justify-between bg-[var(--ret-bg)] p-4 transition-[background-color,transform] duration-150 ease-out hover:bg-[var(--ret-bg-soft)] active:scale-[0.99]",
+								"group relative flex min-h-[150px] flex-col justify-between overflow-hidden bg-[var(--ret-bg)] p-4 transition-[background-color,transform,border-color] duration-300 [transition-timing-function:var(--ret-ease-out)] hover:bg-[var(--ret-bg-soft)] active:scale-[0.99]",
 								chapter.id === activeId ? "bg-[var(--ret-bg-soft)]" : null,
 							)}
 						>
+							<span
+								aria-hidden="true"
+								className={cn(
+									"absolute inset-x-0 top-0 h-px origin-left bg-[var(--ret-text)] transition-transform duration-500 [transition-timing-function:var(--ret-ease-out)]",
+									chapter.id === activeId ? "scale-x-100" : "scale-x-0",
+								)}
+							/>
 							<div className="flex items-center justify-between gap-3">
 								<Logo
 									mark={getAgentMeta(chapter.agentId).logoMark}
@@ -178,14 +198,14 @@ export function StickyRuntimeStory() {
 				</div>
 			</div>
 
-			<div className="grid gap-px bg-[var(--ret-border)] lg:grid-cols-[minmax(300px,0.36fr)_minmax(0,0.64fr)]">
+			<div className="grid gap-px bg-[var(--ret-border)] lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,1fr)]">
 				<AgentStoryAside
 					key={activeChapter.id}
 					agent={activeAgent}
 					chapter={activeChapter}
 					index={activeIndex}
 					activeId={activeId}
-					onSelect={setActiveId}
+					onSelect={scrollToChapter}
 				/>
 				<div className="min-w-0 bg-[var(--ret-border)]">
 					{STORY_CHAPTERS.map((chapter, index) => (
@@ -196,7 +216,7 @@ export function StickyRuntimeStory() {
 								sectionRefs.current[chapter.id] = node;
 							}}
 							data-story-id={chapter.id}
-							className="scroll-mt-[84px] bg-[var(--ret-bg)] lg:min-h-[calc(100dvh-72px)]"
+							className="scroll-mt-[72px] bg-[var(--ret-bg)] transition-opacity duration-500 [scroll-snap-align:start] [transition-timing-function:var(--ret-ease-out)] lg:min-h-[calc(100dvh-64px)]"
 						>
 							<StorySurfacePanel
 								chapter={chapter}
@@ -225,7 +245,7 @@ function StorySurfacePanel({
 	return (
 		<div
 			className={cn(
-				"grid min-h-[560px] gap-px bg-[var(--ret-border)] lg:min-h-[calc(100dvh-72px)]",
+				"grid min-h-[620px] grid-rows-[auto_minmax(0,1fr)] gap-px bg-[var(--ret-border)] lg:min-h-[calc(100dvh-64px)]",
 				active ? "relative" : null,
 			)}
 		>
@@ -247,8 +267,10 @@ function StorySurfacePanel({
 					</span>
 				</div>
 			</div>
-			<div className="min-w-0 bg-[var(--ret-bg)]">
-				<StorySurfaceRenderer surface={chapter.surface} agent={agent} />
+			<div className="min-h-0 min-w-0 overflow-hidden bg-[var(--ret-bg)]">
+				<div className="h-full min-h-[560px] w-full transition-[opacity,transform] duration-500 [transition-timing-function:var(--ret-ease-out)]">
+					<StorySurfaceRenderer surface={chapter.surface} agent={agent} />
+				</div>
 			</div>
 		</div>
 	);
@@ -276,7 +298,7 @@ function AgentStoryAside({
 	const [metricLabel, metricValue, metricHint] = chapter.metric;
 
 	return (
-		<aside className="relative overflow-hidden bg-[var(--ret-bg)] p-5 md:p-6 lg:sticky lg:top-[72px] lg:h-[calc(100dvh-72px)] lg:min-h-[560px]">
+		<aside className="relative overflow-hidden bg-[var(--ret-bg)] p-5 md:p-6 lg:sticky lg:top-[64px] lg:h-[calc(100dvh-64px)] lg:min-h-[620px]">
 			<CircuitArt
 				slug={chapter.id}
 				variant="ambient"
@@ -284,7 +306,7 @@ function AgentStoryAside({
 			/>
 			<div
 				key={chapter.id}
-				className="relative z-10 flex h-full animate-[ret-panel-in_220ms_cubic-bezier(0.16,1,0.3,1)_both] flex-col justify-between gap-8 motion-reduce:animate-none"
+				className="relative z-10 grid h-full animate-[ret-panel-in_260ms_cubic-bezier(0.16,1,0.3,1)_both] grid-rows-[auto_minmax(0,1fr)_auto] gap-5 motion-reduce:animate-none"
 			>
 				<div>
 					<div className="flex items-center justify-between gap-4">
@@ -340,19 +362,25 @@ function AgentStoryAside({
 							</div>
 						</div>
 					</div>
+				</div>
 
+				<div className="min-h-0 overflow-hidden">
+					<StoryProgressRail activeIndex={index} />
 					<nav
 						aria-label="Agent surface chapters"
-						className="mt-5 grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)]"
+						className="mt-4 grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)]"
 					>
 						{STORY_CHAPTERS.map((item, itemIndex) => (
 							<a
 								key={item.id}
 								href={`#agent-story-${item.id}`}
 								aria-current={item.id === activeId ? "step" : undefined}
-								onClick={() => onSelect(item.id)}
+								onClick={(event) => {
+									event.preventDefault();
+									onSelect(item.id);
+								}}
 								className={cn(
-									"grid grid-cols-[32px_minmax(0,1fr)_40px] items-center gap-3 bg-[var(--ret-bg)] px-3 py-2 text-[11px] transition-colors duration-150 ease-out hover:bg-[var(--ret-bg-soft)]",
+									"group grid grid-cols-[32px_minmax(0,1fr)_40px] items-center gap-3 bg-[var(--ret-bg)] px-3 py-2 text-[11px] transition-[background-color,color] duration-300 [transition-timing-function:var(--ret-ease-out)] hover:bg-[var(--ret-bg-soft)]",
 									item.id === activeId ? "bg-[var(--ret-bg-soft)]" : null,
 								)}
 							>
@@ -394,6 +422,79 @@ function AgentStoryAside({
 				</div>
 			</div>
 		</aside>
+	);
+}
+
+function StoryProgressRail({ activeIndex }: { activeIndex: number }) {
+	const last = Math.max(1, STORY_CHAPTERS.length - 1);
+	const progress = activeIndex / last;
+	return (
+		<div className="relative overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-3">
+			<div className="absolute inset-0 opacity-[0.18] [background:radial-gradient(circle_at_85%_15%,var(--ret-text),transparent_36%)]" />
+			<div className="relative grid grid-cols-[28px_minmax(0,1fr)] gap-3">
+				<svg
+					aria-hidden="true"
+					viewBox="0 0 28 132"
+					className="h-[132px] w-7 overflow-visible text-[var(--ret-border-strong)]"
+				>
+					<path
+						d="M14 4 C4 28 24 48 14 68 C4 88 24 104 14 128"
+						fill="none"
+						stroke="currentColor"
+						strokeWidth="1"
+						strokeDasharray="3 7"
+					/>
+					<path
+						d="M14 4 C4 28 24 48 14 68 C4 88 24 104 14 128"
+						fill="none"
+						stroke="var(--ret-text)"
+						strokeWidth="1.4"
+						pathLength={1}
+						strokeDasharray="1"
+						strokeDashoffset={1 - progress}
+						style={{
+							transition:
+								"stroke-dashoffset 520ms var(--ret-ease-drawer)",
+						}}
+					/>
+					{STORY_CHAPTERS.map((item, itemIndex) => {
+						const y = 4 + (124 / last) * itemIndex;
+						const active = itemIndex <= activeIndex;
+						return (
+							<circle
+								key={item.id}
+								cx="14"
+								cy={y}
+								r={active ? 3.8 : 2.5}
+								fill={active ? "var(--ret-text)" : "var(--ret-bg)"}
+								stroke="var(--ret-border-strong)"
+								strokeWidth="1"
+								style={{
+									transition:
+										"r 260ms var(--ret-ease-out), fill 260ms var(--ret-ease-out)",
+								}}
+							/>
+						);
+					})}
+				</svg>
+				<div className="grid content-between py-0.5">
+					{STORY_CHAPTERS.map((item, itemIndex) => (
+						<div
+							key={item.id}
+							className={cn(
+								"flex items-center justify-between gap-3 text-[10px] uppercase tracking-[0.18em] transition-colors duration-300",
+								itemIndex === activeIndex
+									? "text-[var(--ret-text)]"
+									: "text-[var(--ret-text-muted)]",
+							)}
+						>
+							<span>{item.label}</span>
+							<span>{String(itemIndex + 1).padStart(2, "0")}</span>
+						</div>
+					))}
+				</div>
+			</div>
+		</div>
 	);
 }
 

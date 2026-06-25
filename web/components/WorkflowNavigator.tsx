@@ -170,13 +170,18 @@ const TAB_DATA = STEPS.map((s) => ({
 export function WorkflowNavigator() {
 	return (
 		<section className="relative">
-			<div className="grid gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[0.82fr_1.18fr]">
-				<div className="bg-[var(--ret-bg)] px-4 py-8 md:px-6 md:py-10">
+			<div className="grid gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[minmax(360px,0.36fr)_minmax(0,0.64fr)] xl:grid-cols-[420px_minmax(0,1fr)]">
+				<div className="relative overflow-hidden bg-[var(--ret-bg)] px-4 py-8 md:px-6 md:py-12 lg:px-8">
+					<CircuitArt
+						slug="workflow"
+						variant="ambient"
+						className="opacity-[0.12] dark:opacity-[0.18]"
+					/>
 					<ReticleLabel>WORKFLOW</ReticleLabel>
-					<h2 className="ret-display mt-4 max-w-[20ch] text-2xl md:text-4xl">
+					<h2 className="ret-display relative z-10 mt-4 max-w-[14ch] text-3xl md:text-5xl lg:text-[54px] lg:leading-[0.95]">
 						One worker, one recipe.
 					</h2>
-					<p className="mt-4 max-w-[58ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
+					<p className="relative z-10 mt-5 max-w-[52ch] text-[14px] leading-relaxed text-[var(--ret-text-dim)]">
 						Account settings compile into a runnable worker: runtime,
 						substrate, model path, environment, loadout, and observable state.
 					</p>
@@ -212,14 +217,14 @@ function WorkflowRow({ step, index }: { step: Step; index: number }) {
 	return (
 		<div
 			id={`workflow-${step.id}`}
-			className="grid min-h-[520px] scroll-mt-[84px] grid-cols-1 md:grid-cols-[0.42fr_0.58fr]"
+			className="grid min-h-[760px] scroll-mt-[92px] grid-cols-1 lg:min-h-[calc(100dvh-64px)] lg:grid-cols-[360px_minmax(0,1fr)] xl:grid-cols-[400px_minmax(0,1fr)]"
 		>
 			{/* Text panel */}
-			<div className="relative flex flex-col justify-between overflow-hidden bg-[var(--ret-bg)] p-5 md:p-8 lg:p-10">
+			<div className="relative flex flex-col justify-between overflow-hidden bg-[var(--ret-bg)] p-5 md:p-7 lg:p-8">
 				<CircuitArt
 					slug={step.art}
 					variant="ambient"
-					className="opacity-[0.22] dark:opacity-[0.3]"
+					className="opacity-[0.16] dark:opacity-[0.24]"
 				/>
 				<div>
 					<div className="flex items-center justify-between gap-4">
@@ -228,10 +233,10 @@ function WorkflowRow({ step, index }: { step: Step; index: number }) {
 							stage {step.stage}
 						</span>
 					</div>
-					<h3 className="mt-4 max-w-[18ch] text-xl font-semibold tracking-tight text-[var(--ret-text)] md:text-2xl">
+					<h3 className="mt-5 max-w-[16ch] text-2xl font-semibold tracking-tight text-[var(--ret-text)] md:text-3xl lg:text-[34px] lg:leading-tight">
 						{step.title}
 					</h3>
-					<p className="mt-3 max-w-[48ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
+					<p className="mt-4 max-w-[45ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
 						{step.body}
 					</p>
 
@@ -239,7 +244,7 @@ function WorkflowRow({ step, index }: { step: Step; index: number }) {
 						{step.bullets.map(([prefix, highlight, suffix], bi) => (
 							<li
 								key={bi}
-								className="grid grid-cols-[auto_1fr] gap-3 bg-[var(--ret-bg)] px-3 py-2.5 text-[12px] leading-relaxed text-[var(--ret-text)]"
+								className="grid grid-cols-[34px_minmax(0,1fr)] gap-3 bg-[var(--ret-bg)] px-3 py-3 text-[12px] leading-relaxed text-[var(--ret-text)]"
 							>
 								<span className="font-mono text-[10px] text-[var(--ret-text-muted)]">
 									{String(bi + 1).padStart(2, "0")}
@@ -257,7 +262,7 @@ function WorkflowRow({ step, index }: { step: Step; index: number }) {
 				</div>
 
 				{step.poweredBy.length > 0 && (
-					<div className="mt-8 flex items-center gap-2.5 pt-2">
+					<div className="mt-8 flex flex-wrap items-center gap-2.5 pt-2">
 						<span className="text-[11px] text-[var(--ret-text-muted)]">
 							Backed by
 						</span>
@@ -285,31 +290,31 @@ function WorkflowRow({ step, index }: { step: Step; index: number }) {
 			</div>
 
 			{/* Circuit diagram + concrete readout */}
-			<div className="grid min-h-[440px] gap-px border-l border-[var(--ret-border)] bg-[var(--ret-border)] md:min-h-0 lg:grid-rows-[0.54fr_0.46fr]">
-				<div className="grid gap-px bg-[var(--ret-border)] lg:grid-cols-[0.86fr_1.14fr]">
-					<div className="group relative min-h-[230px] overflow-hidden bg-[var(--ret-bg)]">
+			<div className="grid min-h-[620px] gap-px border-l border-[var(--ret-border)] bg-[var(--ret-border)] md:min-h-0 lg:grid-rows-[minmax(330px,0.48fr)_minmax(360px,0.52fr)]">
+				<div className="grid gap-px bg-[var(--ret-border)] lg:grid-cols-[minmax(300px,0.42fr)_minmax(0,0.58fr)]">
+					<div className="group relative min-h-[300px] overflow-hidden bg-[var(--ret-bg)]">
 						<div
 							className="ret-circuit-texture pointer-events-none absolute inset-0 opacity-[0.22] mix-blend-multiply invert dark:opacity-[0.34] dark:mix-blend-screen dark:invert-0"
-							style={{ "--ret-circuit-size": "320px 426px" } as CircuitStyle}
+							style={{ "--ret-circuit-size": "420px 560px" } as CircuitStyle}
 						/>
 						<div
-							className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_58%_42%,transparent_0,transparent_36%,var(--ret-bg)_82%)] opacity-75"
+							className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_58%_42%,transparent_0,transparent_42%,var(--ret-bg)_88%)] opacity-70"
 							aria-hidden="true"
 						/>
-						<div className="relative z-10 flex h-full flex-col justify-between p-4 md:p-5">
+						<div className="relative z-10 flex h-full flex-col justify-between p-4 md:p-6">
 							<div className="flex items-center justify-between gap-3">
 								<span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
 									stage {step.stage}
 								</span>
-								<step.Icon className="h-5 w-5 text-[var(--ret-text-muted)]" />
+								<step.Icon className="h-6 w-6 text-[var(--ret-text-muted)]" />
 							</div>
 							<div className="grid grid-cols-3 gap-px border border-[var(--ret-border)] bg-[var(--ret-border)]">
 								{step.metrics.map(([label, value]) => (
-									<div key={label} className="bg-[var(--ret-bg)]/90 px-2.5 py-2 backdrop-blur-sm">
+									<div key={label} className="bg-[var(--ret-bg)]/90 px-3 py-3 backdrop-blur-sm">
 										<div className="font-mono text-[8px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 											{label}
 										</div>
-										<div className="mt-1 truncate text-[11px] font-medium text-[var(--ret-text)]">
+										<div className="mt-1 truncate text-[12px] font-semibold text-[var(--ret-text)]">
 											{value}
 										</div>
 									</div>
@@ -317,7 +322,7 @@ function WorkflowRow({ step, index }: { step: Step; index: number }) {
 							</div>
 						</div>
 					</div>
-					<div className="bg-[var(--ret-bg)] p-4 md:p-5">
+					<div className="bg-[var(--ret-bg)] p-4 md:p-6">
 						<div className="grid h-full gap-px border border-[var(--ret-border)] bg-[var(--ret-border)]">
 							<div className="flex items-center justify-between bg-[var(--ret-bg)] px-3 py-2">
 								<span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
@@ -330,7 +335,7 @@ function WorkflowRow({ step, index }: { step: Step; index: number }) {
 							{step.metrics.map(([label, value, hint]) => (
 								<div
 									key={label}
-									className="grid grid-cols-[0.34fr_0.36fr_0.3fr] bg-[var(--ret-bg)] px-3 py-2.5 text-[12px]"
+									className="grid grid-cols-[128px_minmax(0,1fr)_minmax(110px,0.42fr)] items-center bg-[var(--ret-bg)] px-4 py-4 text-[13px]"
 								>
 									<span className="font-mono uppercase tracking-[0.14em] text-[var(--ret-text-muted)]">
 										{label}
@@ -344,9 +349,9 @@ function WorkflowRow({ step, index }: { step: Step; index: number }) {
 						</div>
 					</div>
 				</div>
-				<div className="bg-[var(--ret-bg)] p-4 md:p-5">
-					<div className="h-full min-h-[250px] overflow-hidden border border-[var(--ret-border)] bg-[#0d0d12] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-						<div className="h-full p-4 md:p-5">
+				<div className="bg-[var(--ret-bg)] p-4 md:p-6">
+					<div className="h-full min-h-[330px] overflow-hidden border border-[var(--ret-border)] bg-[#0d0d12] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+						<div className="h-full p-4 md:p-6">
 							<StepTerminal index={index} />
 						</div>
 					</div>
@@ -527,12 +532,12 @@ function TerminalShell({
 	children: React.ReactNode;
 }) {
 	return (
-		<div className="flex h-full flex-col font-mono text-[11px] leading-[1.8] md:text-[12px]">
+		<div className="flex h-full flex-col font-mono text-[12px] leading-[1.85] md:text-[13px]">
 			<div className="flex items-center gap-2 border-b border-white/[0.06] pb-3">
 				<span className="text-white/35">$</span>
 				<span className="font-medium text-white/80">{command}</span>
 			</div>
-			<div className="mt-3 flex-1 space-y-0.5 overflow-auto">
+			<div className="mt-4 flex-1 space-y-0.5 overflow-auto">
 				{children}
 			</div>
 		</div>
@@ -572,7 +577,7 @@ function TRow({
 }) {
 	return (
 		<div className="flex gap-2">
-			<span className="w-28 shrink-0 text-white/35">{label}</span>
+			<span className="w-32 shrink-0 text-white/35">{label}</span>
 			<span className={success ? "text-white/80" : "text-white/70"}>
 				{value}
 			</span>

@@ -215,40 +215,63 @@ const PIPELINE: ReadonlyArray<{
 
 export function StatsRow() {
 	return (
-		<div>
-			<div className="grid grid-cols-1 items-stretch gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[0.82fr_1.18fr]">
-				<div className="flex flex-col justify-between bg-[var(--ret-bg)] px-4 py-8 md:px-6 md:py-12">
+		<div className="overflow-hidden border-y border-[var(--ret-border)]">
+			<div className="grid min-h-[700px] grid-cols-1 items-stretch gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[minmax(360px,0.36fr)_minmax(0,0.64fr)] xl:grid-cols-[420px_minmax(0,1fr)]">
+				<div className="relative flex flex-col justify-between overflow-hidden bg-[var(--ret-bg)] px-4 py-8 md:px-6 md:py-10 lg:px-8">
+					<div
+						aria-hidden="true"
+						className="ret-circuit-texture pointer-events-none absolute inset-x-0 bottom-0 h-1/2 opacity-[0.10] mix-blend-multiply invert dark:opacity-[0.16] dark:mix-blend-screen dark:invert-0"
+						style={{ "--ret-circuit-size": "360px 480px" } as CSSProperties}
+					/>
 					<div>
 						<ReticleLabel>SDK</ReticleLabel>
-						<h2 className="ret-display mt-3 max-w-[18ch] text-2xl tracking-tight md:text-4xl">
+						<h2 className="ret-display mt-3 max-w-[13ch] text-3xl tracking-tight md:text-5xl lg:text-[54px] lg:leading-[0.95]">
 							Create the worker in code.
 						</h2>
-						<p className="mt-4 max-w-[54ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
-							Agent Machines turns a small worker recipe into a persistent agent
-							worker. Pick the runtime, sandbox, model, and state policy. The
-							control plane handles boot, gateway, logs, and usage.
+						<p className="mt-5 max-w-[48ch] text-[14px] leading-relaxed text-[var(--ret-text-dim)]">
+							Create a persistent worker with one typed recipe. Choose the
+							agent, substrate, model, and state policy. The control plane
+							handles boot, gateway, logs, and usage.
 						</p>
 					</div>
 
-					<div className="mt-8 grid grid-cols-1 gap-px border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-3">
-						<RouteFacet label="agent" value="Hermes" />
-						<RouteFacet label="sandbox" value="E2B" />
-						<RouteFacet label="model" value="Opus 4.8" />
+					<div className="relative z-10 mt-8 grid gap-3">
+						<div className="grid grid-cols-2 gap-px border border-[var(--ret-border)] bg-[var(--ret-border)]">
+							<RouteFacet label="agent" value="Hermes" />
+							<RouteFacet label="substrate" value="E2B" />
+							<RouteFacet label="model" value="Opus 4.8" />
+							<RouteFacet label="state" value="Persistent" />
+						</div>
+						<div className="grid gap-px border border-[var(--ret-border)] bg-[var(--ret-border)]">
+							{["typed client", "agent + substrate", "server-normalized model", "observable run"].map((item, index) => (
+								<div
+									key={item}
+									className="grid grid-cols-[40px_minmax(0,1fr)] bg-[var(--ret-bg)] px-3 py-2.5 text-[12px]"
+								>
+									<span className="font-mono text-[10px] text-[var(--ret-text-muted)]">
+										{String(index + 1).padStart(2, "0")}
+									</span>
+									<span className="font-medium text-[var(--ret-text)]">
+										{item}
+									</span>
+								</div>
+							))}
+						</div>
 					</div>
 				</div>
 
-				<div className="bg-[var(--ret-bg)] p-4 md:p-6">
+				<div className="bg-[var(--ret-bg)] p-3 md:p-5 lg:p-6">
 					<CodePanel />
 				</div>
 			</div>
 
-			<div className="grid grid-cols-2 gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-3 lg:grid-cols-6">
+			<div className="grid grid-cols-1 gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
 				{READOUTS.map((spec) => (
 					<ReadoutCell key={spec.label} spec={spec} />
 				))}
 			</div>
 
-			<div className="grid grid-cols-1 gap-px bg-[var(--ret-border)] md:grid-cols-4">
+			<div className="grid grid-cols-1 gap-px bg-[var(--ret-border)] md:grid-cols-2 xl:grid-cols-4">
 				{PIPELINE.map((step) => (
 					<PipelineCell key={step.kicker} step={step} />
 				))}
@@ -301,7 +324,7 @@ function CodePanel() {
 	};
 
 	return (
-		<div className="relative overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg)]">
+		<div className="relative flex h-full min-h-[640px] flex-col overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg)]">
 			<div
 				aria-hidden="true"
 				className="ret-circuit-texture pointer-events-none absolute inset-0 opacity-[0.12] mix-blend-multiply invert dark:opacity-[0.2] dark:mix-blend-screen dark:invert-0"
@@ -333,7 +356,7 @@ function CodePanel() {
 					<span>{copied ? "copied" : "copy"}</span>
 				</button>
 			</div>
-			<pre className="relative z-10 m-0 overflow-hidden bg-[var(--ret-bg)]/82 px-3 py-4 font-mono text-[11px] leading-6 text-[var(--ret-text)] backdrop-blur-sm md:px-5 md:py-5 md:text-[12px]">
+			<pre className="relative z-10 m-0 flex-1 overflow-hidden bg-[var(--ret-bg)]/82 px-3 py-5 font-mono text-[12px] leading-7 text-[var(--ret-text)] backdrop-blur-sm md:px-6 md:py-7 md:text-[13px]">
 				<code className="block">
 					{CODE_LINES.map((line) => (
 						<span key={line.no} className="block min-w-0 whitespace-pre-wrap break-words">
@@ -390,17 +413,17 @@ function CodeMeter({ label, value }: { label: string; value: string }) {
 
 function ReadoutCell({ spec }: { spec: (typeof READOUTS)[number] }) {
 	return (
-		<div className="flex min-h-[118px] flex-col gap-1 bg-[var(--ret-bg)] px-4 py-5">
+		<div className="group flex min-h-[142px] flex-col gap-2 bg-[var(--ret-bg)] px-4 py-5 transition-colors duration-300 [transition-timing-function:var(--ret-ease-out)] hover:bg-[var(--ret-bg-soft)] md:px-5">
 			<div className="flex items-center gap-1.5">
 				<ToolIcon name={spec.icon} size={11} className="text-[var(--ret-text-muted)]" />
 				<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					{spec.label}
 				</span>
 			</div>
-			<span className="mt-1 text-[20px] font-semibold leading-none tabular-nums tracking-tight text-[var(--ret-text)]">
+			<span className="mt-1 text-[24px] font-semibold leading-none tabular-nums tracking-tight text-[var(--ret-text)]">
 				{spec.value}
 			</span>
-			<span className="text-[11px] leading-snug text-[var(--ret-text-dim)]">
+			<span className="max-w-[30ch] text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
 				{spec.description}
 			</span>
 		</div>
@@ -409,14 +432,14 @@ function ReadoutCell({ spec }: { spec: (typeof READOUTS)[number] }) {
 
 function PipelineCell({ step }: { step: (typeof PIPELINE)[number] }) {
 	return (
-		<div className="group relative min-h-[210px] overflow-hidden bg-[var(--ret-bg)] p-5 transition-colors duration-150 hover:bg-[var(--ret-bg-soft)] md:p-6">
+		<div className="group relative min-h-[250px] overflow-hidden bg-[var(--ret-bg)] p-5 transition-colors duration-300 [transition-timing-function:var(--ret-ease-out)] hover:bg-[var(--ret-bg-soft)] md:p-6">
 			<div
 				aria-hidden="true"
 				className="ret-circuit-texture pointer-events-none absolute inset-y-0 right-0 w-1/2 opacity-0 mix-blend-multiply invert transition-opacity duration-200 group-hover:opacity-[0.12] dark:mix-blend-screen dark:invert-0 dark:group-hover:opacity-[0.2]"
 				style={{ "--ret-circuit-size": "300px 400px" } as CSSProperties}
 			/>
-			<div className="relative z-10 mb-5 flex items-center justify-between">
-				<div className="flex h-9 w-9 items-center justify-center border border-[var(--ret-border)] bg-[var(--ret-surface)] text-[var(--ret-text)] transition-transform duration-150 ease-[var(--ret-ease-out)] group-hover:-translate-y-0.5">
+			<div className="relative z-10 mb-8 flex items-center justify-between">
+				<div className="flex h-11 w-11 items-center justify-center border border-[var(--ret-border)] bg-[var(--ret-surface)] text-[var(--ret-text)] transition-transform duration-300 [transition-timing-function:var(--ret-ease-out)] group-hover:-translate-y-1">
 					<ToolIcon name={step.icon} size={15} />
 				</div>
 				<span className="font-mono text-[10px] uppercase tracking-[0.24em] text-[var(--ret-text-muted)]">
@@ -424,13 +447,13 @@ function PipelineCell({ step }: { step: (typeof PIPELINE)[number] }) {
 				</span>
 			</div>
 			<div className="relative z-10">
-				<h3 className="text-[15px] font-semibold tracking-tight text-[var(--ret-text)]">
+				<h3 className="text-[17px] font-semibold tracking-tight text-[var(--ret-text)]">
 					{step.title}
 				</h3>
-				<p className="mt-1.5 text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
+				<p className="mt-2 text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
 					{step.body}
 				</p>
-				<div className="mt-5 border border-[var(--ret-border)] bg-[var(--ret-surface)] px-3 py-2 font-mono text-[11px] text-[var(--ret-text-secondary)]">
+				<div className="mt-7 border border-[var(--ret-border)] bg-[var(--ret-surface)] px-3 py-2.5 font-mono text-[11px] text-[var(--ret-text-secondary)]">
 					{step.code}
 				</div>
 			</div>

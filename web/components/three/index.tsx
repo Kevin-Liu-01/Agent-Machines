@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 import type { SubstrateId } from "./HeroOrbitScene";
@@ -74,6 +74,102 @@ function SceneFrame({ className, children, bg = true }: FrameProps) {
 			)}
 		>
 			{children}
+		</div>
+	);
+}
+
+type GearGlassStyle = CSSProperties & Record<`--${string}`, string>;
+
+const GEAR_GLASS_VARS: GearGlassStyle = {
+	"--gear-unit": "calc(100% / 5.84)",
+	"--gear-center-x": "calc(50% + var(--gear-unit) * 2.25)",
+	"--gear-center-y": "50%",
+};
+
+function gearGlassRingStyle({
+	diameter,
+	inner,
+	outer,
+	blur,
+	opacity,
+}: {
+	diameter: number;
+	inner: number;
+	outer: number;
+	blur: number;
+	opacity: number;
+}): CSSProperties {
+	const mask = `radial-gradient(circle, transparent 0 ${inner}%, #000 calc(${inner}% + 0.8%), #000 ${outer}%, transparent calc(${outer}% + 0.8%))`;
+	return {
+		width: `calc(var(--gear-unit) * ${diameter})`,
+		height: `calc(var(--gear-unit) * ${diameter})`,
+		left: "var(--gear-center-x)",
+		top: "var(--gear-center-y)",
+		opacity,
+		WebkitBackdropFilter: `blur(${blur}px) saturate(1.35)`,
+		backdropFilter: `blur(${blur}px) saturate(1.35)`,
+		WebkitMaskImage: mask,
+		maskImage: mask,
+		background:
+			"radial-gradient(circle at 34% 28%, color-mix(in oklab, var(--ret-text) 14%, transparent), transparent 30%), linear-gradient(135deg, color-mix(in oklab, var(--ret-text) 7%, transparent), color-mix(in oklab, var(--ret-bg) 20%, transparent) 48%, color-mix(in oklab, var(--ret-text) 5%, transparent))",
+		boxShadow:
+			"inset 0 1px 0 color-mix(in oklab, var(--ret-text) 14%, transparent), inset 0 -1px 0 color-mix(in oklab, var(--ret-bg) 34%, transparent)",
+	};
+}
+
+function GearGlassOverlay() {
+	return (
+		<div
+			aria-hidden="true"
+			className="pointer-events-none absolute inset-0 z-[1] overflow-hidden"
+			style={GEAR_GLASS_VARS}
+		>
+			<div
+				className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full"
+				style={gearGlassRingStyle({
+					diameter: 6.24,
+					inner: 58.3,
+					outer: 91.7,
+					blur: 12,
+					opacity: 0.74,
+				})}
+			/>
+			<div
+				className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full"
+				style={gearGlassRingStyle({
+					diameter: 3.56,
+					inner: 48.3,
+					outer: 87.6,
+					blur: 10,
+					opacity: 0.78,
+				})}
+			/>
+			<div
+				className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full opacity-55"
+				style={{
+					width: "calc(var(--gear-unit) * 1.78)",
+					height: "calc(var(--gear-unit) * 1.78)",
+					left: "var(--gear-center-x)",
+					top: "var(--gear-center-y)",
+					WebkitBackdropFilter: "blur(8px) saturate(1.3)",
+					backdropFilter: "blur(8px) saturate(1.3)",
+					background:
+						"radial-gradient(circle at 40% 32%, color-mix(in oklab, var(--ret-text) 10%, transparent), transparent 36%), color-mix(in oklab, var(--ret-bg) 18%, transparent)",
+					boxShadow:
+						"inset 0 0 0 1px color-mix(in oklab, var(--ret-text) 10%, transparent)",
+				}}
+			/>
+			<div
+				className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full opacity-55 blur-[0.4px]"
+				style={{
+					width: "calc(var(--gear-unit) * 0.58)",
+					height: "calc(var(--gear-unit) * 4.9)",
+					left: "calc(var(--gear-center-x) + var(--gear-unit) * 1.92)",
+					top: "var(--gear-center-y)",
+					background:
+						"linear-gradient(180deg, transparent, color-mix(in oklab, var(--ret-text) 13%, transparent) 48%, transparent)",
+				}}
+			/>
 		</div>
 	);
 }
@@ -216,7 +312,9 @@ export function HeroOrbit({
 	const camPos: [number, number, number] = gears ? [0, 0, 7.6] : [0, 0, 4.8];
 	return (
 		<SceneFrame className={className} bg={!gears}>
+			{gears ? <GearGlassOverlay /> : null}
 			<SceneCanvas
+				className={gears ? "z-[2]" : undefined}
 				camera={{ position: camPos, fov: gears ? 42 : 34 }}
 				dpr={gears ? 2 : undefined}
 				antialias={gears}

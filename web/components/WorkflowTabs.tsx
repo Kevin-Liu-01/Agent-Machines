@@ -10,6 +10,14 @@ export function WorkflowTabs({ steps }: { steps: TabStep[] }) {
 	const [activeId, setActiveId] = useState<string | null>(null);
 	const visMap = useRef(new Map<string, boolean>());
 
+	const scrollToStep = (id: string) => {
+		setActiveId(id);
+		document.getElementById(`workflow-${id}`)?.scrollIntoView({
+			behavior: "smooth",
+			block: "start",
+		});
+	};
+
 	useEffect(() => {
 		const ids = steps.map((s) => s.id);
 
@@ -41,10 +49,14 @@ export function WorkflowTabs({ steps }: { steps: TabStep[] }) {
 					<a
 						key={step.id}
 						href={`#workflow-${step.id}`}
+						onClick={(event) => {
+							event.preventDefault();
+							scrollToStep(step.id);
+						}}
 						className={cn(
-							"relative flex flex-1 items-center justify-center gap-2 px-3 py-3 text-[11px] uppercase tracking-[0.14em] transition-colors",
+							"relative flex min-h-11 flex-1 items-center justify-center gap-2 px-3 py-3 text-[11px] uppercase tracking-[0.14em] transition-[background-color,color] duration-300 [transition-timing-function:var(--ret-ease-out)]",
 							activeId === step.id
-								? "text-[var(--ret-text)]"
+								? "bg-[var(--ret-bg-soft)] text-[var(--ret-text)]"
 								: "text-[var(--ret-text-muted)] hover:text-[var(--ret-text)]",
 						)}
 					>

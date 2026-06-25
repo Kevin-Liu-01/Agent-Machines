@@ -218,11 +218,11 @@ const RAIL_AGENTS: ReadonlyArray<{
 	id: HeroAgent | null;
 	word: string;
 }> = [
-	{ mark: "nous", label: "Hermes", id: "hermes", word: "Run" },
-	{ mark: "openclaw", label: "OpenClaw", id: "openclaw", word: "Automate" },
-	{ mark: "claudecode", label: "Claude", id: "claude-code", word: "Build" },
-	{ mark: "codex", label: "Codex", id: "codex", word: "Ship" },
-	{ mark: "cursor", label: "Cursor", id: null, word: "Patch" },
+	{ mark: "nous", label: "Hermes", id: "hermes", word: "Provision" },
+	{ mark: "openclaw", label: "OpenClaw", id: "openclaw", word: "Orchestrate" },
+	{ mark: "claudecode", label: "Claude", id: "claude-code", word: "Supervise" },
+	{ mark: "codex", label: "Codex", id: "codex", word: "Persistent" },
+	{ mark: "cursor", label: "Cursor", id: null, word: "Automate" },
 ];
 
 const ALL_WORDS = RAIL_AGENTS.map((a) => a.word);
@@ -679,13 +679,13 @@ export function HeroBlock() {
 							<span className="-mx-6 flex items-center whitespace-nowrap md:-mx-9">
 								<span className="mr-3 h-px w-3 shrink-0 border-t border-dashed border-[var(--ret-border)] md:mr-2 md:w-7" />
 								<span>
-									<AnimatedWord word={activeWord} hue={hue} /> agents
+									<AnimatedWord word={activeWord} hue={hue} /> Agents
 								</span>
 								<span className="ml-3 h-px flex-1 border-t border-dashed border-[var(--ret-border)] md:ml-4" />
 							</span>
 							<span className="-mx-6 flex items-center whitespace-nowrap md:-mx-9">
 								<span className="mr-3 h-px w-3 shrink-0 border-t border-dashed border-[var(--ret-border)] md:mr-2 md:w-7" />
-								<span className="text-[var(--ret-text-muted)]">on any substrate.</span>
+								<span className="text-[var(--ret-text-muted)]">on any Substrate.</span>
 								<span className="ml-3 h-px flex-1 border-t border-dashed border-[var(--ret-border)] md:ml-4" />
 							</span>
 						</h1>

@@ -241,6 +241,138 @@ textarea::placeholder {
 	text-wrap: balance;
 }
 
+.ret-footer-glass-word {
+	position: relative;
+	display: inline-block;
+	background:
+		linear-gradient(
+			180deg,
+			rgba(255, 255, 255, 0.58) 0%,
+			rgba(255, 255, 255, 0.22) 42%,
+			rgba(255, 255, 255, 0.07) 100%
+		),
+		linear-gradient(
+			110deg,
+			transparent 0%,
+			rgba(255, 255, 255, 0.34) 44%,
+			transparent 58%
+		);
+	background-clip: text;
+	color: transparent;
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	-webkit-text-stroke: 1px rgba(255, 255, 255, 0.08);
+	filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.10))
+		drop-shadow(0 22px 56px rgba(255, 255, 255, 0.05));
+}
+
+.ret-footer-glass-word::before {
+	position: absolute;
+	inset: 0;
+	content: attr(data-text);
+	color: rgba(255, 255, 255, 0.12);
+	filter: blur(12px);
+	opacity: 0.42;
+	transform: translateY(2px);
+}
+
+.ret-footer-glass-word::after {
+	position: absolute;
+	inset: 0;
+	content: attr(data-text);
+	background: linear-gradient(
+		180deg,
+		rgba(255, 255, 255, 0.28),
+		transparent 34%,
+		rgba(255, 255, 255, 0.06) 72%,
+		transparent
+	);
+	background-clip: text;
+	color: transparent;
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	-webkit-text-stroke: 1px rgba(255, 255, 255, 0.12);
+	opacity: 0.68;
+}
+
+:root[data-theme="light"] .ret-footer-glass-word {
+	background:
+		linear-gradient(
+			180deg,
+			rgba(0, 0, 0, 0.44) 0%,
+			rgba(0, 0, 0, 0.18) 48%,
+			rgba(0, 0, 0, 0.05) 100%
+		),
+		linear-gradient(
+			110deg,
+			transparent 0%,
+			rgba(255, 255, 255, 0.72) 44%,
+			transparent 58%
+		);
+	background-clip: text;
+	-webkit-background-clip: text;
+	-webkit-text-stroke-color: rgba(0, 0, 0, 0.07);
+	filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.74))
+		drop-shadow(0 18px 52px rgba(0, 0, 0, 0.06));
+}
+
+:root[data-theme="light"] .ret-footer-glass-word::before {
+	color: rgba(0, 0, 0, 0.09);
+}
+
+:root[data-theme="light"] .ret-footer-glass-word::after {
+	background: linear-gradient(
+		180deg,
+		rgba(255, 255, 255, 0.72),
+		transparent 32%,
+		rgba(0, 0, 0, 0.05) 70%,
+		transparent
+	);
+	background-clip: text;
+	-webkit-background-clip: text;
+	-webkit-text-stroke-color: rgba(255, 255, 255, 0.22);
+}
+
+@media (prefers-color-scheme: light) {
+	:root:not([data-theme="dark"]) .ret-footer-glass-word {
+		background:
+			linear-gradient(
+				180deg,
+				rgba(0, 0, 0, 0.44) 0%,
+				rgba(0, 0, 0, 0.18) 48%,
+				rgba(0, 0, 0, 0.05) 100%
+			),
+			linear-gradient(
+				110deg,
+				transparent 0%,
+				rgba(255, 255, 255, 0.72) 44%,
+				transparent 58%
+			);
+		background-clip: text;
+		-webkit-background-clip: text;
+		-webkit-text-stroke-color: rgba(0, 0, 0, 0.07);
+		filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.74))
+			drop-shadow(0 18px 52px rgba(0, 0, 0, 0.06));
+	}
+
+	:root:not([data-theme="dark"]) .ret-footer-glass-word::before {
+		color: rgba(0, 0, 0, 0.09);
+	}
+
+	:root:not([data-theme="dark"]) .ret-footer-glass-word::after {
+		background: linear-gradient(
+			180deg,
+			rgba(255, 255, 255, 0.72),
+			transparent 32%,
+			rgba(0, 0, 0, 0.05) 70%,
+			transparent
+		);
+		background-clip: text;
+		-webkit-background-clip: text;
+		-webkit-text-stroke-color: rgba(255, 255, 255, 0.22);
+	}
+}
+
 p,
 li {
 	text-wrap: pretty;

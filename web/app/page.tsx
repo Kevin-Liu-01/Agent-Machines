@@ -47,7 +47,7 @@ export default function HomePage() {
 
 				<ReticleSpacer />
 
-				<ReticleSection id="workflow" contentClassName="">
+				<ReticleSection id="workflow" className="scroll-mt-[72px]" contentClassName="">
 					<WorkflowNavigator />
 				</ReticleSection>
 

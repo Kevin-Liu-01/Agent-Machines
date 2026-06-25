@@ -18,7 +18,7 @@
         <circle cx="258" cy="152" r="8.8"/>
         <circle cx="66" cy="228" r="8.8"/>
         <circle cx="70" cy="274" r="8.8"/>
-        <circle cx="288" cy="238" r="8.8"/>
+        <circle cx="288" cy="239" r="8.8"/>
         <circle cx="300" cy="266" r="8.8"/>
         <circle cx="186" cy="348" r="8.8"/>
         <circle cx="248" cy="406" r="8.8"/>
@@ -76,9 +76,9 @@
     <path class="fine" d="M160 192v14M176 192v14M192 192v14M208 192v14M224 192v14M160 298v14M176 298v14M192 298v14M208 298v14M224 298v14M130 226h16M130 239h16M130 252h16M130 266h16M130 279h16M238 226h16M238 239h16M238 252h16M238 266h16M238 279h16"/>
     <path class="bus" d="M0 228h66l26 24h38"/>
     <path class="bus" d="M0 274h70l28-8h32"/>
-    <path class="bus" d="M254 238h34l34-42h62"/>
+    <path class="bus" d="M254 239h34l34-43h62"/>
     <path class="bus" d="M254 266h46l26 38h58"/>
-    <path class="trace" d="M192 206v-36l24-24h54"/>
+    <path class="trace" d="M192 206v-30l24-24h54"/>
     <path class="trace" d="M208 298v40l22 22h54"/>
   </g>
 
@@ -121,7 +121,7 @@
     <circle class="pad" cx="258" cy="152" r="5.5"/>
     <circle class="pad" cx="66" cy="228" r="5.5"/>
     <circle class="pad" cx="70" cy="274" r="5.5"/>
-    <circle class="pad" cx="288" cy="238" r="5.5"/>
+    <circle class="pad" cx="288" cy="239" r="5.5"/>
     <circle class="pad" cx="300" cy="266" r="5.5"/>
     <circle class="pad" cx="186" cy="348" r="5.5"/>
     <circle class="pad" cx="248" cy="406" r="5.5"/>

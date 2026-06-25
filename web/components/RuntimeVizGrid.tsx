@@ -35,7 +35,7 @@ const LCP_COLOR: Record<Lcp, string> = {
 
 export function RuntimeVizGrid() {
 	return (
-		<>
+		<div className="grid h-full min-h-[560px] grid-rows-[auto_minmax(0,1fr)_auto] bg-[var(--ret-bg)]">
 			<div className="grid gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[1fr_0.72fr]">
 				<div className="bg-[var(--ret-bg)] px-4 py-5 md:px-5">
 					<ReticleLabel>OBSERVABILITY -- DASHBOARD</ReticleLabel>
@@ -55,7 +55,7 @@ export function RuntimeVizGrid() {
 				</div>
 			</div>
 
-			<div className="grid grid-cols-1 gap-px overflow-hidden bg-[var(--ret-border)] sm:grid-cols-2 lg:grid-cols-3">
+			<div className="grid min-h-0 grid-cols-1 gap-px overflow-hidden bg-[var(--ret-border)] sm:grid-cols-2 lg:auto-rows-fr lg:grid-cols-3">
 				<RuntimeCard
 					icon="filesystem"
 					label="runtime root"
@@ -114,11 +114,11 @@ export function RuntimeVizGrid() {
 				</RuntimeCard>
 			</div>
 
-			<p className="mt-3 text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+			<p className="border-t border-[var(--ret-border)] bg-[var(--ret-bg)] px-4 py-3 text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 				illustrative panels, matched to the dashboard APIs for gateway, logs,
 				usage, loadout, and cron
 			</p>
-		</>
+		</div>
 	);
 }
 
@@ -150,7 +150,7 @@ type RuntimeCardProps = {
 
 function RuntimeCard({ icon, label, hint, footer, variant, children }: RuntimeCardProps) {
 	return (
-		<div className="relative flex flex-col overflow-hidden bg-[var(--ret-bg)]">
+		<div className="relative flex min-h-[210px] flex-col overflow-hidden bg-[var(--ret-bg)]">
 			{variant ? (
 				<>
 					<WingBackground
@@ -174,7 +174,7 @@ function RuntimeCard({ icon, label, hint, footer, variant, children }: RuntimeCa
 					{hint}
 				</span>
 			</div>
-			<div className="relative z-10 flex min-h-[110px] items-center justify-center px-3 py-3">
+			<div className="relative z-10 flex flex-1 items-center justify-center px-3 py-3">
 				{children}
 			</div>
 			<div className="relative z-10 border-t border-[var(--ret-border)] bg-[var(--ret-bg)]/82 px-3 py-1.5 text-[10px] tabular-nums text-[var(--ret-text-dim)] backdrop-blur-sm">
