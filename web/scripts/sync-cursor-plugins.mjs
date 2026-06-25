@@ -448,6 +448,36 @@ function pluginsToPackages(plugins) {
 	}));
 }
 
+/**
+ * Write pretty JSON, but reuse the existing file's timestamp when nothing
+ * else changed -- so a no-op sync produces no git diff while real catalog
+ * edits still re-stamp. The timestamp is swapped in only for the duration of
+ * the write (then restored) so the shared payload object stays reusable across
+ * the knowledge/ + web/data/ copies and key order (`syncedAt` mid-object) is
+ * preserved.
+ */
+function writeJsonStable(path, data, tsKey) {
+	const fresh = data[tsKey];
+	let stamp = fresh;
+	if (existsSync(path)) {
+		try {
+			const prev = JSON.parse(readFileSync(path, "utf8"));
+			const prevRest = { ...prev };
+			const nextRest = { ...data };
+			delete prevRest[tsKey];
+			delete nextRest[tsKey];
+			if (prev[tsKey] && JSON.stringify(prevRest) === JSON.stringify(nextRest)) {
+				stamp = prev[tsKey];
+			}
+		} catch {
+			// unreadable or non-JSON existing file -> write fresh
+		}
+	}
+	data[tsKey] = stamp;
+	writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
+	data[tsKey] = fresh;
+}
+
 function writeOutputs(payload, packages, registry) {
 	mkdirSync(dirname(OUT_PLUGINS), { recursive: true });
 	mkdirSync(join(WEB_ROOT, "data"), { recursive: true });
@@ -460,7 +490,7 @@ function writeOutputs(payload, packages, registry) {
 		[OUT_WEB_REGISTRY, registry],
 	];
 	for (const [path, data] of files) {
-		writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
+		writeJsonStable(path, data, "syncedAt");
 	}
 }
 

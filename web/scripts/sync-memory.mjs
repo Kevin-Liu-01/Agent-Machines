@@ -38,6 +38,31 @@ function readDoc(file) {
 	return readFileSync(path, "utf8").trim();
 }
 
+/**
+ * Write pretty JSON, but reuse the existing file's timestamp when the rest of
+ * the payload is unchanged -- so a no-op sync produces no git diff while real
+ * doc edits still re-stamp `generatedAt`.
+ */
+function writeJsonStable(path, data, tsKey) {
+	let stamp = data[tsKey];
+	if (existsSync(path)) {
+		try {
+			const prev = JSON.parse(readFileSync(path, "utf8"));
+			const prevRest = { ...prev };
+			const nextRest = { ...data };
+			delete prevRest[tsKey];
+			delete nextRest[tsKey];
+			if (prev[tsKey] && JSON.stringify(prevRest) === JSON.stringify(nextRest)) {
+				stamp = prev[tsKey];
+			}
+		} catch {
+			// unreadable or non-JSON existing file -> write fresh
+		}
+	}
+	data[tsKey] = stamp;
+	writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`);
+}
+
 function main() {
 	if (!existsSync(KNOWLEDGE_DIR)) {
 		if (existsSync(OUT_FILE)) {
@@ -59,7 +84,7 @@ function main() {
 	const payload = { ...docs, generatedAt: new Date().toISOString() };
 
 	mkdirSync(OUT_DIR, { recursive: true });
-	writeFileSync(OUT_FILE, `${JSON.stringify(payload, null, 2)}\n`);
+	writeJsonStable(OUT_FILE, payload, "generatedAt");
 	const total = Object.values(docs).reduce((n, s) => n + s.length, 0);
 	console.log(`sync-memory: wrote default bundle docs (${total} chars) -> ${OUT_FILE}`);
 }
