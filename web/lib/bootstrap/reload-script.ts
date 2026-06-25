@@ -25,6 +25,8 @@ export function buildWebReloadScript(home: string, runtimeHome: string): string 
 		'cd "$REPO_DIR"',
 		"git fetch --depth 1 origin main",
 		"git reset --hard origin/main",
+		'echo "[reload] purge private local-only docs"',
+		'rm -f "$REPO_DIR/yc-application-s26.md" "$REPO_DIR/knowledge/YC-PARTNER-PREP.md"',
 		'echo "[reload] sync -> ~/.agent-machines"',
 		'mkdir -p "$RUNTIME/skills" "$RUNTIME/crons" "$RUNTIME/mcps" "$RUNTIME/scripts"',
 		'if [ "$USE_CP" -eq 0 ]; then',

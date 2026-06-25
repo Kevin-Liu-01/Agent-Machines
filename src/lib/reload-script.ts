@@ -28,6 +28,8 @@ export function buildReloadScript(): string {
 		'cd "$REPO_DIR"',
 		`git fetch --depth 1 origin ${REPO_BRANCH}`,
 		`git reset --hard origin/${REPO_BRANCH}`,
+		'echo "[reload] purge private local-only docs"',
+		'rm -f "$REPO_DIR/yc-application-s26.md" "$REPO_DIR/knowledge/YC-PARTNER-PREP.md"',
 		'echo "[reload] sync skills + crons + mcps + persona -> ~/.agent-machines"',
 		'mkdir -p "$RUNTIME/skills" "$RUNTIME/crons" "$RUNTIME/mcps" "$RUNTIME/scripts"',
 		'if [ "$USE_CP" -eq 0 ]; then',
