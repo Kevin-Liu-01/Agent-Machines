@@ -5,6 +5,10 @@
     {
       "path": "/api/internal/cron/tick",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/internal/learning/recompute",
+      "schedule": "0 * * * *"
     }
   ]
 }

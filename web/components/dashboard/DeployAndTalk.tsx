@@ -45,6 +45,15 @@ export function DeployAndTalk() {
 	const [gatewayProfileId, setGatewayProfileId] = useState<string>(DEFAULT_ROUTER_ID);
 	const [environmentProfiles, setEnvironmentProfiles] = useState<EnvironmentOption[]>([]);
 	const [environmentProfileId, setEnvironmentProfileId] = useState<string>("");
+	const [recommended, setRecommended] = useState<{
+		substrate: (typeof PROVIDERS)[number];
+		runtime: (typeof AGENTS)[number];
+		model: string;
+		routerId: string | null;
+		meanSuccess?: number;
+		samples?: number;
+	} | null>(null);
+	const [model, setModel] = useState<string | null>(null);
 
 	const busy = phase === "provisioning";
 
@@ -78,6 +87,40 @@ export function DeployAndTalk() {
 		};
 	}, []);
 
+	useEffect(() => {
+		let alive = true;
+		void fetch("/api/dashboard/admin/route-recommendation")
+			.then((r) => (r.ok ? r.json() : null))
+			.then((j) => {
+				if (!alive || !j?.recommended) return;
+				const rec = j.recommended as {
+					substrate?: unknown;
+					runtime?: unknown;
+					model?: unknown;
+					routerId?: unknown;
+				};
+				if (
+					isProvider(rec.substrate) &&
+					isAgent(rec.runtime) &&
+					typeof rec.model === "string"
+				) {
+					setRecommended({
+						substrate: rec.substrate,
+						runtime: rec.runtime,
+						model: rec.model,
+						routerId: typeof rec.routerId === "string" ? rec.routerId : null,
+						meanSuccess:
+							typeof j.meanSuccess === "number" ? j.meanSuccess : undefined,
+						samples: typeof j.samples === "number" ? j.samples : undefined,
+					});
+				}
+			})
+			.catch(() => {});
+		return () => {
+			alive = false;
+		};
+	}, []);
+
 	// Credential gate: block deploy when the agent has no usable upstream key
 	// or the substrate provider has no key. Neutral while config loads (null).
 	const readiness = aiConfigured
@@ -99,6 +142,7 @@ export function DeployAndTalk() {
 					providerKind: provider,
 					agentKind: agent,
 					force: true,
+					...(model ? { model } : {}),
 					...(agentUsesRouter(agent) && gatewayProfileId ? { gatewayProfileId } : {}),
 					...(environmentProfileId ? { environmentProfileId } : {}),
 				}),
@@ -117,20 +161,28 @@ export function DeployAndTalk() {
 			const machineId = provJson.machineId;
 
 			setPhase("ready");
-			setDetail("machine ready — opening live view...");
+			setDetail("machine ready -- opening live view...");
 			router.push(`/dashboard/machines/${machineId}/view?launch=1`);
 		} catch (err) {
 			setPhase("error");
 			setDetail(err instanceof Error ? err.message : "deploy failed");
 		}
-	}, [provider, agent, router, gatewayProfileId, environmentProfileId, blocked]);
+	}, [provider, agent, model, router, gatewayProfileId, environmentProfileId, blocked]);
+
+	const applyRecommendation = useCallback(() => {
+		if (!recommended) return;
+		setProvider(recommended.substrate);
+		setAgent(recommended.runtime);
+		setModel(recommended.model);
+		setGatewayProfileId(recommended.routerId ?? DEFAULT_ROUTER_ID);
+	}, [recommended]);
 
 	return (
 		<div className="grid min-w-0 gap-3 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-4">
 			<div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-				<ReticleLabel>one-click — deploy, open, talk</ReticleLabel>
+				<ReticleLabel>one-click -- deploy, open, talk</ReticleLabel>
 				<span className="min-w-0 break-words font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)] sm:text-right">
-					provision → live shell → agent CLI
+					provision / live shell / agent CLI
 				</span>
 			</div>
 
@@ -140,7 +192,10 @@ export function DeployAndTalk() {
 					<ReticleSelect
 						ariaLabel="substrate"
 						value={provider}
-						onChange={(v) => setProvider(v as (typeof PROVIDERS)[number])}
+						onChange={(v) => {
+							setProvider(v as (typeof PROVIDERS)[number]);
+							setModel(null);
+						}}
 						options={PROVIDERS.map((p) => ({ value: p, label: p }))}
 					/>
 				</label>
@@ -149,7 +204,10 @@ export function DeployAndTalk() {
 					<ReticleSelect
 						ariaLabel="agent"
 						value={agent}
-						onChange={(v) => setAgent(v as (typeof AGENTS)[number])}
+						onChange={(v) => {
+							setAgent(v as (typeof AGENTS)[number]);
+							setModel(null);
+						}}
 						options={AGENTS.map((a) => ({ value: a, label: a }))}
 					/>
 				</label>
@@ -193,6 +251,27 @@ export function DeployAndTalk() {
 				disabled={busy}
 			/>
 
+			{recommended &&
+			(recommended.substrate !== provider ||
+				recommended.runtime !== agent ||
+				recommended.model !== model ||
+				(recommended.routerId ?? DEFAULT_ROUTER_ID) !== gatewayProfileId) ? (
+				<div className="flex min-w-0 flex-col gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+					<span className="min-w-0 break-words font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+						learned pick: {recommended.substrate} / {recommended.runtime} / {recommended.model}
+						{typeof recommended.samples === "number" ? ` / n=${recommended.samples}` : ""}
+					</span>
+					<button
+						type="button"
+						onClick={applyRecommendation}
+						disabled={busy}
+						className="min-h-9 border border-[var(--ret-border-strong)] px-3 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text)] transition-colors hover:bg-[var(--ret-surface)] disabled:opacity-50"
+					>
+						use pick
+					</button>
+				</div>
+			) : null}
+
 			<div className="grid gap-3 md:grid-cols-2">
 				<AgentInfoPanel agentKind={agent} readiness={readiness ?? undefined} />
 				<MachineInfoPanel
@@ -202,7 +281,7 @@ export function DeployAndTalk() {
 			</div>
 
 			{substrateMissing ? (
-				<GateBanner message={`No ${provider} key on file — provisioning needs the substrate credential.`} />
+				<GateBanner message={`No ${provider} key on file -- provisioning needs the substrate credential.`} />
 			) : null}
 			{upstreamBlocked && readiness ? <GateBanner message={readiness.detail} /> : null}
 

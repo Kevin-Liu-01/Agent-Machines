@@ -1,5 +1,5 @@
 /**
- * POST|GET /api/internal/cron/tick — server-side cron scheduler.
+ * POST|GET /api/internal/cron/tick -- server-side cron scheduler.
  *
  * Invoked by Vercel Cron (see web/vercel.json). Enumerates users, finds the
  * crons that became due, and dispatches each on its machine in the
@@ -17,9 +17,11 @@ import {
 	getUserConfigById,
 	setUserConfigById,
 } from "@/lib/user-config/clerk";
-import { DEV_USER_ID, isDevBypassEnabled } from "@/lib/user-config/identity";
+import { authorizedInternalRequest } from "@/lib/cron/auth";
 import { listDueCrons, runCronOnMachine } from "@/lib/crons/service";
+import { ingestRunTracesForUser } from "@/lib/learning/ingest";
 import { collectMetricsForUser } from "@/lib/metrics/collector";
+import { DEV_USER_ID, isDevBypassEnabled } from "@/lib/user-config/identity";
 import type { CronEntry } from "@/lib/user-config/schema";
 
 export const runtime = "nodejs";
@@ -27,19 +29,9 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const USER_PAGE_LIMIT = 500;
-// Seconds this tick represents — must match the vercel.json cron schedule
+// Seconds this tick represents -- must match the vercel.json cron schedule
 // (*/5 == 300s) so usage accumulation (awake/CPU/memory/storage) is accurate.
 const TICK_INTERVAL_SECONDS = 300;
-
-function authorized(req: Request): boolean {
-	if (isDevBypassEnabled()) return true;
-	if (req.headers.get("x-vercel-cron") != null) return true;
-	const secret = process.env.CRON_SECRET;
-	if (secret && req.headers.get("authorization") === `Bearer ${secret}`) {
-		return true;
-	}
-	return false;
-}
 
 async function listUserIds(): Promise<string[]> {
 	if (isDevBypassEnabled() || !process.env.CLERK_SECRET_KEY) {
@@ -50,7 +42,13 @@ async function listUserIds(): Promise<string[]> {
 	return res.data.map((u) => u.id);
 }
 
-type UserTick = { fired: number; failed: number; collected: number; transitions: number };
+type UserTick = {
+	fired: number;
+	failed: number;
+	collected: number;
+	transitions: number;
+	ingested: number;
+};
 
 async function tickUser(userId: string): Promise<UserTick> {
 	const config = await getUserConfigById(userId);
@@ -58,7 +56,7 @@ async function tickUser(userId: string): Promise<UserTick> {
 
 	// Usage + activity tracking runs every tick (independent of crons): probe
 	// running machines, store resource samples, roll up daily usage/cost, and
-	// record phase transitions. Best-effort — never let it abort the tick.
+	// record phase transitions. Best-effort -- never let it abort the tick.
 	let collected = 0;
 	let transitions = 0;
 	try {
@@ -69,8 +67,20 @@ async function tickUser(userId: string): Promise<UserTick> {
 		// metrics collection is best-effort
 	}
 
+	// Loop 0: read each cron machine's on-box runs.jsonl and emit normalized
+	// traces. Best-effort so learning never blocks usage collection or cron
+	// dispatch.
+	let ingested = 0;
+	try {
+		ingested = await ingestRunTracesForUser(userId, config);
+	} catch {
+		// trace ingest is best-effort
+	}
+
 	const due = listDueCrons(config, now);
-	if (due.length === 0) return { fired: 0, failed: 0, collected, transitions };
+	if (due.length === 0) {
+		return { fired: 0, failed: 0, collected, transitions, ingested };
+	}
 
 	const dueIds = new Set(due.map((c) => c.id));
 	const results = await Promise.all(
@@ -93,11 +103,11 @@ async function tickUser(userId: string): Promise<UserTick> {
 	await setUserConfigById(userId, { crons: nextCrons });
 
 	const failed = results.filter((r) => !r.ok).length;
-	return { fired: due.length, failed, collected, transitions };
+	return { fired: due.length, failed, collected, transitions, ingested };
 }
 
 async function handle(req: Request): Promise<Response> {
-	if (!authorized(req)) {
+	if (!authorizedInternalRequest(req)) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}
 
@@ -115,6 +125,7 @@ async function handle(req: Request): Promise<Response> {
 	let failed = 0;
 	let collected = 0;
 	let transitions = 0;
+	let ingested = 0;
 	let scanned = 0;
 	for (const userId of users) {
 		try {
@@ -123,6 +134,7 @@ async function handle(req: Request): Promise<Response> {
 			failed += r.failed;
 			collected += r.collected;
 			transitions += r.transitions;
+			ingested += r.ingested;
 			scanned += 1;
 		} catch {
 			// One user's failure must not abort the whole tick.
@@ -136,6 +148,7 @@ async function handle(req: Request): Promise<Response> {
 		failed,
 		collected,
 		transitions,
+		ingested,
 		at: new Date().toISOString(),
 	});
 }
