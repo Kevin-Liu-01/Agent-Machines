@@ -1,4 +1,7 @@
-import type { CSSProperties } from "react";
+"use client";
+
+import { Check, Copy } from "lucide-react";
+import { useEffect, useState, type CSSProperties } from "react";
 
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { ToolIcon } from "@/components/ToolIcon";
@@ -7,16 +10,44 @@ import { cn } from "@/lib/cn";
 
 const INSTALL_CODE = "npm i agent-machines";
 
+const CODE_TEXT = `import { AgentMachines } from "agent-machines"
+
+const am = new AgentMachines()
+
+const agent = await am.create({
+  agent: "hermes",
+  sandbox: "e2b",
+  model: "claude-opus-4.8",
+  persistent: true,
+})
+
+await agent.run("review my code")`;
+
+type CodeTone =
+	| "boolean"
+	| "class"
+	| "identifier"
+	| "keyword"
+	| "method"
+	| "operator"
+	| "property"
+	| "punctuation"
+	| "string";
+
 const CODE_LINES: ReadonlyArray<{
 	no: string;
 	indent?: number;
-	parts: ReadonlyArray<{ text: string; tone?: "dim" | "keyword" | "string" }>;
+	parts: ReadonlyArray<{ text: string; tone?: CodeTone }>;
 }> = [
 	{
 		no: "01",
 		parts: [
 			{ text: "import", tone: "keyword" },
-			{ text: " { AgentMachines } " },
+			{ text: " ", tone: "punctuation" },
+			{ text: "{", tone: "punctuation" },
+			{ text: " AgentMachines ", tone: "class" },
+			{ text: "}", tone: "punctuation" },
+			{ text: " ", tone: "punctuation" },
 			{ text: "from", tone: "keyword" },
 			{ text: " \"agent-machines\"", tone: "string" },
 		],
@@ -26,9 +57,11 @@ const CODE_LINES: ReadonlyArray<{
 		no: "03",
 		parts: [
 			{ text: "const", tone: "keyword" },
-			{ text: " am = " },
+			{ text: " am", tone: "identifier" },
+			{ text: " = ", tone: "operator" },
 			{ text: "new", tone: "keyword" },
-			{ text: " AgentMachines()" },
+			{ text: " AgentMachines", tone: "class" },
+			{ text: "()", tone: "punctuation" },
 		],
 	},
 	{ no: "04", parts: [{ text: "" }] },
@@ -36,52 +69,65 @@ const CODE_LINES: ReadonlyArray<{
 		no: "05",
 		parts: [
 			{ text: "const", tone: "keyword" },
-			{ text: " agent = " },
+			{ text: " agent", tone: "identifier" },
+			{ text: " = ", tone: "operator" },
 			{ text: "await", tone: "keyword" },
-			{ text: " am.create({" },
+			{ text: " am", tone: "identifier" },
+			{ text: ".create", tone: "method" },
+			{ text: "({", tone: "punctuation" },
 		],
 	},
 	{
 		no: "06",
 		indent: 1,
 		parts: [
-			{ text: "agent: " },
+			{ text: "agent", tone: "property" },
+			{ text: ": ", tone: "punctuation" },
 			{ text: "\"hermes\"", tone: "string" },
-			{ text: "," },
+			{ text: ",", tone: "punctuation" },
 		],
 	},
 	{
 		no: "07",
 		indent: 1,
 		parts: [
-			{ text: "sandbox: " },
+			{ text: "sandbox", tone: "property" },
+			{ text: ": ", tone: "punctuation" },
 			{ text: "\"e2b\"", tone: "string" },
-			{ text: "," },
+			{ text: ",", tone: "punctuation" },
 		],
 	},
 	{
 		no: "08",
 		indent: 1,
 		parts: [
-			{ text: "model: " },
+			{ text: "model", tone: "property" },
+			{ text: ": ", tone: "punctuation" },
 			{ text: "\"claude-opus-4.8\"", tone: "string" },
-			{ text: "," },
+			{ text: ",", tone: "punctuation" },
 		],
 	},
 	{
 		no: "09",
 		indent: 1,
-		parts: [{ text: "persistent: true," }],
+		parts: [
+			{ text: "persistent", tone: "property" },
+			{ text: ": ", tone: "punctuation" },
+			{ text: "true", tone: "boolean" },
+			{ text: ",", tone: "punctuation" },
+		],
 	},
-	{ no: "10", parts: [{ text: "})" }] },
+	{ no: "10", parts: [{ text: "})", tone: "punctuation" }] },
 	{ no: "11", parts: [{ text: "" }] },
 	{
 		no: "12",
 		parts: [
 			{ text: "await", tone: "keyword" },
-			{ text: " agent.run(" },
+			{ text: " agent", tone: "identifier" },
+			{ text: ".run", tone: "method" },
+			{ text: "(", tone: "punctuation" },
 			{ text: "\"review my code\"", tone: "string" },
-			{ text: ")" },
+			{ text: ")", tone: "punctuation" },
 		],
 	},
 ];
@@ -225,6 +271,35 @@ function RouteFacet({ label, value }: { label: string; value: string }) {
 }
 
 function CodePanel() {
+	const [copied, setCopied] = useState(false);
+
+	useEffect(() => {
+		if (!copied) return;
+		const timeout = window.setTimeout(() => setCopied(false), 1400);
+		return () => window.clearTimeout(timeout);
+	}, [copied]);
+
+	const copyCode = async () => {
+		try {
+			if (navigator.clipboard?.writeText) {
+				await navigator.clipboard.writeText(CODE_TEXT);
+			} else {
+				const textarea = document.createElement("textarea");
+				textarea.value = CODE_TEXT;
+				textarea.setAttribute("readonly", "");
+				textarea.style.position = "fixed";
+				textarea.style.top = "-9999px";
+				document.body.appendChild(textarea);
+				textarea.select();
+				document.execCommand("copy");
+				document.body.removeChild(textarea);
+			}
+			setCopied(true);
+		} catch {
+			setCopied(false);
+		}
+	};
+
 	return (
 		<div className="relative overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg)]">
 			<div
@@ -242,6 +317,21 @@ function CodePanel() {
 				<span className="font-mono text-[10px] text-[var(--ret-text-muted)]">
 					{"recipe -> worker"}
 				</span>
+			</div>
+			<div className="relative z-10 flex justify-end border-b border-[var(--ret-border)] bg-[var(--ret-bg)]/78 px-3 py-2 backdrop-blur-sm">
+				<button
+					type="button"
+					onClick={() => void copyCode()}
+					className="ret-pressable inline-flex min-h-8 items-center gap-1.5 border border-[var(--ret-border)] bg-[var(--ret-surface)] px-2.5 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-text-secondary)] hover:border-[var(--ret-border-hover)] hover:bg-[var(--ret-surface-hover)] hover:text-[var(--ret-text)]"
+					aria-label={copied ? "SDK example copied" : "Copy SDK example"}
+				>
+					{copied ? (
+						<Check className="h-3.5 w-3.5" strokeWidth={1.75} />
+					) : (
+						<Copy className="h-3.5 w-3.5" strokeWidth={1.75} />
+					)}
+					<span>{copied ? "copied" : "copy"}</span>
+				</button>
 			</div>
 			<pre className="relative z-10 m-0 overflow-hidden bg-[var(--ret-bg)]/82 px-3 py-4 font-mono text-[11px] leading-6 text-[var(--ret-text)] backdrop-blur-sm md:px-5 md:py-5 md:text-[12px]">
 				<code className="block">
@@ -273,8 +363,14 @@ function CodePanel() {
 
 function codeTone(tone: (typeof CODE_LINES)[number]["parts"][number]["tone"]) {
 	return cn(
-		tone === "dim" && "text-[var(--ret-text-muted)]",
+		tone === "boolean" && "font-semibold text-[var(--ret-text)]",
+		tone === "class" && "font-semibold text-[var(--ret-text)]",
+		tone === "identifier" && "text-[var(--ret-text)]",
 		tone === "keyword" && "font-semibold text-[var(--ret-text)]",
+		tone === "method" && "font-medium text-[var(--ret-text)]",
+		tone === "operator" && "text-[var(--ret-text-muted)]",
+		tone === "property" && "text-[var(--ret-text-secondary)]",
+		tone === "punctuation" && "text-[var(--ret-text-dim)]",
 		tone === "string" && "text-[var(--ret-text-secondary)]",
 	);
 }
