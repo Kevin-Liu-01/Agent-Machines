@@ -15,6 +15,7 @@ import {
 	PRODUCT_FEATURES,
 	productFeatureBySlug,
 } from "@/lib/marketing/public-site";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
 type Params = {
 	params: Promise<{ slug: string }>;
@@ -28,11 +29,12 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 	const { slug } = await params;
 	const feature = productFeatureBySlug(slug);
 	if (!feature) return {};
-	return {
+	return buildPageMetadata({
 		title: feature.title,
 		description: feature.description,
-		alternates: { canonical: feature.href },
-	};
+		path: feature.href,
+		keywords: [feature.eyebrow, ...feature.badges],
+	});
 }
 
 export default async function ProductFeaturePage({ params }: Params) {

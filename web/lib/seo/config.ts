@@ -1,5 +1,4 @@
 import { HARNESS_SUMMARY, HARNESS_TOOLS_ANSWER, PRODUCT } from "@/lib/platform/harness";
-import { RUNTIME } from "@/lib/platform/runtime";
 
 /**
  * Single source of truth for site-level SEO/GEO/AEO data. Used by
@@ -20,9 +19,15 @@ export const SITE = {
 	wordmark: "agent-machines",
 	url: "https://www.agent-machines.dev",
 	description:
-		`${PRODUCT.oneLiner} Hermes, OpenClaw, Claude Code, or Codex on E2B, Sprites.dev, Dedalus Machines, or Vercel Sandbox. ${HARNESS_SUMMARY}.`,
+		"Agent Machines runs persistent agent workers across runtimes and sandboxes with model routing, skills, MCPs, cron, logs, usage, and an SDK.",
+	longDescription:
+		`${PRODUCT.summary} Choose Hermes, OpenClaw, Claude Code, or Codex, then choose E2B, Sprites.dev, Dedalus Machines, or Vercel Sandbox. Route model paths through Dedalus, OpenRouter, Vercel AI Gateway, native keys, or any OpenAI-compatible endpoint. ${HARNESS_SUMMARY}.`,
 	tagline: PRODUCT.tagline,
-	ogImage: "/og.png",
+	ogImage: "/opengraph-image",
+	ogImageAlt:
+		"Agent Machines switchboard for persistent agent workers, sandbox lanes, model paths, loadouts, logs, usage, cron, and artifacts",
+	aiSummary:
+		"Agent Machines is a harness-agnostic and sandbox-agnostic control plane for persistent AI agent workers. It pairs an agent runtime, sandbox provider, model path, loadout, memory, cron, logs, usage, artifacts, and SDK control into one worker.",
 	twitterHandle: "@kevin_liu_01",
 	authorName: "Kevin Liu",
 	authorUrl: "https://github.com/Kevin-Liu-01",
@@ -46,6 +51,36 @@ export const SITE = {
 		"stateful agent",
 		"sandbox agent",
 		"AI agent runtime",
+		"agent router",
+		"sandbox router",
+		"model router",
+		"harness agnostic agent",
+		"sandbox agnostic agent",
+		"agent SDK",
+		"persistent worker",
+		"agent worker",
+		"agent observability",
+		"agent loadout",
+		"agent cron",
+		"agent artifacts",
+		"agent logs",
+		"agent usage tracking",
+		"browser agent console",
+		"E2B agent",
+		"Sprites.dev agent",
+		"Vercel Sandbox agent",
+		"Dedalus agent",
+	],
+	capabilities: [
+		"Harness-agnostic agent runtime switchboard",
+		"Sandbox-agnostic provider switchboard",
+		"Model path and gateway profile routing",
+		"Persistent worker provisioning",
+		"Browser terminal and command surface",
+		"Loadout registry for skills, MCP servers, CLIs, plugins, and services",
+		"Memory bundles and worker presets",
+		"Logs, usage, cron, sessions, artifacts, and fleet observability",
+		"TypeScript SDK and REST API",
 	],
 } as const;
 

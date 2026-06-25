@@ -6,11 +6,15 @@ import {
 } from "@/components/marketing/MarketingPage";
 import { PublicRegistryBrowser } from "@/components/PublicRegistryBrowser";
 import { ReticleSection } from "@/components/reticle/ReticleSection";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata = {
+export const metadata = buildPageMetadata({
 	title: "Registry",
-	description: "Browse skills, MCPs, CLI tools, and plugins for persistent agent workers.",
-};
+	description:
+		"Browse skills, MCP servers, CLI tools, plugins, service routes, and source entries for persistent Agent Machines workers.",
+	path: "/registry",
+	keywords: ["agent registry", "MCP registry", "SKILL.md skills", "agent loadout"],
+});
 
 export default function RegistryPage() {
 	return (

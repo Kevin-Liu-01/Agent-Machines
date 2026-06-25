@@ -1,5 +1,3 @@
-import type { Metadata } from "next";
-
 import {
 	DocList,
 	DocListItem,
@@ -7,13 +5,15 @@ import {
 	PublicDocPage,
 } from "@/components/PublicDocPage";
 import { LEGAL_EFFECTIVE_DATE, SITE } from "@/lib/seo/config";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata = buildPageMetadata({
 	title: "Privacy Policy",
 	description:
 		"Privacy policy for Agent Machines, including account data, provider keys, machine data, artifacts, and third-party services.",
-	alternates: { canonical: "/privacy" },
-};
+	path: "/privacy",
+	keywords: ["Agent Machines privacy", "agent machine data", "provider keys"],
+});
 
 export default function PrivacyPage() {
 	return (

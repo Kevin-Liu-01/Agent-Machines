@@ -1,14 +1,14 @@
-import type { Metadata } from "next";
-
 import { ResourcePageContent } from "@/components/marketing/ResourcePageContent";
 import { resourcePageBySlug } from "@/lib/marketing/public-site";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata = buildPageMetadata({
 	title: "Blog",
 	description:
-		"Agent Machines engineering notes about persistent agents, runtime lanes, provider lanes, usage tracking, and fleet operations.",
-	alternates: { canonical: "/blog" },
-};
+		"Agent Machines engineering notes about persistent agents, runtime routing, sandbox routing, usage tracking, loadouts, and fleet operations.",
+	path: "/blog",
+	keywords: ["agent engineering", "persistent agents", "AI infrastructure blog"],
+});
 
 export default function BlogPage() {
 	const page = resourcePageBySlug("blog");

@@ -1,5 +1,3 @@
-import type { Metadata } from "next";
-
 import {
 	LinkCard,
 	MarketingHero,
@@ -10,13 +8,15 @@ import {
 } from "@/components/marketing/MarketingPage";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { PRODUCT_FEATURES } from "@/lib/marketing/public-site";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata = buildPageMetadata({
 	title: "Product",
 	description:
-		"Explore Agent Machines product capabilities: persistent workers, model paths, lifecycle controls, isolation, snapshots, volumes, and machine APIs.",
-	alternates: { canonical: "/product" },
-};
+		"Explore Agent Machines product capabilities: runtime routing, sandbox routing, model paths, loadouts, lifecycle controls, observability, and SDK APIs.",
+	path: "/product",
+	keywords: ["agent product", "runtime router", "sandbox router", "worker observability"],
+});
 
 export default function ProductPage() {
 	return (

@@ -1,14 +1,14 @@
-import type { Metadata } from "next";
-
 import { ResourcePageContent } from "@/components/marketing/ResourcePageContent";
 import { resourcePageBySlug } from "@/lib/marketing/public-site";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata = buildPageMetadata({
 	title: "Documentation",
 	description:
 		"Agent Machines documentation for setup, provider credentials, runtimes, model paths, loadouts, logs, usage, cron, and artifacts.",
-	alternates: { canonical: "/docs" },
-};
+	path: "/docs",
+	keywords: ["Agent Machines docs", "agent setup", "provider credentials"],
+});
 
 export default function DocsPage() {
 	const page = resourcePageBySlug("docs");

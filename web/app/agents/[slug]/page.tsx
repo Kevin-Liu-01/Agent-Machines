@@ -16,6 +16,7 @@ import {
 	AGENT_TEMPLATES,
 	agentTemplateBySlug,
 } from "@/lib/marketing/public-site";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
 type Params = {
 	params: Promise<{ slug: string }>;
@@ -29,11 +30,12 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 	const { slug } = await params;
 	const agent = agentTemplateBySlug(slug);
 	if (!agent) return {};
-	return {
+	return buildPageMetadata({
 		title: agent.title,
 		description: agent.description,
-		alternates: { canonical: agent.href },
-	};
+		path: agent.href,
+		keywords: [agent.runtime, agent.category, agent.providerLane, agent.modelPath],
+	});
 }
 
 export default async function AgentTemplatePage({ params }: Params) {

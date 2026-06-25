@@ -1,5 +1,3 @@
-import type { Metadata } from "next";
-
 import {
 	DocList,
 	DocListItem,
@@ -7,13 +5,15 @@ import {
 	PublicDocPage,
 } from "@/components/PublicDocPage";
 import { LEGAL_EFFECTIVE_DATE, SITE } from "@/lib/seo/config";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata = buildPageMetadata({
 	title: "Terms of Service",
 	description:
-		"Terms for using Agent Machines — OpenRouter for agents and containers.",
-	alternates: { canonical: "/terms" },
-};
+		"Terms for using Agent Machines, the persistent agent worker control plane for runtimes, sandbox providers, model paths, and loadouts.",
+	path: "/terms",
+	keywords: ["Agent Machines terms", "agent worker terms", "AI agent infrastructure terms"],
+});
 
 export default function TermsPage() {
 	return (

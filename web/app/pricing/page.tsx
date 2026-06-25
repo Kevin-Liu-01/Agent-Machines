@@ -1,5 +1,3 @@
-import type { Metadata } from "next";
-
 import {
 	FlowSteps,
 	MarketingHero,
@@ -11,13 +9,15 @@ import {
 } from "@/components/marketing/MarketingPage";
 import { PricingCalculator } from "@/components/marketing/PricingCalculator";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata = buildPageMetadata({
 	title: "Pricing",
 	description:
 		"Agent Machines pricing model for provider-backed workers, usage tracking, compute, memory, storage, and model path costs.",
-	alternates: { canonical: "/pricing" },
-};
+	path: "/pricing",
+	keywords: ["agent pricing", "worker usage tracking", "AI agent cost"],
+});
 
 const PRICING_METRICS = [
 	{ label: "Seat pricing", value: "$0", detail: "workers are the unit" },

@@ -1,5 +1,3 @@
-import type { Metadata } from "next";
-
 import {
 	LinkCard,
 	MarketingHero,
@@ -11,13 +9,15 @@ import {
 } from "@/components/marketing/MarketingPage";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { AGENT_TEMPLATES } from "@/lib/marketing/public-site";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
-export const metadata: Metadata = {
+export const metadata = buildPageMetadata({
 	title: "Agents",
 	description:
-		"Browse Agent Machines templates for research, coding, code review, data analysis, browser automation, support, QA, operations, security, and growth work.",
-	alternates: { canonical: "/agents" },
-};
+		"Browse Agent Machines worker templates for research, coding, code review, data analysis, browser automation, support, QA, operations, security, and growth.",
+	path: "/agents",
+	keywords: ["agent templates", "worker templates", "Hermes agent", "OpenClaw agent"],
+});
 
 const MARKET_METRICS = [
 	{ label: "Templates", value: String(AGENT_TEMPLATES.length), detail: "runtime plus loadout recipes" },
