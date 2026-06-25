@@ -18,16 +18,16 @@
         <circle cx="258" cy="152" r="8.8"/>
         <circle cx="66" cy="228" r="8.8"/>
         <circle cx="70" cy="274" r="8.8"/>
-        <circle cx="288" cy="230" r="8.8"/>
-        <circle cx="300" cy="278" r="8.8"/>
+        <circle cx="288" cy="238" r="8.8"/>
+        <circle cx="300" cy="266" r="8.8"/>
         <circle cx="186" cy="348" r="8.8"/>
         <circle cx="248" cy="406" r="8.8"/>
         <circle cx="166" cy="462" r="8.8"/>
         <circle cx="252" cy="462" r="8.8"/>
-        <rect x="28.5" y="212.5" width="17" height="17" rx="2.5"/>
-        <rect x="30.5" y="282.5" width="17" height="17" rx="2.5"/>
-        <rect x="336.5" y="184.5" width="17" height="17" rx="2.5"/>
-        <rect x="338.5" y="290.5" width="17" height="17" rx="2.5"/>
+        <rect x="28.5" y="219.5" width="17" height="17" rx="2.5"/>
+        <rect x="30.5" y="265.5" width="17" height="17" rx="2.5"/>
+        <rect x="336.5" y="187.5" width="17" height="17" rx="2.5"/>
+        <rect x="338.5" y="295.5" width="17" height="17" rx="2.5"/>
       </g>
     </mask>
   </defs>
@@ -66,16 +66,20 @@
     <path class="trace" d="M324 78h34v46h26"/>
   </g>
 
-  <!-- Central processor: reserved channels enter from four sides. -->
+  <!-- Central processor: pins, buses, and terminal pads share centerlines. -->
   <g opacity=".72">
-    <rect class="chip" x="154" y="214" width="76" height="76"/>
-    <path class="fine" d="M170 200v14M186 200v14M202 200v14M218 200v14M170 290v14M186 290v14M202 290v14M218 290v14M140 230h14M140 246h14M140 262h14M140 278h14M230 230h14M230 246h14M230 262h14M230 278h14"/>
-    <path class="bus" d="M0 228h66l26 26h48"/>
-    <path class="bus" d="M0 274h70l24-24h46"/>
-    <path class="bus" d="M244 230h44l34-34h62"/>
-    <path class="bus" d="M244 278h56l26 26h58"/>
-    <path class="trace" d="M192 214v-44l24-24h54"/>
-    <path class="trace" d="M206 290v48l22 22h54"/>
+    <rect class="chip" x="146" y="206" width="92" height="92" rx="1.5"/>
+    <rect class="fine" x="158" y="218" width="68" height="68" rx="1" opacity=".42"/>
+    <path class="fine" opacity=".36" d="M176 228h32l10 10v28l-10 10h-32l-10-10v-28z"/>
+    <circle class="pad" cx="192" cy="252" r="8.5" opacity=".68"/>
+    <path class="fine" opacity=".62" d="M184 252h16M192 244v16M186 246l12 12M198 246l-12 12"/>
+    <path class="fine" d="M160 192v14M176 192v14M192 192v14M208 192v14M224 192v14M160 298v14M176 298v14M192 298v14M208 298v14M224 298v14M130 226h16M130 239h16M130 252h16M130 266h16M130 279h16M238 226h16M238 239h16M238 252h16M238 266h16M238 279h16"/>
+    <path class="bus" d="M0 228h66l26 24h38"/>
+    <path class="bus" d="M0 274h70l28-8h32"/>
+    <path class="bus" d="M254 238h34l34-42h62"/>
+    <path class="bus" d="M254 266h46l26 38h58"/>
+    <path class="trace" d="M192 206v-36l24-24h54"/>
+    <path class="trace" d="M208 298v40l22 22h54"/>
   </g>
 
   <!-- Left lower memory lanes. -->
@@ -117,16 +121,16 @@
     <circle class="pad" cx="258" cy="152" r="5.5"/>
     <circle class="pad" cx="66" cy="228" r="5.5"/>
     <circle class="pad" cx="70" cy="274" r="5.5"/>
-    <circle class="pad" cx="288" cy="230" r="5.5"/>
-    <circle class="pad" cx="300" cy="278" r="5.5"/>
+    <circle class="pad" cx="288" cy="238" r="5.5"/>
+    <circle class="pad" cx="300" cy="266" r="5.5"/>
     <circle class="pad" cx="186" cy="348" r="5.5"/>
     <circle class="pad" cx="248" cy="406" r="5.5"/>
     <circle class="pad" cx="166" cy="462" r="5.5"/>
     <circle class="pad" cx="252" cy="462" r="5.5"/>
-    <rect class="pad" x="32" y="216" width="10" height="10"/>
-    <rect class="pad" x="34" y="286" width="10" height="10"/>
-    <rect class="pad" x="340" y="188" width="10" height="10"/>
-    <rect class="pad" x="342" y="294" width="10" height="10"/>
+    <rect class="pad" x="32" y="223" width="10" height="10"/>
+    <rect class="pad" x="34" y="269" width="10" height="10"/>
+    <rect class="pad" x="340" y="191" width="10" height="10"/>
+    <rect class="pad" x="342" y="299" width="10" height="10"/>
     <circle class="pin" cx="62" cy="48" r="2"/>
     <circle class="pin" cx="102" cy="462" r="2"/>
     <circle class="pin" cx="322" cy="124" r="2"/>
