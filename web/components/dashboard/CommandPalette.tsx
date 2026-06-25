@@ -63,6 +63,7 @@ const NAV_ITEMS: ReadonlyArray<{ label: string; href: string; keywords: string }
 	{ label: "Machines", href: "/dashboard/machines", keywords: "fleet containers list deploy" },
 	{ label: "Usage", href: "/dashboard/usage", keywords: "cost billing resources spend" },
 	{ label: "Benchmarks", href: "/dashboard/benchmarks", keywords: "speed latency providers compare" },
+	{ label: "Learning", href: "/dashboard/benchmarks#learning", keywords: "learn self learning adaptive routing recommendations bandit policy runtime substrate model" },
 	{ label: "Skills", href: "/dashboard/skills", keywords: "library skill.md capabilities" },
 	{ label: "MCPs", href: "/dashboard/mcps", keywords: "servers tools integrations" },
 	{ label: "Cron", href: "/dashboard/cron", keywords: "schedule jobs automation" },

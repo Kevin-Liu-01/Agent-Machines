@@ -25,9 +25,19 @@ import { ScoreRanking } from "./ScoreRanking";
 
 type RunMode = "demo" | "live";
 
+type RouteRecommendation = {
+	runtime: string;
+	substrate: string;
+	model: string;
+	routerId: string | null;
+	samples?: number;
+	meanSuccess?: number;
+};
+
 export function BenchmarksClient() {
 	const [snapshot, setSnapshot] = useState<BenchmarkSnapshot | null>(null);
 	const [view, setView] = useState<BenchmarksView | null>(null);
+	const [recommendation, setRecommendation] = useState<RouteRecommendation | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [running, setRunning] = useState<RunMode | null>(null);
@@ -59,6 +69,21 @@ export function BenchmarksClient() {
 	useEffect(() => {
 		void load();
 	}, [load]);
+
+	useEffect(() => {
+		let stopped = false;
+		fetch("/api/dashboard/admin/route-recommendation", { cache: "no-store" })
+			.then((res) => (res.ok ? (res.json() as Promise<RouteRecommendation>) : null))
+			.then((payload) => {
+				if (!stopped) setRecommendation(payload);
+			})
+			.catch(() => {
+				if (!stopped) setRecommendation(null);
+			});
+		return () => {
+			stopped = true;
+		};
+	}, []);
 
 	const runBenchmark = useCallback(
 		async (mode: RunMode) => {
@@ -134,6 +159,8 @@ export function BenchmarksClient() {
 					<>
 						<SourceBanner view={view} />
 
+						<LearningPanel recommendation={recommendation} />
+
 						<BenchmarkLeaderboard
 							leaderboard={view.leaderboard}
 							scores={view.scores}
@@ -173,6 +200,105 @@ export function BenchmarksClient() {
 					</>
 				) : null}
 			</DashboardPageBody>
+		</div>
+	);
+}
+
+function LearningPanel({
+	recommendation,
+}: {
+	recommendation: RouteRecommendation | null;
+}) {
+	const confidence =
+		typeof recommendation?.meanSuccess === "number"
+			? `${Math.round(recommendation.meanSuccess * 100)}%`
+			: "prior";
+	const samples =
+		typeof recommendation?.samples === "number"
+			? recommendation.samples.toLocaleString()
+			: "0";
+	return (
+		<Panel id="learning" header="Learning">
+			<div className="grid gap-px bg-[var(--ret-border)] md:grid-cols-[1.05fr_1.35fr]">
+				<div className="bg-[var(--ret-bg)] p-4 sm:p-5">
+					<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+						Adaptive router
+					</p>
+					<h2 className="mt-3 max-w-[18rem] text-[24px] font-semibold leading-[1.05] tracking-tight text-[var(--ret-text)]">
+						The fleet learns where work should run.
+					</h2>
+					<p className="mt-3 max-w-[32rem] text-[12.5px] leading-relaxed text-[var(--ret-text-dim)]">
+						Cron runs write trace lines. The hourly learner scores runtime,
+						substrate, model, and router arms. Provisioning can use the current
+						best pick.
+					</p>
+				</div>
+				<div className="grid bg-[var(--ret-bg)] sm:grid-cols-3">
+					<LearningCell
+						label="current pick"
+						value={
+							recommendation
+								? `${recommendation.substrate} / ${recommendation.runtime}`
+								: "waiting"
+						}
+						detail={recommendation?.model ?? "No active policy yet"}
+					/>
+					<LearningCell
+						label="evidence"
+						value={samples}
+						detail="run traces"
+					/>
+					<LearningCell
+						label="confidence"
+						value={confidence}
+						detail={recommendation?.routerId ?? "native / default"}
+					/>
+				</div>
+			</div>
+			<div className="grid gap-px border-t border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-4">
+				{[
+					["Trace", "Append run outcome"],
+					["Score", "Normalize cost and latency"],
+					["Learn", "Update route policy"],
+					["Apply", "Prefill new machine"],
+				].map(([label, detail], index) => (
+					<div key={label} className="bg-[var(--ret-bg-soft)] px-4 py-3">
+						<p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+							{String(index + 1).padStart(2, "0")}
+						</p>
+						<p className="mt-2 text-[13px] font-medium text-[var(--ret-text)]">
+							{label}
+						</p>
+						<p className="mt-1 text-[11px] text-[var(--ret-text-muted)]">
+							{detail}
+						</p>
+					</div>
+				))}
+			</div>
+		</Panel>
+	);
+}
+
+function LearningCell({
+	label,
+	value,
+	detail,
+}: {
+	label: string;
+	value: string;
+	detail: string;
+}) {
+	return (
+		<div className="min-w-0 border-t border-[var(--ret-border)] px-4 py-4 sm:border-l sm:border-t-0">
+			<p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				{label}
+			</p>
+			<p className="mt-3 truncate text-[18px] font-medium leading-none text-[var(--ret-text)]">
+				{value}
+			</p>
+			<p className="mt-2 truncate font-mono text-[10px] text-[var(--ret-text-muted)]">
+				{detail}
+			</p>
 		</div>
 	);
 }
@@ -265,9 +391,17 @@ function Banner({
 	);
 }
 
-function Panel({ header, children }: { header: string; children: ReactNode }) {
+function Panel({
+	id,
+	header,
+	children,
+}: {
+	id?: string;
+	header: string;
+	children: ReactNode;
+}) {
 	return (
-		<section className="border border-[var(--ret-border)] bg-[var(--ret-bg)]">
+		<section id={id} className="scroll-mt-24 border border-[var(--ret-border)] bg-[var(--ret-bg)]">
 			<div className="border-b border-[var(--ret-border)] px-4 py-3">
 				<h2 className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					{header}
