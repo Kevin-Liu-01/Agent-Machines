@@ -51,7 +51,7 @@ const SOURCE_BADGE: Record<MemoryBundleSource, "accent" | "success" | "default">
 
 const DOC_FIELDS: ReadonlyArray<{ key: keyof MemoryBundle["docs"]; label: string; hint: string }> = [
 	{ key: "soul", label: "Persona & voice", hint: "SOUL.md — who the agent is, how it talks" },
-	{ key: "agentDocs", label: "Operating rules & agent docs", hint: "AGENTS.md — principles, routing, hard rules" },
+	{ key: "agentDocs", label: "Operating rules & agent docs", hint: "AGENTS.md — principles, dispatch, hard rules" },
 	{ key: "memory", label: "Working memory", hint: "MEMORY.md — durable facts, env, context" },
 	{ key: "user", label: "Operator profile", hint: "USER.md — who you are, preferences" },
 ];

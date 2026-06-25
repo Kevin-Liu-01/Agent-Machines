@@ -7,7 +7,7 @@ import type { AgentKind, AgentMeta, AgentOperationModel } from "@/lib/types";
  * and the command-toggle panel. Agents are grouped by operation
  * model: autonomous agents have a built-in driver that wakes
  * them up on schedule; task-driven CLIs require per-task human
- * instruction but can be automated via headless/exec flags.
+ * instruction but can be automated via headless command flags.
  */
 export const AGENTS: ReadonlyArray<AgentMeta> = [
 	{
@@ -19,7 +19,7 @@ export const AGENTS: ReadonlyArray<AgentMeta> = [
 		capabilities: "Self-improving agent with persistent memory, cron scheduling, session history, MCP host, subagents, and FTS5 search. Works with any OpenAI-compatible endpoint -- 30+ providers out of the box.",
 		providerKeys: ["DEDALUS_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY"],
 		providerOptions: [
-			{ key: "DEDALUS_API_KEY", label: "Dedalus Router", hint: "routes 200+ models with one key via api.dedaluslabs.ai/v1" },
+			{ key: "DEDALUS_API_KEY", label: "Dedalus Router", hint: "200+ models with one key via api.dedaluslabs.ai/v1" },
 			{ key: "AI_GATEWAY_API_KEY", label: "Vercel AI Gateway", hint: "200+ models, OIDC auth, provider failover -- vercel.com/ai-gateway" },
 			{ key: "OPENAI_API_KEY", label: "OpenAI direct", hint: "platform.openai.com" },
 			{ key: "ANTHROPIC_API_KEY", label: "Anthropic direct", hint: "console.anthropic.com" },
@@ -80,7 +80,7 @@ export const AGENTS: ReadonlyArray<AgentMeta> = [
 		by: "Anthropic",
 		operationModel: "task-driven",
 		tagline: "edit repos . run shell . SDK . headless",
-		capabilities: "Terminal coding agent with deep repo awareness, multi-step tool use, and the Agent SDK for programmatic headless execution. Can be automated via cron + claude -p --dangerously-skip-permissions.",
+		capabilities: "Terminal coding agent with deep repo awareness, multi-step tool use, and the Agent SDK for programmatic headless runs. Can be automated via cron + claude -p --dangerously-skip-permissions.",
 		providerKeys: ["ANTHROPIC_API_KEY"],
 		providerOptions: [
 			{ key: "ANTHROPIC_API_KEY", label: "Anthropic API key", hint: "console.anthropic.com/settings/keys" },
@@ -105,8 +105,8 @@ export const AGENTS: ReadonlyArray<AgentMeta> = [
 		name: "Codex CLI",
 		by: "OpenAI",
 		operationModel: "task-driven",
-		tagline: "execute tasks . sandbox . JSONL . CI",
-		capabilities: "Terminal coding agent with sandbox isolation, workspace-write and full-access modes. Non-interactive via codex exec for CI/CD and automation. JSONL output for programmatic parsing.",
+		tagline: "ship tasks . sandbox . JSONL . CI",
+		capabilities: "Terminal coding agent with sandbox isolation, workspace-write and full-access modes. Non-interactive runs via codex exec for CI/CD and automation. JSONL output for programmatic parsing.",
 		providerKeys: ["OPENAI_API_KEY"],
 		providerOptions: [
 			{ key: "OPENAI_API_KEY", label: "OpenAI API key", hint: "platform.openai.com/api-keys" },

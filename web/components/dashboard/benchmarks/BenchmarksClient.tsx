@@ -117,7 +117,7 @@ export function BenchmarksClient() {
 			<PageHeader
 				kicker="BENCHMARKS"
 				title="Substrate benchmarks"
-				description="Apples-to-apples comparison across every substrate provider: boot, resume, exec, compute, I/O, and a composite responsiveness score, all driven through the same MachineProvider contract."
+				description="Apples-to-apples comparison across every substrate provider: boot, resume, command latency, compute, I/O, and a composite responsiveness score, all driven through the same MachineProvider contract."
 				right={
 					<RunControls running={running} onRun={runBenchmark} />
 				}
@@ -238,7 +238,7 @@ function SourceBanner({ view }: { view: BenchmarksView }) {
 	return (
 		<Banner tone="ok">
 			Measured run · {fmtTime(meta.finishedAt)}
-			{meta.region ? ` · ${meta.region}` : ""} · {meta.iterations} exec iters ·
+			{meta.region ? ` · ${meta.region}` : ""} · {meta.iterations} command iters ·
 			run <span className="font-mono">{meta.runId.slice(0, 8)}</span>
 		</Banner>
 	);

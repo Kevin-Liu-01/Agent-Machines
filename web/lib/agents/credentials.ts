@@ -78,7 +78,7 @@ export function agentCredentialRequirements(
 				{
 					field: "dedalus",
 					label: "Dedalus router key",
-					hint: "Routes 200+ models via api.dedaluslabs.ai/v1",
+					hint: "200+ models via api.dedaluslabs.ai/v1",
 					signupUrl: SIGNUP.dedalus,
 					required: false,
 				},
@@ -88,7 +88,7 @@ export function agentCredentialRequirements(
 				{
 					field: "dedalus",
 					label: "Dedalus router key",
-					hint: "Recommended — one key routes 200+ models",
+					hint: "Recommended — one key for 200+ models",
 					signupUrl: SIGNUP.dedalus,
 					required: false,
 				},

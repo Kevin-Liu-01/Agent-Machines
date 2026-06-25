@@ -150,7 +150,7 @@ export function agentUpstreamReadiness(
 
 	const preset = routerPresetById(routerId);
 	if (preset && aiConfigured[preset.source]) {
-		return { status: "ready", detail: `Routes via ${preset.label}.`, needs: null };
+		return { status: "ready", detail: `Uses ${preset.label}.`, needs: null };
 	}
 	const anyUpstream = ROUTER_SOURCE_KEYS.some((key) => aiConfigured[key]);
 	if (anyUpstream) {

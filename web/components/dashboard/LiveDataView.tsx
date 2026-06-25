@@ -96,10 +96,10 @@ export function LiveDataView<T>({
 		const descriptions: Record<string, string> = {
 			machine_offline:
 				"Live data needs a running Dedalus machine. Wake it from your terminal, then refresh this page.",
-		config_missing:
+			config_missing:
 			"Set DEDALUS_API_KEY and AGENT_MACHINE_ID in the Vercel env so the dashboard knows which machine to read.",
 			exec_failed:
-				"The Dedalus exec call returned an error. The machine may be in an unhealthy state.",
+				"The Dedalus command call returned an error. The machine may be in an unhealthy state.",
 		};
 		return (
 			<EmptyState

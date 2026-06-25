@@ -569,7 +569,7 @@ function ToolbarButton({
 }
 
 const DEFAULT_LOADOUT = [
-	{ name: "shell", kind: "tool" as const, description: "Execute bash commands in the VM" },
+	{ name: "shell", kind: "tool" as const, description: "Run bash commands in the VM" },
 	{ name: "browser", kind: "tool" as const, description: "Navigate, click, screenshot via agent-browser" },
 	{ name: "vision", kind: "tool" as const, description: "Analyze images and screenshots" },
 	{ name: "memory", kind: "tool" as const, description: "Read/write persistent agent memory" },

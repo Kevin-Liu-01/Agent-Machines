@@ -7,7 +7,7 @@ export default function MachineTerminalPage() {
 	return (
 		<div className="flex flex-col">
 			<PageHeader
-				kicker="TERMINAL -- live PTY + one-shot exec"
+				kicker="TERMINAL -- live PTY + one-shot command"
 				title="Talk to this machine."
 				description="Interactive mode attaches a real tmux PTY over the streaming gateway — type, run the agent CLI, and interact as if you were SSH'd in. One-shot mode fires single commands with streamed output."
 			/>

@@ -10,7 +10,7 @@ const CAPABILITY_ROWS: ReadonlyArray<{ key: string; label: string }> = [
 	{ key: "persistentDisk", label: "Persistent disk" },
 	{ key: "scaleToZero", label: "Scale to zero" },
 	{ key: "nativeSleepWake", label: "Native sleep / wake" },
-	{ key: "streamingExec", label: "Streaming exec" },
+	{ key: "streamingExec", label: "Streaming commands" },
 	{ key: "publicUrl", label: "Public URL" },
 	{ key: "maxRuntime", label: "Max runtime" },
 ];

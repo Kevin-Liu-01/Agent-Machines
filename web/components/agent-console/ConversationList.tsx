@@ -524,7 +524,7 @@ function AgentIntrospectionView({
 			if (body.data) {
 				setData(body.data);
 			} else {
-				setError(body.error ?? body.message ?? "exec failed");
+				setError(body.error ?? body.message ?? "command failed");
 			}
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "fetch failed");

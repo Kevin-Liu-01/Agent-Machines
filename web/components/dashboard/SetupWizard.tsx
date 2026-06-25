@@ -72,7 +72,7 @@ const AGENTS_DESC: Record<
 	codex: {
 		name: "Codex CLI",
 		tagline:
-			"OpenAI's terminal coding agent. Sandbox isolation, workspace-write mode, non-interactive via codex exec.",
+			"OpenAI's terminal coding agent. Sandbox isolation, workspace-write mode, non-interactive runs via codex exec.",
 		logo: "openai",
 	},
 };

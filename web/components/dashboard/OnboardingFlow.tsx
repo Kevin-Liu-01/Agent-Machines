@@ -184,7 +184,7 @@ const AGENT_DESC: Record<
 		tagline: "Edit repos. Run shell. Use SDK.",
 		bullets: [
 			"Terminal coding agent with deep repo awareness and multi-step tool use",
-			"Headless execution via claude -p for automation and cron workflows",
+			"Headless runs via claude -p for automation and cron workflows",
 			"Agent SDK for programmatic control from TypeScript or Python",
 		],
 		links: [
@@ -195,10 +195,10 @@ const AGENT_DESC: Record<
 	codex: {
 		name: "Codex CLI",
 		mark: "codex",
-		tagline: "Execute tasks. Sandbox runs. CI-ready.",
+		tagline: "Ship tasks. Sandbox runs. CI-ready.",
 		bullets: [
 			"Terminal coding agent with sandbox isolation and workspace-write modes",
-			"Non-interactive via codex exec for CI/CD pipelines and automation",
+			"Non-interactive runs via codex exec for CI/CD pipelines and automation",
 			"JSONL output for programmatic parsing and integration",
 		],
 		links: [
@@ -1062,7 +1062,7 @@ function KeyStep({
 							: "Required to provision."}
 					{provider === "dedalus" &&
 					(agent === "hermes" || agent === "openclaw")
-						? " Also routes LLM inference when no separate AI key is set."
+						? " Also powers LLM inference when no separate AI key is set."
 						: ""}
 				</span>
 			</label>
@@ -1103,11 +1103,11 @@ function KeyStep({
 									className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-[12px] text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)] focus:border-[var(--ret-purple)] focus:outline-none"
 								/>
 								<span className="text-[10px] text-[var(--ret-text-muted)]">
-									{onFile
+										{onFile
 										? "On file. Leave blank to keep."
 										: req.required
 											? "Required for headless bootstrap."
-											: "Optional — improves upstream routing."}
+											: "Optional — improves upstream selection."}
 									{req.signupUrl ? (
 										<>
 											{" "}

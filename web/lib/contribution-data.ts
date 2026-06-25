@@ -225,7 +225,7 @@ const OPENCLAW_TOOLS: ReadonlyArray<OpenclawTool> = [
 	{ label: "browser.snapshot", category: "browser" },
 	{ label: "browser.fill_form", category: "browser" },
 	{ label: "browser.scroll", category: "browser" },
-	{ label: "shell.exec", category: "shell" },
+	{ label: "shell.run", category: "shell" },
 	{ label: "computer.move_mouse", category: "browser" },
 	{ label: "computer.type_text", category: "browser" },
 	{ label: "computer.press_key", category: "browser" },
@@ -315,7 +315,7 @@ function buildDayEvents(
 				events.push({
 					kind: "codegen",
 					label: "codex run",
-					detail: `tool: ${mcp.name} . sandbox exec`,
+					detail: `tool: ${mcp.name} . sandbox command`,
 					brand: mcp.brand ?? "openai",
 					category: mcp.category,
 				});
@@ -440,10 +440,10 @@ function pickMilestoneEvent(
 		[0, { kind: "milestone", label: "rig provisioned", detail: "npm run deploy . first machine boot" }],
 		[14, { kind: "milestone", label: "13 skills seeded", detail: "philosophy . engineering . design" }],
 		[42, { kind: "milestone", label: "cursor-bridge wired", detail: "@cursor/sdk MCP server registered" }],
-		[68, { kind: "milestone", label: "dashboard auto-wake live", detail: "vercel deploy . clerk gate . dedalus exec" }],
+		[68, { kind: "milestone", label: "dashboard auto-wake live", detail: "vercel deploy . clerk gate . dedalus command" }],
 		[82, { kind: "milestone", label: "claude-code connected", detail: "AGENTS.md loaded . multi-file edits", brand: "anthropic" }],
 		[96, { kind: "milestone", label: "wiki sync . 96 skills", detail: "knowledge/skills filled from my-wiki" }],
-		[110, { kind: "milestone", label: "codex-cli integrated", detail: "sandbox exec . patch workflow", brand: "openai" }],
+		[110, { kind: "milestone", label: "codex-cli integrated", detail: "sandbox command . patch workflow", brand: "openai" }],
 		[128, { kind: "milestone", label: "reticle pass shipped", detail: "edge hairlines . hatching . cross marks" }],
 		[totalDays - 1, { kind: "milestone", label: "today", detail: "you are here" }],
 	];

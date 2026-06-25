@@ -70,7 +70,7 @@ const HERMES_BUILTINS: McpServerWithBrand = {
 			name: "shell_exec",
 			title: "Run a shell command",
 			description:
-				"Execute commands in the VM's shell. Output is streamed back. Used for git, tests, file ops, system inspection.",
+				"Run commands in the VM's shell. Output is streamed back. Used for git, tests, file ops, system inspection.",
 		},
 		{
 			name: "fs_read",
@@ -231,7 +231,7 @@ const SUPABASE: McpServerWithBrand = {
 		},
 		{
 			name: "execute_sql",
-			title: "Execute SQL",
+			title: "Run SQL",
 			description: "Run read-only SQL against the project's Postgres instance and return rows.",
 		},
 		{
@@ -414,7 +414,7 @@ const FIGMA: McpServerWithBrand = {
 		},
 		{
 			name: "use_figma",
-			title: "Execute Plugin API",
+			title: "Run Plugin API",
 			description: "Run arbitrary JavaScript in the Figma file context via the Plugin API.",
 		},
 		{
@@ -446,7 +446,7 @@ const POSTHOG: McpServerWithBrand = {
 		{
 			name: "query_hogql",
 			title: "Query HogQL",
-			description: "Execute HogQL (SQL-like) analytics queries against event data.",
+			description: "Run HogQL (SQL-like) analytics queries against event data.",
 		},
 		{
 			name: "get_events",
@@ -533,7 +533,7 @@ const DATADOG: McpServerWithBrand = {
 		{
 			name: "query_metrics",
 			title: "Query metrics",
-			description: "Execute metric queries with aggregation, grouping, and formulas.",
+			description: "Run metric queries with aggregation, grouping, and formulas.",
 		},
 		{
 			name: "get_traces",
@@ -646,7 +646,7 @@ const SANITY: McpServerWithBrand = {
 		{
 			name: "groq_query",
 			title: "GROQ query",
-			description: "Execute a GROQ query against the content lake and return matching documents.",
+			description: "Run a GROQ query against the content lake and return matching documents.",
 		},
 		{
 			name: "get_schema",
@@ -686,7 +686,7 @@ const CLICKHOUSE: McpServerWithBrand = {
 	tools: [
 		{
 			name: "execute_query",
-			title: "Execute query",
+			title: "Run query",
 			description: "Run a ClickHouse SQL query and return the result set.",
 		},
 		{
@@ -752,7 +752,7 @@ const PLAYWRIGHT: McpServerWithBrand = {
 		{
 			name: "browser_evaluate",
 			title: "Evaluate JS",
-			description: "Execute JavaScript in the page context and return the result.",
+			description: "Run JavaScript in the page context and return the result.",
 		},
 		{
 			name: "browser_fill_form",
@@ -873,7 +873,7 @@ const CHROME_DEVTOOLS: McpServerWithBrand = {
 		{
 			name: "evaluate_script",
 			title: "Evaluate script",
-			description: "Execute JavaScript in the page context via CDP Runtime.evaluate.",
+			description: "Run JavaScript in the page context via CDP Runtime.evaluate.",
 		},
 		{
 			name: "lighthouse_audit",
@@ -1231,7 +1231,7 @@ const NEON: McpServerWithBrand = {
 		{
 			name: "run_sql",
 			title: "Run SQL",
-			description: "Execute SQL against a branch and return results.",
+			description: "Run SQL against a branch and return results.",
 		},
 		{
 			name: "list_branches",
@@ -1312,7 +1312,7 @@ const TURSO: McpServerWithBrand = {
 	tools: [
 		{
 			name: "execute_query",
-			title: "Execute query",
+			title: "Run query",
 			description: "Run a SQL query against an edge SQLite database and return rows.",
 		},
 		{
@@ -1534,7 +1534,7 @@ const CLOUDFLARE_WORKERS: McpServerWithBrand = {
 		{
 			name: "d1_query",
 			title: "D1 query",
-			description: "Execute a SQL query against a Cloudflare D1 SQLite database.",
+			description: "Run a SQL query against a Cloudflare D1 SQLite database.",
 		},
 		{
 			name: "r2_upload",
@@ -1549,7 +1549,7 @@ const CLOUDFLARE_WORKERS: McpServerWithBrand = {
 		{
 			name: "list_workers",
 			title: "List Workers",
-			description: "Enumerate deployed Workers with routes and last-deploy timestamps.",
+			description: "Enumerate deployed Workers with URL paths and last-deploy timestamps.",
 		},
 	],
 };
@@ -1565,7 +1565,7 @@ const GRAFANA: McpServerWithBrand = {
 		{
 			name: "query_datasource",
 			title: "Query datasource",
-			description: "Execute a query against any configured datasource (Prometheus, Loki, Tempo, etc.).",
+			description: "Run a query against any configured datasource (Prometheus, Loki, Tempo, etc.).",
 		},
 		{
 			name: "list_dashboards",

@@ -43,7 +43,7 @@ const TAGLINE: Record<AgentKind, string> = {
 	hermes: "self-improving . persistent memory . MCP-native",
 	openclaw: "computer-use . shell . browser . vision",
 	"claude-code": "edit repos . run shell . SDK . headless",
-	codex: "execute tasks . sandbox . JSONL . CI",
+	codex: "ship tasks . sandbox . JSONL . CI",
 };
 
 const MARK: Record<AgentKind, "nous" | "openclaw" | "claudecode" | "codex"> = {

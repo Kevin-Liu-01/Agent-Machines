@@ -3,7 +3,7 @@ import { BenchmarksClient } from "@/components/dashboard/benchmarks/BenchmarksCl
 export const metadata = {
 	title: "Substrate benchmarks",
 	description:
-		"Compare boot, resume, exec, compute, and I/O across every substrate provider.",
+		"Compare boot, resume, command latency, compute, and I/O across every substrate provider.",
 };
 
 export default function BenchmarksPage() {

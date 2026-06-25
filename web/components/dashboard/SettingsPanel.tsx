@@ -376,7 +376,7 @@ export function SettingsPanel({ initialConfig }: Props) {
 					/>
 					<AiProviderBox
 						title="OpenRouter"
-						hint="Hermes, OpenClaw -- routes 200+ models"
+						hint="Hermes, OpenClaw -- 200+ model paths"
 						configured={config.aiProviders.openrouter.configured}
 						fields={[
 							["API key", openrouterKey, setOpenrouterKey, "sk-or-..."],

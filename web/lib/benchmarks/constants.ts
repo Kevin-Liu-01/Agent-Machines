@@ -90,7 +90,7 @@ export const DISK_READ_COMMAND =
 
 export const CATEGORY_LABELS: Record<MetricCategory, string> = {
 	lifecycle: "Lifecycle latency",
-	exec: "Exec round-trip",
+	exec: "Command round-trip",
 	compute: "Compute & I/O",
 	reliability: "Reliability",
 };
@@ -105,14 +105,14 @@ export const CATEGORY_ORDER: readonly MetricCategory[] = [
 export const METRIC_DEFINITIONS: readonly MetricDefinition[] = [
 	{
 		id: "coldBootMs",
-		label: "Cold boot → first exec",
+		label: "Cold boot → first command",
 		unit: "ms",
 		category: "lifecycle",
 		lowerIsBetter: true,
 		blurb:
 			"Total time from asking for a brand-new machine to the first shell command returning output. This is the latency a user or agent actually feels on a cold start, before anything is warm or cached.",
 		method:
-			"Measured as wall-clock time from the provision() call until a trivial printf round-trips on the freshly created machine. It deliberately folds in the create request, readiness polling, and the first exec, so it reflects the real end-to-end cold path rather than any single API call.",
+			"Measured as wall-clock time from the provision() call until a trivial printf round-trips on the freshly created machine. It deliberately folds in the create request, readiness polling, and the first command, so it reflects the real end-to-end cold path rather than any single API call.",
 		scored: true,
 	},
 	{
@@ -124,7 +124,7 @@ export const METRIC_DEFINITIONS: readonly MetricDefinition[] = [
 		blurb:
 			"How long the provider's create call takes to accept the request and hand back a machine id, before the machine is necessarily ready to run anything.",
 		method:
-			"Measured as the wall-clock duration of the provision() request in isolation, from just before the call to the moment it returns an id. Readiness polling and the first exec are excluded so this isolates control-plane acceptance latency.",
+			"Measured as the wall-clock duration of the provision() request in isolation, from just before the call to the moment it returns an id. Readiness polling and the first command are excluded so this isolates control-plane acceptance latency.",
 		scored: false,
 	},
 	{
@@ -136,7 +136,7 @@ export const METRIC_DEFINITIONS: readonly MetricDefinition[] = [
 		blurb:
 			"Time from requesting a machine until the provider reports it running and schedulable, the point at which it will accept work.",
 		method:
-			"Measured from provision() while polling state() every 750ms, stopping when the provider's normalized state first reads ready. It captures placement and boot but stops short of the first exec round-trip, which cold boot covers.",
+			"Measured from provision() while polling state() every 750ms, stopping when the provider's normalized state first reads ready. It captures placement and boot but stops short of the first command round-trip, which cold boot covers.",
 		scored: true,
 	},
 	{
@@ -148,29 +148,29 @@ export const METRIC_DEFINITIONS: readonly MetricDefinition[] = [
 		blurb:
 			"Time to bring an idle, parked machine back to a usable state and run the first command on it. This is the tax an agent pays each time it returns to a sleeping worker.",
 		method:
-			"We call sleep(), wait for the machine to actually park, then time wake() plus the first printf after it. Auto-sleep substrates that never expose a parked state instead get timed on the next exec, which transparently triggers the resume.",
+			"We call sleep(), wait for the machine to actually park, then time wake() plus the first printf after it. Auto-sleep substrates that never expose a parked state instead get timed on the next command, which transparently triggers the resume.",
 		scored: true,
 	},
 	{
 		id: "execP50Ms",
-		label: "Exec round-trip p50",
+		label: "Command round-trip p50",
 		unit: "ms",
 		category: "exec",
 		lowerIsBetter: true,
 		blurb:
 			"Median round-trip latency of a no-op command on an already-running machine. This is the per-step tax an agent pays on every tool call once the box is warm.",
 		method:
-			"After one warm-up exec, we run printf back-to-back (12 times by default) on a ready machine and take the median of the wall-clock round trips. It measures the control-plane and transport overhead of an exec, not the command itself.",
+			"After one warm-up command, we run printf back-to-back (12 times by default) on a ready machine and take the median of the wall-clock round trips. It measures the control-plane and transport overhead, not the command itself.",
 		scored: true,
 	},
 	{
 		id: "execP95Ms",
-		label: "Exec round-trip p95",
+		label: "Command round-trip p95",
 		unit: "ms",
 		category: "exec",
 		lowerIsBetter: true,
 		blurb:
-			"Tail latency of the same warm exec loop. It shows how bad a slow turn gets, which matters more than the median across a long agent run that makes many calls.",
+			"Tail latency of the same warm command loop. It shows how bad a slow turn gets, which matters more than the median across a long agent run that makes many calls.",
 		method:
 			"The 95th percentile of the warm printf round-trip samples gathered for the p50 measurement, using the standard interpolated percentile.",
 		scored: false,
@@ -184,7 +184,7 @@ export const METRIC_DEFINITIONS: readonly MetricDefinition[] = [
 		blurb:
 			"Raw integer compute throughput inside the machine, in millions of operations per second. Higher means faster builds, tests, and any CPU-bound tool work.",
 		method:
-			"We run a fixed 20 million iteration integer-sum loop in awk and time it with the in-VM nanosecond clock, so the result reflects guest CPU speed and stays independent of exec or network latency. Throughput is iterations divided by elapsed seconds.",
+			"We run a fixed 20 million iteration integer-sum loop in awk and time it with the in-VM nanosecond clock, so the result reflects guest CPU speed and stays independent of command or network latency. Throughput is iterations divided by elapsed seconds.",
 		scored: false,
 	},
 	{
@@ -232,7 +232,7 @@ export const METRIC_DEFINITIONS: readonly MetricDefinition[] = [
 		blurb:
 			"Share of the run's lifecycle and probe phases that completed without error, as a percent. A quick health signal for whether a provider behaved cleanly during the run.",
 		method:
-			"The fraction of attempted phases in the run (provision, ready, boot, exec, compute, disk, wake, teardown) that returned successfully, expressed as a percent. A failed or unsupported phase, such as a gated sleep and wake, lowers it.",
+			"The fraction of attempted phases in the run (provision, ready, boot, command, compute, disk, wake, teardown) that returned successfully, expressed as a percent. A failed or unsupported phase, such as a gated sleep and wake, lowers it.",
 		scored: false,
 	},
 ];
@@ -261,7 +261,7 @@ export const RESPONSIVENESS_SCORE = {
 	blurb:
 		"A single 0 to 100 composite of the scored latency metrics, so providers can be ranked at a glance instead of comparing rows one by one.",
 	method:
-		"Computed as the geometric mean of cold boot, time-to-ready, resume, and exec p50, then normalized so the fastest substrate in the run scores 100. The geometric mean keeps one bad metric from being averaged away by a good one. Higher is more responsive, and a score near 50 means roughly twice the leader's latency. Only metrics that every provider in the run reported are included, so the comparison stays like for like.",
+		"Computed as the geometric mean of cold boot, time-to-ready, resume, and command p50, then normalized so the fastest substrate in the run scores 100. The geometric mean keeps one bad metric from being averaged away by a good one. Higher is more responsive, and a score near 50 means roughly twice the leader's latency. Only metrics that every provider in the run reported are included, so the comparison stays like for like.",
 } as const;
 
 /** Fallback brand hues if a profile is missing (kept in sync with seed). */

@@ -193,7 +193,7 @@ export const BUILTIN_TOOLS: ReadonlyArray<BuiltinTool> = [
 	},
 	{
 		name: "execute_code",
-		title: "Execute Python",
+		title: "Run Python",
 		description:
 			"Sandboxed Python that can call other tools via internal RPC. Best for analysis, math, data wrangling, multi-step scripts.",
 		category: "code",
@@ -475,12 +475,12 @@ export const SERVICES: ReadonlyArray<ServiceEntry> = [
 	{
 		id: "clickhouse",
 		name: "ClickHouse",
-		tagline: "Query execution, schema inspection",
+		tagline: "Query runs, schema inspection",
 		icon: "search",
 		color: "#fc0",
 		brand: "clickhouse",
 		interfaces: [
-			{ rank: 1, kind: "mcp", label: "plugin-clickhouse", use: "query execution, schema inspection" },
+			{ rank: 1, kind: "mcp", label: "plugin-clickhouse", use: "query runs, schema inspection" },
 			{ rank: 2, kind: "plugin-skill", label: "1 skill", use: "clickhouse-best-practices (28 rules, MUST check before writing queries)" },
 		],
 	},
@@ -550,7 +550,7 @@ export const SERVICES: ReadonlyArray<ServiceEntry> = [
 		color: "#4ff8d2",
 		brand: "turso",
 		interfaces: [
-			{ rank: 1, kind: "mcp", label: "turso MCP", use: "execute queries, create databases, inspect schema" },
+			{ rank: 1, kind: "mcp", label: "turso MCP", use: "run queries, create databases, inspect schema" },
 		],
 	},
 	{
@@ -622,13 +622,13 @@ export const SERVICES: ReadonlyArray<ServiceEntry> = [
 	{
 		id: "vercel-ai-gateway",
 		name: "Vercel AI Gateway",
-		tagline: "Unified model routing, provider failover, cost tracking",
+		tagline: "Unified model paths, provider failover, cost tracking",
 		icon: "delegate",
 		color: "#fff",
 		brand: "vercel",
 		interfaces: [
-			{ rank: 1, kind: "cli", label: "@ai-sdk/gateway", use: "provider/model routing, OIDC auth, 200+ models via one endpoint" },
-			{ rank: 2, kind: "plugin-skill", label: "ai-gateway skill", use: "model routing guidance, provider failover, cost tracking" },
+			{ rank: 1, kind: "cli", label: "@ai-sdk/gateway", use: "provider/model paths, OIDC auth, 200+ models via one endpoint" },
+			{ rank: 2, kind: "plugin-skill", label: "ai-gateway skill", use: "model path guidance, provider failover, cost tracking" },
 			{ rank: 3, kind: "plugin-skill", label: "ai-sdk skill", use: "streaming, tool calling, structured output" },
 		],
 	},
@@ -971,7 +971,7 @@ export const TRUSTED_ADDONS: ReadonlyArray<TrustedAddOn> = [
 		kind: "cli",
 		provider: "Sprites.dev",
 		description:
-			"Manage Sprites sandboxes, checkpoints, exec sessions, and public URLs when Sprites is selected as a provider.",
+			"Manage Sprites sandboxes, checkpoints, command sessions, and public URLs when Sprites is selected as a provider.",
 		source: "sprites-dev/cli",
 		command: "sprites",
 
@@ -1504,7 +1504,7 @@ export const TRUSTED_ADDONS: ReadonlyArray<TrustedAddOn> = [
 		kind: "skill",
 		provider: "Skills registry",
 		description:
-			"Routes agents to skills.sh for discovery and installation of battle-tested skills across React, testing, design, and deployment.",
+			"Points agents at skills.sh for discovery and installation of battle-tested skills across React, testing, design, and deployment.",
 		source: "knowledge/skills/find-skills/SKILL.md",
 		command: null,
 
@@ -1537,7 +1537,7 @@ export const TRUSTED_ADDONS: ReadonlyArray<TrustedAddOn> = [
 		kind: "mcp",
 		provider: "ClickHouse",
 		description:
-			"Query execution and schema inspection for ClickHouse databases with best-practices enforcement.",
+			"Query runs and schema inspection for ClickHouse databases with best-practices enforcement.",
 		source: "plugin-clickhouse",
 		command: null,
 		brand: "clickhouse",
@@ -1549,7 +1549,7 @@ export const TRUSTED_ADDONS: ReadonlyArray<TrustedAddOn> = [
 		kind: "provider",
 		provider: "Vercel",
 		description:
-			"Unified model routing to 200+ models across OpenAI, Anthropic, Google, Mistral, and more. OIDC auth, provider failover, cost tracking, and rate limit management through one endpoint.",
+			"Unified model paths to 200+ models across OpenAI, Anthropic, Google, Mistral, and more. OIDC auth, provider failover, cost tracking, and rate limit management through one endpoint.",
 		source: "@ai-sdk/gateway",
 		command: "pnpm add @ai-sdk/gateway",
 		brand: "vercel",
@@ -1561,7 +1561,7 @@ export const TRUSTED_ADDONS: ReadonlyArray<TrustedAddOn> = [
 		kind: "mcp",
 		provider: "Neon",
 		description:
-			"Serverless Postgres with instant branching, schema inspection, and SQL execution for development workflows.",
+			"Serverless Postgres with instant branching, schema inspection, and SQL runs for development workflows.",
 		source: "@neondatabase/mcp-server-neon",
 		command: null,
 		brand: "neon",
@@ -1760,7 +1760,7 @@ export const TRUSTED_ADDONS: ReadonlyArray<TrustedAddOn> = [
 		kind: "tool",
 		provider: "Vercel Labs",
 		description:
-			"Full Next.js apps from JSON specs — routes, layouts, SSR, metadata. The end state of generative-UI-first development.",
+			"Full Next.js apps from JSON specs — pages, layouts, SSR, metadata. The end state of generative-UI-first development.",
 		source: "@json-render/next",
 		command: "pnpm add @json-render/next",
 

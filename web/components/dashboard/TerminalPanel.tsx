@@ -399,7 +399,7 @@ export function TerminalPanel({ initialCommand }: Props) {
 								? {
 										...e,
 										state: "error" as EntryState,
-										error: (data.message as string) ?? "exec failed",
+										error: (data.message as string) ?? "command failed",
 										elapsedMs: (data.elapsedMs as number) ?? e.elapsedMs,
 										finishedAt: (data.finishedAt as string) ?? new Date().toISOString(),
 									}
@@ -621,7 +621,7 @@ export function TerminalPanel({ initialCommand }: Props) {
 						{error ? (
 							<span className="text-[var(--ret-red)]">! {error}</span>
 						) : (
-							<span>SSE exec stream · live sandbox output</span>
+							<span>SSE command stream · live sandbox output</span>
 						)}
 					</div>
 				</div>
