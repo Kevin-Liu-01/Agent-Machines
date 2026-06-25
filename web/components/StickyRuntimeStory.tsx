@@ -1,3 +1,7 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+
 import { AgentCommandToggle } from "@/components/AgentCommandToggle";
 import { LoadoutPreview } from "@/components/LoadoutPreview";
 import { Logo } from "@/components/Logo";
@@ -5,6 +9,7 @@ import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { CircuitArt } from "@/components/reticle/CircuitArt";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { RuntimeVizGrid } from "@/components/RuntimeVizGrid";
+import { cn } from "@/lib/cn";
 import { AGENTS, getAgentMeta } from "@/lib/agents";
 import type { AgentKind, AgentMeta } from "@/lib/types";
 
@@ -60,9 +65,67 @@ const STORY_CHAPTERS: ReadonlyArray<StoryChapter> = [
 ];
 
 export function StickyRuntimeStory() {
+	const introRef = useRef<HTMLDivElement | null>(null);
+	const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+	const [activeId, setActiveId] = useState(STORY_CHAPTERS[0]?.id ?? "");
+	const activeIndex = Math.max(
+		0,
+		STORY_CHAPTERS.findIndex((chapter) => chapter.id === activeId),
+	);
+	const activeChapter = STORY_CHAPTERS[activeIndex] ?? STORY_CHAPTERS[0];
+	const activeAgent = getAgentMeta(activeChapter.agentId);
+
+	useEffect(() => {
+		const ratios = new Map<string, number>();
+		const nodes = [
+			introRef.current,
+			...STORY_CHAPTERS.map((chapter) => sectionRefs.current[chapter.id]),
+		].filter((node): node is HTMLElement => Boolean(node));
+		if (!nodes.length) return;
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				for (const entry of entries) {
+					const chapterId = (entry.target as HTMLElement).dataset.storyId;
+					if (!chapterId) continue;
+					ratios.set(chapterId, entry.isIntersecting ? entry.intersectionRatio : 0);
+				}
+
+				let bestId = "";
+				let bestRatio = 0;
+				for (const chapter of STORY_CHAPTERS) {
+					const ratio = ratios.get(chapter.id) ?? 0;
+					if (ratio > bestRatio) {
+						bestId = chapter.id;
+						bestRatio = ratio;
+					}
+				}
+
+				if (bestId) {
+					setActiveId((current) => (current === bestId ? current : bestId));
+				}
+			},
+			{
+				root: null,
+				rootMargin: "-34% 0px -42% 0px",
+				threshold: [0, 0.2, 0.4, 0.6, 0.8, 1],
+			},
+		);
+
+		for (const node of nodes) {
+			observer.observe(node);
+		}
+
+		return () => observer.disconnect();
+	}, []);
+
 	return (
 		<section className="relative">
-			<div className="grid gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[0.7fr_1.3fr]">
+			<div
+				ref={introRef}
+				data-story-id={STORY_CHAPTERS[0]?.id}
+				className="grid gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[0.7fr_1.3fr]"
+			>
 				<div className="relative overflow-hidden bg-[var(--ret-bg)] px-4 py-7 md:px-6 md:py-9">
 					<CircuitArt
 						slug="agents"
@@ -85,7 +148,12 @@ export function StickyRuntimeStory() {
 						<a
 							key={chapter.id}
 							href={`#agent-story-${chapter.id}`}
-							className="group flex min-h-[128px] flex-col justify-between bg-[var(--ret-bg)] p-4 transition-colors duration-150 ease-out hover:bg-[var(--ret-bg-soft)] active:scale-[0.99]"
+							aria-current={chapter.id === activeId ? "step" : undefined}
+							onClick={() => setActiveId(chapter.id)}
+							className={cn(
+								"group flex min-h-[128px] flex-col justify-between bg-[var(--ret-bg)] p-4 transition-[background-color,transform] duration-150 ease-out hover:bg-[var(--ret-bg-soft)] active:scale-[0.99]",
+								chapter.id === activeId ? "bg-[var(--ret-bg-soft)]" : null,
+							)}
 						>
 							<div className="flex items-center justify-between gap-3">
 								<Logo
@@ -110,34 +178,79 @@ export function StickyRuntimeStory() {
 				</div>
 			</div>
 
-			<div className="divide-y divide-[var(--ret-border)]">
-				{STORY_CHAPTERS.map((chapter, index) => (
-					<StoryPanel key={chapter.id} chapter={chapter} index={index} />
-				))}
+			<div className="grid gap-px bg-[var(--ret-border)] lg:grid-cols-[minmax(300px,0.36fr)_minmax(0,0.64fr)]">
+				<AgentStoryAside
+					key={activeChapter.id}
+					agent={activeAgent}
+					chapter={activeChapter}
+					index={activeIndex}
+					activeId={activeId}
+					onSelect={setActiveId}
+				/>
+				<div className="min-w-0 bg-[var(--ret-border)]">
+					{STORY_CHAPTERS.map((chapter, index) => (
+						<section
+							key={chapter.id}
+							id={`agent-story-${chapter.id}`}
+							ref={(node) => {
+								sectionRefs.current[chapter.id] = node;
+							}}
+							data-story-id={chapter.id}
+							className="scroll-mt-[84px] bg-[var(--ret-bg)] lg:min-h-[calc(100dvh-72px)]"
+						>
+							<StorySurfacePanel
+								chapter={chapter}
+								index={index}
+								active={chapter.id === activeId}
+							/>
+						</section>
+					))}
+				</div>
 			</div>
 		</section>
 	);
 }
 
-function StoryPanel({
+function StorySurfacePanel({
 	chapter,
 	index,
+	active,
 }: {
 	chapter: StoryChapter;
 	index: number;
+	active: boolean;
 }) {
 	const agent = getAgentMeta(chapter.agentId);
 
 	return (
-		<section
-			id={`agent-story-${chapter.id}`}
-			className="grid scroll-mt-[84px] gap-px bg-[var(--ret-border)] lg:grid-cols-[0.35fr_0.65fr]"
+		<div
+			className={cn(
+				"grid min-h-[560px] gap-px bg-[var(--ret-border)] lg:min-h-[calc(100dvh-72px)]",
+				active ? "relative" : null,
+			)}
 		>
-			<AgentStoryAside agent={agent} chapter={chapter} index={index} />
+			<div className="grid gap-px bg-[var(--ret-border)] md:grid-cols-[minmax(0,1fr)_180px]">
+				<div className="flex min-w-0 items-center gap-3 bg-[var(--ret-bg)] px-4 py-3 md:px-5">
+					<Logo mark={agent.logoMark} size={22} tone="native" />
+					<div className="min-w-0">
+						<div className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+							{chapter.label}
+						</div>
+						<div className="truncate text-[14px] font-semibold text-[var(--ret-text)]">
+							{agent.name}
+						</div>
+					</div>
+				</div>
+				<div className="hidden items-center justify-end bg-[var(--ret-bg)] px-5 md:flex">
+					<span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
+						{String(index + 1).padStart(2, "0")}
+					</span>
+				</div>
+			</div>
 			<div className="min-w-0 bg-[var(--ret-bg)]">
 				<StorySurfaceRenderer surface={chapter.surface} agent={agent} />
 			</div>
-		</section>
+		</div>
 	);
 }
 
@@ -145,10 +258,14 @@ function AgentStoryAside({
 	agent,
 	chapter,
 	index,
+	activeId,
+	onSelect,
 }: {
 	agent: AgentMeta;
 	chapter: StoryChapter;
 	index: number;
+	activeId: string;
+	onSelect: (id: string) => void;
 }) {
 	const commandRows = [
 		["install", agent.installCmd],
@@ -159,13 +276,16 @@ function AgentStoryAside({
 	const [metricLabel, metricValue, metricHint] = chapter.metric;
 
 	return (
-		<aside className="relative overflow-hidden bg-[var(--ret-bg)] p-5 md:p-6 lg:sticky lg:top-[72px] lg:min-h-[560px]">
+		<aside className="relative overflow-hidden bg-[var(--ret-bg)] p-5 md:p-6 lg:sticky lg:top-[72px] lg:h-[calc(100dvh-72px)] lg:min-h-[560px]">
 			<CircuitArt
 				slug={chapter.id}
 				variant="ambient"
 				className="opacity-[0.16] dark:opacity-[0.26]"
 			/>
-			<div className="relative z-10 flex h-full flex-col justify-between gap-8">
+			<div
+				key={chapter.id}
+				className="relative z-10 flex h-full animate-[ret-panel-in_220ms_cubic-bezier(0.16,1,0.3,1)_both] flex-col justify-between gap-8 motion-reduce:animate-none"
+			>
 				<div>
 					<div className="flex items-center justify-between gap-4">
 						<ReticleLabel>{chapter.label}</ReticleLabel>
@@ -220,9 +340,39 @@ function AgentStoryAside({
 							</div>
 						</div>
 					</div>
+
+					<nav
+						aria-label="Agent surface chapters"
+						className="mt-5 grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)]"
+					>
+						{STORY_CHAPTERS.map((item, itemIndex) => (
+							<a
+								key={item.id}
+								href={`#agent-story-${item.id}`}
+								aria-current={item.id === activeId ? "step" : undefined}
+								onClick={() => onSelect(item.id)}
+								className={cn(
+									"grid grid-cols-[32px_minmax(0,1fr)_40px] items-center gap-3 bg-[var(--ret-bg)] px-3 py-2 text-[11px] transition-colors duration-150 ease-out hover:bg-[var(--ret-bg-soft)]",
+									item.id === activeId ? "bg-[var(--ret-bg-soft)]" : null,
+								)}
+							>
+								<Logo
+									mark={getAgentMeta(item.agentId).logoMark}
+									size={16}
+									tone="native"
+								/>
+								<span className="truncate font-mono uppercase tracking-[0.14em] text-[var(--ret-text-muted)]">
+									{item.label}
+								</span>
+								<span className="text-right font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
+									{String(itemIndex + 1).padStart(2, "0")}
+								</span>
+							</a>
+						))}
+					</nav>
 				</div>
 
-				<div className="grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)]">
+				<div className="hidden gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid">
 					<div className="bg-[var(--ret-bg)] px-3 py-2">
 						<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 							commands

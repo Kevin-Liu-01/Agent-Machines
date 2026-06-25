@@ -10,26 +10,30 @@ type Props = {
 	className?: string;
 	camera?: CanvasProps["camera"];
 	dpr?: CanvasProps["dpr"];
+	antialias?: boolean;
 };
 
 /**
- * Shared Canvas wrapper. Caps DPR at 1.5 (wireframe doesn't benefit from 2x +
- * the perf hit on retina is real), turns off antialias (we want crisp 1px
- * edges), and disables shadows. Every three.js scene in the page lives behind
- * this so we have one place to retune the perf budget.
+ * Shared Canvas wrapper. Most wireframes cap DPR at 1.5 and skip antialiasing;
+ * dense hero linework can opt into smoother retina rendering.
  */
 export function SceneCanvas({
 	children,
 	className,
 	camera = { position: [0, 0, 5], fov: 35 },
 	dpr = [1, 1.5],
+	antialias = false,
 }: Props) {
 	return (
 		<Canvas
 			className={cn("absolute inset-0", className)}
 			camera={camera}
 			dpr={dpr}
-			gl={{ antialias: false, alpha: true, powerPreference: "low-power" }}
+			gl={{
+				antialias,
+				alpha: true,
+				powerPreference: antialias ? "high-performance" : "low-power",
+			}}
 			frameloop="always"
 		>
 			{children}

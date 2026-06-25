@@ -216,7 +216,11 @@ export function HeroOrbit({
 	const camPos: [number, number, number] = gears ? [0, 0, 7.6] : [0, 0, 4.8];
 	return (
 		<SceneFrame className={className} bg={!gears}>
-			<SceneCanvas camera={{ position: camPos, fov: gears ? 42 : 34 }}>
+			<SceneCanvas
+				camera={{ position: camPos, fov: gears ? 42 : 34 }}
+				dpr={gears ? 2 : undefined}
+				antialias={gears}
+			>
 				<HeroOrbitInner
 					activeAgent={activeAgent}
 					activeSubstrate={activeSubstrate}
