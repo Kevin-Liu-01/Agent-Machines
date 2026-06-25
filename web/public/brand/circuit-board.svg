@@ -1,89 +1,112 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="384" height="512" viewBox="0 0 384 512" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" width="384" height="512" viewBox="0 0 384 512" fill="none" shape-rendering="geometricPrecision">
   <title>Agent Machines circuit texture</title>
   <defs>
     <style>
-      .trace{stroke:#fff;stroke-width:2;stroke-linecap:square;stroke-linejoin:miter;vector-effect:non-scaling-stroke}
+      .bus{stroke:#fff;stroke-width:2;stroke-linecap:square;stroke-linejoin:miter;vector-effect:non-scaling-stroke}
+      .trace{stroke:#fff;stroke-width:1.45;stroke-linecap:square;stroke-linejoin:miter;vector-effect:non-scaling-stroke}
       .fine{stroke:#fff;stroke-width:1;stroke-linecap:square;stroke-linejoin:miter;vector-effect:non-scaling-stroke}
-      .pad{stroke:#fff;stroke-width:2;vector-effect:non-scaling-stroke}
-      .chip{stroke:#fff;stroke-width:2;vector-effect:non-scaling-stroke}
+      .pad{stroke:#fff;stroke-width:1.6;vector-effect:non-scaling-stroke}
+      .pin{fill:#fff}
+      .chip{stroke:#fff;stroke-width:1.6;vector-effect:non-scaling-stroke}
     </style>
   </defs>
   <rect width="384" height="512" fill="transparent"/>
 
+  <!-- Edge buses. These terminate cleanly at tile edges so repeats stay crisp. -->
   <g opacity=".34">
-    <path class="fine" d="M24 0v50h58l30 30h52"/>
-    <path class="fine" d="M0 34h54l18 18h42"/>
-    <path class="fine" d="M0 78h42l38 38h78"/>
-    <path class="fine" d="M350 0v62l-28 28h-64"/>
-    <path class="fine" d="M384 46h-46l-22 22h-72"/>
-    <path class="fine" d="M384 112h-76l-42 42h-58"/>
-    <path class="fine" d="M0 462h74l42-42h64"/>
-    <path class="fine" d="M34 512v-52l30-30h52"/>
-    <path class="fine" d="M384 428h-58l-28 28h-84"/>
-    <path class="fine" d="M338 512v-58l-28-28h-62"/>
+    <path class="fine" d="M0 28h42l20 20h56"/>
+    <path class="fine" d="M0 70h70l18 18h78"/>
+    <path class="fine" d="M0 448h54l30-30h76"/>
+    <path class="fine" d="M0 486h78l24-24h64"/>
+    <path class="fine" d="M384 34h-58l-24 24h-64"/>
+    <path class="fine" d="M384 82h-46l-42 42h-70"/>
+    <path class="fine" d="M384 420h-74l-22 22h-72"/>
+    <path class="fine" d="M384 474h-42l-28-28h-62"/>
   </g>
 
-  <g opacity=".58">
-    <path class="trace" d="M34 146h48l34 34h72"/>
-    <path class="trace" d="M0 170h54l38 38h56"/>
-    <path class="trace" d="M0 204h94l30 30h92"/>
-    <path class="trace" d="M28 254h82l40 40h72"/>
-    <path class="trace" d="M0 312h64l42-42h64"/>
-    <path class="trace" d="M0 350h84l32 32h84"/>
-    <path class="trace" d="M384 178h-54l-40 40h-70"/>
-    <path class="trace" d="M384 224h-86l-26 26h-52"/>
-    <path class="trace" d="M352 276h-64l-36 36h-72"/>
-    <path class="trace" d="M384 338h-96l-30 30h-70"/>
+  <!-- Top-left island. -->
+  <g opacity=".62">
+    <rect class="chip" x="42" y="116" width="58" height="58"/>
+    <path class="fine" d="M54 104v12M70 104v12M86 104v12M54 174v12M70 174v12M86 174v12M30 128h12M30 144h12M30 160h12M100 128h12M100 144h12M100 160h12"/>
+    <path class="trace" d="M112 128h60l24 24h62"/>
+    <path class="trace" d="M112 144h42l22 22h70"/>
+    <path class="trace" d="M112 160h28l30 30h42"/>
+    <path class="trace" d="M42 128H18v62h58"/>
+    <path class="trace" d="M42 160H0"/>
   </g>
 
+  <!-- Upper-right sensor cluster. -->
+  <g opacity=".5">
+    <rect class="chip" x="278" y="42" width="46" height="46"/>
+    <path class="fine" d="M290 32v10M302 32v10M314 32v10M290 88v10M302 88v10M314 88v10M268 54h10M268 66h10M268 78h10M324 54h10M324 66h10M324 78h10"/>
+    <path class="trace" d="M278 54h-48l-20 20h-44"/>
+    <path class="trace" d="M278 66h-28l-30 30h-72"/>
+    <path class="trace" d="M324 78h34v46h26"/>
+  </g>
+
+  <!-- Central processor: reserved channels enter from four sides. -->
   <g opacity=".72">
-    <rect class="chip" x="210" y="52" width="52" height="52" rx="0"/>
-    <path class="fine" d="M222 44v8M236 44v8M250 44v8M222 104v8M236 104v8M250 104v8M202 64h8M202 78h8M202 92h8M262 64h8M262 78h8M262 92h8"/>
-
-    <rect class="chip" x="118" y="322" width="64" height="64" rx="0"/>
-    <path class="fine" d="M132 310v12M150 310v12M168 310v12M132 386v12M150 386v12M168 386v12M106 336h12M106 354h12M106 372h12M182 336h12M182 354h12M182 372h12"/>
-
-    <rect class="chip" x="266" y="398" width="50" height="50" rx="0"/>
-    <path class="fine" d="M278 388v10M292 388v10M306 388v10M278 448v10M292 448v10M306 448v10M256 410h10M256 424h10M256 438h10M316 410h10M316 424h10M316 438h10"/>
+    <rect class="chip" x="154" y="214" width="76" height="76"/>
+    <path class="fine" d="M170 200v14M186 200v14M202 200v14M218 200v14M170 290v14M186 290v14M202 290v14M218 290v14M140 230h14M140 246h14M140 262h14M140 278h14M230 230h14M230 246h14M230 262h14M230 278h14"/>
+    <path class="bus" d="M0 228h66l26 26h48"/>
+    <path class="bus" d="M0 274h70l24-24h46"/>
+    <path class="bus" d="M244 230h44l34-34h62"/>
+    <path class="bus" d="M244 278h56l26 26h58"/>
+    <path class="trace" d="M192 214v-44l24-24h54"/>
+    <path class="trace" d="M206 290v48l22 22h54"/>
   </g>
 
-  <g opacity=".8">
-    <circle class="pad" cx="82" cy="50" r="7"/>
-    <circle class="pad" cx="164" cy="80" r="7"/>
-    <circle class="pad" cx="82" cy="116" r="7"/>
-    <circle class="pad" cx="188" cy="180" r="7"/>
-    <circle class="pad" cx="216" cy="234" r="7"/>
-    <circle class="pad" cx="170" cy="270" r="7"/>
-    <circle class="pad" cx="222" cy="294" r="7"/>
-    <circle class="pad" cx="84" cy="350" r="7"/>
-    <circle class="pad" cx="200" cy="382" r="7"/>
-    <circle class="pad" cx="214" cy="456" r="7"/>
-    <circle class="pad" cx="298" cy="218" r="7"/>
-    <circle class="pad" cx="288" cy="276" r="7"/>
-    <circle class="pad" cx="258" cy="368" r="7"/>
-    <circle class="pad" cx="326" cy="456" r="7"/>
+  <!-- Left lower memory lanes. -->
+  <g opacity=".52">
+    <rect class="chip" x="54" y="336" width="66" height="52"/>
+    <path class="fine" d="M66 324v12M82 324v12M98 324v12M66 388v12M82 388v12M98 388v12M42 348h12M42 362h12M42 376h12M120 348h12M120 362h12M120 376h12"/>
+    <path class="trace" d="M132 348h54l24-24h44"/>
+    <path class="trace" d="M132 362h70l28-28h58"/>
+    <path class="trace" d="M132 376h38l30 30h48"/>
+    <path class="trace" d="M54 348H22v38H0"/>
+    <path class="trace" d="M54 376H28v52h56"/>
   </g>
 
-  <g opacity=".48">
-    <path class="fine" d="M62 146v-34h20"/>
-    <path class="fine" d="M116 180v-28h34"/>
-    <path class="fine" d="M124 234v-24h24"/>
-    <path class="fine" d="M108 270v-38h42"/>
-    <path class="fine" d="M116 382v32h40"/>
-    <path class="fine" d="M214 456v-44h52"/>
-    <path class="fine" d="M258 368v-56h30"/>
-    <path class="fine" d="M326 456v-30h-10"/>
+  <!-- Bottom-right IO block. -->
+  <g opacity=".56">
+    <rect class="chip" x="282" y="344" width="48" height="64"/>
+    <path class="fine" d="M294 332v12M306 332v12M318 332v12M294 408v12M306 408v12M318 408v12M270 358h12M270 374h12M270 390h12M330 358h12M330 374h12M330 390h12"/>
+    <path class="trace" d="M282 358h-48l-24-24h-40"/>
+    <path class="trace" d="M282 374h-34l-30 30h-44"/>
+    <path class="trace" d="M330 390h32v42h22"/>
   </g>
 
-  <g opacity=".42">
-    <rect class="pad" x="52" y="238" width="12" height="12"/>
-    <rect class="pad" x="78" y="238" width="12" height="12"/>
-    <rect class="pad" x="72" y="414" width="12" height="12"/>
-    <rect class="pad" x="96" y="414" width="12" height="12"/>
-    <rect class="pad" x="314" y="126" width="12" height="12"/>
-    <rect class="pad" x="338" y="126" width="12" height="12"/>
-    <path class="trace" d="M52 244H28v46h80"/>
-    <path class="trace" d="M84 420H42v46h74"/>
-    <path class="trace" d="M320 132h32v-40h32"/>
+  <!-- Fine fill traces. They use empty corridors between islands. -->
+  <g opacity=".38">
+    <path class="fine" d="M18 316h64l28-28h30"/>
+    <path class="fine" d="M0 356h34l32-32h74"/>
+    <path class="fine" d="M18 96h60l30 30"/>
+    <path class="fine" d="M252 164h50l28-28h54"/>
+    <path class="fine" d="M248 462h46l26 26h64"/>
+    <path class="fine" d="M170 462h-46l-22 22H54"/>
+  </g>
+
+  <!-- Pads and small terminals. Pads sit on endpoints, not intersections. -->
+  <g opacity=".86">
+    <circle class="pad" cx="118" cy="48" r="5.5"/>
+    <circle class="pad" cx="166" cy="88" r="5.5"/>
+    <circle class="pad" cx="196" cy="152" r="5.5"/>
+    <circle class="pad" cx="258" cy="152" r="5.5"/>
+    <circle class="pad" cx="66" cy="228" r="5.5"/>
+    <circle class="pad" cx="70" cy="274" r="5.5"/>
+    <circle class="pad" cx="288" cy="230" r="5.5"/>
+    <circle class="pad" cx="300" cy="278" r="5.5"/>
+    <circle class="pad" cx="186" cy="348" r="5.5"/>
+    <circle class="pad" cx="248" cy="406" r="5.5"/>
+    <circle class="pad" cx="166" cy="462" r="5.5"/>
+    <circle class="pad" cx="252" cy="462" r="5.5"/>
+    <rect class="pad" x="32" y="216" width="10" height="10"/>
+    <rect class="pad" x="34" y="286" width="10" height="10"/>
+    <rect class="pad" x="340" y="188" width="10" height="10"/>
+    <rect class="pad" x="342" y="294" width="10" height="10"/>
+    <circle class="pin" cx="62" cy="48" r="2"/>
+    <circle class="pin" cx="102" cy="462" r="2"/>
+    <circle class="pin" cx="322" cy="124" r="2"/>
+    <circle class="pin" cx="314" cy="446" r="2"/>
   </g>
 </svg>

@@ -48,41 +48,57 @@ export function LoadoutPreview() {
 
 	return (
 		<>
-			<div className="flex items-baseline justify-between gap-3 px-4 md:px-5">
-				<div>
+			<div className="grid gap-px overflow-hidden border-b border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[1fr_0.52fr]">
+				<div className="bg-[var(--ret-bg)] px-4 py-5 md:px-5">
 					<ReticleLabel>LOADOUT</ReticleLabel>
 					<h2 className="ret-display mt-2 text-xl md:text-2xl">
-						Your agent's complete kit.
+						Loadout is the worker's complete kit.
 					</h2>
+					<p className="mt-2 max-w-[82ch] text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
+						Mirrors <code>tool-hierarchy.mdc</code>: built-ins fire immediately,
+						MCP servers spawn at bootstrap, service entries pick the best route,
+						and tasks choose the right skill or tool.
+					</p>
 				</div>
-				<ReticleButton
-					as="a"
-					href="/dashboard/loadout"
-					variant="secondary"
-					size="sm"
-				>
-					See full loadout
-				</ReticleButton>
+				<div className="relative overflow-hidden bg-[var(--ret-bg)] p-4 md:p-5">
+					<WingBackground
+						variant="nyx-lines"
+						opacity={{ light: 0.08, dark: 0.24 }}
+						fadeEdges
+					/>
+					<div className="relative z-10 flex h-full flex-col justify-between gap-4">
+						<div className="grid grid-cols-3 gap-px border border-[var(--ret-border)] bg-[var(--ret-border)]">
+							{["MCP", "CLI", "skills"].map((item, index) => (
+								<div key={item} className="bg-[var(--ret-bg)] px-3 py-2">
+									<div className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+										{String(index + 1).padStart(2, "0")}
+									</div>
+									<div className="mt-1 text-[12px] font-medium text-[var(--ret-text)]">
+										{item}
+									</div>
+								</div>
+							))}
+						</div>
+						<ReticleButton
+							as="a"
+							href="/dashboard/loadout"
+							variant="secondary"
+							size="sm"
+							className="self-start"
+						>
+							See full loadout
+						</ReticleButton>
+					</div>
+				</div>
 			</div>
-
-			<p className="mt-2 max-w-[80ch] px-4 text-[12px] text-[var(--ret-text-dim)] md:px-5">
-				Mirrors the wiki's <code>tool-hierarchy.mdc</code>: every tool the
-				agent picks from, ranked. Built-in tools fire in one turn. MCP servers
-				get auto-spawned at bootstrap. Service entries cover{" "}
-				<strong className="text-[var(--ret-text)]">{SERVICES.length}</strong>{" "}
-				platforms (Vercel, Stripe, Supabase, Sentry, ...). Task entries rank
-				which skill or tool to use for code review, design review, QA,
-				research, and more.
-			</p>
-
-			<div className="mt-4 grid grid-cols-2 gap-px overflow-hidden bg-[var(--ret-border)] sm:grid-cols-4">
+			<div className="grid grid-cols-2 gap-px overflow-hidden bg-[var(--ret-border)] sm:grid-cols-4">
 				<Tally label="callable tools" value={totalCallable} />
 				<Tally label="skills" value={skills.length} />
 				<Tally label="services" value={SERVICES.length} />
 				<Tally label="task categories" value={TASKS.length} />
 			</div>
 
-			<div className="mt-px grid grid-cols-1 gap-px overflow-hidden bg-[var(--ret-border)] lg:grid-cols-3">
+			<div className="grid grid-cols-1 gap-px overflow-hidden bg-[var(--ret-border)] lg:grid-cols-3">
 				{/* Built-in tools by category */}
 				<ReticleFrame corners={false} className="relative space-y-3 overflow-hidden p-4">
 					<WingBackground variant="nyx-lines" opacity={{ light: 0.12, dark: 0.28 }} fadeEdges />

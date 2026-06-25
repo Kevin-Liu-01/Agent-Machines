@@ -2,13 +2,13 @@ import { getCategoryArt } from "@/lib/dashboard/category-art";
 import { cn } from "@/lib/cn";
 
 /**
- * Recipe B — a focal/centerpiece graphic framed in a dark "schematic panel".
+ * Recipe B - a focal/centerpiece graphic that adapts to the active theme.
  *
- * For hero/empty/error graphics, skip the blend and frame the white-on-black
- * art in a dark panel: bulletproof and intentional in both themes (the panel
- * is always dark, so the art always reads). Sharp corners to match the
- * Reticle system. Resolves from a slug or explicit src; renders nothing when
- * there's no asset.
+ * Category art ships as white-on-black line art. The image uses the same
+ * invert/multiply and screen blend pair as the rest of Reticle so light pages
+ * get black linework without a black slab, while dark pages keep white lines.
+ * Sharp corners match the Reticle system. Resolves from a slug or explicit
+ * src; renders nothing when there's no asset.
  */
 export function SchematicPanel({
 	slug,
@@ -24,16 +24,16 @@ export function SchematicPanel({
 	return (
 		<div
 			className={cn(
-				"overflow-hidden border border-[var(--ret-border)] bg-[#0a0a0a] p-2",
+				"overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg)] p-2",
 				className,
 			)}
 		>
-			{/* eslint-disable-next-line @next/next/no-img-element -- local decorative graphic framed as a dark schematic panel */}
+			{/* eslint-disable-next-line @next/next/no-img-element -- local decorative line-art, blended for theme-aware schematic panels */}
 			<img
 				alt=""
 				aria-hidden="true"
 				src={resolved}
-				className="pointer-events-none w-full select-none"
+				className="pointer-events-none w-full select-none mix-blend-multiply invert dark:mix-blend-screen dark:invert-0"
 			/>
 		</div>
 	);

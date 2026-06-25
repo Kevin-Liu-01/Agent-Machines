@@ -17,12 +17,15 @@ type Props = {
 };
 
 async function fetchStars(repo: string): Promise<number | null> {
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), 1800);
 	try {
 		const response = await fetch(`https://api.github.com/repos/${repo}`, {
 			headers: {
 				Accept: "application/vnd.github+json",
 				"User-Agent": "agent-machines-web",
 			},
+			signal: controller.signal,
 			next: { revalidate: 3600 },
 		});
 		if (!response.ok) return null;
@@ -32,6 +35,8 @@ async function fetchStars(repo: string): Promise<number | null> {
 			: null;
 	} catch {
 		return null;
+	} finally {
+		clearTimeout(timeout);
 	}
 }
 

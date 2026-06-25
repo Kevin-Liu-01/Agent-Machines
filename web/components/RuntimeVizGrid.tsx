@@ -36,19 +36,26 @@ const LCP_COLOR: Record<Lcp, string> = {
 export function RuntimeVizGrid() {
 	return (
 		<>
-			<div className="flex items-baseline justify-between gap-3 px-4 md:px-5">
-				<div>
+			<div className="grid gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[1fr_0.72fr]">
+				<div className="bg-[var(--ret-bg)] px-4 py-5 md:px-5">
 					<ReticleLabel>OBSERVABILITY -- DASHBOARD</ReticleLabel>
 					<h2 className="ret-display mt-2 text-xl md:text-2xl">
 						The worker state you can inspect.
 					</h2>
+					<p className="mt-2 max-w-[76ch] text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
+						Runtime files, gateway health, usage, logs, loadout, and cron all
+						map to dashboard APIs. These panels show the shape, not decorative
+						placeholder art.
+					</p>
 				</div>
-				<p className="hidden text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)] md:block">
-					6 panels . API-shaped examples
-				</p>
+				<div className="grid grid-cols-3 gap-px bg-[var(--ret-border)]">
+					<RuntimeSummary label="panels" value="6" />
+					<RuntimeSummary label="source" value="APIs" />
+					<RuntimeSummary label="state" value="live" />
+				</div>
 			</div>
 
-			<div className="mt-5 grid grid-cols-1 gap-px overflow-hidden bg-[var(--ret-border)] sm:grid-cols-2 lg:grid-cols-3">
+			<div className="grid grid-cols-1 gap-px overflow-hidden bg-[var(--ret-border)] sm:grid-cols-2 lg:grid-cols-3">
 				<RuntimeCard
 					icon="filesystem"
 					label="runtime root"
@@ -112,6 +119,19 @@ export function RuntimeVizGrid() {
 				usage, loadout, and cron
 			</p>
 		</>
+	);
+}
+
+function RuntimeSummary({ label, value }: { label: string; value: string }) {
+	return (
+		<div className="flex min-h-[104px] flex-col justify-end bg-[var(--ret-bg)] px-3 py-3 md:px-4">
+			<div className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				{label}
+			</div>
+			<div className="mt-1 text-[16px] font-semibold text-[var(--ret-text)]">
+				{value}
+			</div>
+		</div>
 	);
 }
 

@@ -1,257 +1,307 @@
-import type { SVGProps } from "react";
+import type { CSSProperties } from "react";
 
-import { Logo } from "@/components/Logo";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
-import { SchematicPanel } from "@/components/reticle/SchematicPanel";
-import { ServiceIcon, type ServiceSlug } from "@/components/ServiceIcon";
 import { ToolIcon } from "@/components/ToolIcon";
 import type { ToolCategory } from "@/lib/dashboard/loadout";
+import { cn } from "@/lib/cn";
 
-const SPECS: ReadonlyArray<{
+const INSTALL_CODE = "npm i agent-machines";
+
+const CODE_LINES: ReadonlyArray<{
+	no: string;
+	indent?: number;
+	parts: ReadonlyArray<{ text: string; tone?: "dim" | "keyword" | "string" }>;
+}> = [
+	{
+		no: "01",
+		parts: [
+			{ text: "import", tone: "keyword" },
+			{ text: " { AgentMachines } " },
+			{ text: "from", tone: "keyword" },
+			{ text: " \"agent-machines\"", tone: "string" },
+		],
+	},
+	{ no: "02", parts: [{ text: "" }] },
+	{
+		no: "03",
+		parts: [
+			{ text: "const", tone: "keyword" },
+			{ text: " am = " },
+			{ text: "new", tone: "keyword" },
+			{ text: " AgentMachines()" },
+		],
+	},
+	{ no: "04", parts: [{ text: "" }] },
+	{
+		no: "05",
+		parts: [
+			{ text: "const", tone: "keyword" },
+			{ text: " agent = " },
+			{ text: "await", tone: "keyword" },
+			{ text: " am.create({" },
+		],
+	},
+	{
+		no: "06",
+		indent: 1,
+		parts: [
+			{ text: "agent: " },
+			{ text: "\"hermes\"", tone: "string" },
+			{ text: "," },
+		],
+	},
+	{
+		no: "07",
+		indent: 1,
+		parts: [
+			{ text: "sandbox: " },
+			{ text: "\"e2b\"", tone: "string" },
+			{ text: "," },
+		],
+	},
+	{
+		no: "08",
+		indent: 1,
+		parts: [
+			{ text: "model: " },
+			{ text: "\"claude-opus-4.8\"", tone: "string" },
+			{ text: "," },
+		],
+	},
+	{
+		no: "09",
+		indent: 1,
+		parts: [{ text: "persistent: true," }],
+	},
+	{ no: "10", parts: [{ text: "})" }] },
+	{ no: "11", parts: [{ text: "" }] },
+	{
+		no: "12",
+		parts: [
+			{ text: "await", tone: "keyword" },
+			{ text: " agent.run(" },
+			{ text: "\"review my code\"", tone: "string" },
+			{ text: ")" },
+		],
+	},
+];
+
+const READOUTS: ReadonlyArray<{
 	label: string;
 	value: string;
 	description: string;
 	icon: ToolCategory;
 }> = [
 	{
-		label: "Runtime routes",
-		value: "4 agents",
-		description: "Hermes, OpenClaw, Claude Code, and Codex.",
+		label: "package",
+		value: "1 install",
+		description: "A typed client for the route.",
+		icon: "code",
+	},
+	{
+		label: "route",
+		value: "agent + box",
+		description: "Runtime and sandbox stay separate.",
 		icon: "delegate",
 	},
 	{
-		label: "Substrate routes",
-		value: "4 lanes",
-		description: "E2B, Sprites.dev, Dedalus Machines, and Vercel Sandbox.",
-		icon: "shell",
-	},
-	{
-		label: "Model routes",
-		value: "BYOK",
-		description: "Dedalus, OpenRouter, AI Gateway, or native keys.",
+		label: "model",
+		value: "alias-safe",
+		description: "Short names normalize server-side.",
 		icon: "memory",
 	},
 	{
-		label: "Bootstrap",
-		value: "phased",
-		description: "Runtime, env, gateway, skills, MCP, and cron.",
-		icon: "schedule",
-	},
-	{
-		label: "Skills synced",
-		value: "161",
-		description: "SKILL.md files installed from registries at boot.",
+		label: "state",
+		value: "persistent",
+		description: "The worker survives the prompt.",
 		icon: "filesystem",
 	},
 	{
-		label: "Fleet model",
-		value: "account",
-		description: "One identity, many machines. Clerk-backed.",
-		icon: "delegate",
+		label: "run",
+		value: "one call",
+		description: "Gateway first, exec fallback.",
+		icon: "shell",
+	},
+	{
+		label: "proof",
+		value: "observable",
+		description: "Logs and usage stay attached.",
+		icon: "search",
 	},
 ];
 
-type StackIcon =
-	| { kind: "logo"; mark: "am" | "cursor" | "dedalus" | "nous" | "openclaw" }
-	| { kind: "service"; slug: ServiceSlug };
-
-type ServiceEntry = {
-	id: string;
-	icon: StackIcon;
-	name: string;
-	role: string;
-	href: string;
-};
-
-type Assembly = "stack" | "pills" | "logos";
-
-type Feature = {
-	Icon: (p: SVGProps<SVGSVGElement>) => React.ReactElement;
+const PIPELINE: ReadonlyArray<{
+	icon: ToolCategory;
+	kicker: string;
 	title: string;
 	body: string;
-	services: ServiceEntry[];
-	assembly: Assembly;
-};
-
-const FEATURES: ReadonlyArray<Feature> = [
+	code: string;
+}> = [
 	{
-		assembly: "stack",
-		Icon: IconRoute,
-		title: "Route runtime and substrate",
-		body: "Pick the agent runtime and provider lane separately. Agent Machines wires the same worker surface on top: console, gateway, loadout, cron, logs, and usage.",
-		services: [
-			{
-				id: "e2b",
-				icon: { kind: "service", slug: "e2b" },
-				name: "E2B",
-				role: "Sandbox substrate for fast ephemeral agent runs",
-				href: "https://e2b.dev",
-			},
-			{
-				id: "sprites",
-				icon: { kind: "service", slug: "sprites" },
-				name: "Sprites",
-				role: "Persistent microVM substrate on Sprites.dev",
-				href: "https://sprites.dev",
-			},
-			{
-				id: "dedalus",
-				icon: { kind: "logo", mark: "dedalus" },
-				name: "Dedalus Machines",
-				role: "Strong default on boot, sleep, and wake — one lane of four",
-				href: "https://docs.dedaluslabs.ai/dcs",
-			},
-			{
-				id: "vercel-sandbox",
-				icon: { kind: "service", slug: "vercel" },
-				name: "Vercel Sandbox",
-				role: "Persistent microVMs with auto-snapshots, getOrCreate, and port URLs",
-				href: "https://vercel.com/docs/vercel-sandbox",
-			},
-		],
+		icon: "code",
+		kicker: "01",
+		title: "Import the client",
+		body: "Use the SDK from any server.",
+		code: INSTALL_CODE,
 	},
 	{
-		assembly: "pills",
-		Icon: IconFleet,
-		title: "Supervise a specialist fleet",
-		body: "One Clerk sign-in stores provider credentials, runtime choices, machine records, and profile metadata. The dashboard shows the fleet instead of one local terminal.",
-		services: [
-			{
-				id: "clerk",
-				icon: { kind: "service", slug: "clerk" },
-				name: "Clerk",
-				role: "Per-user identity, fleet metadata, and API key storage",
-				href: "https://clerk.com",
-			},
-			{
-				id: "vercel",
-				icon: { kind: "service", slug: "vercel" },
-				name: "Vercel",
-				role: "Hosts the dashboard, AI Gateway, and control-plane APIs",
-				href: "https://vercel.com",
-			},
-			{
-				id: "anthropic",
-				icon: { kind: "service", slug: "anthropic" },
-				name: "Anthropic",
-				role: "Claude models via direct API or AI Gateway routing",
-				href: "https://www.anthropic.com/",
-			},
-		],
+		icon: "delegate",
+		kicker: "02",
+		title: "Declare the route",
+		body: "Pick runtime, substrate, and model.",
+		code: "am.create({ agent, sandbox, model })",
 	},
 	{
-		assembly: "logos",
-		Icon: IconToolStack,
-		title: "One worker, full harness",
-		body: "Not a bare sandbox. The worker carries runtime, skills, MCP, cron, gateway, logs, usage, artifacts, and the browser console in one deployable unit.",
-		services: [
-			{
-				id: "hermes",
-				icon: { kind: "logo", mark: "nous" },
-				name: "Hermes",
-				role: "Memory, cron, sessions, MCP host, and subagents",
-				href: "https://github.com/NousResearch/hermes-agent",
-			},
-			{
-				id: "openclaw",
-				icon: { kind: "logo", mark: "openclaw" },
-				name: "OpenClaw",
-				role: "Browser, shell, vision, and computer-use automation",
-				href: "https://github.com/openclaw/openclaw",
-			},
-			{
-				id: "cursor",
-				icon: { kind: "logo", mark: "cursor" },
-				name: "Cursor SDK",
-				role: "Spawns coding agents for repo edits via MCP bridge",
-				href: "https://cursor.com/docs/sdk/typescript",
-			},
-		],
+		icon: "filesystem",
+		kicker: "03",
+		title: "Keep the worker",
+		body: "Persist files, skills, and memory.",
+		code: "persistent: true",
+	},
+	{
+		icon: "shell",
+		kicker: "04",
+		title: "Run real work",
+		body: "Send the prompt when ready.",
+		code: "await agent.run(prompt)",
 	},
 ];
-
-function StackIconView({
-	icon,
-	size = 16,
-}: { icon: StackIcon; size?: number }) {
-	if (icon.kind === "logo") {
-		return (
-			<Logo
-				mark={icon.mark}
-				size={size}
-				tone={icon.mark === "nous" || icon.mark === "openclaw" ? "native" : undefined}
-			/>
-		);
-	}
-	return <ServiceIcon slug={icon.slug} size={size} />;
-}
 
 export function StatsRow() {
 	return (
 		<div>
-			{/* Header + control-plane schematic */}
-			<div className="grid grid-cols-1 items-stretch gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[1.05fr_0.95fr]">
-				<div className="flex flex-col justify-center bg-[var(--ret-bg)] px-4 py-8 md:px-6 md:py-12">
-					<ReticleLabel>CONTROL PLANE</ReticleLabel>
-					<h2 className="ret-display mt-3 max-w-[18ch] text-2xl tracking-tight md:text-4xl">
-						OpenRouter for agents and containers.
-					</h2>
-					<p className="mt-4 max-w-[52ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
-						Route the agent runtime and the container substrate from one
-						account, then deploy a persistent worker with its full harness —
-						supervised from a single dashboard.
-					</p>
+			<div className="grid grid-cols-1 items-stretch gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[0.82fr_1.18fr]">
+				<div className="flex flex-col justify-between bg-[var(--ret-bg)] px-4 py-8 md:px-6 md:py-12">
+					<div>
+						<ReticleLabel>SDK</ReticleLabel>
+						<h2 className="ret-display mt-3 max-w-[18ch] text-2xl tracking-tight md:text-4xl">
+							Create the worker in code.
+						</h2>
+						<p className="mt-4 max-w-[54ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
+							Agent Machines turns a small route object into a persistent agent
+							worker. Pick the runtime, sandbox, model, and state policy. The
+							control plane handles boot, gateway, logs, and usage.
+						</p>
+					</div>
+
+					<div className="mt-8 grid grid-cols-1 gap-px border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-3">
+						<RouteFacet label="agent" value="Hermes" />
+						<RouteFacet label="sandbox" value="E2B" />
+						<RouteFacet label="model" value="Opus 4.8" />
+					</div>
 				</div>
-				<div className="flex items-center justify-center bg-[var(--ret-bg)] p-4 md:p-6">
-					<SchematicPanel slug="overview" className="w-full max-w-[440px]" />
+
+				<div className="bg-[var(--ret-bg)] p-4 md:p-6">
+					<CodePanel />
 				</div>
 			</div>
 
-			{/* Instrument readout grid */}
 			<div className="grid grid-cols-2 gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-3 lg:grid-cols-6">
-				{SPECS.map((spec) => (
+				{READOUTS.map((spec) => (
 					<ReadoutCell key={spec.label} spec={spec} />
 				))}
 			</div>
 
-			{/* Feature cards */}
-			<div className="grid grid-cols-1 gap-px bg-[var(--ret-border)] md:grid-cols-3">
-				{FEATURES.map(({ Icon, title, body, services, assembly }) => (
-					<div
-						key={title}
-						className="flex flex-col bg-[var(--ret-bg)] p-5 md:p-6"
-					>
-						<div className="mb-4 flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--ret-border)] bg-[var(--ret-surface)] text-[var(--ret-text)]">
-							<Icon className="h-4 w-4" />
-						</div>
-						<h3 className="text-[15px] font-semibold tracking-tight text-[var(--ret-text)]">
-							{title}
-						</h3>
-						<p className="mt-1.5 text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
-							{body}
-						</p>
-						<div className="mt-5 flex-1">
-							<ServiceAssembly variant={assembly} services={services} />
-						</div>
-					</div>
+			<div className="grid grid-cols-1 gap-px bg-[var(--ret-border)] md:grid-cols-4">
+				{PIPELINE.map((step) => (
+					<PipelineCell key={step.kicker} step={step} />
 				))}
 			</div>
 		</div>
 	);
 }
 
-/* ── Instrument readout cell ── */
-
-function ReadoutCell({ spec }: { spec: (typeof SPECS)[number] }) {
+function RouteFacet({ label, value }: { label: string; value: string }) {
 	return (
-		<div className="flex flex-col gap-1 bg-[var(--ret-bg)] px-4 py-5">
+		<div className="bg-[var(--ret-bg)] px-3 py-3">
+			<div className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
+				{label}
+			</div>
+			<div className="mt-1 text-[13px] font-semibold text-[var(--ret-text)]">
+				{value}
+			</div>
+		</div>
+	);
+}
+
+function CodePanel() {
+	return (
+		<div className="relative overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg)]">
+			<div
+				aria-hidden="true"
+				className="ret-circuit-texture pointer-events-none absolute inset-0 opacity-[0.12] mix-blend-multiply invert dark:opacity-[0.2] dark:mix-blend-screen dark:invert-0"
+				style={{ "--ret-circuit-size": "320px 426px" } as CSSProperties}
+			/>
+			<div className="relative z-10 flex items-center justify-between border-b border-[var(--ret-border)] bg-[var(--ret-bg)]/86 px-3 py-2 backdrop-blur-sm">
+				<div className="flex items-center gap-2">
+					<ToolIcon name="code" size={13} className="text-[var(--ret-text-dim)]" />
+					<span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
+						agent-machines.ts
+					</span>
+				</div>
+				<span className="font-mono text-[10px] text-[var(--ret-text-muted)]">
+					{"route -> worker"}
+				</span>
+			</div>
+			<pre className="relative z-10 m-0 overflow-hidden bg-[var(--ret-bg)]/82 px-3 py-4 font-mono text-[11px] leading-6 text-[var(--ret-text)] backdrop-blur-sm md:px-5 md:py-5 md:text-[12px]">
+				<code className="block">
+					{CODE_LINES.map((line) => (
+						<span key={line.no} className="block min-w-0 whitespace-pre-wrap break-words">
+							<span className="mr-4 select-none text-[var(--ret-text-muted)]">
+								{line.no}
+							</span>
+							<span aria-hidden="true">
+								{"\t".repeat(line.indent ?? 0)}
+							</span>
+							{line.parts.map((part, i) => (
+								<span key={`${line.no}-${i}`} className={codeTone(part.tone)}>
+									{part.text}
+								</span>
+							))}
+						</span>
+					))}
+				</code>
+			</pre>
+			<div className="relative z-10 grid grid-cols-3 gap-px border-t border-[var(--ret-border)] bg-[var(--ret-border)]">
+				<CodeMeter label="auth" value="bearer" />
+				<CodeMeter label="boot" value="phased" />
+				<CodeMeter label="logs" value="attached" />
+			</div>
+		</div>
+	);
+}
+
+function codeTone(tone: (typeof CODE_LINES)[number]["parts"][number]["tone"]) {
+	return cn(
+		tone === "dim" && "text-[var(--ret-text-muted)]",
+		tone === "keyword" && "font-semibold text-[var(--ret-text)]",
+		tone === "string" && "text-[var(--ret-text-secondary)]",
+	);
+}
+
+function CodeMeter({ label, value }: { label: string; value: string }) {
+	return (
+		<div className="bg-[var(--ret-bg)]/90 px-3 py-2 backdrop-blur-sm">
+			<div className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
+				{label}
+			</div>
+			<div className="mt-1 font-mono text-[11px] text-[var(--ret-text)]">
+				{value}
+			</div>
+		</div>
+	);
+}
+
+function ReadoutCell({ spec }: { spec: (typeof READOUTS)[number] }) {
+	return (
+		<div className="flex min-h-[118px] flex-col gap-1 bg-[var(--ret-bg)] px-4 py-5">
 			<div className="flex items-center gap-1.5">
 				<ToolIcon name={spec.icon} size={11} className="text-[var(--ret-text-muted)]" />
 				<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					{spec.label}
 				</span>
 			</div>
-			<span className="mt-1 text-[22px] font-semibold leading-none tabular-nums tracking-tight text-[var(--ret-text)]">
+			<span className="mt-1 text-[20px] font-semibold leading-none tabular-nums tracking-tight text-[var(--ret-text)]">
 				{spec.value}
 			</span>
 			<span className="text-[11px] leading-snug text-[var(--ret-text-dim)]">
@@ -261,147 +311,33 @@ function ReadoutCell({ spec }: { spec: (typeof SPECS)[number] }) {
 	);
 }
 
-/* ── Assembled service diagrams ── */
-
-function ServiceAssembly({
-	variant,
-	services,
-}: {
-	variant: Assembly;
-	services: ServiceEntry[];
-}) {
-	switch (variant) {
-		case "stack":
-			return <AssembledStack services={services} />;
-		case "pills":
-			return <AssembledPills services={services} />;
-		case "logos":
-			return <AssembledLogoGrid services={services} />;
-	}
-}
-
-function AssembledStack({ services }: { services: ServiceEntry[] }) {
+function PipelineCell({ step }: { step: (typeof PIPELINE)[number] }) {
 	return (
-		<div className="flex flex-col gap-2">
-			{services.map((s) => (
-				<a
-					key={s.id}
-					href={s.href}
-					target="_blank"
-					rel="noreferrer"
-					className="group flex items-center gap-3 rounded-lg border border-[var(--ret-border)] px-3 py-2.5 transition-colors duration-150 hover:border-[var(--ret-purple)]/30 hover:bg-[var(--ret-surface)]"
-				>
-					<StackIconView icon={s.icon} />
-					<div className="min-w-0 flex-1">
-						<p className="text-[12px] font-medium text-[var(--ret-text)] group-hover:text-[var(--ret-purple)]">
-							{s.name}
-						</p>
-						<p className="text-[10px] leading-snug text-[var(--ret-text-muted)]">
-							{s.role}
-						</p>
-					</div>
-				</a>
-			))}
+		<div className="group relative min-h-[210px] overflow-hidden bg-[var(--ret-bg)] p-5 transition-colors duration-150 hover:bg-[var(--ret-bg-soft)] md:p-6">
+			<div
+				aria-hidden="true"
+				className="ret-circuit-texture pointer-events-none absolute inset-y-0 right-0 w-1/2 opacity-0 mix-blend-multiply invert transition-opacity duration-200 group-hover:opacity-[0.12] dark:mix-blend-screen dark:invert-0 dark:group-hover:opacity-[0.2]"
+				style={{ "--ret-circuit-size": "300px 400px" } as CSSProperties}
+			/>
+			<div className="relative z-10 mb-5 flex items-center justify-between">
+				<div className="flex h-9 w-9 items-center justify-center border border-[var(--ret-border)] bg-[var(--ret-surface)] text-[var(--ret-text)] transition-transform duration-150 ease-[var(--ret-ease-out)] group-hover:-translate-y-0.5">
+					<ToolIcon name={step.icon} size={15} />
+				</div>
+				<span className="font-mono text-[10px] uppercase tracking-[0.24em] text-[var(--ret-text-muted)]">
+					{step.kicker}
+				</span>
+			</div>
+			<div className="relative z-10">
+				<h3 className="text-[15px] font-semibold tracking-tight text-[var(--ret-text)]">
+					{step.title}
+				</h3>
+				<p className="mt-1.5 text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
+					{step.body}
+				</p>
+				<div className="mt-5 border border-[var(--ret-border)] bg-[var(--ret-surface)] px-3 py-2 font-mono text-[11px] text-[var(--ret-text-secondary)]">
+					{step.code}
+				</div>
+			</div>
 		</div>
-	);
-}
-
-function AssembledPills({ services }: { services: ServiceEntry[] }) {
-	return (
-		<div className="flex flex-wrap gap-2">
-			{services.map((s) => (
-				<a
-					key={s.id}
-					href={s.href}
-					target="_blank"
-					rel="noreferrer"
-					className="group inline-flex items-center gap-2 rounded-full border border-[var(--ret-border)] bg-[var(--ret-surface)] px-3.5 py-2 transition-colors duration-150 hover:border-[var(--ret-purple)]/30"
-				>
-					<StackIconView icon={s.icon} />
-					<span className="text-[12px] font-medium text-[var(--ret-text)] group-hover:text-[var(--ret-purple)]">
-						{s.name}
-					</span>
-				</a>
-			))}
-		</div>
-	);
-}
-
-function AssembledLogoGrid({ services }: { services: ServiceEntry[] }) {
-	return (
-		<div className="flex items-start gap-5">
-			{services.map((s) => (
-				<a
-					key={s.id}
-					href={s.href}
-					target="_blank"
-					rel="noreferrer"
-					title={`${s.name}: ${s.role}`}
-					className="group flex flex-col items-center gap-2 transition-opacity hover:opacity-80"
-				>
-					<div className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--ret-border)] bg-[var(--ret-surface)]">
-						<StackIconView icon={s.icon} size={18} />
-					</div>
-					<span className="text-[10px] font-medium text-[var(--ret-text-muted)] group-hover:text-[var(--ret-text)]">
-						{s.name}
-					</span>
-				</a>
-			))}
-		</div>
-	);
-}
-
-/* ── SVG Icons ── */
-
-function IconRoute(props: SVGProps<SVGSVGElement>) {
-	return (
-		<svg
-			viewBox="0 0 16 16"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="1.5"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-			{...props}
-		>
-			<circle cx="4" cy="4" r="2" />
-			<circle cx="12" cy="4" r="2" />
-			<circle cx="8" cy="12" r="2" />
-			<path d="M5.5 5.5 7 10M10.5 5.5 9 10" />
-		</svg>
-	);
-}
-
-function IconFleet(props: SVGProps<SVGSVGElement>) {
-	return (
-		<svg
-			viewBox="0 0 16 16"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="1.5"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-			{...props}
-		>
-			<circle cx="5" cy="11" r="2.5" />
-			<path d="M7 9l6.5-6.5M11 5l1.5 1.5M9.5 6.5L11 8" />
-		</svg>
-	);
-}
-
-function IconToolStack(props: SVGProps<SVGSVGElement>) {
-	return (
-		<svg
-			viewBox="0 0 16 16"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="1.5"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-			{...props}
-		>
-			<path d="M8 2L2 5l6 3 6-3z" />
-			<path d="M2 11l6 3 6-3M2 8l6 3 6-3" />
-		</svg>
 	);
 }

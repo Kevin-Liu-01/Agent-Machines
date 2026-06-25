@@ -227,21 +227,6 @@ const RAIL_AGENTS: ReadonlyArray<{
 
 const ALL_WORDS = RAIL_AGENTS.map((a) => a.word);
 
-const SDK_EXAMPLE = `import { am as AgentMachines } from "agent-machines"
-
-const am = new AgentMachines()
-
-// any machine, any agent
-// lives as long as you need
-const agent = await am.create({
-  agent: "hermes",
-  sandbox: "e2b",
-  model: "claude-opus-4.8",
-  persistent: true,
-})
-
-await agent.run("review my code")`;
-
 /* The tool universe, grouped by job — agents + substrates fold in as the
  * first two groups so the whole stack reads as one symmetric panel. */
 type GroupItem =
@@ -537,41 +522,6 @@ function HoverDiagram({
 	);
 }
 
-function HeroSdkExample() {
-	return (
-		<div className="group/sdk max-w-[560px] overflow-hidden rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)] text-left shadow-[0_18px_60px_rgba(0,0,0,0.08)] transition-colors hover:border-[var(--ret-border-hover)] dark:shadow-[0_18px_60px_rgba(0,0,0,0.35)]">
-			<div className="flex items-center justify-between border-b border-[var(--ret-border)] bg-[var(--ret-surface)] px-3 py-2">
-				<span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
-					SDK
-				</span>
-				<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-					route · boot · run
-				</span>
-			</div>
-			<pre className="ret-scrollbar-hidden overflow-x-auto px-3 py-3 font-mono text-[11px] leading-relaxed text-[var(--ret-text-dim)]">
-				<code>{SDK_EXAMPLE}</code>
-			</pre>
-			<div className="grid grid-cols-3 border-t border-[var(--ret-border)] text-[10px]">
-				{[
-					["agent", "Hermes"],
-					["sandbox", "E2B"],
-					["state", "persistent"],
-				].map(([label, value]) => (
-					<div
-						key={label}
-						className="border-r border-[var(--ret-border)] px-3 py-2 last:border-r-0"
-					>
-						<div className="font-mono uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-							{label}
-						</div>
-						<div className="mt-0.5 truncate text-[var(--ret-text)]">{value}</div>
-					</div>
-				))}
-			</div>
-		</div>
-	);
-}
-
 /* ── Main component ── */
 
 export function HeroBlock() {
@@ -739,13 +689,11 @@ export function HeroBlock() {
 								<span className="ml-3 h-px flex-1 border-t border-dashed border-[var(--ret-border)] md:ml-4" />
 							</span>
 						</h1>
-						<p className="max-w-[52ch] text-[15px] leading-relaxed text-[var(--ret-text-dim)]">
-							Choose the runtime, provider, and model path from one account —
-							the home base for persistent workers.{" "}
+						<p className="max-w-[76ch] text-[15px] leading-snug text-[var(--ret-text-dim)]">
+							Pick runtime, provider, and model from one account.{" "}
 							<strong className="font-medium text-[var(--ret-text)]">
-								Provision the worker, install its loadout, keep its disk-backed
-								state, and watch console, logs, usage, cron, and artifacts from one
-								dashboard.
+								Provision persistent workers with loadout, state, console, logs,
+								usage, cron, and artifacts.
 							</strong>
 						</p>
 						<div className="flex flex-wrap items-center gap-2.5">
@@ -772,7 +720,6 @@ export function HeroBlock() {
 								GitHub
 							</ReticleButton>
 						</div>
-						<HeroSdkExample />
 					</div>
 				</Cell>
 				<Cell className="hidden md:block" circuit />

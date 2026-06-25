@@ -194,7 +194,7 @@ export function EnvironmentWire() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Machine: torus knot for StickyRuntimeStory                          */
+/* Machine: torus knot wireframe                                       */
 /* ------------------------------------------------------------------ */
 
 export function MachineWire() {
