@@ -16,7 +16,7 @@
  */
 
 import { getProvider } from "@/lib/providers";
-import type { ExecStreamEvent } from "@/lib/providers/types";
+import type { ExecStreamEvent, MachineProvider } from "@/lib/providers/types";
 import { getUserConfigCached } from "@/lib/user-config/request-cache";
 
 import { resolveMachine } from "./exec";
@@ -68,6 +68,50 @@ export function ensureSessionCommand(cols: number, rows: number): string {
 		`tmux has-session -t ${CONSOLE_SESSION} 2>/dev/null || { tmux new-session -d -s ${CONSOLE_SESSION} -x ${c} -y ${r}; tmux set-option -g -t ${CONSOLE_SESSION} history-limit 10000 2>/dev/null || true; : > ${CONSOLE_LOG}; tmux pipe-pane -t ${CONSOLE_SESSION} -o 'cat >> ${CONSOLE_LOG}'; }`,
 		`tmux has-session -t ${CONSOLE_SESSION} 2>/dev/null && echo AM_CONSOLE_READY || echo AM_CONSOLE_FAILED`,
 	].join("\n");
+}
+
+function shellQuote(value: string): string {
+	return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+/**
+ * Best-effort console warmup. Provisioning can return as soon as the host
+ * exists, then this starts tmux setup on the machine while the browser is
+ * navigating to the terminal. The normal session route still verifies readiness.
+ */
+export function primeConsoleSession(
+	provider: MachineProvider,
+	machineId: string,
+	options: { cols?: number; rows?: number } = {},
+): void {
+	const command = ensureSessionCommand(
+		options.cols ?? DEFAULT_COLS,
+		options.rows ?? DEFAULT_ROWS,
+	);
+	if (typeof provider.execBackground === "function") {
+		void provider.execBackground(machineId, command).catch((err) => {
+			console.warn(
+				`[terminal] console prime failed for ${machineId}: ${
+					err instanceof Error ? err.message : String(err)
+				}`,
+			);
+		});
+		return;
+	}
+
+	void provider
+		.exec(
+			machineId,
+			`nohup bash -lc ${shellQuote(command)} >/tmp/am-console-prime.log 2>&1 &`,
+			{ timeoutMs: 5_000 },
+		)
+		.catch((err) => {
+			console.warn(
+				`[terminal] console prime failed for ${machineId}: ${
+					err instanceof Error ? err.message : String(err)
+				}`,
+			);
+		});
 }
 
 export function sendKeysCommand(input: string): string {

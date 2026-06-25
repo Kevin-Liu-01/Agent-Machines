@@ -37,7 +37,7 @@ export async function POST(request: Request): Promise<Response> {
 	}
 
 	try {
-		await execOnMachine(sendKeysCommand(data), { machineId, timeoutMs: 15_000 });
+		await execOnMachine(sendKeysCommand(data), { machineId, timeoutMs: 6_000 });
 		return Response.json({ ok: true });
 	} catch (err) {
 		const message = err instanceof Error ? err.message : "input failed";

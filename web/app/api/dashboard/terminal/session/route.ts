@@ -7,7 +7,6 @@
  */
 
 import { execOnMachine } from "@/lib/dashboard/exec";
-import { isMachineRunningCached } from "@/lib/dashboard/machine-running-cache";
 import {
 	CONSOLE_SESSION,
 	capturePaneCommand,
@@ -37,17 +36,6 @@ export async function POST(request: Request): Promise<Response> {
 	const machineId = typeof body.machineId === "string" ? body.machineId : undefined;
 	const cols = clampDim(body.cols, 20, 500, 120);
 	const rows = clampDim(body.rows, 5, 200, 32);
-
-	if (!(await isMachineRunningCached(machineId))) {
-		return Response.json(
-			{
-				ok: false,
-				error: "machine_offline",
-				message: "Machine is not awake. Wake it first.",
-			},
-			{ headers: { "Cache-Control": "no-store" } },
-		);
-	}
 
 	// Resize an existing pane to the client's dims BEFORE capturing, so the
 	// snapshot height matches xterm and the captured cursor row is valid in

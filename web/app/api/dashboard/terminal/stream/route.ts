@@ -9,7 +9,6 @@
  * reopens with the latest offset when the stream ends.
  */
 
-import { isMachineRunningCached } from "@/lib/dashboard/machine-running-cache";
 import { SSE_HEADERS, sseFrame } from "@/lib/dashboard/sse";
 import {
 	isExpectedConsoleStreamEnd,
@@ -23,18 +22,6 @@ export const maxDuration = 120;
 
 const STREAM_BUDGET_MS = 110_000;
 
-function terminalStreamEventResponse(
-	event: string,
-	data: unknown,
-	init?: ResponseInit,
-): Response {
-	return new Response(sseFrame(event, data), {
-		status: 200,
-		headers: SSE_HEADERS,
-		...init,
-	});
-}
-
 export async function GET(request: Request): Promise<Response> {
 	const start = Date.now();
 	const requestId = request.headers.get("x-vercel-id");
@@ -44,18 +31,6 @@ export async function GET(request: Request): Promise<Response> {
 	const url = new URL(request.url);
 	const machineId = url.searchParams.get("machineId")?.trim() || undefined;
 	const offset = Math.max(0, Number.parseInt(url.searchParams.get("offset") ?? "0", 10) || 0);
-
-	if (!(await isMachineRunningCached(machineId))) {
-		return terminalStreamEventResponse(
-			"offline",
-			{
-				error: "machine_offline",
-				message: "Machine is not awake.",
-				offset,
-			},
-			{ headers: { ...SSE_HEADERS, "Cache-Control": "no-cache, no-transform, no-store" } },
-		);
-	}
 
 	const stream = new ReadableStream({
 		async start(controller) {

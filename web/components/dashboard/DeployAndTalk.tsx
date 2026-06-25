@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { AgentInfoPanel, GateBanner, MachineInfoPanel } from "@/components/dashboard/AgentMachineInfo";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
@@ -13,7 +13,7 @@ import { DEFAULT_ROUTER_ID, agentUpstreamReadiness, agentUsesRouter } from "@/li
 import { cn } from "@/lib/cn";
 import type { ProviderKind, PublicUserConfig } from "@/lib/user-config/schema";
 
-type Phase = "idle" | "provisioning" | "bootstrapping" | "ready" | "error";
+type Phase = "idle" | "provisioning" | "ready" | "error";
 
 const PROVIDERS = ["dedalus", "sprites", "e2b", "vercel"] as const;
 const AGENTS = ["openclaw", "hermes", "codex", "claude-code"] as const;
@@ -28,14 +28,10 @@ function isAgent(value: unknown): value is (typeof AGENTS)[number] {
 	return typeof value === "string" && (AGENTS as readonly string[]).includes(value);
 }
 
-function sleep(ms: number): Promise<void> {
-	return new Promise((r) => setTimeout(r, ms));
-}
-
 /**
- * One-click: provision a machine, bootstrap the agent, then drop the user
- * straight into the interactive console with the agent CLI auto-launched
- * (`?launch=1`). Polls bootstrap phase for live progress.
+ * One-click: provision a machine, schedule bootstrap, then open the machine
+ * wrapper immediately. The wrapper shows the live console while install runs
+ * and auto-launches the selected agent once bootstrap succeeds.
  */
 export function DeployAndTalk() {
 	const router = useRouter();
@@ -49,9 +45,8 @@ export function DeployAndTalk() {
 	const [gatewayProfileId, setGatewayProfileId] = useState<string>(DEFAULT_ROUTER_ID);
 	const [environmentProfiles, setEnvironmentProfiles] = useState<EnvironmentOption[]>([]);
 	const [environmentProfileId, setEnvironmentProfileId] = useState<string>("");
-	const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-	const busy = phase === "provisioning" || phase === "bootstrapping";
+	const busy = phase === "provisioning";
 
 	// Load which provider keys are configured (drives the router hints + gate).
 	useEffect(() => {
@@ -108,7 +103,12 @@ export function DeployAndTalk() {
 					...(environmentProfileId ? { environmentProfileId } : {}),
 				}),
 			});
-			const provJson = (await prov.json()) as { ok?: boolean; machineId?: string; message?: string; error?: string };
+			const provJson = (await prov.json()) as {
+				ok?: boolean;
+				machineId?: string;
+				message?: string;
+				error?: string;
+			};
 			if (!prov.ok || !provJson.machineId) {
 				setPhase("error");
 				setDetail(provJson.message ?? provJson.error ?? "provision failed");
@@ -116,41 +116,10 @@ export function DeployAndTalk() {
 			}
 			const machineId = provJson.machineId;
 
-			setPhase("bootstrapping");
-			setDetail("installing the agent (this can take a few minutes)...");
-
-			// Poll bootstrap phase for live progress while the bootstrap POST runs.
-			pollRef.current = setInterval(async () => {
-				try {
-					const r = await fetch(`/api/dashboard/machines/${machineId}`, { cache: "no-store" });
-					if (!r.ok) return;
-					const j = (await r.json()) as { machine?: { bootstrapState?: { current?: string | null; phase?: string } } };
-					const cur = j.machine?.bootstrapState?.current;
-					if (cur) setDetail(`bootstrapping · ${cur}`);
-				} catch {
-					// transient
-				}
-			}, 2_500);
-
-			const boot = await fetch("/api/dashboard/admin/bootstrap", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ machineId }),
-			});
-			if (pollRef.current) clearInterval(pollRef.current);
-			const bootJson = (await boot.json().catch(() => ({}))) as { ok?: boolean; message?: string; error?: string };
-			if (!boot.ok || bootJson.ok === false) {
-				setPhase("error");
-				setDetail(bootJson.message ?? bootJson.error ?? "bootstrap failed");
-				return;
-			}
-
 			setPhase("ready");
-			setDetail("agent ready — opening console...");
-			await sleep(150);
-			router.push(`/dashboard/machines/${machineId}/console`);
+			setDetail("machine ready — opening live view...");
+			router.push(`/dashboard/machines/${machineId}/view?launch=1`);
 		} catch (err) {
-			if (pollRef.current) clearInterval(pollRef.current);
 			setPhase("error");
 			setDetail(err instanceof Error ? err.message : "deploy failed");
 		}
@@ -159,9 +128,9 @@ export function DeployAndTalk() {
 	return (
 		<div className="grid min-w-0 gap-3 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-4">
 			<div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
-				<ReticleLabel>one-click — deploy, bootstrap, talk</ReticleLabel>
+				<ReticleLabel>one-click — deploy, open, talk</ReticleLabel>
 				<span className="min-w-0 break-words font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)] sm:text-right">
-					provision → bootstrap → interactive agent CLI
+					provision → live shell → agent CLI
 				</span>
 			</div>
 

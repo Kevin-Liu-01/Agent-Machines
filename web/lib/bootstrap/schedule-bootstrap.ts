@@ -11,8 +11,9 @@ export function scheduleWebBootstrap(
 	machine: MachineRef,
 	provider: MachineProvider,
 	config: UserConfig,
-): void {
-	void (async () => {
+	options: { force?: boolean } = {},
+): Promise<void> {
+	return (async () => {
 		await setUserConfig({
 			patchMachine: {
 				id: machine.id,
@@ -34,6 +35,7 @@ export function scheduleWebBootstrap(
 				machine,
 				provider,
 				config,
+				force: options.force === true,
 				onState: async (bootstrapState) => {
 					await setUserConfig({
 						patchMachine: { id: machine.id, patch: { bootstrapState } },

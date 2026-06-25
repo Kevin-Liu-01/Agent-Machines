@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
 	CONSOLE_LOG,
@@ -6,10 +6,12 @@ import {
 	clampDim,
 	ensureSessionCommand,
 	isExpectedConsoleStreamEnd,
+	primeConsoleSession,
 	resizeCommand,
 	sendKeysCommand,
 	toHexKeys,
 } from "./terminal-session";
+import type { MachineProvider } from "@/lib/providers/types";
 
 describe("toHexKeys", () => {
 	it("encodes printable text as space-separated hex byte pairs", () => {
@@ -59,6 +61,33 @@ describe("ensureSessionCommand", () => {
 	it("clamps absurd dimensions to safe bounds", () => {
 		const cmd = ensureSessionCommand(99999, 0);
 		expect(cmd).toContain("-x 500 -y 5");
+	});
+});
+
+describe("primeConsoleSession", () => {
+	it("uses provider background exec when available", () => {
+		const execBackground = vi.fn().mockResolvedValue(undefined);
+		const provider = { execBackground } as unknown as MachineProvider;
+
+		primeConsoleSession(provider, "machine-1", { cols: 88, rows: 24 });
+
+		expect(execBackground).toHaveBeenCalledWith(
+			"machine-1",
+			expect.stringContaining(`tmux new-session -d -s ${CONSOLE_SESSION} -x 88 -y 24`),
+		);
+	});
+
+	it("falls back to detached exec for providers without background exec", () => {
+		const exec = vi.fn().mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 });
+		const provider = { exec } as unknown as MachineProvider;
+
+		primeConsoleSession(provider, "machine-2");
+
+		expect(exec).toHaveBeenCalledWith(
+			"machine-2",
+			expect.stringContaining("nohup bash -lc"),
+			{ timeoutMs: 5_000 },
+		);
 	});
 });
 

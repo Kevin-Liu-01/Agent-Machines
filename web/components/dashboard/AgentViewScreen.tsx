@@ -156,6 +156,8 @@ const EMPTY_SNAPSHOT: SnapshotState = {
 const POLL_MS = 7_000;
 const USAGE_DAYS = 7;
 const DEFAULT_AGENT_KIND: AgentKind = "hermes";
+const BOOTSTRAP_POLL_MS = 2_500;
+const BOOTSTRAP_WAIT_MS = 12 * 60_000;
 
 const AGENT_RUNTIME_PROFILES: Record<AgentKind, AgentRuntimeProfile> = {
 	hermes: {
@@ -205,6 +207,49 @@ function runtimeProfileFor(agentKind: string | null | undefined): AgentRuntimePr
 		return AGENT_RUNTIME_PROFILES[agentKind as AgentKind];
 	}
 	return AGENT_RUNTIME_PROFILES[DEFAULT_AGENT_KIND];
+}
+
+type BootstrapPollState = {
+	phase?: "idle" | "running" | "succeeded" | "failed";
+	current?: string | null;
+	lastError?: string | null;
+};
+
+type BootstrapPollResponse = {
+	ok?: boolean;
+	machine?: { bootstrapState?: BootstrapPollState };
+	message?: string;
+	error?: string;
+};
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function waitForBootstrapReady(
+	machineId: string,
+	onState: (state: BootstrapPollState) => void,
+): Promise<void> {
+	const deadline = Date.now() + BOOTSTRAP_WAIT_MS;
+	while (Date.now() < deadline) {
+		const response = await fetch(`/api/dashboard/machines/${encodeURIComponent(machineId)}`, {
+			cache: "no-store",
+		});
+		const body = (await response.json().catch(() => ({}))) as BootstrapPollResponse;
+		if (!response.ok || body.ok === false) {
+			throw new Error(body.message ?? body.error ?? `HTTP ${response.status}`);
+		}
+		const state = body.machine?.bootstrapState;
+		if (state) {
+			onState(state);
+			if (state.phase === "succeeded") return;
+			if (state.phase === "failed") {
+				throw new Error(state.lastError ?? "bootstrap failed");
+			}
+		}
+		await sleep(BOOTSTRAP_POLL_MS);
+	}
+	throw new Error("bootstrap did not finish in time");
 }
 
 export function AgentViewScreen() {
@@ -380,7 +425,6 @@ export function AgentViewScreen() {
 			setLaunching(true);
 			setLaunchError(null);
 			resetLaunchSteps();
-			setConsoleVisible(false);
 			setConsoleAutoLaunch(false);
 			prefetchXterm();
 
@@ -434,19 +478,44 @@ export function AgentViewScreen() {
 						"awake",
 				});
 
+				markLaunchStep("terminal", {
+					status: "running",
+					detail: "attaching live console",
+				});
+				setConsoleVisible(true);
+				setConsoleNonce((value) => value + 1);
+				markLaunchStep("terminal", {
+					status: "done",
+					detail: "tmux console mounting",
+				});
+
 				if (shouldBootstrap || wake.needsBootstrap) {
 					markLaunchStep("bootstrap", {
 						status: "running",
 						detail: forceBootstrap
 							? "repairing runtime"
 							: runtimeProfile.routesThroughGateway
-								? "starting route"
+								? "starting gateway"
 								: "checking runtime",
 					});
 					await fetchJson<MutateRouteResponse>("/api/dashboard/admin/bootstrap", {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({ machineId, force: forceBootstrap }),
+						body: JSON.stringify({
+							machineId,
+							force: forceBootstrap,
+							background: true,
+						}),
+					});
+					await waitForBootstrapReady(machineId, (state) => {
+						markLaunchStep("bootstrap", {
+							status: "running",
+							detail: state.current
+								? `installing · ${state.current}`
+								: state.phase === "running"
+									? "installing runtime"
+									: "queued runtime install",
+						});
 					});
 					markLaunchStep("bootstrap", {
 						status: "done",
@@ -456,23 +525,12 @@ export function AgentViewScreen() {
 					markLaunchStep("bootstrap", {
 						status: "skipped",
 						detail: runtimeProfile.routesThroughGateway
-							? "route current"
+							? "gateway current"
 							: "runtime current",
 					});
 				}
 
-				markLaunchStep("terminal", {
-					status: "running",
-					detail: "attaching live console",
-				});
 				setConsoleAutoLaunch(hasCli);
-				setConsoleVisible(true);
-				setConsoleNonce((value) => value + 1);
-				markLaunchStep("terminal", {
-					status: "done",
-					detail: "tmux console mounting",
-				});
-
 				markLaunchStep("agent", {
 					status: hasCli ? "done" : "skipped",
 					detail: launchCommand
@@ -586,7 +644,7 @@ export function AgentViewScreen() {
 		},
 		{
 			icon: <Wifi size={14} />,
-			label: "Route",
+			label: "Gateway",
 			value: routeValue,
 			detail: routeFootnote,
 			tone: routeTone,
@@ -686,7 +744,7 @@ export function AgentViewScreen() {
 					/>
 					<SignalTile
 						icon={<Wifi size={14} />}
-						label="Route"
+						label="Gateway"
 						value={routeValue}
 						tone={routeTone}
 						footnote={routeFootnote}
@@ -762,7 +820,7 @@ export function AgentViewScreen() {
 
 				<div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(360px,0.85fr)]">
 					<Panel
-						title="Route"
+						title="Gateway"
 						icon={<Cloud size={13} />}
 						right={
 							<ReticleBadge
@@ -840,7 +898,7 @@ export function AgentViewScreen() {
 								["sandbox", snapshot.introspection?.sandboxMode ?? "unknown"],
 								["approval", snapshot.introspection?.approvalPolicy ?? "unknown"],
 								["default", agentLabel(DEFAULT_AGENT_KIND)],
-								["exec", snapshot.introspectionError ? "degraded" : "available"],
+								["command", snapshot.introspectionError ? "degraded" : "available"],
 							]}
 						/>
 						{snapshot.introspectionError ? (
@@ -918,7 +976,7 @@ export function AgentViewScreen() {
 					) : snapshot.introspectionError ? (
 						<div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
 							<div className="border border-[var(--ret-amber)]/30 bg-[var(--ret-amber)]/5 px-4 py-3">
-								<ReticleLabel className="text-[9px]">Exec probe</ReticleLabel>
+								<ReticleLabel className="text-[9px]">Command probe</ReticleLabel>
 								<p className="mt-2 text-[13px] text-[var(--ret-amber)]">
 									Runtime introspection degraded.
 								</p>
@@ -930,7 +988,7 @@ export function AgentViewScreen() {
 								rows={[
 									["agent", agentDisplay],
 									["model", activeModel],
-									["route", routeValue],
+									["gateway", routeValue],
 									["logs", logStatus],
 								]}
 							/>
@@ -1015,7 +1073,7 @@ function AgentLauncherPanel({
 		{ label: "command", value: command ?? "no interactive cli", copy: command },
 		{ label: "terminal", value: launchTerminalHref, href: launchTerminalHref },
 		{
-			label: "route",
+			label: runtimeProfile.routesThroughGateway ? "gateway" : "path",
 			value: routeValue,
 			copy: runtimeProfile.routesThroughGateway ? (apiHost ?? undefined) : undefined,
 		},
@@ -1037,7 +1095,7 @@ function AgentLauncherPanel({
 					{launching
 						? "booting"
 						: gatewayOk
-							? "route ready"
+							? "gateway ready"
 							: runtimeProfile.routesThroughGateway
 								? bootstrapPhase
 								: "cli ready"}
@@ -1273,7 +1331,7 @@ function defaultLaunchSteps(): LaunchStep[] {
 		{
 			id: "activate",
 			label: "active",
-			detail: "bind dashboard routes",
+			detail: "bind dashboard views",
 			status: "idle",
 		},
 		{

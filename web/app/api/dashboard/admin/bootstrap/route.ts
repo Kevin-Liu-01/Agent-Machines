@@ -10,10 +10,12 @@
 import { getProvider } from "@/lib/providers";
 import { validateAgentCredentials } from "@/lib/agents/credentials";
 import { runWebBootstrap } from "@/lib/bootstrap/runner";
+import { scheduleWebBootstrap } from "@/lib/bootstrap/schedule-bootstrap";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 import { INITIAL_BOOTSTRAP_STATE, type MachineRef } from "@/lib/user-config/schema";
 import crypto from "node:crypto";
+import { after } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,6 +24,7 @@ export const maxDuration = 300;
 type Body = {
 	machineId?: string;
 	force?: boolean;
+	background?: boolean;
 };
 
 export async function POST(request: Request): Promise<Response> {
@@ -71,6 +74,25 @@ export async function POST(request: Request): Promise<Response> {
 		);
 	}
 
+	if (body.background === true && body.force !== true) {
+		if (machine.bootstrapState.phase === "running") {
+			return Response.json({
+				ok: true,
+				machineId: machine.id,
+				background: true,
+				alreadyRunning: true,
+			});
+		}
+		if (machine.bootstrapState.phase === "succeeded") {
+			return Response.json({
+				ok: true,
+				machineId: machine.id,
+				background: true,
+				alreadySucceeded: true,
+			});
+		}
+	}
+
 	await setUserConfig({
 		patchMachine: {
 			id: machine.id,
@@ -93,6 +115,17 @@ export async function POST(request: Request): Promise<Response> {
 	const latestConfig = await getUserConfig();
 	const machineForBootstrap =
 		latestConfig.machines.find((m) => m.id === machine.id) ?? machine;
+
+	if (body.background === true) {
+		after(() => scheduleWebBootstrap(machineForBootstrap, provider, latestConfig, {
+			force: body.force === true,
+		}));
+		return Response.json({
+			ok: true,
+			machineId: machine.id,
+			background: true,
+		});
+	}
 
 	try {
 		const result = await runWebBootstrap({

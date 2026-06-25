@@ -38,6 +38,8 @@ type InteractiveConsoleProps = {
 };
 
 const RECONNECT_MS = 100;
+const INPUT_FLUSH_MS = 10;
+const INPUT_POST_TIMEOUT_MS = 5_000;
 const DEFAULT_COLS = 120;
 const DEFAULT_ROWS = 32;
 
@@ -80,22 +82,69 @@ export function InteractiveConsole({
 	// arrive at tmux in order — concurrent fire-and-forget fetches can race
 	// and reorder characters ("Reply" -> "y...lRep").
 	const sendChainRef = useRef<Promise<unknown>>(Promise.resolve());
-	const sendInput = useCallback(
+	const pendingInputRef = useRef("");
+	const inputFlushTimerRef = useRef<number | null>(null);
+	const postInput = useCallback(
 		(data: string) => {
 			if (!data || !machineId) return;
 			sendChainRef.current = sendChainRef.current
-				.then(() =>
-					fetch("/api/dashboard/terminal/input", {
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify({ machineId, data }),
-						keepalive: true,
-					}),
-				)
-				.catch(() => {});
+				.catch(() => {})
+				.then(async () => {
+					const controller = new AbortController();
+					const timeout = window.setTimeout(
+						() => controller.abort(),
+						INPUT_POST_TIMEOUT_MS,
+					);
+					try {
+						await fetch("/api/dashboard/terminal/input", {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({ machineId, data }),
+							keepalive: true,
+							signal: controller.signal,
+						});
+					} catch {
+						// The local line editor already accepted the input. A reconnect or
+						// the next Enter will surface real sandbox issues without freezing
+						// character entry behind one slow send-keys request.
+					} finally {
+						window.clearTimeout(timeout);
+					}
+				});
 		},
 		[machineId],
 	);
+	const flushInput = useCallback(() => {
+		if (inputFlushTimerRef.current) {
+			window.clearTimeout(inputFlushTimerRef.current);
+			inputFlushTimerRef.current = null;
+		}
+		const data = pendingInputRef.current;
+		pendingInputRef.current = "";
+		postInput(data);
+	}, [postInput]);
+	const sendInput = useCallback(
+		(data: string) => {
+			if (!data || !machineId) return;
+			pendingInputRef.current += data;
+			if (data.includes("\r") || data.includes("\x03")) {
+				flushInput();
+				return;
+			}
+			if (inputFlushTimerRef.current) return;
+			inputFlushTimerRef.current = window.setTimeout(flushInput, INPUT_FLUSH_MS);
+		},
+		[flushInput, machineId],
+	);
+	useEffect(() => {
+		return () => {
+			if (inputFlushTimerRef.current) {
+				window.clearTimeout(inputFlushTimerRef.current);
+				inputFlushTimerRef.current = null;
+			}
+			pendingInputRef.current = "";
+		};
+	}, [machineId]);
 	const sendInputRef = useRef(sendInput);
 	sendInputRef.current = sendInput;
 
@@ -109,8 +158,23 @@ export function InteractiveConsole({
 	launchRef.current = launchAgent;
 
 	useEffect(() => {
+		launchedRef.current = false;
+	}, [machineId, agentKind]);
+
+	useEffect(() => {
+		if (status !== "ready" || !autoLaunch || !isCliAgent(agentKind) || launchedRef.current) {
+			return;
+		}
+		launchedRef.current = true;
+		const timer = window.setTimeout(() => launchRef.current(), 150);
+		return () => window.clearTimeout(timer);
+	}, [agentKind, autoLaunch, status]);
+
+	useEffect(() => {
 		if (!machineId) return;
 		const scopedMachineId = machineId;
+		setStatus("connecting");
+		setDetail("");
 
 		let alive = true;
 		let term: XTerm | null = null;
@@ -481,11 +545,6 @@ export function InteractiveConsole({
 
 			void streamLoop();
 
-			if (autoLaunch && isCliAgent(agentKind) && !launchedRef.current) {
-				launchedRef.current = true;
-				setTimeout(() => launchRef.current(), 250);
-			}
-
 			if (hostRef.current) {
 				resizeObs = new ResizeObserver(() => {
 					if (!fit || !term) return;
@@ -513,7 +572,7 @@ export function InteractiveConsole({
 			flushPendingWrite();
 			term?.dispose();
 		};
-	}, [machineId, autoLaunch, agentKind]);
+	}, [machineId, agentKind]);
 
 	return (
 		<div className="flex flex-col gap-2">
