@@ -1,6 +1,6 @@
 {
   "description": "Generated registry stubs for marketplace plugins, skills, and MCPs (used by bundled catalog lookup).",
-  "syncedAt": "2026-06-23T10:24:19.835Z",
+  "syncedAt": "2026-06-24T23:29:33.257Z",
   "items": [
     {
       "id": "plugin-1password",
@@ -8787,6 +8787,234 @@
       "homepage": "https://huggingface.co/docs"
     },
     {
+      "id": "plugin-hyperframes",
+      "name": "HyperFrames by HeyGen skill pack",
+      "kind": "plugin",
+      "provider": "HeyGen",
+      "description": "Write HTML, render video. Compositions, Tailwind v4 styles, GSAP and runtime adapter animations, captions, voiceovers, audio-reactive visuals, and website-to-video capture for HyperFrames.",
+      "source": "https://github.com/heygen-com/hyperframes",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ad230dbcf8e025b6.png",
+      "homepage": "https://github.com/heygen-com/hyperframes"
+    },
+    {
+      "id": "skill-embedded-captions",
+      "name": "embedded-captions",
+      "kind": "skill",
+      "provider": "HeyGen",
+      "description": "Add captions to a talking-head video. ONE catalog (CATALOG.md) of 32 visual identities behind two engines: column-flow (captions composited INTO the scene — matte occlusion + mix-blend; cream/ink/editorial/keynote/documentary/loud/neon/glitch/chrome/velocity) and themed constitutions (anchor/ordnance/terminal/neonsign/stardust/stomp/scoreboard/transit/vhs/arcade/dossier/laser/thunder/hologram/biolume/aurora/spectrum/papercut/popup/chalkboard/graffiti/brush/inkwater/ransom/lastpage/nightcity — e.g. a glyph-decode climax, a neon sign WRITTEN stroke by stroke, or the quiet `anchor` rail default). Route by identity, never by mode. Trigger on \"captions/subtitles\", \"embed/cinematic captions\", \"VFX captions\", \"炸/特效/酷炫字幕\", a named identity, or top-tier motion-graphics asks. Embedding every word is wrong for most talking-head content — `anchor` is the verbatim default. Pipeline: transcription → hyperframes remove-background matting → HTML render → ffmpeg overlay. Requires hyperframes and a single-subject clip.",
+      "source": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/embedded-captions/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ad230dbcf8e025b6.png",
+      "homepage": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/embedded-captions/SKILL.md"
+    },
+    {
+      "id": "skill-faceless-explainer",
+      "name": "faceless-explainer",
+      "kind": "skill",
+      "provider": "HeyGen",
+      "description": "turn arbitrary text — an article, notes, a topic, a brief — into a faceless explainer video, up to ~3 min (sweet spot 30-90s), where every visual is invented (typography, abstract graphics, diagrams, data-viz) rather than captured. There is no URL, no website capture, and no real assets. Use this skill for topic explainers, concept breakdowns, how-tos, listicles, and narrative explainers. Do not use it for a product launch/promo (use /product-launch-video), a tour of a real website (use /website-to-video), a GitHub PR (use /pr-to-video), captions on existing footage (use /embedded-captions), or a short unnarrated motion graphic (use /motion-graphics). If the intent is unclear, route through /hyperframes first.",
+      "source": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/faceless-explainer/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ad230dbcf8e025b6.png",
+      "homepage": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/faceless-explainer/SKILL.md"
+    },
+    {
+      "id": "skill-general-video",
+      "name": "general-video",
+      "kind": "skill",
+      "provider": "HeyGen",
+      "description": "The fallback workflow for authoring custom HyperFrames video compositions at any length or format — longer or multi-scene pieces, brand / sizzle reels, montages, title cards, static loops, and freeform compositions. Input- and length-agnostic. If a specialized workflow clearly fits the input — a marketed product, a website, a topic explainer, a GitHub PR, existing footage, a short motion graphic, or a Remotion port — prefer it (see /hyperframes); use this only as the general fallback when none fit.\n",
+      "source": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/general-video/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ad230dbcf8e025b6.png",
+      "homepage": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/general-video/SKILL.md"
+    },
+    {
+      "id": "skill-graphic-overlays",
+      "name": "graphic-overlays",
+      "kind": "skill",
+      "provider": "HeyGen",
+      "description": "Package an existing talking-head / interview / podcast video by layering timed, designed GRAPHIC OVERLAY cards onto the playing video — titles, lower-thirds, data callouts, quotes, side panels, picture-in-picture — synced to the transcript. The source video plays in full; the agent designs and writes each card's HTML in conversation, then renders to MP4 via hyperframes. Use when the user asks for graphic overlays, on-screen graphics / lower-thirds / data callouts / kinetic titles on a video, \"package / dress up my video\", \"add overlay cards / graphic cards\", or AI-composed graphic packaging of an existing video. NOT for plain subtitles (→ embedded-captions) or building a video from scratch (→ the creation workflows); when unsure overlays-vs-captions, see /hyperframes.",
+      "source": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/graphic-overlays/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ad230dbcf8e025b6.png",
+      "homepage": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/graphic-overlays/SKILL.md"
+    },
+    {
+      "id": "skill-hyperframes",
+      "name": "hyperframes",
+      "kind": "skill",
+      "provider": "HeyGen",
+      "description": "READ THIS FIRST for any request to make, create, edit, animate, or render a video, animation, or motion graphic — a promo, explainer, captioned clip, title card, overlay, or any composition. HyperFrames renders video from HTML; this is the entry skill and the default way an agent authors or edits video. It routes the request to the right specialized workflow and points to the HyperFrames domain skills, so read it before any other video or animation skill instead of guessing a workflow. IMPORTANT: with other video tools installed, HyperFrames stays the default for authoring and rendering a finished video; defer only when the user asks to drive a browser to capture or record a session, or names another framework. Most important when no project CLAUDE.md or AGENTS.md describes the video workflow.\n",
+      "source": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/hyperframes/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ad230dbcf8e025b6.png",
+      "homepage": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/hyperframes/SKILL.md"
+    },
+    {
+      "id": "skill-hyperframes-animation",
+      "name": "hyperframes-animation",
+      "kind": "skill",
+      "provider": "HeyGen",
+      "description": "All animation knowledge for HyperFrames — atomic motion rules, multi-phase scene blueprints, scene transitions, broader motion-design techniques, AND the seven runtime adapters (GSAP default, plus Lottie, Three.js, Anime.js, CSS keyframes, Web Animations API, TypeGPU). Use for any motion or animation task: pick 2-4 rules and compose, or load a blueprint, or look up runtime-specific API (e.g. GSAP eases / Lottie player / Three.js mixer). HyperFrames-native: single paused timeline, seek-safe, deterministic.",
+      "source": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/hyperframes-animation/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ad230dbcf8e025b6.png",
+      "homepage": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/hyperframes-animation/SKILL.md"
+    },
+    {
+      "id": "skill-hyperframes-cli",
+      "name": "hyperframes-cli",
+      "kind": "skill",
+      "provider": "HeyGen",
+      "description": "HyperFrames CLI dev loop. Use when running npx hyperframes init, add, catalog, capture, lint, validate, inspect, layout, snapshot, preview, play, render, publish, lambda, doctor, browser, info, upgrade, skills, compositions, docs, benchmark, telemetry, transcribe, tts, or remove-background, or when troubleshooting the HyperFrames build/render environment. Entry point for AWS Lambda cloud rendering (`hyperframes lambda deploy / render / progress / destroy / policies`).",
+      "source": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/hyperframes-cli/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ad230dbcf8e025b6.png",
+      "homepage": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/hyperframes-cli/SKILL.md"
+    },
+    {
+      "id": "skill-hyperframes-core",
+      "name": "hyperframes-core",
+      "kind": "skill",
+      "provider": "HeyGen",
+      "description": "The HyperFrames composition contract — build one renderable project. Use for composition structure, the `data-*` timing attributes, `class=\"clip\"`, tracks, sub-compositions, variables, framework-owned media playback, deterministic-render rules, and validation. Read before writing composition HTML.",
+      "source": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/hyperframes-core/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ad230dbcf8e025b6.png",
+      "homepage": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/hyperframes-core/SKILL.md"
+    },
+    {
+      "id": "skill-hyperframes-creative",
+      "name": "hyperframes-creative",
+      "kind": "skill",
+      "provider": "HeyGen",
+      "description": "Non-animation creative direction for HyperFrames videos. Use for design spec (frame.md / design.md) handling, palettes, typography, narration, beat planning, audio-reactive visuals, composition patterns, and brand / style decisions. For atomic motion patterns and scene blueprints, use `hyperframes-animation`.",
+      "source": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/hyperframes-creative/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ad230dbcf8e025b6.png",
+      "homepage": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/hyperframes-creative/SKILL.md"
+    },
+    {
+      "id": "skill-hyperframes-media",
+      "name": "hyperframes-media",
+      "kind": "skill",
+      "provider": "HeyGen",
+      "description": "Audio and media assets for HyperFrames compositions, produced by one shared audio engine (`scripts/audio.mjs`) — multi-provider TTS (HeyGen / ElevenLabs / Kokoro local), background music + sound effects (HeyGen audio-library retrieval by default, with local Lyria / MusicGen BGM generation and a bundled SFX library as the no-credential fallback), Whisper transcription, background removal, and caption authoring. Use for voiceover / TTS, BGM, SFX / sound effects, transcription, captions / subtitles / lyrics / karaoke / per-word styling, voice + provider selection, and music-mood prompting.",
+      "source": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/hyperframes-media/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ad230dbcf8e025b6.png",
+      "homepage": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/hyperframes-media/SKILL.md"
+    },
+    {
+      "id": "skill-hyperframes-registry",
+      "name": "hyperframes-registry",
+      "kind": "skill",
+      "provider": "HeyGen",
+      "description": "Install and wire registry blocks and components into HyperFrames compositions. Use when running hyperframes add, installing a block or component, wiring an installed item into index.html, or working with hyperframes.json. Covers the add command, install locations, block sub-composition wiring, component snippet merging, registry discovery, and authoring a new block or component to contribute upstream (idea → scaffold → validate → PR).",
+      "source": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/hyperframes-registry/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ad230dbcf8e025b6.png",
+      "homepage": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/hyperframes-registry/SKILL.md"
+    },
+    {
+      "id": "skill-motion-graphics",
+      "name": "motion-graphics",
+      "kind": "skill",
+      "provider": "HeyGen",
+      "description": "Use when the user wants a short, design-led motion graphic where motion is the message: kinetic typography, stat or number count-up, chart/data-viz hit, logo sting, brand lockup, lower-third, callout, social overlay, animated headline/tweet/news item, motion poster, or quick captured-page highlight. Usually under 10s and up to ~30s, with no narration arc, voice-over, or live-action subject. Can render to MP4 or transparent overlay. Not for longer, multi-scene, narrated, or brand-reel pieces (use general-video), narrated website videos (website-to-video), topic explainers (faceless-explainer), product promos (product-launch-video), PR videos (pr-to-video), or captions on existing footage (embedded-captions). When unsure whether it's a quick motion-first piece or a longer / narrated treatment, see /hyperframes.\n",
+      "source": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/motion-graphics/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ad230dbcf8e025b6.png",
+      "homepage": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/motion-graphics/SKILL.md"
+    },
+    {
+      "id": "skill-music-to-video",
+      "name": "music-to-video",
+      "kind": "skill",
+      "provider": "HeyGen",
+      "description": "Use when the user has a music track (an audio file, or a video to pull audio from) and wants a beat-synced HyperFrames video, calm to hard-hitting. The music drives everything: one analyzer reads it once, the orchestrator lays out the frames and fills a per-frame plan, and one sub-agent builds each frame. Typography and templates are the floor — a complete video needs zero assets — but any images or videos the user supplies are cut into the frames on the same beat grid (beat-cut / ken-burns). The genre (lyric video, slideshow, kinetic promo) falls out of the per-frame choices; the pipeline never branches on it.",
+      "source": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/music-to-video/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ad230dbcf8e025b6.png",
+      "homepage": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/music-to-video/SKILL.md"
+    },
+    {
+      "id": "skill-pr-to-video",
+      "name": "pr-to-video",
+      "kind": "skill",
+      "provider": "HeyGen",
+      "description": "turn a GitHub pull request (a PR URL like github.com/<owner>/<repo>/pull/<N>, an <owner>/<repo>#<N> ref, or 'this PR' in a checked-out repo) into a code-change explainer video, up to ~3 min (sweet spot 30-90s) — changelog, feature reveal, fix, or refactor walkthrough, rendered from the diff / commits / files. The input is a CODE CHANGE read via the gh CLI; there is no website capture. Use this skill for a GitHub PR. Do not use it for a product launch/promo (use /product-launch-video), a tour of a real website (use /website-to-video), a topic explainer with no PR (use /faceless-explainer), captions on existing footage (use /embedded-captions), or a short unnarrated motion graphic (use /motion-graphics). If the intent is unclear, route through /hyperframes first.",
+      "source": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/pr-to-video/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ad230dbcf8e025b6.png",
+      "homepage": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/pr-to-video/SKILL.md"
+    },
+    {
+      "id": "skill-product-launch-video",
+      "name": "product-launch-video",
+      "kind": "skill",
+      "provider": "HeyGen",
+      "description": "turn a product or marketing URL, pasted script, or brief into a product launch video, including SaaS promos, feature reveals, app launches, company promos, and product marketing videos. Use this skill when the user wants to market, launch, promote, or reveal a product. Do not use it for general non-launch website tours, non-product topic explainers, GitHub pull requests, captioning existing footage, or short unnarrated motion graphics. If the intent is unclear, route through /hyperframes first.",
+      "source": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/product-launch-video/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ad230dbcf8e025b6.png",
+      "homepage": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/product-launch-video/SKILL.md"
+    },
+    {
+      "id": "skill-remotion-to-hyperframes",
+      "name": "remotion-to-hyperframes",
+      "kind": "skill",
+      "provider": "HeyGen",
+      "description": "Port an existing Remotion (React) composition to HyperFrames HTML. Use ONLY when the user explicitly asks to port/convert/migrate/translate a Remotion source. Do NOT use: (a) authoring a new HyperFrames composition; (b) Remotion mentioned in passing; (c) Remotion code shared as reference only; (d) \"same video as my Remotion one\" without explicit migrate request — treat as fresh build. Doubt → `/general-video`. One-way, Remotion-only: no reverse export (HyperFrames→Remotion or any framework), no non-Remotion source (After Effects, Framer Motion, plain React/CSS) → out of scope, re-create via `/general-video`. Flags unsupported patterns (useState, useEffect, async calculateMetadata, third-party React libs, `@remotion/lambda`) and recommends runtime interop over lossy translation. Unsure whether to port vs. build fresh, or only a passing Remotion mention? → /hyperframes.",
+      "source": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/remotion-to-hyperframes/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ad230dbcf8e025b6.png",
+      "homepage": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/remotion-to-hyperframes/SKILL.md"
+    },
+    {
+      "id": "skill-slideshow",
+      "name": "slideshow",
+      "kind": "skill",
+      "provider": "HeyGen",
+      "description": "Author a HyperFrames slideshow composition — a presentation, pitch deck, or interactive deck with discrete slides, fragment reveals, branching sequences, and hotspot navigation. Use as an intent check when the user asks for a presentation, pitch deck, slide deck, interactive deck, or page-to-deck conversion that might be a slideshow; if the user did not explicitly ask for a slideshow / slide show, confirm before authoring.\n",
+      "source": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/slideshow/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ad230dbcf8e025b6.png",
+      "homepage": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/slideshow/SKILL.md"
+    },
+    {
+      "id": "skill-website-to-video",
+      "name": "website-to-video",
+      "kind": "skill",
+      "provider": "HeyGen",
+      "description": "Capture a general website/URL and turn it into a HyperFrames video (site tour, showcase, or social clip from the site's own visuals). Uses headless Chrome screenshots + brand assets. Use when intent is general — portfolio/blog/landing-page showcase or social clip from the site. NOT for: product/SaaS launch or promo (→ /product-launch-video, even from a URL); topic explainer with no site (→ /faceless-explainer); GitHub PR (→ /pr-to-video); adding captions to existing video (→ /embedded-captions); short unnarrated page-highlight motion graphic (→ /motion-graphics). Unclear launch-vs-general-site? Ask one question or start at /hyperframes.",
+      "source": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/website-to-video/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ad230dbcf8e025b6.png",
+      "homepage": "https://github.com/heygen-com/hyperframes/blob/HEAD/skills/website-to-video/SKILL.md"
+    },
+    {
       "id": "plugin-icepanel",
       "name": "IcePanel skill pack",
       "kind": "plugin",
@@ -10580,11 +10808,11 @@
       "kind": "skill",
       "provider": "Monk.io",
       "description": "Deploy and operate applications with Monk through the local monk-agent MCP companion. Use when the user wants to install Monk, sign in, analyze a project, deploy locally or to cloud, inspect workloads, provide secrets securely, or troubleshoot Monk-managed infrastructure. MVP hosts are Claude Code, Codex, and Cursor.",
-      "source": "https://github.com/monk-io/monk-plugin/blob/d57c92e85e27d46f8c241d3ef3575882990e22ea/skills/monk/SKILL.md",
+      "source": "https://github.com/monk-io/monk-plugin/blob/6ec93c71717a3d685c97ff43905eefcfd918aac7/skills/monk/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/monkio-1-.png",
-      "homepage": "https://github.com/monk-io/monk-plugin/blob/d57c92e85e27d46f8c241d3ef3575882990e22ea/skills/monk/SKILL.md"
+      "homepage": "https://github.com/monk-io/monk-plugin/blob/6ec93c71717a3d685c97ff43905eefcfd918aac7/skills/monk/SKILL.md"
     },
     {
       "id": "mcp-monk",
@@ -14168,11 +14396,11 @@
       "kind": "skill",
       "provider": "Resend",
       "description": "Use when building any system where email content triggers actions — AI agent inboxes, automated support handlers, email-to-task pipelines, or any workflow processing untrusted inbound email. Always use this skill when the user wants to receive emails and act on them programmatically, even if they don't mention \"agent\" — the skill contains critical security patterns (sender allowlists, content filtering, sandboxed processing) that prevent untrusted email from controlling your system.",
-      "source": "https://github.com/resend/resend-skills/blob/0888546d6a69149c8d2402d46f395f5dddb1c720/skills/agent-email-inbox/SKILL.md",
+      "source": "https://github.com/resend/resend-skills/blob/a1542fd40eeaaebb8cfcc0b283e3d93713e63363/skills/agent-email-inbox/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/resend-logo.png",
-      "homepage": "https://github.com/resend/resend-skills/blob/0888546d6a69149c8d2402d46f395f5dddb1c720/skills/agent-email-inbox/SKILL.md"
+      "homepage": "https://github.com/resend/resend-skills/blob/a1542fd40eeaaebb8cfcc0b283e3d93713e63363/skills/agent-email-inbox/SKILL.md"
     },
     {
       "id": "skill-email-best-practices",
@@ -14180,11 +14408,11 @@
       "kind": "skill",
       "provider": "Resend",
       "description": "Use when building email features, emails going to spam, high bounce rates, setting up SPF/DKIM/DMARC authentication, implementing email capture, ensuring compliance (CAN-SPAM, GDPR, CASL), handling webhooks, retry logic, making emails accessible (alt text, headings, contrast, screen readers), or deciding transactional vs marketing.",
-      "source": "https://github.com/resend/resend-skills/blob/0888546d6a69149c8d2402d46f395f5dddb1c720/skills/email-best-practices/SKILL.md",
+      "source": "https://github.com/resend/resend-skills/blob/a1542fd40eeaaebb8cfcc0b283e3d93713e63363/skills/email-best-practices/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/resend-logo.png",
-      "homepage": "https://github.com/resend/resend-skills/blob/0888546d6a69149c8d2402d46f395f5dddb1c720/skills/email-best-practices/SKILL.md"
+      "homepage": "https://github.com/resend/resend-skills/blob/a1542fd40eeaaebb8cfcc0b283e3d93713e63363/skills/email-best-practices/SKILL.md"
     },
     {
       "id": "skill-react-email",
@@ -14192,11 +14420,11 @@
       "kind": "skill",
       "provider": "Resend",
       "description": "Use when building HTML email templates with React components, adding a visual email editor to an application using the React Email visual editor, rendering emails to HTML, or sending emails with Resend. Covers welcome emails, password resets, notifications, order confirmations, newsletters, transactional emails, and the embeddable email editor component.",
-      "source": "https://github.com/resend/resend-skills/blob/0888546d6a69149c8d2402d46f395f5dddb1c720/skills/react-email/SKILL.md",
+      "source": "https://github.com/resend/resend-skills/blob/a1542fd40eeaaebb8cfcc0b283e3d93713e63363/skills/react-email/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/resend-logo.png",
-      "homepage": "https://github.com/resend/resend-skills/blob/0888546d6a69149c8d2402d46f395f5dddb1c720/skills/react-email/SKILL.md"
+      "homepage": "https://github.com/resend/resend-skills/blob/a1542fd40eeaaebb8cfcc0b283e3d93713e63363/skills/react-email/SKILL.md"
     },
     {
       "id": "skill-resend",
@@ -14204,11 +14432,11 @@
       "kind": "skill",
       "provider": "Resend",
       "description": "Use when working with the Resend email API — sending transactional emails (single or batch), receiving inbound emails via webhooks, managing email templates, tracking delivery events, managing domains, contacts, broadcasts, webhooks, API keys, automations, events, viewing API request logs, or setting up the Resend SDK. Always use this skill when the user mentions Resend, even for simple tasks like \"send an email with Resend\" — the skill contains critical gotchas (idempotency keys, webhook verification, template variable syntax) that prevent common production issues.",
-      "source": "https://github.com/resend/resend-skills/blob/0888546d6a69149c8d2402d46f395f5dddb1c720/skills/resend/SKILL.md",
+      "source": "https://github.com/resend/resend-skills/blob/a1542fd40eeaaebb8cfcc0b283e3d93713e63363/skills/resend/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/resend-logo.png",
-      "homepage": "https://github.com/resend/resend-skills/blob/0888546d6a69149c8d2402d46f395f5dddb1c720/skills/resend/SKILL.md"
+      "homepage": "https://github.com/resend/resend-skills/blob/a1542fd40eeaaebb8cfcc0b283e3d93713e63363/skills/resend/SKILL.md"
     },
     {
       "id": "skill-resend-cli",
@@ -14216,11 +14444,11 @@
       "kind": "skill",
       "provider": "Resend",
       "description": "Operate the Resend platform from the terminal — send emails (including React Email .tsx templates via --react-email), manage domains, contacts, broadcasts, templates, webhooks, API keys, logs, automations, and events via the `resend` CLI. Use when the user wants to run Resend commands in the shell, scripts, or CI/CD pipelines, or send/preview React Email templates. Always load this skill before running `resend` commands — it contains the non-interactive flag contract and gotchas that prevent silent failures.",
-      "source": "https://github.com/resend/resend-skills/blob/0888546d6a69149c8d2402d46f395f5dddb1c720/skills/resend-cli/SKILL.md",
+      "source": "https://github.com/resend/resend-skills/blob/a1542fd40eeaaebb8cfcc0b283e3d93713e63363/skills/resend-cli/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/resend-logo.png",
-      "homepage": "https://github.com/resend/resend-skills/blob/0888546d6a69149c8d2402d46f395f5dddb1c720/skills/resend-cli/SKILL.md"
+      "homepage": "https://github.com/resend/resend-skills/blob/a1542fd40eeaaebb8cfcc0b283e3d93713e63363/skills/resend-cli/SKILL.md"
     },
     {
       "id": "mcp-resend",
