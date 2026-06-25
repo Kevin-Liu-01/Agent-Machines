@@ -2,9 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
 	CONSOLE_LOG,
+	CONSOLE_AGENT_LAUNCHER,
 	CONSOLE_SESSION,
 	clampDim,
 	ensureSessionCommand,
+	installAgentLauncherCommand,
 	isExpectedConsoleStreamEnd,
 	primeConsoleSession,
 	resizeCommand,
@@ -54,6 +56,10 @@ describe("ensureSessionCommand", () => {
 		expect(cmd).toContain(`tmux has-session -t ${CONSOLE_SESSION}`);
 		expect(cmd).toContain(`tmux new-session -d -s ${CONSOLE_SESSION} -x 120 -y 32`);
 		expect(cmd).toContain(`tmux pipe-pane -t ${CONSOLE_SESSION} -o 'cat >> ${CONSOLE_LOG}'`);
+		expect(cmd).toContain("am_console_created=1");
+		expect(cmd).toContain("terminal-agent.json");
+		expect(cmd).toContain("am_status");
+		expect(cmd).toContain("tmux send-keys -t amconsole");
 		expect(cmd).toContain("AM_CONSOLE_READY");
 		expect(cmd).toContain("apt-get install -y tmux");
 	});
@@ -61,6 +67,21 @@ describe("ensureSessionCommand", () => {
 	it("clamps absurd dimensions to safe bounds", () => {
 		const cmd = ensureSessionCommand(99999, 0);
 		expect(cmd).toContain("-x 500 -y 5");
+	});
+});
+
+describe("installAgentLauncherCommand", () => {
+	it("installs a wrapper that records running/exited state", () => {
+		const cmd = installAgentLauncherCommand();
+		expect(cmd).toContain(CONSOLE_AGENT_LAUNCHER);
+		expect(cmd).toContain('kind="${1:-}"');
+		expect(cmd).toContain('state_file="$state_dir/terminal-agent.json"');
+		expect(cmd).toContain("write_state running");
+		expect(cmd).toContain("write_state exited");
+		expect(cmd).toContain("hermes chat");
+		expect(cmd).toContain("openclaw chat");
+		expect(cmd).toContain("claude");
+		expect(cmd).toContain("codex");
 	});
 });
 

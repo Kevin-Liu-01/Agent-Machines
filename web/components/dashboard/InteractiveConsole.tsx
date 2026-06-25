@@ -11,7 +11,12 @@ import { useOptionalMachineContext } from "@/components/dashboard/MachineProvide
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
-import { agentLabel, agentLaunchCommand, isCliAgent } from "@/lib/dashboard/agent-launch";
+import {
+	agentLabel,
+	agentLaunchCommand,
+	agentTerminalLauncherCommand,
+	isCliAgent,
+} from "@/lib/dashboard/agent-launch";
 import {
 	isPrintableInput,
 	stripSuppressedEcho,
@@ -35,6 +40,10 @@ type InteractiveConsoleProps = {
 	autoLaunch?: boolean;
 	heightClassName?: string;
 	showFooter?: boolean;
+};
+
+type SendInputOptions = {
+	rememberAgentKind?: string | null;
 };
 
 const RECONNECT_MS = 100;
@@ -85,7 +94,7 @@ export function InteractiveConsole({
 	const pendingInputRef = useRef("");
 	const inputFlushTimerRef = useRef<number | null>(null);
 	const postInput = useCallback(
-		(data: string) => {
+		(data: string, options: SendInputOptions = {}) => {
 			if (!data || !machineId) return;
 			sendChainRef.current = sendChainRef.current
 				.catch(() => {})
@@ -99,7 +108,11 @@ export function InteractiveConsole({
 						await fetch("/api/dashboard/terminal/input", {
 							method: "POST",
 							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify({ machineId, data }),
+							body: JSON.stringify({
+								machineId,
+								data,
+								rememberAgentKind: options.rememberAgentKind ?? undefined,
+							}),
 							keepalive: true,
 							signal: controller.signal,
 						});
@@ -114,25 +127,28 @@ export function InteractiveConsole({
 		},
 		[machineId],
 	);
-	const flushInput = useCallback(() => {
+	const flushInput = useCallback((options: SendInputOptions = {}) => {
 		if (inputFlushTimerRef.current) {
 			window.clearTimeout(inputFlushTimerRef.current);
 			inputFlushTimerRef.current = null;
 		}
 		const data = pendingInputRef.current;
 		pendingInputRef.current = "";
-		postInput(data);
+		postInput(data, options);
 	}, [postInput]);
 	const sendInput = useCallback(
-		(data: string) => {
+		(data: string, options: SendInputOptions = {}) => {
 			if (!data || !machineId) return;
 			pendingInputRef.current += data;
 			if (data.includes("\r") || data.includes("\x03")) {
-				flushInput();
+				flushInput(options);
 				return;
 			}
 			if (inputFlushTimerRef.current) return;
-			inputFlushTimerRef.current = window.setTimeout(flushInput, INPUT_FLUSH_MS);
+			inputFlushTimerRef.current = window.setTimeout(
+				() => flushInput(options),
+				INPUT_FLUSH_MS,
+			);
 		},
 		[flushInput, machineId],
 	);
@@ -149,9 +165,10 @@ export function InteractiveConsole({
 	sendInputRef.current = sendInput;
 
 	const launchAgent = useCallback(() => {
-		const cmd = agentLaunchCommand(agentKind);
+		const cmd =
+			agentTerminalLauncherCommand(agentKind) ?? agentLaunchCommand(agentKind);
 		if (!cmd) return;
-		sendInput(`${cmd}\r`);
+		sendInput(`${cmd}\r`, { rememberAgentKind: agentKind });
 	}, [agentKind, sendInput]);
 
 	const launchRef = useRef(launchAgent);

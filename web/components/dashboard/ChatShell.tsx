@@ -14,6 +14,11 @@ import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/cn";
+import {
+	activeGatewayChatKey,
+	readStoredId,
+	writeStoredId,
+} from "@/lib/dashboard/persistent-ui-state";
 import type { Message } from "@/lib/types";
 
 type ChatSummary = {
@@ -66,6 +71,9 @@ const TRANSIENT_REASONS: ReadonlySet<string> = new Set([
 ]);
 
 export function ChatShell({ activeMachineId, model }: Props) {
+	const activeChatStorageKey = activeMachineId
+		? activeGatewayChatKey(activeMachineId)
+		: null;
 	const [chats, setChats] = useState<ChatSummary[]>([]);
 	const [machineState, setMachineState] = useState<{
 		ok: boolean;
@@ -153,26 +161,32 @@ export function ChatShell({ activeMachineId, model }: Props) {
 				return;
 			}
 			setActiveChatId(body.chat.id);
+			writeStoredId(activeChatStorageKey, body.chat.id);
 			setMessages(body.chat.messages ?? []);
 			titleRef.current = body.chat.title;
 			createdAtRef.current = body.chat.createdAt;
 		} catch (err) {
 			setLoadError(err instanceof Error ? err.message : "load failed");
 		}
-	}, [activeMachineId]);
+	}, [activeChatStorageKey, activeMachineId]);
 
 	const newChat = useCallback(() => {
-		setActiveChatId(newId());
+		const id = newId();
+		setActiveChatId(id);
+		writeStoredId(activeChatStorageKey, id);
 		setMessages([]);
 		titleRef.current = "untitled chat";
 		createdAtRef.current = new Date().toISOString();
-	}, []);
+	}, [activeChatStorageKey]);
 
 	const deleteChat = useCallback(
 		async (chatId: string) => {
 			if (!window.confirm("Delete this chat history?")) return;
 			try {
-				const response = await fetch(`/api/dashboard/chats/${chatId}`, {
+				const params = activeMachineId
+					? `?machineId=${encodeURIComponent(activeMachineId)}`
+					: "";
+				const response = await fetch(`/api/dashboard/chats/${chatId}${params}`, {
 					method: "DELETE",
 				});
 				if (!response.ok) {
@@ -185,23 +199,26 @@ export function ChatShell({ activeMachineId, model }: Props) {
 				if (chatId === activeChatId) {
 					setActiveChatId(null);
 					setMessages([]);
+					writeStoredId(activeChatStorageKey, null);
 				}
 				await refreshList();
 			} catch (err) {
 				setLoadError(err instanceof Error ? err.message : "delete failed");
 			}
 		},
-		[activeChatId, refreshList],
+		[activeChatId, activeChatStorageKey, activeMachineId, refreshList],
 	);
 
 	useEffect(() => {
 		if (activeChatId !== null) return;
 		if (chats.length > 0) {
-			void loadChat(chats[0].id);
+			const stored = readStoredId(activeChatStorageKey);
+			const target = chats.find((chat) => chat.id === stored) ?? chats[0];
+			void loadChat(target.id);
 		} else if (machineState.ok) {
 			newChat();
 		}
-	}, [activeChatId, chats, loadChat, newChat, machineState.ok]);
+	}, [activeChatId, activeChatStorageKey, chats, loadChat, newChat, machineState.ok]);
 
 	const persistTurn = useCallback(
 		async (final: Message[]) => {

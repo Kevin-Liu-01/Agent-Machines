@@ -25,6 +25,10 @@ import { tailFileStreamOnMachine } from "./exec-stream";
 /** One interactive console session per machine (sufficient for the operator UI). */
 export const CONSOLE_SESSION = "amconsole";
 export const CONSOLE_LOG = "/tmp/am-console.log";
+export const CONSOLE_AGENT_STATE =
+	"$HOME/.agent-machines/state/terminal-agent.json";
+export const CONSOLE_AGENT_LAUNCHER =
+	"$HOME/.agent-machines/bin/am-launch-agent";
 
 const DEFAULT_COLS = 120;
 const DEFAULT_ROWS = 32;
@@ -65,7 +69,9 @@ export function ensureSessionCommand(cols: number, rows: number): string {
 	return [
 		`command -v tmux >/dev/null 2>&1 || { (sudo -n apt-get install -y tmux || apt-get install -y tmux || sudo -n dnf install -y tmux || dnf install -y tmux || apk add --no-cache tmux || sudo -n yum install -y tmux || yum install -y tmux) >/dev/null 2>&1; }`,
 		`if ! command -v tmux >/dev/null 2>&1; then echo AM_CONSOLE_NO_TMUX; exit 0; fi`,
-		`tmux has-session -t ${CONSOLE_SESSION} 2>/dev/null || { tmux new-session -d -s ${CONSOLE_SESSION} -x ${c} -y ${r}; tmux set-option -g -t ${CONSOLE_SESSION} history-limit 10000 2>/dev/null || true; : > ${CONSOLE_LOG}; tmux pipe-pane -t ${CONSOLE_SESSION} -o 'cat >> ${CONSOLE_LOG}'; }`,
+		`am_console_created=0`,
+		`tmux has-session -t ${CONSOLE_SESSION} 2>/dev/null || { tmux new-session -d -s ${CONSOLE_SESSION} -x ${c} -y ${r}; am_console_created=1; tmux set-option -g -t ${CONSOLE_SESSION} history-limit 10000 2>/dev/null || true; : > ${CONSOLE_LOG}; tmux pipe-pane -t ${CONSOLE_SESSION} -o 'cat >> ${CONSOLE_LOG}'; }`,
+		restoreAgentSessionCommand(),
 		`tmux has-session -t ${CONSOLE_SESSION} 2>/dev/null && echo AM_CONSOLE_READY || echo AM_CONSOLE_FAILED`,
 	].join("\n");
 }
@@ -118,6 +124,84 @@ export function sendKeysCommand(input: string): string {
 	const hex = toHexKeys(input);
 	if (!hex) return ":";
 	return `tmux send-keys -t ${CONSOLE_SESSION} -H ${hex}`;
+}
+
+export function installAgentLauncherCommand(): string {
+	return String.raw`mkdir -p "$HOME/.agent-machines/bin" "$HOME/.agent-machines/state"
+cat > "$HOME/.agent-machines/bin/am-launch-agent" <<'AM_LAUNCHER'
+#!/usr/bin/env bash
+set -u
+
+kind="${"${1:-}"}"
+state_dir="$HOME/.agent-machines/state"
+state_file="$state_dir/terminal-agent.json"
+mkdir -p "$state_dir"
+
+write_state() {
+	status="$1"
+	ts="$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date)"
+	printf '{"desiredAgentKind":"%s","status":"%s","updatedAt":"%s"}\n' "$kind" "$status" "$ts" > "$state_file"
+}
+
+finish() {
+	code=$?
+	if [ "$code" -eq 0 ]; then
+		write_state exited
+	else
+		write_state error
+	fi
+	exit "$code"
+}
+trap finish EXIT
+
+case "$kind" in
+	hermes|openclaw|claude-code|codex) ;;
+	*)
+		echo "unknown agent kind: $kind" >&2
+		exit 64
+		;;
+esac
+
+write_state running
+cd "$HOME/agent-machines" 2>/dev/null || cd "$HOME" || exit 1
+source "$HOME/.agent-machines/.agent-env" 2>/dev/null || true
+
+case "$kind" in
+	hermes)
+		export HERMES_HOME="$HOME/.agent-machines"
+		export PATH="$HOME/.agent-machines/venv/bin:$PATH"
+		hermes chat
+		;;
+	openclaw)
+		export PATH="$HOME/.npm-global/bin:$PATH"
+		export OPENCLAW_STATE_DIR="$HOME/.openclaw"
+		export OPENCLAW_NO_RESPAWN=1
+		openclaw chat
+		;;
+	claude-code)
+		claude
+		;;
+	codex)
+		codex
+		;;
+esac
+AM_LAUNCHER
+chmod +x "$HOME/.agent-machines/bin/am-launch-agent"`;
+}
+
+function restoreAgentSessionCommand(): string {
+	return String.raw`if [ "$am_console_created" = "1" ] && [ -f "$HOME/.agent-machines/state/terminal-agent.json" ]; then
+	am_status="$(sed -n 's/.*"status"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$HOME/.agent-machines/state/terminal-agent.json" | head -1)"
+	am_kind="$(sed -n 's/.*"desiredAgentKind"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$HOME/.agent-machines/state/terminal-agent.json" | head -1)"
+	if [ "$am_status" = "running" ]; then
+		case "$am_kind" in
+			hermes|openclaw|claude-code|codex)
+				` + installAgentLauncherCommand() + String.raw`
+				tmux send-keys -t amconsole "$HOME/.agent-machines/bin/am-launch-agent $am_kind" Enter
+				;;
+		esac
+	fi
+fi`;
 }
 
 export function resizeCommand(cols: number, rows: number): string {

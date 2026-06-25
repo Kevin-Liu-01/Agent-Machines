@@ -31,6 +31,25 @@ export function agentLaunchCommand(
 	}
 }
 
+/**
+ * Short command the browser terminal injects. The API route installs this
+ * launcher before sending it, so the visible terminal input stays readable
+ * and the machine can persist whether the agent CLI was running.
+ */
+export function agentTerminalLauncherCommand(
+	agentKind: string | null | undefined,
+): string | null {
+	switch (agentKind) {
+		case "codex":
+		case "claude-code":
+		case "hermes":
+		case "openclaw":
+			return `~/.agent-machines/bin/am-launch-agent ${agentKind}`;
+		default:
+			return null;
+	}
+}
+
 export function agentLabel(agentKind: string | null | undefined): string {
 	switch (agentKind) {
 		case "codex":

@@ -25,6 +25,11 @@ import {
 	makeEventId,
 } from "@/lib/agents/protocol";
 import { processAgentEvent, readSseStream } from "@/lib/agents/parser";
+import {
+	activeAgentConsoleKey,
+	readStoredId,
+	writeStoredId,
+} from "@/lib/dashboard/persistent-ui-state";
 import type { PackageSuggestion } from "@/lib/packages/types";
 
 import { ActivityStream } from "./ActivityStream";
@@ -48,6 +53,9 @@ export type AgentConsoleProps = {
 };
 
 export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsoleProps) {
+	const activeConversationStorageKey = activeMachineId
+		? activeAgentConsoleKey(activeMachineId)
+		: null;
 	const [conversations, setConversations] = useState<ConversationSummary[]>([]);
 	const [activeConvoId, setActiveConvoId] = useState<string | null>(null);
 	const [turns, setTurns] = useState<ConversationTurn[]>([]);
@@ -109,16 +117,30 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 		} catch {
 			setMachineOk(false);
 		}
-	}, []);
+	}, [activeMachineId]);
 
 	useEffect(() => { void refreshList(); }, [refreshList]);
 
+	useEffect(() => {
+		setActiveConvoId(null);
+		setTurns([]);
+		setArtifacts([]);
+		setSelectedArtifact(null);
+		setSessionPackageIds([]);
+	}, [activeMachineId]);
+
 	const loadConversation = useCallback(async (convoId: string) => {
 		try {
-			const response = await fetch(`/api/dashboard/chats/${convoId}`, { cache: "no-store" });
+			const params = activeMachineId
+				? `?machineId=${encodeURIComponent(activeMachineId)}`
+				: "";
+			const response = await fetch(`/api/dashboard/chats/${convoId}${params}`, {
+				cache: "no-store",
+			});
 			const body = await response.json();
 			if (body.ok && body.chat) {
 				setActiveConvoId(body.chat.id);
+				writeStoredId(activeConversationStorageKey, body.chat.id);
 				const loadedTurns: ConversationTurn[] = (body.chat.messages ?? []).map(
 					(m: Record<string, unknown>) => ({
 						id: m.id as string,
@@ -137,35 +159,55 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 				setSessionPackageIds(Array.isArray(loadedSession) ? loadedSession : []);
 			}
 		} catch { /* load failed */ }
-	}, []);
+	}, [activeConversationStorageKey, activeMachineId]);
 
 	const newConversation = useCallback(() => {
-		setActiveConvoId(makeEventId());
+		const id = makeEventId();
+		setActiveConvoId(id);
+		writeStoredId(activeConversationStorageKey, id);
 		setTurns([]);
 		setArtifacts([]);
 		setSelectedArtifact(null);
 		setSessionPackageIds([]);
-	}, []);
+	}, [activeConversationStorageKey]);
 
 	const deleteConversation = useCallback(async (convoId: string) => {
 		try {
-			await fetch(`/api/dashboard/chats/${convoId}`, { method: "DELETE" });
+			const params = activeMachineId
+				? `?machineId=${encodeURIComponent(activeMachineId)}`
+				: "";
+			await fetch(`/api/dashboard/chats/${convoId}${params}`, { method: "DELETE" });
 			if (convoId === activeConvoId) {
 				setActiveConvoId(null);
 				setTurns([]);
+				writeStoredId(activeConversationStorageKey, null);
 			}
 			await refreshList();
 		} catch { /* delete failed */ }
-	}, [activeConvoId, refreshList]);
+	}, [
+		activeConvoId,
+		activeConversationStorageKey,
+		activeMachineId,
+		refreshList,
+	]);
 
 	useEffect(() => {
 		if (activeConvoId !== null) return;
 		if (conversations.length > 0) {
-			void loadConversation(conversations[0].id);
+			const stored = readStoredId(activeConversationStorageKey);
+			const target = conversations.find((conversation) => conversation.id === stored) ?? conversations[0];
+			void loadConversation(target.id);
 		} else if (machineOk) {
 			newConversation();
 		}
-	}, [activeConvoId, conversations, loadConversation, newConversation, machineOk]);
+	}, [
+		activeConvoId,
+		activeConversationStorageKey,
+		conversations,
+		loadConversation,
+		newConversation,
+		machineOk,
+	]);
 
 	const send = useCallback(async (text: string) => {
 		const trimmed = text.trim();

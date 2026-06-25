@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { agentLaunchCommand, agentLabel, isCliAgent } from "./agent-launch";
+import {
+	agentLaunchCommand,
+	agentLabel,
+	agentTerminalLauncherCommand,
+	isCliAgent,
+} from "./agent-launch";
 
 describe("agentLaunchCommand", () => {
 	it("cds into the repo, sources .agent-env, then launches the coding CLI", () => {
@@ -22,6 +27,24 @@ describe("agentLaunchCommand", () => {
 		expect(agentLaunchCommand(null)).toBeNull();
 		expect(agentLaunchCommand(undefined)).toBeNull();
 		expect(agentLaunchCommand("mystery")).toBeNull();
+	});
+});
+
+describe("agentTerminalLauncherCommand", () => {
+	it("uses the on-machine stateful launcher for interactive consoles", () => {
+		expect(agentTerminalLauncherCommand("hermes")).toBe(
+			"~/.agent-machines/bin/am-launch-agent hermes",
+		);
+		expect(agentTerminalLauncherCommand("openclaw")).toBe(
+			"~/.agent-machines/bin/am-launch-agent openclaw",
+		);
+		expect(agentTerminalLauncherCommand("claude-code")).toBe(
+			"~/.agent-machines/bin/am-launch-agent claude-code",
+		);
+		expect(agentTerminalLauncherCommand("codex")).toBe(
+			"~/.agent-machines/bin/am-launch-agent codex",
+		);
+		expect(agentTerminalLauncherCommand("mystery")).toBeNull();
 	});
 });
 
