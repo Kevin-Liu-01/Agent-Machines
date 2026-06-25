@@ -81,7 +81,7 @@ function SceneFrame({ className, children, bg = true }: FrameProps) {
 type GearGlassStyle = CSSProperties & Record<`--${string}`, string>;
 
 const GEAR_GLASS_VARS: GearGlassStyle = {
-	"--gear-unit": "calc(100% / 5.84)",
+	"--gear-unit": "calc(100cqmin / 5.84)",
 	"--gear-center-x": "calc(50% + var(--gear-unit) * 2.25)",
 	"--gear-center-y": "50%",
 };
@@ -122,7 +122,7 @@ function GearGlassOverlay() {
 		<div
 			aria-hidden="true"
 			className="pointer-events-none absolute inset-0 z-[1] overflow-hidden"
-			style={GEAR_GLASS_VARS}
+			style={{ ...GEAR_GLASS_VARS, containerType: "size" }}
 		>
 			<div
 				className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full"
