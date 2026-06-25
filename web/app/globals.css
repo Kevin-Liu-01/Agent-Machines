@@ -244,6 +244,7 @@ textarea::placeholder {
 .ret-footer-glass-word {
 	position: relative;
 	display: inline-block;
+	padding-bottom: 0.18em;
 	background:
 		linear-gradient(
 			180deg,

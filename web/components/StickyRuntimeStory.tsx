@@ -430,64 +430,38 @@ function StoryProgressRail({ activeIndex }: { activeIndex: number }) {
 	const progress = activeIndex / last;
 	return (
 		<div className="relative overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-3">
-			<div className="absolute inset-0 opacity-[0.18] [background:radial-gradient(circle_at_85%_15%,var(--ret-text),transparent_36%)]" />
-			<div className="relative grid grid-cols-[28px_minmax(0,1fr)] gap-3">
-				<svg
+			<div className="absolute inset-0 opacity-[0.14] [background:radial-gradient(circle_at_86%_14%,var(--ret-text),transparent_34%)]" />
+			<div className="relative">
+				<div
 					aria-hidden="true"
-					viewBox="0 0 28 132"
-					className="h-[132px] w-7 overflow-visible text-[var(--ret-border-strong)]"
+					className="absolute left-[14px] top-6 bottom-6 w-px bg-[var(--ret-border-strong)]"
 				>
-					<path
-						d="M14 4 C4 28 24 48 14 68 C4 88 24 104 14 128"
-						fill="none"
-						stroke="currentColor"
-						strokeWidth="1"
-						strokeDasharray="3 7"
+					<span
+						className="block w-full bg-[var(--ret-text)] transition-[height] duration-500 [transition-timing-function:var(--ret-ease-drawer)]"
+						style={{ height: `${progress * 100}%` }}
 					/>
-					<path
-						d="M14 4 C4 28 24 48 14 68 C4 88 24 104 14 128"
-						fill="none"
-						stroke="var(--ret-text)"
-						strokeWidth="1.4"
-						pathLength={1}
-						strokeDasharray="1"
-						strokeDashoffset={1 - progress}
-						style={{
-							transition:
-								"stroke-dashoffset 520ms var(--ret-ease-drawer)",
-						}}
-					/>
-					{STORY_CHAPTERS.map((item, itemIndex) => {
-						const y = 4 + (124 / last) * itemIndex;
-						const active = itemIndex <= activeIndex;
-						return (
-							<circle
-								key={item.id}
-								cx="14"
-								cy={y}
-								r={active ? 3.8 : 2.5}
-								fill={active ? "var(--ret-text)" : "var(--ret-bg)"}
-								stroke="var(--ret-border-strong)"
-								strokeWidth="1"
-								style={{
-									transition:
-										"r 260ms var(--ret-ease-out), fill 260ms var(--ret-ease-out)",
-								}}
-							/>
-						);
-					})}
-				</svg>
-				<div className="grid content-between py-0.5">
+				</div>
+				<div className="grid">
 					{STORY_CHAPTERS.map((item, itemIndex) => (
 						<div
 							key={item.id}
 							className={cn(
-								"flex items-center justify-between gap-3 text-[10px] uppercase tracking-[0.18em] transition-colors duration-300",
+								"grid h-12 grid-cols-[28px_minmax(0,1fr)_40px] items-center gap-3 text-[10px] uppercase tracking-[0.18em] transition-colors duration-300",
 								itemIndex === activeIndex
 									? "text-[var(--ret-text)]"
 									: "text-[var(--ret-text-muted)]",
 							)}
 						>
+							<span className="relative grid h-7 w-7 place-items-center">
+								<span
+									className={cn(
+										"block rounded-full border transition-[width,height,background-color,border-color] duration-300 [transition-timing-function:var(--ret-ease-out)]",
+										itemIndex <= activeIndex
+											? "h-3 w-3 border-[var(--ret-text)] bg-[var(--ret-text)]"
+											: "h-2 w-2 border-[var(--ret-border-strong)] bg-[var(--ret-bg)]",
+									)}
+								/>
+							</span>
 							<span>{item.label}</span>
 							<span>{String(itemIndex + 1).padStart(2, "0")}</span>
 						</div>

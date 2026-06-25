@@ -135,43 +135,36 @@ const CODE_LINES: ReadonlyArray<{
 const READOUTS: ReadonlyArray<{
 	label: string;
 	value: string;
-	description: string;
 	icon: ToolCategory;
 }> = [
 	{
 		label: "package",
-		value: "1 install",
-		description: "A typed client for the worker.",
+		value: "install",
 		icon: "code",
 	},
 	{
 		label: "recipe",
-		value: "agent + box",
-		description: "Runtime and sandbox stay separate.",
+		value: "compose",
 		icon: "delegate",
 	},
 	{
 		label: "model",
-		value: "alias-safe",
-		description: "Short names normalize server-side.",
+		value: "normalize",
 		icon: "memory",
 	},
 	{
 		label: "state",
-		value: "persistent",
-		description: "The worker survives the prompt.",
+		value: "persist",
 		icon: "filesystem",
 	},
 	{
 		label: "run",
-		value: "one call",
-		description: "Gateway first, command fallback.",
+		value: "run",
 		icon: "shell",
 	},
 	{
 		label: "proof",
-		value: "observable",
-		description: "Logs and usage stay attached.",
+		value: "observe",
 		icon: "search",
 	},
 ];
@@ -216,8 +209,8 @@ const PIPELINE: ReadonlyArray<{
 export function StatsRow() {
 	return (
 		<div className="overflow-hidden border-y border-[var(--ret-border)]">
-			<div className="grid min-h-[700px] grid-cols-1 items-stretch gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[minmax(360px,0.36fr)_minmax(0,0.64fr)] xl:grid-cols-[420px_minmax(0,1fr)]">
-				<div className="relative flex flex-col justify-between overflow-hidden bg-[var(--ret-bg)] px-4 py-8 md:px-6 md:py-10 lg:px-8">
+			<div className="grid min-h-[600px] grid-cols-1 items-stretch gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[minmax(420px,0.45fr)_minmax(0,0.55fr)] xl:grid-cols-[560px_minmax(0,1fr)]">
+				<div className="relative flex flex-col justify-between overflow-hidden bg-[var(--ret-bg)] px-5 py-8 md:px-8 md:py-10 lg:px-10">
 					<div
 						aria-hidden="true"
 						className="ret-circuit-texture pointer-events-none absolute inset-x-0 bottom-0 h-1/2 opacity-[0.10] mix-blend-multiply invert dark:opacity-[0.16] dark:mix-blend-screen dark:invert-0"
@@ -225,10 +218,10 @@ export function StatsRow() {
 					/>
 					<div>
 						<ReticleLabel>SDK</ReticleLabel>
-						<h2 className="ret-display mt-3 max-w-[13ch] text-3xl tracking-tight md:text-5xl lg:text-[54px] lg:leading-[0.95]">
+						<h2 className="ret-display mt-3 max-w-[12ch] text-3xl tracking-tight md:text-5xl lg:text-[60px] lg:leading-[0.95]">
 							Create the worker in code.
 						</h2>
-						<p className="mt-5 max-w-[48ch] text-[14px] leading-relaxed text-[var(--ret-text-dim)]">
+						<p className="mt-5 max-w-[54ch] text-[14px] leading-relaxed text-[var(--ret-text-dim)]">
 							Create a persistent worker with one typed recipe. Choose the
 							agent, substrate, model, and state policy. The control plane
 							handles boot, gateway, logs, and usage.
@@ -260,7 +253,7 @@ export function StatsRow() {
 					</div>
 				</div>
 
-				<div className="bg-[var(--ret-bg)] p-3 md:p-5 lg:p-6">
+				<div className="flex items-center bg-[var(--ret-bg)] p-4 md:p-7 lg:p-9">
 					<CodePanel />
 				</div>
 			</div>
@@ -324,7 +317,7 @@ function CodePanel() {
 	};
 
 	return (
-		<div className="relative flex h-full min-h-[640px] flex-col overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg)]">
+		<div className="relative flex min-h-[440px] w-full flex-col overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg)] xl:min-h-[480px]">
 			<div
 				aria-hidden="true"
 				className="ret-circuit-texture pointer-events-none absolute inset-0 opacity-[0.12] mix-blend-multiply invert dark:opacity-[0.2] dark:mix-blend-screen dark:invert-0"
@@ -356,7 +349,7 @@ function CodePanel() {
 					<span>{copied ? "copied" : "copy"}</span>
 				</button>
 			</div>
-			<pre className="relative z-10 m-0 flex-1 overflow-hidden bg-[var(--ret-bg)]/82 px-3 py-5 font-mono text-[12px] leading-7 text-[var(--ret-text)] backdrop-blur-sm md:px-6 md:py-7 md:text-[13px]">
+			<pre className="relative z-10 m-0 flex-1 overflow-hidden bg-[var(--ret-bg)]/82 px-3 py-5 font-mono text-[12px] leading-6 text-[var(--ret-text)] backdrop-blur-sm md:px-6 md:py-6 md:text-[12.5px]">
 				<code className="block">
 					{CODE_LINES.map((line) => (
 						<span key={line.no} className="block min-w-0 whitespace-pre-wrap break-words">
@@ -413,20 +406,88 @@ function CodeMeter({ label, value }: { label: string; value: string }) {
 
 function ReadoutCell({ spec }: { spec: (typeof READOUTS)[number] }) {
 	return (
-		<div className="group flex min-h-[142px] flex-col gap-2 bg-[var(--ret-bg)] px-4 py-5 transition-colors duration-300 [transition-timing-function:var(--ret-ease-out)] hover:bg-[var(--ret-bg-soft)] md:px-5">
-			<div className="flex items-center gap-1.5">
+		<div className="group relative min-h-[168px] overflow-hidden bg-[var(--ret-bg)] transition-colors duration-300 [transition-timing-function:var(--ret-ease-out)] hover:bg-[var(--ret-bg-soft)]">
+			<div
+				aria-hidden="true"
+				className="ret-circuit-texture pointer-events-none absolute inset-0 opacity-[0.08] mix-blend-multiply invert transition-opacity duration-300 group-hover:opacity-[0.16] dark:opacity-[0.12] dark:mix-blend-screen dark:invert-0 dark:group-hover:opacity-[0.22]"
+				style={{ "--ret-circuit-size": "260px 340px" } as CSSProperties}
+			/>
+			<div className="absolute left-4 top-4 z-10 flex items-center gap-1.5">
 				<ToolIcon name={spec.icon} size={11} className="text-[var(--ret-text-muted)]" />
 				<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					{spec.label}
 				</span>
 			</div>
-			<span className="mt-1 text-[24px] font-semibold leading-none tabular-nums tracking-tight text-[var(--ret-text)]">
+			<ReadoutVisual index={READOUTS.indexOf(spec)} />
+			<span className="absolute bottom-4 right-4 z-10 text-right text-[22px] font-semibold leading-none tracking-tight text-[var(--ret-text)]">
 				{spec.value}
 			</span>
-			<span className="max-w-[30ch] text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
-				{spec.description}
-			</span>
 		</div>
+	);
+}
+
+function ReadoutVisual({ index }: { index: number }) {
+	const variant = index % 6;
+	return (
+		<svg
+			aria-hidden="true"
+			viewBox="0 0 220 132"
+			className="absolute inset-x-3 top-8 h-[112px] w-[calc(100%-1.5rem)] text-[var(--ret-text-secondary)] opacity-55 transition-[opacity,transform] duration-300 [transition-timing-function:var(--ret-ease-out)] group-hover:translate-y-[-2px] group-hover:opacity-80"
+			fill="none"
+		>
+			<path
+				d="M8 68h44l18-18h40l20 20h82"
+				stroke="currentColor"
+				strokeWidth="1"
+				opacity=".42"
+				vectorEffect="non-scaling-stroke"
+			/>
+			{variant === 0 ? (
+				<>
+					<rect x="58" y="30" width="104" height="58" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+					<path d="M74 48h72M74 64h44M74 80h62" stroke="currentColor" strokeWidth="1" opacity=".72" vectorEffect="non-scaling-stroke" />
+					<path d="M42 102h96l18-18h28" stroke="currentColor" strokeWidth="1" opacity=".34" vectorEffect="non-scaling-stroke" />
+				</>
+			) : null}
+			{variant === 1 ? (
+				<>
+					<circle cx="70" cy="44" r="10" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+					<circle cx="146" cy="44" r="10" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+					<circle cx="108" cy="88" r="12" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+					<path d="M80 48l18 26M136 50l-18 24M82 44h54" stroke="currentColor" strokeWidth="1" opacity=".72" vectorEffect="non-scaling-stroke" />
+				</>
+			) : null}
+			{variant === 2 ? (
+				<>
+					<path d="M46 38h126M46 62h88M46 86h126" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+					<path d="M170 38l18 24-18 24" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+					<circle cx="46" cy="62" r="5" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+				</>
+			) : null}
+			{variant === 3 ? (
+				<>
+					<rect x="62" y="32" width="96" height="64" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+					<path d="M78 32v-14M96 32v-14M124 96v18M142 96v18M48 52h14M158 76h18" stroke="currentColor" strokeWidth="1" opacity=".75" vectorEffect="non-scaling-stroke" />
+					<path d="M86 64h48" stroke="currentColor" strokeWidth="1.2" opacity=".55" vectorEffect="non-scaling-stroke" />
+				</>
+			) : null}
+			{variant === 4 ? (
+				<>
+					<path d="M48 42h72l34 34h28" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+					<path d="M48 80h52" stroke="currentColor" strokeWidth="1.2" opacity=".48" vectorEffect="non-scaling-stroke" />
+					<path d="M106 72l12 8-12 8" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+					<circle cx="182" cy="76" r="8" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+				</>
+			) : null}
+			{variant === 5 ? (
+				<>
+					<path d="M42 82c18-28 31-28 48 0s30 28 48 0 30-28 48 0" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
+					<path d="M42 42h144M42 108h144" stroke="currentColor" strokeWidth="1" opacity=".32" vectorEffect="non-scaling-stroke" />
+					<circle cx="90" cy="82" r="4" fill="currentColor" opacity=".75" />
+					<circle cx="138" cy="82" r="4" fill="currentColor" opacity=".75" />
+				</>
+			) : null}
+		</svg>
 	);
 }
 

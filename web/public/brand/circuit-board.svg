@@ -8,6 +8,7 @@
       .pad{fill:none;stroke:#fff;stroke-width:1.6;vector-effect:non-scaling-stroke}
       .pin{fill:#fff}
       .chip{stroke:#fff;stroke-width:1.6;vector-effect:non-scaling-stroke}
+      .chipFrame{fill:none;stroke:#fff;stroke-width:1.6;opacity:.84;vector-effect:non-scaling-stroke}
     </style>
     <mask id="trace-clearance" x="0" y="0" width="384" height="512" maskUnits="userSpaceOnUse">
       <rect width="384" height="512" fill="#fff"/>
@@ -28,6 +29,11 @@
         <rect x="30.5" y="265.5" width="17" height="17" rx="2.5"/>
         <rect x="336.5" y="187.5" width="17" height="17" rx="2.5"/>
         <rect x="338.5" y="295.5" width="17" height="17" rx="2.5"/>
+        <rect x="40" y="114" width="62" height="62"/>
+        <rect x="276" y="40" width="50" height="50"/>
+        <rect x="144" y="204" width="96" height="96" rx="1.5"/>
+        <rect x="52" y="334" width="70" height="56"/>
+        <rect x="280" y="342" width="52" height="68"/>
       </g>
     </mask>
   </defs>
@@ -40,7 +46,7 @@
     <path class="fine" d="M0 70h70l18 18h78"/>
     <path class="fine" d="M0 448h54l30-30h76"/>
     <path class="fine" d="M0 486h78l24-24h64"/>
-    <path class="fine" d="M384 34h-58l-24 24h-64"/>
+    <path class="fine" d="M384 34h-62l-20-20h-64"/>
     <path class="fine" d="M384 82h-46l-42 42h-70"/>
     <path class="fine" d="M384 420h-74l-22 22h-72"/>
     <path class="fine" d="M384 474h-42l-28-28h-62"/>
@@ -50,9 +56,9 @@
   <g opacity=".62">
     <rect class="chip" x="42" y="116" width="58" height="58"/>
     <path class="fine" d="M54 104v12M70 104v12M86 104v12M54 174v12M70 174v12M86 174v12M30 128h12M30 144h12M30 160h12M100 128h12M100 144h12M100 160h12"/>
-    <path class="trace" d="M112 128h60l24 24h62"/>
-    <path class="trace" d="M112 144h42l22 22h70"/>
-    <path class="trace" d="M112 160h28l30 30h42"/>
+    <path class="trace" d="M112 128h56l28 24h62"/>
+    <path class="trace" d="M112 144h42l24 20h68"/>
+    <path class="trace" d="M112 160h28l30 28h42"/>
     <path class="trace" d="M42 128H18v62h58"/>
     <path class="trace" d="M42 160H0"/>
   </g>
@@ -78,17 +84,17 @@
     <path class="bus" d="M0 274h70l28-8h32"/>
     <path class="bus" d="M254 239h34l34-43h62"/>
     <path class="bus" d="M254 266h46l26 38h58"/>
-    <path class="trace" d="M192 206v-30l24-24h54"/>
-    <path class="trace" d="M208 298v40l22 22h54"/>
+    <path class="trace" d="M192 206v-28l24-24h54"/>
+    <path class="trace" d="M208 298v34l-22 16"/>
   </g>
 
   <!-- Left lower memory lanes. -->
   <g opacity=".52">
     <rect class="chip" x="54" y="336" width="66" height="52"/>
     <path class="fine" d="M66 324v12M82 324v12M98 324v12M66 388v12M82 388v12M98 388v12M42 348h12M42 362h12M42 376h12M120 348h12M120 362h12M120 376h12"/>
-    <path class="trace" d="M132 348h54l24-24h44"/>
-    <path class="trace" d="M132 362h70l28-28h58"/>
-    <path class="trace" d="M132 376h38l30 30h48"/>
+    <path class="trace" d="M132 348h54"/>
+    <path class="trace" d="M132 362h66"/>
+    <path class="trace" d="M132 376h58"/>
     <path class="trace" d="M54 348H22v38H0"/>
     <path class="trace" d="M54 376H28v52h56"/>
   </g>
@@ -97,20 +103,36 @@
   <g opacity=".56">
     <rect class="chip" x="282" y="344" width="48" height="64"/>
     <path class="fine" d="M294 332v12M306 332v12M318 332v12M294 408v12M306 408v12M318 408v12M270 358h12M270 374h12M270 390h12M330 358h12M330 374h12M330 390h12"/>
-    <path class="trace" d="M282 358h-48l-24-24h-40"/>
-    <path class="trace" d="M282 374h-34l-30 30h-44"/>
+    <path class="trace" d="M282 358h-46l-24-24h-32"/>
+    <path class="trace" d="M282 390h-24l-10 16"/>
     <path class="trace" d="M330 390h32v42h22"/>
   </g>
 
   <!-- Fine fill traces. They use empty corridors between islands. -->
   <g opacity=".38">
     <path class="fine" d="M18 316h64l28-28h30"/>
-    <path class="fine" d="M0 356h34l32-32h74"/>
+    <path class="fine" d="M0 356h34l32-32h54"/>
     <path class="fine" d="M18 96h60l30 30"/>
     <path class="fine" d="M252 164h50l28-28h54"/>
     <path class="fine" d="M248 462h46l26 26h64"/>
     <path class="fine" d="M170 462h-46l-22 22H54"/>
   </g>
+  </g>
+
+  <!-- Component bodies are redrawn after traces. Trace masking keeps package
+       interiors transparent while preventing routes through transistor bodies. -->
+  <g>
+    <rect class="chipFrame" x="42" y="116" width="58" height="58"/>
+    <rect class="chipFrame" x="278" y="42" width="46" height="46"/>
+    <rect class="chipFrame" x="54" y="336" width="66" height="52"/>
+    <rect class="chipFrame" x="282" y="344" width="48" height="64"/>
+  </g>
+  <g>
+    <rect class="chipFrame" x="146" y="206" width="92" height="92" rx="1.5"/>
+    <rect class="fine" x="158" y="218" width="68" height="68" rx="1" opacity=".42"/>
+    <path class="fine" opacity=".36" d="M176 228h32l10 10v28l-10 10h-32l-10-10v-28z"/>
+    <circle class="pad" cx="192" cy="252" r="8.5" opacity=".68"/>
+    <path class="fine" opacity=".62" d="M184 252h16M192 244v16M186 246l12 12M198 246l-12 12"/>
   </g>
 
   <!-- Pads and small terminals. Pads sit on endpoints, not intersections. -->

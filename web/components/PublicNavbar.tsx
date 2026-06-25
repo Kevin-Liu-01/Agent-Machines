@@ -259,9 +259,12 @@ export function PublicNavbar({
 						)}
 						<ThemeToggle />
 						<SignedIn>
-							<ReticleButton as="a" href="/dashboard" variant="secondary" size="sm" className="h-8">
+							<Link
+								href="/dashboard"
+								className="ret-nav-trigger inline-flex h-8 min-h-8 items-center justify-center border border-[var(--ret-text)] bg-[var(--ret-text)] px-3 text-[12px] font-medium text-[var(--ret-bg)] transition-colors hover:opacity-90"
+							>
 								Dashboard
-							</ReticleButton>
+							</Link>
 							{CLERK_READY ? (
 								<UserButton
 									appearance={{ elements: { avatarBox: "h-8 w-8" } }}
