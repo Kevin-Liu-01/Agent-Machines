@@ -5,7 +5,7 @@
  */
 
 import { getProvider } from "@/lib/providers";
-import { ROUTER_PRESETS } from "@/lib/agents/upstreams";
+import { DEFAULT_ROUTER_ID, ROUTER_PRESETS } from "@/lib/agents/upstreams";
 import { setUserConfig } from "@/lib/user-config/clerk";
 import {
 	INITIAL_BOOTSTRAP_STATE,
@@ -59,8 +59,8 @@ export async function createMachineForConfig(
 			ROUTER_PRESETS.some((p) => p.id === opts.gatewayProfileId));
 	const gatewayProfileId =
 		(isKnownRouter ? opts.gatewayProfileId ?? null : null) ??
-		config.gatewayProfiles.find((profile) => profile.kind === "dedalus")?.id ??
-		null;
+		config.gatewayProfiles.find((profile) => profile.id === DEFAULT_ROUTER_ID)?.id ??
+		DEFAULT_ROUTER_ID;
 
 	const ref: MachineRef = {
 		id: result.id,

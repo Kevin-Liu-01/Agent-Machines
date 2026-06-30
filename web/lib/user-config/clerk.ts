@@ -34,8 +34,10 @@ import {
 	DEFAULT_MODEL,
 	DEFAULT_USER_CONFIG,
 	INITIAL_BOOTSTRAP_STATE,
+	OPENROUTER_GATEWAY_PROFILE,
 	activeMachine,
 	AGENT_KINDS,
+	VERCEL_AI_GATEWAY_PROFILE,
 	type AgentKind,
 	type BootstrapPreset,
 	type BootstrapPhaseId,
@@ -69,7 +71,6 @@ const KNOWN_PROVIDERS: ReadonlySet<ProviderKind> = new Set([
 	"vercel",
 ]);
 const KNOWN_GATEWAYS: ReadonlySet<GatewayKind> = new Set([
-	"dedalus",
 	"vercel-ai-gateway",
 	"openai-compatible",
 ]);
@@ -118,7 +119,7 @@ function asProvider(value: unknown, fallback: ProviderKind = "dedalus"): Provide
 		: fallback;
 }
 
-function asGateway(value: unknown, fallback: GatewayKind = "dedalus"): GatewayKind {
+function asGateway(value: unknown, fallback: GatewayKind = "vercel-ai-gateway"): GatewayKind {
 	const v = asString(value);
 	return v && KNOWN_GATEWAYS.has(v as GatewayKind)
 		? (v as GatewayKind)
@@ -260,18 +261,28 @@ function envFallbackMachine(): MachineRef | null {
 	};
 }
 
-function defaultDedalusGatewayProfile(): GatewayProfile {
+function cloneDefaultGatewayProfile(profile: GatewayProfile): GatewayProfile {
 	const now = new Date().toISOString();
 	return {
-		id: "dedalus-default",
-		name: "Dedalus default",
-		kind: "dedalus",
-		model: DEFAULT_MODEL,
-		baseUrl: "https://api.dedaluslabs.ai/v1",
-		apiKey: null,
+		...profile,
 		createdAt: now,
 		updatedAt: now,
 	};
+}
+
+function ensureDefaultGatewayProfiles(
+	profiles: GatewayProfile[],
+): GatewayProfile[] {
+	const byId = new Map(profiles.map((profile) => [profile.id, profile]));
+	const builtIns = [
+		VERCEL_AI_GATEWAY_PROFILE,
+		OPENROUTER_GATEWAY_PROFILE,
+	];
+	const builtInIds = new Set(builtIns.map((profile) => profile.id));
+	return [
+		...builtIns.map((profile) => byId.get(profile.id) ?? cloneDefaultGatewayProfile(profile)),
+		...profiles.filter((profile) => !builtInIds.has(profile.id)),
+	];
 }
 
 function defaultBootstrapPreset(): BootstrapPreset {
@@ -398,7 +409,7 @@ function asWorker(value: unknown): Worker | null {
 		source: asString(v.source) === "default" ? "default" : "custom",
 		agentKind: asAgent(v.agentKind),
 		model: asString(v.model) ?? DEFAULT_MODEL,
-		gatewayProfileId: asString(v.gatewayProfileId) ?? "dedalus-default",
+		gatewayProfileId: asString(v.gatewayProfileId) ?? VERCEL_AI_GATEWAY_PROFILE.id,
 		memoryBundleId,
 		rolePrompt: asString(v.rolePrompt) ?? null,
 		lastMachineId: asString(v.lastMachineId) ?? null,
@@ -511,9 +522,7 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
 				.map((entry) => asGatewayProfile(entry, gatewayApiKeys))
 				.filter((entry): entry is GatewayProfile => entry !== null)
 		: [];
-	if (gatewayProfiles.length === 0 && providers.dedalus?.apiKey) {
-		gatewayProfiles.push(defaultDedalusGatewayProfile());
-	}
+	const completeGatewayProfiles = ensureDefaultGatewayProfiles(gatewayProfiles);
 
 	const environmentProfileVars =
 		(privateMeta.environmentProfileVars as
@@ -580,7 +589,7 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
 		activeMachineId,
 		cursorApiKey,
 		cloudflareTunnelToken,
-		gatewayProfiles,
+		gatewayProfiles: completeGatewayProfiles,
 		environmentProfiles,
 		bootstrapPresets,
 		customLoadout,
@@ -672,7 +681,9 @@ function buildConfigFromSupabase(
 					.filter((entry): entry is LoadoutSource => entry !== null)
 			: [];
 
-		if (sbGatewayProfiles.length > 0) base.gatewayProfiles = sbGatewayProfiles;
+		if (sbGatewayProfiles.length > 0) {
+			base.gatewayProfiles = ensureDefaultGatewayProfiles(sbGatewayProfiles);
+		}
 		if (sbEnvironmentProfiles.length > 0) base.environmentProfiles = sbEnvironmentProfiles;
 		if (sbBootstrapPresets.length > 0) base.bootstrapPresets = sbBootstrapPresets;
 		if (sbCustomLoadout.length > 0) base.customLoadout = sbCustomLoadout;
@@ -776,6 +787,8 @@ function asGatewayProfile(
 	const v = value as Record<string, unknown>;
 	const id = asString(v.id);
 	if (!id) return null;
+	if (asString(v.kind) === "dedalus") return null;
+	if (asString(v.baseUrl)?.toLowerCase().includes("dedalus")) return null;
 	const now = new Date().toISOString();
 	return {
 		id,

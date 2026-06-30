@@ -14,7 +14,7 @@ Two audiences: humans (dashboard) → agents (MCP/CLI orchestration endgame).
 - **Runtime root:** `~/.agent-machines` — skills, config, mcps, crons, sessions, logs, chats, artifacts.
 - **Providers:** Dedalus Machines, E2B Sandbox, Sprites.dev, Vercel Sandbox (four `MachineProvider` lanes).
 - **Agent runtimes:** Hermes, OpenClaw, Claude Code, Codex CLI (native tool sets differ per runtime).
-- **Inference:** OpenAI-compatible `/v1` (default env in CLI); configurable per machine via `model.base_url`.
+- **Inference:** OpenAI-compatible `/v1`; default priority is Vercel AI Gateway, then OpenRouter, then configured fallbacks such as native keys or custom gateways. Configurable per machine via `model.base_url`.
 - **Gateway:** `:8642` (Hermes) or `:18789` (OpenClaw). Bearer: `API_SERVER_KEY` in `~/.agent-machines/.env`.
 - **Control plane:** agent-machines.dev dashboard + CLI + (future) Agent Machines MCP server.
 - **Dashboard (May 2026):** Workers (presets), Memory bundles, Registry (1,400+ install catalog), Usage/metrics (Supabase), cron tick via `/api/internal/cron/tick` every 5 min on Vercel.

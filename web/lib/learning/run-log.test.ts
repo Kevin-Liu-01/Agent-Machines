@@ -13,7 +13,7 @@ describe("parseRunLog", () => {
 				runtime: "hermes",
 				substrate: "e2b",
 				model: "anthropic/claude-sonnet-4-6",
-				router: "dedalus-default",
+				router: "openrouter-router",
 			},
 		});
 		const [e] = parseRunLog(line);
@@ -21,7 +21,7 @@ describe("parseRunLog", () => {
 		expect(e.runtime).toBe("hermes");
 		expect(e.substrate).toBe("e2b");
 		expect(e.model).toBe("anthropic/claude-sonnet-4-6");
-		expect(e.router).toBe("dedalus-default");
+		expect(e.router).toBe("openrouter-router");
 	});
 
 	it("represents a null router (native/default) distinctly from absent", () => {

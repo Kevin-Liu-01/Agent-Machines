@@ -33,21 +33,19 @@ describe("agentUsesRouter", () => {
 
 describe("GATEWAY_KIND_LABEL", () => {
 	it("labels every gateway kind", () => {
-		expect(GATEWAY_KIND_LABEL.dedalus).toMatch(/Dedalus/);
 		expect(GATEWAY_KIND_LABEL["vercel-ai-gateway"]).toMatch(/Vercel/);
 		expect(GATEWAY_KIND_LABEL["openai-compatible"]).toMatch(/OpenAI/);
 	});
 });
 
 describe("ROUTER_PRESETS", () => {
-	it("covers the named routers and reuses seeded profile ids for the first two", () => {
+	it("starts with Vercel AI Gateway, then OpenRouter", () => {
 		const ids = ROUTER_PRESETS.map((p) => p.id);
-		expect(ids).toContain("dedalus-default");
-		expect(ids).toContain("vercel-ai-gateway");
+		expect(ids.slice(0, 2)).toEqual(["vercel-ai-gateway", "openrouter-router"]);
 		expect(ids).toContain("openai-router");
-		expect(ids).toContain("openrouter-router");
+		expect(ids).not.toContain("dedalus-default");
 		expect(ids).toContain("custom-router");
-		expect(DEFAULT_ROUTER_ID).toBe("dedalus-default");
+		expect(DEFAULT_ROUTER_ID).toBe("vercel-ai-gateway");
 	});
 
 	it("maps each preset to a distinct credential source", () => {
@@ -60,7 +58,7 @@ describe("ROUTER_PRESETS", () => {
 describe("agentUpstreamReadiness", () => {
 	// Native CLIs are blocked without their native key (no router substitute).
 	it("blocks codex without an OpenAI key and points at openai", () => {
-		const r = agentUpstreamReadiness("codex", DEFAULT_ROUTER_ID, { dedalus: true });
+		const r = agentUpstreamReadiness("codex", DEFAULT_ROUTER_ID, { openrouter: true });
 		expect(r.status).toBe("blocked");
 		expect(r.needs).toBe("openai");
 	});
@@ -83,9 +81,9 @@ describe("agentUpstreamReadiness", () => {
 
 	// Selected router has no key but another upstream exists -> soft fallback.
 	it("flags fallback when the selected router lacks a key but another exists", () => {
-		const r = agentUpstreamReadiness("hermes", "openrouter-router", { dedalus: true });
+		const r = agentUpstreamReadiness("hermes", "vercel-ai-gateway", { openrouter: true });
 		expect(r.status).toBe("fallback");
-		expect(r.needs).toBe("openrouter");
+		expect(r.needs).toBe("vercelAiGateway");
 	});
 
 	// No usable key at all -> hard block.

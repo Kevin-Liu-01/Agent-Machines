@@ -6,7 +6,11 @@
 import { getAgentMeta } from "@/lib/agents";
 import type { AgentKind, PublicAiProviderStatus, UserConfig } from "@/lib/user-config/schema";
 
-export type AiKeyField = "anthropic" | "openai" | "dedalus";
+export type AiKeyField =
+	| "vercelAiGateway"
+	| "openrouter"
+	| "anthropic"
+	| "openai";
 
 export type AgentCredentialRequirement = {
 	field: AiKeyField;
@@ -29,9 +33,10 @@ export type CredentialCheckConfig = {
 };
 
 const SIGNUP = {
+	vercelAiGateway: "https://vercel.com/docs/ai-gateway",
+	openrouter: "https://openrouter.ai/settings/keys",
 	anthropic: "https://console.anthropic.com/settings/keys",
 	openai: "https://platform.openai.com/api-keys",
-	dedalus: "https://dedaluslabs.ai/dashboard/api-keys",
 } as const;
 
 /** Keys the UI should surface for a given agent during setup. */
@@ -44,7 +49,7 @@ export function agentCredentialRequirements(
 				{
 					field: "anthropic",
 					label: "Anthropic API key (required)",
-					hint: "Claude Code speaks the Anthropic Messages API, so a native Anthropic key is required — the Dedalus router can't drive it. Only Dedalus? Use Hermes or OpenClaw instead.",
+					hint: "Claude Code speaks the Anthropic Messages API, so a native Anthropic key is required. Router-only? Use Hermes or OpenClaw instead.",
 					signupUrl: SIGNUP.anthropic,
 					required: true,
 				},
@@ -54,7 +59,7 @@ export function agentCredentialRequirements(
 				{
 					field: "openai",
 					label: "OpenAI API key (required)",
-					hint: "Codex speaks the OpenAI Responses API, so a native OpenAI key is required — the Dedalus router can't drive it. Only Dedalus? Use Hermes or OpenClaw instead.",
+					hint: "Codex speaks the OpenAI Responses API, so a native OpenAI key is required. Router-only? Use Hermes or OpenClaw instead.",
 					signupUrl: SIGNUP.openai,
 					required: true,
 				},
@@ -62,34 +67,48 @@ export function agentCredentialRequirements(
 		case "openclaw":
 			return [
 				{
+					field: "vercelAiGateway",
+					label: "Vercel AI Gateway key",
+					hint: "Preferred upstream for OpenClaw",
+					signupUrl: SIGNUP.vercelAiGateway,
+					required: false,
+				},
+				{
+					field: "openrouter",
+					label: "OpenRouter API key",
+					hint: "Fallback upstream",
+					signupUrl: SIGNUP.openrouter,
+					required: false,
+				},
+				{
 					field: "anthropic",
 					label: "Anthropic API key",
-					hint: "Default upstream for OpenClaw",
+					hint: "Native fallback upstream",
 					signupUrl: SIGNUP.anthropic,
 					required: false,
 				},
 				{
 					field: "openai",
 					label: "OpenAI API key",
-					hint: "Optional fallback upstream",
+					hint: "Direct OpenAI fallback",
 					signupUrl: SIGNUP.openai,
-					required: false,
-				},
-				{
-					field: "dedalus",
-					label: "Dedalus router key",
-					hint: "200+ models via api.dedaluslabs.ai/v1",
-					signupUrl: SIGNUP.dedalus,
 					required: false,
 				},
 			];
 		case "hermes":
 			return [
 				{
-					field: "dedalus",
-					label: "Dedalus router key",
-					hint: "Recommended — one key for 200+ models",
-					signupUrl: SIGNUP.dedalus,
+					field: "vercelAiGateway",
+					label: "Vercel AI Gateway key",
+					hint: "Recommended upstream",
+					signupUrl: SIGNUP.vercelAiGateway,
+					required: false,
+				},
+				{
+					field: "openrouter",
+					label: "OpenRouter API key",
+					hint: "Fallback upstream",
+					signupUrl: SIGNUP.openrouter,
 					required: false,
 				},
 				{
@@ -113,14 +132,14 @@ export function agentCredentialRequirements(
 }
 
 function keyOnFile(config: CredentialCheckConfig, field: AiKeyField): boolean {
-	if (field === "dedalus") {
-		const p = config.providers.dedalus;
-		return Boolean(p?.apiKey || p?.configured);
-	}
 	if (config.aiProviderKeys?.[field]) return true;
 	if (config.aiProviders) {
 		if (field === "anthropic") return config.aiProviders.anthropic?.configured ?? false;
 		if (field === "openai") return config.aiProviders.openai?.configured ?? false;
+		if (field === "openrouter") return config.aiProviders.openrouter?.configured ?? false;
+		if (field === "vercelAiGateway") {
+			return config.aiProviders.vercelAiGateway?.configured ?? false;
+		}
 	}
 	return false;
 }
@@ -141,8 +160,8 @@ function hasAnyGatewayUpstream(
 	config: CredentialCheckConfig,
 	draft?: DraftAiKeys,
 ): boolean {
-	if (keyAvailable(config, "dedalus", draft)) return true;
-	if (keyAvailable(config, "anthropic", draft)) return true;
+	if (keyAvailable(config, "vercelAiGateway", draft)) return true;
+	if (keyAvailable(config, "openrouter", draft)) return true;
 	if (keyAvailable(config, "openai", draft)) return true;
 	if (config.aiProviderKeys?.openrouter?.trim()) return true;
 	if (config.aiProviderKeys?.vercelAiGateway?.trim()) return true;
@@ -152,6 +171,7 @@ function hasAnyGatewayUpstream(
 	if (config.aiProviders?.vercelAiGateway?.configured) return true;
 	if (config.aiProviders?.google?.configured) return true;
 	if (config.aiProviders?.custom?.configured) return true;
+	if (keyAvailable(config, "anthropic", draft)) return true;
 	return false;
 }
 
@@ -165,25 +185,24 @@ export function validateAgentCredentials(
 
 	switch (agentKind) {
 		case "claude-code":
-			// Claude Code speaks the Anthropic Messages API. The Dedalus router is
-			// OpenAI-format only, so a native Anthropic key is required — Dedalus
-			// alone cannot drive it. Dedalus-only users should pick Hermes/OpenClaw.
+			// Claude Code speaks the Anthropic Messages API. OpenAI-compatible
+			// routers cannot substitute, so a native Anthropic key is required.
 			if (!keyAvailable(config, "anthropic", draft)) {
 				return {
 					ok: false,
 					message:
-						"Claude Code needs a native Anthropic API key — it speaks the Anthropic Messages API, which the Dedalus router does not serve. Add one at console.anthropic.com, or deploy Hermes or OpenClaw, which run on your Dedalus router key.",
+						"Claude Code needs a native Anthropic API key — it speaks the Anthropic Messages API. Add one at console.anthropic.com, or deploy Hermes/OpenClaw through Vercel AI Gateway, OpenRouter, or another configured router.",
 				};
 			}
 			return { ok: true };
 		case "codex":
-			// Codex (>=0.118) only speaks the OpenAI Responses API; the Dedalus
-			// router doesn't serve it, so a native OpenAI key is required.
+			// Codex (>=0.118) only speaks the OpenAI Responses API, so a
+			// native OpenAI key is required.
 			if (!keyAvailable(config, "openai", draft)) {
 				return {
 					ok: false,
 					message:
-						"Codex CLI needs a native OpenAI API key — it speaks the OpenAI Responses API, which the Dedalus router does not serve. Add one at platform.openai.com, or deploy Hermes or OpenClaw, which run on your Dedalus router key.",
+						"Codex CLI needs a native OpenAI API key — it speaks the OpenAI Responses API. Add one at platform.openai.com, or deploy Hermes/OpenClaw through Vercel AI Gateway, OpenRouter, or another configured router.",
 				};
 			}
 			return { ok: true };
@@ -192,7 +211,7 @@ export function validateAgentCredentials(
 			if (!hasAnyGatewayUpstream(config, draft)) {
 				return {
 					ok: false,
-					message: `At least one AI provider key is required for ${label} (Anthropic, OpenAI, Dedalus, or another configured upstream).`,
+					message: `At least one AI provider key is required for ${label} (Vercel AI Gateway, OpenRouter, or another configured upstream).`,
 				};
 			}
 			return { ok: true };

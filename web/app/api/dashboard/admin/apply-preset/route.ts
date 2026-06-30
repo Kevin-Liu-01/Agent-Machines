@@ -10,6 +10,7 @@
  */
 
 import { findPreset } from "@/lib/dashboard/presets";
+import { DEFAULT_ROUTER_ID } from "@/lib/agents/upstreams";
 import { applyPreset } from "@/lib/onboarding/apply-preset";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
@@ -61,7 +62,7 @@ export async function POST(request: Request): Promise<Response> {
 		gatewayProfileId:
 			typeof body.gatewayProfileId === "string" && body.gatewayProfileId.trim()
 				? body.gatewayProfileId.trim()
-				: "dedalus-default",
+				: DEFAULT_ROUTER_ID,
 		machineId: typeof body.machineId === "string" ? body.machineId : null,
 	});
 

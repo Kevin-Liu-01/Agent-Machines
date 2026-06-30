@@ -49,7 +49,7 @@ function upstreamSummary(agentKind: AgentKind): string {
 	if (native === "openai") return "Native OpenAI key (Responses API)";
 	if (native === "anthropic") return "Native Anthropic key (Messages API)";
 	if (agentUsesRouter(agentKind)) {
-		return "Any OpenAI-compatible router (Dedalus / OpenRouter / Vercel / custom)";
+		return "Any OpenAI-compatible router (Vercel / OpenRouter / custom)";
 	}
 	return "—";
 }

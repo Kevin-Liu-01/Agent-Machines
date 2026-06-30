@@ -27,7 +27,7 @@ const BENTOS: ReadonlyArray<BentoItem> = [
 	{
 		kicker: "02 / gateway",
 		title: "One port, both agents",
-		body: "Hermes and OpenClaw share :8642. The Dedalus AI router fronts 200+ models. Swap the agent from the navbar, not the endpoint.",
+		body: "Hermes and OpenClaw share :8642. Vercel AI Gateway is first, OpenRouter is fallback, and the endpoint stays stable.",
 		span: "normal",
 		variant: "nyx-lines",
 		diagram: "gateway",

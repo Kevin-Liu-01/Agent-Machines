@@ -404,6 +404,8 @@ type CredsState = {
 	vercelTeamId: string;
 	vercelProjectId: string;
 	cursor: string;
+	vercelAiGateway: string;
+	openrouter: string;
 	anthropic: string;
 	openai: string;
 };
@@ -436,6 +438,8 @@ function CredentialsStep({
 		vercelTeamId: "",
 		vercelProjectId: "",
 		cursor: "",
+		vercelAiGateway: "",
+		openrouter: "",
 		anthropic: "",
 		openai: "",
 	});
@@ -445,11 +449,13 @@ function CredentialsStep({
 	const e2bOnFile = config.providers.e2b.configured;
 	const vercelOnFile = config.providers.vercel.configured;
 	const cursorOnFile = config.hasCursorKey;
+	const vercelAiGatewayOnFile = config.aiProviders.vercelAiGateway.configured;
+	const openrouterOnFile = config.aiProviders.openrouter.configured;
 	const anthropicOnFile = config.aiProviders.anthropic.configured;
 	const openaiOnFile = config.aiProviders.openai.configured;
 	const anyConfigured =
 		dedalusOnFile || spritesOnFile || e2bOnFile || vercelOnFile || hasOwnerDedalusKey ||
-		anthropicOnFile || openaiOnFile;
+		vercelAiGatewayOnFile || openrouterOnFile || anthropicOnFile || openaiOnFile;
 
 	function buildPatch() {
 		const creds: Parameters<typeof onSave>[0] = {};
@@ -470,6 +476,10 @@ function CredentialsStep({
 		}
 		const cursor = state.cursor.trim();
 		const aiKeys: Record<string, string> = {};
+		if (state.vercelAiGateway.trim()) {
+			aiKeys.vercelAiGateway = state.vercelAiGateway.trim();
+		}
+		if (state.openrouter.trim()) aiKeys.openrouter = state.openrouter.trim();
 		if (state.anthropic.trim()) aiKeys.anthropic = state.anthropic.trim();
 		if (state.openai.trim()) aiKeys.openai = state.openai.trim();
 		return {
@@ -546,9 +556,31 @@ function CredentialsStep({
 
 			<ReticleLabel className="mt-5">ai provider keys</ReticleLabel>
 			<p className="mt-1 text-[12px] text-[var(--ret-text-dim)]">
-				Hermes and OpenClaw accept any of these. Claude Code requires Anthropic. Codex requires OpenAI.
+				Hermes and OpenClaw use Vercel first. OpenRouter runs second. Claude Code needs Anthropic. Codex needs OpenAI.
 			</p>
 			<div className="mt-2 grid gap-4 lg:grid-cols-2">
+				<KeyField
+					label="Vercel AI Gateway key"
+					placeholder="vck_..."
+					value={state.vercelAiGateway}
+					onChange={(v) => setState((s) => ({ ...s, vercelAiGateway: v }))}
+					hint={
+						vercelAiGatewayOnFile
+							? "On file. Leave blank to keep."
+							: "Preferred for Hermes and OpenClaw."
+					}
+				/>
+				<KeyField
+					label="OpenRouter API key"
+					placeholder="sk-or-..."
+					value={state.openrouter}
+					onChange={(v) => setState((s) => ({ ...s, openrouter: v }))}
+					hint={
+						openrouterOnFile
+							? "On file. Leave blank to keep."
+							: "Fallback for Hermes and OpenClaw."
+					}
+				/>
 				<KeyField
 					label="Anthropic API key"
 					placeholder="sk-ant-..."

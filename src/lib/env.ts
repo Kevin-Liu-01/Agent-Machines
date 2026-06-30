@@ -11,6 +11,7 @@ export type Config = {
 	apiKey: string;
 	machinesBaseUrl: string;
 	chatBaseUrl: string;
+	chatApiKey: string;
 	model: string;
 	vcpu: number;
 	memoryMib: number;
@@ -22,6 +23,91 @@ export type Config = {
 	aiGatewayUrl: string | null;
 	aiGatewayKey: string | null;
 };
+
+function normalizeOpenAiBaseUrl(value: string): string {
+	const trimmed = value.trim().replace(/\/$/, "");
+	return trimmed.endsWith("/v1") ? trimmed : `${trimmed}/v1`;
+}
+
+function envKeyForBaseUrl(baseUrl: string): string | null {
+	const lower = baseUrl.toLowerCase();
+	if (lower.includes("ai-gateway.vercel")) {
+		return (
+			process.env.AI_GATEWAY_API_KEY?.trim() ||
+			process.env.VERCEL_OIDC_TOKEN?.trim() ||
+			process.env.AI_GATEWAY_KEY?.trim() ||
+			null
+		);
+	}
+	if (lower.includes("openrouter")) {
+		return process.env.OPENROUTER_API_KEY?.trim() || null;
+	}
+	if (lower.includes("openai.com")) {
+		return process.env.OPENAI_API_KEY?.trim() || null;
+	}
+	if (lower.includes("anthropic.com")) {
+		return process.env.ANTHROPIC_API_KEY?.trim() || null;
+	}
+	return null;
+}
+
+function resolveChatGateway(): { baseUrl: string; apiKey: string } {
+	const explicitBaseUrl =
+		process.env.AGENT_CHAT_BASE_URL?.trim() ||
+		process.env.AI_GATEWAY_URL?.trim() ||
+		null;
+	const explicitApiKey =
+		process.env.AGENT_CHAT_API_KEY?.trim() ||
+		process.env.AI_GATEWAY_KEY?.trim() ||
+		null;
+	if (explicitBaseUrl) {
+		const baseUrl = normalizeOpenAiBaseUrl(explicitBaseUrl);
+		return {
+			baseUrl,
+			apiKey: explicitApiKey ?? envKeyForBaseUrl(baseUrl) ?? "",
+		};
+	}
+
+	const vercelGatewayKey =
+		process.env.AI_GATEWAY_API_KEY?.trim() ||
+		process.env.VERCEL_OIDC_TOKEN?.trim() ||
+		null;
+	if (vercelGatewayKey) {
+		return {
+			baseUrl: DEFAULTS.vercelAiGatewayBaseUrl,
+			apiKey: vercelGatewayKey,
+		};
+	}
+
+	const openRouterKey = process.env.OPENROUTER_API_KEY?.trim();
+	if (openRouterKey) {
+		return {
+			baseUrl: DEFAULTS.openRouterBaseUrl,
+			apiKey: openRouterKey,
+		};
+	}
+
+	const openaiKey = process.env.OPENAI_API_KEY?.trim();
+	if (openaiKey) {
+		return {
+			baseUrl: "https://api.openai.com/v1",
+			apiKey: openaiKey,
+		};
+	}
+
+	const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
+	if (anthropicKey) {
+		return {
+			baseUrl: "https://api.anthropic.com/v1",
+			apiKey: anthropicKey,
+		};
+	}
+
+	return {
+		baseUrl: DEFAULTS.vercelAiGatewayBaseUrl,
+		apiKey: "",
+	};
+}
 
 function readNumber(key: string, legacyKey: string, fallback: number): number {
 	const raw = process.env[key] ?? process.env[legacyKey];
@@ -58,11 +144,13 @@ export function loadConfig(): Config {
 
 	const aiGatewayUrl = process.env.AI_GATEWAY_URL?.trim() || null;
 	const aiGatewayKey = process.env.AI_GATEWAY_KEY?.trim() || null;
+	const chatGateway = resolveChatGateway();
 
 	return {
 		apiKey,
 		machinesBaseUrl: process.env.DEDALUS_BASE_URL ?? DEFAULTS.dedalusBaseUrl,
-		chatBaseUrl: process.env.DEDALUS_CHAT_BASE_URL ?? DEFAULTS.dedalusChatBaseUrl,
+		chatBaseUrl: chatGateway.baseUrl,
+		chatApiKey: chatGateway.apiKey,
 		model: process.env.AGENT_MODEL ?? process.env.HERMES_MODEL ?? DEFAULTS.model,
 		vcpu: readNumber("AGENT_VCPU", "HERMES_VCPU", DEFAULTS.vcpu),
 		memoryMib: readNumber("AGENT_MEMORY_MIB", "HERMES_MEMORY_MIB", DEFAULTS.memoryMib),

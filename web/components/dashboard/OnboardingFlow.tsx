@@ -50,6 +50,15 @@ type Defaults = {
 	hasOwnerDedalusKey: boolean;
 };
 
+type OnboardingAiKeys = {
+	vercelAiGateway: string;
+	openrouter: string;
+	anthropic: string;
+	openai: string;
+};
+
+type OnboardingAiKeyField = keyof OnboardingAiKeys;
+
 type Props = {
 	initialConfig: PublicUserConfig;
 	defaults: Defaults;
@@ -234,7 +243,12 @@ export function OnboardingFlow({ initialConfig, defaults, presets }: Props) {
 		[presets, presetId],
 	);
 	const [providerKey, setProviderKey] = useState("");
-	const [aiKeys, setAiKeys] = useState({ anthropic: "", openai: "" });
+	const [aiKeys, setAiKeys] = useState<OnboardingAiKeys>({
+		vercelAiGateway: "",
+		openrouter: "",
+		anthropic: "",
+		openai: "",
+	});
 	const [providerSecondary, setProviderSecondary] = useState<
 		Record<string, string>
 	>({});
@@ -284,6 +298,10 @@ export function OnboardingFlow({ initialConfig, defaults, presets }: Props) {
 				setupBody.providerCredentials = { [provider]: cred };
 			}
 			const aiProviderKeys: Record<string, string> = {};
+			if (aiKeys.vercelAiGateway.trim()) {
+				aiProviderKeys.vercelAiGateway = aiKeys.vercelAiGateway.trim();
+			}
+			if (aiKeys.openrouter.trim()) aiProviderKeys.openrouter = aiKeys.openrouter.trim();
 			if (aiKeys.anthropic.trim()) aiProviderKeys.anthropic = aiKeys.anthropic.trim();
 			if (aiKeys.openai.trim()) aiProviderKeys.openai = aiKeys.openai.trim();
 			if (Object.keys(aiProviderKeys).length > 0) {
@@ -343,7 +361,7 @@ export function OnboardingFlow({ initialConfig, defaults, presets }: Props) {
 					presetId: presetId === NO_PRESET ? null : presetId,
 					agentKind: agent,
 					gatewayProfileId:
-						agentUsesRouter(agent) && routerId ? routerId : "dedalus-default",
+						agentUsesRouter(agent) && routerId ? routerId : DEFAULT_ROUTER_ID,
 					machineId: provBody.machineId,
 				}),
 			});
@@ -383,9 +401,10 @@ export function OnboardingFlow({ initialConfig, defaults, presets }: Props) {
 	}, [agent, aiKeys, presetId, provider, providerKey, providerSecondary, routerId]);
 
 	const agentCredDraft: DraftAiKeys = {
+		vercelAiGateway: aiKeys.vercelAiGateway,
+		openrouter: aiKeys.openrouter,
 		anthropic: aiKeys.anthropic,
 		openai: aiKeys.openai,
-		dedalus: provider === "dedalus" ? providerKey : undefined,
 	};
 	const agentCredsOk = canBootstrapAgent(
 		agent,
@@ -399,11 +418,13 @@ export function OnboardingFlow({ initialConfig, defaults, presets }: Props) {
 	// the user is typing this step, so the status flips to "ready" as they fill in.
 	const effectiveAiConfigured: Record<string, boolean> = {
 		...wizardAiConfigured,
+		vercelAiGateway:
+			wizardAiConfigured.vercelAiGateway ||
+			aiKeys.vercelAiGateway.trim().length > 0,
+		openrouter:
+			wizardAiConfigured.openrouter || aiKeys.openrouter.trim().length > 0,
 		anthropic: wizardAiConfigured.anthropic || aiKeys.anthropic.trim().length > 0,
 		openai: wizardAiConfigured.openai || aiKeys.openai.trim().length > 0,
-		dedalus:
-			wizardAiConfigured.dedalus ||
-			(provider === "dedalus" && providerKey.trim().length > 0),
 	};
 	const agentReadiness = agentUpstreamReadiness(agent, routerId, effectiveAiConfigured);
 
@@ -1010,8 +1031,8 @@ function KeyStep({
 	ownerKey: boolean;
 	value: string;
 	onChange: (v: string) => void;
-	aiKeys: { anthropic: string; openai: string };
-	onAiKeyChange: (field: "anthropic" | "openai", val: string) => void;
+	aiKeys: OnboardingAiKeys;
+	onAiKeyChange: (field: OnboardingAiKeyField, val: string) => void;
 	agentCredsOk: boolean;
 	secondary: Record<string, string>;
 	onSecondaryChange: (field: string, val: string) => void;
@@ -1021,9 +1042,7 @@ function KeyStep({
 	onProvision: () => void;
 }) {
 	const meta = PROVIDERS_META[provider];
-	const agentReqs = agentCredentialRequirements(agent).filter(
-		(r) => r.field !== "dedalus" || provider !== "dedalus",
-	);
+	const agentReqs = agentCredentialRequirements(agent);
 	return (
 		<div className="space-y-5">
 			<div>
@@ -1085,8 +1104,7 @@ function KeyStep({
 				<>
 					<ReticleLabel>agent inference · {AGENT_LABEL[agent]}</ReticleLabel>
 					{agentReqs.map((req) => {
-						if (req.field === "dedalus") return null;
-						const field = req.field as "anthropic" | "openai";
+						const field = req.field as OnboardingAiKeyField;
 						const onFile = config.aiProviders[field]?.configured ?? false;
 						return (
 							<label key={req.field} className="flex flex-col gap-1.5">

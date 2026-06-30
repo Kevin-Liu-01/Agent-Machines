@@ -92,7 +92,7 @@ export function buildRootJsonLd(): JsonLdGraph {
 				featureList: [
 					"Harness-agnostic agent runtime switchboard",
 					"Sandbox-agnostic machine provider switchboard",
-					"Model path routing through Dedalus, OpenRouter, Vercel AI Gateway, native keys, or OpenAI-compatible endpoints",
+					"Model path routing through Vercel AI Gateway, OpenRouter, native keys, or OpenAI-compatible endpoints",
 					"TypeScript SDK with am.create(...) and agent.run(...)",
 					"REST API surface for provisioning, bootstrap, lifecycle, logs, usage, artifacts, and agent runs",
 					"Persistent agent-on-a-machine worker primitive",

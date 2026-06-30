@@ -16,11 +16,19 @@ const nativeAnthropic: CredentialCheckConfig = {
 	providers: {},
 	aiProviderKeys: { anthropic: "sk-ant-xxx" },
 };
+const vercelGateway: CredentialCheckConfig = {
+	providers: {},
+	aiProviderKeys: { vercelAiGateway: "vck_xxx" },
+};
+const openRouter: CredentialCheckConfig = {
+	providers: {},
+	aiProviderKeys: { openrouter: "sk-or-xxx" },
+};
 const empty: CredentialCheckConfig = { providers: {} };
 
 describe("validateAgentCredentials", () => {
-	// codex 0.118 only speaks the OpenAI Responses API; the Dedalus router
-	// doesn't serve it, so Dedalus alone must NOT satisfy codex.
+	// codex 0.118 only speaks the OpenAI Responses API; the Dedalus substrate
+	// key is not a model key, so Dedalus alone must NOT satisfy codex.
 	it("rejects codex with only a Dedalus key and points to alternatives", () => {
 		const res = validateAgentCredentials("codex", dedalusOnly);
 		expect(res.ok).toBe(false);
@@ -34,7 +42,7 @@ describe("validateAgentCredentials", () => {
 		expect(validateAgentCredentials("codex", nativeOpenAI).ok).toBe(true);
 	});
 
-	// claude-code needs the Anthropic Messages API — Dedalus is OpenAI-format.
+	// claude-code needs the Anthropic Messages API.
 	it("rejects claude-code with only a Dedalus key", () => {
 		const res = validateAgentCredentials("claude-code", dedalusOnly);
 		expect(res.ok).toBe(false);
@@ -48,11 +56,19 @@ describe("validateAgentCredentials", () => {
 		expect(validateAgentCredentials("claude-code", nativeAnthropic).ok).toBe(true);
 	});
 
-	// hermes / openclaw route through the gateway, so the Dedalus router key
-	// (which routes 200+ models, OpenAI-compatible) is sufficient.
-	it("accepts hermes and openclaw with only a Dedalus key", () => {
-		expect(validateAgentCredentials("hermes", dedalusOnly).ok).toBe(true);
-		expect(validateAgentCredentials("openclaw", dedalusOnly).ok).toBe(true);
+	it("accepts hermes and openclaw with Vercel AI Gateway first", () => {
+		expect(validateAgentCredentials("hermes", vercelGateway).ok).toBe(true);
+		expect(validateAgentCredentials("openclaw", vercelGateway).ok).toBe(true);
+	});
+
+	it("accepts hermes and openclaw with OpenRouter as fallback", () => {
+		expect(validateAgentCredentials("hermes", openRouter).ok).toBe(true);
+		expect(validateAgentCredentials("openclaw", openRouter).ok).toBe(true);
+	});
+
+	it("rejects hermes and openclaw with only a Dedalus substrate key", () => {
+		expect(validateAgentCredentials("hermes", dedalusOnly).ok).toBe(false);
+		expect(validateAgentCredentials("openclaw", dedalusOnly).ok).toBe(false);
 	});
 
 	it("rejects every agent when no key is on file", () => {

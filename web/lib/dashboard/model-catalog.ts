@@ -22,7 +22,7 @@ export const MODEL_PROVIDER_LABEL: Record<ModelProviderGroup, string> = {
 	other: "More",
 };
 
-/** Curated slugs for the dashboard model picker (Dedalus router format). */
+/** Curated slugs for the dashboard model picker (provider/model format). */
 export const MODEL_CATALOG: readonly ModelOption[] = [
 	{
 		id: "anthropic/claude-opus-4-8",

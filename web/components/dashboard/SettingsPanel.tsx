@@ -359,6 +359,22 @@ export function SettingsPanel({ initialConfig }: Props) {
 				</div>
 				<div className="grid gap-px bg-[var(--ret-border)] md:grid-cols-2">
 					<AiProviderBox
+						title="Vercel AI Gateway"
+						hint="Hermes, OpenClaw preferred"
+						configured={config.aiProviders.vercelAiGateway.configured}
+						fields={[
+							["API key", vercelAiGatewayKey, setVercelAiGatewayKey, "vck_..."],
+						]}
+					/>
+					<AiProviderBox
+						title="OpenRouter"
+						hint="Hermes, OpenClaw fallback"
+						configured={config.aiProviders.openrouter.configured}
+						fields={[
+							["API key", openrouterKey, setOpenrouterKey, "sk-or-..."],
+						]}
+					/>
+					<AiProviderBox
 						title="Anthropic"
 						hint="Claude Code, OpenClaw, Hermes"
 						configured={config.aiProviders.anthropic.configured}
@@ -372,22 +388,6 @@ export function SettingsPanel({ initialConfig }: Props) {
 						configured={config.aiProviders.openai.configured}
 						fields={[
 							["API key", openaiKey, setOpenaiKey, "sk-..."],
-						]}
-					/>
-					<AiProviderBox
-						title="OpenRouter"
-						hint="Hermes, OpenClaw -- 200+ model paths"
-						configured={config.aiProviders.openrouter.configured}
-						fields={[
-							["API key", openrouterKey, setOpenrouterKey, "sk-or-..."],
-						]}
-					/>
-					<AiProviderBox
-						title="Vercel AI Gateway"
-						hint="Hermes, OpenClaw -- managed gateway"
-						configured={config.aiProviders.vercelAiGateway.configured}
-						fields={[
-							["API key", vercelAiGatewayKey, setVercelAiGatewayKey, "vai-..."],
 						]}
 					/>
 					<AiProviderBox

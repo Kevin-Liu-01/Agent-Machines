@@ -42,7 +42,19 @@ describe("enumerateFeasibleArms", () => {
 		expect(new Set(arms.map((a) => a.substrate))).toEqual(new Set(["e2b"]));
 	});
 
-	it("makes hermes feasible on a Dedalus key with a ready router", () => {
+	it("makes hermes feasible on Vercel AI Gateway first when configured", () => {
+		const arms = enumerateFeasibleArms(
+			cfg({
+				providers: { e2b: { apiKey: "e2b" } },
+				aiProviderKeys: { vercelAiGateway: "vck" },
+			}),
+		);
+		const hermes = arms.filter((a) => a.runtime === "hermes");
+		expect(hermes.length).toBeGreaterThan(0);
+		expect(hermes.every((a) => a.routerId === "vercel-ai-gateway")).toBe(true);
+	});
+
+	it("does not treat a Dedalus substrate key as a router key", () => {
 		const arms = enumerateFeasibleArms(
 			cfg({
 				providers: { dedalus: { apiKey: "dk" }, e2b: { apiKey: "e2b" } },
@@ -50,8 +62,7 @@ describe("enumerateFeasibleArms", () => {
 			}),
 		);
 		const hermes = arms.filter((a) => a.runtime === "hermes");
-		expect(hermes.length).toBeGreaterThan(0);
-		expect(hermes.every((a) => a.routerId !== null)).toBe(true);
+		expect(hermes).toEqual([]);
 	});
 
 	it("returns no arms when nothing is configured", () => {

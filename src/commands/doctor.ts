@@ -227,12 +227,19 @@ async function checkLocalEnv(): Promise<Config | null> {
 
 	if (config) {
 		pass("Model configured", config.model);
+		pass("Chat gateway", config.chatBaseUrl);
 		pass("Machine spec", `${config.vcpu} vCPU · ${config.memoryMib} MiB · ${config.storageGib} GiB`);
 		config.autosleep ? pass("Autosleep", "on") : WARN("Autosleep", "off -- keepalive cron should be installed");
 
 		config.cursorApiKey ? pass("CURSOR_API_KEY", "set") : dim("  CURSOR_API_KEY not set (optional)");
 		config.anthropicApiKey ? pass("ANTHROPIC_API_KEY", "set") : dim("  ANTHROPIC_API_KEY not set (optional)");
 		config.openaiApiKey ? pass("OPENAI_API_KEY", "set") : dim("  OPENAI_API_KEY not set (optional)");
+		process.env.AI_GATEWAY_API_KEY
+			? pass("AI_GATEWAY_API_KEY", "set")
+			: dim("  AI_GATEWAY_API_KEY not set (preferred)");
+		process.env.OPENROUTER_API_KEY
+			? pass("OPENROUTER_API_KEY", "set")
+			: dim("  OPENROUTER_API_KEY not set (fallback)");
 		config.aiGatewayUrl ? pass("AI_GATEWAY_URL", config.aiGatewayUrl) : dim("  AI_GATEWAY_URL not set (optional)");
 	}
 

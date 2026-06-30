@@ -4,7 +4,7 @@
  * deploy UI, validation, and the bootstrap runner all agree.
  *
  * Two shapes of upstream:
- *  - Routers (OpenAI-compatible): Dedalus, Vercel AI Gateway, or any
+ *  - Routers (OpenAI-compatible): Vercel AI Gateway, OpenRouter, or any
  *    custom openai-compatible endpoint. Hermes/OpenClaw can use any of
  *    these, picked per-machine via the gateway profile (gatewayProfileId).
  *  - Native providers: codex requires native OpenAI (Responses API),
@@ -16,7 +16,6 @@ import type { AgentKind, GatewayKind } from "@/lib/user-config/schema";
 
 /** Canonical base URLs (the LLM router/inference endpoints, not control planes). */
 export const UPSTREAM_BASE_URL = {
-	dedalus: "https://api.dedaluslabs.ai/v1",
 	openai: "https://api.openai.com/v1",
 	anthropic: "https://api.anthropic.com/v1",
 	openrouter: "https://openrouter.ai/api/v1",
@@ -25,21 +24,19 @@ export const UPSTREAM_BASE_URL = {
 } as const;
 
 export const GATEWAY_KIND_LABEL: Record<GatewayKind, string> = {
-	dedalus: "Dedalus router",
 	"vercel-ai-gateway": "Vercel AI Gateway",
 	"openai-compatible": "OpenAI-compatible",
 };
 
 /**
  * Which stored credential a router draws its key from. Matches the
- * `aiProviderKeys` slugs (+ `dedalus`, stored under providers) so the UI can
+ * `aiProviderKeys` slugs so the UI can
  * show a "needs key" hint and the bootstrap can resolve the key.
  */
 export type RouterSource =
-	| "dedalus"
 	| "vercelAiGateway"
-	| "openai"
 	| "openrouter"
+	| "openai"
 	| "google"
 	| "custom";
 
@@ -52,15 +49,14 @@ export type RouterPreset = {
 };
 
 /**
- * Built-in routers offered to hermes/openclaw with zero setup. `dedalus-default`
- * and `vercel-ai-gateway` reuse the seeded gateway-profile ids; the rest are
- * virtual presets resolved by id from the user's provider keys at bootstrap.
+ * Built-in routers offered to hermes/openclaw with zero setup. Keep this in
+ * fallback order: Vercel AI Gateway first, OpenRouter second, then direct /
+ * custom upstreams.
  */
 export const ROUTER_PRESETS: ReadonlyArray<RouterPreset> = [
-	{ id: "dedalus-default", label: "Dedalus router (200+ models)", source: "dedalus", baseUrl: UPSTREAM_BASE_URL.dedalus },
 	{ id: "vercel-ai-gateway", label: "Vercel AI Gateway", source: "vercelAiGateway", baseUrl: UPSTREAM_BASE_URL.vercelAiGateway },
-	{ id: "openai-router", label: "OpenAI (direct)", source: "openai", baseUrl: UPSTREAM_BASE_URL.openai },
 	{ id: "openrouter-router", label: "OpenRouter", source: "openrouter", baseUrl: UPSTREAM_BASE_URL.openrouter },
+	{ id: "openai-router", label: "OpenAI (direct)", source: "openai", baseUrl: UPSTREAM_BASE_URL.openai },
 	{ id: "google-router", label: "Google (OpenAI-compatible)", source: "google", baseUrl: UPSTREAM_BASE_URL.google },
 	{ id: "custom-router", label: "Custom OpenAI-compatible", source: "custom", baseUrl: null },
 ];
@@ -70,7 +66,7 @@ export function routerPresetById(id: string | null | undefined): RouterPreset | 
 	return ROUTER_PRESETS.find((p) => p.id === id) ?? null;
 }
 
-export const DEFAULT_ROUTER_ID = "dedalus-default";
+export const DEFAULT_ROUTER_ID = "vercel-ai-gateway";
 
 /** Native (non-router) provider an agent is locked to, if any. */
 export function requiredNativeUpstream(
@@ -93,7 +89,7 @@ export function nativeUpstreamReason(provider: "openai" | "anthropic"): string {
 
 /**
  * True when the agent runs as a gateway over an OpenAI-compatible upstream
- * and can therefore pick any router (Dedalus / Vercel AI Gateway / custom).
+ * and can therefore pick any router (Vercel AI Gateway / OpenRouter / custom).
  */
 export function agentUsesRouter(agentKind: AgentKind): boolean {
 	return agentKind === "hermes" || agentKind === "openclaw";
@@ -101,12 +97,22 @@ export function agentUsesRouter(agentKind: AgentKind): boolean {
 
 /** Stored-credential slugs a gateway agent can draw an upstream key from. */
 export const ROUTER_SOURCE_KEYS: ReadonlyArray<RouterSource> = [
-	"dedalus",
 	"vercelAiGateway",
-	"openai",
 	"openrouter",
+	"openai",
 	"google",
 	"custom",
+];
+
+type GatewayFallbackSource = RouterSource | "anthropic";
+
+const GATEWAY_FALLBACK_SOURCE_KEYS: ReadonlyArray<GatewayFallbackSource> = [
+	"vercelAiGateway",
+	"openrouter",
+	"openai",
+	"google",
+	"custom",
+	"anthropic",
 ];
 
 export type ReadinessStatus = "ready" | "fallback" | "blocked";
@@ -143,7 +149,7 @@ export function agentUpstreamReadiness(
 			status: "blocked",
 			detail: `Needs a native ${native === "openai" ? "OpenAI" : "Anthropic"} key — ${
 				agentKind === "codex" ? "the OpenAI Responses API" : "the Anthropic Messages API"
-			} can't run on the Dedalus router.`,
+			} can't run through an OpenAI-compatible router.`,
 			needs: native,
 		};
 	}
@@ -152,17 +158,17 @@ export function agentUpstreamReadiness(
 	if (preset && aiConfigured[preset.source]) {
 		return { status: "ready", detail: `Uses ${preset.label}.`, needs: null };
 	}
-	const anyUpstream = ROUTER_SOURCE_KEYS.some((key) => aiConfigured[key]);
+	const anyUpstream = GATEWAY_FALLBACK_SOURCE_KEYS.some((key) => aiConfigured[key]);
 	if (anyUpstream) {
 		return {
 			status: "fallback",
-			detail: `${preset?.label ?? "Selected router"} has no key — bootstrap falls back to a configured provider.`,
+			detail: `${preset?.label ?? "Selected router"} has no key — bootstrap falls back in provider priority order.`,
 			needs: preset?.source ?? null,
 		};
 	}
 	return {
 		status: "blocked",
 		detail: "No AI provider key configured. Add one to deploy a gateway agent.",
-		needs: preset?.source ?? "dedalus",
+		needs: preset?.source ?? "vercelAiGateway",
 	};
 }

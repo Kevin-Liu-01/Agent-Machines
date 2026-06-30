@@ -59,7 +59,7 @@ Two independent axes, one account — analogous to OpenRouter's model routing ap
 |------|---------|----------------|
 | **Runtime** | Hermes, OpenClaw, Claude Code, Codex CLI | Bootstrap recipes + launch commands |
 | **Substrate** | E2B, Sprites.dev, Dedalus Machines, Vercel Sandbox | `MachineProvider` in `web/lib/providers/*` |
-| **Model upstream** | Dedalus, OpenRouter, Vercel AI Gateway, native keys, OpenAI-compatible | Per-machine router + credential gate |
+| **Model upstream** | Vercel AI Gateway, OpenRouter, native keys, custom OpenAI-compatible | Per-machine router + credential gate |
 
 ### 3.2 Persistent worker harness
 

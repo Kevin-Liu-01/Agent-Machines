@@ -14,7 +14,7 @@ Five jobs:
 
 - **Four substrates:** E2B, Sprites.dev, Dedalus Machines, Vercel Sandbox (`lib/providers/*`). Dedalus benchmarks best on boot/sleep; all four are first-class.
 - **Four runtimes:** Hermes, OpenClaw, Claude Code, Codex CLI (`lib/agents.ts`).
-- **Model routers:** Dedalus, OpenRouter, Vercel AI Gateway, native Anthropic/OpenAI, OpenAI-compatible gateways — credential gate before provision.
+- **Model routers:** Vercel AI Gateway first, OpenRouter second, then native Anthropic/OpenAI or other supported OpenAI-compatible gateways — credential gate before provision.
 - **Registry:** 1,400+ installable items (MCP registry cache, skills.sh, npm, bundled loadout, Cursor plugins).
 - **Workers + Memory:** presets and portable persona bundles; deploy onto any machine/substrate.
 - **Metrics + crons:** Supabase persistence; `/api/internal/cron/tick` (see `vercel.json`) runs scheduled jobs and metrics collection.

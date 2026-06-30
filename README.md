@@ -63,7 +63,7 @@ Most products lock you into one runtime *or* one cloud. Agent Machines routes bo
 |------|---------|-------------|
 | **Agent runtime** | Hermes, OpenClaw, Claude Code, Codex CLI | bootstrap phase recipes + launch commands |
 | **Substrate** | E2B, Sprites.dev, Vercel Sandbox, Dedalus Machines | `MachineProvider` (`web/lib/providers/*`) |
-| **Model upstream** | Dedalus router, OpenRouter, native OpenAI / Anthropic keys, OpenAI-compatible gateway | router presets + per-machine credential gate |
+| **Model upstream** | Vercel AI Gateway, OpenRouter, native OpenAI / Anthropic keys, custom OpenAI-compatible fallback | router presets + per-machine credential gate |
 
 A **credential gate** blocks provisioning when the chosen runtime has no usable model upstream or the substrate has no key, so spin-up never fails silently downstream.
 
@@ -199,7 +199,7 @@ persistent worker (provider home: /home/user | /home/sprite | /vercel/sandbox | 
   |-- ~/.agent-machines/          skills, mcps, chats, crons, sessions, logs, artifacts
   |-- <home>/agent-machines/      git checkout, used for knowledge reload
   v
-model upstream (Dedalus router | OpenRouter | native OpenAI/Anthropic | OpenAI-compatible)
+model upstream (Vercel AI Gateway | OpenRouter | native OpenAI/Anthropic | custom)
 ```
 
 ---

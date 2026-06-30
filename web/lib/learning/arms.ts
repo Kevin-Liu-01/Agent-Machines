@@ -66,7 +66,6 @@ export function credentialCheckConfig(config: UserConfig): CredentialCheckConfig
 export function aiConfiguredMap(config: UserConfig): Record<string, boolean> {
 	const keys = config.aiProviderKeys ?? {};
 	return {
-		dedalus: Boolean(config.providers?.dedalus?.apiKey),
 		anthropic: Boolean(keys.anthropic),
 		openai: Boolean(keys.openai),
 		openrouter: Boolean(keys.openrouter),

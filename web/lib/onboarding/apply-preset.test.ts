@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { findPreset } from "@/lib/dashboard/presets";
+import { DEFAULT_ROUTER_ID } from "@/lib/agents/upstreams";
 import {
 	BAREBONES_MEMORY_BUNDLE_ID,
 	DEFAULT_USER_CONFIG,
@@ -20,7 +21,7 @@ describe("applyPreset", () => {
 			preset,
 			agentKind: "hermes",
 			model: "m",
-			gatewayProfileId: "dedalus-default",
+			gatewayProfileId: DEFAULT_ROUTER_ID,
 			machineId: "machine-123",
 		});
 		expect(out.memoryBundleId).toBe(`${PRESET_MEMORY_PREFIX}deep-research`);
@@ -37,7 +38,7 @@ describe("applyPreset", () => {
 			preset: null,
 			agentKind: "hermes",
 			model: "m",
-			gatewayProfileId: "dedalus-default",
+			gatewayProfileId: DEFAULT_ROUTER_ID,
 			machineId: "machine-9",
 		});
 		expect(out.memoryBundleId).toBe(BAREBONES_MEMORY_BUNDLE_ID);
@@ -53,7 +54,7 @@ describe("applyPreset", () => {
 			preset,
 			agentKind: "hermes",
 			model: "m",
-			gatewayProfileId: "dedalus-default",
+			gatewayProfileId: DEFAULT_ROUTER_ID,
 			machineId: "m1",
 		});
 		const second = applyPreset({
@@ -61,7 +62,7 @@ describe("applyPreset", () => {
 			preset,
 			agentKind: "hermes",
 			model: "m",
-			gatewayProfileId: "dedalus-default",
+			gatewayProfileId: DEFAULT_ROUTER_ID,
 			machineId: "m2",
 		});
 		expect(second.workers.length).toBe(first.workers.length + 1);

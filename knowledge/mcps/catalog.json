@@ -9,7 +9,7 @@
     "skillCount": 161,
     "providers": ["dedalus", "e2b", "sprites"],
     "agentKinds": ["hermes", "openclaw", "claude-code", "codex"],
-    "aiProviders": ["anthropic", "openai", "openrouter", "google", "vercelAiGateway", "custom", "dedalus"]
+    "aiProviders": ["vercelAiGateway", "openrouter", "anthropic", "openai", "google", "custom"]
   },
   "servers": [
     {

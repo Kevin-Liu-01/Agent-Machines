@@ -343,24 +343,10 @@ async function runPhase(
 
 type UpstreamProvider = { key: string; baseUrl: string };
 
-const DEDALUS_BASE = "https://api.dedaluslabs.ai/v1";
-const DEDALUS_DCS_HOST = "dcs.dedaluslabs.ai";
 const ANTHROPIC_BASE = "https://api.anthropic.com/v1";
 const OPENAI_BASE = "https://api.openai.com/v1";
 const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
 const VERCEL_AI_GATEWAY_BASE = "https://ai-gateway.vercel.sh/v1";
-
-/**
- * Machine control plane (dcs.dedaluslabs.ai) ≠ LLM router (api.dedaluslabs.ai/v1).
- * Provider creds often store the DCS URL — normalize before writing Hermes config.
- */
-export function normalizeDedalusLlmBaseUrl(baseUrl: string | undefined): string {
-	if (!baseUrl || baseUrl.includes(DEDALUS_DCS_HOST)) {
-		return DEDALUS_BASE;
-	}
-	const trimmed = baseUrl.trim().replace(/\/$/, "");
-	return trimmed.endsWith("/v1") ? trimmed : `${trimmed}/v1`;
-}
 
 /**
  * Resolve the LLM upstream (key + base URL) for a machine's agent.
@@ -369,9 +355,8 @@ export function normalizeDedalusLlmBaseUrl(baseUrl: string | undefined): string 
  *   Anthropic Messages); no router can substitute, so we use the native key.
  * - hermes / openclaw are OpenAI-compatible gateways: they honor the
  *   machine's chosen gateway profile (gatewayProfileId), so users can route
- *   through Dedalus, Vercel AI Gateway, or any custom OpenAI-compatible
- *   endpoint instead of being locked to Dedalus. Falls back to the first
- *   configured key (Dedalus-first) for back-compat when no profile resolves.
+ *   through Vercel AI Gateway, OpenRouter, or any custom OpenAI-compatible
+ *   endpoint. Falls back in provider priority order when no profile resolves.
  */
 function resolveUpstream(machine: MachineRef, config: UserConfig): UpstreamProvider {
 	const agent = machine.agentKind;
@@ -410,20 +395,23 @@ function resolveRouterPreset(
 	if (!preset) return null;
 	const ai = config.aiProviderKeys ?? {};
 	switch (preset.source) {
-		case "dedalus":
-			return {
-				key: config.providers.dedalus?.apiKey ?? "",
-				baseUrl: normalizeDedalusLlmBaseUrl(config.providers.dedalus?.baseUrl),
-			};
 		case "vercelAiGateway":
 			return {
-				key: ai.vercelAiGateway ?? process.env.VERCEL_OIDC_TOKEN?.trim() ?? "",
+				key:
+					ai.vercelAiGateway ??
+					process.env.AI_GATEWAY_API_KEY?.trim() ??
+					process.env.VERCEL_OIDC_TOKEN?.trim() ??
+					process.env.AI_GATEWAY_KEY?.trim() ??
+					"",
 				baseUrl: preset.baseUrl ?? VERCEL_AI_GATEWAY_BASE,
 			};
 		case "openai":
 			return { key: ai.openai ?? "", baseUrl: preset.baseUrl ?? OPENAI_BASE };
 		case "openrouter":
-			return { key: ai.openrouter ?? "", baseUrl: preset.baseUrl ?? OPENROUTER_BASE };
+			return {
+				key: ai.openrouter ?? process.env.OPENROUTER_API_KEY?.trim() ?? "",
+				baseUrl: preset.baseUrl ?? OPENROUTER_BASE,
+			};
 		case "google":
 			return { key: ai.google ?? "", baseUrl: preset.baseUrl ?? OPENAI_BASE };
 		case "custom":
@@ -439,18 +427,14 @@ function gatewayProfileToUpstream(
 	config: UserConfig,
 ): UpstreamProvider {
 	const ai = config.aiProviderKeys ?? {};
-	if (profile.kind === "dedalus") {
-		return {
-			key: config.providers.dedalus?.apiKey ?? "",
-			baseUrl: normalizeDedalusLlmBaseUrl(config.providers.dedalus?.baseUrl),
-		};
-	}
 	if (profile.kind === "vercel-ai-gateway") {
 		return {
 			key:
 				profile.apiKey ??
 				ai.vercelAiGateway ??
+				process.env.AI_GATEWAY_API_KEY?.trim() ??
 				process.env.VERCEL_OIDC_TOKEN?.trim() ??
+				process.env.AI_GATEWAY_KEY?.trim() ??
 				"",
 			baseUrl: profile.baseUrl ?? VERCEL_AI_GATEWAY_BASE,
 		};
@@ -459,28 +443,40 @@ function gatewayProfileToUpstream(
 	const baseUrl = profile.baseUrl ?? OPENAI_BASE;
 	let key = profile.apiKey ?? "";
 	if (!key) {
-		if (baseUrl.includes("openrouter")) key = ai.openrouter ?? "";
-		else if (baseUrl.includes("openai.com")) key = ai.openai ?? "";
-		else if (baseUrl.includes("dedalus")) key = config.providers.dedalus?.apiKey ?? "";
-		else if (baseUrl.includes("ai-gateway.vercel")) key = ai.vercelAiGateway ?? "";
+		if (baseUrl.includes("openrouter")) key = ai.openrouter ?? process.env.OPENROUTER_API_KEY?.trim() ?? "";
+		else if (baseUrl.includes("openai.com")) key = ai.openai ?? process.env.OPENAI_API_KEY?.trim() ?? "";
+		else if (baseUrl.includes("dedalus")) key = "";
+		else if (baseUrl.includes("ai-gateway.vercel")) {
+			key =
+				ai.vercelAiGateway ??
+				process.env.AI_GATEWAY_API_KEY?.trim() ??
+				process.env.VERCEL_OIDC_TOKEN?.trim() ??
+				process.env.AI_GATEWAY_KEY?.trim() ??
+				"";
+		}
 		else key = ai.custom?.key ?? "";
 	}
 	return { key, baseUrl };
 }
 
-/** Back-compat fallback: first configured upstream, Dedalus-first. */
+/** Fallback priority: Vercel AI Gateway, OpenRouter, then other configured providers. */
 function firstConfiguredUpstream(config: UserConfig): UpstreamProvider {
 	const ai = config.aiProviderKeys ?? {};
-	const dedalus = config.providers.dedalus?.apiKey;
-	if (dedalus) {
-		return { key: dedalus, baseUrl: normalizeDedalusLlmBaseUrl(config.providers.dedalus?.baseUrl) };
+	const vercelGateway =
+		ai.vercelAiGateway ??
+		process.env.AI_GATEWAY_API_KEY?.trim() ??
+		process.env.VERCEL_OIDC_TOKEN?.trim() ??
+		process.env.AI_GATEWAY_KEY?.trim();
+	if (vercelGateway) {
+		return { key: vercelGateway, baseUrl: VERCEL_AI_GATEWAY_BASE };
 	}
-	if (ai.vercelAiGateway) return { key: ai.vercelAiGateway, baseUrl: VERCEL_AI_GATEWAY_BASE };
-	if (ai.anthropic) return { key: ai.anthropic, baseUrl: ANTHROPIC_BASE };
+	const openrouter = ai.openrouter ?? process.env.OPENROUTER_API_KEY?.trim();
+	if (openrouter) return { key: openrouter, baseUrl: OPENROUTER_BASE };
 	if (ai.openai) return { key: ai.openai, baseUrl: OPENAI_BASE };
-	if (ai.openrouter) return { key: ai.openrouter, baseUrl: OPENROUTER_BASE };
+	if (ai.google) return { key: ai.google, baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai" };
 	if (ai.custom?.key) return { key: ai.custom.key, baseUrl: ai.custom.url };
-	return { key: "", baseUrl: DEDALUS_BASE };
+	if (ai.anthropic) return { key: ai.anthropic, baseUrl: ANTHROPIC_BASE };
+	return { key: "", baseUrl: VERCEL_AI_GATEWAY_BASE };
 }
 
 function commandFor(
@@ -824,7 +820,7 @@ async function startGatewaySandbox(
 /**
  * Map an upstream base URL to a hermes-agent provider id. Built-in providers
  * (openrouter/openai/anthropic) are registered as pooled credentials via
- * `hermes auth add`; everything else (Dedalus, Vercel AI Gateway, custom) is a
+ * `hermes auth add`; everything else (Vercel AI Gateway, custom) is a
  * `custom` OpenAI-compatible endpoint configured with base_url + api_key.
  */
 function hermesProviderId(rawBaseUrl: string): { id: string; builtin: boolean } {
@@ -875,7 +871,7 @@ function configureHermes(
 /**
  * Map an upstream base URL to an openclaw provider. openclaw bundles
  * openrouter/openai/anthropic (auth via a pasted API key); any other
- * OpenAI-compatible router (Dedalus / Vercel AI Gateway / custom) is registered
+ * OpenAI-compatible router (Vercel AI Gateway / custom) is registered
  * as a `models.providers` custom provider with api=openai-completions.
  */
 function openclawProviderFor(rawBaseUrl: string): { id: string; builtin: boolean } {

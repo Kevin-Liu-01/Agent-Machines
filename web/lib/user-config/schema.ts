@@ -143,11 +143,11 @@ export type AiProviderKeys = {
 export type AiProviderSlug = keyof AiProviderKeys;
 
 export const AI_PROVIDER_SLUGS: ReadonlyArray<AiProviderSlug> = [
+	"vercelAiGateway",
+	"openrouter",
 	"anthropic",
 	"openai",
-	"openrouter",
 	"google",
-	"vercelAiGateway",
 	"custom",
 ];
 
@@ -156,7 +156,7 @@ export type PublicAiProviderStatus = Record<
 	{ configured: boolean; label?: string }
 >;
 
-export type GatewayKind = "dedalus" | "vercel-ai-gateway" | "openai-compatible";
+export type GatewayKind = "vercel-ai-gateway" | "openai-compatible";
 
 export type GatewayProfile = {
 	id: string;
@@ -381,17 +381,6 @@ export type UserConfig = {
 
 const DEFAULT_CREATED_AT = new Date(0).toISOString();
 
-export const DEFAULT_GATEWAY_PROFILE: GatewayProfile = {
-	id: "dedalus-default",
-	name: "Dedalus default",
-	kind: "dedalus",
-	model: DEFAULT_MODEL,
-	baseUrl: "https://api.dedaluslabs.ai/v1",
-	apiKey: null,
-	createdAt: DEFAULT_CREATED_AT,
-	updatedAt: DEFAULT_CREATED_AT,
-};
-
 export const VERCEL_AI_GATEWAY_PROFILE: GatewayProfile = {
 	id: "vercel-ai-gateway",
 	name: "Vercel AI Gateway",
@@ -402,6 +391,19 @@ export const VERCEL_AI_GATEWAY_PROFILE: GatewayProfile = {
 	createdAt: DEFAULT_CREATED_AT,
 	updatedAt: DEFAULT_CREATED_AT,
 };
+
+export const OPENROUTER_GATEWAY_PROFILE: GatewayProfile = {
+	id: "openrouter-router",
+	name: "OpenRouter",
+	kind: "openai-compatible",
+	model: DEFAULT_MODEL,
+	baseUrl: "https://openrouter.ai/api/v1",
+	apiKey: null,
+	createdAt: DEFAULT_CREATED_AT,
+	updatedAt: DEFAULT_CREATED_AT,
+};
+
+export const DEFAULT_GATEWAY_PROFILE: GatewayProfile = VERCEL_AI_GATEWAY_PROFILE;
 
 export const DEFAULT_BOOTSTRAP_PRESETS: BootstrapPreset[] = [
 	{
@@ -564,7 +566,10 @@ export const DEFAULT_USER_CONFIG: UserConfig = {
 	cloudflareTunnelToken: null,
 	activeMachineId: null,
 	cursorApiKey: null,
-	gatewayProfiles: [DEFAULT_GATEWAY_PROFILE, VERCEL_AI_GATEWAY_PROFILE],
+	gatewayProfiles: [
+		VERCEL_AI_GATEWAY_PROFILE,
+		OPENROUTER_GATEWAY_PROFILE,
+	],
 	environmentProfiles: [],
 	bootstrapPresets: DEFAULT_BOOTSTRAP_PRESETS,
 	customLoadout: [],
@@ -636,11 +641,11 @@ export function toPublicConfig(config: UserConfig): PublicUserConfig {
 	});
 	const ai = config.aiProviderKeys;
 	const aiProviders: PublicAiProviderStatus = {
+		vercelAiGateway: { configured: Boolean(ai.vercelAiGateway) },
+		openrouter: { configured: Boolean(ai.openrouter) },
 		anthropic: { configured: Boolean(ai.anthropic) },
 		openai: { configured: Boolean(ai.openai) },
-		openrouter: { configured: Boolean(ai.openrouter) },
 		google: { configured: Boolean(ai.google) },
-		vercelAiGateway: { configured: Boolean(ai.vercelAiGateway) },
 		custom: { configured: Boolean(ai.custom?.key), label: ai.custom?.label },
 	};
 

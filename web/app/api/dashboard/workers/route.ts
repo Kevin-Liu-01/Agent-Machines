@@ -11,6 +11,7 @@ import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 import { findPreset } from "@/lib/dashboard/presets";
 import { listBundles } from "@/lib/memory/bundle";
 import { applyPreset } from "@/lib/onboarding/apply-preset";
+import { DEFAULT_ROUTER_ID } from "@/lib/agents/upstreams";
 import { newWorker } from "@/lib/workers/resolve";
 import {
 	AGENT_KINDS,
@@ -66,7 +67,7 @@ export async function POST(request: Request): Promise<Response> {
 			model:
 				typeof body.model === "string" && body.model.trim() ? body.model.trim() : config.draftModel,
 			gatewayProfileId:
-				typeof body.gatewayProfileId === "string" ? body.gatewayProfileId : "dedalus-default",
+				typeof body.gatewayProfileId === "string" ? body.gatewayProfileId : DEFAULT_ROUTER_ID,
 			machineId: null,
 		});
 		const workers = application.workers.map((w) =>
@@ -85,7 +86,7 @@ export async function POST(request: Request): Promise<Response> {
 				? body.model.trim()
 				: DEFAULT_MODEL,
 		gatewayProfileId:
-			typeof body.gatewayProfileId === "string" ? body.gatewayProfileId : "dedalus-default",
+			typeof body.gatewayProfileId === "string" ? body.gatewayProfileId : DEFAULT_ROUTER_ID,
 		memoryBundleId:
 			typeof body.memoryBundleId === "string" ? body.memoryBundleId : DEFAULT_MEMORY_BUNDLE_ID,
 		rolePrompt: typeof body.rolePrompt === "string" ? body.rolePrompt : null,

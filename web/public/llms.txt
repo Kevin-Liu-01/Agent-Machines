@@ -20,7 +20,7 @@ Agent Machines is a control plane for persistent AI agent workers. It routes age
 
 - **Agent runtime switchboard:** choose the harness/runtime: Hermes, OpenClaw, Claude Code, or Codex CLI.
 - **Sandbox provider switchboard:** choose the machine substrate: E2B, Sprites.dev, Dedalus Machines, or Vercel Sandbox.
-- **Model path switchboard:** use Dedalus Router, OpenRouter, Vercel AI Gateway, native keys, or any OpenAI-compatible `/v1` endpoint.
+- **Model path switchboard:** use Vercel AI Gateway first, OpenRouter second, native keys, or any supported OpenAI-compatible `/v1` endpoint.
 - **Persistent worker control plane:** provision, wake, sleep, inspect, run, and destroy workers while preserving disk-backed state where the provider supports it.
 - **Agent loadout layer:** attach skills, MCP servers, CLIs, service routes, plugins, source entries, and task lanes.
 - **Browser agent console:** run real agent CLIs in the browser through the dashboard terminal/PTY path.
@@ -65,7 +65,7 @@ Agent Machines has multiple routing layers. Each layer is selected independently
 
 3. **Model router**
    - Stores a model slug and gateway profile per worker.
-   - Supports Dedalus Router, OpenRouter, Vercel AI Gateway, native provider keys, and OpenAI-compatible endpoints.
+   - Supports Vercel AI Gateway, OpenRouter, native provider keys, and OpenAI-compatible endpoints.
    - Current SDK aliases include `claude-opus-4.8`, `claude-opus-4.7`, and `sonnet-4.6`.
 
 4. **Loadout router**

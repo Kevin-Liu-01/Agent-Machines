@@ -21,7 +21,7 @@ export const SITE = {
 	description:
 		"Agent Machines runs persistent agent workers across runtimes and sandboxes with model routing, skills, MCPs, cron, logs, usage, and an SDK.",
 	longDescription:
-		`${PRODUCT.summary} Choose Hermes, OpenClaw, Claude Code, or Codex, then choose E2B, Sprites.dev, Dedalus Machines, or Vercel Sandbox. Route model paths through Dedalus, OpenRouter, Vercel AI Gateway, native keys, or any OpenAI-compatible endpoint. ${HARNESS_SUMMARY}.`,
+		`${PRODUCT.summary} Choose Hermes, OpenClaw, Claude Code, or Codex, then choose E2B, Sprites.dev, Dedalus Machines, or Vercel Sandbox. Route model paths through Vercel AI Gateway, OpenRouter, native keys, or any supported OpenAI-compatible endpoint. ${HARNESS_SUMMARY}.`,
 	tagline: PRODUCT.tagline,
 	ogImage: "/opengraph-image",
 	ogImageAlt:
@@ -150,7 +150,7 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "What inference providers are supported?",
 		answer:
-			"Models can use any OpenAI-compatible /v1 endpoint. The CLI defaults to a vendor-agnostic inference URL; override with DEDALUS_CHAT_BASE_URL or configure model.base_url on the machine. The dashboard stores a model slug per machine.",
+			"Models can use any OpenAI-compatible /v1 endpoint. The CLI prefers Vercel AI Gateway, then OpenRouter, then configured fallbacks; override with AGENT_CHAT_BASE_URL or configure model.base_url on the machine. The dashboard stores a model slug per machine.",
 	},
 	{
 		question: "What happens when a machine sleeps?",

@@ -78,7 +78,8 @@ export const DEFAULTS = {
 	storageGib: 10,
 	model: "anthropic/claude-sonnet-4-6",
 	dedalusBaseUrl: "https://dcs.dedaluslabs.ai",
-	dedalusChatBaseUrl: "https://api.dedaluslabs.ai/v1",
+	vercelAiGatewayBaseUrl: "https://ai-gateway.vercel.sh/v1",
+	openRouterBaseUrl: "https://openrouter.ai/api/v1",
 } as const;
 
 /** Shell prefix that puts every agent command on the right path with the right env. */

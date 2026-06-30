@@ -29,7 +29,7 @@
  *     `OPENAI_API_KEY` so the gateway routes correctly whether the
  *     user picks an `anthropic/*` or `openai/*` model via the
  *     `x-openclaw-model` header. The base URL is whatever the user
- *     points the gateway at -- Dedalus's router by default, or any
+ *     points the gateway at -- Vercel AI Gateway by default, or any
  *     other OpenAI-compatible endpoint via `ANTHROPIC_BASE_URL`.
  *
  * Combined into ONE long exec on purpose -- splitting setup across
@@ -66,16 +66,15 @@ type RunArgs = {
 	 * both `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` so OpenClaw's
 	 * built-in router picks whichever provider matches the chosen model.
 	 *
-	 * Kevin's deploys use the Dedalus key here -- it doubles as a
-	 * proxied Anthropic key when paired with `anthropicBaseUrl`.
-	 * BYO Anthropic / OpenAI keys also work; just unset
-	 * `anthropicBaseUrl` to hit the providers directly.
+	 * Agent Machines resolves this key from Vercel AI Gateway first,
+	 * OpenRouter second, then configured fallbacks. BYO Anthropic /
+	 * OpenAI keys also work; just unset `anthropicBaseUrl` to hit the
+	 * providers directly.
 	 */
 	llmApiKey: string;
 	/**
 	 * Optional override for `ANTHROPIC_BASE_URL`. Defaults to the
-	 * Dedalus chat proxy so the same key works for both Dedalus
-	 * provisioning and Anthropic inference.
+	 * selected chat gateway.
 	 */
 	anthropicBaseUrl?: string | null;
 	/**
@@ -100,7 +99,7 @@ export async function runOpenclawBootstrap(
 	const anthropicBaseUrl =
 		args.anthropicBaseUrl !== undefined
 			? args.anthropicBaseUrl
-			: "https://api.dedaluslabs.ai/v1";
+			: "https://ai-gateway.vercel.sh/v1";
 
 	await phase("Install Node + OpenClaw + configure (single shot)", async () => {
 		// Idempotency probe: if the gateway is already listening, skip the

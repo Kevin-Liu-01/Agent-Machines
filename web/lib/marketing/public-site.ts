@@ -116,7 +116,7 @@ export const PRODUCT_FEATURES: ReadonlyArray<ProductFeature> = [
 		navTitle: "Model paths",
 		eyebrow: "Models",
 		description:
-			"Send agents through Dedalus, OpenRouter, Vercel AI Gateway, native keys, or your own OpenAI-compatible endpoint.",
+			"Send agents through Vercel AI Gateway, OpenRouter, native keys, or your own OpenAI-compatible endpoint.",
 		longDescription:
 			"Model choice is a machine setting, not a hardcoded agent assumption. Store model path profiles once, then switch the active upstream without rebuilding the worker or leaking credentials to the browser.",
 		icon: "boxes",

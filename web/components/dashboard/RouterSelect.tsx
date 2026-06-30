@@ -14,7 +14,7 @@ type Props = {
 	agentKind: AgentKind | null | undefined;
 	value: string;
 	onChange: (id: string) => void;
-	/** Map of which provider keys are configured (dedalus/openai/anthropic/...). */
+	/** Map of which model provider keys are configured (openrouter/openai/anthropic/...). */
 	aiConfigured: Record<string, boolean>;
 	disabled?: boolean;
 	label?: string;
@@ -22,8 +22,8 @@ type Props = {
 
 /**
  * Choose the LLM upstream for a machine. hermes/openclaw get a router preset
- * dropdown (Dedalus / Vercel AI Gateway / OpenAI / OpenRouter / Google /
- * custom) so they aren't locked to Dedalus; codex/claude show their fixed
+ * dropdown (Vercel AI Gateway / OpenRouter / OpenAI / Google /
+ * custom) so they can use the gateway order; codex/claude show their fixed
  * native-key requirement.
  */
 export function RouterSelect({
@@ -32,7 +32,7 @@ export function RouterSelect({
 	onChange,
 	aiConfigured,
 	disabled,
-	label = "model router (not locked to Dedalus)",
+	label = "model router (Vercel first)",
 }: Props) {
 	const native = agentKind ? requiredNativeUpstream(agentKind) : null;
 
@@ -47,7 +47,7 @@ export function RouterSelect({
 			>
 				{ok
 					? `Uses your ${nativeUpstreamLabel(native)} key.`
-					: `Needs a native ${native === "openai" ? "OpenAI" : "Anthropic"} key — the Dedalus router can't drive this CLI. Add one in Settings, or pick Hermes/OpenClaw.`}
+					: `Needs native ${native === "openai" ? "OpenAI" : "Anthropic"} key. Add one in Settings, or pick Hermes/OpenClaw.`}
 			</p>
 		);
 	}
@@ -78,7 +78,7 @@ export function RouterSelect({
 			</label>
 			{!aiConfigured[ROUTER_PRESETS.find((p) => p.id === value)?.source ?? ""] ? (
 				<span className="font-mono text-[10px] text-[var(--ret-amber)]">
-					This router has no key yet — add one in Settings, or bootstrap falls back to your first configured provider.
+					This router has no key. Add one in Settings. Bootstrap can use fallbacks.
 				</span>
 			) : null}
 		</div>

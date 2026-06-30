@@ -73,7 +73,7 @@ const TERMINAL_OUTPUT: Record<AgentKind, string[]> = {
 		"  ◈ FTS5 index: 2,847 entries",
 		"  ◈ cron scheduler: 4 jobs active",
 		"  ◈ MCP host: 6 servers connected",
-		"  ◈ provider: dedalus router (api.dedaluslabs.ai/v1)",
+		"  ◈ provider: vercel ai gateway → openrouter fallback",
 		"  ◈ model: claude-sonnet-4-5-20250514",
 		"  ◈ session: ses_7f2a9c (resumed)",
 		"",

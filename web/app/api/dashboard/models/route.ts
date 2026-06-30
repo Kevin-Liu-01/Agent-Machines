@@ -26,7 +26,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 20;
 
-const DEDALUS_DCS_HOST = "dcs.dedaluslabs.ai";
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const FALLBACK_SOURCE = "local fallback";
 
@@ -216,18 +215,21 @@ function catalogSources(
 		const profile = config.gatewayProfiles.find(
 			(p) => p.id === machine.gatewayProfileId,
 		);
-		if (profile) sources.push(sourceFromProfile(profile, config));
+		if (profile && !profile.baseUrl?.toLowerCase().includes("dedalus")) {
+			sources.push(sourceFromProfile(profile, config));
+		}
 		const preset = routerPresetById(machine.gatewayProfileId);
 		if (preset) sources.push(sourceFromRouter(preset.source, preset.baseUrl, config));
 	}
 
-	if (config.providers.dedalus?.apiKey) {
-		sources.push(sourceFromRouter("dedalus", UPSTREAM_BASE_URL.dedalus, config));
-	}
-	if (config.aiProviderKeys.vercelAiGateway) {
+	if (
+		config.aiProviderKeys.vercelAiGateway ||
+		process.env.AI_GATEWAY_API_KEY ||
+		process.env.VERCEL_OIDC_TOKEN
+	) {
 		sources.push(sourceFromRouter("vercelAiGateway", UPSTREAM_BASE_URL.vercelAiGateway, config));
 	}
-	if (config.aiProviderKeys.openrouter) {
+	if (config.aiProviderKeys.openrouter || process.env.OPENROUTER_API_KEY) {
 		sources.push(sourceFromRouter("openrouter", UPSTREAM_BASE_URL.openrouter, config));
 	}
 	if (config.aiProviderKeys.openai) {
@@ -260,9 +262,6 @@ function sourceFromProfile(
 	profile: GatewayProfile,
 	config: UserConfig,
 ): CatalogSource {
-	if (profile.kind === "dedalus") {
-		return sourceFromRouter("dedalus", profile.baseUrl, config);
-	}
 	if (profile.kind === "vercel-ai-gateway") {
 		return {
 			id: profile.id,
@@ -271,7 +270,9 @@ function sourceFromProfile(
 			apiKey:
 				profile.apiKey ??
 				config.aiProviderKeys.vercelAiGateway ??
+				process.env.AI_GATEWAY_API_KEY?.trim() ??
 				process.env.VERCEL_OIDC_TOKEN?.trim() ??
+				process.env.AI_GATEWAY_KEY?.trim() ??
 				"",
 		};
 	}
@@ -291,19 +292,17 @@ function sourceFromRouter(
 ): CatalogSource {
 	const ai = config.aiProviderKeys;
 	switch (source) {
-		case "dedalus":
-			return {
-				id: "dedalus",
-				label: "Dedalus router",
-				baseUrl: normalizeDedalusBase(baseUrl ?? config.providers.dedalus?.baseUrl),
-				apiKey: config.providers.dedalus?.apiKey ?? "",
-			};
 		case "vercelAiGateway":
 			return {
 				id: "vercel-ai-gateway",
 				label: "Vercel AI Gateway",
 				baseUrl: baseUrl ?? UPSTREAM_BASE_URL.vercelAiGateway,
-				apiKey: ai.vercelAiGateway ?? process.env.VERCEL_OIDC_TOKEN?.trim() ?? "",
+				apiKey:
+					ai.vercelAiGateway ??
+					process.env.AI_GATEWAY_API_KEY?.trim() ??
+					process.env.VERCEL_OIDC_TOKEN?.trim() ??
+					process.env.AI_GATEWAY_KEY?.trim() ??
+					"",
 			};
 		case "openai":
 			return {
@@ -317,7 +316,7 @@ function sourceFromRouter(
 				id: "openrouter",
 				label: "OpenRouter",
 				baseUrl: baseUrl ?? UPSTREAM_BASE_URL.openrouter,
-				apiKey: ai.openrouter ?? "",
+				apiKey: ai.openrouter ?? process.env.OPENROUTER_API_KEY?.trim() ?? "",
 			};
 		case "google":
 			return {
@@ -338,11 +337,19 @@ function sourceFromRouter(
 
 function inferKey(baseUrl: string, config: UserConfig): string {
 	const lower = baseUrl.toLowerCase();
-	if (lower.includes("openrouter")) return config.aiProviderKeys.openrouter ?? "";
+	if (lower.includes("openrouter")) {
+		return config.aiProviderKeys.openrouter ?? process.env.OPENROUTER_API_KEY?.trim() ?? "";
+	}
 	if (lower.includes("openai.com")) return config.aiProviderKeys.openai ?? "";
-	if (lower.includes("dedalus")) return config.providers.dedalus?.apiKey ?? "";
+	if (lower.includes("dedalus")) return "";
 	if (lower.includes("ai-gateway.vercel")) {
-		return config.aiProviderKeys.vercelAiGateway ?? process.env.VERCEL_OIDC_TOKEN?.trim() ?? "";
+		return (
+			config.aiProviderKeys.vercelAiGateway ??
+			process.env.AI_GATEWAY_API_KEY?.trim() ??
+			process.env.VERCEL_OIDC_TOKEN?.trim() ??
+			process.env.AI_GATEWAY_KEY?.trim() ??
+			""
+		);
 	}
 	if (lower.includes("googleapis")) return config.aiProviderKeys.google ?? "";
 	return config.aiProviderKeys.custom?.key ?? "";
@@ -358,12 +365,6 @@ function dedupeSources(sources: CatalogSource[]): CatalogSource[] {
 		out.push(source);
 	}
 	return out;
-}
-
-function normalizeDedalusBase(baseUrl: string | null | undefined): string {
-	if (!baseUrl || baseUrl.includes(DEDALUS_DCS_HOST)) return UPSTREAM_BASE_URL.dedalus;
-	const trimmed = baseUrl.trim().replace(/\/$/, "");
-	return trimmed.endsWith("/v1") ? trimmed : `${trimmed}/v1`;
 }
 
 function modelsUrl(baseUrl: string): string {
