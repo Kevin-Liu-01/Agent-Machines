@@ -1,5 +1,6 @@
 import { getCategoryArt } from "@/lib/dashboard/category-art";
 import { cn } from "@/lib/cn";
+import { GeometricCircuit } from "@/components/reticle/GeometricCircuit";
 
 /**
  * Recipe A — subtle background circuit art that fades in from an edge.
@@ -80,6 +81,20 @@ export function CircuitArt({
 }) {
 	const resolved = src ?? getCategoryArt(slug);
 	if (!resolved) return null;
+	if (!src) {
+		return (
+			<div
+				aria-hidden="true"
+				className={cn(
+					"pointer-events-none absolute select-none transition-opacity duration-300",
+					VARIANTS[variant],
+					className,
+				)}
+			>
+				<GeometricCircuit slug={slug} className="h-full w-full" />
+			</div>
+		);
+	}
 	return (
 		// eslint-disable-next-line @next/next/no-img-element -- local decorative line-art, blended; next/image can't carry mix-blend/mask cleanly
 		<img

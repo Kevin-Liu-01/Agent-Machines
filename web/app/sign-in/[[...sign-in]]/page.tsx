@@ -1,6 +1,7 @@
 import { SignIn } from "@clerk/nextjs";
 
 import { BrandMark } from "@/components/BrandMark";
+import { ClerkAppProvider } from "@/components/ClerkAppProvider";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { WingBackground } from "@/components/WingBackground";
@@ -21,6 +22,7 @@ const CLERK_READY = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
  */
 export default function SignInPage() {
 	return (
+		<ClerkAppProvider>
 		<main className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[var(--ret-bg)] px-6 py-16">
 			{/*
 			  Brand backdrop. Light theme renders the cloud-lines plate;
@@ -112,5 +114,6 @@ export default function SignInPage() {
 				)}
 			</div>
 		</main>
+		</ClerkAppProvider>
 	);
 }

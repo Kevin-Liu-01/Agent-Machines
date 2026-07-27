@@ -1,4 +1,3 @@
-import { SignedIn, SignedOut } from "@/components/AuthSwitch";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { ToolIcon } from "@/components/ToolIcon";
@@ -34,27 +33,17 @@ export function LandingCTA() {
 						. Same machine, every device.
 					</p>
 					<div className="mt-6 flex flex-wrap gap-3">
-						<SignedIn>
-							<ReticleButton as="a" href="/dashboard/machines" variant="primary">
-								See my fleet
-							</ReticleButton>
-							<ReticleButton as="a" href="/dashboard/chat" variant="secondary">
-								Open chat
-							</ReticleButton>
-						</SignedIn>
-						<SignedOut>
-							<ReticleButton as="a" href="/sign-in" variant="primary">
-								Sign in to provision
-							</ReticleButton>
-							<ReticleButton
-								as="a"
-								href="https://github.com/Kevin-Liu-01/agent-machines"
-								target="_blank"
-								variant="secondary"
-							>
-								What's inside
-							</ReticleButton>
-						</SignedOut>
+						<ReticleButton as="a" href="/sign-in" variant="primary">
+							Sign in to provision
+						</ReticleButton>
+						<ReticleButton
+							as="a"
+							href="https://github.com/Kevin-Liu-01/agent-machines"
+							target="_blank"
+							variant="secondary"
+						>
+							What's inside
+						</ReticleButton>
 					</div>
 				</div>
 

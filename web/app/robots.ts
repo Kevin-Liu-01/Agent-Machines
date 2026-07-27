@@ -14,6 +14,10 @@ import { SITE } from "@/lib/seo/config";
 export default function robots(): MetadataRoute.Robots {
 	return {
 		rules: [
+			{
+				userAgent: "Twitterbot",
+				allow: ["/opengraph-image", "/api/og", "/api/og-home"],
+			},
 			// Generic catch-all (Bingbot etc. fall through here).
 			{
 				userAgent: "*",

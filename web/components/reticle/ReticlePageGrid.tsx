@@ -1,21 +1,10 @@
 "use client";
 
-import {
-	createContext,
-	useContext,
-	type CSSProperties,
-	type ReactNode,
-} from "react";
+import { type CSSProperties, type ReactNode } from "react";
 
 import { cn } from "@/lib/cn";
 
 import { RETICLE_SIZES } from "./constants";
-
-const PageGridContext = createContext(false);
-
-export function useIsInsidePageGrid(): boolean {
-	return useContext(PageGridContext);
-}
 
 type Props = {
 	children: ReactNode;
@@ -44,8 +33,7 @@ export function ReticlePageGrid({
 		"--ret-content-max": `${contentMax}px`,
 	} as CSSProperties;
 	return (
-		<PageGridContext.Provider value={true}>
-			<div
+		<div
 				className={cn("relative min-h-[100dvh] bg-[var(--ret-bg)]", className)}
 				style={{ ...style, overflowX: "clip" }}
 			>
@@ -86,7 +74,6 @@ export function ReticlePageGrid({
 
 				{/* Content area: max-width capped, centered, full-width lines extend through */}
 				<div className="relative z-[1] flex flex-col">{children}</div>
-			</div>
-		</PageGridContext.Provider>
+		</div>
 	);
 }

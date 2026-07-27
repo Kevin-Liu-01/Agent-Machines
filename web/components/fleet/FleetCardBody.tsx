@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { Logo } from "@/components/Logo";
 import { TerminalStream } from "@/components/fleet/TerminalStream";
 import { ServiceIcon, type ServiceSlug } from "@/components/ServiceIcon";
@@ -45,8 +47,8 @@ export function FleetCardBody({
 	card: FleetStreamCardModel;
 	delaySec?: number;
 	live?: boolean;
-	stateLabel?: React.ReactNode;
-	extraBadges?: React.ReactNode;
+	stateLabel?: ReactNode;
+	extraBadges?: ReactNode;
 }) {
 	const color = card.hue;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { DashboardPageBody } from "@/components/dashboard/DashboardPageBody";
 import { Logo, type Mark } from "@/components/Logo";
@@ -10,7 +10,6 @@ import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { ReticleSelect } from "@/components/reticle/ReticleSelect";
-import { WingBackground } from "@/components/WingBackground";
 import { AGENTS } from "@/lib/agents";
 import { TRUSTED_ADDONS } from "@/lib/dashboard/loadout";
 import { groupedModelCatalog, modelDisplayLabel } from "@/lib/dashboard/model-catalog";
@@ -203,30 +202,6 @@ export function SettingsPanel({ initialConfig }: Props) {
 
 	return (
 		<DashboardPageBody>
-			<ReticleFrame>
-				<div className="grid gap-px bg-[var(--ret-border)] md:grid-cols-[1.2fr_0.6fr_0.6fr_0.6fr_0.6fr_0.6fr_0.6fr]">
-					<div className="relative min-h-[120px] overflow-hidden bg-[var(--ret-bg)] p-3">
-						<WingBackground
-							variant="nyx-lines"
-							opacity={{ light: 0.22, dark: 0.34 }}
-							fadeEdges
-						/>
-						<div className="relative z-10">
-							<ReticleLabel>CONFIG GRAPH</ReticleLabel>
-							<p className="mt-2 max-w-[32ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
-								Settings become reusable recipes: AI keys, provider, gateway,
-								agent, environment, then machine.
-							</p>
-						</div>
-					</div>
-					<Summary label="ai keys" value={aiProviderCount(config.aiProviders)} />
-					<Summary label="hosts" value={configuredCount(config.providers)} />
-					<Summary label="gateways" value={config.gatewayProfiles.length} />
-					<Summary label="sources" value={config.loadoutSources.length} />
-					<Summary label="custom" value={config.customLoadout.length} />
-				</div>
-			</ReticleFrame>
-
 			{state.phase !== "idle" ? (
 				<ReticleFrame
 					className={
@@ -240,6 +215,8 @@ export function SettingsPanel({ initialConfig }: Props) {
 				</p>
 				</ReticleFrame>
 			) : null}
+
+			<DeveloperApiKey />
 
 			<Section
 				kicker="ACTIVE CONFIGURATION"
@@ -563,17 +540,6 @@ function ModelConfigSelect({
 	);
 }
 
-function Summary({ label, value }: { label: string; value: number }) {
-	return (
-		<div className="bg-[var(--ret-bg)] px-3 py-2">
-			<p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-				{label}
-			</p>
-			<p className="font-mono text-lg tabular-nums text-[var(--ret-text)]">{value}</p>
-		</div>
-	);
-}
-
 function ProviderBox({
 	title,
 	mark,
@@ -740,10 +706,142 @@ function parse<T>(value: string): T {
 	return JSON.parse(value) as T;
 }
 
-function configuredCount(providers: PublicUserConfig["providers"]): number {
-	return Object.values(providers).filter((provider) => provider.configured).length;
-}
+type ApiKeyInfo = {
+	prefix: string;
+	lastFour: string;
+	createdAt: string;
+};
 
-function aiProviderCount(aiProviders: PublicUserConfig["aiProviders"]): number {
-	return Object.values(aiProviders).filter((p) => p.configured).length;
+function DeveloperApiKey() {
+	const [key, setKey] = useState<ApiKeyInfo | null>(null);
+	const [token, setToken] = useState<string | null>(null);
+	const [phase, setPhase] = useState<"loading" | "idle" | "working">("loading");
+	const [message, setMessage] = useState<string | null>(null);
+
+	useEffect(() => {
+		let alive = true;
+		void fetch("/api/dashboard/api-key")
+			.then(async (response) => {
+				const body = (await response.json().catch(() => ({}))) as {
+					key?: ApiKeyInfo | null;
+					message?: string;
+				};
+				if (!response.ok) {
+					throw new Error(
+						response.status === 401
+							? "Sign in with Clerk to manage API keys."
+							: body.message ?? "Could not load API key",
+					);
+				}
+				if (alive) setKey(body.key ?? null);
+			})
+			.catch((error: unknown) => {
+				if (alive) setMessage(error instanceof Error ? error.message : "Could not load API key");
+			})
+			.finally(() => {
+				if (alive) setPhase("idle");
+			});
+		return () => {
+			alive = false;
+		};
+	}, []);
+
+	async function rotate(): Promise<void> {
+		setPhase("working");
+		setMessage(null);
+		try {
+			const response = await fetch("/api/dashboard/api-key", { method: "POST" });
+			const body = (await response.json().catch(() => ({}))) as {
+				token?: string;
+				key?: ApiKeyInfo;
+				message?: string;
+			};
+			if (!response.ok || !body.token || !body.key) {
+				throw new Error(body.message ?? "Could not create API key");
+			}
+			setKey(body.key);
+			setToken(body.token);
+			setMessage("Copy this key now. It will not be shown again.");
+		} catch (error) {
+			setMessage(error instanceof Error ? error.message : "Could not create API key");
+		} finally {
+			setPhase("idle");
+		}
+	}
+
+	async function revoke(): Promise<void> {
+		setPhase("working");
+		setMessage(null);
+		try {
+			const response = await fetch("/api/dashboard/api-key", { method: "DELETE" });
+			const body = (await response.json().catch(() => ({}))) as { message?: string };
+			if (!response.ok) throw new Error(body.message ?? "Could not revoke API key");
+			setKey(null);
+			setToken(null);
+			setMessage("API key revoked.");
+		} catch (error) {
+			setMessage(error instanceof Error ? error.message : "Could not revoke API key");
+		} finally {
+			setPhase("idle");
+		}
+	}
+
+	return (
+		<Section
+			kicker="DEVELOPER API"
+			title="Connect the Agent Machines SDK"
+			description="Create a user-scoped key for scripts and servers. Keys are stored as hashes and can be rotated or revoked here."
+		>
+			<div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
+				<div className="flex min-h-28 flex-col justify-between border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-3">
+					<div className="flex items-center justify-between gap-3">
+						<div>
+							<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+								API key
+							</p>
+							<p className="mt-1 font-mono text-[12px] text-[var(--ret-text)]">
+								{phase === "loading"
+									? "Checking…"
+									: key
+										? `${key.prefix}••••${key.lastFour}`
+										: "No key yet"}
+							</p>
+						</div>
+						<ReticleBadge variant={key ? "success" : "default"}>
+							{key ? "active" : "off"}
+						</ReticleBadge>
+					</div>
+					<div className="mt-4 flex flex-wrap gap-2">
+						<ReticleButton size="sm" onClick={() => void rotate()} disabled={phase !== "idle"}>
+							{key ? "Rotate key" : "Create key"}
+						</ReticleButton>
+						{key ? (
+							<ReticleButton size="sm" variant="ghost" onClick={() => void revoke()} disabled={phase !== "idle"}>
+								Revoke
+							</ReticleButton>
+						) : null}
+					</div>
+				</div>
+				<div className="min-w-0 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3">
+					{token ? (
+						<div className="mb-3 flex items-center gap-2">
+							<code className="min-w-0 flex-1 overflow-x-auto border border-[var(--ret-purple)]/40 bg-[var(--ret-purple)]/5 px-2 py-2 text-[11px] text-[var(--ret-text)]">
+								{token}
+							</code>
+							<ReticleButton size="sm" variant="secondary" onClick={() => void navigator.clipboard.writeText(token)}>
+								Copy
+							</ReticleButton>
+						</div>
+					) : null}
+					<pre className="overflow-x-auto font-mono text-[11px] leading-relaxed text-[var(--ret-text-dim)]">{`export AGENT_MACHINES_URL=https://your-app.vercel.app
+export AGENT_MACHINES_API_KEY=${token ?? "am_live_…"}
+
+import { AgentMachines } from "agent-machines";
+const am = new AgentMachines();
+const agent = await am.create({ agent: "codex", sandbox: "e2b" });`}</pre>
+					{message ? <p className="mt-2 text-[10px] text-[var(--ret-text-muted)]">{message}</p> : null}
+				</div>
+			</div>
+		</Section>
+	);
 }

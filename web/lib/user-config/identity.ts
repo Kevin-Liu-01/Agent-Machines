@@ -1,6 +1,12 @@
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { timingSafeEqual } from "node:crypto";
 import { headers } from "next/headers";
+
+import {
+	agentMachinesApiKeyMatches,
+	asAgentMachinesApiKeyRecord,
+	userIdFromAgentMachinesApiKey,
+} from "@/lib/auth/agent-machines-key";
 
 /**
  * Auth identity resolver for the dashboard.
@@ -8,10 +14,9 @@ import { headers } from "next/headers";
  * Production: every request comes from a Clerk-authenticated user.
  * `getEffectiveUserId()` returns the Clerk `userId`.
  *
- * SDK/API access: when `AGENT_MACHINES_API_KEY` (or `AM_API_KEY`) matches a
- * bearer token, requests resolve to `AGENT_MACHINES_API_USER_ID` (or
- * `AM_API_USER_ID`). This lets server-side SDK callers use the same routing
- * architecture as the dashboard without a browser Clerk session.
+ * SDK/API access: a user-owned key created in Settings resolves directly to
+ * that Clerk user. A deployment-wide `AGENT_MACHINES_API_KEY` plus
+ * `AGENT_MACHINES_API_USER_ID` remains as a backwards-compatible fallback.
  *
  * Local development: when `ALLOW_DEV_AUTH=1` and `NODE_ENV=development`,
  * unauthenticated requests resolve to a stable `DEV_USER_ID`. The
@@ -51,7 +56,7 @@ function safeTokenEquals(a: string, b: string): boolean {
 	return left.length === right.length && timingSafeEqual(left, right);
 }
 
-async function getSdkUserId(): Promise<string | null> {
+async function getOwnerApiUserId(token: string): Promise<string | null> {
 	const expectedToken = (
 		process.env.AGENT_MACHINES_API_KEY ??
 		process.env.AM_API_KEY ??
@@ -65,10 +70,27 @@ async function getSdkUserId(): Promise<string | null> {
 		""
 	).trim();
 	if (!expectedToken || !userId) return null;
+	return safeTokenEquals(token, expectedToken) ? userId : null;
+}
 
+async function getSdkUserId(): Promise<string | null> {
 	try {
 		const token = bearerToken((await headers()).get("authorization"));
-		return token && safeTokenEquals(token, expectedToken) ? userId : null;
+		if (!token) return null;
+		const scopedUserId = userIdFromAgentMachinesApiKey(token);
+		if (scopedUserId) {
+			try {
+				const client = await clerkClient();
+				const user = await client.users.getUser(scopedUserId);
+				const record = asAgentMachinesApiKeyRecord(
+					user.privateMetadata.agentMachinesApiKey,
+				);
+				if (agentMachinesApiKeyMatches(token, record)) return scopedUserId;
+			} catch {
+				// Invalid/revoked/user-not-found keys all fail identically.
+			}
+		}
+		return getOwnerApiUserId(token);
 	} catch {
 		return null;
 	}
@@ -78,7 +100,7 @@ async function getSdkUserId(): Promise<string | null> {
  * Resolve the effective user id for the current request.
  *
  * - Returns the Clerk `userId` when the user is signed in.
- * - Returns the SDK/API user id when an owner-scoped bearer token is present.
+ * - Returns the SDK/API user id when a valid user or owner bearer token is present.
  * - Returns `DEV_USER_ID` when dev bypass is enabled and no one is
  *   signed in.
  * - Returns `null` otherwise; callers should respond with 401.

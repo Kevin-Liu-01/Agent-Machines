@@ -435,6 +435,31 @@ export class DedalusProvider implements MachineProvider {
 	}
 
 	/**
+	 * Submit work without polling for completion. Interactive terminal input only
+	 * needs Dedalus to accept the tmux send-keys command; waiting for status and
+	 * output added several provider round-trips to every input batch.
+	 */
+	async execBackground(machineId: string, command: string): Promise<void> {
+		const create = await this.fetch(
+			`/v1/machines/${machineId}/executions`,
+			{
+				method: "POST",
+				body: JSON.stringify({
+					command: ["/bin/bash", "-c", command],
+					timeout_ms: DEFAULT_EXEC_TIMEOUT_MS,
+				}),
+			},
+		);
+		if (!create.ok) {
+			throw new MachineProviderError(
+				"dedalus",
+				"transient",
+				`background exec create ${create.status}: ${(await create.text()).slice(0, 200)}`,
+			);
+		}
+	}
+
+	/**
 	 * Create or reuse a Dedalus preview URL for a port.
 	 * Preview URLs are platform-managed and survive sleep/wake --
 	 * unlike cloudflared quick tunnels which die on sleep.

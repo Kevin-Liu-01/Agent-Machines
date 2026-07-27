@@ -5,13 +5,10 @@ import { Footer } from "@/components/Footer";
 import { GitHubStarLink } from "@/components/GitHubStarLink";
 import { HeroBlock } from "@/components/HeroBlock";
 import { PublicNavbar } from "@/components/PublicNavbar";
-import { ReticleBand } from "@/components/reticle/ReticleBand";
+import { ProductShowcase } from "@/components/ProductShowcase";
 import { ReticlePageGrid } from "@/components/reticle/ReticlePageGrid";
 import { ReticleSection } from "@/components/reticle/ReticleSection";
 import { ReticleSpacer } from "@/components/reticle/ReticleSpacer";
-import { StatsRow } from "@/components/StatsRow";
-import { StickyRuntimeStory } from "@/components/StickyRuntimeStory";
-import { WorkflowNavigator } from "@/components/WorkflowNavigator";
 import { SITE } from "@/lib/seo/config";
 
 export default function HomePage() {
@@ -35,33 +32,21 @@ export default function HomePage() {
 
 				<ReticleSpacer />
 
+				<ReticleSection id="workflow" className="scroll-mt-[72px]" contentClassName="">
+					<ProductShowcase />
+				</ReticleSection>
+
+				<ReticleSpacer />
+
 				<ReticleSection contentClassName="" background="wing-nyx-waves">
 					<ContributionGrid />
 				</ReticleSection>
 
 				<ReticleSpacer />
 
-				<ReticleBand contentClassName="">
-					<StatsRow />
-				</ReticleBand>
-
-				<ReticleSpacer />
-
-				<ReticleSection id="workflow" className="scroll-mt-[72px]" contentClassName="">
-					<WorkflowNavigator />
-				</ReticleSection>
-
-				<ReticleSpacer />
-
-				<ReticleSection id="agents" contentClassName="">
-					<StickyRuntimeStory />
-				</ReticleSection>
-
-				<ReticleSpacer />
-
-				<ReticleBand id="faq" contentClassName="">
+				<ReticleSection id="faq" contentClassName="">
 					<FaqSection />
-				</ReticleBand>
+				</ReticleSection>
 
 				<ReticleSpacer />
 			</main>

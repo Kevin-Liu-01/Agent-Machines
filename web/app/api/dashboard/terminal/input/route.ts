@@ -2,13 +2,13 @@
  * POST /api/dashboard/terminal/input
  *
  * Inject keystrokes into the machine's interactive tmux console via
- * `tmux send-keys -H <hex>`. One quick exec per batch; the frontend
- * coalesces rapid keystrokes before posting. Intentionally does NOT
+ * `tmux send-keys -H <hex>`. One accepted background exec per batch; the
+ * frontend coalesces rapid keystrokes before posting. Intentionally does NOT
  * gate on isMachineRunning -- that adds a round-trip to every keystroke,
  * and the exec itself surfaces an offline machine.
  */
 
-import { execOnMachine } from "@/lib/dashboard/exec";
+import { execBackgroundOnMachine } from "@/lib/dashboard/exec";
 import { stripTerminalDeviceResponses } from "@/lib/dashboard/terminal-input";
 import {
 	installAgentLauncherCommand,
@@ -56,8 +56,13 @@ export async function POST(request: Request): Promise<Response> {
 		const command = rememberAgentKind
 			? `${installAgentLauncherCommand()}\n${sendKeysCommand(data)}`
 			: sendKeysCommand(data);
-		await execOnMachine(command, { machineId, timeoutMs: 6_000 });
-		return Response.json({ ok: true });
+		const startedAt = performance.now();
+		await execBackgroundOnMachine(command, { machineId, timeoutMs: 6_000 });
+		const acceptedMs = performance.now() - startedAt;
+		return Response.json(
+			{ ok: true, acceptedMs: Math.round(acceptedMs) },
+			{ headers: { "Server-Timing": `pty;dur=${acceptedMs.toFixed(1)}` } },
+		);
 	} catch (err) {
 		const message = err instanceof Error ? err.message : "input failed";
 		return Response.json({ error: "input_failed", message }, { status: 502 });

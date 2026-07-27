@@ -8,7 +8,7 @@
     },
     {
       "path": "/api/internal/learning/recompute",
-      "schedule": "0 * * * *"
+      "schedule": "0 */6 * * *"
     }
   ]
 }

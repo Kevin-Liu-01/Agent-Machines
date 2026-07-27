@@ -326,6 +326,7 @@ export function OnboardingFlow({ initialConfig, defaults, presets }: Props) {
 				body: JSON.stringify({
 					providerKind: provider,
 					agentKind: agent,
+					startBootstrap: false,
 					...(agentUsesRouter(agent) && routerId ? { gatewayProfileId: routerId } : {}),
 				}),
 			});
@@ -456,7 +457,7 @@ export function OnboardingFlow({ initialConfig, defaults, presets }: Props) {
 		if (!bootDone) return;
 		const id = window.setTimeout(() => {
 			router.push("/dashboard");
-		}, 2000);
+		}, 700);
 		return () => window.clearTimeout(id);
 	}, [bootDone, router]);
 
@@ -611,7 +612,7 @@ function StepRail({ step }: { step: Step }) {
 	const order = STEPS.map((s) => s.id);
 	const i = order.indexOf(step);
 	return (
-		<ol className="grid grid-cols-3 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-6">
+		<ol className="grid grid-cols-2 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-5">
 			{STEPS.map((s, idx) => {
 				const isActive = idx === i;
 				const isDone = idx < i;

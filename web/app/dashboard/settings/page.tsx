@@ -11,8 +11,8 @@ export default async function SettingsPage() {
 		<div className="flex flex-col">
 			<PageHeader
 				kicker="SETTINGS"
-				title="Account configuration"
-				description="Update reusable provider, gateway, agent, environment, bootstrap, and custom loadout settings that new machines inherit. Terminal edits can sync back through /home/machine/.agent-machines/settings.json."
+				title="Make it yours"
+				description="Connect the SDK, choose machine defaults, and add provider keys. Advanced recipes stay out of the way until you need them."
 			/>
 			<SettingsPanel initialConfig={toPublicConfig(config)} />
 		</div>

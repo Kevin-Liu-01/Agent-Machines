@@ -18,8 +18,14 @@ async function handle(req: Request): Promise<Response> {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}
 	try {
-		const { version, nTraces } = await recomputePolicy();
-		return Response.json({ ok: true, version, nTraces, at: new Date().toISOString() });
+		const { version, nTraces, updated } = await recomputePolicy();
+		return Response.json({
+			ok: true,
+			version,
+			nTraces,
+			updated,
+			at: new Date().toISOString(),
+		});
 	} catch (err) {
 		const message = err instanceof Error ? err.message : "recompute_failed";
 		return Response.json({ ok: false, error: message }, { status: 500 });

@@ -10,5 +10,5 @@ export { ReticleHRule } from "./ReticleHRule";
 export { ReticleLabel } from "./ReticleLabel";
 export { ReticleMargin } from "./ReticleMargin";
 export { ReticleNavbar } from "./ReticleNavbar";
-export { ReticlePageGrid, useIsInsidePageGrid } from "./ReticlePageGrid";
+export { ReticlePageGrid } from "./ReticlePageGrid";
 export { ReticleSection } from "./ReticleSection";

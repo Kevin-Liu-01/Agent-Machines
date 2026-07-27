@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://www.agent-machines.dev">
-    <img src="web/public/brand/agent-machines-mark.svg" alt="Agent Machines" width="96" />
+    <img src="web/public/brand/agent-machines-readme.svg" alt="Agent Machines — OpenRouter for agents and containers" width="100%" />
   </a>
 </p>
 
@@ -124,8 +124,9 @@ The interactive console is tuned to feel close to local:
 - snapshot paint on connect (`capture-pane`), so the screen is never blank,
 - `requestAnimationFrame`-batched writes to xterm,
 - immediate flush for control keys (Enter, arrows, Ctrl, Tab) and an 8ms coalesce window for printable text,
-- input POSTs serialized through one promise chain so keystrokes never reorder,
-- per-request `getUserConfig` cache (2.5s) and machine-state cache (3s),
+- one ordered input POST at a time, coalescing anything typed in-flight into the next batch,
+- accepted-background input execution (no status/output polling per keystroke batch),
+- per-user `getUserConfig` cache (10s) and machine-state cache (3s),
 - E2B sandbox connect reuse (45s) within a warm serverless instance,
 - `tmux` pre-installed during bootstrap so the first attach never triggers a package install.
 
@@ -230,6 +231,33 @@ npm run deploy   # CLI path (Hermes); or use /dashboard/setup for any provider
 ```
 
 Requires Node >= 20.
+
+### Agent Machines SDK
+
+Create a user-scoped key in **Dashboard → Settings → Developer API**, then use
+the same provision → bootstrap → run flow from code:
+
+```bash
+export AGENT_MACHINES_URL=https://your-app.vercel.app
+export AGENT_MACHINES_API_KEY=am_live_...
+```
+
+```ts
+import { AgentMachines } from "agent-machines";
+
+const am = new AgentMachines();
+const agent = await am.create({
+  agent: "codex",
+  sandbox: "e2b",
+  model: "anthropic/claude-sonnet-4-6",
+});
+const result = await agent.run("Inspect this repository and fix the failing test.");
+console.log(result.text);
+```
+
+The key is displayed once and stored only as a SHA-256 hash. Rotating it
+invalidates the previous key immediately. Set `bootstrap: false` on the client
+only when you intend to bootstrap the machine yourself.
 
 ---
 

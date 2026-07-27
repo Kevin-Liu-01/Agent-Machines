@@ -248,3 +248,9 @@ agent-machines.dev."
 **Positioning one-liner:** "We put Claude Code / Codex / Hermes / OpenClaw in a tab."
 
 **Broader frame (May 2026):** Almost no browser terminals on serverless. Inversion = tmux on box + HTTP/SSE courier. Explainers: `knowledge/AGENT-MACHINES-EXPLAINER.md` (3 para, whole product), `knowledge/BROWSER-AGENT-CONSOLE-EXPLAINER.md` (4 para, terminal).
+
+## [2026-07-27] design/seo | OpenGraph + README routing redesign
+
+**Changed:** Rebuilt `web/app/opengraph-image.tsx` and `web/public/brand/agent-machines-readme.svg` as a minimal mark + headline + description + routing diagram. Both use the project's real Nacelle Regular/SemiBold font data; the README uses the full banner; the Twitter image URL is versioned; and `Twitterbot` has an explicit robots group for `/opengraph-image`, `/api/og`, and `/api/og-home`.
+**Finding:** A live Twitterbot fetch returned 200 for both the homepage and `/opengraph-image`, with complete OG/Twitter metadata. The generic robots rule already allowed `/opengraph-image`, so the observed preview miss was more consistent with social-card caching than crawler denial. Keep the explicit rule as durable defense and bump the Twitter image query when artwork changes.
+**Verification:** Final 1200 x 630 OG and 1600 x 720 README renders inspected; SVG parsed; TypeScript passed; production Next build completed; production-mode Twitterbot fetch returned PNG 200 and the expected robots group.

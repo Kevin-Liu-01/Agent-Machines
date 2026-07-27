@@ -47,6 +47,7 @@ type ProvisionResponse = {
 	machineId?: string;
 	error?: string;
 	message?: string;
+	bootstrapScheduled?: boolean;
 };
 
 type BootstrapResponse = {
@@ -99,6 +100,7 @@ export class AgentMachines {
 					spec: route.spec,
 					name: route.name,
 					force: true,
+					startBootstrap: false,
 					gatewayProfileId: route.gatewayProfileId,
 					environmentProfileId: route.environmentProfileId,
 				},
@@ -167,6 +169,11 @@ export class AgentMachines {
 			message?: string;
 		};
 		if (!response.ok) {
+			if (response.status === 401 && !this.apiKey) {
+				throw new Error(
+					"Agent Machines API key required. Create one in Dashboard → Settings → Developer API, then set AGENT_MACHINES_API_KEY.",
+				);
+			}
 			throw new Error(
 				payload.message ?? payload.error ?? `HTTP ${response.status}`,
 			);

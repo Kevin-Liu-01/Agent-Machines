@@ -43,6 +43,74 @@ export type CollectedSample = {
 	snapshot: ResourceSnapshot | null;
 };
 
+type ExistingDailyUsage = {
+	machine_id: string;
+	awake_seconds: number | null;
+	cpu_vcpu_seconds: number | string | null;
+	memory_gib_seconds: number | string | null;
+	storage_gib_hours: number | string | null;
+	sample_count: number | null;
+};
+
+/**
+ * Build all usage and cost rows in memory so one collection pass needs one
+ * read and two writes, regardless of how many machines are running.
+ */
+export function buildDailyRollupRows(
+	userId: string,
+	samples: CollectedSample[],
+	existingRows: ExistingDailyUsage[],
+	bucketDate: string,
+	intervalSeconds: number,
+) {
+	const existingByMachine = new Map(
+		existingRows.map((row) => [row.machine_id, row]),
+	);
+	const usageRows = samples.map((sample) => {
+		const existing = existingByMachine.get(sample.machineId);
+		const awakeSeconds = (existing?.awake_seconds ?? 0) + intervalSeconds;
+		return {
+			user_id: userId,
+			machine_id: sample.machineId,
+			bucket_date: bucketDate,
+			awake_seconds: awakeSeconds,
+			cpu_vcpu_seconds:
+				Number(existing?.cpu_vcpu_seconds ?? 0) + sample.vcpu * intervalSeconds,
+			memory_gib_seconds:
+				Number(existing?.memory_gib_seconds ?? 0) +
+				(sample.specMemoryMib / 1024) * intervalSeconds,
+			storage_gib_hours:
+				Number(existing?.storage_gib_hours ?? 0) +
+				(sample.specStorageGib * intervalSeconds) / 3600,
+			sample_count: (existing?.sample_count ?? 0) + 1,
+			vcpu: sample.vcpu,
+			spec_memory_mib: sample.specMemoryMib,
+			spec_storage_gib: sample.specStorageGib,
+		};
+	});
+	const costRows = samples.map((sample, index) => {
+		const cost = estimateCost(
+			{
+				vcpu: sample.vcpu,
+				memoryMib: sample.specMemoryMib,
+				storageGib: sample.specStorageGib,
+			},
+			usageRows[index].awake_seconds,
+		);
+		return {
+			user_id: userId,
+			machine_id: sample.machineId,
+			bucket_date: bucketDate,
+			cpu_cost_millicents: Math.round(cost.cpuMillicents),
+			memory_cost_millicents: Math.round(cost.memoryMillicents),
+			storage_cost_millicents: Math.round(cost.storageMillicents),
+			total_cost_millicents: Math.round(cost.totalMillicents),
+		};
+	});
+
+	return { usageRows, costRows };
+}
+
 function isSupabaseConfigured(): boolean {
 	return Boolean(
 		process.env.NEXT_PUBLIC_SUPABASE_URL &&
@@ -129,98 +197,35 @@ export async function collectAndStore(
 	}
 
 	const runningSamples = samples.filter((s) => s.phase === "ready");
-
-	await Promise.all(
-		runningSamples.map((s) => upsertDailyUsage(db, userId, s, today, intervalSeconds)),
-	);
-
-	await Promise.all(
-		runningSamples.map((s) => upsertCostEstimate(db, userId, s, today, intervalSeconds)),
-	);
+	if (runningSamples.length > 0) {
+		const machineIds = runningSamples.map((sample) => sample.machineId);
+		const { data: existingRows, error: existingError } = await db
+			.from("machine_usage_daily")
+			.select(
+				"machine_id,awake_seconds,cpu_vcpu_seconds,memory_gib_seconds,storage_gib_hours,sample_count",
+			)
+			.eq("user_id", userId)
+			.eq("bucket_date", today)
+			.in("machine_id", machineIds);
+		if (existingError) return { transitions, metricsStored };
+		const { usageRows, costRows } = buildDailyRollupRows(
+			userId,
+			runningSamples,
+			(existingRows ?? []) as ExistingDailyUsage[],
+			today,
+			intervalSeconds,
+		);
+		const { error: usageError } = await db
+			.from("machine_usage_daily")
+			.upsert(usageRows, { onConflict: "user_id,machine_id,bucket_date" });
+		if (!usageError) {
+			await db
+				.from("machine_cost_estimates")
+				.upsert(costRows, { onConflict: "user_id,machine_id,bucket_date" });
+		}
+	}
 
 	return { transitions, metricsStored };
-}
-
-async function upsertDailyUsage(
-	db: ReturnType<typeof supabaseAdmin>,
-	userId: string,
-	sample: CollectedSample,
-	bucketDate: string,
-	intervalSeconds: number,
-): Promise<void> {
-	const { data: existing } = await db
-		.from("machine_usage_daily")
-		.select("*")
-		.eq("user_id", userId)
-		.eq("machine_id", sample.machineId)
-		.eq("bucket_date", bucketDate)
-		.maybeSingle();
-
-	const memoryGib = sample.specMemoryMib / 1024;
-	const addAwake = intervalSeconds;
-	const addCpuSeconds = sample.vcpu * intervalSeconds;
-	const addMemoryGibSeconds = memoryGib * intervalSeconds;
-	const addStorageGibHours =
-		(sample.specStorageGib * intervalSeconds) / 3600;
-
-	const row = {
-		user_id: userId,
-		machine_id: sample.machineId,
-		bucket_date: bucketDate,
-		awake_seconds: (existing?.awake_seconds ?? 0) + addAwake,
-		cpu_vcpu_seconds: Number(existing?.cpu_vcpu_seconds ?? 0) + addCpuSeconds,
-		memory_gib_seconds:
-			Number(existing?.memory_gib_seconds ?? 0) + addMemoryGibSeconds,
-		storage_gib_hours:
-			Number(existing?.storage_gib_hours ?? 0) + addStorageGibHours,
-		sample_count: (existing?.sample_count ?? 0) + 1,
-		vcpu: sample.vcpu,
-		spec_memory_mib: sample.specMemoryMib,
-		spec_storage_gib: sample.specStorageGib,
-	};
-
-	await db
-		.from("machine_usage_daily")
-		.upsert(row, { onConflict: "user_id,machine_id,bucket_date" });
-}
-
-async function upsertCostEstimate(
-	db: ReturnType<typeof supabaseAdmin>,
-	userId: string,
-	sample: CollectedSample,
-	bucketDate: string,
-	intervalSeconds: number,
-): Promise<void> {
-	const { data: usage } = await db
-		.from("machine_usage_daily")
-		.select("awake_seconds")
-		.eq("user_id", userId)
-		.eq("machine_id", sample.machineId)
-		.eq("bucket_date", bucketDate)
-		.maybeSingle();
-
-	const awakeSeconds = usage?.awake_seconds ?? intervalSeconds;
-	const cost = estimateCost(
-		{
-			vcpu: sample.vcpu,
-			memoryMib: sample.specMemoryMib,
-			storageGib: sample.specStorageGib,
-		},
-		awakeSeconds,
-	);
-
-	await db.from("machine_cost_estimates").upsert(
-		{
-			user_id: userId,
-			machine_id: sample.machineId,
-			bucket_date: bucketDate,
-			cpu_cost_millicents: Math.round(cost.cpuMillicents),
-			memory_cost_millicents: Math.round(cost.memoryMillicents),
-			storage_cost_millicents: Math.round(cost.storageMillicents),
-			total_cost_millicents: Math.round(cost.totalMillicents),
-		},
-		{ onConflict: "user_id,machine_id,bucket_date" },
-	);
 }
 
 /**

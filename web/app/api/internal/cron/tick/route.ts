@@ -18,6 +18,7 @@ import {
 	setUserConfigById,
 } from "@/lib/user-config/clerk";
 import { authorizedInternalRequest } from "@/lib/cron/auth";
+import { isCadenceDue } from "@/lib/cron/cadence";
 import { listDueCrons, runCronOnMachine } from "@/lib/crons/service";
 import { ingestRunTracesForUser } from "@/lib/learning/ingest";
 import { collectMetricsForUser } from "@/lib/metrics/collector";
@@ -32,6 +33,10 @@ const USER_PAGE_LIMIT = 500;
 // Seconds this tick represents -- must match the vercel.json cron schedule
 // (*/5 == 300s) so usage accumulation (awake/CPU/memory/storage) is accurate.
 const TICK_INTERVAL_SECONDS = 300;
+// Keep five-minute cron dispatch precision, but run the expensive fleet probes
+// and trace reads only twice an hour. This cuts their steady-state work by 83%.
+const OBSERVABILITY_INTERVAL_SECONDS = 30 * 60;
+const USER_CONCURRENCY = 8;
 
 async function listUserIds(): Promise<string[]> {
 	if (isDevBypassEnabled() || !process.env.CLERK_SECRET_KEY) {
@@ -50,31 +55,43 @@ type UserTick = {
 	ingested: number;
 };
 
-async function tickUser(userId: string): Promise<UserTick> {
+async function tickUser(
+	userId: string,
+	now: number,
+	metricsDue: boolean,
+	traceIngestDue: boolean,
+): Promise<UserTick> {
 	const config = await getUserConfigById(userId);
-	const now = Date.now();
 
-	// Usage + activity tracking runs every tick (independent of crons): probe
+	// Usage + activity tracking runs on its own cadence (independent of crons): probe
 	// running machines, store resource samples, roll up daily usage/cost, and
 	// record phase transitions. Best-effort -- never let it abort the tick.
 	let collected = 0;
 	let transitions = 0;
-	try {
-		const m = await collectMetricsForUser(userId, config, TICK_INTERVAL_SECONDS);
-		collected = m.collected;
-		transitions = m.transitions;
-	} catch {
-		// metrics collection is best-effort
+	if (metricsDue) {
+		try {
+			const m = await collectMetricsForUser(
+				userId,
+				config,
+				OBSERVABILITY_INTERVAL_SECONDS,
+			);
+			collected = m.collected;
+			transitions = m.transitions;
+		} catch {
+			// metrics collection is best-effort
+		}
 	}
 
 	// Loop 0: read each cron machine's on-box runs.jsonl and emit normalized
 	// traces. Best-effort so learning never blocks usage collection or cron
 	// dispatch.
 	let ingested = 0;
-	try {
-		ingested = await ingestRunTracesForUser(userId, config);
-	} catch {
-		// trace ingest is best-effort
+	if (traceIngestDue) {
+		try {
+			ingested = await ingestRunTracesForUser(userId, config);
+		} catch {
+			// trace ingest is best-effort
+		}
 	}
 
 	const due = listDueCrons(config, now);
@@ -127,17 +144,29 @@ async function handle(req: Request): Promise<Response> {
 	let transitions = 0;
 	let ingested = 0;
 	let scanned = 0;
-	for (const userId of users) {
-		try {
-			const r = await tickUser(userId);
+	const now = Date.now();
+	const metricsDue = isCadenceDue(
+		now,
+		OBSERVABILITY_INTERVAL_SECONDS * 1000,
+		TICK_INTERVAL_SECONDS * 1000,
+	);
+	const traceIngestDue = metricsDue;
+	for (let offset = 0; offset < users.length; offset += USER_CONCURRENCY) {
+		const batch = users.slice(offset, offset + USER_CONCURRENCY);
+		const results = await Promise.allSettled(
+			batch.map((userId) =>
+				tickUser(userId, now, metricsDue, traceIngestDue),
+			),
+		);
+		for (const result of results) {
+			if (result.status === "rejected") continue;
+			const r = result.value;
 			fired += r.fired;
 			failed += r.failed;
 			collected += r.collected;
 			transitions += r.transitions;
 			ingested += r.ingested;
 			scanned += 1;
-		} catch {
-			// One user's failure must not abort the whole tick.
 		}
 	}
 
@@ -149,6 +178,11 @@ async function handle(req: Request): Promise<Response> {
 		collected,
 		transitions,
 		ingested,
+		cadence: {
+			metricsDue,
+			traceIngestDue,
+			observabilitySeconds: OBSERVABILITY_INTERVAL_SECONDS,
+		},
 		at: new Date().toISOString(),
 	});
 }

@@ -32,6 +32,17 @@ type TraceRow = {
 
 const TRACE_READ_LIMIT = 50_000;
 
+export function shouldRecomputePolicy(
+	activeComputedAt: string | null,
+	latestTraceAt: string | null,
+): boolean {
+	if (!activeComputedAt) return true;
+	if (!latestTraceAt) return false;
+	const activeMs = Date.parse(activeComputedAt);
+	const traceMs = Date.parse(latestTraceAt);
+	return !Number.isFinite(activeMs) || !Number.isFinite(traceMs) || traceMs > activeMs;
+}
+
 function rowArmKey(r: TraceRow): string {
 	return `${r.runtime}|${r.substrate}|${r.model}|${r.router_id ?? ""}`;
 }
@@ -61,8 +72,49 @@ export async function readActivePolicy(): Promise<ActivePolicy | null> {
  * could produce duplicate version numbers, which readActivePolicy tolerates by
  * also ordering on computed_at.
  */
-export async function recomputePolicy(): Promise<{ version: number; nTraces: number }> {
+export async function recomputePolicy(): Promise<{
+	version: number;
+	nTraces: number;
+	updated: boolean;
+}> {
 	const sb = supabaseAdmin();
+	const [activeResult, traceResult] = await Promise.all([
+		sb
+			.from("routing_policy")
+			.select("version,n_traces,computed_at")
+			.eq("active", true)
+			.order("computed_at", { ascending: false })
+			.limit(1)
+			.maybeSingle(),
+		sb
+			.from("run_traces")
+			.select("recorded_at")
+			.not("success", "is", null)
+			.order("recorded_at", { ascending: false })
+			.limit(1)
+			.maybeSingle(),
+	]);
+	if (activeResult.error) {
+		throw new Error(`recomputePolicy read active: ${activeResult.error.message}`);
+	}
+	if (traceResult.error) {
+		throw new Error(`recomputePolicy read latest trace: ${traceResult.error.message}`);
+	}
+	const active = activeResult.data;
+	const latestTrace = traceResult.data;
+	if (
+		active &&
+		!shouldRecomputePolicy(
+			active.computed_at as string | null,
+			(latestTrace?.recorded_at as string | null | undefined) ?? null,
+		)
+	) {
+		return {
+			version: active.version as number,
+			nTraces: (active.n_traces as number | null) ?? 0,
+			updated: false,
+		};
+	}
 
 	const { data: traceData, error: traceErr } = await sb
 		.from("run_traces")
@@ -143,5 +195,5 @@ export async function recomputePolicy(): Promise<{ version: number; nTraces: num
 		.neq("version", version);
 	if (deErr) console.error(`recomputePolicy deactivate prior failed: ${deErr.message}`);
 
-	return { version, nTraces: traces.length };
+	return { version, nTraces: traces.length, updated: true };
 }

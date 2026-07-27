@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { OnboardingFlow } from "@/components/dashboard/OnboardingFlow";
+import { ClerkAppProvider } from "@/components/ClerkAppProvider";
 import { listPresets } from "@/lib/dashboard/presets";
 import { getOwnerDefaults, getUserConfig } from "@/lib/user-config/clerk";
 import { toPublicConfig } from "@/lib/user-config/schema";
@@ -24,14 +25,16 @@ export default async function OnboardingPage({
 	const defaults = getOwnerDefaults();
 
 	return (
-		<OnboardingFlow
-			initialConfig={toPublicConfig(config)}
-			defaults={{
-				machineSpec: defaults.draftSpec,
-				model: defaults.draftModel,
-				hasOwnerDedalusKey: Boolean(defaults.providers.dedalus?.apiKey),
-			}}
-			presets={listPresets()}
-		/>
+		<ClerkAppProvider>
+			<OnboardingFlow
+				initialConfig={toPublicConfig(config)}
+				defaults={{
+					machineSpec: defaults.draftSpec,
+					model: defaults.draftModel,
+					hasOwnerDedalusKey: Boolean(defaults.providers.dedalus?.apiKey),
+				}}
+				presets={listPresets()}
+			/>
+		</ClerkAppProvider>
 	);
 }

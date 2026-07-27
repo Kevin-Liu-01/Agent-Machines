@@ -87,45 +87,62 @@ export function InteractiveConsole({
 		prefetchXterm();
 	}, []);
 
-	// Serialize input POSTs through one promise chain so rapid keystrokes
-	// arrive at tmux in order — concurrent fire-and-forget fetches can race
-	// and reorder characters ("Reply" -> "y...lRep").
-	const sendChainRef = useRef<Promise<unknown>>(Promise.resolve());
+	// Keep only one POST in flight and merge everything typed while it runs into
+	// the next batch. This preserves order without building a fetch-per-10ms
+	// backlog when the provider is briefly slow.
+	const queuedPostRef = useRef({
+		data: "",
+		rememberAgentKind: null as string | null,
+	});
+	const postRunningRef = useRef(false);
 	const pendingInputRef = useRef("");
 	const inputFlushTimerRef = useRef<number | null>(null);
+	const drainInputPosts = useCallback(async () => {
+		if (!machineId || postRunningRef.current) return;
+		postRunningRef.current = true;
+		try {
+			while (queuedPostRef.current.data) {
+				const batch = queuedPostRef.current;
+				queuedPostRef.current = { data: "", rememberAgentKind: null };
+				const controller = new AbortController();
+				const timeout = window.setTimeout(
+					() => controller.abort(),
+					INPUT_POST_TIMEOUT_MS,
+				);
+				try {
+					await fetch("/api/dashboard/terminal/input", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							machineId,
+							data: batch.data,
+							rememberAgentKind: batch.rememberAgentKind ?? undefined,
+						}),
+						keepalive: true,
+						signal: controller.signal,
+					});
+				} catch {
+					// The local line editor already accepted the input. A reconnect or
+					// the next Enter will surface real sandbox issues without freezing
+					// character entry behind one slow send-keys request.
+				} finally {
+					window.clearTimeout(timeout);
+				}
+			}
+		} finally {
+			postRunningRef.current = false;
+		}
+	}, [machineId]);
 	const postInput = useCallback(
 		(data: string, options: SendInputOptions = {}) => {
 			if (!data || !machineId) return;
-			sendChainRef.current = sendChainRef.current
-				.catch(() => {})
-				.then(async () => {
-					const controller = new AbortController();
-					const timeout = window.setTimeout(
-						() => controller.abort(),
-						INPUT_POST_TIMEOUT_MS,
-					);
-					try {
-						await fetch("/api/dashboard/terminal/input", {
-							method: "POST",
-							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify({
-								machineId,
-								data,
-								rememberAgentKind: options.rememberAgentKind ?? undefined,
-							}),
-							keepalive: true,
-							signal: controller.signal,
-						});
-					} catch {
-						// The local line editor already accepted the input. A reconnect or
-						// the next Enter will surface real sandbox issues without freezing
-						// character entry behind one slow send-keys request.
-					} finally {
-						window.clearTimeout(timeout);
-					}
-				});
+			queuedPostRef.current.data += data;
+			if (options.rememberAgentKind) {
+				queuedPostRef.current.rememberAgentKind = options.rememberAgentKind;
+			}
+			void drainInputPosts();
 		},
-		[machineId],
+		[drainInputPosts, machineId],
 	);
 	const flushInput = useCallback((options: SendInputOptions = {}) => {
 		if (inputFlushTimerRef.current) {
@@ -159,6 +176,7 @@ export function InteractiveConsole({
 				inputFlushTimerRef.current = null;
 			}
 			pendingInputRef.current = "";
+			queuedPostRef.current = { data: "", rememberAgentKind: null };
 		};
 	}, [machineId]);
 	const sendInputRef = useRef(sendInput);
@@ -197,6 +215,8 @@ export function InteractiveConsole({
 		let term: XTerm | null = null;
 		let fit: FitAddonType | null = null;
 		let resizeObs: ResizeObserver | null = null;
+		let resizeTimer: number | null = null;
+		let lastResize = { cols: 0, rows: 0 };
 		let streamAbort: AbortController | null = null;
 		const offsetRef = { current: 0 };
 		let pendingWrite = "";
@@ -534,6 +554,7 @@ export function InteractiveConsole({
 				term.rows || DEFAULT_ROWS,
 			);
 			if (!alive || !session) return;
+			lastResize = { cols: term.cols, rows: term.rows };
 
 			if (session.snapshot) {
 				// `tmux capture-pane` joins visible lines with a bare "\n" and
@@ -567,11 +588,17 @@ export function InteractiveConsole({
 					if (!fit || !term) return;
 					try {
 						fit.fit();
-						void fetch("/api/dashboard/terminal/resize", {
-							method: "POST",
-							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify({ machineId: scopedMachineId, cols: term.cols, rows: term.rows }),
-						}).catch(() => {});
+						if (term.cols === lastResize.cols && term.rows === lastResize.rows) return;
+						const next = { cols: term.cols, rows: term.rows };
+						lastResize = next;
+						if (resizeTimer) window.clearTimeout(resizeTimer);
+						resizeTimer = window.setTimeout(() => {
+							void fetch("/api/dashboard/terminal/resize", {
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify({ machineId: scopedMachineId, ...next }),
+							}).catch(() => {});
+						}, 80);
 					} catch {
 						// ignore transient layout errors
 					}
@@ -586,6 +613,7 @@ export function InteractiveConsole({
 			alive = false;
 			streamAbort?.abort();
 			resizeObs?.disconnect();
+			if (resizeTimer) window.clearTimeout(resizeTimer);
 			flushPendingWrite();
 			term?.dispose();
 		};

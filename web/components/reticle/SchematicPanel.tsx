@@ -1,5 +1,6 @@
 import { getCategoryArt } from "@/lib/dashboard/category-art";
 import { cn } from "@/lib/cn";
+import { GeometricCircuit } from "@/components/reticle/GeometricCircuit";
 
 /**
  * Recipe B - a focal/centerpiece graphic that adapts to the active theme.
@@ -28,13 +29,17 @@ export function SchematicPanel({
 				className,
 			)}
 		>
-			{/* eslint-disable-next-line @next/next/no-img-element -- local decorative line-art, blended for theme-aware schematic panels */}
-			<img
-				alt=""
-				aria-hidden="true"
-				src={resolved}
-				className="pointer-events-none w-full select-none mix-blend-multiply invert dark:mix-blend-screen dark:invert-0"
-			/>
+			{src ? (
+				// eslint-disable-next-line @next/next/no-img-element -- explicit error art remains a raster asset
+				<img
+					alt=""
+					aria-hidden="true"
+					src={resolved}
+					className="pointer-events-none w-full select-none mix-blend-multiply invert dark:mix-blend-screen dark:invert-0"
+				/>
+			) : (
+				<GeometricCircuit slug={slug} className="aspect-[16/9] w-full" />
+			)}
 		</div>
 	);
 }

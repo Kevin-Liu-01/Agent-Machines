@@ -52,6 +52,8 @@ type Body = {
 	environmentProfileId?: string | null;
 	/** Fill omitted runtime/substrate/model/router axes from the learned policy. */
 	autoRoute?: boolean;
+	/** SDK/full-flow callers can own bootstrap sequencing and disable auto-start. */
+	startBootstrap?: boolean;
 };
 
 function isProvider(value: unknown): value is ProviderKind {
@@ -182,42 +184,47 @@ export async function POST(request: Request): Promise<Response> {
 		});
 		let bootstrapScheduled = false;
 		let bootstrapMessage: string | null = null;
-		try {
-			const latestConfig = await getUserConfig();
-			const machine = latestConfig.machines.find((m) => m.id === created.machineId);
-			if (machine) {
-				const provider = getProvider(machine.providerKind, latestConfig.providers);
-				primeConsoleSession(provider, machine.id);
-				await setUserConfig({
-					patchMachine: {
-						id: machine.id,
-						patch: {
-							bootstrapState: {
-								...machine.bootstrapState,
-								phase: "running",
-								current: null,
-								finishedAt: null,
-								lastError: null,
-								startedAt: machine.bootstrapState.startedAt ?? new Date().toISOString(),
+		if (body.startBootstrap !== false) {
+			try {
+				const latestConfig = await getUserConfig();
+				const machine = latestConfig.machines.find((m) => m.id === created.machineId);
+				if (machine) {
+					const provider = getProvider(machine.providerKind, latestConfig.providers);
+					primeConsoleSession(provider, machine.id);
+					await setUserConfig({
+						patchMachine: {
+							id: machine.id,
+							patch: {
+								bootstrapState: {
+									...machine.bootstrapState,
+									phase: "running",
+									current: null,
+									finishedAt: null,
+									lastError: null,
+									startedAt:
+										machine.bootstrapState.startedAt ?? new Date().toISOString(),
+								},
 							},
 						},
-					},
-				});
-				const scheduledConfig = await getUserConfig();
-				const scheduledMachine =
-					scheduledConfig.machines.find((m) => m.id === machine.id) ?? machine;
-				after(() => scheduleWebBootstrap(scheduledMachine, provider, scheduledConfig));
-				bootstrapScheduled = true;
+					});
+					const scheduledConfig = await getUserConfig();
+					const scheduledMachine =
+						scheduledConfig.machines.find((m) => m.id === machine.id) ?? machine;
+					after(() =>
+						scheduleWebBootstrap(scheduledMachine, provider, scheduledConfig),
+					);
+					bootstrapScheduled = true;
+				}
+			} catch (scheduleErr) {
+				bootstrapMessage =
+					scheduleErr instanceof Error
+						? scheduleErr.message
+						: "background bootstrap could not be scheduled";
+				console.warn(
+					`[provision-machine] background bootstrap scheduling failed for ${created.machineId}:`,
+					bootstrapMessage,
+				);
 			}
-		} catch (scheduleErr) {
-			bootstrapMessage =
-				scheduleErr instanceof Error
-					? scheduleErr.message
-					: "background bootstrap could not be scheduled";
-			console.warn(
-				`[provision-machine] background bootstrap scheduling failed for ${created.machineId}:`,
-				bootstrapMessage,
-			);
 		}
 		return Response.json({
 			ok: true,
@@ -229,7 +236,9 @@ export async function POST(request: Request): Promise<Response> {
 			message:
 				bootstrapScheduled
 					? "Machine accepted. Console is priming now; agent runtime install continues in the background."
-					: "Machine accepted. Console is available; run repair bootstrap from the dashboard to install the selected agent runtime.",
+					: body.startBootstrap === false
+						? "Machine accepted. Bootstrap is waiting for the caller."
+						: "Machine accepted. Console is available; run repair bootstrap from the dashboard to install the selected agent runtime.",
 		});
 	} catch (err) {
 		const message =

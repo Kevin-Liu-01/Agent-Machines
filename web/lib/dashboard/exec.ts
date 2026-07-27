@@ -53,6 +53,33 @@ export async function execOnMachine(
 }
 
 /**
+ * Submit a command and return as soon as the provider accepts it. Providers
+ * without an async primitive retain the regular exec fallback.
+ */
+export async function execBackgroundOnMachine(
+	command: string,
+	options: { timeoutMs?: number; machineId?: string | null } = {},
+): Promise<void> {
+	const config = await getUserConfigCached();
+	const machine = resolveMachine(config, options.machineId);
+	if (!machine) {
+		throw new Error(
+			options.machineId
+				? `Machine ${options.machineId} not found in your account.`
+				: "No active machine selected.",
+		);
+	}
+	const provider = getProvider(machine.providerKind, config.providers);
+	if (provider.execBackground) {
+		await provider.execBackground(machine.id, command);
+		return;
+	}
+	await provider.exec(machine.id, command, {
+		timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+	});
+}
+
+/**
  * True iff the specified (or active) machine is currently in a state
  * where an exec is likely to succeed. Routes call this first so they
  * can return a typed "machine_offline" payload instead of timing out.

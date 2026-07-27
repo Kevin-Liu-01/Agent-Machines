@@ -40,6 +40,7 @@ Aligned with wiki `tool-hierarchy.mdc`:
 
 - ASCII over Unicode lookalikes; no emoji in code/docs/commits.
 - Conventional Commits; `git switch`; production infra is sacred.
+- Dynamic OpenGraph image routes must remain crawlable: give `Twitterbot` an explicit robots rule for the app's real image endpoint. Agent Machines serves `/opengraph-image`; also keep `/api/og` and `/api/og-home` allowed when shared or legacy handlers use those paths and the generic crawler rule disallows `/api/`.
 
 ## Reload
 

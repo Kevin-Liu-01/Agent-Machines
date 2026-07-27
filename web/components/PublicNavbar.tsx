@@ -1,6 +1,5 @@
 "use client";
 
-import { UserButton } from "@clerk/nextjs";
 import {
 	Activity,
 	ArrowRight,
@@ -19,7 +18,6 @@ import {
 	KeyRound,
 	Layers,
 	LifeBuoy,
-	Menu,
 	MessageSquare,
 	MousePointerClick,
 	Newspaper,
@@ -29,20 +27,12 @@ import {
 	ShieldCheck,
 	SquareTerminal,
 	Terminal,
-	X,
 	Zap,
 	type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
-import {
-	type CSSProperties,
-	type ReactNode,
-	useEffect,
-	useMemo,
-	useState,
-} from "react";
+import { type CSSProperties, type ReactNode } from "react";
 
-import { SignedIn, SignedOut } from "@/components/AuthSwitch";
 import { BrandHomeLockup } from "@/components/BrandHomeLockup";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleNavbar } from "@/components/reticle/ReticleNavbar";
@@ -56,8 +46,6 @@ import {
 	RESOURCE_PAGES,
 	type PublicIconName,
 } from "@/lib/marketing/public-site";
-
-const CLERK_READY = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
 type MenuId = "product" | "agents" | "resources";
 
@@ -174,67 +162,30 @@ export function PublicNavbar({
 	githubRepo: string;
 	githubLink?: ReactNode;
 }) {
-	const [openMenu, setOpenMenu] = useState<MenuId | null>(null);
-	const [mobileOpen, setMobileOpen] = useState(false);
-
-	const activeGroup = useMemo(
-		() => MENU_GROUPS.find((group) => group.id === openMenu) ?? null,
-		[openMenu],
-	);
-
-	useEffect(() => {
-		const onKeyDown = (event: KeyboardEvent) => {
-			if (event.key === "Escape") {
-				setOpenMenu(null);
-				setMobileOpen(false);
-			}
-		};
-		window.addEventListener("keydown", onKeyDown);
-		return () => window.removeEventListener("keydown", onKeyDown);
-	}, []);
-
 	return (
 		<ReticleNavbar className="z-50">
-			<div
-				className="relative"
-				onPointerLeave={() => setOpenMenu(null)}
-				onMouseLeave={() => setOpenMenu(null)}
-			>
+			<div className="relative">
 				<div className="relative flex h-14 items-center gap-2 px-3 sm:gap-3 md:px-4 lg:px-5">
 					<BrandHomeLockup density="navbar" className="relative z-10 shrink-0" />
 
 					<nav
 						aria-label="Marketing navigation"
-						className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] md:flex"
+						className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-px border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] md:flex"
 					>
 						{MENU_GROUPS.map((group) => (
-							<button
+							<details
 								key={group.id}
-								type="button"
-								aria-expanded={openMenu === group.id}
-								aria-controls={`nav-menu-${group.id}`}
-								onPointerEnter={() => setOpenMenu(group.id)}
-								onMouseEnter={() => setOpenMenu(group.id)}
-								onFocus={() => setOpenMenu(group.id)}
-								onClick={() => setOpenMenu(group.id)}
-								className={cn(
-									"inline-flex h-8 items-center gap-1.5 px-2.5 text-[12px] font-medium text-[var(--ret-text-dim)]",
-									"ret-nav-trigger hover:bg-[var(--ret-surface-hover)] hover:text-[var(--ret-text)]",
-									"focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-border-strong)]",
-									openMenu === group.id
-										? "bg-[var(--ret-surface-hover)] text-[var(--ret-text)]"
-										: null,
-								)}
+								name="marketing-nav"
+								className="group/nav relative"
 							>
-								<span>{group.label}</span>
-								<ChevronDown
-									className={cn(
-										"h-3.5 w-3.5 transition-transform duration-[var(--ret-duration-hover)] [transition-timing-function:var(--ret-ease-out)]",
-										openMenu === group.id ? "rotate-180" : null,
-									)}
-									aria-hidden="true"
-								/>
-							</button>
+								<summary className="ret-nav-trigger inline-flex h-8 cursor-pointer list-none items-center gap-1.5 px-2.5 text-[12px] font-medium text-[var(--ret-text-dim)] hover:bg-[var(--ret-surface-hover)] hover:text-[var(--ret-text)] group-open/nav:bg-[var(--ret-surface-hover)] group-open/nav:text-[var(--ret-text)]">
+									<span>{group.label}</span>
+									<ChevronDown className="h-3.5 w-3.5 transition-transform duration-[var(--ret-duration-hover)] [transition-timing-function:var(--ret-ease-out)] group-open/nav:rotate-180" aria-hidden="true" />
+								</summary>
+								<div className="absolute left-1/2 top-full z-50 w-[min(960px,calc(100vw-32px))] -translate-x-1/2 pt-2">
+									<MegaMenu group={group} githubRepo={githubRepo} />
+								</div>
+							</details>
 						))}
 						<Link
 							href="/pricing"
@@ -258,114 +209,54 @@ export function PublicNavbar({
 							</a>
 						)}
 						<ThemeToggle />
-						<SignedIn>
-							<Link
-								href="/dashboard"
-								className="ret-nav-trigger inline-flex h-8 min-h-8 items-center justify-center border border-[var(--ret-text)] bg-[var(--ret-text)] px-3 text-[12px] font-medium text-[var(--ret-bg)] transition-colors hover:opacity-90"
-							>
-								Dashboard
-							</Link>
-							{CLERK_READY ? (
-								<UserButton
-									appearance={{ elements: { avatarBox: "h-8 w-8" } }}
-								/>
-							) : null}
-						</SignedIn>
-						<SignedOut>
-							<Link
-								href="/sign-in"
-								className="ret-nav-trigger inline-flex h-8 items-center px-2.5 text-[12px] font-medium text-[var(--ret-text-dim)] hover:text-[var(--ret-text)]"
-							>
-								Sign in
-							</Link>
-							<ReticleButton as="a" href="/sign-in" variant="primary" size="sm" className="h-8 px-3 text-[12px]">
-								Start for free
-							</ReticleButton>
-						</SignedOut>
+						<Link
+							href="/sign-in"
+							className="ret-nav-trigger inline-flex h-8 items-center px-2.5 text-[12px] font-medium text-[var(--ret-text-dim)] hover:text-[var(--ret-text)]"
+						>
+							Sign in
+						</Link>
+						<ReticleButton as="a" href="/sign-in" variant="primary" size="sm" className="h-8 px-3 text-[12px]">
+							Start for free
+						</ReticleButton>
 					</div>
 
-					<button
-						type="button"
-						aria-label="Open navigation"
-						aria-expanded={mobileOpen}
-						onClick={() => setMobileOpen((open) => !open)}
-						className="ret-pressable ml-auto inline-flex h-9 w-9 items-center justify-center border border-[var(--ret-border)] text-[var(--ret-text)] md:hidden"
-					>
-						<NavToggleIcon open={mobileOpen} />
-					</button>
-				</div>
-
-				{activeGroup ? (
-					<div
-						id={`nav-menu-${activeGroup.id}`}
-						className="absolute left-1/2 top-full z-50 hidden w-[min(960px,calc(100vw-32px))] -translate-x-1/2 pt-2 md:block"
-						onPointerEnter={() => setOpenMenu(activeGroup.id)}
-						onMouseEnter={() => setOpenMenu(activeGroup.id)}
-					>
-						<MegaMenu group={activeGroup} githubRepo={githubRepo} />
-					</div>
-				) : null}
-
-				{mobileOpen ? (
-					<div className="ret-popover-panel border-t border-[var(--ret-border)] bg-[var(--ret-bg)] px-4 pb-4 md:hidden">
-						<div className="grid gap-3 pt-3">
-							{MENU_GROUPS.map((group) => (
-								<details
-									key={group.id}
-									className="rounded-[var(--ret-card-radius)] border border-[var(--ret-border)] bg-[var(--ret-bg-soft)]"
-								>
-									<summary className="ret-pressable flex min-h-12 cursor-pointer list-none items-center justify-between rounded-[var(--ret-card-radius)] px-4 text-[14px] font-semibold text-[var(--ret-text)]">
-										<span>{group.label}</span>
-										<ChevronDown className="ret-details-chevron h-4 w-4 text-[var(--ret-text-muted)] transition-transform duration-[var(--ret-duration-hover)] [transition-timing-function:var(--ret-ease-out)]" />
-									</summary>
-									<div className="ret-details-content grid gap-1 border-t border-[var(--ret-border)] p-2">
-										{group.entries.map((entry, index) => (
-											<MobileMenuLink
-												key={entry.href}
-												entry={entry}
-												index={index}
-												onClick={() => setMobileOpen(false)}
-											/>
-										))}
-										<Link
-											href={group.ctaHref}
-											onClick={() => setMobileOpen(false)}
-											className="ret-pressable mt-1 inline-flex min-h-11 items-center gap-2 rounded-[var(--ret-card-radius)] px-3 text-[13px] font-semibold text-[var(--ret-text)] hover:bg-[var(--ret-surface-hover)]"
-										>
-											{group.cta}
-											<ArrowRight className="h-4 w-4" />
-										</Link>
-									</div>
-								</details>
-							))}
-							<Link
-								href="/pricing"
-								onClick={() => setMobileOpen(false)}
-								className="ret-pressable flex min-h-12 items-center rounded-[var(--ret-card-radius)] border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-4 text-[14px] font-semibold text-[var(--ret-text)]"
-							>
-								Pricing
-							</Link>
-							<div className="grid grid-cols-2 gap-2 pt-1">
-								<Link
-									href="/sign-in"
-									onClick={() => setMobileOpen(false)}
-									className="ret-pressable inline-flex min-h-12 items-center justify-center rounded-[var(--ret-card-radius)] border border-[var(--ret-border)] text-[14px] font-semibold text-[var(--ret-text)]"
-								>
-									Sign in
-								</Link>
-								<Link
-									href="/sign-in"
-									onClick={() => setMobileOpen(false)}
-									className="ret-pressable inline-flex min-h-12 items-center justify-center rounded-[var(--ret-card-radius)] bg-[var(--ret-accent)] px-4 text-[14px] font-semibold text-[var(--ret-bg)]"
-								>
-									Start free
-								</Link>
-							</div>
+					<details className="group/mobile ml-auto md:hidden">
+						<summary aria-label="Toggle navigation" className="ret-pressable inline-flex h-9 w-9 cursor-pointer list-none items-center justify-center border border-[var(--ret-border)] text-[var(--ret-text)]">
+							<ChevronDown className="h-5 w-5 transition-transform duration-[var(--ret-duration-hover)] group-open/mobile:rotate-180" />
+						</summary>
+						<div className="ret-popover-panel absolute inset-x-0 top-full border-t border-[var(--ret-border)] bg-[var(--ret-bg)] px-4 pb-4">
+							<MobileMenu />
 						</div>
-					</div>
-				) : null}
+					</details>
+				</div>
 			</div>
 		</ReticleNavbar>
+	);
+}
+
+function MobileMenu() {
+	return (
+		<div className="grid gap-3 pt-3">
+			{MENU_GROUPS.map((group) => (
+				<details key={group.id} name="mobile-marketing-nav" className="rounded-[var(--ret-card-radius)] border border-[var(--ret-border)] bg-[var(--ret-bg-soft)]">
+					<summary className="ret-pressable flex min-h-12 cursor-pointer list-none items-center justify-between rounded-[var(--ret-card-radius)] px-4 text-[14px] font-semibold text-[var(--ret-text)]">
+						<span>{group.label}</span>
+						<ChevronDown className="ret-details-chevron h-4 w-4 text-[var(--ret-text-muted)] transition-transform duration-[var(--ret-duration-hover)]" />
+					</summary>
+					<div className="ret-details-content grid gap-1 border-t border-[var(--ret-border)] p-2">
+						{group.entries.map((entry, index) => <MobileMenuLink key={entry.href} entry={entry} index={index} />)}
+						<Link href={group.ctaHref} className="ret-pressable mt-1 inline-flex min-h-11 items-center gap-2 rounded-[var(--ret-card-radius)] px-3 text-[13px] font-semibold text-[var(--ret-text)] hover:bg-[var(--ret-surface-hover)]">
+							{group.cta}<ArrowRight className="h-4 w-4" />
+						</Link>
+					</div>
+				</details>
+			))}
+			<Link href="/pricing" className="ret-pressable flex min-h-12 items-center rounded-[var(--ret-card-radius)] border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-4 text-[14px] font-semibold text-[var(--ret-text)]">Pricing</Link>
+			<div className="grid grid-cols-2 gap-2 pt-1">
+				<Link href="/sign-in" className="ret-pressable inline-flex min-h-12 items-center justify-center rounded-[var(--ret-card-radius)] border border-[var(--ret-border)] text-[14px] font-semibold text-[var(--ret-text)]">Sign in</Link>
+				<Link href="/sign-in" className="ret-pressable inline-flex min-h-12 items-center justify-center rounded-[var(--ret-card-radius)] bg-[var(--ret-accent)] px-4 text-[14px] font-semibold text-[var(--ret-bg)]">Start free</Link>
+			</div>
+		</div>
 	);
 }
 
@@ -491,41 +382,19 @@ function MenuLink({ entry, index }: { entry: MenuEntry; index: number }) {
 function MobileMenuLink({
 	entry,
 	index,
-	onClick,
 }: {
 	entry: MenuEntry;
 	index: number;
-	onClick: () => void;
 }) {
 	const Icon = ICONS[entry.icon];
 	return (
 		<Link
 			href={entry.href}
-			onClick={onClick}
 			className="ret-pressable ret-stagger-item grid min-h-12 grid-cols-[32px_minmax(0,1fr)] items-center gap-3 rounded-[var(--ret-card-radius)] px-3 py-2 text-[13px] text-[var(--ret-text-dim)] hover:bg-[var(--ret-surface-hover)] hover:text-[var(--ret-text)]"
 			style={{ "--item-index": index } as CSSProperties}
 		>
 			<Icon className="h-4 w-4 text-[var(--ret-text-muted)]" />
 			<span>{entry.title}</span>
 		</Link>
-	);
-}
-
-function NavToggleIcon({ open }: { open: boolean }) {
-	return (
-		<span className="relative flex h-5 w-5 items-center justify-center">
-			<span
-				className="ret-icon-swap absolute inset-0 flex items-center justify-center"
-				data-active={open ? "true" : "false"}
-			>
-				<X className="h-5 w-5" />
-			</span>
-			<span
-				className="ret-icon-swap flex items-center justify-center"
-				data-active={open ? "false" : "true"}
-			>
-				<Menu className="h-5 w-5" />
-			</span>
-		</span>
 	);
 }

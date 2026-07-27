@@ -12,6 +12,7 @@
     "typecheck": "node scripts/sync-data.mjs && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "perf:p95": "node scripts/measure-p95.mjs",
     "smoke:agents": "node scripts/smoke-agent-runtimes.mjs",
     "sync-skills": "node scripts/sync-skills.mjs",
     "sync-mcp-catalog": "node scripts/sync-mcp-catalog.mjs",

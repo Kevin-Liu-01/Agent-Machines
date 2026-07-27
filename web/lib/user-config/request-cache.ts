@@ -5,13 +5,14 @@
  * every keystroke or poll tick.
  */
 
-import { getUserConfig } from "./clerk";
+import { getUserConfigById } from "./clerk";
 import { getEffectiveUserId } from "./identity";
 import type { UserConfig } from "./schema";
 
-const TTL_MS = 2_500;
+const TTL_MS = 10_000;
+const MAX_ENTRIES = 64;
 
-let entry: { userId: string; config: UserConfig; expiresAt: number } | null = null;
+const entries = new Map<string, { config: UserConfig; expiresAt: number }>();
 
 export async function getUserConfigCached(): Promise<UserConfig> {
 	const userId = await getEffectiveUserId();
@@ -19,15 +20,21 @@ export async function getUserConfigCached(): Promise<UserConfig> {
 		throw new Error("unauthorized");
 	}
 	const now = Date.now();
-	if (entry && entry.userId === userId && entry.expiresAt > now) {
+	const entry = entries.get(userId);
+	if (entry && entry.expiresAt > now) {
 		return entry.config;
 	}
-	const config = await getUserConfig();
-	entry = { userId, config, expiresAt: now + TTL_MS };
+	const config = await getUserConfigById(userId);
+	if (entries.size >= MAX_ENTRIES && !entries.has(userId)) {
+		const oldest = entries.keys().next().value as string | undefined;
+		if (oldest) entries.delete(oldest);
+	}
+	entries.delete(userId);
+	entries.set(userId, { config, expiresAt: now + TTL_MS });
 	return config;
 }
 
 /** Call after writes so the next read sees fresh machine/bootstrap state. */
 export function invalidateUserConfigCache(): void {
-	entry = null;
+	entries.clear();
 }

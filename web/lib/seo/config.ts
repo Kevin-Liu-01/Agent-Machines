@@ -23,9 +23,9 @@ export const SITE = {
 	longDescription:
 		`${PRODUCT.summary} Choose Hermes, OpenClaw, Claude Code, or Codex, then choose E2B, Sprites.dev, Dedalus Machines, or Vercel Sandbox. Route model paths through Vercel AI Gateway, OpenRouter, native keys, or any supported OpenAI-compatible endpoint. ${HARNESS_SUMMARY}.`,
 	tagline: PRODUCT.tagline,
-	ogImage: "/opengraph-image",
+	ogImage: "/opengraph-image?v=3",
 	ogImageAlt:
-		"Agent Machines switchboard for persistent agent workers, sandbox lanes, model paths, loadouts, logs, usage, cron, and artifacts",
+		"Agent Machines routes an agent runtime, sandbox, and model path into one persistent worker",
 	aiSummary:
 		"Agent Machines is a harness-agnostic and sandbox-agnostic control plane for persistent AI agent workers. It pairs an agent runtime, sandbox provider, model path, loadout, memory, cron, logs, usage, artifacts, and SDK control into one worker.",
 	twitterHandle: "@kevin_liu_01",

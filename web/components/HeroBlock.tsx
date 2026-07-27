@@ -18,7 +18,6 @@ import {
 import dynamic from "next/dynamic";
 import { type CSSProperties, type SVGProps, useEffect, useRef, useState } from "react";
 
-import { SignedIn, SignedOut } from "@/components/AuthSwitch";
 import { type HeroAgent } from "@/components/HeroAgentPortrait";
 import { Logo, type CompositeMark } from "@/components/Logo";
 import { ServiceIcon, SERVICE_LABEL, type ServiceSlug } from "@/components/ServiceIcon";
@@ -29,10 +28,10 @@ import { ProviderRouteBanner } from "@/components/ProviderRouteBanner";
 import type { SubstrateId } from "@/components/three/HeroOrbitScene";
 import { cn } from "@/lib/cn";
 
-/* ── 3D scene (lazy) ── */
+/* ── 3D wheel system (lazy) ── */
 
 const HeroOrbitScene = dynamic(
-	() => import("@/components/three").then((m) => m.HeroOrbit),
+	() => import("@/components/three").then((module) => module.HeroOrbit),
 	{ ssr: false, loading: () => null },
 );
 
@@ -697,18 +696,10 @@ export function HeroBlock() {
 							</strong>
 						</p>
 						<div className="flex flex-wrap items-center gap-2.5">
-							<SignedIn>
-								<ReticleButton as="a" href="/dashboard" variant="primary" size="md">
-									<IconArrowRight className="h-3.5 w-3.5" />
-									Open dashboard
-								</ReticleButton>
-							</SignedIn>
-							<SignedOut>
-								<ReticleButton as="a" href="/sign-in" variant="primary" size="md">
-									<IconArrowRight className="h-3.5 w-3.5" />
-									Get started
-								</ReticleButton>
-							</SignedOut>
+							<ReticleButton as="a" href="/sign-in" variant="primary" size="md">
+								<IconArrowRight className="h-3.5 w-3.5" />
+								Get started
+							</ReticleButton>
 							<ReticleButton
 								as="a"
 								href="https://github.com/Kevin-Liu-01/agent-machines"

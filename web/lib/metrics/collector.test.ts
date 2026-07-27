@@ -13,7 +13,7 @@ vi.mock("@/lib/providers", () => ({
 	MachineProviderError: class MachineProviderError extends Error {},
 }));
 
-import { probeMachine } from "./collector";
+import { buildDailyRollupRows, probeMachine } from "./collector";
 
 const MACHINE: MachineRef = {
 	id: "am-openclaw",
@@ -85,5 +85,53 @@ describe("probeMachine", () => {
 			snapshot: null,
 		});
 		expect(providerMocks.exec).not.toHaveBeenCalled();
+	});
+});
+
+describe("buildDailyRollupRows", () => {
+	it("increments every running machine in one batch and costs the new total", () => {
+		const samples = [
+			{
+				machineId: "machine-1",
+				machineName: "one",
+				phase: "ready",
+				vcpu: 2,
+				specMemoryMib: 2048,
+				specStorageGib: 10,
+				snapshot: null,
+			},
+		];
+		const { usageRows, costRows } = buildDailyRollupRows(
+			"user-1",
+			samples,
+			[
+				{
+					machine_id: "machine-1",
+					awake_seconds: 600,
+					cpu_vcpu_seconds: 1200,
+					memory_gib_seconds: 1200,
+					storage_gib_hours: 1,
+					sample_count: 2,
+				},
+			],
+			"2026-07-23",
+			1800,
+		);
+
+		expect(usageRows).toEqual([
+			expect.objectContaining({
+				awake_seconds: 2400,
+				cpu_vcpu_seconds: 4800,
+				memory_gib_seconds: 4800,
+				storage_gib_hours: 6,
+				sample_count: 3,
+			}),
+		]);
+		expect(costRows[0]).toEqual(
+			expect.objectContaining({
+				machine_id: "machine-1",
+				total_cost_millicents: expect.any(Number),
+			}),
+		);
 	});
 });
