@@ -148,3 +148,27 @@ tail so the stream can end when the session dies (`{ tail -f & ...; }`) --
 a backgrounded child's stdout may not be captured by every substrate's
 streaming exec. Reproduce with two sequential `openPty({ session })`
 calls on the same sandbox, writing after each attach.
+
+## Regression to chase: openclaw install on sprites
+
+The re-run after the 2026-07-31 security/defect fixes came back:
+
+| Agent | Sandbox | Result | create | install | first event | run |
+| --- | --- | --- | --- | --- | --- | --- |
+| claude-code | e2b | ok | 676 | 8290 | 1009 | 4120 |
+| codex | e2b | ok | 105 | 9798 | 381 | 2443 |
+| openclaw | e2b | ok | 113 | 25401 | 12759 | 13283 |
+| claude-code | sprites | ok | 644 | 193 | 1841 | 4373 |
+| codex | sprites | ok | 527 | 191 | 2312 | 4303 |
+| openclaw | sprites | FAILED | 536 | -- | -- | -- |
+
+`openclaw install did not finish within 900000ms on sprites`, and the
+error carried no install-log tail (so the log file was absent or empty).
+The same cell passed at 18.6s and 21.2s in the two runs before those
+fixes, and openclaw still installs fine on e2b, so this is a
+sprites-specific regression from one of: the env-staging change to
+`exec`/`execBackground` (env now travels in a sourced file rather than
+the URL), the tmux-based background launch, or the version-precise Node
+bootstrap now asking for 24.15.0. Start by reading
+`/tmp/am-install-*.log` and checking whether the tmux launch session
+still exists on the sprite.
