@@ -27,8 +27,16 @@ const NODE_VERSION = "24.18.1";
  * Idempotent: keeps whatever Node satisfies `minMajor` (system or
  * previously bootstrapped), otherwise fetches the pinned tarball.
  */
-export function ensureNodeCommand(minMajor: number): string {
-	const probe = `${AM_NODE_PATH_PREFIX} node -e "process.exit(parseInt(process.versions.node,10)>=${minMajor}?0:1)" >/dev/null 2>&1`;
+export function ensureNodeCommand(
+	minMajor: number,
+	minMinor = 0,
+	minPatch = 0,
+): string {
+	// Compare the full version, not just the major: openclaw's engine range
+	// starts at 24.15.0, so a major-only check let Node 24.10 through and
+	// the private Node was never fetched, leaving the harness permanently
+	// uninstallable on that image.
+	const probe = `${AM_NODE_PATH_PREFIX} node -e "const[M,m,p]=process.versions.node.split('.').map(Number);process.exit(M>${minMajor}||(M===${minMajor}&&(m>${minMinor}||(m===${minMinor}&&p>=${minPatch})))?0:1)" >/dev/null 2>&1`;
 	const detectArch = `A=$(uname -m); if [ "$A" = "x86_64" ]; then A=x64; elif [ "$A" = "aarch64" ] || [ "$A" = "arm64" ]; then A=arm64; else echo "unsupported arch: $A" >&2; exit 1; fi`;
 	const fetch = `curl -fsSL https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-$A.tar.gz -o /tmp/am-node.tar.gz`;
 	const unpack = `mkdir -p "${AM_NODE_DIR}" && tar -xzf /tmp/am-node.tar.gz -C "${AM_NODE_DIR}" --strip-components=1 && rm -f /tmp/am-node.tar.gz`;

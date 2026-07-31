@@ -388,12 +388,23 @@ class DedalusRest {
 	 * send-keys command; waiting for status and output added several
 	 * provider round-trips to every input batch.
 	 */
+	/**
+	 * Fire-and-forget. The payload is handed to setsid/nohup so the
+	 * execution Dedalus tracks ends as soon as the child is launched: the
+	 * server-side timeout applies to that launch, not to the work. Without
+	 * this a detached install (openclaw ~20-30s, hermes minutes) was cut
+	 * off at the 30s exec timeout and its sentinel never appeared.
+	 */
 	async execBackground(
 		machineId: string,
 		command: string,
 		env?: Record<string, string>,
 	): Promise<void> {
-		const argv = ["/bin/bash", "-lc", bashViaBase64(buildScript(command, env))];
+		const script = buildScript(command, env);
+		const launcher =
+			`f=$(mktemp /tmp/am-mux-bg.XXXXXX) && printf '%s' '${Buffer.from(script, "utf8").toString("base64")}' | base64 -d > "$f" && ` +
+			`( (if command -v setsid >/dev/null 2>&1; then setsid nohup bash --noprofile --norc "$f" >/dev/null 2>&1 </dev/null; else nohup bash --noprofile --norc "$f" >/dev/null 2>&1 </dev/null; fi; rm -f "$f") & )`;
+		const argv = ["/bin/bash", "-lc", bashViaBase64(launcher)];
 		await this.createExecution(machineId, argv, DEFAULT_EXEC_TIMEOUT_MS);
 	}
 

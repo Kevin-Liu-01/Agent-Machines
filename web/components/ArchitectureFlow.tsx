@@ -288,11 +288,9 @@ const PROVIDER_X = {
 };
 
 // Vertical row anchors. Each row leaves at least ~20px of clear space
-// below the row above so the smoothstep horizontal segments (which
-// carry the edge labels) don't visually overlap the nodes they pass
-// between. Larger gaps around machine -> agents -> paths because the
-// horizontal gateway hops and the Hermes -> ~/.agent-machines diagonal
-// are the most label-dense edges in the diagram.
+// below the row above so edge labels do not visually overlap the nodes
+// they pass between. Larger gaps around machine -> agents -> paths keep
+// the diagonal fan-outs legible and on the same construction axes.
 const Y = {
 	operator: 0, // sm ~120 tall, bottom 120
 	control: 150, // gap 30
@@ -816,10 +814,9 @@ const EDGES: Edge[] = [
 		target: "gateway",
 		label: "serve :8642",
 	},
-	// Gateway -> Hermes / OpenClaw (same row, horizontal hops). Use the
-	// LEFT and RIGHT side handles on the gateway so smoothstep draws
-	// flat horizontal lines instead of an ugly U-shape going down then
-	// back up to a same-y target.
+	// Gateway -> Hermes / OpenClaw (same row, horizontal hops). Side
+	// handles keep these two connections flat while every off-axis edge
+	// resolves as a clean straight diagonal.
 	{
 		id: "e-gateway-hermes",
 		source: "gateway",
@@ -957,7 +954,7 @@ export function ArchitectureFlow() {
 					edge.id === "e-gateway-openclaw";
 				return {
 					...edge,
-					type: "smoothstep",
+					type: "straight",
 					animated: isActive || isHero,
 					style: {
 						stroke: isActive

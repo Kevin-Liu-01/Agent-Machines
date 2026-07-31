@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Monitor, Moon, Sun, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/cn";
 
@@ -21,40 +22,14 @@ type Theme = "light" | "dark" | "system";
 
 const STORAGE_KEY = "agent-machines.theme";
 
-function IconSun(props: React.SVGProps<SVGSVGElement>) {
-	return (
-		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" {...props}>
-			<circle cx="8" cy="8" r="3" />
-			<path d="M8 1.5v1.5M8 13v1.5M2.5 2.5l1 1M12.5 12.5l1 1M1.5 8h1.5M13 8h1.5M2.5 13.5l1-1M12.5 3.5l1-1" />
-		</svg>
-	);
-}
-
-function IconMoon(props: React.SVGProps<SVGSVGElement>) {
-	return (
-		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
-			<path d="M14 9.5A6 6 0 1 1 6.5 2 5 5 0 0 0 14 9.5z" />
-		</svg>
-	);
-}
-
-function IconMonitor(props: React.SVGProps<SVGSVGElement>) {
-	return (
-		<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
-			<rect x="2" y="2.5" width="12" height="9" />
-			<path d="M5 14h6M8 11.5V14" />
-		</svg>
-	);
-}
-
 const THEMES: ReadonlyArray<{
 	id: Theme;
 	label: string;
-	Icon: (p: React.SVGProps<SVGSVGElement>) => React.ReactElement;
+	Icon: LucideIcon;
 }> = [
-	{ id: "light", label: "light", Icon: IconSun },
-	{ id: "dark", label: "dark", Icon: IconMoon },
-	{ id: "system", label: "system", Icon: IconMonitor },
+	{ id: "light", label: "light", Icon: Sun },
+	{ id: "dark", label: "dark", Icon: Moon },
+	{ id: "system", label: "system", Icon: Monitor },
 ];
 
 function readStored(): Theme {
@@ -159,7 +134,7 @@ export function ThemeToggle({ className }: { className?: string }) {
 						)}
 						title={`${t.label} theme`}
 					>
-						<Icon className="h-3.5 w-3.5" />
+						<Icon className="h-3.5 w-3.5" strokeWidth={1.75} />
 						<span className="sr-only">{t.label}</span>
 					</button>
 				);

@@ -1,4 +1,4 @@
-import type { SVGProps } from "react";
+import { Check } from "lucide-react";
 
 import type { CapabilityValue, ProviderProfile } from "@/lib/benchmarks/types";
 
@@ -84,7 +84,7 @@ export function CapabilityMatrix({ profiles }: { profiles: ProviderProfile[] }) 
 function CapabilityCell({ value }: { value: CapabilityValue }) {
 	if (typeof value === "boolean") {
 		return value ? (
-			<IconCheck className="h-3.5 w-3.5 text-[var(--ret-green)]" />
+			<Check className="h-3.5 w-3.5 text-[var(--ret-green)]" strokeWidth={2} aria-label="yes" />
 		) : (
 			<span className="text-[var(--ret-text-muted)]">—</span>
 		);
@@ -93,21 +93,4 @@ function CapabilityCell({ value }: { value: CapabilityValue }) {
 		return <span className="text-[var(--ret-text-muted)]">—</span>;
 	}
 	return <span className="text-[11px] text-[var(--ret-text)]">{String(value)}</span>;
-}
-
-function IconCheck(props: SVGProps<SVGSVGElement>) {
-	return (
-		<svg
-			viewBox="0 0 16 16"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="2"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-			aria-label="yes"
-			{...props}
-		>
-			<path d="M3 8.5l3.5 3.5L13 4.5" />
-		</svg>
-	);
 }

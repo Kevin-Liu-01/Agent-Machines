@@ -13,6 +13,7 @@
  */
 
 import { useCallback, useMemo, useState } from "react";
+import { FileDiff, FileText } from "lucide-react";
 
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { cn } from "@/lib/cn";
@@ -209,8 +210,8 @@ function FileTreeNode({
 				selected ? "bg-[var(--ret-purple-glow)]" : "hover:bg-[var(--ret-surface)]",
 			)}
 		>
-			<span className="shrink-0 font-mono text-[10px] text-[var(--ret-text-muted)]">
-				{node.kind === "diff" ? "±" : "⊡"}
+			<span className="shrink-0 text-[var(--ret-text-muted)]">
+				{node.kind === "diff" ? <FileDiff className="h-3 w-3" strokeWidth={1.75} /> : <FileText className="h-3 w-3" strokeWidth={1.75} />}
 			</span>
 			<span className={cn(
 				"flex-1 truncate font-mono text-[11px]",

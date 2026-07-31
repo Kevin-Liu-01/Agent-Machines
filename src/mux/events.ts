@@ -49,6 +49,13 @@ export type RunResult = {
 	events: number;
 	substrate: SubstrateKind;
 	harness: HarnessKind;
+	/**
+	 * True when the stream ended before the harness finished -- the caller
+	 * aborted, broke out of the iteration, or the substrate tore the
+	 * connection down. `text` is then partial and `exitCode` is not the
+	 * harness's own exit status, so never read a truncated run as success.
+	 */
+	truncated: boolean;
 };
 
 /**

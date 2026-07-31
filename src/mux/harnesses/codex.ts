@@ -18,6 +18,7 @@
  * tolerated because the protocol drifted across versions.
  */
 
+import { amNpmInstall, ensureNodeCommand, withAmNode } from "./node-runtime.js";
 import { tryParseJson, type MuxAgentEvent } from "../events.js";
 import {
 	MuxError,
@@ -252,15 +253,20 @@ export const codexHarness: HarnessAdapter = {
 	requiredUpstream: "openai",
 
 	isInstalledCommand(): string {
-		return "command -v codex";
+		return withAmNode("command -v codex");
 	},
 
 	installCommand(): string {
-		return `npm install -g ${CODEX_PACKAGE}@${CODEX_VERSION}`;
+		// Codex ships a native binary, so Node only has to be new enough to
+		// run npm; the shared bootstrap matters because a plain `npm -g`
+		// lands off PATH on substrates that route Node through nvm
+		// (measured on Sprites: install reported success, binary
+		// unfindable).
+		return `${ensureNodeCommand(22)} && ${amNpmInstall(`${CODEX_PACKAGE}@${CODEX_VERSION}`)}`;
 	},
 
 	versionCommand(): string {
-		return "codex --version";
+		return withAmNode("codex --version");
 	},
 
 	/**
@@ -278,9 +284,9 @@ export const codexHarness: HarnessAdapter = {
 		const exec = options.sessionId
 			? `codex exec resume ${shq(options.sessionId)}`
 			: "codex exec";
-		const command = `echo ${toBase64(prompt)} | base64 -d | ${exec} ${baseFlags(
-			options,
-		).join(" ")} -`;
+		const command = withAmNode(
+			`echo ${toBase64(prompt)} | base64 -d | ${exec} ${baseFlags(options).join(" ")} -`,
+		);
 		return { command, env: { CODEX_API_KEY: key } };
 	},
 
@@ -300,7 +306,9 @@ export const codexHarness: HarnessAdapter = {
 		if (options.model) parts.push("-m", shq(options.model));
 		if (options.cwd) parts.push("-C", shq(options.cwd));
 		if (options.extraArgs?.length) parts.push(...options.extraArgs);
-		const script = `printf %s "$CODEX_API_KEY" | codex login --with-api-key >/dev/null 2>&1 || true; exec ${parts.join(" ")}`;
+		const script = withAmNode(
+			`printf %s "$CODEX_API_KEY" | codex login --with-api-key >/dev/null 2>&1 || true; exec ${parts.join(" ")}`,
+		);
 		return {
 			command: `bash -lc ${shq(script)}`,
 			env: { CODEX_API_KEY: key, OPENAI_API_KEY: key },

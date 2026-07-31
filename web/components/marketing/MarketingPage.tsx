@@ -31,7 +31,7 @@ export function MarketingShell({ children }: ShellProps) {
 				githubRepo={SITE.githubRepo}
 				githubLink={<GitHubStarLink repo={SITE.githubRepo} />}
 			/>
-			{children}
+			<div data-motion-route-root>{children}</div>
 			<Footer />
 		</ReticlePageGrid>
 	);

@@ -36,7 +36,9 @@ export function DashboardShell({ children, config }: Props) {
 			<div className="relative z-10 flex min-h-[100dvh] min-w-0 flex-col bg-[var(--ret-bg)]">
 				<StatusHeader machines={config.machines} />
 				<MobileDashboardNav setupComplete={setupComplete} machines={config.machines} />
-				<main className="flex-1">{children}</main>
+				<main className="flex-1" data-motion-route-root>
+					{children}
+				</main>
 			</div>
 		</div>
 		</DashboardReticleProvider>

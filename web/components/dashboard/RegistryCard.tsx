@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ExternalLink } from "lucide-react";
 
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
@@ -129,7 +130,7 @@ export function RegistryCard({ item, onAdd, onRemove }: Props) {
 							rel="noreferrer"
 							className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-accent)] hover:underline"
 						>
-							source&nbsp;↗
+							source <ExternalLink className="inline h-2.5 w-2.5" strokeWidth={1.75} aria-hidden />
 						</a>
 					) : (
 						<span />

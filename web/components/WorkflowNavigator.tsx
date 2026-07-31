@@ -1,4 +1,12 @@
-import type { CSSProperties, SVGProps } from "react";
+import type { CSSProperties } from "react";
+import {
+	Bot,
+	Boxes,
+	LayoutDashboard,
+	Server,
+	SlidersHorizontal,
+	type LucideIcon,
+} from "lucide-react";
 
 import { Logo, type Mark } from "@/components/Logo";
 import { CircuitArt } from "@/components/reticle/CircuitArt";
@@ -31,7 +39,7 @@ type Step = {
 	kicker: string;
 	title: string;
 	body: string;
-	Icon: (props: SVGProps<SVGSVGElement>) => React.ReactElement;
+	Icon: LucideIcon;
 	art: string;
 	bullets: readonly Bullet[];
 	metrics: readonly Metric[];
@@ -46,7 +54,7 @@ const STEPS: ReadonlyArray<Step> = [
 		kicker: "AGENT MACHINES · CONTROL PLANE",
 		title: "Configure once, supervise the whole fleet.",
 		body: "Setup, lifecycle, terminal, logs, artifacts, usage, and chat all read from the same account objects. The dashboard shows what is configured, running, and saved.",
-		Icon: IconPanel,
+		Icon: LayoutDashboard,
 		art: "overview",
 		bullets: [
 			["Pair ", "runtime + substrate", " from one account settings model"],
@@ -70,7 +78,7 @@ const STEPS: ReadonlyArray<Step> = [
 		kicker: "AGENT MACHINES · RUNTIME LANES",
 		title: "Four runtimes, two operation models, one worker.",
 		body: "Hermes and OpenClaw run as longer-lived agent drivers. Claude Code and Codex run as task CLIs. Each lands inside the same machine record and persistent runtime root.",
-		Icon: IconAgent,
+		Icon: Bot,
 		art: "agents",
 		bullets: [
 			["Always-on agents: ", "Hermes · OpenClaw"],
@@ -94,7 +102,7 @@ const STEPS: ReadonlyArray<Step> = [
 		kicker: "AGENT MACHINES · LOADOUT",
 		title: "Skills, MCP servers, CLIs, and plugins — one harness.",
 		body: "Loadout is the active stack on a machine: skills, MCPs, service lanes, CLIs, plugins, and source entries. Registry is where new entries get added.",
-		Icon: IconTools,
+		Icon: Boxes,
 		art: "loadout",
 		bullets: [
 			["", `${HARNESS.skillCount} skills`, " in SKILL.md protocol"],
@@ -116,7 +124,7 @@ const STEPS: ReadonlyArray<Step> = [
 		kicker: "AGENT MACHINES · SUBSTRATE LANES",
 		title: "Four substrate lanes — E2B, Sprites, Dedalus, and Vercel.",
 		body: "Each lane implements the same MachineProvider shape. The UI shows only the lifecycle actions and streaming behavior that provider supports.",
-		Icon: IconProvider,
+		Icon: Server,
 		art: "machines",
 		bullets: [
 			["", "E2B", " — sandbox with pause/resume"],
@@ -138,7 +146,7 @@ const STEPS: ReadonlyArray<Step> = [
 		kicker: "AGENT MACHINES · ENVIRONMENT",
 		title: "Gateway and env profiles follow every new worker.",
 		body: "Gateway modes, named variable sets, and bootstrap presets are account-level objects a new worker inherits on deploy.",
-		Icon: IconEnv,
+		Icon: SlidersHorizontal,
 		art: "settings",
 		bullets: [
 			["Gateway modes: ", "tunnel · ai gateway · byo"],
@@ -160,7 +168,7 @@ const STEPS: ReadonlyArray<Step> = [
 const TAB_DATA = STEPS.map((s) => ({
 	id: s.id,
 	tab: s.tab,
-	icon: <s.Icon className="h-3.5 w-3.5" />,
+	icon: <s.Icon className="h-3.5 w-3.5" strokeWidth={1.6} />,
 }));
 
 /* ------------------------------------------------------------------ */
@@ -306,7 +314,7 @@ function WorkflowRow({ step, index }: { step: Step; index: number }) {
 								<span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
 									stage {step.stage}
 								</span>
-								<step.Icon className="h-6 w-6 text-[var(--ret-text-muted)]" />
+								<step.Icon className="h-6 w-6 text-[var(--ret-text-muted)]" strokeWidth={1.5} />
 							</div>
 							<div className="grid grid-cols-3 gap-px border border-[var(--ret-border)] bg-[var(--ret-border)]">
 								{step.metrics.map(([label, value]) => (
@@ -623,86 +631,4 @@ function TTableRow({
 
 function TSpacer() {
 	return <div className="h-2" />;
-}
-
-/* ------------------------------------------------------------------ */
-/* SVG Icons                                                           */
-/* ------------------------------------------------------------------ */
-
-function IconPanel(props: SVGProps<SVGSVGElement>) {
-	return (
-		<svg
-			viewBox="0 0 32 32"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="1.4"
-			{...props}
-		>
-			<rect x="4" y="6" width="24" height="20" />
-			<path d="M4 12h24M11 12v14M15 17h9M15 21h6" />
-		</svg>
-	);
-}
-
-function IconAgent(props: SVGProps<SVGSVGElement>) {
-	return (
-		<svg
-			viewBox="0 0 32 32"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="1.4"
-			{...props}
-		>
-			<path d="M16 4l9 5v14l-9 5-9-5V9z" />
-			<path d="M11 14h10M11 18h10M16 4v8M16 20v8" />
-		</svg>
-	);
-}
-
-function IconTools(props: SVGProps<SVGSVGElement>) {
-	return (
-		<svg
-			viewBox="0 0 32 32"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="1.4"
-			{...props}
-		>
-			<rect x="5" y="5" width="8" height="8" />
-			<rect x="19" y="5" width="8" height="8" />
-			<rect x="5" y="19" width="8" height="8" />
-			<rect x="19" y="19" width="8" height="8" />
-			<path d="M13 9h6M9 13v6M23 13v6M13 23h6" />
-		</svg>
-	);
-}
-
-function IconProvider(props: SVGProps<SVGSVGElement>) {
-	return (
-		<svg
-			viewBox="0 0 32 32"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="1.4"
-			{...props}
-		>
-			<path d="M6 9h20v6H6zM6 17h20v6H6z" />
-			<path d="M10 12h3M10 20h3M22 12h2M22 20h2" />
-		</svg>
-	);
-}
-
-function IconEnv(props: SVGProps<SVGSVGElement>) {
-	return (
-		<svg
-			viewBox="0 0 32 32"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="1.4"
-			{...props}
-		>
-			<path d="M5 8h22v16H5z" />
-			<path d="M9 13h4M9 17h8M9 21h5M21 13l2 2-2 2" />
-		</svg>
-	);
 }

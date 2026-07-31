@@ -228,9 +228,8 @@ class SpritesSandbox implements SandboxHandle {
 		const startedAt = Date.now();
 		const timeoutMs = options?.timeoutMs ?? DEFAULT_EXEC_TIMEOUT_MS;
 		try {
-			const script = await scriptFor(this.handle, command);
+			const script = await scriptFor(this.handle, command, options?.env);
 			const result = await this.handle.execFileHTTP("bash", ["-lc", script], {
-				env: options?.env,
 				cwd: options?.cwd,
 				timeout: timeoutMs,
 			});
@@ -313,14 +312,15 @@ class SpritesSandbox implements SandboxHandle {
 		if (options.signal?.aborted) return;
 		let script: string;
 		try {
-			script = await scriptFor(this.handle, command);
+			script = await scriptFor(this.handle, command, options.env);
 		} catch (error) {
 			throw mapVendorError(error, "execStream stage");
 		}
 		const queue = new PushQueue<ExecStreamEvent>();
 		let finished = false;
+		// env is inside `script` (sourced from a staged file); passing it
+		// here would put secrets in the WebSocket URL's query string.
 		const proc = this.handle.spawn("bash", ["-lc", script], {
-			env: options.env,
 			cwd: options.cwd,
 		});
 		const killProc = (signal: string): void => {
@@ -437,6 +437,15 @@ class SpritesSandbox implements SandboxHandle {
 		const named = options.session ? sanitizeName(options.session) : null;
 		const sidFile = named ? `/tmp/am-mux-pty-${named}.sid` : null;
 
+		// Secrets stay out of the URL: env is sourced from a staged file
+		// inside the PTY's own command rather than passed to the SDK.
+		const ptyEnv = options.env ?? {};
+		const ptyPrelude =
+			Object.keys(ptyEnv).length > 0
+				? (await stageEnvFile(this.handle, ptyEnv)).prelude
+				: "";
+		const ptyScript = `${ptyPrelude}${ttyCommand(options.command)}`;
+
 		let proc: SpriteCommand;
 		let attachedSid: string | null = null;
 		try {
@@ -444,17 +453,15 @@ class SpritesSandbox implements SandboxHandle {
 				attachedSid = await this.findLiveSession(sidFile);
 				proc = attachedSid
 					? this.handle.attachSession(attachedSid, { cols, rows })
-					: this.handle.createSession("bash", ["-lc", ttyCommand(options.command)], {
+					: this.handle.createSession("bash", ["-lc", ptyScript], {
 							cols,
 							rows,
-							env: options.env,
 						});
 			} else {
-				proc = this.handle.spawn("bash", ["-lc", ttyCommand(options.command)], {
+				proc = this.handle.spawn("bash", ["-lc", ptyScript], {
 					tty: true,
 					cols,
 					rows,
-					env: options.env,
 				});
 			}
 		} catch (error) {
@@ -779,10 +786,55 @@ async function stageCommandFile(sprite: Sprite, command: string): Promise<string
 	return file;
 }
 
-async function scriptFor(sprite: Sprite, command: string): Promise<string> {
-	const b64 = Buffer.from(command, "utf8").toString("base64");
+/**
+ * Stage environment variables as a sourced file instead of handing them
+ * to the SDK's `env` option.
+ *
+ * The Sprites SDK appends every env pair to the request URL's query
+ * string (dist/exec.js `url.searchParams.append("env", ...)` on both the
+ * HTTP and WebSocket paths), so model API keys would travel in a real
+ * network URL -- the one place secrets must never go, because URLs are
+ * logged by proxies, gateways and access logs. The filesystem write is a
+ * request body, so the values stay out of the URL; the file is 0600 and
+ * removed by the caller's script.
+ */
+/** POSIX single-quote escaping for values written into a shell file. */
+function shq(value: string): string {
+	return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+async function stageEnvFile(
+	sprite: Sprite,
+	env: Record<string, string>,
+): Promise<{ path: string; prelude: string }> {
+	const path = `/tmp/am-mux-env-${randomSuffix()}.sh`;
+	const body = Object.entries(env)
+		.map(([key, value]) => `export ${key}=${shq(value)}`)
+		.join("\n");
+	await sprite.filesystem("/").writeFile(path, `${body}\n`);
+	return {
+		path,
+		// Source then unlink immediately: the values live only in the
+		// process environment from that point on.
+		prelude: `umask 077; . ${path}; rm -f ${path}; `,
+	};
+}
+
+async function scriptFor(
+	sprite: Sprite,
+	command: string,
+	env?: Record<string, string>,
+): Promise<string> {
+	// Secrets must not ride in the URL, so env is staged as a file the
+	// script sources rather than passed to the SDK's env option.
+	const prelude =
+		env && Object.keys(env).length > 0
+			? (await stageEnvFile(sprite, env)).prelude
+			: "";
+	const payload = prelude ? `${prelude}${command}` : command;
+	const b64 = Buffer.from(payload, "utf8").toString("base64");
 	if (b64.length <= MAX_INLINE_B64) return inlineScript(b64);
-	const file = await stageCommandFile(sprite, command);
+	const file = await stageCommandFile(sprite, payload);
 	return `bash --noprofile --norc ${file}; am_exit=$?; rm -f ${file}; exit $am_exit`;
 }
 

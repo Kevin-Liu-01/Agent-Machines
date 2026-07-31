@@ -406,8 +406,11 @@ test("install/probe/version commands", () => {
 	const install = claudeCodeHarness.installCommand();
 	assert.ok(install.includes("npm install --prefix"));
 	assert.ok(install.includes("@anthropic-ai/claude-code@2.1.220"));
-	assert.ok(
-		install.includes("parseInt(process.versions.node,10)>=22"),
+	// The bootstrap probe compares the full version (major.minor.patch),
+	// so a harness with a minor-precision engine range is handled too.
+	assert.match(
+		install,
+		/M>22\|\|\(M===22&&/,
 		"install must ensure Node >= 22 via the user-space bootstrap",
 	);
 	assert.ok(

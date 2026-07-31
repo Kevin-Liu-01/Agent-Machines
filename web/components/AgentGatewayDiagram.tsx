@@ -1,4 +1,4 @@
-import type { SVGProps } from "react";
+import { ArrowRight, Box, Network, UserRound } from "lucide-react";
 
 import { Logo } from "@/components/Logo";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
@@ -135,11 +135,11 @@ function AgentFlowDiagram() {
 	return (
 		<div className="flex w-full max-w-[460px] items-center gap-2">
 			<FlowBox label="You" sub="browser / CLI" accent="var(--ret-text-muted)">
-				<IconUser className="h-5 w-5" />
+				<UserRound className="h-5 w-5" strokeWidth={1.6} />
 			</FlowBox>
 			<FlowArrow />
 			<FlowBox label="Gateway" sub=":8642 /v1" accent="var(--ret-purple)">
-				<IconGateway className="h-5 w-5" />
+				<Network className="h-5 w-5" strokeWidth={1.6} />
 			</FlowBox>
 			<FlowArrow />
 			<FlowBox label="Agent" sub="Hermes / OC" accent="var(--ret-text)">
@@ -147,7 +147,7 @@ function AgentFlowDiagram() {
 			</FlowBox>
 			<FlowArrow />
 			<FlowBox label="Container" sub="/home/machine" accent="var(--ret-amber)">
-				<IconContainer className="h-5 w-5" />
+				<Box className="h-5 w-5" strokeWidth={1.6} />
 			</FlowBox>
 		</div>
 	);
@@ -256,9 +256,7 @@ function FlowBox({
 function FlowArrow() {
 	return (
 		<div className="flex shrink-0 items-center px-0.5 text-[var(--ret-purple)]">
-			<svg width="16" height="8" viewBox="0 0 16 8" fill="none">
-				<path d="M0 4h12M10 1l3 3-3 3" stroke="currentColor" strokeWidth="1.2" />
-			</svg>
+			<ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} />
 		</div>
 	);
 }
@@ -278,35 +276,5 @@ function CountCell({ label, value }: { label: string; value: string }) {
 			<p className="font-mono text-base tabular-nums text-[var(--ret-text)]">{value}</p>
 			<p className="font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--ret-text-muted)]">{label}</p>
 		</div>
-	);
-}
-
-function IconUser(props: SVGProps<SVGSVGElement>) {
-	return (
-		<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" {...props}>
-			<circle cx="10" cy="6" r="3" />
-			<path d="M3 18c0-3.5 3.1-6 7-6s7 2.5 7 6" />
-		</svg>
-	);
-}
-
-function IconGateway(props: SVGProps<SVGSVGElement>) {
-	return (
-		<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" {...props}>
-			<rect x="3" y="4" width="14" height="5" />
-			<rect x="3" y="11" width="14" height="5" />
-			<circle cx="6" cy="6.5" r="0.8" fill="currentColor" />
-			<circle cx="6" cy="13.5" r="0.8" fill="currentColor" />
-			<path d="M10 9v2" />
-		</svg>
-	);
-}
-
-function IconContainer(props: SVGProps<SVGSVGElement>) {
-	return (
-		<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" {...props}>
-			<path d="M10 2l7 4v8l-7 4-7-4V6z" />
-			<path d="M10 10l7-4M10 10v8M10 10L3 6" />
-		</svg>
 	);
 }

@@ -23,7 +23,7 @@ export const SITE = {
 	longDescription:
 		`${PRODUCT.summary} Choose Hermes, OpenClaw, Claude Code, or Codex, then choose E2B, Sprites.dev, Dedalus Machines, or Vercel Sandbox. Route model paths through Vercel AI Gateway, OpenRouter, native keys, or any supported OpenAI-compatible endpoint. ${HARNESS_SUMMARY}.`,
 	tagline: PRODUCT.tagline,
-	ogImage: "/opengraph-image?v=3",
+	ogImage: "/opengraph-image?v=4",
 	ogImageAlt:
 		"Agent Machines routes an agent runtime, sandbox, and model path into one persistent worker",
 	aiSummary:

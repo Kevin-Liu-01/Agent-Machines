@@ -19,7 +19,9 @@ function parse(value: unknown): MuxAgentEvent[] {
 }
 
 function decodePrompt(command: string): { prompt: string; rest: string } {
-	const match = command.match(/^echo ([A-Za-z0-9+/=]+) \| base64 -d \| (.+)$/);
+	// The pipeline is wrapped in the shared node-runtime brace group, so
+	// match the pipe anywhere rather than anchoring at the start.
+	const match = command.match(/echo ([A-Za-z0-9+/=]+) \| base64 -d \| (.+?);? \}?$/);
 	assert.ok(match, `command does not embed a base64 prompt pipe: ${command}`);
 	return {
 		prompt: Buffer.from(match[1], "base64").toString("utf8"),
@@ -30,12 +32,17 @@ function decodePrompt(command: string): { prompt: string; rest: string } {
 test("adapter identity and static commands", () => {
 	assert.equal(codexHarness.kind, "codex");
 	assert.equal(codexHarness.requiredUpstream, "openai");
-	assert.equal(codexHarness.isInstalledCommand(), "command -v codex");
-	assert.equal(
-		codexHarness.installCommand(),
-		"npm install -g @openai/codex@0.146.0",
+	assert.match(codexHarness.isInstalledCommand(), /command -v codex/);
+	assert.match(
+		codexHarness.isInstalledCommand(),
+		/agent-machines\/pkgs\/node_modules\/\.bin/,
+		"the probe must look where amNpmInstall puts the binary",
 	);
-	assert.equal(codexHarness.versionCommand(), "codex --version");
+	const install = codexHarness.installCommand();
+	assert.match(install, /@openai\/codex@0\.146\.0/);
+	assert.match(install, /npm install --prefix/, "install must not use npm -g");
+	assert.ok(!install.includes("\n"), "install must stay a single shell line");
+	assert.match(codexHarness.versionCommand(), /codex --version/);
 });
 
 test("thread.started maps to started with the thread id as sessionId", () => {
@@ -215,7 +222,10 @@ test("runCommand embeds the prompt as base64 and reads it from stdin", () => {
 	assert.ok(rest.startsWith("codex exec --json"));
 	assert.ok(command.includes("--skip-git-repo-check"));
 	assert.ok(command.includes("--dangerously-bypass-approvals-and-sandbox"));
-	assert.ok(command.endsWith(" -"), "prompt must be read from stdin via trailing -");
+	assert.ok(
+		/ -;? \}?$/.test(command),
+		"prompt must be read from stdin via trailing -",
+	);
 	assert.equal(env.CODEX_API_KEY, "sk-test-openai");
 });
 
@@ -242,7 +252,7 @@ test("runCommand with sessionId resumes via codex exec resume", () => {
 	});
 	const { rest } = decodePrompt(command);
 	assert.ok(rest.startsWith("codex exec resume 'thr_abc123' --json"));
-	assert.ok(command.endsWith(" -"));
+	assert.ok(/ -;? \}?$/.test(command));
 });
 
 test("runCommand without an OpenAI key fails closed", () => {

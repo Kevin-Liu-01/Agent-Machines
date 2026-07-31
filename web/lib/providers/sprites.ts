@@ -183,13 +183,27 @@ export class SpritesProvider implements MachineProvider {
 		options?: ExecOptions,
 	): Promise<ExecResult> {
 		const timeoutMs = options?.timeoutMs ?? 30_000;
-		// Sprites exec is WebSocket-based, not REST. Use the @fly/sprites
-		// SDK which handles the binary WS protocol automatically.
+		// Fast path: execFileHTTP runs the command over plain HTTP (measured
+		// 87-296ms) instead of paying a WebSocket handshake per exec (the
+		// ~5s floor the 2026-05 benchmarks flagged). Fall back to the WS
+		// execFile once if the HTTP transport rejects the command.
 		try {
 			const sprite = await this.spriteHandle(spriteName);
 			// sprite.exec() splits on whitespace, breaking shell operators
-			// like && and |. Use execFile with /bin/bash -c instead.
-			const execPromise = sprite.execFile("/bin/bash", ["-c", command]);
+			// like && and |. Use bash -c via execFileHTTP/execFile instead.
+			const execPromise = sprite
+				.execFileHTTP("/bin/bash", ["-c", command])
+				.catch((httpError: unknown) => {
+					const message =
+						httpError instanceof Error ? httpError.message : String(httpError);
+					// Non-zero exits arrive as ExecError with a result attached:
+					// rethrow those so the shared extraction below handles them.
+					if ((httpError as { result?: unknown }).result) throw httpError;
+					if (!/frame|chunk|transport|body|network|fetch/i.test(message)) {
+						throw httpError;
+					}
+					return sprite.execFile("/bin/bash", ["-c", command]);
+				});
 			const result = await withTimeout(execPromise, timeoutMs, "sprites exec timed out");
 			const stdout = result.stdout ? String(result.stdout) : "";
 			const stderr = result.stderr ? String(result.stderr) : "";

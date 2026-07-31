@@ -1,4 +1,4 @@
-import type { SVGProps } from "react";
+import { ArrowRight } from "lucide-react";
 
 import { Logo, type Mark } from "@/components/Logo";
 import { cn } from "@/lib/cn";
@@ -13,20 +13,6 @@ const PROVIDERS: ReadonlyArray<ProviderChip> = [
 	{ mark: "dedalus", label: "Dedalus" },
 	{ mark: "vercel", label: "Vercel" },
 ];
-
-function IconArrowRight(props: SVGProps<SVGSVGElement>) {
-	return (
-		<svg viewBox="0 0 16 16" fill="none" aria-hidden {...props}>
-			<path
-				d="M3 8h10M9 4l4 4-4 4"
-				stroke="currentColor"
-				strokeWidth="1.4"
-				strokeLinecap="round"
-				strokeLinejoin="round"
-			/>
-		</svg>
-	);
-}
 
 export function ProviderRouteBanner() {
 	return (
@@ -77,7 +63,7 @@ export function ProviderRouteBanner() {
 				)}
 			>
 				Launch
-				<IconArrowRight className="h-2.5 w-2.5 transition-transform group-hover/banner:translate-x-0.5" />
+				<ArrowRight className="h-2.5 w-2.5 transition-transform group-hover/banner:translate-x-0.5" strokeWidth={1.75} />
 			</span>
 		</a>
 	);

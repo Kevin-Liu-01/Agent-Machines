@@ -718,3 +718,41 @@ test("named create remembers the machine and connect() reads it back", async (t)
 	assert.ok(!(name in afterDestroy.machines));
 	await assert.rejects(mux.connect(name), isMuxError("fatal", /No remembered machine/));
 });
+
+test("a gateway-only config cannot satisfy a harness that needs a native key", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	// openclaw/hermes declare requiredUpstream "any", but the adapters only
+	// inject ANTHROPIC_API_KEY / OPENAI_API_KEY, so a gateway key alone is
+	// not usable and must be rejected before a sandbox is provisioned.
+	//
+	// Config resolution falls back to the ambient environment, so a
+	// developer machine with real keys exported would otherwise satisfy the
+	// gate and hide the regression. Clear them for this test only.
+	const savedAnthropic = process.env.ANTHROPIC_API_KEY;
+	const savedOpenai = process.env.OPENAI_API_KEY;
+	delete process.env.ANTHROPIC_API_KEY;
+	delete process.env.OPENAI_API_KEY;
+	t.after(() => {
+		if (savedAnthropic !== undefined) process.env.ANTHROPIC_API_KEY = savedAnthropic;
+		if (savedOpenai !== undefined) process.env.OPENAI_API_KEY = savedOpenai;
+	});
+
+	const provider = new FakeProvider("e2b");
+	const mux = router.createMux({
+		keys: { aiGateway: "vck_gateway_only" },
+		sandboxes: { primary: "e2b", backups: [] },
+	});
+	mux.registerProvider("e2b", provider);
+	await assert.rejects(
+		mux.create({ agent: "openclaw", install: false }),
+		(thrown: unknown) =>
+			thrown instanceof MuxError &&
+			thrown.kind === "missing_credentials" &&
+			/native Anthropic or OpenAI key/.test(thrown.message),
+	);
+	assert.equal(provider.createCalls, 0, "no sandbox may be provisioned");
+});

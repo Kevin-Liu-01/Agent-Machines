@@ -71,6 +71,7 @@ export function ReticleSection({
 			)}
 			{art ? <CircuitArt slug={art} variant="card" /> : null}
 			<div
+				data-motion-section
 				className={cn(
 					"relative z-10 mx-auto w-full max-w-[var(--ret-content-max)]",
 					isHatch || isWing || art ? null : "bg-[var(--ret-bg)]",

@@ -1,8 +1,7 @@
 /**
- * Circuit-graphic art mapping. White line-art on pure black, served from
- * /public/category-art/<slug>.png, adapted to light/dark via CSS blend
- * (see CircuitArt / SchematicPanel). One module gates which surfaces have
- * art and returns the path, with a graceful null when a slug has no asset.
+ * Circuit-art availability map. CircuitArt and SchematicPanel use this list
+ * to decide which surfaces receive the shared theme-aware vector schematic;
+ * explicit image callers can still resolve the legacy PNG path below.
  */
 
 /** Slugs that have a committed asset under /public/category-art/. */

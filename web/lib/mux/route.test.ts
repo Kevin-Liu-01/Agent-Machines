@@ -54,16 +54,23 @@ describe("resolveRoute", () => {
 			configWith({ vercel: { token: "tok", teamId: "team_1" } }),
 		);
 		const vercel = skipped.find((entry) => entry.substrate === "vercel");
-		expect(vercel?.missing).toEqual(["VERCEL_PROJECT_ID"]);
+		expect(vercel?.missing).toContain("VERCEL_PROJECT_ID");
+		expect(vercel?.missing).not.toContain("VERCEL_TOKEN");
 	});
 
 	it("treats a complete vercel triple as credentialed", () => {
-		const { route } = resolveRoute(
-			configWith({
-				vercel: { token: "tok", teamId: "team_1", projectId: "prj_1" },
-			}),
-		);
-		expect(route).toEqual(["vercel"]);
+		const saved = process.env.VERCEL_OIDC_TOKEN;
+		delete process.env.VERCEL_OIDC_TOKEN;
+		try {
+			const { route } = resolveRoute(
+				configWith({
+					vercel: { token: "tok", teamId: "team_1", projectId: "prj_1" },
+				}),
+			);
+			expect(route).toEqual(["vercel"]);
+		} finally {
+			if (saved !== undefined) process.env.VERCEL_OIDC_TOKEN = saved;
+		}
 	});
 
 	it("identifies which lanes have a native pty", () => {
@@ -71,5 +78,33 @@ describe("resolveRoute", () => {
 			"e2b",
 			"sprites",
 		]);
+	});
+});
+
+describe("vercel accepts either auth shape", () => {
+	it("treats an OIDC token in the environment as credentialed", () => {
+		const saved = process.env.VERCEL_OIDC_TOKEN;
+		process.env.VERCEL_OIDC_TOKEN = "oidc-jwt";
+		try {
+			const { route, skipped } = resolveRoute(configWith({}));
+			expect(route).toEqual(["vercel"]);
+			expect(skipped.some((entry) => entry.substrate === "vercel")).toBe(false);
+		} finally {
+			if (saved === undefined) delete process.env.VERCEL_OIDC_TOKEN;
+			else process.env.VERCEL_OIDC_TOKEN = saved;
+		}
+	});
+
+	it("names OIDC as an alternative when the triple is incomplete", () => {
+		const saved = process.env.VERCEL_OIDC_TOKEN;
+		delete process.env.VERCEL_OIDC_TOKEN;
+		try {
+			const { skipped } = resolveRoute(configWith({ vercel: { token: "tok" } }));
+			const vercel = skipped.find((entry) => entry.substrate === "vercel");
+			expect(vercel?.missing).toContain("VERCEL_TEAM_ID");
+			expect(vercel?.missing.join(" ")).toContain("VERCEL_OIDC_TOKEN");
+		} finally {
+			if (saved !== undefined) process.env.VERCEL_OIDC_TOKEN = saved;
+		}
 	});
 });

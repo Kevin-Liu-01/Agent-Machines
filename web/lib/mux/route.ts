@@ -43,12 +43,20 @@ function credentialsFor(
 				? { ok: true, missing: [] }
 				: { ok: false, missing: ["SPRITES_TOKEN"] };
 		case "vercel": {
+			// Two accepted shapes, matching the mux provider: an OIDC token
+			// on its own, or the token+team+project triple. Requiring the
+			// triple unconditionally made the dashboard report vercel as
+			// unavailable on OIDC-authenticated deployments where the router
+			// happily places machines there. OIDC lives in the environment
+			// (the SDK reads VERCEL_OIDC_TOKEN itself), not in user config.
 			const vercel = providers.vercel;
+			if (process.env.VERCEL_OIDC_TOKEN) return { ok: true, missing: [] };
 			const missing: string[] = [];
 			if (!vercel?.token) missing.push("VERCEL_TOKEN");
 			if (!vercel?.teamId) missing.push("VERCEL_TEAM_ID");
 			if (!vercel?.projectId) missing.push("VERCEL_PROJECT_ID");
-			return { ok: missing.length === 0, missing };
+			missing.push("VERCEL_OIDC_TOKEN (alternative to the token triple)");
+			return { ok: false, missing };
 		}
 		case "dedalus":
 			return providers.dedalus?.apiKey

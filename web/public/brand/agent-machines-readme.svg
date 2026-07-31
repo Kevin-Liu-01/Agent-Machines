@@ -17,46 +17,46 @@
     </style>
   </defs>
 
-  <rect width="1600" height="720" fill="#F4F3EF"/>
+  <rect width="1600" height="720" fill="#FBFBFB"/>
 
   <g transform="translate(64 42) scale(1.5)">
-    <path fill="#8A8799" d="M10 4h12v6H10V4ZM4 10h6v12H4V10ZM22 10h6v12h-6V10ZM10 22h12v6H10V22Z"/>
+    <path fill="#9B98A8" d="M10 4h12v6H10V4ZM4 10h6v12H4V10ZM22 10h6v12h-6V10ZM10 22h12v6H10V22Z"/>
     <path fill="#FFFFFF" d="M10 10h6v6h-6v-6ZM16 16h6v6h-6v-6Z"/>
-    <path fill="#111113" d="M23 5h4v4h-4V5ZM16 10h6v6h-6v-6ZM10 16h6v6h-6v-6ZM5 23h4v4H5v-4Z"/>
+    <path fill="#18181B" d="M23 5h4v4h-4V5ZM16 10h6v6h-6v-6ZM10 16h6v6h-6v-6ZM5 23h4v4H5v-4Z"/>
   </g>
-  <text x="126" y="78" fill="#111113" font-size="24" font-weight="600" letter-spacing="-0.25">agent-machines</text>
+  <text x="126" y="78" fill="#18181B" font-size="24" font-weight="600" letter-spacing="-0.25">agent-machines</text>
 
-  <text x="64" y="191" fill="#111113" font-size="78" font-weight="600" letter-spacing="-3.4">OpenRouter for agents and containers.</text>
-  <text x="68" y="244" fill="#696872" font-size="26" font-weight="400" letter-spacing="-0.3">Route any runtime, sandbox, and model path into one persistent worker.</text>
+  <text x="64" y="191" fill="#18181B" font-size="78" font-weight="600" letter-spacing="-3.4">OpenRouter for agents and containers.</text>
+  <text x="68" y="244" fill="#52525B" font-size="26" font-weight="400" letter-spacing="-0.3">Route any runtime, sandbox, and model path into one persistent worker.</text>
 
   <g>
-    <path d="M534 394H680V495H750M534 495H750M534 596H680V495" stroke="#8A8799" stroke-width="2.5"/>
-    <rect x="673" y="488" width="14" height="14" fill="#F4F3EF" stroke="#8A8799" stroke-width="2"/>
-    <path d="M734 487L750 495L734 503" stroke="#8A8799" stroke-width="2.5"/>
+    <path d="M534 394H600L701 495H750M534 495H750M534 596H600L701 495" fill="none" stroke="#71717A" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
+    <rect x="696" y="490" width="10" height="10" fill="#FBFBFB" stroke="#71717A" stroke-width="1.5" transform="rotate(45 701 495)"/>
+    <path d="M736 488L750 495L736 502" fill="none" stroke="#71717A" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
 
     <g>
-      <rect x="64" y="358" width="470" height="72" fill="#F4F3EF" stroke="#C9C7C0"/>
-      <text x="86" y="383" fill="#696872" font-size="13" font-weight="600" letter-spacing="1.8">RUNTIME</text>
-      <text x="86" y="412" fill="#111113" font-size="20">Hermes · OpenClaw · Claude · Codex</text>
+      <rect x="64" y="358" width="470" height="72" fill="#FBFBFB" stroke="#C7C7CA"/>
+      <text x="86" y="383" fill="#52525B" font-size="13" font-weight="600" letter-spacing="1.8">RUNTIME</text>
+      <text x="86" y="412" fill="#18181B" font-size="20" font-weight="400">Hermes · OpenClaw · Claude · Codex</text>
     </g>
     <g>
-      <rect x="64" y="459" width="470" height="72" fill="#F4F3EF" stroke="#C9C7C0"/>
-      <text x="86" y="484" fill="#696872" font-size="13" font-weight="600" letter-spacing="1.8">SANDBOX</text>
-      <text x="86" y="513" fill="#111113" font-size="20">E2B · Sprites · Dedalus · Vercel</text>
+      <rect x="64" y="459" width="470" height="72" fill="#FBFBFB" stroke="#C7C7CA"/>
+      <text x="86" y="484" fill="#52525B" font-size="13" font-weight="600" letter-spacing="1.8">SANDBOX</text>
+      <text x="86" y="513" fill="#18181B" font-size="20" font-weight="400">E2B · Sprites · Dedalus · Vercel</text>
     </g>
     <g>
-      <rect x="64" y="560" width="470" height="72" fill="#F4F3EF" stroke="#C9C7C0"/>
-      <text x="86" y="585" fill="#696872" font-size="13" font-weight="600" letter-spacing="1.8">MODEL ROUTE</text>
-      <text x="86" y="614" fill="#111113" font-size="20">Gateway · OpenRouter · Native</text>
+      <rect x="64" y="560" width="470" height="72" fill="#FBFBFB" stroke="#C7C7CA"/>
+      <text x="86" y="585" fill="#52525B" font-size="13" font-weight="600" letter-spacing="1.8">MODEL ROUTE</text>
+      <text x="86" y="614" fill="#18181B" font-size="20" font-weight="400">Gateway · OpenRouter · Native</text>
     </g>
 
-    <rect x="750" y="358" width="786" height="274" fill="#111113"/>
+    <rect x="750" y="358" width="786" height="274" fill="#09090B"/>
     <text x="810" y="486" fill="#FFFFFF" font-size="40" font-weight="600" letter-spacing="-1">Persistent worker</text>
-    <text x="812" y="527" fill="#B7B5BE" font-size="21">Memory · tools · cron · logs</text>
+    <text x="812" y="527" fill="#A1A1AA" font-size="21" font-weight="400">Memory · tools · cron · logs</text>
     <g transform="translate(1400 443) scale(2.25)">
-      <path fill="#8A8799" d="M10 4h12v6H10V4ZM4 10h6v12H4V10ZM22 10h6v12h-6V10ZM10 22h12v6H10V22Z"/>
+      <path fill="#9B98A8" d="M10 4h12v6H10V4ZM4 10h6v12H4V10ZM22 10h6v12h-6V10ZM10 22h12v6H10V22Z"/>
       <path fill="#FFFFFF" d="M23 5h4v4h-4V5ZM10 10h6v6h-6v-6ZM16 16h6v6h-6v-6ZM5 23h4v4H5v-4Z"/>
-      <path fill="#111113" d="M16 10h6v6h-6v-6ZM10 16h6v6h-6v-6Z"/>
+      <path fill="#09090B" d="M16 10h6v6h-6v-6ZM10 16h6v6h-6v-6Z"/>
     </g>
   </g>
 </svg>

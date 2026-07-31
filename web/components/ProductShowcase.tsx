@@ -143,15 +143,22 @@ function DualRouteDiagram() {
 				<desc id="dual-route-desc">
 					Four agent runtimes and four machine substrates converge into one worker recipe, producing a persistent worker.
 				</desc>
-				<g fill="none" stroke="var(--ret-border-hover)" strokeWidth="2" vectorEffect="non-scaling-stroke">
-					<path d="M135 110V145H845V182" />
-					<path d="M335 110V145" />
-					<path d="M535 110V145" />
-					<path d="M735 110V145" />
-					<path d="M135 320V285H845V248" />
-					<path d="M335 320V285" />
-					<path d="M535 320V285" />
-					<path d="M735 320V285" />
+				<g
+					fill="none"
+					stroke="var(--ret-border-hover)"
+					strokeWidth="1.5"
+					strokeLinecap="square"
+					strokeLinejoin="miter"
+					vectorEffect="non-scaling-stroke"
+				>
+					<path d="M135 110L170 145H720L757 182" />
+					<path d="M335 110L370 145" />
+					<path d="M535 110L500 145" />
+					<path d="M735 110L700 145" />
+					<path d="M135 320L170 285H720L757 248" />
+					<path d="M335 320L370 285" />
+					<path d="M535 320L500 285" />
+					<path d="M735 320L700 285" />
 					<path d="M930 215H1005" />
 				</g>
 				<g fill="var(--ret-bg)" stroke="var(--ret-border-hover)" strokeWidth="1.5">
@@ -181,9 +188,9 @@ function DualRouteDiagram() {
 					<text x="1085" y="230">worker</text>
 				</g>
 				<g fill="var(--ret-purple)">
-					<rect x="841" y="141" width="8" height="8" />
-					<rect x="841" y="281" width="8" height="8" />
-					<rect x="926" y="211" width="8" height="8" />
+					<rect x="753" y="178" width="8" height="8" transform="rotate(45 757 182)" />
+					<rect x="753" y="244" width="8" height="8" transform="rotate(45 757 248)" />
+					<rect x="926" y="211" width="8" height="8" transform="rotate(45 930 215)" />
 				</g>
 			</svg>
 			<div className="grid gap-2 p-3 md:hidden">

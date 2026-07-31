@@ -15,8 +15,16 @@
  */
 
 import { useState } from "react";
+import {
+	Brain,
+	ChevronRight,
+	FilePenLine,
+	FileText,
+	SquareTerminal,
+} from "lucide-react";
 
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
+import { StatusGlyph } from "@/components/ui/StatusGlyph";
 import { cn } from "@/lib/cn";
 import type { AgentEvent, ConversationArtifact } from "@/lib/agents/protocol";
 
@@ -77,13 +85,13 @@ function ThinkingCard({
 		)}>
 			<button type="button" onClick={() => setExpanded((v) => !v)} className="flex w-full items-center gap-2.5 px-3 py-2 text-left">
 				<span className={cn("flex h-4 w-4 shrink-0 items-center justify-center font-mono text-[10px]", active ? "text-[var(--ret-purple)]" : "text-[var(--ret-text-muted)]")}>
-					{active ? <BrailleSpinner name="breathe" className="text-[11px]" /> : "◆"}
+					{active ? <BrailleSpinner name="breathe" className="text-[11px]" /> : <Brain className="h-3 w-3" strokeWidth={1.75} />}
 				</span>
 				<span className="flex-1 font-mono text-[11px] uppercase tracking-[0.15em] text-[var(--ret-text-muted)]">
 					thinking
 					{duration ? <span className="ml-2 normal-case tracking-normal">{formatMs(duration)}</span> : null}
 				</span>
-				<span className={cn("font-mono text-[11px] text-[var(--ret-text-muted)] transition-transform", isExpanded ? "rotate-90" : "rotate-0")}>{">"}</span>
+				<span className={cn("text-[var(--ret-text-muted)] transition-transform", isExpanded ? "rotate-90" : "rotate-0")}><ChevronRight className="h-3 w-3" strokeWidth={1.75} /></span>
 			</button>
 			{isExpanded ? (
 				<div className="border-t border-[var(--ret-border)] px-3 py-2.5">
@@ -112,7 +120,7 @@ function ToolCallCard({
 	const [expanded, setExpanded] = useState(false);
 	const isExpanded = forceExpand ?? expanded;
 	const statusColor = event.status === "completed" ? "text-[var(--ret-green)]" : event.status === "error" ? "text-[var(--ret-red)]" : "text-[var(--ret-amber)]";
-	const statusIcon = event.status === "completed" ? "✓" : event.status === "error" ? "✗" : null;
+	const status = event.status === "completed" ? "success" : event.status === "error" ? "error" : "idle";
 	const duration = event.completedAt && event.startedAt ? event.completedAt - event.startedAt : null;
 
 	let parsedArgs = "";
@@ -125,14 +133,14 @@ function ToolCallCard({
 		)}>
 			<button type="button" onClick={() => setExpanded((v) => !v)} className="flex w-full items-center gap-2.5 px-3 py-2 text-left">
 				<span className={cn("flex h-4 w-4 shrink-0 items-center justify-center font-mono text-[10px]", statusColor)}>
-					{active ? <BrailleSpinner name="cascade" className="text-[11px]" /> : statusIcon ?? "●"}
+					{active ? <BrailleSpinner name="cascade" className="text-[11px]" /> : <StatusGlyph status={status} size={11} />}
 				</span>
 				<span className="flex-1 truncate font-mono text-[12px] text-[var(--ret-text)]">
 					{event.name}
 					{active ? <span className="ml-2 text-[10px] text-[var(--ret-amber)]">running</span> : null}
 				</span>
 				{duration ? <span className="font-mono text-[10px] text-[var(--ret-text-muted)]">{formatMs(duration)}</span> : null}
-				<span className={cn("font-mono text-[11px] text-[var(--ret-text-muted)] transition-transform", isExpanded ? "rotate-90" : "rotate-0")}>{">"}</span>
+				<span className={cn("text-[var(--ret-text-muted)] transition-transform", isExpanded ? "rotate-90" : "rotate-0")}><ChevronRight className="h-3 w-3" strokeWidth={1.75} /></span>
 			</button>
 			{isExpanded ? (
 				<div className="flex flex-col gap-2 border-t border-[var(--ret-border)] px-3 py-2.5">
@@ -167,10 +175,10 @@ function FileEditCard({
 	return (
 		<div className="group border border-[var(--ret-border)] bg-[var(--ret-bg)]">
 			<button type="button" onClick={() => setExpanded((v) => !v)} className="flex w-full items-center gap-2.5 px-3 py-2 text-left">
-				<span className="flex h-4 w-4 shrink-0 items-center justify-center font-mono text-[10px] text-[var(--ret-green)]">✎</span>
+				<span className="flex h-4 w-4 shrink-0 items-center justify-center text-[var(--ret-green)]"><FilePenLine className="h-3 w-3" strokeWidth={1.75} /></span>
 				<span className="flex-1 truncate font-mono text-[12px] text-[var(--ret-text)]">{event.path || "file edit"}</span>
 				{event.language ? <span className="font-mono text-[9px] uppercase text-[var(--ret-text-muted)]">{event.language}</span> : null}
-				<span className={cn("font-mono text-[11px] text-[var(--ret-text-muted)] transition-transform", isExpanded ? "rotate-90" : "rotate-0")}>{">"}</span>
+				<span className={cn("text-[var(--ret-text-muted)] transition-transform", isExpanded ? "rotate-90" : "rotate-0")}><ChevronRight className="h-3 w-3" strokeWidth={1.75} /></span>
 			</button>
 			{isExpanded && event.diff ? (
 				<div className="border-t border-[var(--ret-border)] px-3 py-2.5">
@@ -196,7 +204,7 @@ function FileEditCard({
 function FileReadCard({ event }: { event: AgentEvent & { kind: "file_read" } }) {
 	return (
 		<div className="flex items-center gap-2.5 border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2">
-			<span className="flex h-4 w-4 shrink-0 items-center justify-center font-mono text-[10px] text-[var(--ret-text-muted)]">⊡</span>
+			<span className="flex h-4 w-4 shrink-0 items-center justify-center text-[var(--ret-text-muted)]"><FileText className="h-3 w-3" strokeWidth={1.75} /></span>
 			<span className="flex-1 truncate font-mono text-[12px] text-[var(--ret-text)]">{event.path || "read"}</span>
 			{event.language ? <span className="font-mono text-[9px] uppercase text-[var(--ret-text-muted)]">{event.language}</span> : null}
 			{event.lineStart ? <span className="font-mono text-[9px] text-[var(--ret-text-muted)]">L{event.lineStart}{event.lineEnd ? `-${event.lineEnd}` : ""}</span> : null}
@@ -226,7 +234,7 @@ function ShellExecCard({
 		)}>
 			<button type="button" onClick={() => setExpanded((v) => !v)} className="flex w-full items-center gap-2.5 px-3 py-2 text-left">
 				<span className={cn("flex h-4 w-4 shrink-0 items-center justify-center font-mono text-[10px]", statusColor)}>
-					{active ? <BrailleSpinner name="cascade" className="text-[11px]" /> : "$"}
+					{active ? <BrailleSpinner name="cascade" className="text-[11px]" /> : <SquareTerminal className="h-3 w-3" strokeWidth={1.75} />}
 				</span>
 				<span className="flex-1 truncate font-mono text-[12px] text-[var(--ret-text)]">
 					{event.command.length > 60 ? event.command.slice(0, 60) + "..." : event.command}
@@ -237,7 +245,7 @@ function ShellExecCard({
 					</span>
 				) : null}
 				{duration ? <span className="font-mono text-[10px] text-[var(--ret-text-muted)]">{formatMs(duration)}</span> : null}
-				{hasOutput ? <span className={cn("font-mono text-[11px] text-[var(--ret-text-muted)] transition-transform", isExpanded ? "rotate-90" : "rotate-0")}>{">"}</span> : null}
+				{hasOutput ? <span className={cn("text-[var(--ret-text-muted)] transition-transform", isExpanded ? "rotate-90" : "rotate-0")}><ChevronRight className="h-3 w-3" strokeWidth={1.75} /></span> : null}
 			</button>
 			{isExpanded && hasOutput ? (
 				<div className="border-t border-[var(--ret-border)] bg-black/30 px-3 py-2.5">

@@ -19,6 +19,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { X } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -263,7 +264,7 @@ export function ActivityStream({
 											onClick={() => onRemoveSessionPackage(id)}
 											aria-label={`Remove ${pkg.name}`}
 										>
-											×
+											<X className="h-3 w-3" strokeWidth={2} aria-hidden />
 										</button>
 									) : null}
 								</span>

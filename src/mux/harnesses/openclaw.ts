@@ -23,6 +23,13 @@ import type {
 const OPENCLAW_VERSION = "2026.7.1-2";
 
 /**
+ * Cap on a single accumulated JSON envelope. openclaw's pretty-printed
+ * result is a few KB; anything past this is unbalanced output rather
+ * than a real object, so the accumulator resyncs instead of wedging.
+ */
+const MAX_ENVELOPE_CHARS = 2_000_000;
+
+/**
  * OpenClaw ships STRICT node engines: >=22.22.3 <23 || >=24.15.0 <25 ||
  * >=25.9.0. A wrong node produces a cryptic npm EBADENGINE mid-install,
  * so we guard up front with a compact single-line `node -e` check that
@@ -83,7 +90,7 @@ export const openclawHarness: HarnessAdapter = {
 	installCommand(): string {
 		// Idempotent: npm install -g of a pinned version is a fast no-op
 		// when that exact version is already installed.
-		return `${ensureNodeCommand(24)} && ${withAmNode(NODE_ENGINE_GUARD)} && ${amNpmInstall(`openclaw@${OPENCLAW_VERSION}`)}`;
+		return `${ensureNodeCommand(24, 15, 0)} && ${withAmNode(NODE_ENGINE_GUARD)} && ${amNpmInstall(`openclaw@${OPENCLAW_VERSION}`)}`;
 	},
 
 	versionCommand(): string {
@@ -177,8 +184,24 @@ export const openclawHarness: HarnessAdapter = {
 		let inString = false;
 		let escaped = false;
 
+		const reset = (): void => {
+			buffer = "";
+			depth = 0;
+			inString = false;
+			escaped = false;
+		};
+
 		return (line: string): MuxAgentEvent[] => {
 			if (buffer === "" && !line.trimStart().startsWith("{")) return [];
+			// A line that opens a brace but never closes it (interleaved
+			// noise, a run aborted mid-envelope) would otherwise wedge the
+			// accumulator forever and grow it without bound: every later
+			// line would be swallowed and no event emitted again. Give up
+			// on the candidate object and resync instead.
+			if (buffer.length + line.length > MAX_ENVELOPE_CHARS) {
+				reset();
+				if (!line.trimStart().startsWith("{")) return [];
+			}
 			buffer += `${line}\n`;
 			for (const char of line) {
 				if (escaped) {
@@ -196,10 +219,7 @@ export const openclawHarness: HarnessAdapter = {
 			}
 			if (depth > 0) return [];
 			const complete = buffer;
-			buffer = "";
-			depth = 0;
-			inString = false;
-			escaped = false;
+			reset();
 			return openclawHarness.parseLine(complete.replace(/\n/g, " "));
 		};
 	},

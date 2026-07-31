@@ -5,9 +5,8 @@ import { GeometricCircuit } from "@/components/reticle/GeometricCircuit";
 /**
  * Recipe A — subtle background circuit art that fades in from an edge.
  *
- * White-on-black line-art adapts to both themes via blend modes:
- *   - light: `invert` (white art -> black) + `mix-blend-multiply` (white bg drops out)
- *   - dark:  `mix-blend-screen` (black bg drops out, white art shows)
+ * The default shared vector reads Reticle theme tokens directly. Explicit
+ * raster art still adapts through the light/dark blend-mode path below.
  * A gradient mask fades the inner edge to transparent so text stays readable;
  * low opacity keeps it a texture, not a focal point. Brightens on group hover.
  *

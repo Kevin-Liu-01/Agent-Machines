@@ -319,3 +319,18 @@ test("openclaw newTurnParser survives braces inside strings", () => {
 		delta: 'brace } inside " string {',
 	});
 });
+
+test("openclaw newTurnParser resyncs instead of wedging on unbalanced output", () => {
+	const parse = openclawHarness.newTurnParser?.();
+	assert.ok(parse);
+	// An unterminated object must not swallow everything that follows.
+	assert.deepEqual(parse('{"payloads": [{"text": "never closed"'), []);
+	const filler = "x".repeat(100_000);
+	for (let i = 0; i < 25; i += 1) parse(filler);
+	// After resyncing, a well-formed envelope still parses.
+	const events = parse(
+		JSON.stringify({ status: "ok", result: { payloads: [{ text: "back" }] } }),
+	);
+	assert.equal(events.length, 2, "parser recovered after the wedge guard");
+	assert.deepEqual(events[0], { type: "text", delta: "back" });
+});

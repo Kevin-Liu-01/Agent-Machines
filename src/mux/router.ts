@@ -210,18 +210,53 @@ export class MuxMachine {
 		// A caller may consume only the iterator or only result().
 		resultPromise.catch(() => {});
 
+		const lines = new LineBuffer();
+		const stderrTail: string[] = [];
+		let exitCode = 0;
+		let finalText = "";
+		let costUsd: number | undefined;
+		let sessionId: string | undefined;
+		let eventCount = 0;
+		let sawError: string | undefined;
+		let completed = false;
+		let settled = false;
+
+		/** Fold one event into the run result. */
+		const absorb = (event: MuxAgentEvent): void => {
+			if (event.type === "result") {
+				finalText = event.text || finalText;
+				costUsd = event.costUsd ?? costUsd;
+				sessionId = event.sessionId ?? sessionId;
+			}
+			if (event.type === "text") finalText += event.delta;
+			if (event.type === "error") sawError = event.message;
+		};
+
+		/**
+		 * Resolve exactly once, from either the normal end of the stream or
+		 * the generator being closed early. `truncated` tells the caller the
+		 * text is partial, so an aborted run is never mistaken for success.
+		 */
+		const settle = (): void => {
+			if (settled) return;
+			settled = true;
+			resultResolve({
+				text: finalText,
+				exitCode,
+				costUsd,
+				durationMs: Date.now() - startedAt,
+				sessionId,
+				events: eventCount,
+				substrate: sandbox.substrate,
+				harness: harness.kind,
+				truncated: !completed,
+			});
+		};
+
 		const iterate = async function* (): AsyncGenerator<MuxAgentEvent> {
 			const parseLine =
 				harness.newTurnParser?.() ??
 				((line: string) => harness.parseLine(line));
-			const lines = new LineBuffer();
-			const stderrTail: string[] = [];
-			let exitCode = 0;
-			let finalText = "";
-			let costUsd: number | undefined;
-			let sessionId: string | undefined;
-			let eventCount = 0;
-			let sawError: string | undefined;
 			try {
 				const stream = sandbox.execStream(command, {
 					timeoutMs,
@@ -241,13 +276,7 @@ export class MuxMachine {
 					for (const line of lines.push(chunk.data)) {
 						for (const event of parseLine(line)) {
 							eventCount += 1;
-							if (event.type === "result") {
-								finalText = event.text || finalText;
-								costUsd = event.costUsd ?? costUsd;
-								sessionId = event.sessionId ?? sessionId;
-							}
-							if (event.type === "text") finalText += event.delta;
-							if (event.type === "error") sawError = event.message;
+							absorb(event);
 							options.onEvent?.(event);
 							yield event;
 						}
@@ -256,7 +285,7 @@ export class MuxMachine {
 				for (const line of lines.flush()) {
 					for (const event of parseLine(line)) {
 						eventCount += 1;
-						if (event.type === "result") finalText = event.text || finalText;
+						absorb(event);
 						options.onEvent?.(event);
 						yield event;
 					}
@@ -267,22 +296,20 @@ export class MuxMachine {
 					options.onEvent?.(event);
 					yield event;
 				}
+				completed = true;
 				const done: MuxAgentEvent = { type: "done", exitCode };
 				options.onEvent?.(done);
 				yield done;
-				resultResolve({
-					text: finalText,
-					exitCode,
-					costUsd,
-					durationMs: Date.now() - startedAt,
-					sessionId,
-					events: eventCount,
-					substrate: sandbox.substrate,
-					harness: harness.kind,
-				});
+				settle();
 			} catch (error) {
 				resultReject(error);
 				throw error;
+			} finally {
+				// A caller that breaks out of the iteration closes this
+				// generator, which resumes the suspended yield with a return
+				// completion and skips both the resolve above and the catch.
+				// Settling here is what keeps result() from hanging forever.
+				settle();
 			}
 		};
 
@@ -292,10 +319,11 @@ export class MuxMachine {
 				return iterator;
 			},
 			async result() {
-				// Drain if the caller never iterated.
+				// Drain whatever is left; a closed generator returns at once.
 				for await (const _event of iterator) {
 					void _event;
 				}
+				settle();
 				return resultPromise;
 			},
 		};
@@ -406,15 +434,14 @@ export class Mux {
 		let lastError: unknown;
 		for (const kind of candidates) {
 			const startedAt = Date.now();
+			// Tracked so a failure *after* provisioning (install, remember)
+			// tears the sandbox down instead of leaving it billing while the
+			// router moves on to the next lane.
+			let provisioned: SandboxHandle | null = null;
 			try {
-				const sandbox = await this.provider(kind).create(createOptions);
-				attempts.push({
-					substrate: kind,
-					outcome: "ok",
-					durationMs: Date.now() - startedAt,
-				});
+				provisioned = await this.provider(kind).create(createOptions);
 				const machine = new MuxMachine({
-					sandbox,
+					sandbox: provisioned,
 					harness,
 					config: this.config,
 					name: options.name,
@@ -427,12 +454,32 @@ export class Mux {
 				if (options.name) {
 					rememberMachine(options.name, {
 						substrate: kind,
-						sandboxId: sandbox.id,
+						sandboxId: provisioned.id,
 						agent,
 					});
 				}
+				attempts.push({
+					substrate: kind,
+					outcome: "ok",
+					durationMs: Date.now() - startedAt,
+				});
 				return machine;
 			} catch (error) {
+				if (provisioned) {
+					// Best effort: a teardown failure must not mask the real
+					// error, but it is recorded so a leak is not silent.
+					await provisioned.destroy().catch((teardownError: unknown) => {
+						attempts.push({
+							substrate: kind,
+							outcome: "failed",
+							reason: `orphaned sandbox ${provisioned?.id ?? "?"}: teardown failed: ${
+								teardownError instanceof Error
+									? teardownError.message
+									: String(teardownError)
+							}`,
+						});
+					});
+				}
 				attempts.push({
 					substrate: kind,
 					outcome: "failed",
@@ -488,16 +535,18 @@ export class Mux {
 				{ harness: agent },
 			);
 		}
-		if (
-			required === "any" &&
-			!keys.anthropic &&
-			!keys.openai &&
-			!keys.aiGateway &&
-			!keys.openrouter
-		) {
+		// "any" means either native key, NOT any key at all: the harness
+		// adapters only inject ANTHROPIC_API_KEY / OPENAI_API_KEY into the
+		// sandbox, so an aiGateway- or openrouter-only config used to pass
+		// this gate, provision a machine, pay the full install, and only
+		// then fail with the harness's own auth error.
+		if (required === "any" && !keys.anthropic && !keys.openai) {
+			const haveGatewayOnly = Boolean(keys.aiGateway || keys.openrouter);
 			throw new MuxError(
 				"missing_credentials",
-				`${agent} requires at least one model upstream key.`,
+				haveGatewayOnly
+					? `${agent} needs a native Anthropic or OpenAI key: the harness receives ANTHROPIC_API_KEY / OPENAI_API_KEY in the sandbox and cannot use a gateway key on its own.`
+					: `${agent} requires at least one model upstream key.`,
 				{ harness: agent },
 			);
 		}

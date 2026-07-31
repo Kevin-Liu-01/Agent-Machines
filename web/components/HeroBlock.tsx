@@ -1,6 +1,7 @@
 "use client";
 
 import {
+	ArrowRight,
 	Boxes,
 	Brain,
 	Clock,
@@ -16,7 +17,7 @@ import {
 	Zap,
 } from "lucide-react";
 import dynamic from "next/dynamic";
-import { type CSSProperties, type SVGProps, useEffect, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 
 import { type HeroAgent } from "@/components/HeroAgentPortrait";
 import { Logo, type CompositeMark } from "@/components/Logo";
@@ -697,7 +698,7 @@ export function HeroBlock() {
 						</p>
 						<div className="flex flex-wrap items-center gap-2.5">
 							<ReticleButton as="a" href="/sign-in" variant="primary" size="md">
-								<IconArrowRight className="h-3.5 w-3.5" />
+								<ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
 								Get started
 							</ReticleButton>
 							<ReticleButton
@@ -827,21 +828,5 @@ export function HeroBlock() {
 				<Cell className="hidden md:block" circuit />
 			</div>
 		</div>
-	);
-}
-
-function IconArrowRight(props: SVGProps<SVGSVGElement>) {
-	return (
-		<svg
-			viewBox="0 0 16 16"
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="1.6"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-			{...props}
-		>
-			<path d="M3 8h10M9 4l4 4-4 4" />
-		</svg>
 	);
 }

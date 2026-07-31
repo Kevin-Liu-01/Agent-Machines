@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Brain, ChevronRight } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -9,6 +10,7 @@ import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleCard } from "@/components/reticle/ReticleCard";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
+import { StatusGlyph } from "@/components/ui/StatusGlyph";
 import { cn } from "@/lib/cn";
 import type { Message, MessageEvent, ThinkingBlock, ToolCall } from "@/lib/types";
 
@@ -901,7 +903,7 @@ function ThinkingCard({
 					{active ? (
 						<BrailleSpinner name="breathe" className="text-[11px]" />
 					) : (
-						"◆"
+						<Brain className="h-3 w-3" strokeWidth={1.75} />
 					)}
 				</span>
 				<span className="flex-1 font-mono text-[11px] uppercase tracking-[0.15em] text-[var(--ret-text-muted)]">
@@ -918,7 +920,7 @@ function ThinkingCard({
 						isExpanded ? "rotate-90" : "rotate-0",
 					)}
 				>
-					{">"}
+					<ChevronRight className="h-3 w-3" strokeWidth={1.75} />
 				</span>
 			</button>
 			{isExpanded ? (
@@ -957,12 +959,12 @@ function ToolCallCard({
 				? "text-[var(--ret-red)]"
 				: "text-[var(--ret-amber)]";
 
-	const statusIcon =
+	const status =
 		toolCall.status === "completed"
-			? "✓"
+			? "success"
 			: toolCall.status === "error"
-				? "✗"
-				: null;
+				? "error"
+				: "idle";
 
 	let parsedArgs: string = "";
 	try {
@@ -1000,7 +1002,7 @@ function ToolCallCard({
 					{active ? (
 						<BrailleSpinner name="cascade" className="text-[11px]" />
 					) : (
-						statusIcon ?? "●"
+						<StatusGlyph status={status} size={11} />
 					)}
 				</span>
 				<span className="flex-1 truncate font-mono text-[12px] text-[var(--ret-text)]">
@@ -1020,7 +1022,7 @@ function ToolCallCard({
 						isExpanded ? "rotate-90" : "rotate-0",
 					)}
 				>
-					{">"}
+					<ChevronRight className="h-3 w-3" strokeWidth={1.75} />
 				</span>
 			</button>
 			{isExpanded ? (

@@ -1,71 +1,48 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="384" height="512" viewBox="0 0 384 512" fill="none" shape-rendering="crispEdges">
-  <title>Agent Machines geometric circuit grid</title>
+<svg xmlns="http://www.w3.org/2000/svg" width="384" height="512" viewBox="0 0 384 512" fill="none" shape-rendering="geometricPrecision">
+  <title>Agent Machines diagonal circuit grid</title>
   <defs>
     <style>
-      .grid{stroke:#fff;stroke-width:1;opacity:.08;vector-effect:non-scaling-stroke}
-      .rail{stroke:#fff;stroke-width:2;opacity:.42;stroke-linecap:square;stroke-linejoin:miter;vector-effect:non-scaling-stroke}
-      .trace{stroke:#fff;stroke-width:1;opacity:.5;stroke-linecap:square;stroke-linejoin:miter;vector-effect:non-scaling-stroke}
-      .fine{stroke:#fff;stroke-width:1;opacity:.24;stroke-linecap:square;stroke-linejoin:miter;vector-effect:non-scaling-stroke}
-      .node{fill:none;stroke:#fff;stroke-width:1.5;opacity:.68;vector-effect:non-scaling-stroke}
-      .pad{fill:#fff;opacity:.72}
+      .grid{stroke:#fff;stroke-width:1;opacity:.055;vector-effect:non-scaling-stroke}
+      .rail{stroke:#fff;stroke-width:1.5;opacity:.34;stroke-linecap:square;stroke-linejoin:miter;vector-effect:non-scaling-stroke}
+      .trace{stroke:#fff;stroke-width:1;opacity:.46;stroke-linecap:square;stroke-linejoin:miter;vector-effect:non-scaling-stroke}
+      .fine{stroke:#fff;stroke-width:1;opacity:.2;stroke-linecap:square;stroke-linejoin:miter;vector-effect:non-scaling-stroke}
+      .node{fill:none;stroke:#fff;stroke-width:1.25;opacity:.62;stroke-linejoin:miter;vector-effect:non-scaling-stroke}
+      .pad{fill:#fff;opacity:.68}
     </style>
+
+    <g id="compute-row">
+      <path class="node" d="M40 48H88L96 56V104L88 112H40L32 104V56Z"/>
+      <path class="node" d="M168 48H216L224 56V104L216 112H168L160 104V56Z"/>
+      <path class="node" d="M296 48H344L352 56V104L344 112H296L288 104V56Z"/>
+      <path class="fine" d="M176 64H208L216 72V96H184L176 88Z"/>
+
+      <path class="trace" d="M0 64H32M96 64H112L128 80H160M224 80H240L256 64H288M352 64H384"/>
+      <path class="trace" d="M0 96H32M96 96H128L160 128H176L192 144M192 144L208 128H224L256 96H288M352 96H384"/>
+      <path class="fine" d="M48 48L32 32M64 48L48 32M80 48L64 32M304 48L320 32M320 48L336 32M336 48L352 32"/>
+      <path class="fine" d="M48 112L32 128M64 112L48 128M80 112L64 128M304 112L320 128M320 112L336 128M336 112L352 128"/>
+
+      <rect class="pad" x="124" y="76" width="8" height="8" transform="rotate(45 128 80)"/>
+      <rect class="pad" x="252" y="76" width="8" height="8" transform="rotate(45 256 80)"/>
+      <rect class="pad" x="188" y="140" width="8" height="8" transform="rotate(45 192 144)"/>
+    </g>
   </defs>
 
-  <!-- A strict 32px construction grid. Every trace below follows it. -->
+  <!-- A repeat-safe 32px diagonal lattice. -->
   <g class="grid">
-    <path d="M0 32H384M0 96H384M0 160H384M0 224H384M0 288H384M0 352H384M0 416H384M0 480H384"/>
-    <path d="M32 0V512M96 0V512M160 0V512M224 0V512M288 0V512M352 0V512"/>
+    <path d="M-256 0L256 512M-192 0L320 512M-128 0L384 512M-64 0L384 448M0 0L384 384M64 0L384 320M128 0L384 256"/>
+    <path d="M640 0L128 512M576 0L64 512M512 0L0 512M448 0L0 448M384 0L0 384M320 0L0 320M256 0L0 256"/>
   </g>
 
-  <!-- Shared vertical data spine and repeat-safe edge rails. -->
+  <!-- Long rails share the same 45-degree axes as every branch. -->
   <g>
-    <path class="rail" d="M192 0V512"/>
-    <path class="fine" d="M0 16H128V32H160M224 32H256V16H384"/>
-    <path class="fine" d="M0 496H128V480H160M224 480H256V496H384"/>
+    <path class="rail" d="M0 16L112 128H272L384 16"/>
+    <path class="rail" d="M0 496L112 384H272L384 496"/>
+    <path class="fine" d="M0 176H112L144 208H240L272 176H384"/>
+    <path class="fine" d="M0 336H112L144 304H240L272 336H384"/>
   </g>
 
-  <!-- Repeated compute cells: input module → processor → output module. -->
-  <g>
-    <!-- Row A -->
-    <rect class="node" x="32" y="48" width="64" height="64"/>
-    <rect class="node" x="160" y="48" width="64" height="64"/>
-    <rect class="node" x="288" y="48" width="64" height="64"/>
-    <rect class="fine" x="176" y="64" width="32" height="32"/>
-    <path class="trace" d="M0 64H32M96 64H128V80H160M224 80H256V64H288M352 64H384"/>
-    <path class="trace" d="M0 96H32M96 96H128V112H176V128H192M192 112H224M224 96H256V96H288M352 96H384"/>
-    <path class="fine" d="M48 48V32M64 48V32M80 48V32M304 48V32M320 48V32M336 48V32"/>
-
-    <!-- Row B -->
-    <rect class="node" x="32" y="208" width="64" height="64"/>
-    <rect class="node" x="160" y="208" width="64" height="64"/>
-    <rect class="node" x="288" y="208" width="64" height="64"/>
-    <rect class="fine" x="176" y="224" width="32" height="32"/>
-    <path class="trace" d="M0 224H32M96 224H128V240H160M224 240H256V224H288M352 224H384"/>
-    <path class="trace" d="M0 256H32M96 256H128V272H176V288H192M192 272H224M224 256H256V256H288M352 256H384"/>
-    <path class="fine" d="M48 208V192M64 208V192M80 208V192M304 208V192M320 208V192M336 208V192"/>
-
-    <!-- Row C -->
-    <rect class="node" x="32" y="368" width="64" height="64"/>
-    <rect class="node" x="160" y="368" width="64" height="64"/>
-    <rect class="node" x="288" y="368" width="64" height="64"/>
-    <rect class="fine" x="176" y="384" width="32" height="32"/>
-    <path class="trace" d="M0 384H32M96 384H128V400H160M224 400H256V384H288M352 384H384"/>
-    <path class="trace" d="M0 416H32M96 416H128V432H176V448H192M192 432H224M224 416H256V416H288M352 416H384"/>
-    <path class="fine" d="M48 368V352M64 368V352M80 368V352M304 368V352M320 368V352M336 368V352"/>
-  </g>
-
-  <!-- Uniform pin fields and square junction pads. -->
-  <g class="fine">
-    <path d="M48 112V128M64 112V128M80 112V128M176 112V128M208 112V128M304 112V128M320 112V128M336 112V128"/>
-    <path d="M48 272V288M64 272V288M80 272V288M176 272V288M208 272V288M304 272V288M320 272V288M336 272V288"/>
-    <path d="M48 432V448M64 432V448M80 432V448M176 432V448M208 432V448M304 432V448M320 432V448M336 432V448"/>
-  </g>
-  <g class="pad">
-    <rect x="124" y="76" width="8" height="8"/><rect x="252" y="76" width="8" height="8"/>
-    <rect x="188" y="124" width="8" height="8"/>
-    <rect x="124" y="236" width="8" height="8"/><rect x="252" y="236" width="8" height="8"/>
-    <rect x="188" y="284" width="8" height="8"/>
-    <rect x="124" y="396" width="8" height="8"/><rect x="252" y="396" width="8" height="8"/>
-    <rect x="188" y="444" width="8" height="8"/>
-  </g>
+  <!-- Three compute rows reuse one aligned construction. -->
+  <use href="#compute-row"/>
+  <use href="#compute-row" transform="translate(0 160)"/>
+  <use href="#compute-row" transform="translate(0 320)"/>
 </svg>

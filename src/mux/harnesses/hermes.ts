@@ -66,7 +66,11 @@ export const hermesHarness: HarnessAdapter = {
 		// ripgrep -- the first run takes minutes (budget accordingly; the
 		// router allows 240s). Guarded so re-runs are instant no-ops,
 		// keeping the command idempotent on a single line.
-		return `command -v hermes >/dev/null 2>&1 || test -x "$HOME/.local/bin/hermes" || curl -fsSL ${INSTALLER_URL} | bash`;
+		// `curl | bash` reports bash's status, so a 404 or no egress would
+		// look like a successful install and hand back a machine that
+		// cannot run. `set -o pipefail` makes curl's failure the
+		// pipeline's, and the probe keeps re-runs instant no-ops.
+		return `command -v hermes >/dev/null 2>&1 || test -x "$HOME/.local/bin/hermes" || (set -o pipefail; curl -fsSL ${INSTALLER_URL} | bash)`;
 	},
 
 	versionCommand(): string {

@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronRight } from "lucide-react";
 
 import { useOptionalMachineContext } from "@/components/dashboard/MachineProvider";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
+import { StatusGlyph } from "@/components/ui/StatusGlyph";
 import { cn } from "@/lib/cn";
 
 type EntryState = "pending" | "running" | "done" | "error";
@@ -691,8 +693,8 @@ function EntryRow({ entry }: { entry: Entry }) {
 				{isRunning ? (
 					<BrailleSpinner name="cascade" className="shrink-0 text-[11px] text-[var(--ret-purple)]" />
 				) : (
-					<span className={cn("shrink-0 font-mono text-[11px]", exitTone)}>
-						{entry.exitCode === 0 ? "✓" : entry.state === "error" ? "✗" : "●"}
+					<span className={cn("shrink-0", exitTone)}>
+						<StatusGlyph status={entry.exitCode === 0 ? "success" : entry.state === "error" ? "error" : "idle"} size={11} />
 					</span>
 				)}
 				<span className="min-w-0 flex-1 truncate text-[12px] text-[var(--ret-text)]">
@@ -705,7 +707,7 @@ function EntryRow({ entry }: { entry: Entry }) {
 					{elapsed ? <span className="tabular-nums">{elapsed}</span> : null}
 					<span className={exitTone}>{statusLabel}</span>
 					<span className={cn("transition-transform", expanded ? "rotate-90" : "rotate-0")}>
-						{">"}
+						<ChevronRight className="h-3 w-3" strokeWidth={1.75} />
 					</span>
 				</span>
 			</button>

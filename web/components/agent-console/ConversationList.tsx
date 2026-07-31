@@ -12,8 +12,10 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ChevronRight, CircleDot } from "lucide-react";
 
 import { ReticleButton } from "@/components/reticle/ReticleButton";
+import { ToolIcon } from "@/components/ToolIcon";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
 import type { ConversationSummary } from "@/lib/agents/protocol";
@@ -289,10 +291,10 @@ function MachineGroup({
 				className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-[var(--ret-surface)]"
 			>
 				<span className={cn(
-					"font-mono text-[9px] transition-transform",
+					"text-[var(--ret-text-muted)] transition-transform",
 					collapsed ? "rotate-0" : "rotate-90",
 				)}>
-					{">"}
+					<ChevronRight className="h-3 w-3" strokeWidth={1.75} />
 				</span>
 				<span className="flex-1 truncate font-mono text-[11px] text-[var(--ret-text)]">
 					{machineId === "unassigned" ? "Local" : machineId.slice(0, 14)}
@@ -358,7 +360,7 @@ function SessionCard({
 					{streaming ? (
 						<span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[var(--ret-green)]" />
 					) : conversation.pinned ? (
-						<span className="shrink-0 font-mono text-[8px] text-[var(--ret-amber)]">◆</span>
+						<CircleDot className="h-2.5 w-2.5 shrink-0 text-[var(--ret-amber)]" strokeWidth={2} aria-hidden />
 					) : null}
 					<p className={cn(
 						"flex-1 truncate font-mono text-[12px]",
@@ -461,7 +463,7 @@ function LoadoutView({
 		);
 	}
 
-	const kindIcons: Record<string, string> = { skill: "⊡", tool: "⚡", mcp: "⊕" };
+	const kindIcons = { skill: "skill", tool: "task", mcp: "delegate" } as const;
 	const kindLabels: Record<string, string> = { skill: "Skills", tool: "Tools", mcp: "MCP Servers" };
 
 	return (
@@ -474,8 +476,8 @@ function LoadoutView({
 							key={item.name}
 							className="flex items-start gap-2 border-b border-[var(--ret-border)]/20 px-3 py-2 hover:bg-[var(--ret-surface)]"
 						>
-							<span className="shrink-0 pt-0.5 font-mono text-[10px] text-[var(--ret-text-muted)]">
-								{kindIcons[item.kind] ?? "·"}
+							<span className="shrink-0 pt-0.5 text-[var(--ret-text-muted)]">
+								<ToolIcon name={kindIcons[item.kind]} size={11} />
 							</span>
 							<div className="min-w-0 flex-1">
 								<p className="truncate font-mono text-[11px] text-[var(--ret-text)]">{item.name}</p>

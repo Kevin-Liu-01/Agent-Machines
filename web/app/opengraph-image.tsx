@@ -12,11 +12,14 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 const COLOR = {
-	background: "#f4f3ef",
-	ink: "#111113",
-	muted: "#696872",
-	hairline: "#c9c7c0",
-	accent: "#8a8799",
+	background: "#fbfbfb",
+	ink: "#18181b",
+	muted: "#52525b",
+	hairline: "#c7c7ca",
+	accent: "#71717a",
+	brand: "#9b98a8",
+	panel: "#09090b",
+	panelMuted: "#a1a1aa",
 	white: "#ffffff",
 } as const;
 
@@ -38,7 +41,7 @@ function Mark({ markSize = 44 }: { markSize?: number }) {
 	return (
 		<svg height={markSize} viewBox="0 0 32 32" width={markSize}>
 			<path
-				fill={COLOR.accent}
+				fill={COLOR.brand}
 				d="M10 4h12v6H10V4ZM4 10h6v12H4V10ZM22 10h6v12h-6V10ZM10 22h12v6H10V22Z"
 			/>
 			<path fill={COLOR.white} d="M10 10h6v6h-6v-6ZM16 16h6v6h-6v-6Z" />
@@ -113,13 +116,30 @@ function RoutingDiagram() {
 				width="1088"
 			>
 				<path
-					d="M350 30H448V113H500M350 113H500M350 196H448V113"
+					d="M350 30H367L450 113H500M350 113H500M350 196H367L450 113"
 					fill="none"
 					stroke={COLOR.accent}
-					strokeWidth="2"
+					strokeLinecap="square"
+					strokeLinejoin="miter"
+					strokeWidth="1.75"
 				/>
-				<rect x="442" y="107" width="12" height="12" fill={COLOR.background} stroke={COLOR.accent} />
-				<path d="M488 106L500 113L488 120" fill="none" stroke={COLOR.accent} strokeWidth="2" />
+				<rect
+					x="445"
+					y="108"
+					width="10"
+					height="10"
+					fill={COLOR.background}
+					stroke={COLOR.accent}
+					transform="rotate(45 450 113)"
+				/>
+				<path
+					d="M489 107L500 113L489 119"
+					fill="none"
+					stroke={COLOR.accent}
+					strokeLinecap="square"
+					strokeLinejoin="miter"
+					strokeWidth="1.75"
+				/>
 			</svg>
 
 			<div
@@ -140,7 +160,7 @@ function RoutingDiagram() {
 			<div
 				style={{
 					alignItems: "center",
-					background: COLOR.ink,
+					background: COLOR.panel,
 					color: COLOR.white,
 					display: "flex",
 					height: 226,
@@ -165,7 +185,7 @@ function RoutingDiagram() {
 					</div>
 					<div
 						style={{
-							color: "#b7b5be",
+							color: COLOR.panelMuted,
 							display: "flex",
 							fontSize: 16,
 							marginTop: 10,

@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 
 import { Logo } from "@/components/Logo";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
+import { StatusGlyph } from "@/components/ui/StatusGlyph";
 import { getAgentMeta } from "@/lib/agents";
 import {
 	type AgentUpstreamReadiness,
@@ -38,11 +40,11 @@ const READINESS_TONE: Record<AgentUpstreamReadiness["status"], string> = {
 	blocked: "text-[var(--ret-red)]",
 };
 
-const READINESS_GLYPH: Record<AgentUpstreamReadiness["status"], string> = {
-	ready: "✓",
-	fallback: "~",
-	blocked: "!",
-};
+const READINESS_GLYPH = {
+	ready: "success",
+	fallback: "warning",
+	blocked: "error",
+} as const;
 
 function upstreamSummary(agentKind: AgentKind): string {
 	const native = requiredNativeUpstream(agentKind);
@@ -83,8 +85,9 @@ export function AgentInfoPanel({
 				<InfoRow label="upstream" value={upstreamSummary(agentKind)} />
 			</dl>
 			{readiness ? (
-				<p className={cn("font-mono text-[10px] leading-relaxed", READINESS_TONE[readiness.status])}>
-					{READINESS_GLYPH[readiness.status]} {readiness.detail}
+				<p className={cn("flex items-start gap-1.5 font-mono text-[10px] leading-relaxed", READINESS_TONE[readiness.status])}>
+					<StatusGlyph status={READINESS_GLYPH[readiness.status]} size={11} className="mt-0.5" />
+					{readiness.detail}
 				</p>
 			) : null}
 			<a
@@ -93,7 +96,7 @@ export function AgentInfoPanel({
 				rel="noreferrer"
 				className="w-fit font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)] hover:text-[var(--ret-purple)]"
 			>
-				docs ↗
+				docs <ExternalLink className="inline h-2.5 w-2.5" strokeWidth={1.75} aria-hidden />
 			</a>
 		</div>
 	);
