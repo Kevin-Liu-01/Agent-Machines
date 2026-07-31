@@ -41,7 +41,14 @@ import {
 	type SandboxProvider,
 } from "../types.js";
 
-type E2bModule = typeof import("e2b");
+/**
+ * The awaited dynamic-import shape, not `typeof import("e2b")`: the SDK
+ * re-exports Sandbox as its default, so under NodeNext the namespace
+ * type and the dynamic-import type disagree on `default` and the
+ * declaration build fails.
+ */
+const importE2b = () => import("e2b");
+type E2bModule = Awaited<ReturnType<typeof importE2b>>;
 type E2bSandbox = import("e2b").Sandbox;
 type E2bSandboxInfo = import("e2b").SandboxInfo;
 
@@ -62,15 +69,17 @@ const CAPABILITIES: SandboxCapabilities = {
 let sdkModule: Promise<E2bModule> | null = null;
 
 function loadSdk(): Promise<E2bModule> {
-	if (!sdkModule) {
-		sdkModule = import("e2b").catch(() => {
-			sdkModule = null;
-			throw new MuxError("fatal", "e2b is not installed; npm i e2b", {
-				substrate: "e2b",
-			});
+	const cached = sdkModule;
+	if (cached) return cached;
+	const pending = importE2b().catch(() => {
+		// Clear the memo so a later call can retry once the dep exists.
+		sdkModule = null;
+		throw new MuxError("fatal", "e2b is not installed; npm i e2b", {
+			substrate: "e2b",
 		});
-	}
-	return sdkModule;
+	});
+	sdkModule = pending;
+	return pending;
 }
 
 /**

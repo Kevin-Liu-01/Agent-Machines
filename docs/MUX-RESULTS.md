@@ -89,13 +89,34 @@ fall back to WS only on transport errors.
    finishing; the same payload completed when the client kept touching
    the sprite. The install poll loop (1.5s) is what keeps it warm, so do
    not lengthen that interval without adding an explicit keepalive.
-10. **Hermes cannot install on E2B's default template.** The installer
-   (curl script, Python venv, Node browser deps) exhausts the base
-   sandbox -- 478 MB and 2 vCPU -- and the VM stops answering RPCs after
-   ~150s. `CreateSandboxOptions` now carries `template` and `resources`
-   so callers can ask for more, but E2B ignored the sizing request on
-   this plan: Hermes needs a pre-baked template (or a larger plan), which
-   is why the adapter marks it heavy-install.
+10. **Hermes needs a pre-baked image, not a per-machine install.** On E2B
+   the installer (curl script, Python venv, Node browser deps) exhausts
+   the base sandbox -- 478 MB and 2 vCPU -- and the VM stops answering
+   RPCs after ~150s; `CreateSandboxOptions` now carries `template` and
+   `resources`, but E2B ignored the sizing request on this plan. On
+   Sprites it does not run out of memory and progresses correctly
+   (uv-managed Python 3.11 installed in 1m50s, then git, Node, then apt),
+   but it was still fetching ffmpeg's ~190 packages when the 15-minute
+   budget expired. The adapter now declares a 40-minute budget so a first
+   run is not cut off mid-apt, and marks itself heavy-install. Treat a
+   cold Hermes install as a template-build step, not a request-time one.
+   The other three harnesses install in 6-29s.
+
+## Interfaces verified live
+
+- PTY (`openPty`): open 108-201ms, first byte 149-246ms, keystroke echo
+  round-trip 49-103ms on both e2b and sprites. Resize applied without a
+  reconnect.
+- Named PTY reattach: after `close()`, reopening the same session name
+  replays the visible pane and the background process is still running --
+  on both substrates. This is what caught a real defect: the tmux
+  fallback used to kill the session on close, so E2B lost the process
+  while Sprites (native detachable sessions) passed.
+- CLI: `am mux run --agent claude-code --sandbox e2b "..."` streamed the
+  answer and reported `claude-code on e2b: 3615ms, $0.0107`.
+- Package build: `npm run build:sdk` emits declarations for the mux with
+  no type errors, so `createMux` is importable from the published entry
+  point.
 7. **A `vck_` key is not Vercel Sandbox auth.** The Vercel provider fails
    closed with that exact explanation and asks for
    `VERCEL_TOKEN`+`VERCEL_TEAM_ID`+`VERCEL_PROJECT_ID` or

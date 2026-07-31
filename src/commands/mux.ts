@@ -149,6 +149,10 @@ export async function mux(args: string[]): Promise<void> {
 
 	if (subcommand === "rm") {
 		if (!flags.name) throw new Error("am mux rm requires --name");
+		if (!readMuxState().machines[flags.name]) {
+			console.log(`no machine named ${flags.name} (nothing to remove)`);
+			return;
+		}
 		// A remembered machine whose sandbox the substrate already reaped
 		// (E2B expires paused sandboxes) must still be forgotten, or the
 		// stale entry can never be removed.
