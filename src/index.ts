@@ -14,3 +14,5 @@ export {
 } from "./lib/sdk.js";
 
 export { normalizeModel, resolveAgentRoute } from "./lib/routing.js";
+
+export * from "./mux/index.js";

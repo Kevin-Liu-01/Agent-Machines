@@ -1,2 +1,4 @@
 allowBuilds:
   esbuild: set this to true or false
+minimumReleaseAgeExclude:
+  - e2b@2.37.0

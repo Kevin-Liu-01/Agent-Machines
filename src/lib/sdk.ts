@@ -99,6 +99,7 @@ export class AgentMachines {
 					model: route.model,
 					spec: route.spec,
 					name: route.name,
+					persistent: route.persistent,
 					force: true,
 					startBootstrap: false,
 					gatewayProfileId: route.gatewayProfileId,

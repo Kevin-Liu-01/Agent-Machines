@@ -21,6 +21,7 @@ import { deployOpenclaw } from "./commands/deploy-openclaw.js";
 import { destroy } from "./commands/destroy.js";
 import { doctor } from "./commands/doctor.js";
 import { logs } from "./commands/logs.js";
+import { mux } from "./commands/mux.js";
 import { reloadKnowledge } from "./commands/reload-knowledge.js";
 import { reset } from "./commands/reset.js";
 import { shell } from "./commands/shell.js";
@@ -41,6 +42,7 @@ const COMMANDS: Record<string, (args: string[]) => Promise<void>> = {
 	"reload-knowledge": () => reloadKnowledge(),
 	reset: () => reset(),
 	doctor: (args) => doctor(args),
+	mux: (args) => mux(args),
 };
 
 function help(): void {
@@ -62,6 +64,7 @@ function help(): void {
 	console.log("                     --quick  skip slow checks (e2e chat, typecheck)");
 	console.log("                     --local  only check local environment");
 	console.log("                     --vm     only check VM state");
+	console.log("  mux <sub>          Multiplexer: run/shell/term/ls/routes/rm (am mux help)");
 }
 
 async function main(): Promise<void> {

@@ -259,6 +259,42 @@ The key is displayed once and stored only as a SHA-256 hash. Rotating it
 invalidates the previous key immediately. Set `bootstrap: false` on the client
 only when you intend to bootstrap the machine yourself.
 
+### The multiplexer (no control plane required)
+
+The same package ships a direct-to-substrate multiplexer: it talks to E2B,
+Sprites, Vercel Sandbox and Dedalus itself, installs the agent harness, and
+streams normalized events. No hosted control plane, no API key of ours -- just
+your provider keys. See [docs/MUX.md](docs/MUX.md) for the architecture and
+[docs/MUX-RESULTS.md](docs/MUX-RESULTS.md) for measured latencies.
+
+`agent-machines.json` in your project root:
+
+```json
+{
+  "keys": { "anthropic": "env:ANTHROPIC_API_KEY" },
+  "providers": { "e2b": "env:E2B_API_KEY", "sprites": "env:SPRITES_TOKEN" },
+  "sandboxes": { "primary": "e2b", "backups": ["sprites"] },
+  "agents": { "default": "claude-code" }
+}
+```
+
+```ts
+import { createMux } from "agent-machines";
+
+const mux = createMux();
+const machine = await mux.create({ agent: "claude-code", sandbox: "auto" });
+
+for await (const event of machine.run("review this repo")) {
+  if (event.type === "text") process.stdout.write(event.delta);
+}
+
+const pty = await machine.pty();   // real terminal, native PTY where available
+```
+
+`sandbox: "auto"` follows `primary -> backups`, skipping lanes whose credentials
+are missing and failing over on transient provider errors. Every decision is
+recorded in `machine.attempts`.
+
 ---
 
 ## CLI
@@ -274,6 +310,23 @@ npm run wake / sleep / destroy -- --yes
 npm run reload             # git-pull the repo on the VM and re-sync knowledge
 npm run doctor             # environment + machine health checks
 npm run benchmark          # cross-substrate boot/exec/IO benchmarks
+```
+
+Multiplexer commands (direct to substrate, no control plane):
+
+```bash
+npm run mux -- routes                                   # resolved route + capabilities
+npm run mux -- run --agent claude-code "review my repo"  # streamed one-shot
+npm run mux -- term --agent codex --name coder           # interactive agent PTY
+npm run mux -- shell --name coder                        # raw PTY on the sandbox
+npm run mux -- ls                                        # named machines
+npm run mux -- rm --name coder                           # destroy a named machine
+```
+
+Live-test every harness on every credentialed substrate:
+
+```bash
+npx tsx scripts/mux-live-test.ts
 ```
 
 ---

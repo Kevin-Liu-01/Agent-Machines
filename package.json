@@ -1,7 +1,7 @@
 {
   "name": "agent-machines",
   "version": "0.2.0",
-  "description": "OpenRouter for agents and containers — control plane for persistent agent workers. Route runtime + substrate, provision specialist presets, supervise the fleet. 161 skills · 35 MCP servers.",
+  "description": "OpenRouter for agents and containers \u2014 control plane for persistent agent workers. Route runtime + substrate, provision specialist presets, supervise the fleet. 161 skills \u00b7 35 MCP servers.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -31,23 +31,42 @@
     "doctor": "tsx src/cli.ts doctor",
     "gc": "tsx scripts/cleanup-machines.ts",
     "benchmark": "tsx --tsconfig web/tsconfig.json web/scripts/run-benchmarks.ts",
-	"test:sdk": "tsx --test src/lib/sdk.test.ts",
+    "test:sdk": "tsx --test src/lib/sdk.test.ts",
     "sync-wiki": "node scripts/sync-from-wiki.mjs",
     "sync-manifest": "node scripts/sync-knowledge-manifest.mjs",
     "typecheck": "tsc --noEmit",
-    "web": "cd web && npm run dev"
-  },
-  "dependencies": {
-    "dedalus": "^0.2.0",
-    "dotenv": "^17.4.1"
+    "web": "cd web && npm run dev",
+    "test:mux": "tsx --test src/mux/config.test.ts src/mux/events.test.ts src/mux/router.test.ts src/mux/harnesses/claude-code.test.ts src/mux/harnesses/codex.test.ts src/mux/harnesses/daemon-agents.test.ts",
+    "mux": "tsx src/cli.ts mux"
   },
   "devDependencies": {
+    "@fly/sprites": "^0.1.0",
     "@types/node": "^22.10.0",
+    "@vercel/sandbox": "^2.9.2",
+    "e2b": "^2.37.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "dedalus": "^0.2.0",
+    "dotenv": "^17.4.1"
   },
   "engines": {
     "node": ">=20"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "peerDependencies": {
+    "e2b": ">=2.37.0",
+    "@fly/sprites": ">=0.1.0",
+    "@vercel/sandbox": ">=2.9.2"
+  },
+  "peerDependenciesMeta": {
+    "e2b": {
+      "optional": true
+    },
+    "@fly/sprites": {
+      "optional": true
+    },
+    "@vercel/sandbox": {
+      "optional": true
+    }
+  }
 }
