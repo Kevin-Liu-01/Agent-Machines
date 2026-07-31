@@ -224,6 +224,14 @@ export type HarnessAdapter = {
 	isInstalledCommand(): string;
 	/** Idempotent install; safe to re-run. */
 	installCommand(): string;
+	/**
+	 * Budget for this harness's install, when its own cost is known to
+	 * exceed the router default. Hermes bootstraps a Python toolchain and
+	 * apt packages and measured well past 15 minutes on a cold sandbox; an
+	 * npm-installed harness should leave this unset so a broken install
+	 * still fails fast.
+	 */
+	readonly installBudgetMs?: number;
 	/** Version probe for diagnostics. */
 	versionCommand(): string;
 	/**

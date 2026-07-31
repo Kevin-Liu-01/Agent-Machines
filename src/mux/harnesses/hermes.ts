@@ -50,6 +50,13 @@ export const hermesHarness: HarnessAdapter = {
 	kind: "hermes",
 	requiredUpstream: "any",
 
+	// The installer provisions a Python 3.11 toolchain, a uv-managed venv,
+	// Node browser deps and apt packages (ripgrep, ffmpeg). Measured
+	// 2026-07-31 on a cold sprite: still working past 15 minutes. Prefer a
+	// pre-baked image in production; this budget only keeps a first-run
+	// install from being cut off mid-apt.
+	installBudgetMs: 2_400_000,
+
 	isInstalledCommand(): string {
 		return `command -v hermes >/dev/null 2>&1 || test -x "$HOME/.local/bin/hermes"`;
 	},

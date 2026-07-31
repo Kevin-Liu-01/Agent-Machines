@@ -122,7 +122,8 @@ export class MuxMachine {
 		});
 		if (probe.exitCode === 0) return;
 
-		const budgetMs = options.timeoutMs ?? INSTALL_BUDGET_MS;
+		const budgetMs =
+			options.timeoutMs ?? this.harness.installBudgetMs ?? INSTALL_BUDGET_MS;
 		const pollMs = options.pollMs ?? INSTALL_POLL_MS;
 		// Optional capability: `?.()` yields undefined on substrates that
 		// park on their own schedule, so the await must not assume a
