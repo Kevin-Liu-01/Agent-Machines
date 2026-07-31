@@ -23,7 +23,13 @@ export {
 	type MuxAgentEvent,
 	type RunResult,
 } from "./events.js";
-export { readMuxState, type MuxState, type RememberedMachine } from "./state.js";
+export {
+	forgetMachine,
+	readMuxState,
+	rememberMachine,
+	type MuxState,
+	type RememberedMachine,
+} from "./state.js";
 export { getProvider } from "./providers/index.js";
 export { getHarness } from "./harnesses/index.js";
 export { openTmuxPty } from "./pty/tmux.js";

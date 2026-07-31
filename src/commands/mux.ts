@@ -14,7 +14,7 @@
  * (claude, codex, vim) render correctly.
  */
 
-import { createMux, readMuxState } from "../mux/index.js";
+import { createMux, forgetMachine, readMuxState } from "../mux/index.js";
 import type { HarnessKind, MuxAgentEvent, PtyHandle, SubstrateKind } from "../mux/index.js";
 
 type Flags = {
@@ -149,9 +149,21 @@ export async function mux(args: string[]): Promise<void> {
 
 	if (subcommand === "rm") {
 		if (!flags.name) throw new Error("am mux rm requires --name");
-		const machine = await router.connect(flags.name, flags.agent);
-		await machine.destroy();
-		console.log(`destroyed ${flags.name}`);
+		// A remembered machine whose sandbox the substrate already reaped
+		// (E2B expires paused sandboxes) must still be forgotten, or the
+		// stale entry can never be removed.
+		try {
+			const machine = await router.connect(flags.name, flags.agent);
+			await machine.destroy();
+			console.log(`destroyed ${flags.name}`);
+		} catch (error) {
+			forgetMachine(flags.name);
+			console.log(
+				`forgot ${flags.name} (its sandbox was already gone: ${
+					error instanceof Error ? error.message : String(error)
+				})`,
+			);
+		}
 		return;
 	}
 

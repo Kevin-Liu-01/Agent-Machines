@@ -254,3 +254,45 @@ agent-machines.dev."
 **Changed:** Rebuilt `web/app/opengraph-image.tsx` and `web/public/brand/agent-machines-readme.svg` as a minimal mark + headline + description + routing diagram. Both use the project's real Nacelle Regular/SemiBold font data; the README uses the full banner; the Twitter image URL is versioned; and `Twitterbot` has an explicit robots group for `/opengraph-image`, `/api/og`, and `/api/og-home`.
 **Finding:** A live Twitterbot fetch returned 200 for both the homepage and `/opengraph-image`, with complete OG/Twitter metadata. The generic robots rule already allowed `/opengraph-image`, so the observed preview miss was more consistent with social-card caching than crawler denial. Keep the explicit rule as durable defense and bump the Twitter image query when artwork changes.
 **Verification:** Final 1200 x 630 OG and 1600 x 720 README renders inspected; SVG parsed; TypeScript passed; production Next build completed; production-mode Twitterbot fetch returned PNG 200 and the expected robots group.
+
+## [2026-07-27] feat/ui | GSAP + Lenis motion system
+
+**Changed:** Added a single root `MotionProvider` that synchronizes Lenis with the GSAP ticker, animates internal route changes through a three-panel brand curtain, reveals route content and reticle sections with GSAP/ScrollTrigger, and renders a scroll-progress hairline. Home, marketing, and dashboard shells expose stable motion boundaries instead of embedding route logic in each page.
+**Decisions:** Respect `prefers-reduced-motion`; keep touch scrolling native; bypass Lenis for terminals, dialogs, and any nested scroll container; intercept only unmodified same-origin route clicks; let same-page anchors, downloads, external links, and new tabs retain native behavior.
+**Verification:** Desktop and 390px mobile renders inspected in the app browser; route cover/reveal, scroll reset, section entrances, Lenis progress, nested-scroll escape logic, and zero horizontal overflow checked. TypeScript and production build pass.
+
+## [2026-07-27] design/system | Icon sourcing and rendering policy
+
+**Decision:** Use [theSVG](https://thesvg.org) for third-party identity marks and real provider-specific architecture resources; use Lucide for generic product actions/status/metadata; keep custom SVG only when the geometry itself communicates Agent Machines topology or data. Do not substitute a cloud-vendor architecture icon for a provider-neutral concept.
+**Implementation:** Vendored theSVG's Claude Code, Codex, and Cursor assets under `web/public/brand/thesvg/`, with slug/variant/license provenance in `manifest.json` and a repeatable `pnpm sync-icons` command. `Logo.tsx` is still the single runtime-mark renderer. Consolidated tool categories, fleet metadata, theme controls, workflow steps, gateway labels, disclosure arrows, statuses, file actions, and loadout kinds onto Lucide.
+**Guardrail:** Library entries are candidates, not automatic upgrades. The current official OpenClaw mark is better than theSVG's generic lobster and stays in place. Agent Machines, Dedalus, E2B, and Sprites also keep their local official/custom assets because theSVG does not have suitable replacements.
+**Verification:** TypeScript passes. Homepage and onboarding inspected in light and dark themes; Claude Code, Codex, and Cursor remain legible at 12–20px; all observed brand images loaded with nonzero dimensions; no browser console errors.
+
+## [2026-07-27] design/system | Diagram geometry and circuit language
+
+**Decision:** Product diagrams use a shared 45-degree construction system: horizontal/vertical spines are allowed, but branches, fan-ins, and direction changes resolve through aligned diagonals instead of orthogonal elbows. Junctions are diamonds, modules use clipped corners, and strokes stay square/mitered rather than rounded.
+**Tokens:** Use current Reticle neutrals (`--ret-bg`, `--ret-border-hover`, `--ret-purple`) in UI diagrams. Exported light artwork uses `#FBFBFB`, `#18181B`, `#52525B`, `#71717A`, and the actual mark accent `#9B98A8`; dark panels use `#09090B` / `#A1A1AA`. Nacelle remains the diagram typeface: 400 for descriptions and values, 600 only for labels and headings.
+**Scope:** The rule is applied to the shared geometric schematics, repeating circuit texture, homepage dual-route graphic, architecture graph, README banner, and OpenGraph route. New diagrams should reuse these axes and weights instead of introducing ad hoc 90-degree circuit traces.
+
+## [2026-07-31] feat/mux | Harness x sandbox multiplexer (src/mux)
+
+**Changed:** Added `src/mux/`, a direct-to-substrate multiplexer over two orthogonal planes. Substrate plane: `SandboxProvider` adapters for e2b, sprites, vercel, dedalus normalizing create/connect/exec/stream/PTY/files/publicUrl/sleep/wake/destroy, each declaring capabilities (`pty: native | tmux | none`, persistence model, reattach) instead of pretending to be identical. Harness plane: `HarnessAdapter` recipes for claude-code, codex, openclaw, hermes normalizing install, auth injection and a `parseLine` normalizer into one `MuxAgentEvent` union. `createMux()` composes them: primary -> backups, uncredentialed lanes skipped up front, transient placement errors failed over, every decision recorded in `machine.attempts`. Surfaces: SDK export, `am mux` CLI (run/shell/term/ls/routes/rm), `scripts/mux-live-test.ts`.
+
+**Decision — failover is placement-time only.** Runs are never replayed onto another substrate mid-flight, so there is no idempotency hazard. `missing_credentials` and `not_supported` do not retry (they fail the same way everywhere); `transient` and `rate_limited` advance to the next lane. Framing matches the YC "health-aware fallback / automatic failover" milestone rather than inventing new vocabulary.
+
+**Findings from live testing (real keys, 2026-07-31; full detail in `docs/MUX-RESULTS.md`):**
+- Sandbox images ship whatever Node they ship (E2B base v20.9.0, below Claude Code's floor of 22). Harnesses bootstrap a private Node 24.18.1 into `~/.agent-machines/node` and prefix PATH rather than depending on the image or sudo.
+- `PATH=... cmd1 | cmd2` applies only to cmd1, so a prefixed pipeline died with exit 127. Use a brace group with `export`.
+- `npm -g` is not portable: Sprites routes Node through nvm whose global bin is not on PATH, so `npm install -g` reported success and left the binary unfindable; pinning `npm_config_prefix` fixes the path but nvm hard-refuses that variable. Harnesses now install with `npm install --prefix $HOME/.agent-machines/pkgs`.
+- Long installs must not be held on a connection (they outlived E2B's sandbox budget and tripped Sprites' WS keepalive). Installs write a script, launch detached, and poll an exit-code sentinel.
+- Sprites' HTTP exec waits for the whole process group, so setsid/nohup do not detach (a `sleep 45` payload returned in 45.2s). Background work goes to the sprite's tmux server. Two traps: a detachable exec session is not a substitute (closing its socket reaps the payload), and the launcher must ride the base64-wrapped `exec` path or tmux reports success while running nothing.
+- Sprites auto-suspends on idle and background work does not keep it awake; the 1.5s install poll is what keeps it warm.
+- Sprites `create` returns intermittent 500s that still create the sprite, so a naive retry then 409s. Named creates are now get-or-create.
+- OpenClaw needs a session target even for `--local` one-shots, and its `--json` is pretty-printed, so it needs a brace-depth accumulating parser rather than line-at-a-time NDJSON.
+- A `vck_` key is Vercel AI Gateway auth, not Sandbox auth; the vercel lane fails closed saying exactly that.
+
+**Not working, and why:** Hermes will not install on E2B's default template. Its curl installer builds a Python venv plus Node browser deps and exhausts the base sandbox (478 MB, 2 vCPU); the VM stops answering RPCs after ~150s, and E2B ignored a larger `resources` request on this plan. `CreateSandboxOptions` now carries `template` and `resources` so callers can ask for more, and the adapter marks Hermes heavy-install: it wants a pre-baked image, not a per-machine install. The other three agents pass on both credentialed substrates.
+
+**Web:** Restored the footer PCB art at a footer-only path (`.ret-circuit-texture` is shared by five components, so reverting the shared asset would have changed the hero, navbar and workflow surfaces). Remounted `StatsRow` and rewrote it around the real `createMux` API -- the previous snippet's lowercase `am` alias would have thrown at runtime and its `persistent` field was dropped before the wire (now transmitted). Added a two-plane diagram and a dashboard sandbox-router panel whose capability mirror is drift-tested against `src/mux`.
+
+**Verification:** 83 mux tests, 3 SDK tests, 16 new web tests; root and web typecheck clean; live matrix green for claude-code/codex/openclaw on e2b and sprites. One pre-existing web test failure (`matchPackages` memory case) is unrelated and left untouched.
