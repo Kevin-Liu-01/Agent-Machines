@@ -15,7 +15,9 @@ export type Mark =
 	| "openai"
 	| "e2b"
 	| "sprites"
-	| "vercel";
+	| "vercel"
+	| "npm"
+	| "typescript";
 
 /**
  * Pseudo-mark for "either agent". Wherever a UI surface represents the
@@ -58,20 +60,20 @@ const NATIVE_SRC: Record<Mark, { light: string; dark: string }> = {
 		dark: "/brand/nous-mark.svg",
 	},
 	cursor: {
-		light: "/brand/cursor-mark.svg",
-		dark: "/brand/cursor-mark-light.svg",
+		light: "/brand/thesvg/cursor-light.svg",
+		dark: "/brand/thesvg/cursor-dark.svg",
 	},
 	openclaw: {
 		light: "/brand/openclaw-mark-color.svg",
 		dark: "/brand/openclaw-mark-color.svg",
 	},
 	claudecode: {
-		light: "/brand/claudecode-color.svg",
-		dark: "/brand/claudecode-color.svg",
+		light: "/brand/thesvg/claude-code-color.svg",
+		dark: "/brand/thesvg/claude-code-color.svg",
 	},
 	codex: {
-		light: "/brand/codex-color.svg",
-		dark: "/brand/codex-color.svg",
+		light: "/brand/thesvg/codex-default.svg",
+		dark: "/brand/thesvg/codex-default.svg",
 	},
 	anthropic: {
 		light: "/brand/services/anthropic.svg",
@@ -93,21 +95,31 @@ const NATIVE_SRC: Record<Mark, { light: string; dark: string }> = {
 		light: "/brand/services/vercel.svg",
 		dark: "/brand/services/vercel.svg",
 	},
+	npm: {
+		light: "/brand/thesvg/npm-mono.svg",
+		dark: "/brand/thesvg/npm-mono.svg",
+	},
+	typescript: {
+		light: "/brand/thesvg/typescript-mono.svg",
+		dark: "/brand/thesvg/typescript-mono.svg",
+	},
 };
 
 const MASK_SRC: Record<Mark, string> = {
 	am: "/brand/agent-machines-mark-mask.svg",
 	dedalus: "/brand/dedalus-mark-black.svg",
 	nous: "/brand/nous-mark.svg",
-	cursor: "/brand/cursor-mark.svg",
+	cursor: "/brand/thesvg/cursor-mono.svg",
 	openclaw: "/brand/openclaw-mark.svg",
-	claudecode: "/brand/claudecode-color.svg",
-	codex: "/brand/codex-color.svg",
-	anthropic: "/brand/services/anthropic.svg",
+	claudecode: "/brand/thesvg/claude-code-mono.svg",
+	codex: "/brand/thesvg/codex-default.svg",
+	anthropic: "/brand/thesvg/anthropic-mono.svg",
 	openai: "/brand/services/openai.svg",
 	e2b: "/brand/services/e2b.svg",
 	sprites: "/brand/services/sprites.svg",
 	vercel: "/brand/services/vercel.svg",
+	npm: "/brand/thesvg/npm-mono.svg",
+	typescript: "/brand/thesvg/typescript-mono.svg",
 };
 
 const DEFAULT_TONE: Record<Mark, NonNullable<Props["tone"]>> = {
@@ -126,6 +138,8 @@ const DEFAULT_TONE: Record<Mark, NonNullable<Props["tone"]>> = {
 	// so it adapts to the theme (black on light, white on dark) instead of
 	// a fixed black that vanishes in dark mode.
 	vercel: "currentColor",
+	npm: "currentColor",
+	typescript: "currentColor",
 };
 
 const ARIA_LABEL: Record<Mark, string> = {
@@ -141,6 +155,8 @@ const ARIA_LABEL: Record<Mark, string> = {
 	e2b: "E2B",
 	sprites: "Sprites",
 	vercel: "Vercel",
+	npm: "npm",
+	typescript: "TypeScript",
 };
 
 /**

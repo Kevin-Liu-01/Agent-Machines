@@ -9,6 +9,7 @@ import { ProductShowcase } from "@/components/ProductShowcase";
 import { ReticlePageGrid } from "@/components/reticle/ReticlePageGrid";
 import { ReticleSection } from "@/components/reticle/ReticleSection";
 import { ReticleSpacer } from "@/components/reticle/ReticleSpacer";
+import { StatsRow } from "@/components/StatsRow";
 import { SITE } from "@/lib/seo/config";
 
 export default function HomePage() {
@@ -19,8 +20,8 @@ export default function HomePage() {
 				githubLink={<GitHubStarLink repo={SITE.githubRepo} />}
 			/>
 
-			<main id="top">
-				<ReticleSection contentClassName="" >
+			<main id="top" data-motion-route-root>
+				<ReticleSection contentClassName="">
 					<HeroBlock />
 				</ReticleSection>
 
@@ -34,6 +35,12 @@ export default function HomePage() {
 
 				<ReticleSection id="workflow" className="scroll-mt-[72px]" contentClassName="">
 					<ProductShowcase />
+				</ReticleSection>
+
+				<ReticleSpacer />
+
+				<ReticleSection id="sdk" className="scroll-mt-[72px]" contentClassName="">
+					<StatsRow />
 				</ReticleSection>
 
 				<ReticleSpacer />

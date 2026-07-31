@@ -3,6 +3,8 @@
 import type { CSSProperties } from "react";
 
 import { CopyCodeButton } from "@/components/CopyCodeButton";
+import { Logo, type Mark } from "@/components/Logo";
+import { MuxDiagram } from "@/components/MuxDiagram";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { ToolIcon } from "@/components/ToolIcon";
 import type { ToolCategory } from "@/lib/dashboard/loadout";
@@ -10,22 +12,24 @@ import { cn } from "@/lib/cn";
 
 const INSTALL_CODE = "npm i agent-machines";
 
-const CODE_TEXT = `import { AgentMachines } from "agent-machines"
+const CODE_TEXT = `import { createMux } from "agent-machines"
 
-const am = new AgentMachines()
+const mux = createMux() // agent-machines.json: keys + routes
 
-const agent = await am.create({
-  agent: "hermes",
-  sandbox: "e2b",
-  model: "claude-opus-4.8",
-  persistent: true,
+const machine = await mux.create({
+  agent: "claude-code",
+  sandbox: "auto", // e2b -> sprites -> vercel
+  name: "reviewer",
 })
 
-await agent.run("review my code")`;
+for await (const event of machine.run("review my repo")) {
+  if (event.type === "text") process.stdout.write(event.delta)
+}`;
 
 type CodeTone =
 	| "boolean"
 	| "class"
+	| "comment"
 	| "identifier"
 	| "keyword"
 	| "method"
@@ -45,7 +49,7 @@ const CODE_LINES: ReadonlyArray<{
 			{ text: "import", tone: "keyword" },
 			{ text: " ", tone: "punctuation" },
 			{ text: "{", tone: "punctuation" },
-			{ text: " AgentMachines ", tone: "class" },
+			{ text: " createMux ", tone: "class" },
 			{ text: "}", tone: "punctuation" },
 			{ text: " ", tone: "punctuation" },
 			{ text: "from", tone: "keyword" },
@@ -57,11 +61,11 @@ const CODE_LINES: ReadonlyArray<{
 		no: "03",
 		parts: [
 			{ text: "const", tone: "keyword" },
-			{ text: " am", tone: "identifier" },
+			{ text: " mux", tone: "identifier" },
 			{ text: " = ", tone: "operator" },
-			{ text: "new", tone: "keyword" },
-			{ text: " AgentMachines", tone: "class" },
+			{ text: "createMux", tone: "method" },
 			{ text: "()", tone: "punctuation" },
+			{ text: " // agent-machines.json: keys + routes", tone: "comment" },
 		],
 	},
 	{ no: "04", parts: [{ text: "" }] },
@@ -69,10 +73,10 @@ const CODE_LINES: ReadonlyArray<{
 		no: "05",
 		parts: [
 			{ text: "const", tone: "keyword" },
-			{ text: " agent", tone: "identifier" },
+			{ text: " machine", tone: "identifier" },
 			{ text: " = ", tone: "operator" },
 			{ text: "await", tone: "keyword" },
-			{ text: " am", tone: "identifier" },
+			{ text: " mux", tone: "identifier" },
 			{ text: ".create", tone: "method" },
 			{ text: "({", tone: "punctuation" },
 		],
@@ -83,7 +87,7 @@ const CODE_LINES: ReadonlyArray<{
 		parts: [
 			{ text: "agent", tone: "property" },
 			{ text: ": ", tone: "punctuation" },
-			{ text: "\"hermes\"", tone: "string" },
+			{ text: "\"claude-code\"", tone: "string" },
 			{ text: ",", tone: "punctuation" },
 		],
 	},
@@ -93,116 +97,110 @@ const CODE_LINES: ReadonlyArray<{
 		parts: [
 			{ text: "sandbox", tone: "property" },
 			{ text: ": ", tone: "punctuation" },
-			{ text: "\"e2b\"", tone: "string" },
+			{ text: "\"auto\"", tone: "string" },
 			{ text: ",", tone: "punctuation" },
+			{ text: " // e2b -> sprites -> vercel", tone: "comment" },
 		],
 	},
 	{
 		no: "08",
 		indent: 1,
 		parts: [
-			{ text: "model", tone: "property" },
+			{ text: "name", tone: "property" },
 			{ text: ": ", tone: "punctuation" },
-			{ text: "\"claude-opus-4.8\"", tone: "string" },
+			{ text: "\"reviewer\"", tone: "string" },
 			{ text: ",", tone: "punctuation" },
 		],
 	},
+	{ no: "09", parts: [{ text: "})", tone: "punctuation" }] },
+	{ no: "10", parts: [{ text: "" }] },
 	{
-		no: "09",
-		indent: 1,
+		no: "11",
 		parts: [
-			{ text: "persistent", tone: "property" },
-			{ text: ": ", tone: "punctuation" },
-			{ text: "true", tone: "boolean" },
-			{ text: ",", tone: "punctuation" },
-		],
-	},
-	{ no: "10", parts: [{ text: "})", tone: "punctuation" }] },
-	{ no: "11", parts: [{ text: "" }] },
-	{
-		no: "12",
-		parts: [
-			{ text: "await", tone: "keyword" },
-			{ text: " agent", tone: "identifier" },
+			{ text: "for await", tone: "keyword" },
+			{ text: " (", tone: "punctuation" },
+			{ text: "const", tone: "keyword" },
+			{ text: " event", tone: "identifier" },
+			{ text: " of", tone: "keyword" },
+			{ text: " machine", tone: "identifier" },
 			{ text: ".run", tone: "method" },
 			{ text: "(", tone: "punctuation" },
-			{ text: "\"review my code\"", tone: "string" },
-			{ text: ")", tone: "punctuation" },
+			{ text: "\"review my repo\"", tone: "string" },
+			{ text: "))", tone: "punctuation" },
+			{ text: " {", tone: "punctuation" },
 		],
 	},
+	{
+		no: "12",
+		indent: 1,
+		parts: [
+			{ text: "if", tone: "keyword" },
+			{ text: " (event.type", tone: "identifier" },
+			{ text: " === ", tone: "operator" },
+			{ text: "\"text\"", tone: "string" },
+			{ text: ") ", tone: "punctuation" },
+			{ text: "process.stdout", tone: "identifier" },
+			{ text: ".write", tone: "method" },
+			{ text: "(event.delta)", tone: "punctuation" },
+		],
+	},
+	{ no: "13", parts: [{ text: "}", tone: "punctuation" }] },
 ];
 
-const READOUTS: ReadonlyArray<{
-	label: string;
-	value: string;
-	icon: ToolCategory;
-}> = [
-	{
-		label: "package",
-		value: "install",
-		icon: "code",
-	},
-	{
-		label: "recipe",
-		value: "compose",
-		icon: "delegate",
-	},
-	{
-		label: "model",
-		value: "normalize",
-		icon: "memory",
-	},
-	{
-		label: "state",
-		value: "persist",
-		icon: "filesystem",
-	},
-	{
-		label: "run",
-		value: "run",
-		icon: "shell",
-	},
-	{
-		label: "proof",
-		value: "observe",
-		icon: "search",
-	},
+/**
+ * Everything the router multiplexes, with real marks. Agents install
+ * into whichever sandbox the route lands on; both rows stay in sync
+ * with the registries in src/mux (four harnesses, four substrates).
+ */
+const AGENT_MARKS: ReadonlyArray<{ mark: Mark; label: string }> = [
+	{ mark: "claudecode", label: "Claude Code" },
+	{ mark: "codex", label: "Codex CLI" },
+	{ mark: "openclaw", label: "OpenClaw" },
+	{ mark: "nous", label: "Hermes" },
+];
+
+const SANDBOX_MARKS: ReadonlyArray<{ mark: Mark; label: string }> = [
+	{ mark: "e2b", label: "E2B" },
+	{ mark: "sprites", label: "Sprites" },
+	{ mark: "vercel", label: "Vercel Sandbox" },
+	{ mark: "dedalus", label: "Dedalus" },
 ];
 
 const PIPELINE: ReadonlyArray<{
-	icon: ToolCategory;
+	icon?: ToolCategory;
+	mark?: Mark;
 	kicker: string;
 	title: string;
 	body: string;
 	code: string;
 }> = [
 	{
-		icon: "code",
+		mark: "npm",
 		kicker: "01",
-		title: "Import the client",
-		body: "Use the SDK from any server.",
+		title: "Install the package",
+		body: "One dependency. Substrate SDKs load lazily, only for routes you use.",
 		code: INSTALL_CODE,
 	},
 	{
-		icon: "delegate",
+		icon: "filesystem",
 		kicker: "02",
-		title: "Shape the worker",
-		body: "Pick runtime, substrate, and model.",
-		code: "am.create({ agent, sandbox, model })",
+		title: "Drop in one JSON",
+		body: "Keys and routes in agent-machines.json. Missing keys just narrow the route.",
+		code: `{ "sandboxes": { "primary": "e2b", "backups": ["sprites"] } }`,
 	},
 	{
-		icon: "filesystem",
+		icon: "delegate",
 		kicker: "03",
-		title: "Keep the worker",
-		body: "Persist files, skills, and memory.",
-		code: "persistent: true",
+		title: "Create with failover",
+		body: "Primary first, backups on transient failure. Every attempt is recorded.",
+		code: `mux.create({ agent, sandbox: "auto" })`,
 	},
 	{
 		icon: "shell",
 		kicker: "04",
-		title: "Run real work",
-		body: "Send the prompt when ready.",
-		code: "await agent.run(prompt)",
+		title: "Stream everything",
+		body: "Normalized events from any agent, or a real PTY when you want a terminal.",
+		code: "for await (const event of machine.run(prompt))",
 	},
 ];
 
@@ -222,21 +220,27 @@ export function StatsRow() {
 							Create the worker in code.
 						</h2>
 						<p className="mt-5 max-w-[54ch] text-[14px] leading-relaxed text-[var(--ret-text-dim)]">
-							Create a persistent worker with one typed recipe. Choose the
-							agent, substrate, model, and state policy. The control plane
-							handles boot, gateway, logs, and usage.
+							One typed client, two multiplexed planes. Pick the agent; the
+							router places it on your primary sandbox and fails over to
+							backups. Runs stream as normalized events, terminals attach as
+							real PTYs.
 						</p>
 					</div>
 
 					<div className="relative z-10 mt-8 grid gap-3">
 						<div className="grid grid-cols-2 gap-px border border-[var(--ret-border)] bg-[var(--ret-border)]">
-							<RouteFacet label="agent" value="Hermes" />
-							<RouteFacet label="substrate" value="E2B" />
-							<RouteFacet label="model" value="Opus 4.8" />
-							<RouteFacet label="state" value="Persistent" />
+							<RouteFacet label="agent" value="Claude Code" mark="claudecode" />
+							<RouteFacet label="route" value="e2b -> sprites" mark="e2b" />
+							<RouteFacet label="events" value="Streamed" />
+							<RouteFacet label="terminal" value="PTY" />
 						</div>
 						<div className="grid gap-px border border-[var(--ret-border)] bg-[var(--ret-border)]">
-							{["typed client", "agent + substrate", "server-normalized model", "observable run"].map((item, index) => (
+							{[
+								"typed client",
+								"harness x substrate route",
+								"primary -> backup failover",
+								"observable attempts",
+							].map((item, index) => (
 								<div
 									key={item}
 									className="grid grid-cols-[40px_minmax(0,1fr)] bg-[var(--ret-bg)] px-3 py-2.5 text-[12px]"
@@ -258,10 +262,22 @@ export function StatsRow() {
 				</div>
 			</div>
 
-			<div className="grid grid-cols-1 gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-				{READOUTS.map((spec) => (
-					<ReadoutCell key={spec.label} spec={spec} />
-				))}
+			<div className="grid grid-cols-1 gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.42fr)]">
+				<div className="bg-[var(--ret-bg)] px-5 py-6 md:px-8">
+					<span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
+						two planes, one route
+					</span>
+					<MuxDiagram className="mt-4" />
+				</div>
+				<div className="flex flex-col gap-6 bg-[var(--ret-bg)] px-5 py-6 md:px-8">
+					<MarkStrip label="agents" entries={AGENT_MARKS} />
+					<MarkStrip label="sandboxes" entries={SANDBOX_MARKS} />
+					<p className="text-[12.5px] leading-relaxed text-[var(--ret-text-dim)]">
+						Every agent installs through the substrate&apos;s own exec and PTY
+						primitives, so a new sandbox inherits all four agents and a new
+						agent inherits all four sandboxes.
+					</p>
+				</div>
 			</div>
 
 			<div className="grid grid-cols-1 gap-px bg-[var(--ret-border)] md:grid-cols-2 xl:grid-cols-4">
@@ -273,14 +289,50 @@ export function StatsRow() {
 	);
 }
 
-function RouteFacet({ label, value }: { label: string; value: string }) {
+function RouteFacet({
+	label,
+	value,
+	mark,
+}: {
+	label: string;
+	value: string;
+	mark?: Mark;
+}) {
 	return (
 		<div className="bg-[var(--ret-bg)] px-3 py-3">
 			<div className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
 				{label}
 			</div>
-			<div className="mt-1 text-[13px] font-semibold text-[var(--ret-text)]">
-				{value}
+			<div className="mt-1 flex items-center gap-1.5 text-[13px] font-semibold text-[var(--ret-text)]">
+				{mark ? <Logo mark={mark} size={13} /> : null}
+				<span>{value}</span>
+			</div>
+		</div>
+	);
+}
+
+function MarkStrip({
+	label,
+	entries,
+}: {
+	label: string;
+	entries: ReadonlyArray<{ mark: Mark; label: string }>;
+}) {
+	return (
+		<div className="flex flex-col gap-4 bg-[var(--ret-bg)] px-5 py-5 md:px-7">
+			<span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
+				{label}
+			</span>
+			<div className="flex flex-wrap items-center gap-x-7 gap-y-3">
+				{entries.map((entry) => (
+					<span
+						key={entry.mark}
+						className="flex items-center gap-2 text-[12px] font-medium text-[var(--ret-text-dim)] transition-colors hover:text-[var(--ret-text)]"
+					>
+						<Logo mark={entry.mark} size={15} />
+						{entry.label}
+					</span>
+				))}
 			</div>
 		</div>
 	);
@@ -302,7 +354,7 @@ function CodePanel() {
 					</span>
 				</div>
 				<span className="font-mono text-[10px] text-[var(--ret-text-muted)]">
-					{"recipe -> worker"}
+					{"route -> machine -> stream"}
 				</span>
 			</div>
 			<div className="relative z-10 flex justify-end border-b border-[var(--ret-border)] bg-[var(--ret-bg)]/78 px-3 py-2 backdrop-blur-sm">
@@ -328,9 +380,9 @@ function CodePanel() {
 				</code>
 			</pre>
 			<div className="relative z-10 grid grid-cols-3 gap-px border-t border-[var(--ret-border)] bg-[var(--ret-border)]">
-				<CodeMeter label="auth" value="bearer" />
-				<CodeMeter label="boot" value="phased" />
-				<CodeMeter label="logs" value="attached" />
+				<CodeMeter label="keys" value="json / env" />
+				<CodeMeter label="route" value="primary -> backups" />
+				<CodeMeter label="stream" value="ndjson events" />
 			</div>
 		</div>
 	);
@@ -340,6 +392,7 @@ function codeTone(tone: (typeof CODE_LINES)[number]["parts"][number]["tone"]) {
 	return cn(
 		tone === "boolean" && "font-semibold text-[var(--ret-text)]",
 		tone === "class" && "font-semibold text-[var(--ret-text)]",
+		tone === "comment" && "text-[var(--ret-text-muted)]",
 		tone === "identifier" && "text-[var(--ret-text)]",
 		tone === "keyword" && "font-semibold text-[var(--ret-text)]",
 		tone === "method" && "font-medium text-[var(--ret-text)]",
@@ -363,93 +416,6 @@ function CodeMeter({ label, value }: { label: string; value: string }) {
 	);
 }
 
-function ReadoutCell({ spec }: { spec: (typeof READOUTS)[number] }) {
-	return (
-		<div className="group relative min-h-[168px] overflow-hidden bg-[var(--ret-bg)] transition-colors duration-300 [transition-timing-function:var(--ret-ease-out)] hover:bg-[var(--ret-bg-soft)]">
-			<div
-				aria-hidden="true"
-				className="ret-circuit-texture pointer-events-none absolute inset-0 opacity-[0.08] mix-blend-multiply invert transition-opacity duration-300 group-hover:opacity-[0.16] dark:opacity-[0.12] dark:mix-blend-screen dark:invert-0 dark:group-hover:opacity-[0.22]"
-				style={{ "--ret-circuit-size": "260px 340px" } as CSSProperties}
-			/>
-			<div className="absolute left-4 top-4 z-10 flex items-center gap-1.5">
-				<ToolIcon name={spec.icon} size={11} className="text-[var(--ret-text-muted)]" />
-				<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-					{spec.label}
-				</span>
-			</div>
-			<ReadoutVisual index={READOUTS.indexOf(spec)} />
-			<span className="absolute bottom-4 right-4 z-10 text-right text-[22px] font-semibold leading-none tracking-tight text-[var(--ret-text)]">
-				{spec.value}
-			</span>
-		</div>
-	);
-}
-
-function ReadoutVisual({ index }: { index: number }) {
-	const variant = index % 6;
-	return (
-		<svg
-			aria-hidden="true"
-			viewBox="0 0 220 132"
-			className="absolute inset-x-3 top-8 h-[112px] w-[calc(100%-1.5rem)] text-[var(--ret-text-secondary)] opacity-55 transition-[opacity,transform] duration-300 [transition-timing-function:var(--ret-ease-out)] group-hover:translate-y-[-2px] group-hover:opacity-80"
-			fill="none"
-		>
-			<path
-				d="M8 68h44l18-18h40l20 20h82"
-				stroke="currentColor"
-				strokeWidth="1"
-				opacity=".42"
-				vectorEffect="non-scaling-stroke"
-			/>
-			{variant === 0 ? (
-				<>
-					<rect x="58" y="30" width="104" height="58" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-					<path d="M74 48h72M74 64h44M74 80h62" stroke="currentColor" strokeWidth="1" opacity=".72" vectorEffect="non-scaling-stroke" />
-					<path d="M42 102h96l18-18h28" stroke="currentColor" strokeWidth="1" opacity=".34" vectorEffect="non-scaling-stroke" />
-				</>
-			) : null}
-			{variant === 1 ? (
-				<>
-					<circle cx="70" cy="44" r="10" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-					<circle cx="146" cy="44" r="10" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-					<circle cx="108" cy="88" r="12" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-					<path d="M80 48l18 26M136 50l-18 24M82 44h54" stroke="currentColor" strokeWidth="1" opacity=".72" vectorEffect="non-scaling-stroke" />
-				</>
-			) : null}
-			{variant === 2 ? (
-				<>
-					<path d="M46 38h126M46 62h88M46 86h126" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-					<path d="M170 38l18 24-18 24" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-					<circle cx="46" cy="62" r="5" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-				</>
-			) : null}
-			{variant === 3 ? (
-				<>
-					<rect x="62" y="32" width="96" height="64" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-					<path d="M78 32v-14M96 32v-14M124 96v18M142 96v18M48 52h14M158 76h18" stroke="currentColor" strokeWidth="1" opacity=".75" vectorEffect="non-scaling-stroke" />
-					<path d="M86 64h48" stroke="currentColor" strokeWidth="1.2" opacity=".55" vectorEffect="non-scaling-stroke" />
-				</>
-			) : null}
-			{variant === 4 ? (
-				<>
-					<path d="M48 42h72l34 34h28" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-					<path d="M48 80h52" stroke="currentColor" strokeWidth="1.2" opacity=".48" vectorEffect="non-scaling-stroke" />
-					<path d="M106 72l12 8-12 8" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-					<circle cx="182" cy="76" r="8" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-				</>
-			) : null}
-			{variant === 5 ? (
-				<>
-					<path d="M42 82c18-28 31-28 48 0s30 28 48 0 30-28 48 0" stroke="currentColor" strokeWidth="1.2" vectorEffect="non-scaling-stroke" />
-					<path d="M42 42h144M42 108h144" stroke="currentColor" strokeWidth="1" opacity=".32" vectorEffect="non-scaling-stroke" />
-					<circle cx="90" cy="82" r="4" fill="currentColor" opacity=".75" />
-					<circle cx="138" cy="82" r="4" fill="currentColor" opacity=".75" />
-				</>
-			) : null}
-		</svg>
-	);
-}
-
 function PipelineCell({ step }: { step: (typeof PIPELINE)[number] }) {
 	return (
 		<div className="group relative min-h-[250px] overflow-hidden bg-[var(--ret-bg)] p-5 transition-colors duration-300 [transition-timing-function:var(--ret-ease-out)] hover:bg-[var(--ret-bg-soft)] md:p-6">
@@ -460,7 +426,11 @@ function PipelineCell({ step }: { step: (typeof PIPELINE)[number] }) {
 			/>
 			<div className="relative z-10 mb-8 flex items-center justify-between">
 				<div className="flex h-11 w-11 items-center justify-center border border-[var(--ret-border)] bg-[var(--ret-surface)] text-[var(--ret-text)] transition-transform duration-300 [transition-timing-function:var(--ret-ease-out)] group-hover:-translate-y-1">
-					<ToolIcon name={step.icon} size={15} />
+					{step.mark ? (
+						<Logo mark={step.mark} size={15} />
+					) : step.icon ? (
+						<ToolIcon name={step.icon} size={15} />
+					) : null}
 				</div>
 				<span className="font-mono text-[10px] uppercase tracking-[0.24em] text-[var(--ret-text-muted)]">
 					{step.kicker}

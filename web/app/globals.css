@@ -209,6 +209,18 @@ body {
 }
 
 /*
+ * Footer-only variant: the dense legacy PCB art (chips, buses, pads)
+ * lives under the wordmark band only; every other surface keeps the
+ * sparse diagonal lattice above.
+ */
+.ret-circuit-texture-footer {
+	background-image: url("/brand/circuit-board-footer.svg");
+	background-position: center;
+	background-repeat: repeat;
+	background-size: var(--ret-circuit-size, 384px 512px);
+}
+
+/*
  * Force native form controls to inherit the active theme's
  * background/text instead of falling back to the browser's
  * system-dark defaults. Belt-and-suspenders alongside the
@@ -469,6 +481,88 @@ li {
 	animation-delay: calc(var(--item-index, 0) * 70ms);
 }
 
+/*
+ * GSAP + Lenis motion layer. CSS owns the initial geometry so the route
+ * curtain never flashes before hydration; GSAP only drives transforms and
+ * opacity after the provider is live.
+ */
+.am-route-shell {
+	min-height: 100dvh;
+}
+
+.am-motion-ready .ret-page-enter {
+	animation: none;
+}
+
+.am-scroll-progress {
+	position: fixed;
+	top: 0;
+	right: 0;
+	left: 0;
+	z-index: 80;
+	height: 2px;
+	pointer-events: none;
+	background: var(--ret-text);
+	transform: scaleX(0);
+	transform-origin: left center;
+	will-change: transform;
+}
+
+.am-route-curtain {
+	position: fixed;
+	inset: 0;
+	z-index: 9999;
+	visibility: hidden;
+	pointer-events: none;
+	opacity: 0;
+}
+
+.am-route-curtain__panel {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	width: 34%;
+	background:
+		linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.035)),
+		#09090b;
+	border-right: 1px solid rgba(255, 255, 255, 0.12);
+	transform: scaleX(0);
+	transform-origin: left center;
+	will-change: transform;
+}
+
+.am-route-curtain__panel:nth-child(1) {
+	left: 0;
+}
+
+.am-route-curtain__panel:nth-child(2) {
+	left: 33%;
+}
+
+.am-route-curtain__panel:nth-child(3) {
+	left: 66%;
+}
+
+.am-route-curtain__identity {
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	color: rgba(255, 255, 255, 0.9);
+	font-size: 17px;
+	font-weight: 600;
+	letter-spacing: -0.015em;
+	opacity: 0;
+	transform: translate(-50%, -50%);
+	will-change: transform, opacity;
+}
+
+[data-motion-section] {
+	will-change: transform, opacity;
+}
+
 .ret-popover-panel {
 	transform-origin: top center;
 	animation: ret-menu-enter 160ms var(--ret-ease-out) both;
@@ -547,6 +641,15 @@ details[open] .ret-details-chevron {
 		filter: none;
 		opacity: 1;
 		transform: none;
+	}
+
+	.am-scroll-progress,
+	.am-route-curtain {
+		display: none;
+	}
+
+	[data-motion-section] {
+		will-change: auto;
 	}
 }
 

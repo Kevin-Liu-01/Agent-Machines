@@ -1,71 +1,75 @@
 {
-  "name": "agent-machines-web",
-  "version": "0.1.0",
-  "private": true,
-  "packageManager": "pnpm@10.30.0",
-  "scripts": {
-    "predev": "node scripts/sync-data.mjs",
-    "prebuild": "node scripts/sync-data.mjs",
-    "dev": "next dev -p 3210",
-    "build": "next build",
-    "start": "next start -p 3210",
-    "typecheck": "node scripts/sync-data.mjs && tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "perf:p95": "node scripts/measure-p95.mjs",
-    "smoke:agents": "node scripts/smoke-agent-runtimes.mjs",
-    "sync-skills": "node scripts/sync-skills.mjs",
-    "sync-mcp-catalog": "node scripts/sync-mcp-catalog.mjs",
-    "sync-harness-counts": "node scripts/sync-harness-counts.mjs",
-    "sync-data": "node scripts/sync-data.mjs",
-    "export-brand": "node scripts/export-brand-assets.mjs"
-  },
-  "dependencies": {
-    "@clerk/nextjs": "^7.3.2",
-    "@fly/sprites": "^0.0.1",
-    "@react-three/drei": "^10.7.7",
-    "@react-three/fiber": "^9.6.1",
-    "@supabase/supabase-js": "^2.105.4",
-    "@types/three": "^0.184.0",
-    "@vercel/analytics": "^2.0.1",
-    "@vercel/sandbox": "^2.0.1",
-    "@xterm/addon-fit": "^0.11.0",
-    "@xterm/xterm": "^6.0.0",
-    "e2b": "^2.21.0",
-    "lucide-react": "^1.17.0",
-    "next": "^16.2.6",
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6",
-    "react-markdown": "^9.0.1",
-    "react-type-animation": "^3.2.0",
-    "reactflow": "^11.11.4",
-    "recharts": "^3.8.1",
-    "rehype-highlight": "^7.0.1",
-    "remark-gfm": "^4.0.0",
-    "three": "^0.184.0"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4.0.0",
-    "@types/node": "^22.10.0",
-    "@types/react": "^19.2.15",
-    "@types/react-dom": "^19.2.3",
-    "autoprefixer": "^10.4.20",
-    "gray-matter": "^4.0.3",
-    "postcss": "^8.4.49",
-    "sharp": "^0.34.5",
-    "tailwindcss": "^4.0.0",
-    "to-ico": "^1.1.5",
-    "typescript": "^5.7.0",
-    "vitest": "^3.2.4"
-  },
-  "pnpm": {
-    "overrides": {
-      "e2b>chalk": "^4.1.2"
-    }
-  },
-  "overrides": {
-    "e2b": {
-      "chalk": "^4.1.2"
-    }
-  }
+	"name": "agent-machines-web",
+	"version": "0.1.0",
+	"private": true,
+	"packageManager": "pnpm@10.30.0",
+	"scripts": {
+		"predev": "node scripts/sync-data.mjs",
+		"prebuild": "node scripts/sync-data.mjs",
+		"dev": "next dev -p 3210",
+		"build": "next build",
+		"start": "next start -p 3210",
+		"typecheck": "node scripts/sync-data.mjs && tsc --noEmit",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"perf:p95": "node scripts/measure-p95.mjs",
+		"smoke:agents": "node scripts/smoke-agent-runtimes.mjs",
+		"sync-skills": "node scripts/sync-skills.mjs",
+		"sync-mcp-catalog": "node scripts/sync-mcp-catalog.mjs",
+		"sync-harness-counts": "node scripts/sync-harness-counts.mjs",
+		"sync-data": "node scripts/sync-data.mjs",
+		"sync-icons": "node scripts/sync-brand-icons.mjs",
+		"export-brand": "node scripts/export-brand-assets.mjs"
+	},
+	"dependencies": {
+		"@clerk/nextjs": "^7.3.2",
+		"@fly/sprites": "^0.1.0",
+		"@gsap/react": "^2.1.2",
+		"@react-three/drei": "^10.7.7",
+		"@react-three/fiber": "^9.6.1",
+		"@supabase/supabase-js": "^2.105.4",
+		"@types/three": "^0.184.0",
+		"@vercel/analytics": "^2.0.1",
+		"@vercel/sandbox": "^2.9.2",
+		"@xterm/addon-fit": "^0.11.0",
+		"@xterm/xterm": "^6.0.0",
+		"e2b": "^2.37.0",
+		"gsap": "^3.15.0",
+		"lenis": "^1.3.25",
+		"lucide-react": "^1.17.0",
+		"next": "^16.2.6",
+		"react": "^19.2.6",
+		"react-dom": "^19.2.6",
+		"react-markdown": "^9.0.1",
+		"react-type-animation": "^3.2.0",
+		"reactflow": "^11.11.4",
+		"recharts": "^3.8.1",
+		"rehype-highlight": "^7.0.1",
+		"remark-gfm": "^4.0.0",
+		"three": "^0.184.0"
+	},
+	"devDependencies": {
+		"@tailwindcss/postcss": "^4.0.0",
+		"@types/node": "^22.10.0",
+		"@types/react": "^19.2.15",
+		"@types/react-dom": "^19.2.3",
+		"autoprefixer": "^10.4.20",
+		"gray-matter": "^4.0.3",
+		"postcss": "^8.4.49",
+		"sharp": "^0.34.5",
+		"tailwindcss": "^4.0.0",
+		"to-ico": "^1.1.5",
+		"typescript": "^5.7.0",
+		"vitest": "^3.2.4"
+	},
+	"pnpm": {
+		"overrides": {
+			"e2b>chalk": "^4.1.2"
+		}
+	},
+	"overrides": {
+		"e2b": {
+			"chalk": "^4.1.2"
+		}
+	}
 }

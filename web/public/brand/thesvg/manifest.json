@@ -1,0 +1,121 @@
+{
+  "source": "https://thesvg.org",
+  "registry": "https://thesvg.org/api/registry.json",
+  "note": "Run web/scripts/sync-brand-icons.mjs to refresh. e2b-mono.svg is vendored manually (not on theSVG); mono variants inherit currentColor.",
+  "icons": [
+    {
+      "slug": "claude-code",
+      "variant": "color",
+      "license": "MIT",
+      "file": "claude-code-color.svg"
+    },
+    {
+      "slug": "claude-code",
+      "variant": "mono",
+      "license": "MIT",
+      "file": "claude-code-mono.svg"
+    },
+    {
+      "slug": "codex",
+      "variant": "default",
+      "license": "brand-use",
+      "file": "codex-default.svg"
+    },
+    {
+      "slug": "codex",
+      "variant": "light",
+      "license": "brand-use",
+      "file": "codex-light.svg"
+    },
+    {
+      "slug": "codex",
+      "variant": "dark",
+      "license": "brand-use",
+      "file": "codex-dark.svg"
+    },
+    {
+      "slug": "openclaw",
+      "variant": "default",
+      "license": "brand-use",
+      "file": "openclaw-default.svg"
+    },
+    {
+      "slug": "nousresearch-hermes",
+      "variant": "mono",
+      "license": "MIT",
+      "file": "hermes-mono.svg"
+    },
+    {
+      "slug": "cursor",
+      "variant": "light",
+      "license": "CC0-1.0",
+      "file": "cursor-light.svg"
+    },
+    {
+      "slug": "cursor",
+      "variant": "dark",
+      "license": "CC0-1.0",
+      "file": "cursor-dark.svg"
+    },
+    {
+      "slug": "cursor",
+      "variant": "mono",
+      "license": "CC0-1.0",
+      "file": "cursor-mono.svg"
+    },
+    {
+      "slug": "npm",
+      "variant": "mono",
+      "license": "CC0-1.0",
+      "file": "npm-mono.svg"
+    },
+    {
+      "slug": "nodedotjs",
+      "variant": "mono",
+      "license": "CC0-1.0",
+      "file": "nodedotjs-mono.svg"
+    },
+    {
+      "slug": "typescript",
+      "variant": "mono",
+      "license": "CC0-1.0",
+      "file": "typescript-mono.svg"
+    },
+    {
+      "slug": "openai",
+      "variant": "light",
+      "license": "MIT",
+      "file": "openai-light.svg"
+    },
+    {
+      "slug": "openai",
+      "variant": "dark",
+      "license": "MIT",
+      "file": "openai-dark.svg"
+    },
+    {
+      "slug": "anthropic",
+      "variant": "mono",
+      "license": "CC0-1.0",
+      "file": "anthropic-mono.svg"
+    },
+    {
+      "slug": "vercel",
+      "variant": "mono",
+      "license": "CC0-1.0",
+      "file": "vercel-mono.svg"
+    },
+    {
+      "slug": "flydotio",
+      "variant": "mono",
+      "license": "CC0-1.0",
+      "file": "flydotio-mono.svg"
+    },
+    {
+      "slug": "tmux",
+      "variant": "mono",
+      "license": "CC0-1.0",
+      "file": "tmux-mono.svg"
+    }
+  ]
+}

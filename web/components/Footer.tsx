@@ -134,7 +134,7 @@ export function Footer() {
 				<div className="relative overflow-hidden border-x border-t border-[var(--ret-border)] px-5 pb-12 pt-9 md:pb-14">
 					<div
 						aria-hidden="true"
-						className="ret-circuit-texture pointer-events-none absolute inset-0 opacity-[0.08] mix-blend-multiply invert dark:opacity-[0.12] dark:mix-blend-screen dark:invert-0"
+						className="ret-circuit-texture-footer pointer-events-none absolute inset-0 opacity-[0.08] mix-blend-multiply invert dark:opacity-[0.12] dark:mix-blend-screen dark:invert-0"
 					/>
 					<div
 						className="relative z-10 flex justify-center overflow-visible"
