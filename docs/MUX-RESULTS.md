@@ -128,3 +128,23 @@ fall back to WS only on transport errors.
 variables rather than erroring. That is the fail-closed contract: the
 router never routes to a provider it cannot authenticate, and the skip
 reason is carried in `machine.attempts` so the UI can explain the route.
+
+## Open issue: live deltas after a tmux reattach
+
+State as of 2026-07-31, after fixing `pipe-pane -o`:
+
+- Sandbox side is verified correct. On a live E2B sandbox (tmux 3.3a) a
+  second `pipe-pane` replaces the pipe, `pane_pipe` reports 1, the pane
+  log grows across the reattach (116 -> 186 bytes) and the new text is
+  present in the file.
+- Attach 1 streams live output correctly, and attach 2 replays the pane
+  snapshot correctly.
+- What does not arrive is attach 2's *live* delta stream, so a reattached
+  terminal paints history and then appears frozen until reopened.
+
+Both remaining suspects are client-side: the byte offset handed to
+`tail -c +N -f` on reattach, or the watchdog wrapper that backgrounds the
+tail so the stream can end when the session dies (`{ tail -f & ...; }`) --
+a backgrounded child's stdout may not be captured by every substrate's
+streaming exec. Reproduce with two sequential `openPty({ session })`
+calls on the same sandbox, writing after each attach.
