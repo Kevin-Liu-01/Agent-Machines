@@ -157,6 +157,26 @@ const same = await mux.connect("reviewer");
    explainable after the fact, which is the contract the dashboard
    needs to render "why did this land on sprites?".
 
+## Terminal front-end options
+
+The mux hands back raw PTY bytes, so the renderer is a separate choice.
+Today the dashboard uses `@xterm/xterm` 6. Two 2026 alternatives are
+worth tracking, both driven by Ghostty's VT engine compiled to WASM:
+
+- `ghostty-web` (MIT, 0.4.0) -- Ghostty's VT100 parser via WebAssembly
+  with an xterm.js-compatible API, so it is a drop-in swap. ~2.2 MB
+  unpacked, versus xterm.js's much smaller footprint; the trade is
+  fidelity and DOM-first selection/find/screen-reader behavior against
+  bundle size.
+- Vercel's Native SDK `<terminal />` (the July 2026 announcement) is a
+  *native desktop* component built on libghostty-vt -- macOS, Windows,
+  Linux, no browser. It is not usable from this web app, but it is the
+  right primitive if Agent Machines ever ships a desktop console, and its
+  session record/replay model is a good reference for what to log.
+
+Neither changes the data plane: whichever renderer is used, it consumes
+the same `PtyHandle` byte stream.
+
 ## What this deliberately is not
 
 - Not a daemon. Substrate vendors already persist sandboxes; the mux
