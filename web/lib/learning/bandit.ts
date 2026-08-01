@@ -53,13 +53,29 @@ export function emptyAgg(): ArmAgg {
 
 export function pushObservation(
 	agg: ArmAgg,
-	obs: { success: boolean; costMillicents: number; latencyMs: number },
+	obs: {
+		success: boolean;
+		costMillicents: number | null;
+		latencyMs: number | null;
+	},
 ): ArmAgg {
+	// A null figure is skipped, not pushed as zero. Zero is the BEST possible
+	// value for both penalties, so folding an unpriced lane in at zero does not
+	// record a gap -- it records a lie in that lane's favor, which is exactly
+	// how an unpriced substrate came to look cheapest. The success count still
+	// advances, so the lane stays routable and comparable on the axes we can
+	// actually measure.
 	return {
 		n: agg.n + 1,
 		successes: agg.successes + (obs.success ? 1 : 0),
-		cost: welfordPush(agg.cost, obs.costMillicents),
-		latency: welfordPush(agg.latency, obs.latencyMs),
+		cost:
+			obs.costMillicents === null
+				? agg.cost
+				: welfordPush(agg.cost, obs.costMillicents),
+		latency:
+			obs.latencyMs === null
+				? agg.latency
+				: welfordPush(agg.latency, obs.latencyMs),
 	};
 }
 
@@ -133,7 +149,13 @@ function successBeta(agg: ArmAgg, arm: Arm, policy: PolicyArtifact): { alpha: nu
 	return { alpha, beta };
 }
 
-function sampleMetric(w: Welford, rng: Rng): number {
+/** Mean, or null when nothing was ever observed -- never a zero stand-in. */
+function observedMean(w: Welford): number | null {
+	return w.n > 0 ? w.mean : null;
+}
+
+function sampleMetric(w: Welford, rng: Rng): number | null {
+	if (w.n === 0) return null;
 	if (w.n < 2) return w.mean;
 	const sd = Math.sqrt(welfordVariance(w) / w.n);
 	const draw = sampleNormal(w.mean, sd, rng);
@@ -157,7 +179,11 @@ export function bestArm(
 		const { alpha, beta } = successBeta(agg, arm, policy);
 		const meanSuccess = alpha / (alpha + beta);
 		const score = scalarReward(
-			{ successRate: meanSuccess, costMillicents: agg.cost.mean, latencyMs: agg.latency.mean },
+			{
+				successRate: meanSuccess,
+				costMillicents: observedMean(agg.cost),
+				latencyMs: observedMean(agg.latency),
+			},
 			weights,
 		);
 		if (!best || score > best.score) best = { arm, score, meanSuccess, n: agg.n };

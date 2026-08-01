@@ -7,6 +7,9 @@ import {
 	type UserConfig,
 } from "@/lib/user-config/schema";
 import { readTraceOutcome } from "@/lib/learning/route-outcomes";
+import { readTraceLanePrice } from "@/lib/learning/trace-price";
+import { estimateCost } from "@/lib/metrics/cost";
+import { sandboxCostMillicents } from "@/lib/metrics/prices";
 import type { RunTrace } from "@/lib/learning/types";
 
 const mocks = vi.hoisted(() => ({
@@ -98,18 +101,83 @@ describe("ingestRunTracesForUser -- outcome block on the write path", () => {
 		expect(count).toBe(1);
 		const [trace] = emitted();
 		const outcome = readTraceOutcome(trace.extra);
-		// 60 awake seconds at the estimator's rates: cpu 2*60*0.0046 = 0.552,
-		// memory 4*60*0.0023 = 0.552, storage 20*(60/3600)*0.015 = 0.005 -> 1.109,
-		// rounded to 1 millicent.
-		expect(trace.costMillicents).toBe(1);
+		// 60s on E2B's published rates at the machine's 2 vCPU / 4 GiB spec:
+		// cpu (1/60)h * 2 * $0.0504 = $0.00168, memory 4 GiB * (1/60)h * $0.0162
+		// = $0.00108 -> $0.00276 -> 276 millicents.
+		expect(trace.costMillicents).toBe(276);
 		expect(outcome).toEqual({
 			v: 1,
-			sandboxCostMillicents: 1,
+			sandboxCostMillicents: 276,
+			// The FIGURE is still an estimate -- modeled against a requested spec,
+			// not a provider bill. The RATE behind it is published, which is a
+			// different axis and rides in extra.price.
 			sandboxCostBasis: "estimated",
 			modelCostMillicents: null,
 			timeToFirstOutputMs: null,
 			resumed: null,
 		});
+	});
+
+	it("prices the run at the provider's published rate, not the retired table", async () => {
+		await ingestRunTracesForUser("user-1", CONFIG);
+		const [trace] = emitted();
+		const legacy = Math.round(estimateCost(MACHINE.spec, 60).totalMillicents);
+		expect(legacy).toBe(1);
+		expect(trace.costMillicents).not.toBe(legacy);
+		expect(trace.costMillicents).toBe(
+			sandboxCostMillicents("e2b", { durationMs: 60_000, vcpu: 2, memoryMib: 4096 }),
+		);
+	});
+
+	it("records the rate provenance next to the figure", async () => {
+		await ingestRunTracesForUser("user-1", CONFIG);
+		const [trace] = emitted();
+		expect(readTraceLanePrice(trace.extra)).toEqual({
+			v: 1,
+			substrate: "e2b",
+			rateBasis: "published",
+			costRanked: true,
+			reason: null,
+		});
+	});
+
+	it("writes no cost at all on a lane with no published rate, and says why", async () => {
+		mocks.exec.mockResolvedValue({
+			stdout: `${JSON.stringify({
+				id: "cron-1",
+				startedAt: "2026-07-20T03:00:00Z",
+				finishedAt: "2026-07-20T03:01:00Z",
+				exitCode: 0,
+				arm: { runtime: "claude-code", substrate: "sprites", model: "claude-opus-4-8" },
+			})}\n`,
+			stderr: "",
+			exitCode: 0,
+		});
+		await ingestRunTracesForUser("user-1", CONFIG);
+		const [trace] = emitted();
+		expect(trace.substrate).toBe("sprites");
+		// Not 0, and not the E2B or Dedalus number: an unpriced lane gets no
+		// figure, because a substituted one is what made it look precisely priced.
+		expect(trace.costMillicents).toBeNull();
+		expect(readTraceOutcome(trace.extra)?.sandboxCostMillicents).toBeNull();
+		const price = readTraceLanePrice(trace.extra);
+		expect(price?.costRanked).toBe(false);
+		expect(price?.rateBasis).toBe("unknown");
+		expect(price?.reason).toContain("profiles[sprites].pricing.cpuPerVcpuHour.basis");
+		// The run itself still counts: the lane is routable, just not cost-ranked.
+		expect(trace.success).toBe(true);
+		expect(trace.latencyMs).toBe(60_000);
+	});
+
+	it("keeps the sandbox and model halves separate on every path", async () => {
+		await ingestRunTracesForUser("user-1", CONFIG);
+		const [trace] = emitted();
+		const outcome = readTraceOutcome(trace.extra);
+		// The cron log carries no token usage, so the model half is null and the
+		// sandbox half is never allowed to stand in for a total.
+		expect(outcome?.modelCostMillicents).toBeNull();
+		expect(outcome?.sandboxCostMillicents).toBe(trace.costMillicents);
+		expect(trace.extra).not.toHaveProperty("totalCostMillicents");
 	});
 
 	it("keeps the pre-existing extra fields alongside the outcome block", async () => {
@@ -135,5 +203,11 @@ describe("ingestRunTracesForUser -- outcome block on the write path", () => {
 		expect(trace.latencyMs).toBeNull();
 		expect(trace.costMillicents).toBeNull();
 		expect(readTraceOutcome(trace.extra)?.sandboxCostMillicents).toBeNull();
+		// Unpriceable because of the RUN, not the lane: e2b's rate stays published
+		// on the row, and only this row is refused.
+		const price = readTraceLanePrice(trace.extra);
+		expect(price?.rateBasis).toBe("published");
+		expect(price?.costRanked).toBe(false);
+		expect(price?.reason).toContain("run window is unusable");
 	});
 });

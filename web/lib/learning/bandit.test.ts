@@ -99,3 +99,54 @@ describe("sampleArm", () => {
 		expect([armA, armB]).toContainEqual(res?.arm);
 	});
 });
+
+describe("an unmeasured metric is absent, never zero", () => {
+	// Zero is the BEST possible value for both penalties, so folding an
+	// unpriced lane in at zero does not record a gap -- it records a lie in
+	// that lane's favour. This is the same class of bug as the retired
+	// all-substrate rate table, one layer further in: the posterior stopped
+	// carrying fake costs, but the scorer still read an absent cost as free.
+	it("does not advance the cost Welford when the figure is null", () => {
+		let agg = emptyAgg();
+		agg = pushObservation(agg, { success: true, costMillicents: null, latencyMs: 900 });
+		agg = pushObservation(agg, { success: true, costMillicents: null, latencyMs: 1100 });
+		expect(agg.n).toBe(2);
+		expect(agg.successes).toBe(2);
+		expect(agg.cost.n).toBe(0);
+		expect(agg.latency.n).toBe(2);
+		expect(agg.latency.mean).toBe(1000);
+	});
+
+	it("keeps a real figure and skips only the missing one", () => {
+		let agg = emptyAgg();
+		agg = pushObservation(agg, { success: true, costMillicents: 300, latencyMs: null });
+		agg = pushObservation(agg, { success: false, costMillicents: 500, latencyMs: 2000 });
+		expect(agg.cost.n).toBe(2);
+		expect(agg.cost.mean).toBe(400);
+		expect(agg.latency.n).toBe(1);
+		expect(agg.latency.mean).toBe(2000);
+	});
+
+	it("scores an unpriced arm without pretending it is free", () => {
+		// Two arms with identical success. The unpriced one must NOT be scored
+		// as though it cost nothing; the priced one is the only cost-ranked lane.
+		let unpriced = emptyAgg();
+		let priced = emptyAgg();
+		for (let i = 0; i < 5; i += 1) {
+			unpriced = pushObservation(unpriced, {
+				success: true,
+				costMillicents: null,
+				latencyMs: 1000,
+			});
+			priced = pushObservation(priced, {
+				success: true,
+				costMillicents: 5000,
+				latencyMs: 1000,
+			});
+		}
+		expect(unpriced.cost.n).toBe(0);
+		expect(priced.cost.n).toBe(5);
+		// The absent figure must not surface as 0 to a scorer.
+		expect(unpriced.cost.n > 0 ? unpriced.cost.mean : null).toBeNull();
+	});
+});

@@ -153,9 +153,88 @@ gateways and is refused only for account credit -- OpenRouter 402
 BYOK"). So the wiring is proven; the run is not.
 
 `model_max_output_tokens = 2000` in config.toml did NOT change the
-requested ceiling (still 64000), so the Codex-side cap knob is
-unidentified. Until it is found, Codex on a metered gateway needs real
-credit rather than a smaller request.
+requested ceiling (still 64000). The section below explains why, and it is
+not the answer the earlier note assumed.
+
+## The output-token ceiling is the gateway's, not a Codex setting
+
+Measured 2026-08-01 against the codex 0.146.0 binary itself
+(`@openai/codex-darwin-arm64` vendored `bin/codex`) plus one live
+OpenRouter call. There is **no Codex-side output-token cap knob**, and
+there cannot be one, because Codex never sends the field.
+
+**1. Codex 0.146 sends no output-token field at all.** A local HTTP
+listener stood in for the gateway (`base_url =
+"http://127.0.0.1:8799/v1"`, `wire_api = "responses"`) and the POSTed body
+was captured verbatim. Top-level keys, for three different models:
+
+| model | request keys |
+| --- | --- |
+| `gpt-5.3-codex` (fallback metadata) | model, instructions, input, tools, tool_choice, parallel_tool_calls, reasoning, store, stream, include, prompt_cache_key, client_metadata |
+| `gpt-5.6-sol` (in the catalog) | model, input, text, tool_choice, parallel_tool_calls, reasoning, store, stream, include, prompt_cache_key, client_metadata |
+| `anthropic/claude-sonnet-4.5` (the gateway slug from the 402 above) | model, instructions, input, tools, tool_choice, parallel_tool_calls, reasoning, store, stream, include, prompt_cache_key, client_metadata |
+
+Neither `max_output_tokens` nor `max_tokens` appears in any of them. So no
+config value could have shrunk the request: there was nothing to shrink.
+
+**2. `model_max_output_tokens` is not a Codex config field.** 0.146 has
+`--strict-config` ("Error out when config.toml contains fields that are
+not recognized by this version of Codex"), which turns this from a guess
+into a check. Every candidate name was put in `config.toml` and run
+through `codex exec --strict-config`:
+
+| key | verdict |
+| --- | --- |
+| `model_max_output_tokens` | unknown configuration field |
+| `max_output_tokens` | unknown configuration field |
+| `model_output_token_limit` | unknown configuration field |
+| `output_token_limit` | unknown configuration field |
+| `max_tokens` | unknown configuration field |
+| `model_max_tokens` | unknown configuration field |
+| `max_completion_tokens` | unknown configuration field |
+| `tool_output_token_limit` | accepted -- but it truncates TOOL output, not the model request |
+
+The `ConfigToml` field list in the binary agrees: the model-shaped keys are
+`model`, `review_model`, `model_provider`, `model_context_window`,
+`model_auto_compact_token_limit`, `model_reasoning_effort`,
+`model_verbosity`, `model_catalog_json` and friends. Nothing about output
+tokens. Same for the per-model `ModelInfo` record, which carries
+`context_window`, `max_context_window` and `auto_compact_token_limit` and
+no output ceiling.
+
+**3. The 64000 is OpenRouter's, and a request-level cap does fix it.**
+Same key, same small balance, same endpoint, one field different:
+
+```bash
+# no max_output_tokens -> 402
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" -H "Content-Type: application/json" \
+  -d '{"model":"anthropic/claude-sonnet-4.5","input":"say OK","store":false}'
+# {"error":{"message":"This request requires more credits, or fewer max_tokens.
+#  You requested up to 64000 tokens, but can only afford 2476", "code":402, ...}}
+
+# max_output_tokens: 64 -> HTTP 200, status "completed", output "OK"
+curl -s https://openrouter.ai/api/v1/responses \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY" -H "Content-Type: application/json" \
+  -d '{"model":"anthropic/claude-sonnet-4.5","input":"say OK","store":false,"max_output_tokens":64}'
+```
+
+So when the field is omitted OpenRouter reserves the model's own maximum
+output (64000 for claude-sonnet-4.5) and refuses on balance. That is why
+the number never moved: it was never Codex's number.
+
+**Consequence for routing.** Codex on a metered gateway needs real credit,
+or a model whose own output ceiling fits the balance. Do NOT add
+`-c model_max_output_tokens=...` to the harness: the name is not a config
+field (measured in `config.toml`; the `-c` form was not tested separately,
+and it does not matter, because there is no wire field for it to reach).
+`src/mux/harnesses/codex.test.ts` has a guard test so the invented knob
+cannot come back. This is the one place Codex differs from Claude Code,
+which does send a ceiling and does honor `CLAUDE_CODE_MAX_OUTPUT_TOKENS`.
+
+Not established: whether some *other* release of Codex sends the field, and
+whether a gateway account setting can impose a default cap server-side.
+Neither was tested.
 
 ## A vck_ AI Gateway key IS a model upstream
 
@@ -170,4 +249,7 @@ why the two credential roles must stay distinct in config.
 - Vercel AI Gateway's Anthropic-Messages endpoint against claude-code
   (only its Responses endpoint has been exercised).
 - Whether OpenClaw and Hermes honor a base-URL override at all.
-- The Codex output-token cap knob (see above).
+- ~~The Codex output-token cap knob.~~ **CLOSED as "there is none"** -- see
+  "The output-token ceiling is the gateway's, not a Codex setting". What
+  stays unverified is narrower: whether a non-0.146 Codex sends the field,
+  and whether a gateway account setting can cap it server-side.

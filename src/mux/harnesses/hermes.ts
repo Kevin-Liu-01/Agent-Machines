@@ -53,9 +53,10 @@
  *
  * Wire format: plain text. `hermes chat --quiet -q` prints the answer as
  * ordinary lines with no machine-readable final marker, so parseLine
- * wraps every non-empty line as a text delta. The router accumulates
- * RunResult.text from text deltas and synthesizes the done event when
- * the process exits, so no result event is emitted here.
+ * wraps every non-empty line as a text delta -- except for the recorded
+ * vendor diagnostics below. The router accumulates RunResult.text from
+ * text deltas and synthesizes the done event when the process exits, so
+ * no result event is emitted here.
  */
 
 import { Buffer } from "node:buffer";
@@ -148,6 +149,83 @@ const PREBAKE_HINT =
 
 function shq(value: string): string {
 	return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+/**
+ * Lines hermes prints on its own behalf, which are not part of the answer.
+ *
+ * The rule is deliberately narrow, and this is why. Hermes emits no marker
+ * that separates its startup chatter from the model's answer, so the only
+ * filter that is safe is one that cannot fire on an answer. Both conditions
+ * have to hold before a line is reclassified:
+ *
+ * 1. The line STARTS with one of the phrases below, each recorded from an
+ *    observation of hermes itself. No severity heuristic -- not a
+ *    "warning:"/"error:" prefix, not shouting case, not a leading glyph.
+ *    An agent asked about a warning answers in exactly those words, so a
+ *    filter that reads tone instead of a known string eventually eats an
+ *    answer.
+ * 2. The turn has not produced any answer text yet. These are startup
+ *    checks: docs/MUX-RESULTS.md records the tirith line landing in
+ *    RunResult.text AHEAD of the answer. Once real output has begun every
+ *    later line is the answer, including one that quotes a banner back at
+ *    the user.
+ *
+ * Only the head of a phrase is matched. The tails carry punctuation this
+ * ASCII source cannot pin exactly (the tirith line continues past a dash
+ * whose codepoint was never captured), and a signature that guesses wrong
+ * about the tail stops matching without saying so. The heads are verbatim.
+ *
+ * Matched lines become `status`, carrying the original text so nothing is
+ * lost -- never `error`. An error event marks the run as failed, and a
+ * degraded-capability notice is not a failure; a vendor line that really
+ * does mean the run failed has to stay in the text stream, where the
+ * router's exit-code path can still see it.
+ *
+ * The router calls parseLine only on the stdout stream and keeps stderr in
+ * a separate tail, yet MUX-RESULTS measured the tirith line arriving in
+ * RunResult.text -- which is fed from nothing but these text deltas. So
+ * whatever the harness or the substrate does with the two streams, the line
+ * reaches here, and here is where it has to be classified.
+ */
+const VENDOR_DIAGNOSTIC_HEADS: readonly RegExp[] = [
+	// docs/MUX-RESULTS.md "Known cosmetic issue": hermes's startup check for
+	// the tirith command scanner, printed when the scanner is configured but
+	// its binary is absent.
+	/^tirith security scanner enabled but not available\b/i,
+];
+
+/**
+ * Per-turn parser state. Only the "has this turn produced answer text yet"
+ * latch, which is condition 2 above.
+ */
+type ParseState = { sawText: boolean };
+
+function newParseState(): ParseState {
+	return { sawText: false };
+}
+
+/**
+ * Backing state for the singleton parseLine. The router calls
+ * newTurnParser() first and only falls back to parseLine for adapters that
+ * do not offer one, so this serves direct callers; its latch is never
+ * reset, which is exactly why newTurnParser exists.
+ */
+const singletonState = newParseState();
+
+function parseLineWith(state: ParseState, line: string): MuxAgentEvent[] {
+	const trimmed = line.trim();
+	if (trimmed.length === 0) return [];
+	if (
+		!state.sawText &&
+		VENDOR_DIAGNOSTIC_HEADS.some((head) => head.test(trimmed))
+	) {
+		return [{ type: "status", label: trimmed }];
+	}
+	state.sawText = true;
+	// The raw line, not the trimmed one: hermes indents code blocks and
+	// list items, and that indentation is part of the answer.
+	return [{ type: "text", delta: `${line}\n` }];
 }
 
 /**
@@ -295,11 +373,16 @@ export const hermesHarness: HarnessAdapter = {
 	},
 
 	parseLine(line: string): MuxAgentEvent[] {
-		// Plain-text passthrough: every non-empty line is a text delta.
-		// There is no reliable final-result marker in hermes output, so
-		// no result event is emitted; RunResult.text accumulates from
-		// these deltas in the router and done is synthesized on exit.
-		if (line.trim().length === 0) return [];
-		return [{ type: "text", delta: `${line}\n` }];
+		// Plain-text passthrough: every non-empty line is a text delta,
+		// apart from the recorded vendor diagnostics. There is no reliable
+		// final-result marker in hermes output, so no result event is
+		// emitted; RunResult.text accumulates from these deltas in the
+		// router and done is synthesized on exit.
+		return parseLineWith(singletonState, line);
+	},
+
+	newTurnParser(): (line: string) => MuxAgentEvent[] {
+		const state = newParseState();
+		return (line) => parseLineWith(state, line);
 	},
 };

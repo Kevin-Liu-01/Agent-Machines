@@ -1,5 +1,19 @@
 /**
- * Cost estimation for Dedalus machine usage.
+ * DISPLAY ONLY -- the daily machine-cost rollup. NOT a routing input.
+ *
+ * One caller: `web/lib/metrics/collector.ts` (`upsert` of `machine_costs`,
+ * rendered at /dashboard/usage). It has no provider argument, so it applies the
+ * single rate table below to every machine on every substrate, which is exactly
+ * why it may not price a route. Retired as a routing input by roadmap 4.1;
+ * `web/lib/metrics/prices.ts` is what a router reads now, per provider, from the
+ * published rates in `web/data/benchmarks.json`, with the lanes that publish no
+ * rate refused rather than filled in from here.
+ *
+ * The gap is not small. These rates price 60s of a 2 vCPU / 4 GiB box at 1.1
+ * millicents where E2B's published rate says 276 -- ~250x, and the same table
+ * is applied to three other vendors whose rates differ from each other. Any
+ * figure produced here is an order-of-magnitude display estimate, not money.
+ * `cost.test.ts` guards that nothing under lib/learning imports it again.
  *
  * Rates are expressed in millicents (1/1000 of a cent) to avoid
  * floating-point rounding in running totals. Final display uses

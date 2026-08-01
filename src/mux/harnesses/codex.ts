@@ -291,6 +291,16 @@ export const codexHarness: HarnessAdapter = {
 	 * On a gateway upstream, `options.model` must be a gateway slug
 	 * (`openai/gpt-5.3-codex`, `anthropic/claude-sonnet-5`); codex's own
 	 * bare default model id is not a route either gateway can resolve.
+	 *
+	 * No output-token cap is set here, and none can be. Codex 0.146 sends
+	 * no `max_output_tokens` on the wire at all, so there is nothing for a
+	 * config value to shrink -- measured, with the sweep that rules out the
+	 * candidate key names, in docs/UPSTREAMS.md "The output-token ceiling is
+	 * the gateway's, not a Codex setting". A metered gateway with a small
+	 * balance therefore 402s on the model's own maximum, and the fix is
+	 * credit or a model with a lower ceiling, not a flag. Do not add
+	 * `-c model_max_output_tokens=...`: that name is not a codex config
+	 * field, and no config value can add a wire field codex does not send.
 	 */
 	runCommand(
 		prompt: string,

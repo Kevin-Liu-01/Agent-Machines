@@ -277,6 +277,45 @@ test("runCommand on the Vercel gateway keeps /v1 in the base URL", () => {
 	);
 });
 
+test("no output-token cap is fabricated for any upstream", () => {
+	// Guard against re-adding a knob that does not exist. Measured against
+	// the 0.146 binary on 2026-08-01 (docs/UPSTREAMS.md): `exec
+	// --strict-config` rejects model_max_output_tokens, max_output_tokens,
+	// model_output_token_limit, output_token_limit, max_tokens,
+	// model_max_tokens and max_completion_tokens as unknown configuration
+	// fields, and a captured Responses request carries no output-token field
+	// at all. An override for one of these names would be silently ignored
+	// at best and would fail config load under --strict-config at worst,
+	// while reading as if the 402 on a metered gateway had been handled.
+	const upstreams: UpstreamKeys[] = [
+		{ openai: "sk-test-openai" },
+		{ openrouter: "sk-or-test" },
+		{ aiGateway: "vck_test" },
+	];
+	for (const keys of upstreams) {
+		const commands = [
+			codexHarness.runCommand("hello", keys).command,
+			codexHarness.interactiveCommand(keys).command,
+		];
+		for (const command of commands) {
+			for (const invented of [
+				"model_max_output_tokens",
+				"max_output_tokens",
+				"model_output_token_limit",
+				"output_token_limit",
+				"max_tokens",
+				"model_max_tokens",
+				"max_completion_tokens",
+			]) {
+				assert.ok(
+					!command.includes(invented),
+					`${invented} is not a codex 0.146 config field: ${command}`,
+				);
+			}
+		}
+	}
+});
+
 /** assert.throws returns void, so capture the error to inspect its message. */
 function muxErrorFrom(fn: () => unknown): MuxError {
 	try {

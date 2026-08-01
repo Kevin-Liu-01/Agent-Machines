@@ -12,6 +12,7 @@
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
 import { test } from "node:test";
+import type { MuxAgentEvent } from "../events.js";
 import type { UpstreamKeys } from "../types.js";
 import { hermesHarness } from "./hermes.js";
 
@@ -190,27 +191,43 @@ test("install budget is bounded well below the vendor installer's", () => {
 	);
 });
 
+/** A fresh per-turn parser, as the router builds one for every run. */
+function turnParser(): (line: string) => MuxAgentEvent[] {
+	const make = hermesHarness.newTurnParser;
+	assert.ok(
+		make,
+		"the diagnostic filter is per-turn state, so newTurnParser is required",
+	);
+	return make.call(hermesHarness);
+}
+
+/** The router's own accumulation rule: RunResult.text is the text deltas. */
+function accumulate(events: readonly MuxAgentEvent[]): string {
+	return events
+		.filter((event) => event.type === "text")
+		.map((event) => event.delta)
+		.join("");
+}
+
 test("parseLine passes plain text through as deltas", () => {
-	assert.deepEqual(hermesHarness.parseLine("MUX-OK"), [
-		{ type: "text", delta: "MUX-OK\n" },
-	]);
-	assert.deepEqual(hermesHarness.parseLine("  indented  "), [
+	const parse = turnParser();
+	assert.deepEqual(parse("MUX-OK"), [{ type: "text", delta: "MUX-OK\n" }]);
+	assert.deepEqual(parse("  indented  "), [
 		{ type: "text", delta: "  indented  \n" },
 	]);
 	// JSON-looking output is still just text: hermes has no NDJSON mode,
 	// so nothing here may try to interpret it.
-	assert.deepEqual(hermesHarness.parseLine('{"type":"result"}'), [
+	assert.deepEqual(parse('{"type":"result"}'), [
 		{ type: "text", delta: '{"type":"result"}\n' },
 	]);
 });
 
 test("parseLine drops blank lines and emits no result event", () => {
-	assert.deepEqual(hermesHarness.parseLine(""), []);
-	assert.deepEqual(hermesHarness.parseLine("   "), []);
-	assert.deepEqual(hermesHarness.parseLine("\t"), []);
-	const events = ["one", "", "two"].flatMap((line) =>
-		hermesHarness.parseLine(line),
-	);
+	const parse = turnParser();
+	assert.deepEqual(parse(""), []);
+	assert.deepEqual(parse("   "), []);
+	assert.deepEqual(parse("\t"), []);
+	const events = ["one", "", "two"].flatMap((line) => parse(line));
 	assert.deepEqual(events, [
 		{ type: "text", delta: "one\n" },
 		{ type: "text", delta: "two\n" },
@@ -219,10 +236,113 @@ test("parseLine drops blank lines and emits no result event", () => {
 		events.every((event) => event.type === "text"),
 		"the router synthesizes done/result; the adapter must not",
 	);
+});
+
+test("the tirith warning is kept out of the answer but not thrown away", () => {
+	// The exact leak in docs/MUX-RESULTS.md "Known cosmetic issue": hermes
+	// prints this before the answer and the plain-text parser used to hand
+	// it to the router as a text delta, so RunResult.text opened with it.
+	const warning =
+		"tirith security scanner enabled but not available - command scanning will use pattern matching only";
+	const parse = turnParser();
+	const events = [warning, "MUX-OK"].flatMap((line) => parse(line));
+
 	assert.equal(
-		hermesHarness.newTurnParser,
-		undefined,
-		"plain text needs no per-turn state",
+		accumulate(events),
+		"MUX-OK\n",
+		"the vendor warning must not reach RunResult.text",
+	);
+	const statuses = events.filter((event) => event.type === "status");
+	assert.equal(statuses.length, 1, "the warning must still be reported");
+	assert.deepEqual(statuses[0], { type: "status", label: warning });
+	assert.ok(
+		!events.some((event) => event.type === "error"),
+		"a degraded scanner is not a failed run",
+	);
+});
+
+test("the diagnostic is recognized whatever punctuation follows the head", () => {
+	// The tail was recorded through an ASCII-only doc, so its dash could be
+	// a hyphen, an em dash (written here as an escape so this source stays
+	// ASCII), or absent. Matching the head keeps all three working; matching
+	// the whole line would silently stop filtering.
+	for (const tail of [
+		"",
+		" -- command scanning will use pattern matching only",
+		" \u2014 command scanning will use pattern matching only",
+		": falling back to pattern matching",
+	]) {
+		const parse = turnParser();
+		const events = parse(
+			`tirith security scanner enabled but not available${tail}`,
+		);
+		assert.deepEqual(
+			events.map((event) => event.type),
+			["status"],
+			`tail ${JSON.stringify(tail)} should still be a diagnostic`,
+		);
+	}
+});
+
+test("a real answer that looks like a warning is preserved", () => {
+	// The case that makes a tone-based filter unusable: the user asked what
+	// the warning means, so the agent's FIRST line is the warning text plus
+	// an explanation. Two separate guards have to hold for this to survive.
+	const parse = turnParser();
+	const answer =
+		'The line "tirith security scanner enabled but not available" means hermes could not load its command scanner.';
+	const events = parse(answer);
+	assert.deepEqual(events, [{ type: "text", delta: `${answer}\n` }]);
+	assert.equal(accumulate(events), `${answer}\n`);
+});
+
+test("a diagnostic quoted inside an answer is preserved", () => {
+	// Guard 2 on its own: once the turn has produced answer text, a later
+	// line is the answer even when it reproduces the banner verbatim -- an
+	// agent asked to echo hermes's startup output must not lose it.
+	const warning = "tirith security scanner enabled but not available";
+	const parse = turnParser();
+	const events = ["Hermes printed:", warning].flatMap((line) => parse(line));
+	assert.equal(accumulate(events), `Hermes printed:\n${warning}\n`);
+	assert.ok(
+		!events.some((event) => event.type === "status"),
+		"nothing after the first answer line may be reclassified",
+	);
+});
+
+test("only recorded vendor phrases are filtered, not warnings in general", () => {
+	// Anything that merely reads like noise stays in the answer. If a new
+	// hermes diagnostic shows up, it gets measured and added by hand.
+	for (const line of [
+		"WARNING: this is not a recorded hermes diagnostic",
+		"warning: deprecated flag",
+		"tirith security scanner enabled",
+		"[warn] security scanner enabled but not available",
+		"Error: something went wrong",
+	]) {
+		const parse = turnParser();
+		assert.deepEqual(
+			parse(line),
+			[{ type: "text", delta: `${line}\n` }],
+			`${line} must not be filtered`,
+		);
+	}
+});
+
+test("each turn gets its own filter state", () => {
+	const warning = "tirith security scanner enabled but not available";
+	const first = turnParser();
+	first("MUX-OK");
+	assert.deepEqual(
+		first(warning).map((event) => event.type),
+		["text"],
+		"the first turn already saw text",
+	);
+	const second = turnParser();
+	assert.deepEqual(
+		second(warning).map((event) => event.type),
+		["status"],
+		"a fresh turn starts before any answer text again",
 	);
 });
 
