@@ -435,3 +435,46 @@ test("interactiveCommand starts the TUI with the same PATH, provider and env", (
 	});
 	assert.ok(!command.includes("sk-ant-test"));
 });
+
+test("the tirith diagnostic is filtered as it actually arrives on the wire", () => {
+	const parse = hermesHarness.newTurnParser?.();
+	assert.ok(parse);
+	// EXACT bytes captured from live hermes runs on e2b and sprites
+	// (2026-08-01), not the ASCII-normalized form in docs/MUX-RESULTS.md.
+	// The leading "\u26a0\ufe0f " is what made the first version of this filter
+	// fail open in production while passing its unit tests.
+	const wire =
+		"\u26a0\ufe0f tirith security scanner enabled but not available \u2014 command scanning will use pattern matching only";
+	const events = parse(wire);
+	assert.equal(events.length, 1);
+	assert.equal(events[0]?.type, "status", "a vendor diagnostic is not answer text");
+
+	// And the answer that follows is still answer text.
+	const answer = parse("MUX-OK");
+	assert.deepEqual(answer, [{ type: "text", delta: "MUX-OK\n" }]);
+});
+
+test("a carriage return from the wire does not defeat the filter", () => {
+	// The live capture showed CRLF line endings ("...only\r\nMUX-OK").
+	const parse = hermesHarness.newTurnParser?.();
+	assert.ok(parse);
+	const events = parse(
+		"\u26a0\ufe0f tirith security scanner enabled but not available \u2014 command scanning will use pattern matching only\r",
+	);
+	assert.equal(events[0]?.type, "status");
+});
+
+test("undecorating cannot swallow a real answer", () => {
+	const parse = hermesHarness.newTurnParser?.();
+	assert.ok(parse);
+	// An answer that opens with punctuation or a glyph is still an answer: the
+	// full distinctive phrase must match, not merely the decoration.
+	for (const line of [
+		"\u26a0\ufe0f This is the agent's own warning to you.",
+		"- tirith is a security scanner; here is what it does.",
+		"> tirith security scanner enabled",
+	]) {
+		const events = parse(line);
+		assert.equal(events[0]?.type, "text", `must stay answer text: ${line}`);
+	}
+});

@@ -189,11 +189,35 @@ function shq(value: string): string {
  * reaches here, and here is where it has to be classified.
  */
 const VENDOR_DIAGNOSTIC_HEADS: readonly RegExp[] = [
-	// docs/MUX-RESULTS.md "Known cosmetic issue": hermes's startup check for
-	// the tirith command scanner, printed when the scanner is configured but
-	// its binary is absent.
+	// hermes's startup check for the tirith command scanner, printed when the
+	// scanner is configured but its binary is absent. The phrase is matched
+	// AFTER decorateLine() strips the leading glyph -- see below for why that
+	// mattered.
 	/^tirith security scanner enabled but not available\b/i,
 ];
+
+/**
+ * Strip a leading decoration before matching a diagnostic phrase.
+ *
+ * The first version of this filter anchored on the phrase itself and did not
+ * fire in production. The live line begins with a warning glyph and a space
+ * (U+26A0 plus U+FE0F), so "^tirith" never matched:
+ *
+ *   "\u26a0\ufe0f tirith security scanner enabled but not available \u2014 ..."
+ *
+ * The phrase had only ever been read from docs/MUX-RESULTS.md, which is ASCII
+ * by house rule -- the glyph was gone and the em-dash had become "--", so the
+ * matcher was written against sanitized text and silently failed open on the
+ * real bytes. Verified 2026-08-01 by capturing RunResult.text from live hermes
+ * runs on e2b and sprites.
+ *
+ * Only leading NON-LETTER, non-digit characters are removed, so this cannot
+ * swallow an answer: a real reply that opens with a word is untouched, and a
+ * reply that opens with punctuation still has to match the full phrase.
+ */
+function undecorate(line: string): string {
+	return line.replace(/^[^\p{L}\p{N}]+/u, "");
+}
 
 /**
  * Per-turn parser state. Only the "has this turn produced answer text yet"
@@ -218,7 +242,7 @@ function parseLineWith(state: ParseState, line: string): MuxAgentEvent[] {
 	if (trimmed.length === 0) return [];
 	if (
 		!state.sawText &&
-		VENDOR_DIAGNOSTIC_HEADS.some((head) => head.test(trimmed))
+		VENDOR_DIAGNOSTIC_HEADS.some((head) => head.test(undecorate(trimmed)))
 	) {
 		return [{ type: "status", label: trimmed }];
 	}

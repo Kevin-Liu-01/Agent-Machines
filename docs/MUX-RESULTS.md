@@ -67,12 +67,28 @@ run. They are implemented and unit-tested, not verified. Do not read
 `skipped` as passing: half the matrix is unproven and only credentials will
 change that.
 
-### Known cosmetic issue
+### Fixed: the hermes diagnostic leaked into the answer
 
-Hermes prints a stderr warning (`tirith security scanner enabled but not
-available`) that its plain-text parser passes through as a text delta, so it
-lands in `RunResult.text` ahead of the answer. Harmless but untidy; the
-adapter has no reliable marker to separate vendor warnings from output.
+Hermes prints a startup check for the tirith command scanner, and its
+plain-text parser passed it through as a text delta, so it landed in
+`RunResult.text` ahead of the answer. Filtered now, and the fix is worth
+recording because the FIRST attempt passed its unit tests and still failed in
+production.
+
+The matcher was anchored on the phrase (`/^tirith security scanner.../`). The
+real line begins with a warning glyph and a space (U+26A0 U+FE0F), so it never
+matched. The phrase had only ever been read from THIS FILE, which is ASCII by
+house rule -- the glyph was gone and the em-dash had become `--`, so the
+matcher was written against sanitized text and failed open on the real bytes.
+
+The fix strips leading non-letter, non-digit characters before matching, so a
+decoration cannot hide a diagnostic, while a real answer that merely opens with
+punctuation still has to match the full distinctive phrase to be filtered.
+Test fixtures now carry the exact wire bytes as escapes.
+
+Verified live on e2b after the fix: `text: "MUX-OK"`, with no diagnostic. The
+lesson generalizes -- a fixture copied out of prose documentation is not the
+wire, and a filter tested only against prose will pass while doing nothing.
 
 ### Substrate primitives
 
