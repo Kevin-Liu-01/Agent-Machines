@@ -352,19 +352,36 @@ still implemented twice.** Do not read 0.2 as "the duplication is gone".
 
 ### Deciding 0.3
 
-Three options, in increasing order of commitment:
+Three options, and one of them is now measured rather than assumed.
 
-1. **Widen the Turbopack root** to the repo. Cheapest, but it undoes a
-   deliberate decision about lockfile scope and pulls the whole monorepo into
-   the web build graph.
+1. **Link the root package into `web/`** (`pnpm add agent-machines@link:..`).
+   **TESTED 2026-08-01 -- DOES NOT WORK, and it is destructive.** The symlink
+   lands at `web/node_modules/agent-machines -> ../..`, and Turbopack follows
+   it out of the project directory and loses its own workspace root:
+   `next build` then fails with "We couldn't find the Next.js package
+   (next/package.json) from the project directory: web/app". Worse, the repo
+   root has a `pnpm-workspace.yaml` (settings only, no `packages:` list), so
+   **any pnpm command run inside `web/` attaches to the root workspace and
+   relocates web's dependency store into the root's `.pnpm`** -- which puts
+   `next` itself physically outside the Turbopack root and breaks the build
+   even after the link is removed. Recovering requires
+   `pnpm install --ignore-workspace` from `web/`. Anyone working here should
+   know that footgun independent of 0.3.
 2. **Depend on the published `agent-machines` package** from `web/`. Cleanest
-   boundary and it dogfoods the package we ship, at the cost of a publish step
-   between a mux change and the dashboard seeing it.
-3. **Make `web/` a workspace member** with the mux as a workspace dependency.
-   Best long-run answer, largest change to how the repo builds and deploys.
+   boundary and it dogfoods what we ship, at the cost of a publish step between
+   a mux change and the dashboard seeing it. Note this ALSO needs the
+   `--ignore-workspace` discipline above.
+3. **Make `web/` a real workspace member** (add a `packages:` list to
+   `pnpm-workspace.yaml`) with the mux as a workspace dependency, and set
+   `turbopack.root` to the repo. Largest change to how the repo builds and
+   deploys, and the only option that makes the dependency first-class rather
+   than smuggled. The build-graph and deploy consequences are exactly what
+   option 1 demonstrated are real.
 
-This is a packaging decision with product consequences, so it wants a human
-call rather than an agent picking one.
+Option 1 is eliminated on evidence. Choosing between 2 and 3 is a deployment
+decision (Vercel project root, install command, and whether `dist/` is built
+before `next build`), so it still wants a human call -- but the field is now
+two, not three, and the failure mode of guessing is documented above.
 
 ### Contract gaps 0.2 surfaced (worth fixing regardless of which option wins)
 
