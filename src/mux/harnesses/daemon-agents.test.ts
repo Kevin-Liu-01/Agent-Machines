@@ -347,3 +347,24 @@ test("openclaw interactive command carries env and the bootstrapped PATH", () =>
 	assert.match(claw.command, /openclaw/);
 	assert.equal(claw.env.ANTHROPIC_API_KEY, "sk-ant");
 });
+
+test("the node bootstrap adopts an existing real binary before downloading", () => {
+	const install = openclawHarness.installCommand();
+	// Sprites' `node` is an nvm shim that hangs under a detached install, but
+	// the real binary it fronts works and already satisfies every floor.
+	// Downloading instead cost a ~50 MB fetch per sandbox and blew the
+	// install budget on that substrate, so adoption must be tried first.
+	const adoptAt = install.indexOf("nvm/versions/node");
+	const downloadAt = install.indexOf("nodejs.org/dist");
+	assert.ok(adoptAt > -1, "the bootstrap looks for an existing nvm-managed node");
+	assert.ok(downloadAt > -1, "a download is still the fallback");
+	assert.ok(
+		adoptAt < downloadAt,
+		"adoption must be attempted before the download",
+	);
+	// A candidate is version-checked too: adopting a second broken shim
+	// would reintroduce the hang.
+	assert.match(install, /timeout \d+ "\$C\/node"/);
+	assert.match(install, /sort -V/, "newest candidate wins when several exist");
+	assert.ok(!install.includes("\n"), "install must stay a single shell line");
+});

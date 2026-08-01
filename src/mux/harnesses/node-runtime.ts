@@ -57,10 +57,32 @@ export function ensureNodeCommand(
 	const bounded = `if command -v timeout >/dev/null 2>&1; then timeout ${PROBE_TIMEOUT_S} ${versionCheck}; else ${versionCheck}; fi`;
 	// stdin from /dev/null: never let a probe block reading a tmux TTY.
 	const probe = `${AM_NODE_PATH_PREFIX} sh -c '${bounded.replace(/'/g, `'\\''`)}' >/dev/null 2>&1 </dev/null`;
+	// Before downloading anything, look for the real binary the shim was
+	// wrapping. On Sprites the hanging /.sprite/bin/node fronts
+	// /.sprite/languages/node/nvm/versions/node/v24.18.0/bin/node, which runs
+	// fine under tmux and already satisfies every harness floor -- measured
+	// 2026-08-01. Downloading instead cost a ~50 MB fetch on every sandbox and
+	// pushed the openclaw install past its 15-minute budget on that substrate,
+	// so adopting the existing binary is both faster and less fragile.
+	// Candidates are version-checked the same bounded way, so a second broken
+	// shim cannot be adopted.
+	const candidateGlobs = [
+		"/.sprite/languages/node/nvm/versions/node/*/bin",
+		'"$NVM_DIR"/versions/node/*/bin',
+		'"$HOME"/.nvm/versions/node/*/bin',
+		"/usr/local/lib/nodejs/*/bin",
+	].join(" ");
+	const adoptCheck = `timeout ${PROBE_TIMEOUT_S} "$C/node" -e "const[M,m,p]=process.versions.node.split('.').map(Number);process.exit(M>${minMajor}||(M===${minMajor}&&(m>${minMinor}||(m===${minMinor}&&p>=${minPatch})))?0:1)" >/dev/null 2>&1 </dev/null`;
+	// Newest first: `sort -V` on the directory names, so v24.18.0 beats
+	// v22.x when both are installed.
+	const findCandidate = `C=$(ls -d ${candidateGlobs} 2>/dev/null | sort -V | tail -1)`;
+	// Symlink into our own bin so AM_NODE_PATH_PREFIX picks it up unchanged;
+	// npm/npx come along because harnesses install through npm.
+	const adopt = `mkdir -p "${AM_NODE_DIR}/bin" && ln -sf "$C/node" "${AM_NODE_DIR}/bin/node" && ln -sf "$C/npm" "${AM_NODE_DIR}/bin/npm" && ln -sf "$C/npx" "${AM_NODE_DIR}/bin/npx" 2>/dev/null; true`;
 	const detectArch = `A=$(uname -m); if [ "$A" = "x86_64" ]; then A=x64; elif [ "$A" = "aarch64" ] || [ "$A" = "arm64" ]; then A=arm64; else echo "unsupported arch: $A" >&2; exit 1; fi`;
 	const fetch = `curl -fsSL https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-$A.tar.gz -o /tmp/am-node.tar.gz`;
 	const unpack = `mkdir -p "${AM_NODE_DIR}" && tar -xzf /tmp/am-node.tar.gz -C "${AM_NODE_DIR}" --strip-components=1 && rm -f /tmp/am-node.tar.gz`;
-	return `if ! ${probe}; then ${detectArch}; ${fetch} && ${unpack}; fi`;
+	return `if ! ${probe}; then ${findCandidate}; if [ -n "$C" ] && ${adoptCheck}; then ${adopt}; else ${detectArch}; ${fetch} && ${unpack}; fi; fi`;
 }
 
 /**

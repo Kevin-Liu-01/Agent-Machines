@@ -9,30 +9,52 @@ Prompt for every cell: `Reply with exactly the text MUX-OK and nothing
 else. Do not use any tools.` A cell is `ok` only when the harness exits 0
 and the normalized stream carries the text back.
 
-## Latency (milliseconds)
+## The 4x4 matrix, measured 2026-08-01
 
-| Agent | Sandbox | Result | create | install (cold) | first event | run total |
+Full run of `npx tsx scripts/mux-live-test.ts` (no arguments = all four
+harnesses on all four substrates). Every number is from that run.
+
+| Agent | Sandbox | Result | create | install | first event | run |
 | --- | --- | --- | --- | --- | --- | --- |
-| claude-code | e2b | ok | 328 | 9745 | 1294 | 4054 |
-| codex | e2b | ok | 133 | 6596 | 362 | 4380 |
-| openclaw | e2b | ok | 96 | 28541 | 15475 | 16100 |
-| hermes | e2b | fails | 105 | -- | -- | -- |
-| claude-code | sprites | ok | 16692 | 252 (warm) | 3678 | 7165 |
-| codex | sprites | ok | 31410 | 159 (warm) | 3003 | 5119 |
-| openclaw | sprites | ok | 31105 | 18625 | 12747 | 13262 |
-| hermes | sprites | see note 10 | 31164 | -- | -- | -- |
+| claude-code | e2b | ok | 425 | 6953 | 993 | 3487 |
+| codex | e2b | ok | 333 | 10130 | 365 | 2909 |
+| openclaw | e2b | ok | 134 | 25719 | 13452 | 13946 |
+| hermes | e2b | ok | 163 | 5125 | 2647 | 14591 |
+| claude-code | sprites | ok | 719 | 222 | 2097 | 4678 |
+| codex | sprites | ok | 615 | 298 | 2890 | 9992 |
+| openclaw | sprites | see note | 558 | -- | -- | -- |
+| hermes | sprites | ok | 849 | 455572 | 2953 | 14479 |
+| all four | vercel | skipped | -- | -- | -- | -- |
+| all four | dedalus | skipped | -- | -- | -- | -- |
 
-Sprites `create` is bimodal: adopting a warm sprite measures ~400ms, while
-provisioning a fresh one measures 17-31s. E2B create is consistently
-~100-330ms. Hermes is the one red cell and the reason is environmental,
-not a routing defect -- see finding 10.
+**7 of 8 credentialed cells pass.** Every cell marked `ok` returned the
+exact sentinel text through the normalized event stream.
 
-`install` is a one-time per-sandbox cost and is skipped entirely when the
-harness is already present (the 154ms figure is that probe-only path).
-`first event` is time to the first normalized `MuxAgentEvent`, which is
-what a UI can render.
+Hermes is the headline change: it was the one permanently red cell, and it
+now installs in 5.1s on e2b (previously it exhausted the base sandbox and
+the VM stopped answering RPCs) because the adapter installs the published
+wheel with uv instead of running the vendor's curl installer. On sprites the
+same install takes 7.6 minutes -- slow but bounded, where before it never
+finished.
 
-Substrate primitives measured separately:
+`openclaw @ sprites` is the one failure, and the cause was our own fix: the
+time-bounded node probe correctly refuses the hanging nvm shim, but then
+downloaded a ~50 MB Node on every sandbox, which on this substrate pushed
+the install past its 15-minute budget. The bootstrap now adopts the real
+binary the shim fronts (`/.sprite/languages/node/nvm/versions/node/
+v24.18.0/bin/node`, verified to run fine under tmux and already above every
+harness floor) and only downloads when no usable binary exists.
+
+### The two uncredentialed substrates
+
+`vercel` and `dedalus` report `skipped` with the exact missing variables --
+`VERCEL_TOKEN`/`VERCEL_TEAM_ID`/`VERCEL_PROJECT_ID` (or
+`VERCEL_OIDC_TOKEN`) and `DEDALUS_API_KEY`. Those 8 cells have never been
+run. They are implemented and unit-tested, not verified. Do not read
+`skipped` as passing: half the matrix is unproven, and only credentials
+will change that.
+
+### Substrate primitives
 
 | Substrate | create | exec (cold) | exec (warm) |
 | --- | --- | --- | --- |
@@ -40,9 +62,7 @@ Substrate primitives measured separately:
 | sprites | 401ms | 296ms | 87ms |
 
 The Sprites warm number is the `execFileHTTP` fast path. The old
-WebSocket-per-exec path measured ~5.3s in the May 2026 benchmarks; both
-the mux provider and `web/lib/providers/sprites.ts` now prefer HTTP and
-fall back to WS only on transport errors.
+WebSocket-per-exec path measured ~5.3s in the May 2026 benchmarks.
 
 ## Findings that changed the implementation
 
