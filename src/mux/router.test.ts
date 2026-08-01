@@ -149,6 +149,11 @@ type MuxLike = {
 	};
 	create(options?: MuxCreateOptionsLike): Promise<MuxMachineLike>;
 	connect(name: string, agent?: HarnessKind): Promise<MuxMachineLike>;
+	/** No-wake status read; connect() resumes on e2b and vercel. */
+	describe(name: string): Promise<{ state: string; rawPhase: string | null }>;
+	/** Teardown that does not resume first, reporting when it had to. */
+	remove(name: string): Promise<{ removed: boolean; resumed: boolean }>;
+	park(name: string): Promise<void>;
 };
 
 type MuxOptionsLike = {
@@ -1591,4 +1596,123 @@ test("a substrate that throttles detached work installs in the foreground", asyn
 		"a throttled substrate must not use the detach-and-poll sentinel path",
 	);
 	assert.equal(handle.files.size, 0, "no install script is staged");
+});
+
+// ---------------------------------------------------------------------------
+// No-wake lifecycle. connect() resumes on e2b and vercel, so anything that
+// only needs to READ or DESTROY must not go through it -- a parked sandbox
+// woken just to be looked at is billed, and one whose snapshot cannot resume
+// becomes undestroyable (POSTMORTEM-2026-05-18 item 5).
+// ---------------------------------------------------------------------------
+
+test("describe() reads status without connecting", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	const provider = new FakeProvider("e2b");
+	let described: string | null = null;
+	(provider as unknown as { describe: (id: string) => Promise<unknown> }).describe = async (
+		id,
+	) => {
+		described = id;
+		return { state: "sleeping", rawPhase: "paused" };
+	};
+	const mux = makeMux(router, {
+		keys: { anthropic: "k" },
+		sandboxes: { primary: "e2b", backups: [] },
+	});
+	mux.registerProvider("e2b", provider);
+	const machine = await mux.create({ agent: "claude-code", name: "parked", install: false });
+	const createdId = machine.sandbox.id;
+	const connectsBefore = provider.connectCalls.length;
+
+	const info = await mux.describe("parked");
+	assert.equal(info.state, "sleeping");
+	assert.equal(described, createdId);
+	assert.equal(
+		provider.connectCalls.length,
+		connectsBefore,
+		"reading status must not connect -- connect resumes on e2b and vercel",
+	);
+});
+
+test("describe() refuses rather than resuming when a substrate cannot read no-wake", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	// FakeProvider has no describe(): the honest answer is not_supported, not a
+	// silent resume behind the caller's back.
+	const provider = new FakeProvider("e2b");
+	const mux = makeMux(router, {
+		keys: { anthropic: "k" },
+		sandboxes: { primary: "e2b", backups: [] },
+	});
+	mux.registerProvider("e2b", provider);
+	await mux.create({ agent: "claude-code", name: "opaque", install: false });
+	const connectsBefore = provider.connectCalls.length;
+
+	await assert.rejects(
+		mux.describe("opaque"),
+		(thrown: unknown) =>
+			thrown instanceof MuxError && thrown.kind === "not_supported",
+	);
+	assert.equal(provider.connectCalls.length, connectsBefore, "and it must not connect anyway");
+});
+
+test("remove() destroys without resuming, and forgets either way", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	const provider = new FakeProvider("e2b");
+	let removed: string | null = null;
+	(provider as unknown as { remove: (id: string) => Promise<void> }).remove = async (id) => {
+		removed = id;
+	};
+	const mux = makeMux(router, {
+		keys: { anthropic: "k" },
+		sandboxes: { primary: "e2b", backups: [] },
+	});
+	mux.registerProvider("e2b", provider);
+	const doomed = await mux.create({ agent: "claude-code", name: "doomed", install: false });
+	const createdId = doomed.sandbox.id;
+	const connectsBefore = provider.connectCalls.length;
+
+	const outcome = await mux.remove("doomed");
+	assert.deepEqual(outcome, { removed: true, resumed: false });
+	assert.equal(removed, createdId);
+	assert.equal(provider.connectCalls.length, connectsBefore, "teardown must not resume first");
+
+	const traces = await import("./state.js");
+	assert.equal(
+		traces.readMuxState().machines.doomed,
+		undefined,
+		"the placement is forgotten so a reaped sandbox cannot leave a permanent entry",
+	);
+});
+
+test("remove() reports when it had to resume because the substrate offers no no-wake path", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	// No remove() on this provider, so the fallback runs -- and must SAY that a
+	// paid resume happened rather than hiding it.
+	const provider = new FakeProvider("e2b");
+	const mux = makeMux(router, {
+		keys: { anthropic: "k" },
+		sandboxes: { primary: "e2b", backups: [] },
+	});
+	mux.registerProvider("e2b", provider);
+	await mux.create({ agent: "claude-code", name: "legacy", install: false });
+
+	const outcome = await mux.remove("legacy");
+	assert.deepEqual(outcome, { removed: true, resumed: true });
+	assert.ok(provider.connectCalls.length > 0, "the fallback is the resuming path");
 });

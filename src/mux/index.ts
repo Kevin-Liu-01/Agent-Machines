@@ -51,6 +51,7 @@ export {
 	type PtyOptions,
 	type PtySupport,
 	type SandboxCapabilities,
+	type SandboxDescription,
 	type SandboxHandle,
 	type SandboxInfo,
 	type SandboxProvider,

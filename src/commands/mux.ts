@@ -988,13 +988,19 @@ export async function mux(args: string[]): Promise<void> {
 			return;
 		}
 		const router = createMux(flags.config);
-		// A remembered machine whose sandbox the substrate already reaped
-		// (E2B expires paused sandboxes) must still be forgotten, or the
-		// stale entry can never be removed.
+		// router.remove() takes the substrate's no-wake teardown where one
+		// exists. The old connect()+destroy() resumed a parked sandbox first,
+		// which billed for the wake and left a sandbox whose snapshot could not
+		// resume permanently undestroyable. It also forgets the placement
+		// whatever happens, so a machine the substrate already reaped (E2B
+		// expires paused sandboxes) cannot leave an entry that never clears.
 		try {
-			const machine = await router.connect(flags.name, flags.agent);
-			await machine.destroy();
-			console.log(`destroyed ${flags.name}`);
+			const { resumed } = await router.remove(flags.name);
+			console.log(
+				resumed
+					? `destroyed ${flags.name} (this substrate has no no-wake teardown, so it was resumed first)`
+					: `destroyed ${flags.name}`,
+			);
 		} catch (error) {
 			forgetMachine(flags.name);
 			console.log(

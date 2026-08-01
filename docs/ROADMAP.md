@@ -368,15 +368,20 @@ call rather than an agent picking one.
 
 ### Contract gaps 0.2 surfaced (worth fixing regardless of which option wins)
 
-- `SandboxProvider` has no no-wake status read. State is reachable only via
-  `connect(id)` + `handle.state()`, and connect RESUMES a paused sandbox on
-  e2b and vercel. The dashboard polls state on every fleet render, so
-  delegating as-is would silently wake and bill parked sandboxes. Needs
-  `describe(id)`.
-- Destroying a parked sandbox through `connect()` resumes it first: wasted
-  billing, and a sandbox whose snapshot cannot resume becomes undestroyable --
-  the orphaned-quota failure in POSTMORTEM-2026-05-18 item 5. Needs `park`/
-  `remove`, or a non-resuming `attach`.
+- ~~`SandboxProvider` has no no-wake status read.~~ **CLOSED.** `describe(id)`,
+  `remove(id)` and `park(id)` are optional provider members, each verified
+  against the vendor SDK source: vercel's `Sandbox.get` defaults to
+  `resume: true` so all three pass `resume: false`, and its `delete`/`stop` are
+  among the few instance methods outside the SDK's `withResume` wrapper.
+  `Mux.describe/remove/park` expose them, and `am mux rm` no longer resumes
+  before destroying. Sprites and dedalus deliberately omit `park()` -- the
+  sprites SDK has no suspend (`restart()` replaces the machine and would kill
+  detached installs) and dedalus's sleep is an HMAC-gated internal route a
+  public key gets 401 on; a `park()` that resolved without parking would be a
+  false claim. Tests are negative by construction (the resuming entry point is
+  never called), with a per-lane guard proving the fake would record a resume
+  if one happened. Still open: the hosted dashboard's own fleet polling, which
+  cannot use this until the packaging question above is settled.
 - `CreateSandboxOptions.resources` has no disk axis, though Dedalus accepts
   one. Fixed forward for vcpu/memory in commit ca6d1f5; disk still fails
   closed rather than silently shrinking the machine.

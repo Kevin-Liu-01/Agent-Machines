@@ -45,6 +45,7 @@ import {
 	type HarnessRunOptions,
 	type PtyHandle,
 	type PtyOptions,
+	type SandboxDescription,
 	type SandboxHandle,
 	type SandboxProvider,
 	type SubstrateKind,
@@ -857,6 +858,85 @@ export class Mux {
 	}
 
 	/** Reconnect to a machine created earlier with a name. */
+	/**
+	 * Status of a remembered machine WITHOUT waking it.
+	 *
+	 * `connect()` resumes on e2b and vercel, so using it to answer "what state
+	 * is this in?" wakes and bills a parked sandbox just for being looked at.
+	 * This goes through the provider's no-wake read instead. Substrates that
+	 * cannot read status without resuming omit `describe`, and this reports
+	 * that rather than resuming behind the caller's back.
+	 */
+	async describe(name: string): Promise<SandboxDescription> {
+		const remembered = this.rememberedOrThrow(name);
+		const provider = this.provider(remembered.substrate);
+		if (!provider.describe) {
+			throw new MuxError(
+				"not_supported",
+				`${remembered.substrate} cannot report status without resuming the sandbox; connect() would wake and bill it`,
+				{ substrate: remembered.substrate },
+			);
+		}
+		return provider.describe(remembered.sandboxId);
+	}
+
+	/**
+	 * Destroy a remembered machine without resuming it first.
+	 *
+	 * The old path was connect() then destroy(), which resumes on e2b and
+	 * vercel: wasted billing, and a sandbox whose snapshot cannot resume
+	 * becomes undestroyable -- the orphaned-quota failure in
+	 * POSTMORTEM-2026-05-18 item 5. The placement is forgotten whatever
+	 * happens to the sandbox, because a remembered name whose sandbox is
+	 * already gone can otherwise never be cleaned up.
+	 */
+	async remove(name: string): Promise<{ removed: boolean; resumed: boolean }> {
+		const remembered = this.rememberedOrThrow(name);
+		const provider = this.provider(remembered.substrate);
+		try {
+			if (provider.remove) {
+				await provider.remove(remembered.sandboxId);
+				return { removed: true, resumed: false };
+			}
+			// No no-wake teardown on this substrate: fall back, but say so, so a
+			// caller can tell a paid resume happened.
+			const handle = await provider.connect(remembered.sandboxId);
+			await handle.destroy();
+			return { removed: true, resumed: true };
+		} finally {
+			forgetMachine(name);
+		}
+	}
+
+	/**
+	 * Park a remembered machine, where the substrate can pause by id.
+	 *
+	 * Omitted rather than faked on sprites (its SDK has no suspend; restart()
+	 * replaces the machine) and dedalus (sleep is an HMAC-gated internal route
+	 * a public key cannot call), so this reports not_supported there instead of
+	 * resolving as though it parked something.
+	 */
+	async park(name: string): Promise<void> {
+		const remembered = this.rememberedOrThrow(name);
+		const provider = this.provider(remembered.substrate);
+		if (!provider.park) {
+			throw new MuxError(
+				"not_supported",
+				`${remembered.substrate} cannot park a sandbox by id`,
+				{ substrate: remembered.substrate },
+			);
+		}
+		await provider.park(remembered.sandboxId);
+	}
+
+	private rememberedOrThrow(name: string) {
+		const remembered = readMuxState().machines[name];
+		if (!remembered) {
+			throw new MuxError("fatal", `No remembered machine named "${name}".`);
+		}
+		return remembered;
+	}
+
 	async connect(name: string, agent?: HarnessKind): Promise<MuxMachine> {
 		const remembered = readMuxState().machines[name];
 		if (!remembered) {
