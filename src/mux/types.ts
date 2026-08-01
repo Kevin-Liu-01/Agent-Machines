@@ -87,6 +87,24 @@ export function isRoutableError(error: unknown): boolean {
 	return true;
 }
 
+/**
+ * One lane's outcome while placing a machine. This is the record that makes
+ * a route explainable after the fact ("why did this land on sprites?"), so
+ * every field a UI needs to render the decision belongs here.
+ */
+export type RouteAttempt = {
+	substrate: SubstrateKind;
+	outcome: "ok" | "skipped" | "failed";
+	reason?: string;
+	durationMs?: number;
+	/** Circuit-breaker state at decision time, when health informed it. */
+	health?: import("./health.js").HealthState;
+	/** The specific declared need a lane failed, for skipped-by-constraint. */
+	constraint?: import("./constraints.js").RouteConstraintKey;
+	/** Modeled cost of the run on this lane, when the price is known. */
+	estimatedUsd?: number;
+};
+
 export type ExecResult = {
 	stdout: string;
 	stderr: string;

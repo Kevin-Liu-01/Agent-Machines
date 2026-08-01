@@ -372,6 +372,70 @@ test("runCommand: missing anthropic key throws MuxError missing_credentials", ()
 	);
 });
 
+test("runCommand: a native key is not redirected and adds no shell prelude", () => {
+	const { command, env } = claudeCodeHarness.runCommand("hi", KEYS);
+	assert.ok(!("ANTHROPIC_BASE_URL" in env));
+	assert.ok(
+		!command.includes("export ANTHROPIC_API_KEY="),
+		"nothing to shadow on the native path",
+	);
+});
+
+test("runCommand: an aiGateway-only config drives claude-code via ANTHROPIC_BASE_URL", () => {
+	const { command, env } = claudeCodeHarness.runCommand("hi", {
+		aiGateway: "vck_test-gateway",
+	});
+	assert.equal(env.ANTHROPIC_BASE_URL, "https://ai-gateway.vercel.sh");
+	assert.equal(env.ANTHROPIC_AUTH_TOKEN, "vck_test-gateway");
+	assert.equal(env.ANTHROPIC_API_KEY, "");
+	assert.equal(env.IS_SANDBOX, "1");
+	assert.ok(!command.includes("vck_test-gateway"), "token must stay out of argv");
+	// An empty env value is the one a substrate transport is most likely to
+	// drop, so the command re-asserts it before claude runs.
+	assert.ok(command.includes("export ANTHROPIC_API_KEY=; echo "));
+});
+
+test("runCommand: an openrouter-only config uses its Anthropic-compatible base", () => {
+	// OpenRouter is OpenAI-shaped for chat completions, but it also serves a
+	// native Anthropic Messages endpoint under /api, so it does drive this
+	// harness -- with no proxy in between.
+	const { env } = claudeCodeHarness.runCommand("hi", { openrouter: "sk-or-test" });
+	assert.equal(env.ANTHROPIC_BASE_URL, "https://openrouter.ai/api");
+	assert.equal(env.ANTHROPIC_AUTH_TOKEN, "sk-or-test");
+	assert.equal(env.ANTHROPIC_API_KEY, "");
+});
+
+/** assert.throws returns void, so capture the error to inspect its message. */
+function muxErrorFrom(fn: () => unknown): MuxError {
+	try {
+		fn();
+	} catch (error) {
+		assert.ok(error instanceof MuxError, `expected a MuxError, got ${String(error)}`);
+		return error;
+	}
+	assert.fail("expected a throw");
+}
+
+test("runCommand: an OpenAI-only config is rejected as the wrong wire format", () => {
+	const error = muxErrorFrom(() =>
+		claudeCodeHarness.runCommand("hi", { openai: "sk-test-openai" }),
+	);
+	assert.equal(error.kind, "missing_credentials");
+	assert.equal(error.harness, "claude-code");
+	assert.match(error.message, /Anthropic Messages wire format/);
+	assert.match(error.message, /keys\.aiGateway/, "message names a usable fix");
+});
+
+test("interactiveCommand: gateway prelude lands before the claude invocation", () => {
+	const { command } = claudeCodeHarness.interactiveCommand({
+		openrouter: "sk-or-test",
+	});
+	assert.equal(
+		command,
+		'{ export PATH="$HOME/.agent-machines/node/bin:$HOME/.agent-machines/pkgs/node_modules/.bin:$PATH"; export ANTHROPIC_API_KEY=; claude; }',
+	);
+});
+
 test("interactiveCommand: plain claude with sandbox env", () => {
 	const { command, env } = claudeCodeHarness.interactiveCommand(KEYS);
 	assert.equal(

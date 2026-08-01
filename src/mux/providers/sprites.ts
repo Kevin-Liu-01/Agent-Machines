@@ -10,13 +10,25 @@
  *
  * Sprites keep a persistent ext4 filesystem, auto-suspend when idle and
  * auto-wake on the next exec or HTTP request, so persistence is
- * "always-on" and sleep()/wake() simply resolve current state.
+ * "always-on" and sleep() only resolves current state. wake() is real
+ * work: it sends the request that starts a parked sprite and waits for it
+ * to answer.
  *
  * Named PTY sessions: the Sprites server assigns session ids (announced
  * in a session_info message on the exec WebSocket). We persist that id
  * in a well-known file on the sprite (/tmp/am-mux-pty-<name>.sid) so a
  * later openPty -- possibly from a different process -- can validate it
  * against listSessions and reattach via attachSession.
+ *
+ * Surviving the control plane: of four consecutive live failures on this
+ * substrate only one was our code -- the rest were "sprite not found",
+ * "fetch failed" and "exec timed out" (docs/MUX-RESULTS.md). So every
+ * control-plane and one-shot-exec call rides a bounded transport retry
+ * with a deterministic backoff (no Math.random), and an adopted sprite is
+ * woken before its first use because auto-suspend means a cold sprite can
+ * spend the whole 60s exec budget just booting. Classification is what
+ * the router keys off: timeout / fetch failed / 5xx -> "transient" so the
+ * route can fail over, 404 and auth -> "fatal".
  */
 
 import type { Sprite, SpriteCommand, SpritesClient } from "@fly/sprites";
@@ -41,7 +53,12 @@ const SCOPE = { substrate: "sprites" as const };
 const NAME_PREFIX = "am-mux-";
 /** Same-substrate retries for the flaky create endpoint. */
 const CREATE_ATTEMPTS = 4;
-const CREATE_BACKOFF_MS = 700;
+/** One-shot exec: the usual first failure is a suspended sprite. */
+const EXEC_ATTEMPTS = 3;
+/** REST control-plane calls: get, list, check, destroy, file writes. */
+const CONTROL_ATTEMPTS = 3;
+const RETRY_BASE_MS = 700;
+const RETRY_CAP_MS = 8_000;
 
 function delay(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
@@ -49,6 +66,29 @@ function delay(ms: number): Promise<void> {
 /** The sprite public URL proxies to this port inside the sandbox. */
 const SPRITE_PROXY_PORT = 8080;
 const DEFAULT_EXEC_TIMEOUT_MS = 60_000;
+/**
+ * Budget for a wake probe and for the one retry that follows it. A cold
+ * sprite measured ~31s to accept its first exec (docs/MUX-RESULTS.md) and
+ * a wake under load is slower than a boot, so this has to outlast a boot
+ * rather than track the caller's warm-path timeout.
+ */
+const WAKE_TIMEOUT_MS = 180_000;
+/** A wake is one cheap request; a second covers a parked sprite's 502. */
+const WAKE_ATTEMPTS = 2;
+/**
+ * Sprite-record statuses that mean the machine is already serving.
+ *
+ * Measured live 2026-08-01: a responsive sprite's record reads "warm" and
+ * answers an exec in ~60ms, while a sprite left untouched for ten minutes
+ * reads "cold" -- and its first exec then failed with a 502. Anything not
+ * on this list, including an absent status, is treated as needing a wake:
+ * one cheap request is much less than the 60s an unwoken exec can burn.
+ *
+ * Deliberately not gated on the /check endpoint. It answered "healthy"
+ * (reason "machine is running") for the same ten-minute-idle sprite whose
+ * record said "cold", so health does not tell us whether the machine is up.
+ */
+const LIVE_STATUS = /^(?:warm|running|ready|started|healthy)$/i;
 // Launch-only budget, but a cold sprite can take tens of seconds to
 // accept its first exec (create measured at ~31s), so this must cover
 // boot, not just the fork.
@@ -99,6 +139,116 @@ function loadSprites(): Promise<typeof import("@fly/sprites")> {
 	return spritesModulePromise;
 }
 
+/**
+ * Backoff before retry N, derived from the attempt index alone.
+ *
+ * Deliberately jitter-free: Math.random is not available in every context
+ * this module runs in, and a deterministic schedule is the only kind a
+ * test can assert. The cap keeps a four-attempt create under ~5s of
+ * waiting instead of growing without bound.
+ */
+export function retryDelayMs(attempt: number): number {
+	const index = attempt > 0 ? Math.floor(attempt) : 0;
+	return Math.min(RETRY_BASE_MS * 2 ** index, RETRY_CAP_MS);
+}
+
+export type RetryPolicy = {
+	/** Total attempts including the first. Always bounded. */
+	attempts: number;
+	/**
+	 * Retry rate limits in place. True only for create, where the vendor
+	 * clears its per-minute creation limit in seconds; elsewhere the
+	 * router's failover to another substrate is the better answer, so the
+	 * error is surfaced instead of slept on.
+	 */
+	retryRateLimited?: boolean;
+	/** Overridable so the policy suite runs without wall-clock waits. */
+	delayFor?: (attempt: number) => number;
+	/** Runs after the backoff, before the next attempt (wake, re-adopt). */
+	beforeRetry?: (attempt: number, error: MuxError) => Promise<void>;
+};
+
+/** Retry only what another attempt against this same substrate could fix. */
+function isRetryable(error: MuxError, policy: RetryPolicy): boolean {
+	if (error.kind === "transient") return true;
+	return policy.retryRateLimited === true && error.kind === "rate_limited";
+}
+
+/**
+ * Run an operation under a bounded transport retry.
+ *
+ * Errors are normalized through mapVendorError first, so the retry
+ * decision is made on the house taxonomy rather than on vendor error
+ * shapes: transport-class failures (timeout, fetch failed, 5xx,
+ * ECONNRESET) retry, 404 and auth do not.
+ *
+ * Only pass work that is safe to run twice. A timeout can arrive after
+ * the remote command already ran, so a retried exec may repeat it; the
+ * router's exec call sites are read-only probes or idempotent by
+ * sentinel, and the one launcher that is neither (execBackground) runs
+ * with a single attempt.
+ */
+export async function withTransportRetry<T>(
+	operation: string,
+	policy: RetryPolicy,
+	attemptFn: (attempt: number) => Promise<T>,
+): Promise<T> {
+	const attempts = policy.attempts > 1 ? Math.floor(policy.attempts) : 1;
+	const delayFor = policy.delayFor ?? retryDelayMs;
+	let attempt = 0;
+	for (;;) {
+		try {
+			return await attemptFn(attempt);
+		} catch (error) {
+			const mapped = mapVendorError(error, operation);
+			if (attempt >= attempts - 1 || !isRetryable(mapped, policy)) throw mapped;
+			await delay(delayFor(attempt));
+			await policy.beforeRetry?.(attempt, mapped);
+			attempt += 1;
+		}
+	}
+}
+
+/** The subset of the client that provisioning needs, so tests can fake it. */
+export type SpriteProvisioner = Pick<SpritesClient, "createSprite" | "getSprite">;
+
+/**
+ * Get-or-create a sprite by name under the transport retry.
+ *
+ * Two measured vendor behaviors shape this (docs/MUX-RESULTS.md finding
+ * 5): create returns intermittent 500s -- 2 of 3 identical requests
+ * failed -- and a 500 can still have created the sprite, so the retry
+ * then sees 409 "already exists". Retrying here is much cheaper than
+ * failing the machine over to another substrate, and adopting an existing
+ * sprite of the same name makes named creates idempotent, matching how
+ * the router reuses names across processes.
+ */
+export async function createOrAdoptSprite(
+	provisioner: SpriteProvisioner,
+	name: string,
+	env?: Record<string, string>,
+	policy: Partial<RetryPolicy> = {},
+): Promise<{ sprite: Sprite; adopted: boolean }> {
+	return withTransportRetry(
+		"create",
+		{ attempts: CREATE_ATTEMPTS, retryRateLimited: true, ...policy },
+		async () => {
+			try {
+				// `environment` rides in the POST body, not the URL, so create
+				// is the one place env may be handed to the SDK directly.
+				const sprite = await provisioner.createSprite(
+					name,
+					env ? { environment: env } : undefined,
+				);
+				return { sprite, adopted: false };
+			} catch (error) {
+				if (!isAlreadyExists(error)) throw error;
+				return { sprite: await provisioner.getSprite(name), adopted: true };
+			}
+		},
+	);
+}
+
 export function createSpritesProvider(creds: { token?: string }): SandboxProvider {
 	const token = creds.token || undefined;
 	let clientPromise: Promise<SpritesClient> | null = null;
@@ -137,46 +287,34 @@ export function createSpritesProvider(creds: { token?: string }): SandboxProvide
 			// equivalent -- sprites auto-suspend on their own schedule.
 			const spritesClient = await client();
 			const name = spriteNameFor(options.name);
-			// Two vendor behaviors shape this loop (measured 2026-07-31):
-			// (1) create returns intermittent 500s -- 2 of 3 identical
-			// requests failed; (2) a 500 can still have created the sprite,
-			// so the retry then sees 409 "already exists". Retrying in
-			// provider is much cheaper than failing the machine over to
-			// another substrate, and adopting an existing sprite of the same
-			// name makes named creates idempotent (get-or-create), matching
-			// how the router reuses names across processes.
-			let lastError: unknown;
-			for (let attempt = 0; attempt < CREATE_ATTEMPTS; attempt += 1) {
-				try {
-					const sprite = await spritesClient.createSprite(
-						name,
-						options.env ? { environment: options.env } : undefined,
-					);
-					return new SpritesSandbox(spritesClient, sprite);
-				} catch (error) {
-					lastError = error;
-					if (isAlreadyExists(error)) {
-						const existing = await spritesClient.getSprite(name);
-						return new SpritesSandbox(spritesClient, existing);
-					}
-					const mapped = mapVendorError(error, "create");
-					const retryable =
-						mapped.kind === "transient" || mapped.kind === "rate_limited";
-					if (!retryable || attempt === CREATE_ATTEMPTS - 1) throw mapped;
-					await delay(CREATE_BACKOFF_MS * 2 ** attempt);
-				}
-			}
-			throw mapVendorError(lastError, "create");
+			const { sprite, adopted } = await createOrAdoptSprite(
+				spritesClient,
+				name,
+				options.env,
+			);
+			// An adopted sprite has been idle for an unknown time and may have
+			// auto-suspended since; a freshly created one is already up.
+			return new SpritesSandbox(spritesClient, sprite, { adopted });
 		},
 
 		async connect(id: string): Promise<SandboxHandle> {
 			const spritesClient = await client();
 			try {
-				const sprite = await spritesClient.getSprite(id);
-				return new SpritesSandbox(spritesClient, sprite);
+				const sprite = await withTransportRetry(
+					"connect",
+					{ attempts: CONTROL_ATTEMPTS },
+					() => spritesClient.getSprite(id),
+				);
+				// Adopted: an existing sprite may have auto-suspended since it was
+				// last used, so its first use has to wake it.
+				return new SpritesSandbox(spritesClient, sprite, { adopted: true });
 			} catch (error) {
 				if (isNotFound(error)) {
-					throw new MuxError("fatal", `Sprite "${id}" was not found.`, SCOPE);
+					throw new MuxError(
+						"fatal",
+						`Sprite "${id}" was not found (sprites connect 404).`,
+						SCOPE,
+					);
 				}
 				throw mapVendorError(error, "connect");
 			}
@@ -187,7 +325,11 @@ export function createSpritesProvider(creds: { token?: string }): SandboxProvide
 			try {
 				// Sprite names are global per org; only surface the ones this
 				// mux created (they all carry the am-mux- prefix).
-				const sprites = await spritesClient.listAllSprites(NAME_PREFIX);
+				const sprites = await withTransportRetry(
+					"list",
+					{ attempts: CONTROL_ATTEMPTS },
+					() => spritesClient.listAllSprites(NAME_PREFIX),
+				);
 				return sprites.map((sprite) => ({
 					id: sprite.name,
 					name: sprite.name,
@@ -202,37 +344,111 @@ export function createSpritesProvider(creds: { token?: string }): SandboxProvide
 	};
 }
 
-class SpritesSandbox implements SandboxHandle {
+/** Internal knobs. Not part of the SandboxHandle contract. */
+export type SpritesSandboxOptions = {
+	/**
+	 * The sprite already existed (connect, or create adopting a name).
+	 * Sprites auto-suspend when idle, so an adopted one may be cold and can
+	 * spend a whole exec timeout booting before it answers.
+	 */
+	adopted?: boolean;
+	/** Overridable backoff so the policy suite runs without real waits. */
+	delayFor?: (attempt: number) => number;
+};
+
+export class SpritesSandbox implements SandboxHandle {
 	readonly id: string;
 	readonly substrate = "sprites" as const;
 	readonly capabilities = CAPABILITIES;
 	private readonly client: SpritesClient;
 	private readonly handle: Sprite;
+	private readonly delayFor?: (attempt: number) => number;
+	/** Cleared for good once this handle has seen the sprite answer. */
+	private wakePending: boolean;
 
-	constructor(client: SpritesClient, handle: Sprite) {
+	constructor(
+		client: SpritesClient,
+		handle: Sprite,
+		options: SpritesSandboxOptions = {},
+	) {
 		this.client = client;
 		this.handle = handle;
 		this.id = handle.name;
+		this.wakePending = options.adopted === true;
+		this.delayFor = options.delayFor;
+	}
+
+	/** Bounded transport-retry policy for this handle's calls. */
+	private policy(
+		attempts: number,
+		beforeRetry?: RetryPolicy["beforeRetry"],
+	): RetryPolicy {
+		return { attempts, delayFor: this.delayFor, beforeRetry };
 	}
 
 	/**
-	 * One-shot exec over HTTP (no WebSocket). Non-zero exits are returned
-	 * as results, not thrown. The HTTP exec protocol depends on preserved
-	 * chunk boundaries, so if the SDK reports a framing/transport defect
-	 * we retry once over the WS spawn path (slower but immune to
-	 * re-chunking proxies). Caveat: a framing error can surface after the
-	 * command already ran, so the fallback may re-run a side-effectful
-	 * command once.
+	 * One-shot exec over HTTP (no WebSocket), under the transport retry.
+	 *
+	 * Non-zero exits are returned as results, not thrown, so a command that
+	 * merely failed is never re-run. Two transport shapes are handled: a
+	 * timeout is the signature of a suspended sprite, so the first retry
+	 * wakes it and widens the budget past a cold boot; a framing defect (the
+	 * HTTP exec protocol needs preserved chunk boundaries) falls back once
+	 * to the WS spawn path, which no re-chunking proxy can break.
+	 *
+	 * Caveat the retry does not remove: a timeout or framing error can
+	 * surface after the command already ran, so a retried exec may repeat a
+	 * side-effectful command. Every router call site here is a read-only
+	 * probe or idempotent by sentinel, and the one launcher that is neither
+	 * runs with a single attempt (see execBackground).
 	 */
 	async exec(command: string, options?: ExecOptions): Promise<ExecResult> {
+		return this.execWithPolicy(command, options, EXEC_ATTEMPTS);
+	}
+
+	private async execWithPolicy(
+		command: string,
+		options: ExecOptions | undefined,
+		attempts: number,
+	): Promise<ExecResult> {
 		const startedAt = Date.now();
-		const timeoutMs = options?.timeoutMs ?? DEFAULT_EXEC_TIMEOUT_MS;
+		const baseTimeoutMs = options?.timeoutMs ?? DEFAULT_EXEC_TIMEOUT_MS;
+		// Widened only after a wake, so a healthy sprite keeps the caller's
+		// budget and a genuinely hung command is still cut off on schedule.
+		// It is a ceiling, not a wait: the wake probe has already blocked
+		// until the sprite answers, so the retry normally returns at warm
+		// speed and only a still-unresponsive sprite spends the whole budget.
+		let timeoutMs = baseTimeoutMs;
+		let woke = false;
+		await this.wakeIfCold();
+		return withTransportRetry(
+			"exec",
+			this.policy(attempts, async () => {
+				if (woke) return;
+				woke = true;
+				await this.wakeUp();
+				timeoutMs = Math.max(baseTimeoutMs, WAKE_TIMEOUT_MS);
+			}),
+			() => this.execOnce(command, options, timeoutMs, startedAt),
+		);
+	}
+
+	private async execOnce(
+		command: string,
+		options: ExecOptions | undefined,
+		timeoutMs: number,
+		startedAt: number,
+	): Promise<ExecResult> {
 		try {
+			// Re-staged per attempt on purpose: the previous attempt's script may
+			// already have sourced and unlinked its env file, and reusing it
+			// would run the command with none of its keys.
 			const script = await scriptFor(this.handle, command, options?.env);
 			const result = await this.handle.execFileHTTP("bash", ["-lc", script], {
 				cwd: options?.cwd,
 				timeout: timeoutMs,
 			});
+			this.wakePending = false;
 			return {
 				stdout: textOf(result.stdout),
 				stderr: textOf(result.stderr),
@@ -242,12 +458,57 @@ class SpritesSandbox implements SandboxHandle {
 		} catch (error) {
 			const failed = execResultFrom(error);
 			if (failed) {
+				this.wakePending = false;
 				return { ...failed, durationMs: Date.now() - startedAt };
 			}
 			if (isFramingError(error)) {
 				return this.execViaSpawn(command, options, startedAt);
 			}
 			throw mapVendorError(error, "exec");
+		}
+	}
+
+	/**
+	 * Wake an adopted sprite before its first use.
+	 *
+	 * One cheap request up front is far cheaper than discovering a suspended
+	 * sprite by spending the caller's entire exec budget on a boot -- "exec
+	 * timed out" was one of the four live failures in docs/MUX-RESULTS.md.
+	 */
+	private async wakeIfCold(): Promise<void> {
+		if (!this.wakePending) return;
+		this.wakePending = false;
+		// The adopted record's own status is free -- it arrived with the sprite
+		// -- and it is the only signal measured to be honest about whether the
+		// machine is up. No extra round trip is spent confirming it.
+		if (!LIVE_STATUS.test(this.handle.status ?? "")) await this.wakeUp();
+	}
+
+	/**
+	 * Force a parked sprite awake and wait until it answers.
+	 *
+	 * There is no wake endpoint: a request is what starts a suspended
+	 * sprite, and the cheapest one that blocks until the VM is really
+	 * serving is a trivial exec. Deliberately not restart() -- that replaces
+	 * the machine and would kill detached tmux work, which is where installs
+	 * and background payloads live.
+	 */
+	private async wakeUp(): Promise<void> {
+		try {
+			// Bounded retry, because the first touch of a parked sprite is
+			// exactly where the control plane fails: a sprite left idle for ten
+			// minutes answered its next exec with a 502 (measured 2026-08-01).
+			await withTransportRetry("wake", this.policy(WAKE_ATTEMPTS), () =>
+				this.handle.execFileHTTP("bash", ["-lc", "exit 0"], {
+					timeout: WAKE_TIMEOUT_MS,
+				}),
+			);
+			this.wakePending = false;
+		} catch (error) {
+			const mapped = mapVendorError(error, "wake");
+			if (mapped.kind === "fatal") throw mapped;
+			// Transport-class: the caller's own attempt reports the real error,
+			// and a second wake here would just double the wait.
 		}
 	}
 
@@ -310,12 +571,15 @@ class SpritesSandbox implements SandboxHandle {
 		options: ExecStreamOptions,
 	): AsyncGenerator<ExecStreamEvent, void, void> {
 		if (options.signal?.aborted) return;
-		let script: string;
-		try {
-			script = await scriptFor(this.handle, command, options.env);
-		} catch (error) {
-			throw mapVendorError(error, "execStream stage");
-		}
+		await this.wakeIfCold();
+		// The staging write retries; the spawn below deliberately does not. A
+		// stream may already have emitted output, and re-running it mid-stream
+		// would duplicate an agent turn.
+		const script = await withTransportRetry(
+			"execStream stage",
+			this.policy(CONTROL_ATTEMPTS),
+			() => scriptFor(this.handle, command, options.env),
+		);
 		const queue = new PushQueue<ExecStreamEvent>();
 		let finished = false;
 		// env is inside `script` (sourced from a staged file); passing it
@@ -405,15 +669,24 @@ class SpritesSandbox implements SandboxHandle {
 		// session, which returns as soon as it is created. Detach without
 		// killing by disconnecting the socket -- the server keeps the
 		// session running.
-		// Route the launcher through this.exec() rather than calling
-		// execFileHTTP directly: exec base64-wraps the whole command, and
+		// Route the launcher through the base64-wrapping exec path rather than
+		// calling execFileHTTP directly: that path wraps the whole command, and
 		// passing this launcher's own quoting (single-quoted base64, `$$`,
 		// `$(date)`) as raw argv did not survive the transport -- tmux
 		// reported success while the payload never ran (verified
 		// 2026-07-31). The launcher itself returns immediately because
 		// `tmux new-session -d` hands the work to the tmux server, so this
 		// stays fire-and-forget.
-		const launch = await this.exec(script, { timeoutMs: BACKGROUND_TIMEOUT_MS });
+		// One attempt only: retrying a launcher can start the payload twice,
+		// and two concurrent npm installs are exactly what left a partial
+		// node_modules tree that stayed broken across runs (see
+		// docs/MUX-RESULTS.md). A cold sprite is covered by the wake inside
+		// execWithPolicy, not by a second launch.
+		const launch = await this.execWithPolicy(
+			script,
+			{ timeoutMs: BACKGROUND_TIMEOUT_MS },
+			1,
+		);
 		if (launch.exitCode !== 0) {
 			throw new MuxError(
 				"transient",
@@ -432,6 +705,9 @@ class SpritesSandbox implements SandboxHandle {
 	 * reattaches with scrollback via listSessions + attachSession.
 	 */
 	async openPty(options: PtyOptions = {}): Promise<PtyHandle> {
+		// A PTY against a suspended sprite would spend its whole open timeout
+		// waiting for a boot, so the wake happens before any socket work.
+		await this.wakeIfCold();
 		const cols = options.cols ?? 100;
 		const rows = options.rows ?? 30;
 		const named = options.session ? sanitizeName(options.session) : null;
@@ -551,22 +827,23 @@ class SpritesSandbox implements SandboxHandle {
 	async writeFile(path: string, content: string | Uint8Array): Promise<void> {
 		const data = typeof content === "string" ? content : Buffer.from(content);
 		const fs = this.handle.filesystem("/");
-		try {
-			await fs.writeFile(path, data);
-		} catch (error) {
-			const code = (error as { code?: string }).code;
-			const dir = path.split("/").slice(0, -1).join("/");
-			if (code === "ENOENT" && dir) {
-				try {
+		await this.wakeIfCold();
+		await withTransportRetry("writeFile", this.policy(CONTROL_ATTEMPTS), async () => {
+			try {
+				await fs.writeFile(path, data);
+			} catch (error) {
+				const code = (error as { code?: string }).code;
+				const dir = path.split("/").slice(0, -1).join("/");
+				// A missing parent is a real ENOENT, not a transport failure: it
+				// classifies as fatal, so the wrapper will not retry it.
+				if (code === "ENOENT" && dir) {
 					await fs.mkdir(dir, { recursive: true });
 					await fs.writeFile(path, data);
 					return;
-				} catch (retryError) {
-					throw mapVendorError(retryError, "writeFile");
 				}
+				throw error;
 			}
-			throw mapVendorError(error, "writeFile");
-		}
+		});
 	}
 
 	/**
@@ -575,18 +852,20 @@ class SpritesSandbox implements SandboxHandle {
 	 */
 	async publicUrl(port: number): Promise<string | null> {
 		if (port !== SPRITE_PROXY_PORT) return null;
-		try {
+		return withTransportRetry("publicUrl", this.policy(CONTROL_ATTEMPTS), async () => {
 			await this.handle.updateURLSettings({ auth: "public" });
 			const fresh = await this.client.getSprite(this.id);
 			return fresh.url ?? null;
-		} catch (error) {
-			throw mapVendorError(error, "publicUrl");
-		}
+		});
 	}
 
 	async state(): Promise<MachineState> {
 		try {
-			const fresh = await this.client.getSprite(this.id);
+			const fresh = await withTransportRetry(
+				"state",
+				this.policy(CONTROL_ATTEMPTS),
+				() => this.client.getSprite(this.id),
+			);
 			return mapState(fresh.status);
 		} catch (error) {
 			if (isNotFound(error)) return "destroyed";
@@ -599,14 +878,21 @@ class SpritesSandbox implements SandboxHandle {
 		await this.state();
 	}
 
-	/** Sprites auto-wake on the next exec/HTTP request. */
+	/**
+	 * Wake for real rather than reporting status: sprites auto-wake on the
+	 * next request, so a caller asking for a wake wants the sprite actually
+	 * answering when this resolves.
+	 */
 	async wake(): Promise<void> {
-		await this.state();
+		this.wakePending = false;
+		await this.wakeUp();
 	}
 
 	async destroy(): Promise<void> {
 		try {
-			await this.handle.destroy();
+			await withTransportRetry("destroy", this.policy(CONTROL_ATTEMPTS), () =>
+				this.handle.destroy(),
+			);
 		} catch (error) {
 			if (isNotFound(error)) return;
 			throw mapVendorError(error, "destroy");
@@ -781,7 +1067,7 @@ function inlineScript(b64: string): string {
 }
 
 async function stageCommandFile(sprite: Sprite, command: string): Promise<string> {
-	const file = `/tmp/am-mux-cmd-${randomSuffix()}.sh`;
+	const file = `/tmp/am-mux-cmd-${uniqueSuffix()}.sh`;
 	await sprite.filesystem("/").writeFile(file, command);
 	return file;
 }
@@ -807,7 +1093,7 @@ async function stageEnvFile(
 	sprite: Sprite,
 	env: Record<string, string>,
 ): Promise<{ path: string; prelude: string }> {
-	const path = `/tmp/am-mux-env-${randomSuffix()}.sh`;
+	const path = `/tmp/am-mux-env-${uniqueSuffix()}.sh`;
 	const body = Object.entries(env)
 		.map(([key, value]) => `export ${key}=${shq(value)}`)
 		.join("\n");
@@ -880,9 +1166,9 @@ function spriteNameFor(name?: string): string {
 			.replace(/[^a-z0-9-]/g, "-")
 			.replace(/^-+|-+$/g, "")
 			.slice(0, 40);
-		return `${NAME_PREFIX}${safe || randomSuffix()}`;
+		return `${NAME_PREFIX}${safe || uniqueSuffix()}`;
 	}
-	return `${NAME_PREFIX}${randomSuffix()}`;
+	return `${NAME_PREFIX}${uniqueSuffix()}`;
 }
 
 function sanitizeName(value: string): string {
@@ -894,8 +1180,17 @@ function sanitizeName(value: string): string {
 	return safe || "default";
 }
 
-function randomSuffix(): string {
-	return Math.random().toString(36).slice(2, 10);
+/**
+ * Unique-enough suffix for staged files and generated sprite names,
+ * without Math.random -- it is unavailable in some contexts this module
+ * runs in, and the retry policy has to stay deterministic anyway. A
+ * timestamp plus pid plus a monotonic counter separates two stagers in
+ * the same millisecond, in one process or across processes.
+ */
+let suffixCounter = 0;
+function uniqueSuffix(): string {
+	suffixCounter += 1;
+	return `${Date.now().toString(36)}${process.pid.toString(36)}${suffixCounter.toString(36)}`;
 }
 
 function textOf(value: unknown): string {
@@ -923,7 +1218,11 @@ function mapState(status: string | undefined): MachineState {
 		case "cold":
 		case "suspended":
 		case "stopped":
-			// Parked but auto-wakes on the next exec/HTTP request.
+			// Parked but auto-wakes on the next exec/HTTP request. Measured
+			// live 2026-08-01: "warm" is the steady state of a sprite that
+			// still answers in ~60ms, while "cold" is what a sprite reports
+			// after ten idle minutes -- a distinction this coarse view drops,
+			// which is why wakeIfCold reads the raw status instead.
 			return "sleeping";
 		case "creating":
 		case "starting":
@@ -988,15 +1287,48 @@ function messageOf(error: unknown): string {
 }
 
 function statusOf(error: unknown): number | undefined {
-	const status = (error as { statusCode?: unknown }).statusCode;
-	if (typeof status === "number") return status;
+	const carrier = error as { statusCode?: unknown; status?: unknown };
+	if (typeof carrier.statusCode === "number") return carrier.statusCode;
+	if (typeof carrier.status === "number") return carrier.status;
 	// WS handshakes surface as "Unexpected server response: NNN".
 	const match = messageOf(error).match(/(?:status|response):?\s*(\d{3})/i);
 	return match ? Number.parseInt(match[1] ?? "", 10) : undefined;
 }
 
-/** House taxonomy: 429 -> rate_limited, 5xx/network -> transient, 4xx -> fatal. */
-function mapVendorError(error: unknown, operation: string): MuxError {
+/**
+ * A rejected token is a configuration problem: no retry and no failover
+ * can fix it, so it must never be classified as transport.
+ */
+function isAuthFailure(error: unknown, status: number | undefined): boolean {
+	if (status === 401 || status === 403) return true;
+	// Trust the wording only when there is no status to trust instead: a 5xx
+	// body that happens to mention auth is still a server failure.
+	if (status !== undefined) return false;
+	return /unauthorized|forbidden|invalid token|invalid api key|authentication (?:failed|required)/i.test(
+		messageOf(error),
+	);
+}
+
+/** Socket-level codes; undici hides them on error.cause of "fetch failed". */
+const TRANSPORT_CODES =
+	/^(?:ECONNRESET|ECONNREFUSED|ECONNABORTED|ETIMEDOUT|EPIPE|ENOTFOUND|EAI_AGAIN|EHOSTUNREACH|ENETUNREACH|UND_ERR_)/;
+
+function transportCodeOf(error: unknown): string {
+	const direct = (error as { code?: unknown }).code;
+	if (typeof direct === "string") return direct;
+	const cause = (error as { cause?: { code?: unknown } }).cause;
+	const code = cause?.code;
+	return typeof code === "string" ? code : "";
+}
+
+/**
+ * House taxonomy, and it is load-bearing for routing: "transient"
+ * (timeout, fetch failed, 5xx, reset socket) and "rate_limited" let the
+ * router fail the machine over to another substrate, while a 404 or a
+ * rejected token is "fatal" -- retrying those only burns the caller's
+ * time, and the message has to say which one it was.
+ */
+export function mapVendorError(error: unknown, operation: string): MuxError {
 	if (error instanceof MuxError) return error;
 	const message = messageOf(error).slice(0, 300);
 	const status = statusOf(error);
@@ -1007,6 +1339,20 @@ function mapVendorError(error: unknown, operation: string): MuxError {
 		errorCode === "concurrent_sprite_limit_exceeded"
 	) {
 		return new MuxError("rate_limited", `sprites ${operation}: ${message}`, SCOPE);
+	}
+	if (isAuthFailure(error, status)) {
+		return new MuxError(
+			"fatal",
+			`sprites ${operation} auth rejected: ${message} -- check providers.sprites.token / SPRITES_TOKEN`,
+			SCOPE,
+		);
+	}
+	if (status === 404 || (status === undefined && /sprite not found/i.test(message))) {
+		return new MuxError(
+			"fatal",
+			`sprites ${operation}: sprite not found (404): ${message}`,
+			SCOPE,
+		);
 	}
 	if (status !== undefined && status >= 500) {
 		return new MuxError("transient", `sprites ${operation} ${status}: ${message}`, SCOPE);
@@ -1019,6 +1365,7 @@ function mapVendorError(error: unknown, operation: string): MuxError {
 		return new MuxError("transient", `sprites ${operation} timed out: ${message}`, SCOPE);
 	}
 	if (
+		TRANSPORT_CODES.test(transportCodeOf(error)) ||
 		/fetch failed|network|socket|websocket|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|EPIPE/i.test(
 			message,
 		)

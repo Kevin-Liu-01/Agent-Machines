@@ -16,10 +16,28 @@ import { loadMuxConfig, resolveMuxConfig, type MuxConfig, type MuxConfigInput } 
 import { LineBuffer, type MuxAgentEvent, type RunResult } from "./events.js";
 import { getHarness } from "./harnesses/index.js";
 import { getProvider } from "./providers/index.js";
-import { readMuxState, rememberMachine, forgetMachine } from "./state.js";
+import { readMuxState, rememberMachine, forgetMachine, saveHealth } from "./state.js";
+import { SubstrateHealth, outcomeForError } from "./health.js";
+import {
+	asSkippedAttempts,
+	filterCandidates,
+	profileFor,
+	type RouteConstraints,
+} from "./constraints.js";
+import { cheapestFirst, estimate } from "./cost.js";
+import { requireUpstream } from "./upstreams.js";
+import {
+	appendTrace,
+	claim,
+	type ClaimOutcome,
+	completeClaim,
+	releaseClaim,
+	traceFromRun,
+} from "./traces.js";
 import {
 	MuxError,
 	isRoutableError,
+	type RouteAttempt,
 	type CreateSandboxOptions,
 	type HarnessAdapter,
 	type HarnessKind,
@@ -45,24 +63,38 @@ export type MuxCreateOptions = {
 	template?: string;
 	/** Requested sandbox size; heavy harnesses need more than defaults. */
 	resources?: { vcpu?: number; memoryMib?: number };
+	/**
+	 * What the work needs, declared instead of naming a vendor. Lanes that
+	 * cannot satisfy a need are skipped with the failed dimension named --
+	 * never silently downgraded, since a caller who asked for a native PTY
+	 * would rather fail than get a slower emulation without being told.
+	 */
+	constraints?: RouteConstraints;
+	/** Order surviving lanes by modeled price instead of configured order. */
+	optimize?: "cost";
 };
 
 export type MuxRunOptions = HarnessRunOptions & {
 	timeoutMs?: number;
 	signal?: AbortSignal;
 	onEvent?: (event: MuxAgentEvent) => void;
+	/**
+	 * Idempotency key. A retry with the same key returns the stored result
+	 * instead of running the agent again -- agent runs cost money and have
+	 * side effects, so a client crash must not double-execute one. Omit for
+	 * fire-and-forget runs.
+	 */
+	runKey?: string;
 };
+
+// RouteAttempt moved to types.ts (traces.ts needs it without importing the
+// router). Re-exported here because it was already public from this module.
+export type { RouteAttempt } from "./types.js";
 
 export type RunStream = AsyncIterable<MuxAgentEvent> & {
 	result(): Promise<RunResult>;
 };
 
-export type RouteAttempt = {
-	substrate: SubstrateKind;
-	outcome: "ok" | "skipped" | "failed";
-	reason?: string;
-	durationMs?: number;
-};
 
 /** Detached-install budget and poll cadence. */
 const INSTALL_BUDGET_MS = 900_000;
@@ -70,6 +102,63 @@ const INSTALL_POLL_MS = 1_500;
 
 function sleep(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Stand in for a run that is already done or already running under the same
+ * idempotency key. A completed claim replays its text and result so the
+ * caller's code path is unchanged; an in-flight claim is an error rather than
+ * a silent second execution, because two writers to one logical run is
+ * exactly what the key exists to prevent.
+ */
+function replayStream(
+	runKey: string,
+	outcome: Exclude<ClaimOutcome, "claimed">,
+	onEvent?: (event: MuxAgentEvent) => void,
+): RunStream {
+	if (outcome === "in_flight") {
+		const fail = async function* (): AsyncGenerator<MuxAgentEvent> {
+			throw new MuxError(
+				"transient",
+				`run "${runKey}" is already in flight; retry after it settles or use a new runKey`,
+			);
+		};
+		const iterator = fail();
+		return {
+			[Symbol.asyncIterator]: () => iterator,
+			async result() {
+				for await (const event of iterator) void event;
+				throw new MuxError("transient", `run "${runKey}" is already in flight`);
+			},
+		};
+	}
+	const stored = outcome.done;
+	const events: MuxAgentEvent[] = [
+		{ type: "started", harness: stored.harness, sessionId: stored.sessionId },
+		...(stored.text ? [{ type: "text" as const, delta: stored.text }] : []),
+		{
+			type: "result",
+			text: stored.text,
+			costUsd: stored.costUsd,
+			durationMs: stored.durationMs,
+			sessionId: stored.sessionId,
+		},
+		{ type: "done", exitCode: stored.exitCode },
+	];
+	const replay = async function* (): AsyncGenerator<MuxAgentEvent> {
+		for (const event of events) {
+			onEvent?.(event);
+			yield event;
+		}
+	};
+	const iterator = replay();
+	return {
+		[Symbol.asyncIterator]: () => iterator,
+		async result() {
+			for await (const event of iterator) void event;
+			return stored;
+		},
+	};
 }
 
 export class MuxMachine {
@@ -192,8 +281,21 @@ export class MuxMachine {
 		return text ? `: ${text}` : "";
 	}
 
-	/** One agent turn, streamed as normalized events. */
+	/**
+	 * One agent turn, streamed as normalized events.
+	 *
+	 * With `runKey` set the turn is idempotent: a retry after a client crash
+	 * returns the stored result instead of running the agent again. That
+	 * matters because an agent run costs money and can have side effects, so
+	 * "just retry it" is not safe by default.
+	 */
 	run(prompt: string, options: MuxRunOptions = {}): RunStream {
+		if (options.runKey) {
+			const outcome = claim(options.runKey);
+			if (outcome !== "claimed") {
+				return replayStream(options.runKey, outcome, options.onEvent);
+			}
+		}
 		const { command, env } = this.harness.runCommand(prompt, this.config.keys, {
 			model: options.model ?? this.model ?? this.config.defaults.model,
 			cwd: options.cwd,
@@ -244,7 +346,7 @@ export class MuxMachine {
 		const settle = (): void => {
 			if (settled) return;
 			settled = true;
-			resultResolve({
+			const finished: RunResult = {
 				text: finalText,
 				exitCode,
 				costUsd,
@@ -254,7 +356,31 @@ export class MuxMachine {
 				substrate: sandbox.substrate,
 				harness: harness.kind,
 				truncated: !completed,
-			});
+			};
+			// Trace before resolving so a caller that immediately exits on the
+			// result cannot race the write. Neither tracing nor claim
+			// bookkeeping may fail a run that already produced output.
+			try {
+				appendTrace(
+					traceFromRun({
+						runKey: options.runKey,
+						result: finished,
+						attempts: this.attempts,
+						error: sawError,
+					}),
+				);
+			} catch {
+				// Observability is best effort.
+			}
+			if (options.runKey) {
+				try {
+					if (completed) completeClaim(options.runKey, finished);
+					else releaseClaim(options.runKey);
+				} catch {
+					// A stuck claim frees itself via the stale timeout.
+				}
+			}
+			resultResolve(finished);
 		};
 
 		const iterate = async function* (): AsyncGenerator<MuxAgentEvent> {
@@ -358,10 +484,39 @@ export class MuxMachine {
 
 export class Mux {
 	readonly config: MuxConfig;
+	readonly health: SubstrateHealth;
 	private readonly providers = new Map<SubstrateKind, SandboxProvider>();
+	private readonly persistHealth: boolean;
+	/** Prices from the most recent routeFor(), for attempt annotation. */
+	private lastPriced = new Map<SubstrateKind, number | undefined>();
 
-	constructor(config: MuxConfig) {
+	constructor(
+		config: MuxConfig,
+		options: { health?: SubstrateHealth; persistHealth?: boolean } = {},
+	) {
 		this.config = config;
+		// Restored from the shared state file so a substrate that was failing
+		// stays de-prioritized for the next process. Injectable for tests.
+		this.health =
+			options.health ??
+			SubstrateHealth.fromJSON(readMuxState().health);
+		this.persistHealth = options.persistHealth ?? options.health === undefined;
+	}
+
+	/** Record a lane outcome and persist the breaker. */
+	private noteHealth(
+		substrate: SubstrateKind,
+		outcome: "ok" | "transient" | "fatal",
+		latencyMs?: number,
+	): void {
+		this.health.record(substrate, outcome, latencyMs);
+		if (!this.persistHealth) return;
+		try {
+			saveHealth(this.health.toJSON());
+		} catch {
+			// Losing a sample only delays opening a circuit; never fail a
+			// create() because the state file could not be written.
+		}
 	}
 
 	provider(kind: SubstrateKind): SandboxProvider {
@@ -378,8 +533,17 @@ export class Mux {
 		this.providers.set(kind, provider);
 	}
 
-	/** Ordered, credentialed route for a create() call. */
-	routeFor(sandbox?: SubstrateKind | "auto"): {
+	/**
+	 * Ordered route for a create() call, in four stages: drop lanes without
+	 * credentials, drop lanes that cannot satisfy declared constraints,
+	 * order by price when asked, then order by health so a failing lane is
+	 * tried last. Health only reorders -- it never removes a lane, because a
+	 * global blip that opened every circuit must not make create() impossible.
+	 */
+	routeFor(
+		sandbox?: SubstrateKind | "auto",
+		options: { constraints?: RouteConstraints; optimize?: "cost" } = {},
+	): {
 		candidates: SubstrateKind[];
 		skipped: RouteAttempt[];
 	} {
@@ -387,7 +551,7 @@ export class Mux {
 			!sandbox || sandbox === "auto"
 				? [this.config.sandboxes.primary, ...this.config.sandboxes.backups]
 				: [sandbox];
-		const candidates: SubstrateKind[] = [];
+		let candidates: SubstrateKind[] = [];
 		const skipped: RouteAttempt[] = [];
 		for (const kind of requested) {
 			const readiness = this.provider(kind).ready();
@@ -401,6 +565,30 @@ export class Mux {
 				});
 			}
 		}
+
+		if (options.constraints && candidates.length > 0) {
+			const profiles = candidates.map((kind) =>
+				profileFor(kind, this.provider(kind).capabilities),
+			);
+			const filtered = filterCandidates(profiles, options.constraints);
+			candidates = [...filtered.accepted];
+			skipped.push(...asSkippedAttempts(filtered.rejected));
+		}
+
+		// Modeled price per lane, kept so an attempt can explain what the
+		// route was expected to cost. Unknown-price lanes sort last rather
+		// than pretending unknown means cheap.
+		const priced = new Map<SubstrateKind, number | undefined>();
+		if (options.optimize === "cost" && candidates.length > 1) {
+			const ordered = cheapestFirst(candidates);
+			candidates = ordered.map((entry) => entry.substrate);
+			for (const entry of ordered) priced.set(entry.substrate, entry.totalUsd);
+		}
+		this.lastPriced = priced;
+
+		// Health last so it wins ties without overriding an explicit price or
+		// capability decision.
+		candidates = [...this.health.order(candidates)];
 		return { candidates, skipped };
 	}
 
@@ -411,9 +599,12 @@ export class Mux {
 	async create(options: MuxCreateOptions = {}): Promise<MuxMachine> {
 		const agent = options.agent ?? this.config.agents.default;
 		const harness = getHarness(agent);
-		this.assertUpstream(harness.requiredUpstream, agent);
+		this.assertUpstream(agent);
 
-		const { candidates, skipped } = this.routeFor(options.sandbox);
+		const { candidates, skipped } = this.routeFor(options.sandbox, {
+			constraints: options.constraints,
+			optimize: options.optimize,
+		});
 		const attempts: RouteAttempt[] = [...skipped];
 		if (candidates.length === 0) {
 			throw new MuxError(
@@ -462,10 +653,14 @@ export class Mux {
 						agent,
 					});
 				}
+				const okMs = Date.now() - startedAt;
+				this.noteHealth(kind, "ok", okMs);
 				attempts.push({
 					substrate: kind,
 					outcome: "ok",
-					durationMs: Date.now() - startedAt,
+					durationMs: okMs,
+					health: this.health.state(kind),
+					estimatedUsd: this.lastPriced.get(kind),
 				});
 				return machine;
 			} catch (error) {
@@ -484,11 +679,18 @@ export class Mux {
 						});
 					});
 				}
+				// A credential or capability failure says nothing about the
+				// substrate's health, so it must not open a circuit -- only
+				// transport-class outcomes do.
+				const signal = outcomeForError(error);
+				if (signal) this.noteHealth(kind, signal, Date.now() - startedAt);
 				attempts.push({
 					substrate: kind,
 					outcome: "failed",
 					reason: error instanceof Error ? error.message : String(error),
 					durationMs: Date.now() - startedAt,
+					health: this.health.state(kind),
+					estimatedUsd: this.lastPriced.get(kind),
 				});
 				lastError = error;
 				if (!isRoutableError(error)) throw error;
@@ -520,50 +722,43 @@ export class Mux {
 		});
 	}
 
-	private assertUpstream(
-		required: "anthropic" | "openai" | "any",
-		agent: HarnessKind,
-	): void {
-		const keys = this.config.keys;
-		if (required === "anthropic" && !keys.anthropic) {
-			throw new MuxError(
-				"missing_credentials",
-				`${agent} requires an Anthropic API key (keys.anthropic / ANTHROPIC_API_KEY).`,
-				{ harness: agent },
-			);
-		}
-		if (required === "openai" && !keys.openai) {
-			throw new MuxError(
-				"missing_credentials",
-				`${agent} requires an OpenAI API key (keys.openai / OPENAI_API_KEY).`,
-				{ harness: agent },
-			);
-		}
-		// "any" means either native key, NOT any key at all: the harness
-		// adapters only inject ANTHROPIC_API_KEY / OPENAI_API_KEY into the
-		// sandbox, so an aiGateway- or openrouter-only config used to pass
-		// this gate, provision a machine, pay the full install, and only
-		// then fail with the harness's own auth error.
-		if (required === "any" && !keys.anthropic && !keys.openai) {
-			const haveGatewayOnly = Boolean(keys.aiGateway || keys.openrouter);
-			throw new MuxError(
-				"missing_credentials",
-				haveGatewayOnly
-					? `${agent} needs a native Anthropic or OpenAI key: the harness receives ANTHROPIC_API_KEY / OPENAI_API_KEY in the sandbox and cannot use a gateway key on its own.`
-					: `${agent} requires at least one model upstream key.`,
-				{ harness: agent },
-			);
-		}
+	/**
+	 * Fail closed before provisioning if no upstream can drive the harness.
+	 *
+	 * The rule lives in upstreams.ts because it is per-harness and not
+	 * simply "native key required": a gateway that serves the harness's wire
+	 * format is equally valid (measured: claude-code runs on OpenRouter's
+	 * Anthropic-Messages endpoint), while a gateway that does not is
+	 * useless. Doing this here means a caller never pays for a sandbox and
+	 * an install only to hit the agent's own auth error.
+	 */
+	private assertUpstream(agent: HarnessKind): void {
+		requireUpstream(agent, this.config.keys);
 	}
 }
 
+export type CreateMuxOptions = {
+	/**
+	 * Circuit-breaker store. Inject one to isolate health from the shared
+	 * state file -- tests need that, because a breaker restored from a
+	 * previous run reorders routes and would make assertions depend on
+	 * history.
+	 */
+	health?: SubstrateHealth;
+	/** Persist breaker samples to the state file. Defaults to true. */
+	persistHealth?: boolean;
+};
+
 /** Build a Mux from a config file path, inline object, or environment. */
-export function createMux(config?: string | MuxConfigInput): Mux {
+export function createMux(
+	config?: string | MuxConfigInput,
+	options: CreateMuxOptions = {},
+): Mux {
 	if (typeof config === "string") {
-		return new Mux(loadMuxConfig(config));
+		return new Mux(loadMuxConfig(config), options);
 	}
 	if (config) {
-		return new Mux(resolveMuxConfig(config));
+		return new Mux(resolveMuxConfig(config), options);
 	}
-	return new Mux(loadMuxConfig());
+	return new Mux(loadMuxConfig(), options);
 }

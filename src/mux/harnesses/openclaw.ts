@@ -8,11 +8,17 @@
  * Depending on the version/flags it is either one final JSON object or
  * NDJSON where intermediate lines are progress noise; parseLine tolerates
  * both and never throws.
+ *
+ * Auth: OpenClaw has no base-URL env lever -- it resolves models through
+ * bundled provider plugins keyed on plain credential env vars, so
+ * ../upstreams.ts forwards every key it recognizes (anthropic, openai,
+ * openrouter, vercel-ai-gateway) and the model ref names the provider.
  */
 
 import { amNpmInstall, ensureNodeCommand, withAmNode } from "./node-runtime.js";
 import { Buffer } from "node:buffer";
 import { tryParseJson, type MuxAgentEvent } from "../events.js";
+import { requireUpstream } from "../upstreams.js";
 import type {
 	HarnessAdapter,
 	HarnessCommand,
@@ -49,12 +55,15 @@ function shq(value: string): string {
 	return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
-/** Only the upstreams OpenClaw understands; it prefers anthropic. */
+/**
+ * Credentials come from ../upstreams.ts, which forwards every key OpenClaw
+ * has a bundled provider plugin for -- anthropic, openai, openrouter and
+ * vercel-ai-gateway -- rather than picking one, because OpenClaw resolves
+ * the provider itself from its configured model ref. It fails closed when
+ * none of the four is set.
+ */
 function upstreamEnv(keys: UpstreamKeys): Record<string, string> {
-	const env: Record<string, string> = {};
-	if (keys.anthropic) env.ANTHROPIC_API_KEY = keys.anthropic;
-	if (keys.openai) env.OPENAI_API_KEY = keys.openai;
-	return env;
+	return requireUpstream("openclaw", keys).env;
 }
 
 function readString(value: unknown): string | undefined {
@@ -115,10 +124,16 @@ export const openclawHarness: HarnessAdapter = {
 		// (verified live 2026-07-31: "Pass --to <E.164>, --session-key,
 		// --session-id, or --agent to choose a session"). sessionId maps
 		// to --session-key so runs with the same id share a session;
-		// otherwise each run gets an isolated key. options.model has no
-		// documented CLI mapping; pass vendor flags via extraArgs.
+		// otherwise each run gets an isolated key.
 		const sessionKey = options.sessionId ?? "am-mux";
-		let invocation = `openclaw agent --local --session-key ${shq(sessionKey)} --message "$(echo ${b64} | base64 -d)" --json`;
+		let invocation = `openclaw agent --local --session-key ${shq(sessionKey)} --message "$(echo ${b64} | base64 -d)"`;
+		// `--model <id>` takes a `provider/model` ref or a bare model id. It
+		// is the only way a gateway-only config reaches a model: OpenClaw's
+		// primary model is config state, not inferred from which credential
+		// happens to be present, so a gateway needs its provider named --
+		// `openrouter/auto`, `vercel-ai-gateway/anthropic/claude-opus-4.6`.
+		if (options.model) invocation += ` --model ${shq(options.model)}`;
+		invocation += " --json";
 		if (options.extraArgs && options.extraArgs.length > 0) {
 			invocation += ` ${options.extraArgs.join(" ")}`;
 		}

@@ -232,7 +232,69 @@ test("runCommand embeds the prompt as base64 and reads it from stdin", () => {
 test("runCommand keeps the API key out of argv", () => {
 	const { command, env } = codexHarness.runCommand("hello", KEYS);
 	assert.ok(!command.includes("sk-test-openai"));
-	assert.deepEqual(env, { CODEX_API_KEY: "sk-test-openai" });
+	// Published under both names: `codex exec` honors CODEX_API_KEY, while
+	// the built-in provider's documented env_key is OPENAI_API_KEY.
+	assert.deepEqual(env, {
+		CODEX_API_KEY: "sk-test-openai",
+		OPENAI_API_KEY: "sk-test-openai",
+	});
+});
+
+test("runCommand on a gateway declares a model provider instead of a base-URL env", () => {
+	// Codex reaches a non-OpenAI endpoint only through a named provider: the
+	// ids openai/ollama/lmstudio are reserved, so there is no base-URL knob
+	// on the built-in one. `-c key=value` is the only lever available to an
+	// adapter that ships no config file.
+	const { command, env } = codexHarness.runCommand("hello", {
+		openrouter: "sk-or-test",
+	});
+	assert.deepEqual(env, { OPENROUTER_API_KEY: "sk-or-test" });
+	assert.ok(!command.includes("sk-or-test"), "gateway key must stay out of argv");
+	assert.ok(command.includes(`'model_provider="am_openrouter"'`));
+	assert.ok(
+		command.includes(
+			`'model_providers.am_openrouter.base_url="https://openrouter.ai/api/v1"'`,
+		),
+	);
+	assert.ok(
+		command.includes(`'model_providers.am_openrouter.env_key="OPENROUTER_API_KEY"'`),
+	);
+	assert.ok(command.includes(`'model_providers.am_openrouter.wire_api="responses"'`));
+	// The exec shape the live matrix verified must not drift.
+	const { rest } = decodePrompt(command);
+	assert.ok(rest.startsWith("codex exec --json"));
+	assert.ok(/ -;? \}?$/.test(command));
+});
+
+test("runCommand on the Vercel gateway keeps /v1 in the base URL", () => {
+	// Verified against codex-cli 0.146.0: the turn is POSTed to
+	// <base_url>/responses, so dropping /v1 would 404.
+	const { command } = codexHarness.runCommand("hello", { aiGateway: "vck_test" });
+	assert.ok(
+		command.includes(
+			`'model_providers.am_vercel_gateway.base_url="https://ai-gateway.vercel.sh/v1"'`,
+		),
+	);
+});
+
+/** assert.throws returns void, so capture the error to inspect its message. */
+function muxErrorFrom(fn: () => unknown): MuxError {
+	try {
+		fn();
+	} catch (error) {
+		assert.ok(error instanceof MuxError, `expected a MuxError, got ${String(error)}`);
+		return error;
+	}
+	assert.fail("expected a throw");
+}
+
+test("runCommand rejects an Anthropic-only config: wrong wire format", () => {
+	const error = muxErrorFrom(() =>
+		codexHarness.runCommand("hello", { anthropic: "sk-ant-test" }),
+	);
+	assert.equal(error.kind, "missing_credentials");
+	assert.match(error.message, /OpenAI Responses wire format/);
+	assert.match(error.message, /keys\.openai/);
 });
 
 test("runCommand honors model, cwd and extraArgs", () => {
@@ -286,4 +348,19 @@ test("interactiveCommand logs in from env and keeps the key out of argv", () => 
 		(error: unknown) =>
 			error instanceof MuxError && error.kind === "missing_credentials",
 	);
+});
+
+test("interactiveCommand on a gateway skips the OpenAI login step", () => {
+	// `codex login --with-api-key` would store the gateway token as an
+	// OpenAI credential and leave the TUI authenticated against the wrong
+	// upstream; the provider's env_key is what authenticates here.
+	const { command, env } = codexHarness.interactiveCommand({
+		aiGateway: "vck_test",
+	});
+	assert.ok(!command.includes("codex login"));
+	assert.ok(!command.includes("CODEX_API_KEY"));
+	assert.deepEqual(env, { AI_GATEWAY_API_KEY: "vck_test" });
+	const script = command.slice("bash -lc '".length, -1).replace(/'\\''/g, "'");
+	assert.ok(script.includes("exec codex "));
+	assert.ok(script.includes(`-c 'model_provider="am_vercel_gateway"'`));
 });

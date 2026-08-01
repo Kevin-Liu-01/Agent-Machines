@@ -36,7 +36,7 @@
     "sync-manifest": "node scripts/sync-knowledge-manifest.mjs",
     "typecheck": "tsc --noEmit",
     "web": "cd web && npm run dev",
-    "test:mux": "tsx --test src/mux/config.test.ts src/mux/events.test.ts src/mux/router.test.ts src/mux/pty/tmux.test.ts src/mux/harnesses/claude-code.test.ts src/mux/harnesses/codex.test.ts src/mux/harnesses/daemon-agents.test.ts",
+    "test:mux": "tsx --test \"src/mux/**/*.test.ts\"",
     "mux": "tsx src/cli.ts mux"
   },
   "devDependencies": {

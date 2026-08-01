@@ -6,10 +6,13 @@
  * MuxAgentEvents. There is no vendor SDK to import lazily -- the CLI is
  * installed on the sandbox via npm.
  *
- * Auth: CODEX_API_KEY in the process env (honored by `codex exec`); the
- * key is never placed in argv. Codex's own Landlock sandbox fails inside
- * containers, so runs pass --dangerously-bypass-approvals-and-sandbox;
- * the surrounding sandbox is the security boundary.
+ * Auth: resolved by ../upstreams.ts. Natively that is CODEX_API_KEY in the
+ * process env (honored by `codex exec`); an OpenAI-Responses gateway
+ * instead arrives as `-c model_providers.<id>.*` overrides plus that
+ * gateway's own credential env var. No credential is ever placed in argv.
+ * Codex's own Landlock sandbox fails inside containers, so runs pass
+ * --dangerously-bypass-approvals-and-sandbox; the surrounding sandbox is
+ * the security boundary.
  *
  * Wire format (0.146 `--json`): thread.started / turn.started /
  * item.{started,updated,completed} / turn.completed / error, with item
@@ -20,12 +23,12 @@
 
 import { amNpmInstall, ensureNodeCommand, withAmNode } from "./node-runtime.js";
 import { tryParseJson, type MuxAgentEvent } from "../events.js";
-import {
-	MuxError,
-	type HarnessAdapter,
-	type HarnessCommand,
-	type HarnessRunOptions,
-	type UpstreamKeys,
+import { requireUpstream, type UpstreamSuccess } from "../upstreams.js";
+import type {
+	HarnessAdapter,
+	HarnessCommand,
+	HarnessRunOptions,
+	UpstreamKeys,
 } from "../types.js";
 
 const CODEX_PACKAGE = "@openai/codex";
@@ -34,6 +37,14 @@ const CODEX_VERSION = "0.146.0";
 /** POSIX single-quote escaping for values interpolated into commands. */
 function shq(value: string): string {
 	return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
+/**
+ * Quote only tokens that need it, so a logged command reads as the argv an
+ * operator would type -- `-c 'model_provider="x"'` rather than `'-c' '...'`.
+ */
+function shqIfNeeded(token: string): string {
+	return /^[A-Za-z0-9_./-]+$/.test(token) ? token : shq(token);
 }
 
 function toBase64(value: string): string {
@@ -54,16 +65,14 @@ function obj(value: unknown): Record<string, unknown> | undefined {
 		: undefined;
 }
 
-function requireOpenAiKey(keys: UpstreamKeys): string {
-	const key = keys.openai;
-	if (!key) {
-		throw new MuxError(
-			"missing_credentials",
-			"codex requires an OpenAI API key (keys.openai / OPENAI_API_KEY).",
-			{ harness: "codex" },
-		);
-	}
-	return key;
+/**
+ * Upstream resolution (native OpenAI key, else an OpenAI-Responses gateway)
+ * lives in ../upstreams.ts. A gateway arrives as `-c` config-override
+ * tokens declaring a named model provider, which are shell-quoted here
+ * because the whole invocation is a command string.
+ */
+function upstreamArgs(resolved: UpstreamSuccess): string[] {
+	return resolved.args.map(shqIfNeeded);
 }
 
 /**
@@ -236,11 +245,15 @@ function parseLineWith(state: TurnState, line: string): MuxAgentEvent[] {
 	}
 }
 
-function baseFlags(options: HarnessRunOptions): string[] {
+function baseFlags(
+	options: HarnessRunOptions,
+	configArgs: readonly string[],
+): string[] {
 	const flags = [
 		"--json",
 		"--skip-git-repo-check",
 		"--dangerously-bypass-approvals-and-sandbox",
+		...configArgs,
 	];
 	if (options.model) flags.push("-m", shq(options.model));
 	if (options.cwd) flags.push("-C", shq(options.cwd));
@@ -272,47 +285,60 @@ export const codexHarness: HarnessAdapter = {
 	/**
 	 * Headless streamed run. The prompt travels base64-encoded through the
 	 * shell (no quoting bugs) and is read by codex from stdin (trailing
-	 * "-"). CODEX_API_KEY rides in env, never argv. When sessionId is set
-	 * the run resumes via `codex exec resume <id>` with the same flags.
+	 * "-"). Credentials ride in env, never argv. When sessionId is set the
+	 * run resumes via `codex exec resume <id>` with the same flags.
+	 *
+	 * On a gateway upstream, `options.model` must be a gateway slug
+	 * (`openai/gpt-5.3-codex`, `anthropic/claude-sonnet-5`); codex's own
+	 * bare default model id is not a route either gateway can resolve.
 	 */
 	runCommand(
 		prompt: string,
 		keys: UpstreamKeys,
 		options: HarnessRunOptions = {},
 	): HarnessCommand {
-		const key = requireOpenAiKey(keys);
+		const resolved = requireUpstream("codex", keys);
 		const exec = options.sessionId
 			? `codex exec resume ${shq(options.sessionId)}`
 			: "codex exec";
+		const flags = baseFlags(options, upstreamArgs(resolved)).join(" ");
 		const command = withAmNode(
-			`echo ${toBase64(prompt)} | base64 -d | ${exec} ${baseFlags(options).join(" ")} -`,
+			`echo ${toBase64(prompt)} | base64 -d | ${exec} ${flags} -`,
 		);
-		return { command, env: { CODEX_API_KEY: key } };
+		return { command, env: resolved.env };
 	},
 
 	/**
 	 * Interactive TUI for PTY sessions. `codex` (unlike `codex exec`) does
-	 * not honor CODEX_API_KEY, so the wrapper first performs a one-shot
-	 * `codex login --with-api-key` reading the key from stdin via the env
-	 * var -- the key still never appears in argv. Login failures are
-	 * swallowed so the TUI can fall back to its own auth prompt.
+	 * not honor CODEX_API_KEY, so on the native upstream the wrapper first
+	 * performs a one-shot `codex login --with-api-key` reading the key from
+	 * stdin via the env var -- the key still never appears in argv. Login
+	 * failures are swallowed so the TUI can fall back to its own auth
+	 * prompt.
+	 *
+	 * A gateway upstream skips that login entirely: it authenticates from
+	 * the provider's env_key, and storing a gateway token as an OpenAI
+	 * credential would leave the TUI logged in against the wrong upstream.
 	 */
 	interactiveCommand(
 		keys: UpstreamKeys,
 		options: HarnessRunOptions = {},
 	): HarnessCommand {
-		const key = requireOpenAiKey(keys);
-		const parts = ["codex", "--dangerously-bypass-approvals-and-sandbox"];
+		const resolved = requireUpstream("codex", keys);
+		const parts = [
+			"codex",
+			"--dangerously-bypass-approvals-and-sandbox",
+			...upstreamArgs(resolved),
+		];
 		if (options.model) parts.push("-m", shq(options.model));
 		if (options.cwd) parts.push("-C", shq(options.cwd));
 		if (options.extraArgs?.length) parts.push(...options.extraArgs);
-		const script = withAmNode(
-			`printf %s "$CODEX_API_KEY" | codex login --with-api-key >/dev/null 2>&1 || true; exec ${parts.join(" ")}`,
-		);
-		return {
-			command: `bash -lc ${shq(script)}`,
-			env: { CODEX_API_KEY: key, OPENAI_API_KEY: key },
-		};
+		const login =
+			resolved.chosen === "openai"
+				? `printf %s "$CODEX_API_KEY" | codex login --with-api-key >/dev/null 2>&1 || true; `
+				: "";
+		const script = withAmNode(`${login}exec ${parts.join(" ")}`);
+		return { command: `bash -lc ${shq(script)}`, env: resolved.env };
 	},
 
 	parseLine(line: string): MuxAgentEvent[] {

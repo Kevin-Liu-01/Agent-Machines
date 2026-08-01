@@ -1,5 +1,7 @@
 /**
- * Tests for the daemon-style harness adapters: openclaw + hermes.
+ * Tests for the openclaw harness adapter. (hermes has its own suite in
+ * hermes.test.ts -- keeping duplicate hermes assertions here is what let
+ * them drift out of date.)
  *
  * Run: npx tsx --test src/mux/harnesses/daemon-agents.test.ts
  */
@@ -9,6 +11,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { Buffer } from "node:buffer";
 
+import { MuxError } from "../types.js";
 import { hermesHarness } from "./hermes.js";
 import { openclawHarness } from "./openclaw.js";
 
@@ -128,14 +131,54 @@ test("openclaw runCommand wires keys and round-trips the prompt via base64", () 
 	assert.equal(decodePromptFromCommand(command), prompt);
 });
 
-test("openclaw runCommand omits absent keys and honors cwd/extraArgs", () => {
-	const { command, env } = openclawHarness.runCommand("hi", {}, {
+test("openclaw runCommand honors cwd/extraArgs", () => {
+	const { command } = openclawHarness.runCommand("hi", { anthropic: "sk-ant" }, {
 		cwd: "/work dir",
 		extraArgs: ["--verbose", "--max-turns", "3"],
 	});
-	assert.deepEqual(env, {});
 	assert.ok(command.startsWith("cd '/work dir' && "));
 	assert.ok(command.includes("--verbose --max-turns 3"));
+});
+
+test("openclaw runCommand fails closed with no upstream key at all", () => {
+	// Previously this produced an empty env and deferred the failure to the
+	// sandbox, after create and install had already been paid for.
+	assert.throws(
+		() => openclawHarness.runCommand("hi", {}),
+		(error: unknown) =>
+			error instanceof MuxError && error.kind === "missing_credentials",
+	);
+	assert.throws(
+		() => openclawHarness.interactiveCommand({}),
+		(error: unknown) =>
+			error instanceof MuxError && error.kind === "missing_credentials",
+	);
+});
+
+test("openclaw runs on a gateway-only config, no base URL involved", () => {
+	// Both gateways are bundled provider plugins keyed on the plain
+	// credential var, so the model ref is what names the provider.
+	const gateway = openclawHarness.runCommand("hi", { aiGateway: "vck_test" }, {
+		model: "vercel-ai-gateway/anthropic/claude-opus-4.6",
+	});
+	assert.deepEqual(gateway.env, { AI_GATEWAY_API_KEY: "vck_test" });
+	assert.ok(
+		gateway.command.includes("--model 'vercel-ai-gateway/anthropic/claude-opus-4.6'"),
+	);
+	assert.ok(!gateway.command.includes("BASE_URL"));
+
+	const router = openclawHarness.runCommand("hi", { openrouter: "sk-or-test" }, {
+		model: "openrouter/auto",
+	});
+	assert.deepEqual(router.env, { OPENROUTER_API_KEY: "sk-or-test" });
+	assert.ok(router.command.includes("--model 'openrouter/auto'"));
+});
+
+test("openclaw omits --model when none is requested, and --json stays last", () => {
+	const { command } = openclawHarness.runCommand("hi", { anthropic: "sk-ant" });
+	assert.ok(!command.includes("--model"));
+	// The verified-green shape from the live matrix must not drift.
+	assert.ok(/--json;? \}$/.test(command), `--json must close the invocation: ${command}`);
 });
 
 test("openclaw installCommand guards node engines before npm install", () => {
@@ -186,70 +229,6 @@ test("openclaw installCommand guards node engines before npm install", () => {
 		runGuard("23.5.0").stderr.includes("23.5.0"),
 		"failure message includes the found version",
 	);
-});
-
-test("hermes wraps plain output lines as text deltas", () => {
-	assert.deepEqual(hermesHarness.parseLine("hello world"), [
-		{ type: "text", delta: "hello world\n" },
-	]);
-	// JSON-looking lines are still plain text to hermes.
-	assert.deepEqual(hermesHarness.parseLine('{"x":1}'), [
-		{ type: "text", delta: '{"x":1}\n' },
-	]);
-	assert.deepEqual(hermesHarness.parseLine(""), []);
-	assert.deepEqual(hermesHarness.parseLine("   "), []);
-});
-
-test("hermes runCommand wires keys, PATH prefix and base64 prompt", () => {
-	const prompt = "review $HOME and `git status`\nplease";
-	const { command, env } = hermesHarness.runCommand(prompt, {
-		anthropic: "sk-ant-test",
-		openai: "sk-oai-test",
-	});
-	assert.equal(env.OPENAI_API_KEY, "sk-oai-test");
-	assert.equal(env.ANTHROPIC_API_KEY, "sk-ant-test");
-	assert.ok(command.startsWith(`PATH="$HOME/.local/bin:$PATH" hermes chat --quiet -q`));
-	assert.equal(decodePromptFromCommand(command), prompt);
-});
-
-test("hermes runCommand omits absent keys and honors cwd/extraArgs", () => {
-	const { command, env } = hermesHarness.runCommand("hi", { openai: "only" }, {
-		cwd: "/tmp/it's here",
-		extraArgs: ["--temperature", "0"],
-	});
-	assert.deepEqual(env, { OPENAI_API_KEY: "only" });
-	assert.ok(command.startsWith(`cd '/tmp/it'\\''s here' && `));
-	assert.ok(command.includes("--temperature 0"));
-});
-
-test("hermes install/probe commands are single-line and idempotent", () => {
-	const install = hermesHarness.installCommand();
-	assert.ok(!install.includes("\n"), "install must be a single line");
-	assert.ok(install.startsWith("command -v hermes"), "install is guarded (idempotent)");
-	assert.ok(install.includes('test -x "$HOME/.local/bin/hermes"'));
-	assert.ok(
-		install.includes(
-			"curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash",
-		),
-	);
-
-	const probe = hermesHarness.isInstalledCommand();
-	assert.ok(probe.includes("command -v hermes"));
-	assert.ok(probe.includes('test -x "$HOME/.local/bin/hermes"'));
-	assert.ok(hermesHarness.versionCommand().includes("hermes --version"));
-});
-
-test("interactive commands carry env and PATH where needed", () => {
-	const claw = openclawHarness.interactiveCommand({ anthropic: "sk-ant" });
-	assert.equal(
-		claw.command,
-		'{ export PATH="$HOME/.agent-machines/node/bin:$HOME/.agent-machines/pkgs/node_modules/.bin:$PATH"; openclaw; }',
-	);
-	assert.deepEqual(claw.env, { ANTHROPIC_API_KEY: "sk-ant" });
-
-	const hermes = hermesHarness.interactiveCommand({ openai: "sk-oai" });
-	assert.equal(hermes.command, `PATH="$HOME/.local/bin:$PATH" hermes`);
-	assert.deepEqual(hermes.env, { OPENAI_API_KEY: "sk-oai" });
 });
 
 test("parseLine never throws on adversarial input", () => {
@@ -354,4 +333,17 @@ test("packageNameOf keeps scopes and strips versions", () => {
 	assert.equal(packageNameOf("@anthropic-ai/claude-code@2.1.220"), "@anthropic-ai/claude-code");
 	assert.equal(packageNameOf("openclaw"), "openclaw");
 	assert.equal(packageNameOf("@scope/pkg"), "@scope/pkg");
+});
+
+test("openclaw interactive command carries env and the bootstrapped PATH", () => {
+	// hermes coverage lives in hermes.test.ts; keeping a second copy here is
+	// what let these assertions drift out of date once already.
+	const claw = openclawHarness.interactiveCommand({ anthropic: "sk-ant" });
+	assert.match(
+		claw.command,
+		/PATH="\$HOME\/\.agent-machines\/node\/bin/,
+		"the TUI must see the bootstrapped node, not the image's",
+	);
+	assert.match(claw.command, /openclaw/);
+	assert.equal(claw.env.ANTHROPIC_API_KEY, "sk-ant");
 });

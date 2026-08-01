@@ -12,6 +12,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
+import type { SubstrateHealthSnapshot } from "./health.js";
 import type { HarnessKind, SubstrateKind } from "./types.js";
 
 export type RememberedMachine = {
@@ -23,6 +24,13 @@ export type RememberedMachine = {
 
 export type MuxState = {
 	machines: Record<string, RememberedMachine>;
+	/**
+	 * Circuit-breaker samples, so a substrate that is failing stays
+	 * de-prioritized for the next process too. Optional because older state
+	 * files predate it and a missing breaker must degrade to "assume
+	 * healthy", never to a crash.
+	 */
+	health?: SubstrateHealthSnapshot;
 };
 
 function statePath(): string {
@@ -36,7 +44,7 @@ export function readMuxState(): MuxState {
 	try {
 		const raw = readFileSync(statePath(), "utf8");
 		const parsed = JSON.parse(raw) as MuxState;
-		return { machines: parsed.machines ?? {} };
+		return { machines: parsed.machines ?? {}, health: parsed.health };
 	} catch {
 		return { machines: {} };
 	}
@@ -63,4 +71,21 @@ export function forgetMachine(name: string): void {
 		delete state.machines[name];
 		writeMuxState(state);
 	}
+}
+
+/**
+ * Persist the circuit-breaker snapshot.
+ *
+ * Read-modify-write like the machine writers above, so a health save keeps
+ * whatever machines another process recorded. Cross-process health samples
+ * are still last-writer-wins: two processes probing different substrates
+ * concurrently can lose one another's samples. That is acceptable for a
+ * breaker (it re-learns from the next outcome, and losing a sample only
+ * delays opening a circuit) and is not acceptable for machines, which is
+ * why those have their own writers.
+ */
+export function saveHealth(snapshot: SubstrateHealthSnapshot): void {
+	const state = readMuxState();
+	state.health = snapshot;
+	writeMuxState(state);
 }

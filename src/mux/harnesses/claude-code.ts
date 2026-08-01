@@ -6,6 +6,9 @@
  *
  *   install     -- global npm install, gated on Node >= 22 (single-line
  *                  shell guard; the CLI hard-requires Node 22).
+ *   auth        -- delegated to ../upstreams.ts: a native Anthropic key, or
+ *                  an Anthropic-Messages-compatible gateway (Vercel AI
+ *                  Gateway, OpenRouter) via ANTHROPIC_BASE_URL.
  *   run         -- headless `claude -p --output-format stream-json`,
  *                  prompt delivered via stdin as base64 to sidestep
  *                  shell quoting entirely (same pattern as
@@ -23,12 +26,12 @@
 import { amNpmInstall, ensureNodeCommand, withAmNode } from "./node-runtime.js";
 import { Buffer } from "node:buffer";
 import { tryParseJson, type MuxAgentEvent } from "../events.js";
-import {
-	MuxError,
-	type HarnessAdapter,
-	type HarnessCommand,
-	type HarnessRunOptions,
-	type UpstreamKeys,
+import { requireUpstream, shellShadowExports } from "../upstreams.js";
+import type {
+	HarnessAdapter,
+	HarnessCommand,
+	HarnessRunOptions,
+	UpstreamKeys,
 } from "../types.js";
 
 const CLAUDE_CODE_PACKAGE = "@anthropic-ai/claude-code";
@@ -49,19 +52,22 @@ function shq(value: string): string {
 	return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
-function requireAnthropicEnv(keys: UpstreamKeys): Record<string, string> {
-	if (!keys.anthropic) {
-		throw new MuxError(
-			"missing_credentials",
-			"claude-code requires an Anthropic API key (keys.anthropic / ANTHROPIC_API_KEY).",
-			{ harness: "claude-code" },
-		);
-	}
+/**
+ * Upstream resolution lives in ../upstreams.ts, which also handles the
+ * gateway case: a native Anthropic key wins, and an aiGateway/openrouter
+ * key becomes ANTHROPIC_BASE_URL + ANTHROPIC_AUTH_TOKEN with an emptied
+ * ANTHROPIC_API_KEY. `prelude` re-exports the emptied key inside the
+ * command, because an empty env value is the one a substrate transport is
+ * most likely to drop.
+ */
+function upstreamFor(keys: UpstreamKeys): {
+	env: Record<string, string>;
+	prelude: string;
+} {
+	const resolved = requireUpstream("claude-code", keys);
 	return {
-		ANTHROPIC_API_KEY: keys.anthropic,
-		// Required: --dangerously-skip-permissions refuses to run as root
-		// inside sandboxes unless IS_SANDBOX=1 is set.
-		IS_SANDBOX: "1",
+		env: resolved.env,
+		prelude: shellShadowExports(resolved.env),
 	};
 }
 
@@ -256,11 +262,11 @@ export const claudeCodeHarness: HarnessAdapter = {
 		keys: UpstreamKeys,
 		options: HarnessRunOptions = {},
 	): HarnessCommand {
-		const env = requireAnthropicEnv(keys);
+		const { env, prelude } = upstreamFor(keys);
 		// Prompt travels on stdin as base64 so no prompt content ever
 		// touches shell parsing (quotes, backticks, $(), newlines).
 		const b64 = Buffer.from(prompt, "utf8").toString("base64");
-		const pipeline = withAmNode(`echo ${b64} | base64 -d | claude ${buildRunArgs(options).join(" ")}`);
+		const pipeline = withAmNode(`${prelude}echo ${b64} | base64 -d | claude ${buildRunArgs(options).join(" ")}`);
 		const command = options.cwd
 			? `cd ${shq(options.cwd)} && ${pipeline}`
 			: pipeline;
@@ -271,14 +277,16 @@ export const claudeCodeHarness: HarnessAdapter = {
 		keys: UpstreamKeys,
 		options: HarnessRunOptions = {},
 	): HarnessCommand {
-		const env = requireAnthropicEnv(keys);
+		const { env, prelude } = upstreamFor(keys);
 		const args: string[] = [];
 		if (options.model) args.push("--model", shq(options.model));
 		if (options.sessionId) args.push("--resume", shq(options.sessionId));
 		if (options.extraArgs && options.extraArgs.length > 0) {
 			args.push(...options.extraArgs);
 		}
-		const invocation = withAmNode(args.length > 0 ? `claude ${args.join(" ")}` : "claude");
+		const invocation = withAmNode(
+			args.length > 0 ? `${prelude}claude ${args.join(" ")}` : `${prelude}claude`,
+		);
 		const command = options.cwd
 			? `cd ${shq(options.cwd)} && ${invocation}`
 			: invocation;

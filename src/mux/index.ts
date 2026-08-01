@@ -4,7 +4,6 @@ export {
 	createMux,
 	type MuxCreateOptions,
 	type MuxRunOptions,
-	type RouteAttempt,
 	type RunStream,
 } from "./router.js";
 export {

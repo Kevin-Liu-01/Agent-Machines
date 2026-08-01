@@ -20,6 +20,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
 import { resolveMuxConfig, type MuxConfig, type MuxConfigInput } from "./config.js";
+import { SubstrateHealth } from "./health.js";
 import type { MuxAgentEvent, RunResult } from "./events.js";
 import {
 	MuxError,
@@ -74,6 +75,9 @@ type RouteAttemptLike = {
 	outcome: "ok" | "skipped" | "failed";
 	reason?: string;
 	durationMs?: number;
+	health?: "healthy" | "degraded" | "open";
+	constraint?: string;
+	estimatedUsd?: number;
 };
 
 type RunStreamLike = AsyncIterable<MuxAgentEvent> & {
@@ -98,14 +102,17 @@ type MuxMachineLike = {
 	readonly substrate: SubstrateKind;
 	readonly agent: HarnessKind;
 	ensureInstalled(options?: { timeoutMs?: number; pollMs?: number }): Promise<void>;
-	run(prompt: string): RunStreamLike;
+	run(prompt: string, options?: { runKey?: string }): RunStreamLike;
 	destroy(): Promise<void>;
 };
 
 type MuxLike = {
 	readonly config: MuxConfig;
 	registerProvider(kind: SubstrateKind, provider: SandboxProvider): void;
-	routeFor(sandbox?: SubstrateKind | "auto"): {
+	routeFor(
+		sandbox?: SubstrateKind | "auto",
+		options?: { constraints?: Record<string, unknown>; optimize?: "cost" },
+	): {
 		candidates: SubstrateKind[];
 		skipped: RouteAttemptLike[];
 	};
@@ -114,7 +121,10 @@ type MuxLike = {
 };
 
 type RouterModule = {
-	createMux(config?: string | MuxConfigInput): MuxLike;
+	createMux(
+		config?: string | MuxConfigInput,
+		options?: { health?: SubstrateHealth; persistHealth?: boolean },
+	): MuxLike;
 	MuxMachine: new (input: {
 		sandbox: SandboxHandle;
 		harness: HarnessAdapter;
@@ -130,6 +140,15 @@ type HarnessesModule = {
 };
 
 type Loaded<T> = { module: T | null; error?: string };
+
+/**
+ * Every mux in this suite gets its own circuit breaker. Without that, a
+ * transient failure recorded by one test opens a circuit that reorders the
+ * route in a later one, and assertions start depending on test order.
+ */
+function makeMux(router: RouterModule, config: MuxConfigInput): MuxLike {
+	return router.createMux(config, { health: new SubstrateHealth(), persistHealth: false });
+}
 
 async function importOptional<T>(specifier: string): Promise<Loaded<T>> {
 	try {
@@ -372,7 +391,7 @@ test("routeFor skips uncredentialed providers and orders primary then backups", 
 		return;
 	}
 
-	const mux = router.createMux({
+	const mux = makeMux(router, {
 		keys: { anthropic: "test-anthropic-key" },
 		sandboxes: { primary: "e2b", backups: ["sprites", "vercel", "dedalus"] },
 	});
@@ -411,7 +430,7 @@ test("create() fails over from a transient primary to the backup", async (t) => 
 		return;
 	}
 
-	const mux = router.createMux({
+	const mux = makeMux(router, {
 		keys: { anthropic: "test-anthropic-key" },
 		sandboxes: { primary: "e2b", backups: ["sprites"] },
 	});
@@ -439,7 +458,7 @@ test("create() does not retry a missing_credentials error from a provider", asyn
 		return;
 	}
 
-	const mux = router.createMux({
+	const mux = makeMux(router, {
 		keys: { anthropic: "test-anthropic-key" },
 		sandboxes: { primary: "e2b", backups: ["sprites"] },
 	});
@@ -547,7 +566,7 @@ test("machine.run() streams normalized events end-to-end", async (t) => {
 	const provider = new FakeProvider("e2b");
 	provider.handleFactory = () => handle;
 
-	const mux = router.createMux({
+	const mux = makeMux(router, {
 		keys: { anthropic: "test-anthropic-key" },
 		sandboxes: { primary: "e2b", backups: [] },
 	});
@@ -677,7 +696,7 @@ test("named create remembers the machine and connect() reads it back", async (t)
 		return;
 	}
 
-	const mux = router.createMux({
+	const mux = makeMux(router, {
 		keys: { anthropic: "test-anthropic-key" },
 		sandboxes: { primary: "e2b", backups: [] },
 	});
@@ -719,40 +738,257 @@ test("named create remembers the machine and connect() reads it back", async (t)
 	await assert.rejects(mux.connect(name), isMuxError("fatal", /No remembered machine/));
 });
 
-test("a gateway-only config cannot satisfy a harness that needs a native key", async (t) => {
+test("a gateway-only config routes when the gateway serves the wire format", async (t) => {
 	const { module: router, error } = await loadRouter();
 	if (!router) {
 		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
 		return;
 	}
-	// openclaw/hermes declare requiredUpstream "any", but the adapters only
-	// inject ANTHROPIC_API_KEY / OPENAI_API_KEY, so a gateway key alone is
-	// not usable and must be rejected before a sandbox is provisioned.
-	//
-	// Config resolution falls back to the ambient environment, so a
-	// developer machine with real keys exported would otherwise satisfy the
-	// gate and hide the regression. Clear them for this test only.
-	const savedAnthropic = process.env.ANTHROPIC_API_KEY;
-	const savedOpenai = process.env.OPENAI_API_KEY;
+	// This test previously asserted the opposite. The native-key-only rule
+	// was wrong: OpenRouter serves an Anthropic-Messages endpoint, verified
+	// live (docs/UPSTREAMS.md), so an openrouter key genuinely drives
+	// claude-code. Config resolution falls back to the ambient environment,
+	// so native keys are cleared to make the gateway path the only one.
+	const saved = {
+		anthropic: process.env.ANTHROPIC_API_KEY,
+		openai: process.env.OPENAI_API_KEY,
+	};
 	delete process.env.ANTHROPIC_API_KEY;
 	delete process.env.OPENAI_API_KEY;
 	t.after(() => {
-		if (savedAnthropic !== undefined) process.env.ANTHROPIC_API_KEY = savedAnthropic;
-		if (savedOpenai !== undefined) process.env.OPENAI_API_KEY = savedOpenai;
+		if (saved.anthropic !== undefined) process.env.ANTHROPIC_API_KEY = saved.anthropic;
+		if (saved.openai !== undefined) process.env.OPENAI_API_KEY = saved.openai;
 	});
 
 	const provider = new FakeProvider("e2b");
-	const mux = router.createMux({
-		keys: { aiGateway: "vck_gateway_only" },
+	const mux = makeMux(router, {
+		keys: { openrouter: "sk-or-v1-test" },
+		sandboxes: { primary: "e2b", backups: [] },
+	});
+	mux.registerProvider("e2b", provider);
+
+	const machine = await mux.create({ agent: "claude-code", install: false });
+	assert.equal(machine.substrate, "e2b");
+	assert.equal(provider.createCalls, 1);
+
+	// The harness must receive the gateway base URL, not a native key.
+	const { env } = machine.harness.runCommand("hi", { openrouter: "sk-or-v1-test" });
+	assert.equal(env.ANTHROPIC_BASE_URL, "https://openrouter.ai/api");
+	assert.equal(env.ANTHROPIC_AUTH_TOKEN, "sk-or-v1-test");
+});
+
+test("a harness with no usable upstream still fails before provisioning", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	const saved = {
+		anthropic: process.env.ANTHROPIC_API_KEY,
+		openai: process.env.OPENAI_API_KEY,
+	};
+	delete process.env.ANTHROPIC_API_KEY;
+	delete process.env.OPENAI_API_KEY;
+	t.after(() => {
+		if (saved.anthropic !== undefined) process.env.ANTHROPIC_API_KEY = saved.anthropic;
+		if (saved.openai !== undefined) process.env.OPENAI_API_KEY = saved.openai;
+	});
+
+	const provider = new FakeProvider("e2b");
+	const mux = makeMux(router, {
+		keys: {},
 		sandboxes: { primary: "e2b", backups: [] },
 	});
 	mux.registerProvider("e2b", provider);
 	await assert.rejects(
-		mux.create({ agent: "openclaw", install: false }),
+		mux.create({ agent: "claude-code", install: false }),
 		(thrown: unknown) =>
-			thrown instanceof MuxError &&
-			thrown.kind === "missing_credentials" &&
-			/native Anthropic or OpenAI key/.test(thrown.message),
+			thrown instanceof MuxError && thrown.kind === "missing_credentials",
 	);
 	assert.equal(provider.createCalls, 0, "no sandbox may be provisioned");
+});
+
+// ---------------------------------------------------------------------------
+// Wiring tests. The modules below have their own unit suites; these assert the
+// router actually CALLS them, which is the part that was dead code before.
+// ---------------------------------------------------------------------------
+
+test("an open circuit sends a lane to the back of the route", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	const health = new SubstrateHealth();
+	const mux = router.createMux(
+		{
+			keys: { anthropic: "k" },
+			sandboxes: { primary: "e2b", backups: ["sprites"] },
+		},
+		{ health, persistHealth: false },
+	);
+	mux.registerProvider("e2b", new FakeProvider("e2b"));
+	mux.registerProvider("sprites", new FakeProvider("sprites"));
+
+	assert.deepEqual(mux.routeFor().candidates, ["e2b", "sprites"]);
+
+	// Trip e2b's breaker with transport failures.
+	for (let i = 0; i < 12; i += 1) health.record("e2b", "transient", 10);
+	assert.equal(health.state("e2b"), "open");
+	assert.deepEqual(
+		mux.routeFor().candidates,
+		["sprites", "e2b"],
+		"an open lane is demoted, not removed -- a global blip must not make create() impossible",
+	);
+});
+
+test("a transport failure feeds the breaker but a credential failure does not", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	const health = new SubstrateHealth();
+	const mux = router.createMux(
+		{ keys: { anthropic: "k" }, sandboxes: { primary: "e2b", backups: ["sprites"] } },
+		{ health, persistHealth: false },
+	);
+	const e2b = new FakeProvider("e2b");
+	e2b.createError = new MuxError("transient", "e2b had a wobble");
+	mux.registerProvider("e2b", e2b);
+	mux.registerProvider("sprites", new FakeProvider("sprites"));
+
+	const machine = await mux.create({ install: false });
+	assert.equal(machine.substrate, "sprites");
+	assert.ok(
+		health.stats("e2b").failures >= 1,
+		"a transient provisioning error is a health signal",
+	);
+
+	// A credential failure says nothing about substrate health.
+	const health2 = new SubstrateHealth();
+	const mux2 = router.createMux(
+		{ keys: { anthropic: "k" }, sandboxes: { primary: "e2b", backups: [] } },
+		{ health: health2, persistHealth: false },
+	);
+	const denied = new FakeProvider("e2b");
+	denied.createError = new MuxError("missing_credentials", "bad key");
+	mux2.registerProvider("e2b", denied);
+	await assert.rejects(mux2.create({ install: false }));
+	assert.equal(
+		health2.stats("e2b").failures,
+		0,
+		"a credential error must not open a circuit",
+	);
+});
+
+test("constraints skip a lane and name the dimension that failed", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	const mux = makeMux(router, {
+		keys: { anthropic: "k" },
+		sandboxes: { primary: "vercel", backups: ["e2b"] },
+	});
+	// FakeProvider declares pty: "none"; ask for a native PTY and both lanes
+	// must be skipped with the reason naming the constraint.
+	mux.registerProvider("vercel", new FakeProvider("vercel"));
+	mux.registerProvider("e2b", new FakeProvider("e2b"));
+	const route = mux.routeFor("auto", { constraints: { pty: "native" } });
+	assert.equal(route.candidates.length, 0);
+	assert.ok(route.skipped.length >= 1);
+	const skip = route.skipped[0];
+	assert.equal(skip.outcome, "skipped");
+	assert.equal(skip.constraint, "pty");
+	assert.match(skip.reason ?? "", /pty/i);
+});
+
+test("a keyed run replays instead of executing the agent twice", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	const { module: harnesses } = await loadHarnesses();
+	if (!harnesses) {
+		t.skip("harness registry not importable");
+		return;
+	}
+	const tracesDir = mkdtempSync(join(tmpdir(), "am-mux-traces-"));
+	const savedTraces = process.env.AGENT_MACHINES_MUX_TRACES;
+	process.env.AGENT_MACHINES_MUX_TRACES = tracesDir;
+	t.after(() => {
+		if (savedTraces === undefined) delete process.env.AGENT_MACHINES_MUX_TRACES;
+		else process.env.AGENT_MACHINES_MUX_TRACES = savedTraces;
+		rmSync(tracesDir, { recursive: true, force: true });
+	});
+
+	const handle = new FakeSandboxHandle("e2b-idem", "e2b");
+	handle.streamScript = [
+		{
+			type: "stdout",
+			data: `${JSON.stringify({ type: "result", subtype: "success", is_error: false, result: "once", session_id: "s1", total_cost_usd: 0.01, duration_ms: 5 })}\n`,
+		},
+		{ type: "exit", exitCode: 0 },
+	];
+	const provider = new FakeProvider("e2b");
+	provider.handleFactory = () => handle;
+	const mux = makeMux(router, {
+		keys: { anthropic: "k" },
+		sandboxes: { primary: "e2b", backups: [] },
+	});
+	mux.registerProvider("e2b", provider);
+	const machine = await mux.create({ agent: "claude-code", install: false });
+
+	const runKey = "job-42";
+	const first = await machine.run("do it", { runKey }).result();
+	assert.equal(first.text, "once");
+	assert.equal(handle.streamCalls.length, 1);
+
+	// Same key again: the stored result comes back and the agent is NOT re-run.
+	const second = await machine.run("do it", { runKey }).result();
+	assert.equal(second.text, "once");
+	assert.equal(
+		handle.streamCalls.length,
+		1,
+		"a replayed run must not execute the agent a second time",
+	);
+});
+
+test("every run leaves a trace, keyed or not", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	const dir = mkdtempSync(join(tmpdir(), "am-mux-traces2-"));
+	const saved = process.env.AGENT_MACHINES_MUX_TRACES;
+	process.env.AGENT_MACHINES_MUX_TRACES = dir;
+	t.after(() => {
+		if (saved === undefined) delete process.env.AGENT_MACHINES_MUX_TRACES;
+		else process.env.AGENT_MACHINES_MUX_TRACES = saved;
+		rmSync(dir, { recursive: true, force: true });
+	});
+	const traces = await import("./traces.js");
+
+	const handle = new FakeSandboxHandle("e2b-trace", "e2b");
+	handle.streamScript = [{ type: "exit", exitCode: 0 }];
+	const provider = new FakeProvider("e2b");
+	provider.handleFactory = () => handle;
+	const mux = makeMux(router, {
+		keys: { anthropic: "k" },
+		sandboxes: { primary: "e2b", backups: [] },
+	});
+	mux.registerProvider("e2b", provider);
+	const machine = await mux.create({ agent: "claude-code", install: false });
+	await machine.run("unkeyed").result();
+
+	const written = traces.readTraces({ limit: 10 });
+	assert.equal(written.length, 1, "an unkeyed run is still observable");
+	assert.equal(written[0].substrate, "e2b");
+	assert.equal(written[0].harness, "claude-code");
+	assert.ok(written[0].runKey.startsWith("run-claude-code-e2b-"));
+	assert.ok(written[0].attempts.length >= 1, "the placement decision is recorded");
 });
