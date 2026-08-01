@@ -4,6 +4,7 @@
  * Run: npx tsx --test src/mux/harnesses/daemon-agents.test.ts
  */
 
+import { packageNameOf } from "./node-runtime.js";
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Buffer } from "node:buffer";
@@ -333,4 +334,24 @@ test("openclaw newTurnParser resyncs instead of wedging on unbalanced output", (
 	);
 	assert.equal(events.length, 2, "parser recovered after the wedge guard");
 	assert.deepEqual(events[0], { type: "text", delta: "back" });
+});
+
+test("npm installs clear a partial tree for that package only", () => {
+	const install = openclawHarness.installCommand();
+	// A killed or hung earlier attempt leaves a tree npm cannot always
+	// replace (ENOTEMPTY on rmdir), and sprites keep their filesystem, so
+	// the failure would persist forever without this.
+	assert.match(install, /rm -rf "\$HOME\/\.agent-machines\/pkgs\/node_modules\/openclaw"/);
+	// Sibling harnesses on the same sandbox must survive.
+	assert.ok(
+		!/rm -rf "\$HOME\/\.agent-machines\/pkgs\/node_modules"/.test(install),
+		"must not wipe the whole package tree",
+	);
+});
+
+test("packageNameOf keeps scopes and strips versions", () => {
+	assert.equal(packageNameOf("openclaw@2026.7.1-2"), "openclaw");
+	assert.equal(packageNameOf("@anthropic-ai/claude-code@2.1.220"), "@anthropic-ai/claude-code");
+	assert.equal(packageNameOf("openclaw"), "openclaw");
+	assert.equal(packageNameOf("@scope/pkg"), "@scope/pkg");
 });

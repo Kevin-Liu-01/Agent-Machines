@@ -87,5 +87,21 @@ export function withAmNode(command: string): string {
  * guarantees on PATH, with no sudo and no global state.
  */
 export function amNpmInstall(spec: string): string {
-	return `{ export PATH="${AM_BIN_PATHS}:$PATH"; mkdir -p "${AM_PKG_DIR}"; npm install --prefix "${AM_PKG_DIR}" --no-fund --no-audit ${spec}; }`;
+	// Clear any existing tree for this package first. Installs only run
+	// after the probe says the CLI is unusable, so whatever is there is a
+	// partial tree from a killed or hung earlier attempt -- and npm cannot
+	// always replace one: on Sprites a leftover install failed with
+	// `ENOTEMPTY: directory not empty, rmdir .../@mistralai/mistralai/esm/
+	// hooks` (exit 217), which persists forever because sprites keep their
+	// filesystem across runs. Only this package's directory is removed, so
+	// a sandbox hosting several harnesses keeps the others.
+	const pkgDir = `${AM_PKG_DIR}/node_modules/${packageNameOf(spec)}`;
+	return `{ export PATH="${AM_BIN_PATHS}:$PATH"; mkdir -p "${AM_PKG_DIR}"; rm -rf "${pkgDir}"; npm install --prefix "${AM_PKG_DIR}" --no-fund --no-audit ${spec}; }`;
+}
+
+/** `openclaw@1.2.3` -> `openclaw`; `@scope/pkg@1.2.3` -> `@scope/pkg`. */
+export function packageNameOf(spec: string): string {
+	const at = spec.lastIndexOf("@");
+	// A leading @ is the scope marker, not a version separator.
+	return at > 0 ? spec.slice(0, at) : spec;
 }
