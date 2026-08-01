@@ -16,6 +16,10 @@
  *   wake     -> Sandbox.connect (auto-resumes a paused sandbox)
  *   public   -> https://<sbx.getHost(port)>
  *
+ * The three no-wake members (describe/remove/park) ride E2B's static
+ * control-plane API instead of a handle, because Sandbox.connect resumes: see
+ * each method for the endpoint it maps to.
+ *
  * State mapping: running -> ready, paused -> sleeping, missing -> destroyed.
  *
  * The SDK is imported lazily inside methods so unused substrates cost
@@ -36,6 +40,7 @@ import {
 	type PtyHandle,
 	type PtyOptions,
 	type SandboxCapabilities,
+	type SandboxDescription,
 	type SandboxHandle,
 	type SandboxInfo,
 	type SandboxProvider,
@@ -51,6 +56,17 @@ const importE2b = () => import("e2b");
 type E2bModule = Awaited<ReturnType<typeof importE2b>>;
 type E2bSandbox = import("e2b").Sandbox;
 type E2bSandboxInfo = import("e2b").SandboxInfo;
+
+/**
+ * The slice of the SDK this adapter drives, as a test seam.
+ *
+ * createE2bProvider takes an override so a suite can prove describe() and
+ * remove() never reach `Sandbox.connect` -- the call that resumes a paused
+ * sandbox. A positive "it returned a state" test cannot prove that, because
+ * connect() + handle.state() returns a state too, after waking and billing
+ * the machine. Production always resolves the real module.
+ */
+export type E2bSdk = Pick<E2bModule, "Sandbox">;
 
 const DEFAULT_EXEC_TIMEOUT_MS = 120_000;
 const DEFAULT_SANDBOX_TIMEOUT_MS = 300_000;
@@ -333,6 +349,7 @@ function createPushQueue<T>(): PushQueue<T> {
 }
 
 function createHandle(
+	sdk: () => Promise<E2bSdk>,
 	apiKey: string,
 	id: string,
 	initial: E2bSandbox | null,
@@ -346,7 +363,7 @@ function createHandle(
 		if (!connecting) {
 			connecting = (async () => {
 				try {
-					const { Sandbox } = await loadSdk();
+					const { Sandbox } = await sdk();
 					const sandbox = await Sandbox.connect(id, { apiKey });
 					cached = sandbox;
 					return sandbox;
@@ -571,7 +588,7 @@ function createHandle(
 			}
 		},
 		async state(): Promise<MachineState> {
-			const { Sandbox } = await loadSdk();
+			const { Sandbox } = await sdk();
 			try {
 				const info = await Sandbox.getInfo(id, { apiKey });
 				return mapState(info.state);
@@ -581,7 +598,7 @@ function createHandle(
 			}
 		},
 		async sleep(): Promise<void> {
-			const { Sandbox } = await loadSdk();
+			const { Sandbox } = await sdk();
 			try {
 				// Full memory snapshot: frozen processes thaw on wake, but all
 				// SDK streams and PTY connections die here. Callers must
@@ -599,7 +616,7 @@ function createHandle(
 			await attach();
 		},
 		async destroy(): Promise<void> {
-			const { Sandbox } = await loadSdk();
+			const { Sandbox } = await sdk();
 			invalidate();
 			try {
 				await Sandbox.kill(id, { apiKey });
@@ -622,8 +639,15 @@ function toSandboxInfo(item: E2bSandboxInfo): SandboxInfo {
 	};
 }
 
-export function createE2bProvider(creds: { apiKey?: string }): SandboxProvider {
+export function createE2bProvider(
+	creds: { apiKey?: string },
+	sdkOverride?: E2bSdk,
+): SandboxProvider {
 	const apiKey = creds.apiKey;
+
+	/** Injected only by tests; production pays the lazy vendor import. */
+	const sdk = (): Promise<E2bSdk> =>
+		sdkOverride ? Promise.resolve(sdkOverride) : loadSdk();
 
 	function requireApiKey(): string {
 		if (!apiKey) {
@@ -646,7 +670,7 @@ export function createE2bProvider(creds: { apiKey?: string }): SandboxProvider {
 		},
 		async create(options: CreateSandboxOptions = {}): Promise<SandboxHandle> {
 			const key = requireApiKey();
-			const { Sandbox } = await loadSdk();
+			const { Sandbox } = await sdk();
 			try {
 				const sandbox = await Sandbox.create({
 					apiKey: key,
@@ -663,25 +687,98 @@ export function createE2bProvider(creds: { apiKey?: string }): SandboxProvider {
 						? { memoryMB: Math.round(options.resources.memoryMib) }
 						: {}),
 				});
-				return createHandle(key, sandbox.sandboxId, sandbox);
+				return createHandle(sdk, key, sandbox.sandboxId, sandbox);
 			} catch (error) {
 				throw toMuxError("create", error);
 			}
 		},
 		async connect(id: string): Promise<SandboxHandle> {
 			const key = requireApiKey();
-			const { Sandbox } = await loadSdk();
+			const { Sandbox } = await sdk();
 			try {
-				// Auto-resumes when the sandbox is paused.
+				// Auto-resumes when the sandbox is paused. That is why reading,
+				// destroying and parking have their own members below -- none of
+				// them wants a running machine, and this call bills for one.
 				const sandbox = await Sandbox.connect(id, { apiKey: key });
-				return createHandle(key, sandbox.sandboxId, sandbox);
+				return createHandle(sdk, key, sandbox.sandboxId, sandbox);
 			} catch (error) {
 				throw toMuxError("connect", error);
 			}
 		},
+		/**
+		 * GET /sandboxes/{id} through the static API (SDK dist/index.mjs
+		 * `SandboxApi.getInfo`, e2b 2.37): it reads the record and opens no
+		 * connection, so a paused sandbox stays paused.
+		 */
+		async describe(id: string): Promise<SandboxDescription> {
+			const key = requireApiKey();
+			const { Sandbox } = await sdk();
+			try {
+				const info = await Sandbox.getInfo(id, { apiKey: key });
+				const description: SandboxDescription = {
+					state: mapState(info.state),
+					rawPhase: info.state,
+					resources: {
+						vcpu: info.cpuCount,
+						// Named memoryMB but documented as "Sandbox Memory size in
+						// MiB" (SDK dist/index.d.ts SandboxInfo, read 2026-08-01),
+						// which is also how CAPABILITIES.limits reads the measured
+						// 478 -- so no unit conversion applies.
+						memoryMib: info.memoryMB,
+					},
+				};
+				if (info.startedAt instanceof Date) {
+					description.createdAt = info.startedAt.toISOString();
+				}
+				return description;
+			} catch (error) {
+				// An id E2B no longer knows is destroyed, and a destroyed sandbox
+				// has no vendor status word: SandboxState is running|paused only.
+				if (isNotFound(error)) return { state: "destroyed", rawPhase: null };
+				throw toMuxError("describe", error);
+			}
+		},
+		/**
+		 * DELETE /sandboxes/{id} by id (static `SandboxApi.kill`), which the
+		 * SDK already reports as `false` rather than throwing on a 404.
+		 *
+		 * Deliberately NOT connect() + handle.destroy(): connect resumes first,
+		 * so a sandbox whose snapshot could not resume was impossible to kill
+		 * at all -- the orphaned-quota failure in POSTMORTEM-2026-05-18 item 5.
+		 */
+		async remove(id: string): Promise<void> {
+			const key = requireApiKey();
+			const { Sandbox } = await sdk();
+			try {
+				await Sandbox.kill(id, { apiKey: key });
+			} catch (error) {
+				if (isNotFound(error)) return;
+				throw toMuxError("remove", error);
+			}
+		},
+		/**
+		 * POST /sandboxes/{id}/pause by id (static `SandboxApi.pause`). No
+		 * connection, so parking never round-trips through a resume.
+		 *
+		 * `keepMemory` is left at its default of true, which is the full memory
+		 * snapshot `persistence: "memory-snapshot"` declares. An already-paused
+		 * sandbox returns false (the SDK maps the vendor's 409), which is a
+		 * no-op rather than an error. A 404 is NOT swallowed: parking is a
+		 * request about a machine that exists, so an unknown id is something
+		 * the caller needs to hear.
+		 */
+		async park(id: string): Promise<void> {
+			const key = requireApiKey();
+			const { Sandbox } = await sdk();
+			try {
+				await Sandbox.pause(id, { apiKey: key });
+			} catch (error) {
+				throw toMuxError("park", error);
+			}
+		},
 		async list(): Promise<SandboxInfo[]> {
 			const key = requireApiKey();
-			const { Sandbox } = await loadSdk();
+			const { Sandbox } = await sdk();
 			try {
 				const paginator = Sandbox.list({
 					apiKey: key,

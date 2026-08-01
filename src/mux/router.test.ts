@@ -21,6 +21,12 @@ import { join } from "node:path";
 import { after, test } from "node:test";
 import { resolveMuxConfig, type MuxConfig, type MuxConfigInput } from "./config.js";
 import { SubstrateHealth } from "./health.js";
+import {
+	SELECTION_POLICY_VERSION,
+	SelectionPolicy,
+	type LaneScore,
+} from "./selection.js";
+import type { RunTrace } from "./traces.js";
 import type { MuxAgentEvent, RunResult } from "./events.js";
 import {
 	MuxError,
@@ -47,6 +53,12 @@ const UNIQUE = `${process.pid}_${Date.now()}`;
 // ---------------------------------------------------------------------------
 // Isolate machine state: point state.ts at a temp file before any test runs
 // so named-machine writes never touch ~/.agent-machines/mux-state.json.
+//
+// The trace store is redirected for the same reason plus a sharper one: the
+// router's default selection policy READS it to order a route, so a suite that
+// left it pointing at the home directory would rank lanes from whatever this
+// developer ran yesterday and the route assertions below would pass or fail by
+// accident. Tests that need their own traces still override it per test.
 // ---------------------------------------------------------------------------
 
 const previousStatePath = process.env.AGENT_MACHINES_MUX_STATE;
@@ -54,13 +66,23 @@ const stateDir = mkdtempSync(join(tmpdir(), "am-mux-router-"));
 const stateFile = join(stateDir, "mux-state.json");
 process.env.AGENT_MACHINES_MUX_STATE = stateFile;
 
+const previousTracesPath = process.env.AGENT_MACHINES_MUX_TRACES;
+const suiteTracesDir = mkdtempSync(join(tmpdir(), "am-mux-router-traces-"));
+process.env.AGENT_MACHINES_MUX_TRACES = suiteTracesDir;
+
 after(() => {
 	if (previousStatePath === undefined) {
 		delete process.env.AGENT_MACHINES_MUX_STATE;
 	} else {
 		process.env.AGENT_MACHINES_MUX_STATE = previousStatePath;
 	}
+	if (previousTracesPath === undefined) {
+		delete process.env.AGENT_MACHINES_MUX_TRACES;
+	} else {
+		process.env.AGENT_MACHINES_MUX_TRACES = previousTracesPath;
+	}
 	rmSync(stateDir, { recursive: true, force: true });
+	rmSync(suiteTracesDir, { recursive: true, force: true });
 });
 
 // ---------------------------------------------------------------------------
@@ -78,6 +100,9 @@ type RouteAttemptLike = {
 	health?: "healthy" | "degraded" | "open";
 	constraint?: string;
 	estimatedUsd?: number;
+	selectionScore?: number;
+	selectionSamples?: number;
+	selectionPolicy?: string;
 };
 
 type RunStreamLike = AsyncIterable<MuxAgentEvent> & {
@@ -99,6 +124,7 @@ type MuxMachineLike = {
 	readonly harness: HarnessAdapter;
 	readonly name?: string;
 	readonly attempts: RouteAttemptLike[];
+	readonly selection: LaneScore[];
 	readonly substrate: SubstrateKind;
 	readonly agent: HarnessKind;
 	ensureInstalled(options?: { timeoutMs?: number; pollMs?: number }): Promise<void>;
@@ -111,20 +137,28 @@ type MuxLike = {
 	registerProvider(kind: SubstrateKind, provider: SandboxProvider): void;
 	routeFor(
 		sandbox?: SubstrateKind | "auto",
-		options?: { constraints?: Record<string, unknown>; optimize?: "cost" },
+		options?: {
+			constraints?: Record<string, unknown>;
+			optimize?: "cost";
+			agent?: HarnessKind;
+		},
 	): {
 		candidates: SubstrateKind[];
 		skipped: RouteAttemptLike[];
+		selection?: LaneScore[];
 	};
 	create(options?: MuxCreateOptionsLike): Promise<MuxMachineLike>;
 	connect(name: string, agent?: HarnessKind): Promise<MuxMachineLike>;
 };
 
+type MuxOptionsLike = {
+	health?: SubstrateHealth;
+	persistHealth?: boolean;
+	selection?: SelectionPolicy | null;
+};
+
 type RouterModule = {
-	createMux(
-		config?: string | MuxConfigInput,
-		options?: { health?: SubstrateHealth; persistHealth?: boolean },
-	): MuxLike;
+	createMux(config?: string | MuxConfigInput, options?: MuxOptionsLike): MuxLike;
 	MuxMachine: new (input: {
 		sandbox: SandboxHandle;
 		harness: HarnessAdapter;
@@ -142,12 +176,61 @@ type HarnessesModule = {
 type Loaded<T> = { module: T | null; error?: string };
 
 /**
- * Every mux in this suite gets its own circuit breaker. Without that, a
- * transient failure recorded by one test opens a circuit that reorders the
- * route in a later one, and assertions start depending on test order.
+ * Every mux in this suite gets its own circuit breaker and an evidence-free
+ * selection policy. Without the breaker, a transient failure recorded by one
+ * test opens a circuit that reorders the route in a later one. Without the
+ * empty policy, a trace written by an earlier test in this file would order a
+ * later test's route -- so assertions would depend on test order twice over.
+ * The tests that are ABOUT selection supply their own evidence.
  */
 function makeMux(router: RouterModule, config: MuxConfigInput): MuxLike {
-	return router.createMux(config, { health: new SubstrateHealth(), persistHealth: false });
+	return router.createMux(config, {
+		health: new SubstrateHealth(),
+		persistHealth: false,
+		selection: new SelectionPolicy({ traces: [] }),
+	});
+}
+
+/** A finished run on one lane, as the trace store would have recorded it. */
+let traceSequence = 0;
+function laneTrace(input: {
+	substrate: SubstrateKind;
+	harness?: HarnessKind;
+	ok?: boolean;
+	firstOutputMs?: number;
+}): RunTrace {
+	traceSequence += 1;
+	const ok = input.ok ?? true;
+	const record: RunTrace = {
+		runKey: `router-fixture-${traceSequence}`,
+		harness: input.harness ?? "claude-code",
+		substrate: input.substrate,
+		attempts: [],
+		startedAt: "2026-08-01T00:00:00.000Z",
+		durationMs: 10_000,
+		exitCode: ok ? 0 : 1,
+		truncated: false,
+		events: 3,
+		modelCostUsd: 0.01,
+	};
+	if (input.firstOutputMs !== undefined) record.timeToFirstEventMs = input.firstOutputMs;
+	if (!ok) record.error = "the harness exited non-zero";
+	return record;
+}
+
+/**
+ * Evidence that makes sprites the clearly better lane for claude-code: 20 runs
+ * with every one finishing, against 20 e2b runs where only 4 did.
+ */
+function spritesIsBetter(): RunTrace[] {
+	return [
+		...Array.from({ length: 20 }, (_unused, i) =>
+			laneTrace({ substrate: "e2b", ok: i < 4, firstOutputMs: 1_000 }),
+		),
+		...Array.from({ length: 20 }, () =>
+			laneTrace({ substrate: "sprites", firstOutputMs: 2_000 }),
+		),
+	];
 }
 
 async function importOptional<T>(specifier: string): Promise<Loaded<T>> {
@@ -437,7 +520,7 @@ test("routeFor skips uncredentialed providers and orders primary then backups", 
 	assert.deepEqual(mux.routeFor("vercel").candidates, ["vercel"]);
 
 	// Primary-first ordering follows the configured route, not kind order.
-	const reordered = router.createMux({
+	const reordered = makeMux(router, {
 		keys: { anthropic: "test-anthropic-key" },
 		sandboxes: { primary: "dedalus", backups: ["vercel", "e2b"] },
 	});
@@ -516,7 +599,7 @@ test("create() gates on the harness upstream key before any provider call", asyn
 	// cleared, so the resolved config genuinely has no anthropic key.
 	const unset = `AM_TEST_UNSET_ANTHROPIC_${UNIQUE}`;
 	const mux = withEnv({ ANTHROPIC_API_KEY: undefined, [unset]: undefined }, () =>
-		router.createMux({
+		makeMux(router, {
 			keys: { anthropic: `env:${unset}` },
 			sandboxes: { primary: "e2b", backups: [] },
 		}),
@@ -849,7 +932,7 @@ test("an open circuit sends a lane to the back of the route", async (t) => {
 			keys: { anthropic: "k" },
 			sandboxes: { primary: "e2b", backups: ["sprites"] },
 		},
-		{ health, persistHealth: false },
+		{ health, persistHealth: false, selection: new SelectionPolicy({ traces: [] }) },
 	);
 	mux.registerProvider("e2b", new FakeProvider("e2b"));
 	mux.registerProvider("sprites", new FakeProvider("sprites"));
@@ -875,7 +958,7 @@ test("a transport failure feeds the breaker but a credential failure does not", 
 	const health = new SubstrateHealth();
 	const mux = router.createMux(
 		{ keys: { anthropic: "k" }, sandboxes: { primary: "e2b", backups: ["sprites"] } },
-		{ health, persistHealth: false },
+		{ health, persistHealth: false, selection: new SelectionPolicy({ traces: [] }) },
 	);
 	const e2b = new FakeProvider("e2b");
 	e2b.createError = new MuxError("transient", "e2b had a wobble");
@@ -893,7 +976,11 @@ test("a transport failure feeds the breaker but a credential failure does not", 
 	const health2 = new SubstrateHealth();
 	const mux2 = router.createMux(
 		{ keys: { anthropic: "k" }, sandboxes: { primary: "e2b", backups: [] } },
-		{ health: health2, persistHealth: false },
+		{
+			health: health2,
+			persistHealth: false,
+			selection: new SelectionPolicy({ traces: [] }),
+		},
 	);
 	const denied = new FakeProvider("e2b");
 	denied.createError = new MuxError("missing_credentials", "bad key");
@@ -1147,6 +1234,330 @@ test("a run records time to first output and both halves of its cost", async (t)
 	assert.equal(spritesRoute?.cost.complete, false);
 	assert.deepEqual(spritesRoute?.cost.unpricedSubstrates, ["sprites"]);
 	assert.equal("knownUsd" in (spritesRoute?.cost ?? {}), false);
+});
+
+// ---------------------------------------------------------------------------
+// Automatic selection (roadmap 3.4). The scoring rule has its own suite in
+// selection.test.ts; these assert the ROUTER consults it in the right place --
+// after the filters, before health, and only for an "auto" route.
+// ---------------------------------------------------------------------------
+
+test("an auto route is ordered by the learned policy, not the config", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	const mux = router.createMux(
+		{ keys: { anthropic: "k" }, sandboxes: { primary: "e2b", backups: ["sprites"] } },
+		{
+			health: new SubstrateHealth(),
+			persistHealth: false,
+			selection: new SelectionPolicy({ traces: spritesIsBetter() }),
+		},
+	);
+	mux.registerProvider("e2b", new FakeProvider("e2b"));
+	mux.registerProvider("sprites", new FakeProvider("sprites"));
+
+	const route = mux.routeFor("auto");
+	assert.deepEqual(
+		route.candidates,
+		["sprites", "e2b"],
+		"the configured primary loses its slot to the lane that actually finishes runs",
+	);
+	assert.ok(route.selection, "the ranking is returned so the route is explainable");
+	assert.equal(route.selection?.[0].substrate, "sprites");
+	assert.equal(route.selection?.[0].samples, 20);
+	assert.equal(route.selection?.[0].ok, 20);
+	assert.equal(route.selection?.[1].substrate, "e2b");
+	assert.equal(route.selection?.[1].samples, 20);
+	assert.equal(route.selection?.[1].ok, 4);
+	assert.equal(route.selection?.length, 2, "no lane is dropped by scoring");
+});
+
+test("with no traces an auto route keeps the configured order", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	// The DEFAULT policy, reading a real (empty) trace store: turning selection
+	// on must not change behavior before it has evidence, or every existing
+	// deployment's route would move on upgrade for no measured reason.
+	const dir = mkdtempSync(join(tmpdir(), "am-mux-router-empty-"));
+	const saved = process.env.AGENT_MACHINES_MUX_TRACES;
+	process.env.AGENT_MACHINES_MUX_TRACES = dir;
+	t.after(() => {
+		if (saved === undefined) delete process.env.AGENT_MACHINES_MUX_TRACES;
+		else process.env.AGENT_MACHINES_MUX_TRACES = saved;
+		rmSync(dir, { recursive: true, force: true });
+	});
+
+	const mux = router.createMux(
+		{
+			keys: { anthropic: "k" },
+			sandboxes: { primary: "dedalus", backups: ["e2b", "sprites"] },
+		},
+		{ health: new SubstrateHealth(), persistHealth: false },
+	);
+	for (const kind of ["dedalus", "e2b", "sprites"] as SubstrateKind[]) {
+		mux.registerProvider(kind, new FakeProvider(kind));
+	}
+	const route = mux.routeFor("auto");
+	assert.deepEqual(route.candidates, ["dedalus", "e2b", "sprites"]);
+	assert.equal(route.selection?.length, 3);
+	for (const lane of route.selection ?? []) {
+		assert.equal(lane.samples, 0, "an empty store is zero evidence, not bad evidence");
+	}
+});
+
+test("an explicitly pinned substrate is never reordered or scored", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	const traces = spritesIsBetter();
+	const mux = router.createMux(
+		{ keys: { anthropic: "k" }, sandboxes: { primary: "e2b", backups: ["sprites"] } },
+		{
+			health: new SubstrateHealth(),
+			persistHealth: false,
+			selection: new SelectionPolicy({ traces }),
+		},
+	);
+	mux.registerProvider("e2b", new FakeProvider("e2b"));
+	mux.registerProvider("sprites", new FakeProvider("sprites"));
+
+	// Same evidence that moves an auto route leaves a pinned one alone.
+	assert.deepEqual(mux.routeFor("auto").candidates, ["sprites", "e2b"]);
+	const pinned = mux.routeFor("e2b");
+	assert.deepEqual(pinned.candidates, ["e2b"]);
+	assert.equal(
+		pinned.selection,
+		undefined,
+		"pinning is the escape hatch; the policy did not make this choice and must not appear to have",
+	);
+
+	// An explicit price objective is also the caller's, not the policy's.
+	const cheapest = mux.routeFor("auto", { optimize: "cost" });
+	assert.deepEqual(
+		cheapest.candidates,
+		["e2b", "sprites"],
+		"cheapest-first puts the priced lane ahead of the one Fly does not publish a rate for",
+	);
+	assert.equal(cheapest.selection, undefined);
+});
+
+test("health still wins as the final ordering stage", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	const health = new SubstrateHealth();
+	const mux = router.createMux(
+		{ keys: { anthropic: "k" }, sandboxes: { primary: "e2b", backups: ["sprites"] } },
+		{
+			health,
+			persistHealth: false,
+			selection: new SelectionPolicy({ traces: spritesIsBetter() }),
+		},
+	);
+	mux.registerProvider("e2b", new FakeProvider("e2b"));
+	mux.registerProvider("sprites", new FakeProvider("sprites"));
+
+	assert.deepEqual(mux.routeFor("auto").candidates, ["sprites", "e2b"]);
+
+	// A lane that is down right now goes last however good its record is:
+	// health answers a more urgent question than expected value.
+	for (let i = 0; i < 12; i += 1) health.record("sprites", "transient", 10);
+	assert.equal(health.state("sprites"), "open");
+	assert.deepEqual(mux.routeFor("auto").candidates, ["e2b", "sprites"]);
+	// Demoted, not removed, and still scored -- the explanation survives.
+	assert.equal(mux.routeFor("auto").selection?.[0].substrate, "sprites");
+});
+
+test("the learned order runs after the constraint filter", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	// sprites is the lane the policy prefers, and it is the lane the declared
+	// need eliminates. Scoring must not resurrect it: feasibility is a filter,
+	// value is only an ordering over what survives.
+	const mux = router.createMux(
+		{ keys: { anthropic: "k" }, sandboxes: { primary: "e2b", backups: ["sprites"] } },
+		{
+			health: new SubstrateHealth(),
+			persistHealth: false,
+			selection: new SelectionPolicy({ traces: spritesIsBetter() }),
+		},
+	);
+	const e2b = new FakeProvider("e2b");
+	const sprites = new FakeProvider("sprites");
+	(sprites as { capabilities: SandboxCapabilities }).capabilities = {
+		...FAKE_CAPABILITIES,
+		streamingExec: false,
+	};
+	mux.registerProvider("e2b", e2b);
+	mux.registerProvider("sprites", sprites);
+
+	const route = mux.routeFor("auto", { constraints: { streamingExec: true } });
+	assert.deepEqual(route.candidates, ["e2b"]);
+	assert.equal(route.skipped.length, 1);
+	assert.equal(route.skipped[0].substrate, "sprites");
+	assert.equal(
+		route.selection,
+		undefined,
+		"one surviving lane is not a choice, so nothing is scored",
+	);
+});
+
+test("create() records the score and sample count on every attempt it made", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	const mux = router.createMux(
+		{ keys: { anthropic: "k" }, sandboxes: { primary: "e2b", backups: ["sprites"] } },
+		{
+			health: new SubstrateHealth(),
+			persistHealth: false,
+			selection: new SelectionPolicy({ traces: spritesIsBetter() }),
+		},
+	);
+	// The policy puts sprites first; it then fails over to e2b, so both lanes
+	// were decided on by the policy and both attempts must say so.
+	const sprites = new FakeProvider("sprites");
+	sprites.createError = new MuxError("transient", "sprites had a wobble");
+	mux.registerProvider("sprites", sprites);
+	mux.registerProvider("e2b", new FakeProvider("e2b"));
+
+	const machine = await mux.create({ install: false });
+	assert.equal(machine.substrate, "e2b");
+	assert.deepEqual(
+		machine.attempts.map((a) => `${a.substrate}:${a.outcome}`),
+		["sprites:failed", "e2b:ok"],
+	);
+	for (const attempt of machine.attempts) {
+		assert.equal(typeof attempt.selectionScore, "number", attempt.substrate);
+		assert.equal(attempt.selectionSamples, 20, attempt.substrate);
+		assert.equal(attempt.selectionPolicy, SELECTION_POLICY_VERSION);
+	}
+	const [failed, chosen] = machine.attempts;
+	assert.ok(
+		(failed.selectionScore as number) > (chosen.selectionScore as number),
+		"the recorded scores explain why the loser was tried first",
+	);
+	// The full breakdown hangs off the machine, so the arithmetic is inspectable.
+	assert.equal(machine.selection.length, 2);
+	assert.equal(machine.selection[0].substrate, "sprites");
+	assert.ok(machine.selection[0].terms.success > machine.selection[1].terms.success);
+});
+
+test("a pinned create() carries no selection annotation at all", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	const mux = router.createMux(
+		{ keys: { anthropic: "k" }, sandboxes: { primary: "e2b", backups: ["sprites"] } },
+		{
+			health: new SubstrateHealth(),
+			persistHealth: false,
+			selection: new SelectionPolicy({ traces: spritesIsBetter() }),
+		},
+	);
+	mux.registerProvider("e2b", new FakeProvider("e2b"));
+	mux.registerProvider("sprites", new FakeProvider("sprites"));
+
+	const machine = await mux.create({ sandbox: "e2b", install: false });
+	assert.equal(machine.substrate, "e2b");
+	assert.deepEqual(machine.selection, []);
+	const attempt = machine.attempts.find((a) => a.outcome === "ok");
+	assert.ok(attempt);
+	assert.equal(attempt?.selectionScore, undefined);
+	assert.equal(attempt?.selectionSamples, undefined);
+	assert.equal(attempt?.selectionPolicy, undefined);
+});
+
+test("a lane is scored for the harness being run, not the configured default", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	// All the evidence is claude-code's. Routing codex must not inherit it:
+	// hermes on E2B is the live counterexample (docs/MUX-RESULTS.md finding 10).
+	const mux = router.createMux(
+		{ keys: { anthropic: "k" }, sandboxes: { primary: "e2b", backups: ["sprites"] } },
+		{
+			health: new SubstrateHealth(),
+			persistHealth: false,
+			selection: new SelectionPolicy({ traces: spritesIsBetter() }),
+		},
+	);
+	mux.registerProvider("e2b", new FakeProvider("e2b"));
+	mux.registerProvider("sprites", new FakeProvider("sprites"));
+
+	assert.deepEqual(mux.routeFor("auto", { agent: "claude-code" }).candidates, [
+		"sprites",
+		"e2b",
+	]);
+	const other = mux.routeFor("auto", { agent: "codex" });
+	assert.deepEqual(other.candidates, ["e2b", "sprites"]);
+	for (const lane of other.selection ?? []) {
+		assert.equal(lane.harness, "codex");
+		assert.equal(lane.samples, 0);
+	}
+});
+
+test("a selection policy that throws costs the ordering, never the create", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	// A corrupt or unreadable trace store is an observability failure. Routing
+	// has to degrade to the configured order rather than refuse to place work.
+	const broken = new SelectionPolicy({
+		traces: () => {
+			throw new Error("trace store is unreadable");
+		},
+	});
+	const mux = router.createMux(
+		{ keys: { anthropic: "k" }, sandboxes: { primary: "e2b", backups: ["sprites"] } },
+		{ health: new SubstrateHealth(), persistHealth: false, selection: broken },
+	);
+	mux.registerProvider("e2b", new FakeProvider("e2b"));
+	mux.registerProvider("sprites", new FakeProvider("sprites"));
+
+	const route = mux.routeFor("auto");
+	assert.deepEqual(route.candidates, ["e2b", "sprites"]);
+	assert.equal(route.selection, undefined);
+	const machine = await mux.create({ install: false });
+	assert.equal(machine.substrate, "e2b");
+});
+
+test("selection can be turned off entirely", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	const mux = router.createMux(
+		{ keys: { anthropic: "k" }, sandboxes: { primary: "e2b", backups: ["sprites"] } },
+		{ health: new SubstrateHealth(), persistHealth: false, selection: null },
+	);
+	mux.registerProvider("e2b", new FakeProvider("e2b"));
+	mux.registerProvider("sprites", new FakeProvider("sprites"));
+	const route = mux.routeFor("auto");
+	assert.deepEqual(route.candidates, ["e2b", "sprites"]);
+	assert.equal(route.selection, undefined);
 });
 
 test("a substrate that throttles detached work installs in the foreground", async (t) => {

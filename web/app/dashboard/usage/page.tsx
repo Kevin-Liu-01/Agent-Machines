@@ -8,6 +8,7 @@ import {
 	formatDayShort,
 } from "@/components/dashboard/DashboardBarChart";
 import { PageHeader } from "@/components/dashboard/PageHeader";
+import { RouteOutcomesPanel } from "@/components/dashboard/RouteOutcomesPanel";
 import { StatCard } from "@/components/dashboard/StatCard";
 import {
 	TimeRangeSelector,
@@ -253,6 +254,8 @@ export default function UsagePage() {
 						</div>
 					)}
 				</ReticleFrame>
+
+				<RouteOutcomesPanel days={days} />
 			</DashboardPageBody>
 		</div>
 	);

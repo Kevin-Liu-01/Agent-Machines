@@ -64,7 +64,10 @@ function help(): void {
 	console.log("                     --quick  skip slow checks (e2e chat, typecheck)");
 	console.log("                     --local  only check local environment");
 	console.log("                     --vm     only check VM state");
-	console.log("  mux <sub>          Multiplexer: run/shell/term/ls/routes/rm (am mux help)");
+	console.log("  mux <sub>          Multiplexer: run/shell/term/ls/rm (am mux help)");
+	console.log("                     routes  resolved route right now, and why");
+	console.log("                     stats   measured outcomes by route (--since, --json)");
+	console.log("                     health  substrate circuit breakers");
 }
 
 async function main(): Promise<void> {

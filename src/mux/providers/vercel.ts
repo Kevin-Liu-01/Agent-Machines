@@ -17,6 +17,11 @@
  *   wake        -> Sandbox.get({ resume: true }) resumes from snapshot.
  *   destroy     -> sandbox.delete() (terminal; the name is freed).
  *
+ * `Sandbox.get` DEFAULTS to resume: true (SDK dist/sandbox.d.ts
+ * GetSandboxParams, @vercel/sandbox 2.9), so every read path here passes
+ * resume: false explicitly. Omitting the flag is what wakes and bills a
+ * parked sandbox for being looked at.
+ *
  * Auth is either VERCEL_OIDC_TOKEN or the token + teamId + projectId
  * triple. A `vck_`-prefixed key is a Vercel AI Gateway key and is NOT
  * Sandbox auth; ready() fails closed with a pointer to the right vars.
@@ -41,6 +46,7 @@ import {
 	type PtyHandle,
 	type PtyOptions,
 	type SandboxCapabilities,
+	type SandboxDescription,
 	type SandboxHandle,
 	type SandboxInfo,
 	type SandboxProvider,
@@ -246,6 +252,29 @@ function isNotFound(error: unknown): boolean {
 	return /not[_ ]?found/i.test(errorMessage(error));
 }
 
+/**
+ * The vendor's own status word, or null when the instance cannot report one.
+ *
+ * `Sandbox.status` proxies the CURRENT SESSION's status and throws ("No active
+ * session...") when the instance holds none. The get response declares
+ * `session` as required (SDK dist/api-client/api-client.d.ts getSandbox, read
+ * 2026-08-01), so a throw here means the wire shape changed -- which is a
+ * reason to report nothing, not to invent a phase.
+ */
+function rawStatus(sandbox: Pick<SandboxInstance, "status">): string | null {
+	try {
+		return sandbox.status;
+	} catch {
+		return null;
+	}
+}
+
+/** ISO-8601, or nothing at all when the vendor's date is unusable. */
+function isoOf(value: Date | undefined): string | undefined {
+	if (!(value instanceof Date) || Number.isNaN(value.getTime())) return undefined;
+	return value.toISOString();
+}
+
 function toMuxError(error: unknown, context: string): MuxError {
 	if (error instanceof MuxError) return error;
 	return new MuxError(
@@ -322,8 +351,15 @@ function requestedVcpus(
 /** Documented Hobby ceiling; the plan is unknowable at routing time. */
 const VERCEL_MAX_VCPUS = 4;
 
+/**
+ * Test seam: createVercelProvider takes a Sandbox-class override so a suite
+ * can prove describe()/remove()/park() only ever call `get` with
+ * resume: false. A positive "it returned a state" test cannot prove that --
+ * the resuming path returns a state too, after waking the sandbox.
+ */
 export function createVercelProvider(
 	creds: VercelProviderCredentials,
+	sandboxClassOverride?: SandboxClass,
 ): SandboxProvider {
 	const token = creds.token?.trim() || undefined;
 	const teamId = creds.teamId?.trim() || undefined;
@@ -332,6 +368,12 @@ export function createVercelProvider(
 
 	const tripleOk = Boolean(token && teamId && projectId && !isGatewayKey(token));
 	const oidcOk = Boolean(oidcToken && !isGatewayKey(oidcToken));
+
+	/** Injected only by tests; production pays the lazy vendor import. */
+	const sandboxClass = (): Promise<SandboxClass> =>
+		sandboxClassOverride
+			? Promise.resolve(sandboxClassOverride)
+			: loadSandboxClass();
 
 	/**
 	 * All-or-none credential params: the SDK throws on a partial triple.
@@ -384,7 +426,7 @@ export function createVercelProvider(
 		const name = initial.name;
 
 		async function refresh(resume: boolean): Promise<SandboxInstance> {
-			const Sandbox = await loadSandboxClass();
+			const Sandbox = await sandboxClass();
 			sandbox = await Sandbox.get({ ...authParams(), name, resume });
 			return sandbox;
 		}
@@ -545,7 +587,7 @@ export function createVercelProvider(
 
 			async destroy(): Promise<void> {
 				try {
-					const Sandbox = await loadSandboxClass();
+					const Sandbox = await sandboxClass();
 					const target = await Sandbox.get({
 						...authParams(),
 						name,
@@ -570,7 +612,7 @@ export function createVercelProvider(
 
 		async create(options: CreateSandboxOptions = {}): Promise<SandboxHandle> {
 			assertReady();
-			const Sandbox = await loadSandboxClass();
+			const Sandbox = await sandboxClass();
 			const name = sanitizeSandboxName(
 				options.name ?? `am-${randomUUID().slice(0, 12)}`,
 			);
@@ -602,10 +644,12 @@ export function createVercelProvider(
 
 		async connect(id: string): Promise<SandboxHandle> {
 			assertReady();
-			const Sandbox = await loadSandboxClass();
+			const Sandbox = await sandboxClass();
 			try {
 				// The SDK addresses sandboxes by name; handle ids are names.
-				// resume: true auto-wakes a stopped sandbox from snapshot.
+				// resume: true auto-wakes a stopped sandbox from snapshot. That is
+				// why reading, destroying and parking have their own members below
+				// -- none of them wants a running session, and this call starts one.
 				const sandbox = await Sandbox.get({
 					...authParams(),
 					name: id,
@@ -617,9 +661,97 @@ export function createVercelProvider(
 			}
 		},
 
+		/**
+		 * `Sandbox.get` with resume: false -- the record and its current session
+		 * exactly as they are, with no snapshot restore.
+		 */
+		async describe(id: string): Promise<SandboxDescription> {
+			assertReady();
+			const Sandbox = await sandboxClass();
+			try {
+				const sandbox = await Sandbox.get({
+					...authParams(),
+					name: id,
+					resume: false,
+				});
+				const phase = rawStatus(sandbox);
+				const description: SandboxDescription = {
+					state: phase === null ? "unknown" : mapStatus(phase),
+					rawPhase: phase,
+				};
+				const createdAt = isoOf(sandbox.createdAt);
+				if (createdAt) description.createdAt = createdAt;
+				// vCPU only. `Sandbox.memory` is documented as "Memory allocated in
+				// MB" (SDK dist/sandbox.d.ts, read 2026-08-01) while the pricing
+				// page speaks in GB per vCPU, and nothing states whether the wire
+				// number is decimal MB or MiB -- so the MiB axis stays absent
+				// instead of carrying a figure whose unit we cannot prove. vCPU is
+				// unit-free and is the only size Vercel accepts at create time.
+				if (typeof sandbox.vcpus === "number") {
+					description.resources = { vcpu: sandbox.vcpus };
+				}
+				return description;
+			} catch (error) {
+				if (isNotFound(error)) return { state: "destroyed", rawPhase: null };
+				throw toMuxError(error, `describe failed for ${id}`);
+			}
+		},
+
+		/**
+		 * Destroy without a resume: get with resume: false, then delete().
+		 *
+		 * `delete()` is one of the few instance methods the SDK does NOT wrap in
+		 * `withResume` (dist/sandbox.js), so a stopped sandbox is deleted while
+		 * stopped. Going through connect() instead resumed first, which made a
+		 * sandbox whose snapshot could not resume impossible to destroy at all --
+		 * POSTMORTEM-2026-05-18 item 5.
+		 */
+		async remove(id: string): Promise<void> {
+			assertReady();
+			const Sandbox = await sandboxClass();
+			try {
+				const target = await Sandbox.get({
+					...authParams(),
+					name: id,
+					resume: false,
+				});
+				await target.delete();
+			} catch (error) {
+				if (isNotFound(error)) return;
+				throw toMuxError(error, `remove failed for ${id}`);
+			}
+		},
+
+		/**
+		 * Park without a resume: read at resume: false, then stop() only if a
+		 * session is actually running.
+		 *
+		 * `stop()` is also outside `withResume`, so it can never restart the VM;
+		 * it does throw "No active session to stop." when there is nothing
+		 * running, which is why the phase is read first. A sandbox already parked
+		 * needs no call at all -- and a 404 is not swallowed, because parking is
+		 * a request about a machine that exists.
+		 */
+		async park(id: string): Promise<void> {
+			assertReady();
+			const Sandbox = await sandboxClass();
+			try {
+				const sandbox = await Sandbox.get({
+					...authParams(),
+					name: id,
+					resume: false,
+				});
+				const phase = rawStatus(sandbox);
+				if (phase === null || mapStatus(phase) !== "ready") return;
+				await sandbox.stop();
+			} catch (error) {
+				throw toMuxError(error, `park failed for ${id}`);
+			}
+		},
+
 		async list(): Promise<SandboxInfo[]> {
 			assertReady();
-			const Sandbox = await loadSandboxClass();
+			const Sandbox = await sandboxClass();
 			// Sandbox.list requires an explicit projectId even under OIDC
 			// auth, where it only exists inside the JWT claims.
 			const listProjectId =

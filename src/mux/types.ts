@@ -295,6 +295,40 @@ export type SandboxInfo = {
 	createdAt?: string;
 };
 
+/**
+ * A status read that must NOT wake the sandbox.
+ *
+ * Deliberately not reachable through SandboxHandle: a handle only exists
+ * after connect(), and connect RESUMES a paused sandbox on e2b
+ * (Sandbox.connect) and vercel (Sandbox.get defaults resume: true). Polling
+ * state through a handle therefore bills a parked machine for being looked at,
+ * and the dashboard polls state on every fleet render -- so a status read has
+ * to be answerable from one control-plane call instead.
+ */
+export type SandboxDescription = {
+	/** Normalized state, the same vocabulary SandboxHandle.state() returns. */
+	state: MachineState;
+	/**
+	 * The substrate's own status word, verbatim, because the normalized state
+	 * is deliberately coarse: Sprites reports both "warm" and "cold" as
+	 * `sleeping`, and only the raw word says whether the next exec answers in
+	 * ~60ms or has to boot first (measured 2026-08-01, ./providers/sprites.ts).
+	 * Null when the vendor reports no status at all -- an id its API no longer
+	 * knows -- so a caller never reads an invented phase as a real one.
+	 */
+	rawPhase: string | null;
+	/** ISO-8601, when the vendor's status read carries a creation time. */
+	createdAt?: string;
+	/** The vendor's own failure text, on substrates that publish one. */
+	lastError?: string;
+	/**
+	 * Size the vendor reports for THIS sandbox, not the declared ceiling in
+	 * `SubstrateLimits`. An axis the vendor omits, or states in a unit we
+	 * cannot prove, is absent rather than converted on a guess.
+	 */
+	resources?: { vcpu?: number; memoryMib?: number; diskGib?: number };
+};
+
 export type SandboxHandle = {
 	readonly id: string;
 	readonly substrate: SubstrateKind;
@@ -348,8 +382,44 @@ export type SandboxProvider = {
 	/** Synchronous fail-closed credential check. */
 	ready(): { ok: boolean; missing: string[] };
 	create(options?: CreateSandboxOptions): Promise<SandboxHandle>;
+	/**
+	 * Open a live sandbox for work. May resume a parked one -- that is what
+	 * "live" costs. Use describe() to look, remove() to destroy and park() to
+	 * park; none of those want a running machine.
+	 */
 	connect(id: string): Promise<SandboxHandle>;
 	list(): Promise<SandboxInfo[]>;
+	/**
+	 * Read a sandbox's status without waking it.
+	 *
+	 * OPTIONAL, following the SandboxHandle.keepAlive pattern: a caller must
+	 * degrade when a substrate omits it, never assume it. An adapter that
+	 * cannot read status without resuming must omit this member or throw
+	 * `not_supported` -- quietly resuming here is the exact defect it exists
+	 * to fix, because a caller that polls state cannot see the wake it caused.
+	 */
+	describe?(id: string): Promise<SandboxDescription>;
+	/**
+	 * Destroy by id, without resuming first.
+	 *
+	 * connect() + handle.destroy() resumes on e2b and vercel: wasted billing,
+	 * and a sandbox whose snapshot cannot resume becomes UNDESTROYABLE -- the
+	 * orphaned-quota failure in
+	 * knowledge/POSTMORTEM-2026-05-18-live-fire-qa.md item 5. Idempotent: an
+	 * id the vendor no longer knows resolves instead of throwing, since the
+	 * requested end state already holds.
+	 */
+	remove?(id: string): Promise<void>;
+	/**
+	 * Park by id, on substrates whose vendor can pause without a resume round
+	 * trip.
+	 *
+	 * Omitted rather than stubbed where it cannot be done honestly, so a
+	 * caller degrades instead of trusting a park that never happened. Not
+	 * idempotent in intent: an id the vendor does not know is an error the
+	 * caller should see, not a satisfied request.
+	 */
+	park?(id: string): Promise<void>;
 };
 
 /** Model upstream keys a harness may need inside the sandbox. */

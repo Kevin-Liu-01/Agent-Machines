@@ -25,6 +25,7 @@ import {
 	type RouteConstraints,
 } from "./constraints.js";
 import { cheapestFirst, estimate } from "./cost.js";
+import { SelectionPolicy, type LaneScore } from "./selection.js";
 import { requireUpstream } from "./upstreams.js";
 import {
 	appendTrace,
@@ -70,7 +71,13 @@ export type MuxCreateOptions = {
 	 * would rather fail than get a slower emulation without being told.
 	 */
 	constraints?: RouteConstraints;
-	/** Order surviving lanes by modeled price instead of configured order. */
+	/**
+	 * Order surviving lanes by modeled price instead of configured order.
+	 *
+	 * An explicit objective, so it also turns the learned ordering OFF: a
+	 * caller who asked for cheapest-first gets cheapest-first, not whatever
+	 * the policy currently believes.
+	 */
 	optimize?: "cost";
 };
 
@@ -90,6 +97,35 @@ export type MuxRunOptions = HarnessRunOptions & {
 // RouteAttempt moved to types.ts (traces.ts needs it without importing the
 // router). Re-exported here because it was already public from this module.
 export type { RouteAttempt } from "./types.js";
+
+/**
+ * A RouteAttempt plus what the learned policy thought of the lane.
+ *
+ * The three fields live here rather than in `types.ts` because that file is the
+ * contract every other surface compiles against, while the policy is this
+ * router's own. A ScoredRouteAttempt IS a RouteAttempt, so `traces.ts` and
+ * every existing consumer keep working unchanged and the annotations ride along
+ * into the trace record verbatim -- which is what makes a placement decision
+ * still explainable a month later.
+ *
+ * All three are absent together, and absent means the policy did not run on
+ * this lane: it was pinned, or skipped before the ordering stage, or selection
+ * is disabled. Absent is never "scored zero".
+ */
+export type ScoredRouteAttempt = RouteAttempt & {
+	/**
+	 * 0..1 value of the lane at decision time; higher is better. Comparable
+	 * against the other attempts on the SAME route and not across routes -- two
+	 * of the three terms behind it are relative to the candidate set of that one
+	 * request. See `LaneScore.score`; `machine.selection` carries the absolute
+	 * measurements.
+	 */
+	selectionScore?: number;
+	/** Completed runs the score rests on. 0 is an unexplored lane, not an error. */
+	selectionSamples?: number;
+	/** Scoring rule that produced it (SELECTION_POLICY_VERSION). */
+	selectionPolicy?: string;
+};
 
 export type RunStream = AsyncIterable<MuxAgentEvent> & {
 	result(): Promise<RunResult>;
@@ -165,7 +201,14 @@ export class MuxMachine {
 	readonly sandbox: SandboxHandle;
 	readonly harness: HarnessAdapter;
 	readonly name?: string;
-	readonly attempts: RouteAttempt[];
+	readonly attempts: ScoredRouteAttempt[];
+	/**
+	 * The ranking that produced this placement, with the per-term breakdown
+	 * behind each score. Empty when the policy did not run (a pinned substrate,
+	 * an explicit `optimize`, or a single surviving lane). `attempts` carries
+	 * the headline score; this is where the arithmetic is.
+	 */
+	readonly selection: LaneScore[];
 	private readonly config: MuxConfig;
 	private readonly model?: string;
 
@@ -175,7 +218,8 @@ export class MuxMachine {
 		config: MuxConfig;
 		name?: string;
 		model?: string;
-		attempts?: RouteAttempt[];
+		attempts?: ScoredRouteAttempt[];
+		selection?: LaneScore[];
 	}) {
 		this.sandbox = input.sandbox;
 		this.harness = input.harness;
@@ -183,6 +227,7 @@ export class MuxMachine {
 		this.name = input.name;
 		this.model = input.model;
 		this.attempts = input.attempts ?? [];
+		this.selection = input.selection ?? [];
 	}
 
 	get substrate(): SubstrateKind {
@@ -515,15 +560,16 @@ export class MuxMachine {
 export class Mux {
 	readonly config: MuxConfig;
 	readonly health: SubstrateHealth;
+	/** Learned lane ordering for "auto" routes; null disables it entirely. */
+	readonly selection: SelectionPolicy | null;
 	private readonly providers = new Map<SubstrateKind, SandboxProvider>();
 	private readonly persistHealth: boolean;
 	/** Prices from the most recent routeFor(), for attempt annotation. */
 	private lastPriced = new Map<SubstrateKind, number | undefined>();
+	/** Scores from the most recent routeFor(), for attempt annotation. */
+	private lastScored = new Map<SubstrateKind, LaneScore>();
 
-	constructor(
-		config: MuxConfig,
-		options: { health?: SubstrateHealth; persistHealth?: boolean } = {},
-	) {
+	constructor(config: MuxConfig, options: CreateMuxOptions = {}) {
 		this.config = config;
 		// Restored from the shared state file so a substrate that was failing
 		// stays de-prioritized for the next process. Injectable for tests.
@@ -531,6 +577,13 @@ export class Mux {
 			options.health ??
 			SubstrateHealth.fromJSON(readMuxState().health);
 		this.persistHealth = options.persistHealth ?? options.health === undefined;
+		// Default on: `sandbox: "auto"` is the common case and the roadmap's
+		// automatic selection. With an empty trace store every lane scores the
+		// prior identically, so a fresh install still walks the configured
+		// order -- turning this on cannot change behavior before it has
+		// evidence. `null` opts out.
+		this.selection =
+			options.selection === undefined ? new SelectionPolicy() : options.selection;
 	}
 
 	/** Record a lane outcome and persist the breaker. */
@@ -564,18 +617,34 @@ export class Mux {
 	}
 
 	/**
-	 * Ordered route for a create() call, in four stages: drop lanes without
-	 * credentials, drop lanes that cannot satisfy declared constraints,
-	 * order by price when asked, then order by health so a failing lane is
-	 * tried last. Health only reorders -- it never removes a lane, because a
-	 * global blip that opened every circuit must not make create() impossible.
+	 * Ordered route for a create() call, in five stages: drop lanes without
+	 * credentials, drop lanes that cannot satisfy declared constraints, order
+	 * by price when asked, order by learned value on an "auto" route, then
+	 * order by health so a failing lane is tried last.
+	 *
+	 * Only the two filters ever remove a lane. Both ordering stages and the
+	 * health stage return permutations, because a global blip that opened every
+	 * circuit -- or a policy that has learned to dislike every lane -- must not
+	 * make create() impossible.
+	 *
+	 * Health stays LAST on purpose. It is a safety override answering "is this
+	 * lane up right now", which is a different and more urgent question than
+	 * "which lane pays off"; a lane whose breaker is open goes to the back
+	 * however good its history looks.
 	 */
 	routeFor(
 		sandbox?: SubstrateKind | "auto",
-		options: { constraints?: RouteConstraints; optimize?: "cost" } = {},
+		options: {
+			constraints?: RouteConstraints;
+			optimize?: "cost";
+			/** Harness the lanes are scored for; defaults to the configured one. */
+			agent?: HarnessKind;
+		} = {},
 	): {
 		candidates: SubstrateKind[];
 		skipped: RouteAttempt[];
+		/** Learned ranking, best first. Absent when the policy did not run. */
+		selection?: LaneScore[];
 	} {
 		const requested =
 			!sandbox || sandbox === "auto"
@@ -616,10 +685,58 @@ export class Mux {
 		}
 		this.lastPriced = priced;
 
-		// Health last so it wins ties without overriding an explicit price or
-		// capability decision.
+		// Learned ordering, and ONLY for an "auto" route. A pinned substrate is
+		// the caller's escape hatch and must come back exactly as asked -- not
+		// reordered, and not annotated with a score, because the policy did not
+		// make that choice and must not appear to have. `optimize` is likewise
+		// an explicit objective the policy does not get to override.
+		const scored = new Map<SubstrateKind, LaneScore>();
+		let selection: LaneScore[] | undefined;
+		const auto = !sandbox || sandbox === "auto";
+		if (
+			this.selection &&
+			auto &&
+			options.optimize === undefined &&
+			candidates.length > 1
+		) {
+			try {
+				const ranked = this.selection.rank(
+					options.agent ?? this.config.agents.default,
+					candidates,
+				);
+				candidates = ranked.map((lane) => lane.substrate);
+				for (const lane of ranked) scored.set(lane.substrate, lane);
+				selection = ranked;
+			} catch {
+				// Selection is an optimization computed from observability data.
+				// A corrupt or unreadable trace store must cost us the ordering,
+				// never the create(): the configured order is still a valid route.
+			}
+		}
+		this.lastScored = scored;
+
+		// Health last, so a lane that is failing right now goes to the back of
+		// whatever order the stages above produced -- price, learned value, or
+		// the operator's configured preference. It only reorders, never removes.
 		candidates = [...this.health.order(candidates)];
-		return { candidates, skipped };
+		return selection === undefined
+			? { candidates, skipped }
+			: { candidates, skipped, selection };
+	}
+
+	/**
+	 * Learned-policy annotations for one lane's attempt, empty when the policy
+	 * did not score it. Empty rather than zeroed: a score of 0 is a lane the
+	 * policy rated worthless, which is a different fact from not having run.
+	 */
+	private scoreOf(kind: SubstrateKind): Partial<ScoredRouteAttempt> {
+		const lane = this.lastScored.get(kind);
+		if (!lane) return {};
+		return {
+			selectionScore: lane.score,
+			selectionSamples: lane.samples,
+			selectionPolicy: lane.policy,
+		};
 	}
 
 	/**
@@ -631,11 +748,12 @@ export class Mux {
 		const harness = getHarness(agent);
 		this.assertUpstream(agent);
 
-		const { candidates, skipped } = this.routeFor(options.sandbox, {
+		const { candidates, skipped, selection } = this.routeFor(options.sandbox, {
 			constraints: options.constraints,
 			optimize: options.optimize,
+			agent,
 		});
-		const attempts: RouteAttempt[] = [...skipped];
+		const attempts: ScoredRouteAttempt[] = [...skipped];
 		if (candidates.length === 0) {
 			throw new MuxError(
 				"missing_credentials",
@@ -672,6 +790,7 @@ export class Mux {
 					name: options.name,
 					model: options.model,
 					attempts,
+					selection,
 				});
 				if (options.install !== false) {
 					await machine.ensureInstalled();
@@ -691,6 +810,7 @@ export class Mux {
 					durationMs: okMs,
 					health: this.health.state(kind),
 					estimatedUsd: this.lastPriced.get(kind),
+					...this.scoreOf(kind),
 				});
 				return machine;
 			} catch (error) {
@@ -721,6 +841,7 @@ export class Mux {
 					durationMs: Date.now() - startedAt,
 					health: this.health.state(kind),
 					estimatedUsd: this.lastPriced.get(kind),
+					...this.scoreOf(kind),
 				});
 				lastError = error;
 				if (!isRoutableError(error)) throw error;
@@ -777,6 +898,14 @@ export type CreateMuxOptions = {
 	health?: SubstrateHealth;
 	/** Persist breaker samples to the state file. Defaults to true. */
 	persistHealth?: boolean;
+	/**
+	 * Learned lane scorer for "auto" routes. Omit for the default, which reads
+	 * the local trace store; pass one built over an explicit trace list to
+	 * isolate it (tests need that, because a policy reading the developer's own
+	 * run history would make route assertions depend on yesterday's work); pass
+	 * `null` to route on the configured order alone.
+	 */
+	selection?: SelectionPolicy | null;
 };
 
 /** Build a Mux from a config file path, inline object, or environment. */

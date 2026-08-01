@@ -44,6 +44,7 @@ import {
 	type PtyHandle,
 	type PtyOptions,
 	type SandboxCapabilities,
+	type SandboxDescription,
 	type SandboxHandle,
 	type SandboxInfo,
 	type SandboxProvider,
@@ -327,7 +328,17 @@ export async function createOrAdoptSprite(
 	);
 }
 
-export function createSpritesProvider(creds: { token?: string }): SandboxProvider {
+/**
+ * Test seam: createSpritesProvider takes a client override so a suite can
+ * prove describe()/remove() touch only the control-plane REST surface and
+ * never exec against the sprite -- an exec is what wakes a suspended one.
+ * The credential gate stays in front of the override, so an uncredentialed
+ * provider still fails closed.
+ */
+export function createSpritesProvider(
+	creds: { token?: string },
+	clientOverride?: SpritesClient,
+): SandboxProvider {
 	const token = creds.token || undefined;
 	let clientPromise: Promise<SpritesClient> | null = null;
 
@@ -341,6 +352,7 @@ export function createSpritesProvider(creds: { token?: string }): SandboxProvide
 				),
 			);
 		}
+		if (clientOverride) return Promise.resolve(clientOverride);
 		if (!clientPromise) {
 			clientPromise = loadSprites()
 				.then((mod) => new mod.SpritesClient(token))
@@ -397,6 +409,78 @@ export function createSpritesProvider(creds: { token?: string }): SandboxProvide
 				throw mapVendorError(error, "connect");
 			}
 		},
+
+		/**
+		 * GET /v1/sprites/<name> (SDK dist/client.js getSprite) -- a record
+		 * read on the control plane. Sprites wake on a request to the SPRITE
+		 * (an exec, or its proxy URL), not on this, which is how a sprite left
+		 * idle for ten minutes still reads "cold" here rather than being woken
+		 * by the question (measured 2026-08-01, see LIVE_STATUS above).
+		 *
+		 * check() is deliberately not consulted. The same measurement had it
+		 * answer "healthy" (reason "machine is running") for that cold sprite,
+		 * so it cannot refine the phase and would only add a round trip.
+		 */
+		async describe(id: string): Promise<SandboxDescription> {
+			const spritesClient = await client();
+			try {
+				const sprite = await withTransportRetry(
+					"describe",
+					{ attempts: CONTROL_ATTEMPTS },
+					() => spritesClient.getSprite(id),
+				);
+				const phase = sprite.status ?? null;
+				const description: SandboxDescription = {
+					state: mapState(sprite.status),
+					rawPhase: phase,
+				};
+				const createdAt = toIso(sprite.createdAt);
+				if (createdAt) description.createdAt = createdAt;
+				// cpus only. SpriteConfig calls its other axes "RAM in megabytes"
+				// and "Storage in gigabytes" (SDK dist/types.d.ts, read
+				// 2026-08-01) and no Fly page states whether those are decimal or
+				// binary, so the MiB/GiB axes stay absent rather than carrying a
+				// converted guess. The mux never sends a config, so in practice
+				// the vendor returns none of this.
+				if (typeof sprite.config?.cpus === "number") {
+					description.resources = { vcpu: sprite.config.cpus };
+				}
+				return description;
+			} catch (error) {
+				if (isNotFound(error)) return { state: "destroyed", rawPhase: null };
+				throw mapVendorError(error, "describe");
+			}
+		},
+
+		/**
+		 * DELETE /v1/sprites/<name>. No exec and no proxy request, so a
+		 * suspended sprite is deleted while suspended.
+		 *
+		 * connect() happens to be non-waking on this substrate too -- it reads
+		 * the record and defers the wake to first use -- but this exists so a
+		 * caller gets one no-wake path that is the same shape on every
+		 * substrate, including the two where connect() does resume.
+		 */
+		async remove(id: string): Promise<void> {
+			const spritesClient = await client();
+			try {
+				await withTransportRetry("remove", { attempts: CONTROL_ATTEMPTS }, () =>
+					spritesClient.deleteSprite(id),
+				);
+			} catch (error) {
+				if (isNotFound(error)) return;
+				throw mapVendorError(error, "remove");
+			}
+		},
+
+		// No park(): the SDK's whole Sprite surface is create / get / list /
+		// watch / delete / upgrade / restart / check / updateURLSettings /
+		// update (dist/client.d.ts and dist/sprite.d.ts, read 2026-08-01) --
+		// there is no suspend or pause, and sprites auto-suspend on their own
+		// schedule. restart() replaces the machine, which kills the detached
+		// tmux work installs and background payloads live in, so it is not a
+		// park either. Omitted rather than stubbed: a park() that resolved
+		// without parking would be a false claim.
 
 		async list(): Promise<SandboxInfo[]> {
 			const spritesClient = await client();

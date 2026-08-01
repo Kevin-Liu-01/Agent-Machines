@@ -33,6 +33,7 @@ import {
 	type MuxErrorKind,
 	type PtyOptions,
 	type SandboxCapabilities,
+	type SandboxDescription,
 	type SandboxHandle,
 	type SandboxInfo,
 	type SandboxProvider,
@@ -235,6 +236,23 @@ function mapPhase(phase: string): MachineState {
 		default:
 			return "unknown";
 	}
+}
+
+/**
+ * Size the vendor reports for this machine. Every axis is read only when the
+ * response actually carried a number: RawMachine types them as required, but
+ * the wire is untyped and an absent axis must read as absent, not as a
+ * plausible default.
+ */
+function sizeOf(raw: RawMachine): SandboxDescription["resources"] {
+	const resources: { vcpu?: number; memoryMib?: number; diskGib?: number } = {};
+	// Dedalus names its own units: the create API takes --vcpu / --memory-mib /
+	// --storage-gib (https://docs.dedaluslabs.ai/dcs/dm/quickstart, read
+	// 2026-08-01), so these map onto the contract's axes with no conversion.
+	if (typeof raw.vcpu === "number") resources.vcpu = raw.vcpu;
+	if (typeof raw.memory_mib === "number") resources.memoryMib = raw.memory_mib;
+	if (typeof raw.storage_gib === "number") resources.diskGib = raw.storage_gib;
+	return Object.keys(resources).length > 0 ? resources : undefined;
 }
 
 function lastError(raw: RawMachine): string | null {
@@ -907,6 +925,52 @@ export function createDedalusProvider(creds: {
 			// Sleeping machines wake automatically on the first execution.
 			return createHandle(rest, raw.machine_id, {});
 		},
+
+		/**
+		 * GET /v1/machines/<id>. The wake path on this substrate is SUBMITTING
+		 * AN EXECUTION (see DedalusRest.wake -- POST /wake is HMAC-gated, so the
+		 * public route is an execution that makes the scheduler call the signed
+		 * admit gate). A record read submits nothing, so it cannot start a
+		 * sleeping machine.
+		 */
+		async describe(id: string): Promise<SandboxDescription> {
+			const rest = requireApi();
+			const raw = await rest.getRawOrNull(id);
+			// A machine the API no longer knows is destroyed, and it has no
+			// vendor phase left to report.
+			if (!raw) return { state: "destroyed", rawPhase: null };
+			const description: SandboxDescription = {
+				state: mapPhase(raw.status.phase),
+				rawPhase: raw.status.phase,
+			};
+			if (raw.created_at) description.createdAt = raw.created_at;
+			// Dedalus is the one substrate of the four that publishes a failure
+			// string on the machine record; benign desired-state notes are
+			// filtered out so a healthy machine does not look broken.
+			const failure = lastError(raw);
+			if (failure) description.lastError = failure;
+			const resources = sizeOf(raw);
+			if (resources) description.resources = resources;
+			return description;
+		},
+
+		/**
+		 * DELETE /v1/machines/<id> guarded by the record's revision. The
+		 * revision read is a GET and the delete is a DELETE, so nothing in this
+		 * path submits an execution: a sleeping machine is destroyed while
+		 * sleeping. Idempotent -- an unknown or already-destroyed id resolves.
+		 */
+		async remove(id: string): Promise<void> {
+			const rest = requireApi();
+			await rest.destroy(id);
+		},
+
+		// No park(): POST /v1/machines/<id>/sleep is an HMAC-gated internal
+		// lifecycle route and a public API key gets 401 "missing internal route
+		// signature" (see DedalusRest.sleep, which swallows exactly that and
+		// leans on the machine's own autosleep_seconds). A park() that resolved
+		// without parking would be a false claim, so the member is absent and
+		// callers degrade to autosleep.
 
 		async list(): Promise<SandboxInfo[]> {
 			const rest = requireApi();
