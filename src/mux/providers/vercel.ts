@@ -148,10 +148,13 @@ const CAPABILITIES: SandboxCapabilities = {
 		maxRuntimeMs: 2_700_000,
 		// Same page, Concurrency limits: Hobby "10", Pro "2,000".
 		maxConcurrentSandboxes: 10,
-		// The Vercel API accepts a vCPU count, but create() below does not
-		// forward options.resources, so a larger machine cannot be requested
-		// through the mux today.
-		resourceRequest: "ignored",
+		// create() below now forwards options.resources as a vCPU count (2 GB
+		// of memory rides on each vCPU per the pricing page). "unknown" rather
+		// than "honored" because no credentialed run has ever confirmed the
+		// machine comes up at the requested size on this substrate -- the
+		// request is sent, the effect is unverified, and a constraint that
+		// depends on growing the machine must still fail closed.
+		resourceRequest: "unknown",
 	},
 };
 
@@ -289,6 +292,35 @@ function decodeOidcClaims(oidcToken: string | undefined): {
 		return {};
 	}
 }
+
+/**
+ * vCPUs to ask for, from either axis of a resource request.
+ *
+ * https://vercel.com/docs/sandbox/pricing (read 2026-08-01): "The default is
+ * 2 vCPUs" and "Each vCPU includes 2 GB of memory", with a Hobby ceiling of 4.
+ * Memory therefore cannot be requested independently -- a caller asking for
+ * 8 GiB is asking for 4 vCPUs -- and the larger of the two derived counts
+ * wins so neither axis is silently ignored. Undefined means "say nothing and
+ * take the default", which is not the same as asking for the default.
+ */
+function requestedVcpus(
+	resources: { vcpu?: number; memoryMib?: number } | undefined,
+): number | undefined {
+	if (!resources) return undefined;
+	const fromVcpu = resources.vcpu;
+	// 2 GB per vCPU, read as 2048 MiB: the conservative direction, since
+	// rounding up asks for more capacity rather than starving the harness.
+	const fromMemory =
+		resources.memoryMib === undefined
+			? undefined
+			: Math.ceil(resources.memoryMib / 2048);
+	const wanted = Math.max(fromVcpu ?? 0, fromMemory ?? 0);
+	if (wanted <= 0) return undefined;
+	return Math.min(Math.max(1, Math.ceil(wanted)), VERCEL_MAX_VCPUS);
+}
+
+/** Documented Hobby ceiling; the plan is unknowable at routing time. */
+const VERCEL_MAX_VCPUS = 4;
 
 export function createVercelProvider(
 	creds: VercelProviderCredentials,
@@ -545,6 +577,12 @@ export function createVercelProvider(
 			try {
 				// getOrCreate makes named creates idempotent (reattaches to a
 				// live sandbox, recreates when the snapshot is gone).
+				// A dropped size request is worse than a refused one: the sandbox
+				// comes up small and the harness starves at run time with no hint
+				// that the request was ignored. Vercel meters 2 GB per vCPU, so
+				// memory is expressed by asking for the vCPUs that carry it, and
+				// the count is clamped to the documented Hobby ceiling.
+				const vcpus = requestedVcpus(options.resources);
 				const sandbox = await Sandbox.getOrCreate({
 					...authParams(),
 					name,
@@ -553,6 +591,7 @@ export function createVercelProvider(
 					ports: [...DEFAULT_PORTS],
 					timeout: options.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS,
 					env: options.env,
+					...(vcpus === undefined ? {} : { resources: { vcpus } }),
 					tags: { "agent-machines": "true" },
 				});
 				return makeHandle(sandbox);

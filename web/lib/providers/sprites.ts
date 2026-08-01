@@ -397,11 +397,12 @@ function spritesBinding(creds: SpritesCreds): MuxSubstrateBinding {
 			name: input.name,
 			env: input.env,
 		}),
-		// This adapter has always trimmed sprites output, and
-		// `lib/storage/machine-fs.ts` compares stdout to the exact string
-		// `__MISSING__` -- dropping the trim would break missing-file
-		// detection on this substrate (it is already broken on e2b/vercel,
-		// which never trimmed; fix that in machine-fs, not here).
+		// This adapter has always trimmed sprites output. Callers that need
+		// exact bytes must not rely on this lane; missing-file detection no
+		// longer does -- machine-fs.ts signals absence with an exit code
+		// instead of a stdout sentinel, precisely because trimming differed
+		// per substrate and silently returned the sentinel as content on the
+		// untrimmed ones.
 		trimOutput: true,
 	};
 }

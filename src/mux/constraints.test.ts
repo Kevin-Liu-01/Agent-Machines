@@ -204,7 +204,7 @@ test("provider capabilities are exactly what the routing model was written again
 				maxDiskGib: 29,
 				maxRuntimeMs: 2_700_000,
 				maxConcurrentSandboxes: 10,
-				resourceRequest: "ignored",
+				resourceRequest: "unknown",
 			},
 		},
 		dedalus: {
@@ -234,7 +234,7 @@ test("provider capabilities are exactly what the routing model was written again
 				maxDiskGib: 10,
 				maxRuntimeMs: "unknown",
 				maxConcurrentSandboxes: 5,
-				resourceRequest: "ignored",
+				resourceRequest: "unknown",
 			},
 		},
 	});
@@ -500,7 +500,7 @@ test("minVcpu passes on the baseline and rejects with baseline and request state
 	);
 	assert.equal(
 		reasonFor(result, "vercel"),
-		"minVcpu: requires at least 4 vCPU, vercel baseline is 2 vCPU and CreateSandboxOptions.resources is ignored on this substrate, so a larger size cannot be guaranteed",
+		"minVcpu: requires at least 4 vCPU, vercel baseline is 2 vCPU and CreateSandboxOptions.resources is unknown on this substrate, so a larger size cannot be guaranteed",
 	);
 	// An unpublished baseline fails closed even for a floor of 1.
 	assert.equal(
@@ -556,7 +556,7 @@ test("minMemoryMib compares against the substrate's real baseline in MiB", () =>
 	assert.deepEqual(strict.accepted, []);
 	assert.equal(
 		reasonFor(strict, "vercel"),
-		"minMemoryMib: requires at least 4096 MiB, vercel baseline is 3814 MiB and CreateSandboxOptions.resources is ignored on this substrate, so a larger size cannot be guaranteed",
+		"minMemoryMib: requires at least 4096 MiB, vercel baseline is 3814 MiB and CreateSandboxOptions.resources is unknown on this substrate, so a larger size cannot be guaranteed",
 	);
 
 	const result = filterCandidates(realProfiles(), { minMemoryMib: 512 });

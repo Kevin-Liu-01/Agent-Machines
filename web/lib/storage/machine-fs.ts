@@ -167,19 +167,34 @@ function assertSafePath(path: string, root: string): void {
 /* Read helpers                                                        */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Exit code meaning "the file is not there", chosen well outside the range
+ * shells and coreutils use so it cannot collide with a real failure.
+ *
+ * A stdout sentinel was wrong twice. `echo __MISSING__` appends a newline,
+ * and only some substrates trim exec output (sprites and dedalus do, e2b and
+ * vercel do not), so on the untrimmed lanes the equality check never matched
+ * and a MISSING FILE WAS RETURNED AS CONTENT -- the literal string
+ * "__MISSING__" became the chat or artifact body. Trimming would have fixed
+ * that but left a second bug: a file whose contents really are the sentinel
+ * would read as absent. An exit code carries the signal out of band, so
+ * neither ambiguity exists.
+ */
+const MISSING_FILE_EXIT = 42;
+
 export async function readTextFile(
 	path: string,
 	ctx: MachineStorageContext,
 ): Promise<string | null> {
 	assertSafePath(path, ctx.appDataRoot);
 	const result = await execOnMachine(
-		`if [ -f ${shellEscape(path)} ]; then cat ${shellEscape(path)}; else echo __MISSING__; fi`,
+		`if [ -f ${shellEscape(path)} ]; then cat ${shellEscape(path)}; else exit ${MISSING_FILE_EXIT}; fi`,
 		{ machineId: ctx.machineId },
 	);
+	if (result.exitCode === MISSING_FILE_EXIT) return null;
 	if (result.exitCode !== 0) {
 		throw new Error(`read ${path}: exit ${result.exitCode}: ${result.stderr.slice(0, 200)}`);
 	}
-	if (result.stdout === "__MISSING__") return null;
 	return result.stdout;
 }
 
@@ -207,13 +222,13 @@ export async function readBytes(
 	// `base64 -w 0` keeps the output as one line so we can ferry it
 	// back through the execution API without newline truncation.
 	const result = await execOnMachine(
-		`if [ -f ${shellEscape(path)} ]; then base64 -w 0 < ${shellEscape(path)}; else echo __MISSING__; fi`,
+		`if [ -f ${shellEscape(path)} ]; then base64 -w 0 < ${shellEscape(path)}; else exit ${MISSING_FILE_EXIT}; fi`,
 		{ timeoutMs: 60_000, machineId: ctx.machineId },
 	);
+	if (result.exitCode === MISSING_FILE_EXIT) return null;
 	if (result.exitCode !== 0) {
 		throw new Error(`readBytes ${path}: exit ${result.exitCode}: ${result.stderr.slice(0, 200)}`);
 	}
-	if (result.stdout === "__MISSING__") return null;
 	try {
 		return Buffer.from(result.stdout, "base64");
 	} catch {

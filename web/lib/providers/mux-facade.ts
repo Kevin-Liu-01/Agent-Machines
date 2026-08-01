@@ -144,11 +144,13 @@ export type MuxSubstrateBinding = {
 	/** Map the control plane's provision request onto mux create options. */
 	createOptions(input: ProvisionInput): CreateSandboxOptions;
 	/**
-	 * Whether exec output is whitespace-trimmed. Per-substrate on purpose:
-	 * the sprites and dedalus adapters have always trimmed and e2b/vercel have
-	 * never done so, and `lib/storage/machine-fs.ts` compares stdout to the
-	 * exact string `__MISSING__`. Unifying it here would flip that comparison
-	 * on the substrates it currently works on.
+	 * Whether exec output is whitespace-trimmed. Per-substrate because each
+	 * adapter has always behaved this way (sprites and dedalus trim, e2b and
+	 * vercel do not) and changing it would alter what every existing caller
+	 * sees. It is no longer load-bearing for correctness: machine-fs.ts used
+	 * to compare stdout to a sentinel string, which meant a missing file read
+	 * as content on the untrimmed lanes; absence is now an exit code. Unifying
+	 * the trim is still worth doing, but it is a behavior change, not a fix.
 	 */
 	readonly trimOutput: boolean;
 	readonly defaultExecTimeoutMs?: number;

@@ -136,15 +136,30 @@ const CAPABILITIES: SandboxCapabilities = {
 		maxRuntimeMs: "unknown",
 		// Same page, Hobby column: "Concurrent machines: 5" (Pro 20).
 		maxConcurrentSandboxes: 5,
-		// create() below ignores options.resources and always sends
-		// DEFAULT_SPEC, so a caller cannot size a machine through the mux.
-		resourceRequest: "ignored",
+		// provision() below now sends the caller's vcpu/memory clamped to the
+		// Hobby ceilings instead of a hardcoded spec. "unknown" rather than
+		// "honored" because this lane has no credentials and has never run a
+		// live cell, so the request is sent but its effect is unverified. Disk
+		// is still fixed at DEFAULT_SPEC: CreateSandboxOptions has no disk
+		// axis, and inventing one here would put a second source of truth
+		// beside the contract.
+		resourceRequest: "unknown",
 	},
 };
 
 // Machine shape provisioned when the router asks for a sandbox; the
 // public provision API takes only sizing (no name/env/idle knobs).
 const DEFAULT_SPEC = { vcpu: 1, memory_mib: 2048, storage_gib: 10 };
+
+// https://www.dedaluslabs.ai/pricing (read 2026-08-01), Hobby column: "Up to
+// 4" vCPU and "Up to 16 GiB" per machine. Hobby is used because the plan
+// behind a key is unknowable at routing time.
+const HOBBY_MAX_VCPU = 4;
+const HOBBY_MAX_MEMORY_MIB = 16384;
+
+function clamp(value: number, min: number, max: number): number {
+	return Math.min(Math.max(Math.round(value), min), max);
+}
 
 type RawMachine = {
 	machine_id: string;
@@ -361,10 +376,34 @@ class DedalusRest {
 		return (await response.json()) as RawMachine;
 	}
 
-	async provision(): Promise<RawMachine> {
+	/**
+	 * The spec is the caller's, not a constant.
+	 *
+	 * This used to post DEFAULT_SPEC unconditionally, so a request for a
+	 * bigger machine was dropped without a word and the harness starved at
+	 * run time. Dedalus's create API takes all three axes
+	 * (https://docs.dedaluslabs.ai/dcs/dm/quickstart, read 2026-08-01), so
+	 * there is no reason to ignore them. Sizes are clamped to the documented
+	 * Hobby ceilings rather than rejected: a request above the plan limit is
+	 * still satisfiable, just not at the size asked for, and the declared
+	 * capability limits already tell a caller what the ceiling is.
+	 */
+	async provision(spec?: {
+		vcpu?: number;
+		memoryMib?: number;
+	}): Promise<RawMachine> {
+		const body = {
+			vcpu: clamp(spec?.vcpu ?? DEFAULT_SPEC.vcpu, 1, HOBBY_MAX_VCPU),
+			memory_mib: clamp(
+				spec?.memoryMib ?? DEFAULT_SPEC.memory_mib,
+				512,
+				HOBBY_MAX_MEMORY_MIB,
+			),
+			storage_gib: DEFAULT_SPEC.storage_gib,
+		};
 		const response = await this.request("/v1/machines", {
 			method: "POST",
-			body: JSON.stringify(DEFAULT_SPEC),
+			body: JSON.stringify(body),
 		});
 		if (!response.ok) await this.fail(response, "provision");
 		return (await response.json()) as RawMachine;
@@ -845,7 +884,7 @@ export function createDedalusProvider(creds: {
 
 		async create(options: CreateSandboxOptions = {}): Promise<SandboxHandle> {
 			const rest = requireApi();
-			const raw = await rest.provision();
+			const raw = await rest.provision(options.resources);
 			// Executions submitted while the machine is placing/starting
 			// can outwait the router's short install probes, so block
 			// until the machine is actually running.
