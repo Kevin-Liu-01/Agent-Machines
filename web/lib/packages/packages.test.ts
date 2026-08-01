@@ -55,16 +55,21 @@ describe("matchPackages", () => {
 		expect(hits.some((h) => h.packageId === "stripe")).toBe(false);
 	});
 
+	// Ability ids come from the catalog rather than a literal list. The
+	// catalog is generated (web/data/packages.json <- knowledge/
+	// cursor-plugins.json), so a marketplace refresh that adds a skill to a
+	// package used to silently turn a hard-coded list into a stale subset
+	// and fail this test for the wrong reason.
 	it("does not suggest when all package abilities are already active in memory", () => {
+		const stripe = findPackage("stripe");
+		expect(stripe).toBeTruthy();
+		// Guard against a vacuous pass if the package ever loses its abilities.
+		expect(stripe!.skillIds.length + stripe!.mcpServerIds.length).toBeGreaterThan(0);
+
 		const stripeMemory = newBundle({
 			name: "pay",
-			skillIds: [
-				"stripe-best-practices",
-				"stripe-directory",
-				"stripe-projects",
-				"upgrade-stripe",
-			],
-			mcpServerIds: ["stripe"],
+			skillIds: [...stripe!.skillIds],
+			mcpServerIds: [...stripe!.mcpServerIds],
 		});
 		const hits = matchPackages({
 			draft: "stripe invoice webhook",
@@ -73,6 +78,29 @@ describe("matchPackages", () => {
 			pool,
 		});
 		expect(hits.some((h) => h.packageId === "stripe")).toBe(false);
+	});
+
+	it("still suggests a package when only some of its abilities are active", () => {
+		// The boundary of packageFullyActive: partial coverage must still
+		// produce a chip, otherwise attaching one skill would hide the rest
+		// of the package.
+		const stripe = findPackage("stripe");
+		expect(stripe).toBeTruthy();
+		const allIds = [...stripe!.skillIds, ...stripe!.mcpServerIds];
+		expect(allIds.length).toBeGreaterThan(1);
+
+		const partialMemory = newBundle({
+			name: "pay-partial",
+			skillIds: stripe!.skillIds.slice(0, -1),
+			mcpServerIds: [...stripe!.mcpServerIds],
+		});
+		const hits = matchPackages({
+			draft: "stripe invoice webhook",
+			memory: partialMemory,
+			sessionPackageIds: [],
+			pool,
+		});
+		expect(hits.some((h) => h.packageId === "stripe")).toBe(true);
 	});
 });
 

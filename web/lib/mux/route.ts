@@ -55,6 +55,9 @@ function credentialsFor(
 			if (!vercel?.token) missing.push("VERCEL_TOKEN");
 			if (!vercel?.teamId) missing.push("VERCEL_TEAM_ID");
 			if (!vercel?.projectId) missing.push("VERCEL_PROJECT_ID");
+			// A complete triple is sufficient on its own; only name OIDC as an
+			// alternative when something is actually missing.
+			if (missing.length === 0) return { ok: true, missing: [] };
 			missing.push("VERCEL_OIDC_TOKEN (alternative to the token triple)");
 			return { ok: false, missing };
 		}
