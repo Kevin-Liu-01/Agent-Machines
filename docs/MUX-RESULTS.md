@@ -155,3 +155,40 @@ of silently misdelivering, with a regression test in
 from, so one consumer per handle is the contract; fan out from it if
 several readers are needed.
 
+
+## openclaw on sprites: two real bugs fixed, cell still unconfirmed
+
+Chased through four consecutive live runs. Two genuine defects were found
+and fixed; the cell is still not confirmed green, and the remaining
+failures look like Sprites-side flakiness rather than our code.
+
+Real bugs, both fixed:
+
+1. **A shim `node` hung every install.** `/.sprite/bin/node` is not a
+   binary -- it is an nvm shim that sources nvm.sh and runs `nvm use
+   default`. Launched from the detached install it hangs forever
+   (measured: first probe still running at 1m45s, more piling up behind
+   it, zero bytes in the log, no sentinel), so the install stalled until
+   the budget expired. The version probe is now time-bounded, so an
+   unresponsive `node` is treated as unsuitable and the bootstrap fetches
+   a real binary -- which also drops the nvm dependency for every npm
+   harness. Ruled out first: Node is v24.18.0, the version comparison is
+   correct, the script is written, the tmux launch session does start.
+2. **A partial tree made the failure permanent.** With the hang fixed the
+   install ran and died with `ENOTEMPTY: directory not empty, rmdir
+   .../@mistralai/mistralai/esm/hooks` (exit 217) -- npm could not
+   replace the tree the hung attempts had left behind. Sprites keep their
+   filesystem and named sprites are adopted on create, so that state
+   persisted across runs. Installs now clear that package's directory
+   first (only that package, so sibling harnesses survive).
+
+The other three failures were transport-level and each differed:
+`sprite not found` (self-inflicted -- a concurrent run destroyed the same
+deterministically-named sprite), `fetch failed`, and `exec timed out`.
+That matches Sprites behaviors already recorded above: create returns
+intermittent 500s, and sprites auto-suspend, so an adopted sprite may need
+to wake before it answers. Add a retry/wake path around transport errors
+on this substrate before trusting the cell either way.
+
+e2b is unaffected throughout: openclaw installs there in 25.4s and the run
+returns MUX-OK.
