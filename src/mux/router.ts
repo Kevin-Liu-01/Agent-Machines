@@ -226,6 +226,28 @@ export class MuxMachine {
 			}
 		}
 
+		// A substrate that throttles detached work must be driven in the
+		// foreground: measured on Sprites 2026-08-01, the same openclaw
+		// install finishes in 17s foreground and does not finish in 15
+		// MINUTES detached (a curl that takes 0.11s interactively stalls
+		// indefinitely inside the detached session). Detaching exists for
+		// substrates that enforce request budgets, not as an end in itself.
+		if (this.sandbox.capabilities.detachedWork === "throttled") {
+			const install = await this.sandbox.exec(this.harness.installCommand(), {
+				timeoutMs: budgetMs,
+			});
+			if (install.exitCode !== 0) {
+				throw new MuxError(
+					"fatal",
+					`${this.harness.kind} install failed on ${this.substrate} (exit ${install.exitCode}): ${
+						(install.stderr || install.stdout).trim().slice(-800)
+					}`,
+					{ substrate: this.substrate, harness: this.harness.kind },
+				);
+			}
+			return;
+		}
+
 		const tag = `${this.harness.kind}-${Date.now().toString(36)}`;
 		const script = `/tmp/am-install-${tag}.sh`;
 		const log = `/tmp/am-install-${tag}.log`;

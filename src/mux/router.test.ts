@@ -186,6 +186,7 @@ const FAKE_CAPABILITIES: SandboxCapabilities = {
 	reattach: true,
 	publicUrl: false,
 	streamingExec: true,
+	detachedWork: "reliable",
 };
 
 class FakeSandboxHandle implements SandboxHandle {
@@ -991,4 +992,37 @@ test("every run leaves a trace, keyed or not", async (t) => {
 	assert.equal(written[0].harness, "claude-code");
 	assert.ok(written[0].runKey.startsWith("run-claude-code-e2b-"));
 	assert.ok(written[0].attempts.length >= 1, "the placement decision is recorded");
+});
+
+test("a substrate that throttles detached work installs in the foreground", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	// Detaching is a workaround for request budgets, not a goal. On Sprites a
+	// detached install is throttled so badly it never finishes, so that lane
+	// must run the install on the open connection instead.
+	const handle = new FakeSandboxHandle("sprites-fg", "sprites");
+	(handle as { capabilities: { detachedWork: string } }).capabilities = {
+		...handle.capabilities,
+		detachedWork: "throttled",
+	};
+	handle.execScript = [{ exitCode: 1 }, { exitCode: 0 }]; // probe miss, then install
+	const provider = new FakeProvider("sprites");
+	provider.handleFactory = () => handle;
+	const mux = makeMux(router, {
+		keys: { anthropic: "k" },
+		sandboxes: { primary: "sprites", backups: [] },
+	});
+	mux.registerProvider("sprites", provider);
+
+	const machine = await mux.create({ agent: "claude-code", install: false });
+	await machine.ensureInstalled();
+
+	assert.ok(
+		!handle.execCalls.some((call) => call.includes("am-install-")),
+		"a throttled substrate must not use the detach-and-poll sentinel path",
+	);
+	assert.equal(handle.files.size, 0, "no install script is staged");
 });

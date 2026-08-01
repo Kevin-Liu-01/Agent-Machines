@@ -69,6 +69,7 @@ const CAPABILITIES: SandboxCapabilities = {
 	reattach: true,
 	publicUrl: true,
 	streamingExec: false,
+	detachedWork: "reliable",
 };
 
 // Machine shape provisioned when the router asks for a sandbox; the

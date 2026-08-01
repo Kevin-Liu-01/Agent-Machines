@@ -49,6 +49,17 @@ export type SandboxCapabilities = {
 	publicUrl: boolean;
 	/** Native incremental stdout/stderr while a command runs. */
 	streamingExec: boolean;
+	/**
+	 * Whether work detached from the client runs at full speed.
+	 *
+	 * "throttled" means the substrate slows or parks a detached process when
+	 * the client is not actively driving it. Measured on Sprites 2026-08-01:
+	 * the same openclaw install finishes in 17s in the foreground and does
+	 * not finish in 15 MINUTES detached, with a plain `curl` that takes
+	 * 0.11s interactively stalling indefinitely inside the detached session.
+	 * Long installs must therefore stay in the foreground there.
+	 */
+	detachedWork: "reliable" | "throttled";
 };
 
 export type MuxErrorKind =

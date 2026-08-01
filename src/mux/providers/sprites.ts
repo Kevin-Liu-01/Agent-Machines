@@ -109,6 +109,7 @@ const CAPABILITIES: SandboxCapabilities = {
 	reattach: true,
 	publicUrl: true,
 	streamingExec: true,
+	detachedWork: "throttled",
 };
 
 // Memoize the dynamic import so module resolution is paid once per

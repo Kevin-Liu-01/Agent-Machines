@@ -63,6 +63,7 @@ const CAPABILITIES: SandboxCapabilities = {
 	reattach: true,
 	publicUrl: true,
 	streamingExec: true,
+	detachedWork: "reliable",
 };
 
 /** Lazy, memoized SDK load; unused substrates never pay the import. */

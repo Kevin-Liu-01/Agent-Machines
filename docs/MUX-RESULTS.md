@@ -11,8 +11,8 @@ and the normalized stream carries the text back.
 
 ## The 4x4 matrix, measured 2026-08-01
 
-Full run of `npx tsx scripts/mux-live-test.ts` (no arguments = all four
-harnesses on all four substrates). Every number is from that run.
+Full run of `npx tsx scripts/mux-live-test.ts`, plus a re-run of the two
+sprites install cells after the detached-work fix below.
 
 | Agent | Sandbox | Result | create | install | first event | run |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -22,28 +22,41 @@ harnesses on all four substrates). Every number is from that run.
 | hermes | e2b | ok | 163 | 5125 | 2647 | 14591 |
 | claude-code | sprites | ok | 719 | 222 | 2097 | 4678 |
 | codex | sprites | ok | 615 | 298 | 2890 | 9992 |
-| openclaw | sprites | see note | 558 | -- | -- | -- |
-| hermes | sprites | ok | 849 | 455572 | 2953 | 14479 |
+| openclaw | sprites | ok | 1375 | 13595 | 12258 | 13151 |
+| hermes | sprites | ok | 536 | 4535 | 3868 | 18642 |
 | all four | vercel | skipped | -- | -- | -- | -- |
 | all four | dedalus | skipped | -- | -- | -- | -- |
 
-**7 of 8 credentialed cells pass.** Every cell marked `ok` returned the
-exact sentinel text through the normalized event stream.
+**8 of 8 credentialed cells pass.** Every `ok` row returned the exact
+sentinel text through the normalized event stream.
 
-Hermes is the headline change: it was the one permanently red cell, and it
-now installs in 5.1s on e2b (previously it exhausted the base sandbox and
-the VM stopped answering RPCs) because the adapter installs the published
-wheel with uv instead of running the vendor's curl installer. On sprites the
-same install takes 7.6 minutes -- slow but bounded, where before it never
-finished.
+Two cells changed character completely:
 
-`openclaw @ sprites` is the one failure, and the cause was our own fix: the
-time-bounded node probe correctly refuses the hanging nvm shim, but then
-downloaded a ~50 MB Node on every sandbox, which on this substrate pushed
-the install past its 15-minute budget. The bootstrap now adopts the real
-binary the shim fronts (`/.sprite/languages/node/nvm/versions/node/
-v24.18.0/bin/node`, verified to run fine under tmux and already above every
-harness floor) and only downloads when no usable binary exists.
+- **Hermes was the one permanently red harness.** The vendor curl installer
+  exhausted E2B's base sandbox (478 MB) and the VM stopped answering RPCs;
+  on sprites it was still fetching ffmpeg's ~190 apt packages when a
+  15-minute budget expired. Installing the published wheel with uv instead
+  takes 5.1s on e2b and 4.5s on sprites.
+- **openclaw on sprites** went from never finishing to 13.6s.
+
+### Sprites throttles detached work
+
+The openclaw-on-sprites failure took three attempts to diagnose because the
+first two explanations were guesses. Tracing the install with `set -x` on a
+live sprite showed what actually happens inside a detached session: a
+version check against a Node binary that works interactively fails, and a
+`curl` that takes 0.11s via a normal exec stalls indefinitely.
+
+Measured directly: the identical openclaw install finishes in **16.9s in the
+foreground** and **does not finish in 15 minutes detached**.
+
+So `detachedWork: "reliable" | "throttled"` is now a declared substrate
+capability, and `ensureInstalled` runs the install on the open connection
+for throttled lanes. Detaching exists to survive request budgets (E2B's
+sandbox lifetime), not as an end in itself, and applying it universally was
+the error. The fix also made hermes on sprites 100x faster -- 4.5s
+foreground against 455s detached -- so the throttling had been silently
+taxing the cells that did pass.
 
 ### The two uncredentialed substrates
 
@@ -51,8 +64,15 @@ harness floor) and only downloads when no usable binary exists.
 `VERCEL_TOKEN`/`VERCEL_TEAM_ID`/`VERCEL_PROJECT_ID` (or
 `VERCEL_OIDC_TOKEN`) and `DEDALUS_API_KEY`. Those 8 cells have never been
 run. They are implemented and unit-tested, not verified. Do not read
-`skipped` as passing: half the matrix is unproven, and only credentials
-will change that.
+`skipped` as passing: half the matrix is unproven and only credentials will
+change that.
+
+### Known cosmetic issue
+
+Hermes prints a stderr warning (`tirith security scanner enabled but not
+available`) that its plain-text parser passes through as a text delta, so it
+lands in `RunResult.text` ahead of the answer. Harmless but untidy; the
+adapter has no reliable marker to separate vendor warnings from output.
 
 ### Substrate primitives
 

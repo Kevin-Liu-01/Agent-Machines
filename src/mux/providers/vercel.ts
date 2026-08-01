@@ -75,6 +75,7 @@ const CAPABILITIES: SandboxCapabilities = {
 	reattach: true,
 	publicUrl: true,
 	streamingExec: true,
+	detachedWork: "reliable",
 };
 
 let sandboxClassPromise: Promise<SandboxClass> | null = null;

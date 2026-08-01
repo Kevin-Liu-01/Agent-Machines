@@ -49,6 +49,7 @@ function fakeProfile(
 			reattach: true,
 			publicUrl: true,
 			streamingExec: true,
+	detachedWork: "reliable",
 			...capabilities,
 		},
 		limits: { ...SUBSTRATE_LIMITS[substrate], ...limits },
@@ -76,6 +77,7 @@ test("provider capabilities are the matrix the limits table was written against"
 			reattach: true,
 			publicUrl: true,
 			streamingExec: true,
+			detachedWork: "reliable",
 		},
 		sprites: {
 			pty: "native",
@@ -83,6 +85,9 @@ test("provider capabilities are the matrix the limits table was written against"
 			reattach: true,
 			publicUrl: true,
 			streamingExec: true,
+			// Measured: the same install takes 17s foreground and does not
+			// finish in 15 minutes detached on this substrate.
+			detachedWork: "throttled",
 		},
 		vercel: {
 			pty: "tmux",
@@ -90,6 +95,7 @@ test("provider capabilities are the matrix the limits table was written against"
 			reattach: true,
 			publicUrl: true,
 			streamingExec: true,
+			detachedWork: "reliable",
 		},
 		dedalus: {
 			pty: "tmux",
@@ -97,6 +103,7 @@ test("provider capabilities are the matrix the limits table was written against"
 			reattach: true,
 			publicUrl: true,
 			streamingExec: false,
+			detachedWork: "reliable",
 		},
 	});
 });
@@ -410,6 +417,7 @@ test("asSkippedAttempts surfaces the failed dimension, not just prose", () => {
 		reattach: true,
 		publicUrl: true,
 		streamingExec: true,
+	detachedWork: "reliable",
 	});
 	const filtered = filterCandidates([profile], { pty: "native" });
 	const skips = asSkippedAttempts(filtered.rejected);
