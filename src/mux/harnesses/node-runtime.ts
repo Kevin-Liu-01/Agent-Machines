@@ -24,6 +24,13 @@ export const AM_NODE_PATH_PREFIX = `PATH="${AM_BIN_PATHS}:$PATH"`;
 const NODE_VERSION = "24.18.1";
 
 /**
+ * Seconds a version probe may take before its `node` is declared
+ * unsuitable. Generous for a cold binary, short enough that a hanging
+ * shim cannot stall an install.
+ */
+const PROBE_TIMEOUT_S = 15;
+
+/**
  * Idempotent: keeps whatever Node satisfies `minMajor` (system or
  * previously bootstrapped), otherwise fetches the pinned tarball.
  */
@@ -36,7 +43,20 @@ export function ensureNodeCommand(
 	// starts at 24.15.0, so a major-only check let Node 24.10 through and
 	// the private Node was never fetched, leaving the harness permanently
 	// uninstallable on that image.
-	const probe = `${AM_NODE_PATH_PREFIX} node -e "const[M,m,p]=process.versions.node.split('.').map(Number);process.exit(M>${minMajor}||(M===${minMajor}&&(m>${minMinor}||(m===${minMinor}&&p>=${minPatch})))?0:1)" >/dev/null 2>&1`;
+	//
+	// The probe is time-bounded because a substrate's `node` may not be a
+	// binary at all. Sprites ships /.sprite/bin/node as an nvm shim that
+	// sources nvm.sh and runs `nvm use default`; under a detached install it
+	// hangs forever (measured: still running at 1m45s, zero output, with
+	// more piling up behind it), which stalled the whole install with an
+	// empty log. An unresponsive node is treated as unsuitable so the
+	// bootstrap below fetches a real binary instead of waiting on a shim.
+	const versionCheck = `node -e "const[M,m,p]=process.versions.node.split('.').map(Number);process.exit(M>${minMajor}||(M===${minMajor}&&(m>${minMinor}||(m===${minMinor}&&p>=${minPatch})))?0:1)"`;
+	// `timeout` is absent on some minimal images; fall back to running the
+	// check bare rather than failing the whole install on a missing tool.
+	const bounded = `if command -v timeout >/dev/null 2>&1; then timeout ${PROBE_TIMEOUT_S} ${versionCheck}; else ${versionCheck}; fi`;
+	// stdin from /dev/null: never let a probe block reading a tmux TTY.
+	const probe = `${AM_NODE_PATH_PREFIX} sh -c '${bounded.replace(/'/g, `'\\''`)}' >/dev/null 2>&1 </dev/null`;
 	const detectArch = `A=$(uname -m); if [ "$A" = "x86_64" ]; then A=x64; elif [ "$A" = "aarch64" ] || [ "$A" = "arm64" ]; then A=arm64; else echo "unsupported arch: $A" >&2; exit 1; fi`;
 	const fetch = `curl -fsSL https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-$A.tar.gz -o /tmp/am-node.tar.gz`;
 	const unpack = `mkdir -p "${AM_NODE_DIR}" && tar -xzf /tmp/am-node.tar.gz -C "${AM_NODE_DIR}" --strip-components=1 && rm -f /tmp/am-node.tar.gz`;

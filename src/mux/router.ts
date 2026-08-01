@@ -145,8 +145,12 @@ export class MuxMachine {
 			script,
 			`#!/usr/bin/env bash\n${this.harness.installCommand()}\n`,
 		);
+		// stdin from /dev/null so nothing in the install can block reading a
+		// terminal. Substrates that launch background work through tmux hand
+		// the payload a TTY, and a tool that reads stdin there hangs with an
+		// empty log and no sentinel -- indistinguishable from a slow install.
 		await this.sandbox.execBackground(
-			`bash ${script} > ${log} 2>&1; echo $? > ${done}`,
+			`bash ${script} > ${log} 2>&1 </dev/null; echo $? > ${done}`,
 		);
 
 		const deadline = Date.now() + budgetMs;

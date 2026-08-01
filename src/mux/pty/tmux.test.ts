@@ -183,3 +183,18 @@ test("the output tail stops when the remote session goes away", async () => {
 	assert.match(tail, /kill \$TAILPID/);
 	assert.equal(await pty.exited, null);
 });
+
+test("output is single-use and says so instead of misdelivering", async () => {
+	const target = recorder({ offset: 10, snapshot: "screen\n" });
+	const pty = await openTmuxPty(target, { session: "once" });
+	for await (const _bytes of pty.output) {
+		void _bytes;
+	}
+	// A second consumer cannot be served: the stream is live with no buffer,
+	// and silently interleaving next() calls is what made a working reattach
+	// look broken.
+	assert.throws(
+		() => pty.output[Symbol.asyncIterator](),
+		/single-use live byte stream/,
+	);
+});

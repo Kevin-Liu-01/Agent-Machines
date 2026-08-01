@@ -129,46 +129,29 @@ variables rather than erroring. That is the fail-closed contract: the
 router never routes to a provider it cannot authenticate, and the skip
 reason is carried in `machine.attempts` so the UI can explain the route.
 
-## Open issue: live deltas after a tmux reattach
+## Resolved: the "reattach delivers no live output" report was a test bug
 
-State as of 2026-07-31, after fixing `pipe-pane -o`:
+Recorded here because the wrong conclusion was documented first.
 
-- Sandbox side is verified correct. On a live E2B sandbox (tmux 3.3a) a
-  second `pipe-pane` replaces the pipe, `pane_pipe` reports 1, the pane
-  log grows across the reattach (116 -> 186 bytes) and the new text is
-  present in the file.
-- Attach 1 streams live output correctly, and attach 2 replays the pane
-  snapshot correctly.
-- What does not arrive is attach 2's *live* delta stream, so a reattached
-  terminal paints history and then appears frozen until reopened.
+There was never a defect in `openTmuxPty`. Reattach delivers live output
+correctly; what was broken was the probe used to check it, which called
+`for await (const b of pty.output)` twice on the same handle. `output` is
+an async generator, so the second loop's `next()` queued behind the
+first's still-pending one: chunks went to the abandoned consumer and the
+second loop saw nothing. That is indistinguishable from a frozen
+terminal.
 
-Both remaining suspects are client-side: the byte offset handed to
-`tail -c +N -f` on reattach, or the watchdog wrapper that backgrounds the
-tail so the stream can end when the session dies (`{ tail -f & ...; }`) --
-a backgrounded child's stdout may not be captured by every substrate's
-streaming exec. Reproduce with two sequential `openPty({ session })`
-calls on the same sandbox, writing after each attach.
+Proven on a live E2B sandbox:
 
-## Regression to chase: openclaw install on sprites
+- The tail command and offset were never at fault. Running the exact
+  watchdog tail (`tail -c +117 -f` at offset 116) through `execStream`
+  after a reattach delivered the delta, and so did a plain `tail -f`.
+- With one continuous consumer per handle: attach 1 live output arrives,
+  attach 2 replays the snapshot, and attach 2's own write arrives live.
 
-The re-run after the 2026-07-31 security/defect fixes came back:
+`PtyHandle.output` now throws a clear error on a second iteration instead
+of silently misdelivering, with a regression test in
+`src/mux/pty/tmux.test.ts`. A live byte stream has no buffer to replay
+from, so one consumer per handle is the contract; fan out from it if
+several readers are needed.
 
-| Agent | Sandbox | Result | create | install | first event | run |
-| --- | --- | --- | --- | --- | --- | --- |
-| claude-code | e2b | ok | 676 | 8290 | 1009 | 4120 |
-| codex | e2b | ok | 105 | 9798 | 381 | 2443 |
-| openclaw | e2b | ok | 113 | 25401 | 12759 | 13283 |
-| claude-code | sprites | ok | 644 | 193 | 1841 | 4373 |
-| codex | sprites | ok | 527 | 191 | 2312 | 4303 |
-| openclaw | sprites | FAILED | 536 | -- | -- | -- |
-
-`openclaw install did not finish within 900000ms on sprites`, and the
-error carried no install-log tail (so the log file was absent or empty).
-The same cell passed at 18.6s and 21.2s in the two runs before those
-fixes, and openclaw still installs fine on e2b, so this is a
-sprites-specific regression from one of: the env-staging change to
-`exec`/`execBackground` (env now travels in a sourced file rather than
-the URL), the tmux-based background launch, or the version-precise Node
-bootstrap now asking for 24.15.0. Start by reading
-`/tmp/am-install-*.log` and checking whether the tmux launch session
-still exists on the sprite.

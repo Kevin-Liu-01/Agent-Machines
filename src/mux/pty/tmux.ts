@@ -121,7 +121,14 @@ export async function openTmuxPty(
 	});
 
 	const encoder = new TextEncoder();
-	const output: AsyncIterable<Uint8Array> = (async function* () {
+	// `output` is a live byte stream, so it is single-use: there is no
+	// buffer to replay from. Iterating it twice used to silently misdeliver
+	// -- the second loop's next() queued behind the first's pending one, so
+	// chunks went to the abandoned consumer and the second saw nothing.
+	// That cost real debugging time (it looked exactly like a broken
+	// reattach), so a second iteration now fails loudly instead.
+	let iterated = false;
+	const stream = (async function* () {
 		// Replay the visible pane first so a reattach shows the session as
 		// it stands, then stream only what arrives after the snapshot.
 		if (snapshot.length > 0) yield encoder.encode(snapshot);
@@ -144,6 +151,20 @@ export async function openTmuxPty(
 			exitResolve(null);
 		}
 	})();
+
+	const output: AsyncIterable<Uint8Array> = {
+		[Symbol.asyncIterator]() {
+			if (iterated) {
+				throw new Error(
+					"PtyHandle.output is a single-use live byte stream; it cannot be " +
+						"iterated twice (there is no buffer to replay). Keep one " +
+						"consumer for the life of the handle and fan out from it.",
+				);
+			}
+			iterated = true;
+			return stream[Symbol.asyncIterator]();
+		},
+	};
 
 	return {
 		output,
