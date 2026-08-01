@@ -326,6 +326,70 @@ Convergence remains item 0.
 
 ---
 
+## 3c. BLOCKER found: web cannot import the mux at runtime
+
+The build order assumed 0.2 and 0.3 were sequential refactors. They are not:
+**0.3 is blocked on packaging, not effort.**
+
+`web/next.config.ts` pins `turbopack.root` to `web/` -- deliberately, with the
+comment "web/ has its own lockfile; keep Turbopack rooted here, not the
+monorepo parent". That walls off everything above it. Measured with three
+`next build` runs against a probe route: `../../../src/mux/config.js`, the
+extensionless form, and even the prebuilt `../../../dist/mux/providers/
+index.js` all fail with "Module not found", while `tsc --noEmit` and `vitest`
+resolve all three. `dist/` is also gitignored, so it is absent at deploy time.
+So `getProvider(kind, creds)` cannot construct a `src/mux` provider today, and
+the hosted `provision-machine` route cannot call `Mux.create()`.
+
+What 0.2 delivered instead is the roadmap's other stated option -- "make
+web/lib/providers adapt to SandboxProvider" -- as far as it goes without a
+runtime import: one facade, exhaustive bidirectional state and error mapping,
+and the adapter shapes typed as `Pick<>` slices of the REAL `src/mux/types.ts`
+contracts via type-only imports (SWC erases those before Turbopack sees them),
+plus a compile-time proof that the mux provider still satisfies the slice. So
+the CONTRACT is converged and cannot drift silently. **The four vendors are
+still implemented twice.** Do not read 0.2 as "the duplication is gone".
+
+### Deciding 0.3
+
+Three options, in increasing order of commitment:
+
+1. **Widen the Turbopack root** to the repo. Cheapest, but it undoes a
+   deliberate decision about lockfile scope and pulls the whole monorepo into
+   the web build graph.
+2. **Depend on the published `agent-machines` package** from `web/`. Cleanest
+   boundary and it dogfoods the package we ship, at the cost of a publish step
+   between a mux change and the dashboard seeing it.
+3. **Make `web/` a workspace member** with the mux as a workspace dependency.
+   Best long-run answer, largest change to how the repo builds and deploys.
+
+This is a packaging decision with product consequences, so it wants a human
+call rather than an agent picking one.
+
+### Contract gaps 0.2 surfaced (worth fixing regardless of which option wins)
+
+- `SandboxProvider` has no no-wake status read. State is reachable only via
+  `connect(id)` + `handle.state()`, and connect RESUMES a paused sandbox on
+  e2b and vercel. The dashboard polls state on every fleet render, so
+  delegating as-is would silently wake and bill parked sandboxes. Needs
+  `describe(id)`.
+- Destroying a parked sandbox through `connect()` resumes it first: wasted
+  billing, and a sandbox whose snapshot cannot resume becomes undestroyable --
+  the orphaned-quota failure in POSTMORTEM-2026-05-18 item 5. Needs `park`/
+  `remove`, or a non-resuming `attach`.
+- `CreateSandboxOptions.resources` has no disk axis, though Dedalus accepts
+  one. Fixed forward for vcpu/memory in commit ca6d1f5; disk still fails
+  closed rather than silently shrinking the machine.
+- Sprites naming differs by design: the mux derives a deterministic
+  `am-mux-<name>` and adopts on conflict, while the control plane uses a
+  random suffix. Adopting the mux rule would make two dashboard machines with
+  the same name the same sprite -- MUX-RESULTS records a live failure from
+  exactly that. Decide before 0.3 swaps the adapter in.
+- Sprites `wake` in the control plane only reads status. The mux wakes for
+  real with an exec probe, which is more correct, but a cold sprite measures
+  17-31s against a 30s exec default, so adopting it needs a wake-specific
+  timeout above 31s.
+
 ## 4. Must not claim
 
 Each of these is false today. The file that would have to change before it
