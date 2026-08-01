@@ -282,6 +282,50 @@ four cannot serve. Not before.
 
 ---
 
+## 3b. Landed after this document was written (2026-08-01)
+
+Recorded here so the status table above is not read as current. Commit
+`07a6300` wired four of the scoped modules into `src/mux/router.ts`, which
+changes three "must not claim" entries below:
+
+- **Health is now a real signal.** `src/mux/health.ts` is a rolling-window
+  circuit breaker; `Mux.routeFor()` orders lanes by it and `create()` feeds
+  outcomes back, counting only transport-class errors so a credential or
+  capability failure cannot open a circuit. It persists through
+  `src/mux/state.ts` so a failing substrate stays de-prioritized across
+  processes. Health only reorders and never removes -- a blip that opened
+  every circuit must not make `create()` impossible. Still not true:
+  automatic *selection* (see Phase 3) and any dashboard failover.
+- **Capabilities now affect routing.** `src/mux/constraints.ts` filters
+  candidates against declared needs and names the failed dimension
+  structurally on the attempt (`constraint: "pty"`), not just in prose.
+  Still only the five declared axes plus size and runtime -- region, GPU
+  and network policy remain unimplemented, so a capability claim must still
+  not name them.
+- **Price is a routing input, not just display data.** `src/mux/cost.ts`
+  carries per-substrate published rates with the source and date cited per
+  entry, marks two of four `unknown` rather than inventing a number, and
+  `optimize: "cost"` orders lanes cheapest-first with unknown-price lanes
+  last. Still not true: "we optimize price across providers" as a default
+  (it is opt-in), and nothing bills.
+- **Runs are observable and replayable.** `src/mux/traces.ts` writes one
+  JSONL record per run with the placement attempts, and `runKey` makes a
+  turn idempotent so a client crash cannot double-charge an agent run. This
+  is the label source Phase 1 asked for -- every mux run now emits one,
+  where previously only cron ingest did.
+
+Also corrected in the same commit: the upstream gate was native-key-only,
+which was simply wrong. OpenRouter serves an Anthropic-Messages endpoint
+(measured, docs/UPSTREAMS.md), so a gateway key drives claude-code. The rule
+now lives in `src/mux/upstreams.ts`, per harness and per wire format.
+
+What did NOT change: the cross-cutting defect above. All of this landed in
+`src/mux/*` only, so the hosted control plane still has no failover, no
+health and no constraints, and the two provider contracts still coexist.
+Convergence remains item 0.
+
+---
+
 ## 4. Must not claim
 
 Each of these is false today. The file that would have to change before it
