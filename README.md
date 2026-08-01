@@ -67,6 +67,8 @@ Most products lock you into one runtime *or* one cloud. Agent Machines routes bo
 
 A **credential gate** blocks provisioning when the chosen runtime has no usable model upstream or the substrate has no key, so spin-up never fails silently downstream.
 
+> **Two implementations today, converging.** The hosted control plane routes through `MachineProvider` (`web/lib/providers/*`); the direct-to-substrate multiplexer routes through `SandboxProvider` (`src/mux/providers/*`). The same four vendors are adapted twice, and the two surfaces do not yet share a router: create-time failover, health ordering, and constraint filtering exist only on the mux side. Convergence is item 0 of [docs/ROADMAP.md](docs/ROADMAP.md).
+
 ---
 
 ## Browser Agent Console (live CLI in the browser)
@@ -162,12 +164,12 @@ The agent's **HTTP chat gateway** (Hermes `:8642` / OpenClaw `:18789`) is now op
 
 ## The harness (registry-driven)
 
-A worker is a runtime **plus** a composable harness. Counts are derived from the registry (`web/lib/platform/harness.ts`), not hard-coded.
+A worker is a runtime **plus** a composable harness. The app derives every count at runtime from the registries (`web/lib/platform/harness.ts` reads `web/data/skills.json` and `web/data/mcps-catalog.json`). The numbers written into this table are a snapshot of those registries, kept honest by `src/lib/public-claims.test.ts`, which fails if a published count and the registry disagree.
 
 | Layer | Source | Notes |
 |-------|--------|-------|
 | **Skills** | `knowledge/skills/<name>/SKILL.md` | 161 skills; synced to `~/.agent-machines/skills/` on deploy/reload |
-| **MCP servers** | `knowledge/mcps` catalog | 35 servers; credential-gated (Vercel, Stripe, Supabase, Clerk, Figma, PostHog, Sentry, Datadog, Linear, Slack, GitHub, and more) |
+| **MCP servers** | `knowledge/mcps` catalog | 39 servers; credential-gated (Vercel, Stripe, Supabase, Clerk, Figma, PostHog, Sentry, Datadog, Linear, Slack, GitHub, and more) |
 | **Service routes** | loadout registry | MCP → CLI → skill preference per vendor |
 | **CLIs** | bootstrap install | agent-browser, Playwright, gh, curl, jq, sqlite3, and more |
 | **Agent-native tools** | per runtime | vary by runtime; Hermes is richest (terminal, fs, browser, vision, cron, memory, delegate) |
@@ -218,6 +220,8 @@ Every substrate implements `MachineProvider`; streaming tier depends on the SDK.
 
 Native tiers relay output frame by frame with no extra `exec` calls. The poll fallback launches a detached command, tees combined output to a temp log, and polls new bytes until an exit-marker file appears.
 
+Four adapters is not four proven lanes. Only **E2B** and **Sprites** have run a live agent cell; Vercel Sandbox and Dedalus are implemented and unit-tested but uncredentialed here, so they fail closed naming the missing variables rather than routing. Measured numbers and the exact gaps are in [docs/MUX-RESULTS.md](docs/MUX-RESULTS.md).
+
 ---
 
 ## Quick start
@@ -249,11 +253,19 @@ const am = new AgentMachines();
 const agent = await am.create({
   agent: "codex",
   sandbox: "e2b",
-  model: "anthropic/claude-sonnet-4-6",
+  model: "openai/gpt-5.2",   // codex speaks the OpenAI Responses API
 });
 const result = await agent.run("Inspect this repository and fix the failing test.");
 console.log(result.text);
 ```
+
+`model` is optional and defaults to the agent's own upstream: `codex` gets an
+OpenAI id, `claude-code` an Anthropic one, and the gateway runtimes (`hermes`,
+`openclaw`) get the account default. Pairing an agent with a model its upstream
+cannot serve -- `agent: "codex"` with `model: "anthropic/..."` -- is refused by
+`create()` instead of provisioning a machine that 404s on its first turn. See
+[docs/UPSTREAMS.md](docs/UPSTREAMS.md) for the measured per-upstream wire
+formats and the model-id namespacing rule.
 
 The key is displayed once and stored only as a SHA-256 hash. Rotating it
 invalidates the previous key immediately. Set `bootstrap: false` on the client
@@ -282,18 +294,40 @@ your provider keys. See [docs/MUX.md](docs/MUX.md) for the architecture and
 import { createMux } from "agent-machines";
 
 const mux = createMux();
-const machine = await mux.create({ agent: "claude-code", sandbox: "auto" });
 
-for await (const event of machine.run("review this repo")) {
+const machine = await mux.create({
+  agent: "claude-code",
+  sandbox: "auto",                                  // route, don't pin
+  constraints: { pty: "native", maxRuntimeMs: 3_600_000 },
+  optimize: "cost",                                 // opt-in, off by default
+});
+
+for await (const event of machine.run("review this repo", { runKey: "review-42" })) {
   if (event.type === "text") process.stdout.write(event.delta);
 }
 
 const pty = await machine.pty();   // real terminal, native PTY where available
+console.log(machine.attempts);     // why it landed where it landed
 ```
 
-`sandbox: "auto"` follows `primary -> backups`, skipping lanes whose credentials
-are missing and failing over on transient provider errors. Every decision is
-recorded in `machine.attempts`.
+`sandbox: "auto"` walks `primary -> backups` and, in this order: drops lanes
+whose credentials are missing, drops lanes that cannot satisfy `constraints`
+(recording the failed dimension, e.g. `constraint: "pty"`), orders by modeled
+price when `optimize: "cost"` is set, then reorders by a rolling health window
+so a substrate that has been failing goes last. Health only reorders -- it
+never removes a lane, because an incident that opened every circuit must not
+make `create()` impossible. Provisioning errors fail over to the next lane and
+every decision lands in `machine.attempts`.
+
+Failover is **placement-time only**. A run that dies mid-stream comes back with
+`truncated: true` and is not replayed. `runKey` is an idempotency key, not a
+retry: a second `run()` with the same key returns the stored result instead of
+executing the agent twice. Each run also appends one trace record (placement
+attempts, cost, time to first event) to a day shard in
+`~/.agent-machines/traces/`.
+
+Route selection is **not** learned yet: the order comes from your config plus
+health and price, not from a model of past outcomes.
 
 ---
 

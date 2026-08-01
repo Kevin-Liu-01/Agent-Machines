@@ -1,8 +1,16 @@
+/**
+ * Client for the hosted control plane: provision -> bootstrap -> run over
+ * HTTP. The direct-to-substrate path with no control plane is the mux
+ * (`createMux`, src/mux/index.ts); this class is the other surface, and the
+ * two do not yet share a router (docs/ROADMAP.md item 0).
+ */
+
 import {
 	type AgentCreateInput,
 	type AgentKind,
 	type AgentRoute,
 	type MachineSpec,
+	type NativeUpstream,
 	type SandboxKind,
 	resolveAgentRoute,
 } from "./routing.js";
@@ -12,6 +20,7 @@ export type {
 	AgentKind,
 	AgentRoute,
 	MachineSpec,
+	NativeUpstream,
 	SandboxKind,
 };
 
@@ -172,7 +181,7 @@ export class AgentMachines {
 		if (!response.ok) {
 			if (response.status === 401 && !this.apiKey) {
 				throw new Error(
-					"Agent Machines API key required. Create one in Dashboard → Settings → Developer API, then set AGENT_MACHINES_API_KEY.",
+					"Agent Machines API key required. Create one in Dashboard -> Settings -> Developer API, then set AGENT_MACHINES_API_KEY.",
 				);
 			}
 			throw new Error(

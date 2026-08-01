@@ -63,6 +63,17 @@ const TAIL_COMMAND_RE = /^stdbuf -o0 tail -c \+(\d+) -f (\S+)$/;
 
 const SCOPE = { substrate: "dedalus" } as const;
 
+/**
+ * Declared capabilities.
+ *
+ * DECLARED FROM DOCUMENTATION, NOT VERIFIED LIVE. We hold no DEDALUS_API_KEY,
+ * so this lane has never run a cell in the mux matrix (docs/MUX-RESULTS.md).
+ * Dedalus publishes the least of the four substrates: its pricing page has
+ * per-tier limits, and the machines docs show the API's sizing arguments, but
+ * nothing states regions, egress, forking or a per-run duration -- those are
+ * "unknown" and reject any constraint that needs them. Plan-tiered figures use
+ * HOBBY, the lowest published tier.
+ */
 const CAPABILITIES: SandboxCapabilities = {
 	pty: "tmux",
 	persistence: "always-on",
@@ -70,6 +81,65 @@ const CAPABILITIES: SandboxCapabilities = {
 	publicUrl: true,
 	streamingExec: false,
 	detachedWork: "reliable",
+	// No Dedalus page names a region or a region argument: checked
+	// https://www.dedaluslabs.ai/pricing, https://www.dedaluslabs.ai/ and the
+	// machines quickstart at https://docs.dedaluslabs.ai/dcs/dm/quickstart on
+	// 2026-08-01, whose create example is "--vcpu 1 --memory-mib 1024
+	// --storage-gib 5 --autosleep never" with no region flag. Unknown on all
+	// three sub-fields: we cannot even say whether a region can be chosen.
+	region: { default: "unknown", available: "unknown", select: "unknown" },
+	// https://www.dedaluslabs.ai/ (read 2026-08-01) lists "GPU / CUDA" among
+	// the supported system features, so the vendor claims accelerators exist.
+	// No page documents a GPU argument on the machines API and the provision
+	// call below sends only vcpu/memory_mib/storage_gib, so the mux cannot ask
+	// for one -- a GPU need still rejects this lane, and the reason says why.
+	gpu: { available: true, models: "unknown", request: "ignored" },
+	// Nothing published, and nothing measured either: no credentialed run has
+	// ever exercised this substrate, so even the install path that would prove
+	// outbound access has not run here. Unknown, not assumed-open.
+	network: { egress: "unknown", control: "unsupported" },
+	// The vendor markets "snapshot restore" for its own boot path
+	// (https://www.dedaluslabs.ai/, read 2026-08-01) but documents no API to
+	// fork a machine into a second live machine, and the mux exposes none.
+	fork: { vendor: "unknown", exposed: false },
+	// publicUrl() below asks the previews API for a URL per port, mirroring
+	// web/lib/providers/dedalus.ts. No Dedalus page documents the previews
+	// endpoint or a per-machine preview ceiling (checked 2026-08-01), and the
+	// call has never run live, so neither the model nor the count is provable.
+	publicPorts: {
+		model: "unknown",
+		vendorMax: "unknown",
+		muxMax: "unknown",
+		fixed: null,
+	},
+	limits: {
+		// https://www.dedaluslabs.ai/pricing (read 2026-08-01), Hobby column:
+		// "Up to 4" vCPU per machine and "Up to 16 GiB" RAM per machine, stated
+		// in GiB so no unit conversion applies. No default size is published --
+		// the provision call below hard-codes DEFAULT_SPEC (1 vCPU, 2048 MiB, 10
+		// GiB) and the machines quickstart shows sizing is a request, but no
+		// credentialed run has ever confirmed what a machine actually gets, so
+		// the baseline stays unknown rather than trusting our own request.
+		baseVcpu: "unknown",
+		baseMemoryMib: "unknown",
+		maxVcpu: 4,
+		maxMemoryMib: 16384,
+		// Same page, Hobby column: Storage "10 GiB" (Pro "20 GiB
+		// (expandable)"), which is also what DEFAULT_SPEC requests. Declared as
+		// the ceiling only: the request has never been verified live, so what a
+		// machine comes up with is unknown.
+		baseDiskGib: "unknown",
+		maxDiskGib: 10,
+		// Same page: the Hobby runtime figure is a "50 hrs/mo ceiling" -- a
+		// monthly aggregate, not a per-run limit -- so the maximum length of one
+		// continuous run is unknown.
+		maxRuntimeMs: "unknown",
+		// Same page, Hobby column: "Concurrent machines: 5" (Pro 20).
+		maxConcurrentSandboxes: 5,
+		// create() below ignores options.resources and always sends
+		// DEFAULT_SPEC, so a caller cannot size a machine through the mux.
+		resourceRequest: "ignored",
+	},
 };
 
 // Machine shape provisioned when the router asks for a sandbox; the

@@ -28,6 +28,7 @@ import {
 	readClaim,
 	readTraces,
 	releaseClaim,
+	routeKey,
 	summarize,
 	traceFromRun,
 	tracesDir,
@@ -80,6 +81,9 @@ function sample(input: {
 	truncated?: boolean;
 	error?: string;
 	costUsd?: number;
+	timeToFirstEventMs?: number;
+	sandboxCostUsd?: number;
+	modelCostUsd?: number;
 	startedAt?: string;
 }): RunTrace {
 	return trace({
@@ -91,8 +95,24 @@ function sample(input: {
 		truncated: input.truncated ?? false,
 		error: input.error,
 		costUsd: input.costUsd,
+		timeToFirstEventMs: input.timeToFirstEventMs,
+		sandboxCostUsd: input.sandboxCostUsd,
+		modelCostUsd: input.modelCostUsd,
 		startedAt: input.startedAt ?? "2026-08-01T12:00:00.000Z",
 	});
+}
+
+/**
+ * cost.ts's compute arithmetic for one e2b run at the default comparison size,
+ * duplicated here step by step rather than by calling estimate(), so every
+ * assertion below is an exact float instead of an approximation. E2B publishes
+ * $0.0504/vCPU-hour and $0.0162/GiB-hour billed on wall clock; the default
+ * shape is 2 vCPU and 2048 MiB (= 2 GiB), and a run bills no creation because
+ * the machine already existed.
+ */
+function e2bComputeUsd(durationMs: number): number {
+	const hours = durationMs / 3_600_000;
+	return hours * 2 * 0.0504 + 2 * hours * 0.0162;
 }
 
 function runResult(overrides: Partial<RunResult> = {}): RunResult {
@@ -170,6 +190,19 @@ test("appendTrace fails closed on input a summary could not trust", () => {
 		assert.throws(() => appendTrace(trace({ durationMs: -1 })), MuxError);
 		assert.throws(() => appendTrace(trace({ durationMs: Number.NaN })), MuxError);
 		assert.throws(() => appendTrace(trace({ events: -1 })), MuxError);
+		// Optional measurements are refused on the same terms: a NaN or a
+		// negative would propagate into every sum and percentile downstream.
+		assert.throws(() => appendTrace(trace({ timeToFirstEventMs: -1 })), MuxError);
+		assert.throws(
+			() => appendTrace(trace({ timeToFirstEventMs: Number.NaN })),
+			MuxError,
+		);
+		assert.throws(() => appendTrace(trace({ sandboxCostUsd: -0.01 })), MuxError);
+		assert.throws(
+			() => appendTrace(trace({ modelCostUsd: Number.POSITIVE_INFINITY })),
+			MuxError,
+		);
+		assert.throws(() => appendTrace(trace({ costUsd: -1 })), MuxError);
 		// An expanded-year timestamp ("+012026-08-01...") would name a shard
 		// readTraces cannot find, so the record would be written and lost.
 		assert.throws(
@@ -327,7 +360,11 @@ test("traceFromRun maps a RunResult onto a trace record", () => {
 			exitCode: 0,
 			truncated: false,
 			events: 9,
-			costUsd: 0.0107,
+			// Cost arrives split, and the total exists only because both halves
+			// are known: e2b publishes a rate and the harness reported spend.
+			sandboxCostUsd: e2bComputeUsd(3615),
+			modelCostUsd: 0.0107,
+			costUsd: e2bComputeUsd(3615) + 0.0107,
 		});
 		assert.deepEqual(appendTrace(built), built);
 
@@ -344,6 +381,64 @@ test("traceFromRun maps a RunResult onto a trace record", () => {
 		assert.equal(derived.error, "harness exited 1");
 		assert.equal(derived.attempts.length, 0);
 	});
+});
+
+test("traceFromRun splits sandbox compute from model spend", () => {
+	// Sanity check on the oracle itself before it is used as one: ten minutes
+	// of 2 vCPU + 2 GiB on e2b is (2 * 0.0504 + 2 * 0.0162) / 6 = $0.0222.
+	assert.ok(Math.abs(e2bComputeUsd(600_000) - 0.0222) < 1e-12);
+
+	// Both halves known: compute derived from the run's own duration, model
+	// spend as the harness reported it, and a total that is exactly their sum.
+	const priced = traceFromRun({
+		runKey: "split-both",
+		result: runResult({ durationMs: 3615, costUsd: 0.0107, timeToFirstEventMs: 993 }),
+	});
+	assert.equal(priced.sandboxCostUsd, e2bComputeUsd(3615));
+	assert.equal(priced.modelCostUsd, 0.0107);
+	assert.equal(priced.costUsd, e2bComputeUsd(3615) + 0.0107);
+	assert.equal(priced.timeToFirstEventMs, 993);
+	// Compute really does scale with the run: twice the wall clock, twice the
+	// bill. That is what makes it a derived number and not a constant.
+	const longer = traceFromRun({
+		runKey: "split-longer",
+		result: runResult({ durationMs: 7230, costUsd: 0.0107 }),
+	});
+	assert.equal(longer.sandboxCostUsd, e2bComputeUsd(7230));
+	assert.ok(
+		Math.abs((longer.sandboxCostUsd ?? 0) - 2 * (priced.sandboxCostUsd ?? 0)) < 1e-15,
+	);
+
+	// Unpriced lane: Fly publishes no Sprites compute rate, so there is no
+	// sandbox figure and therefore no total. Absent, not zero -- a $0 total
+	// would rank the lane nobody prices as the cheapest one available.
+	const unpriced = traceFromRun({
+		runKey: "split-unpriced-lane",
+		result: runResult({ substrate: "sprites" }),
+	});
+	assert.equal("sandboxCostUsd" in unpriced, false);
+	assert.equal(unpriced.modelCostUsd, 0.0107);
+	assert.equal("costUsd" in unpriced, false);
+
+	// Harness reported nothing: compute is known, model is not, no total.
+	const noModel = traceFromRun({
+		runKey: "split-no-model",
+		result: runResult({ costUsd: undefined }),
+	});
+	assert.equal(noModel.sandboxCostUsd, e2bComputeUsd(3615));
+	assert.equal("modelCostUsd" in noModel, false);
+	assert.equal("costUsd" in noModel, false);
+	// A run that emitted no event has no time to first output either.
+	assert.equal("timeToFirstEventMs" in noModel, false);
+
+	// Neither half known.
+	const neither = traceFromRun({
+		runKey: "split-neither",
+		result: runResult({ substrate: "sprites", costUsd: undefined }),
+	});
+	assert.equal("sandboxCostUsd" in neither, false);
+	assert.equal("modelCostUsd" in neither, false);
+	assert.equal("costUsd" in neither, false);
 });
 
 // ---------------------------------------------------------------------------
@@ -436,30 +531,68 @@ test("summarize computes exact success rates and percentiles per group", () => {
 	// over runs whose cost is unknown.
 	assert.equal(summary.costUsd, 0.01 + 0.02);
 	assert.equal(summary.costKnownRuns, 2);
+	// These fixtures predate the split, so neither half is recorded on any of
+	// them: the components stay absent while the legacy total still sums.
+	assert.equal("sandboxCostUsd" in summary, false);
+	assert.equal("modelCostUsd" in summary, false);
+	assert.equal(summary.truncatedRuns, 1);
+	assert.equal(summary.truncationRate, 1 / 7);
+	assert.equal(summary.firstOutputKnownRuns, 0);
+	assert.equal("firstOutputP50Ms" in summary, false);
 
 	assert.deepEqual(summary.bySubstrate.e2b, {
 		runs: 4,
 		ok: 3,
 		failed: 1,
 		successRate: 0.75,
+		truncatedRuns: 1,
+		truncationRate: 0.25,
 		p50Ms: 200,
 		p95Ms: 400,
 		okP50Ms: 200,
 		okP95Ms: 300,
+		firstOutputKnownRuns: 0,
+		sandboxCostKnownRuns: 0,
+		modelCostKnownRuns: 0,
 		costUsd: 0.01 + 0.02,
 		costKnownRuns: 2,
+		// Repriced from the current table: four e2b legs, all priced, none
+		// carrying a reported model spend -- so knownUsd is a floor and
+		// `complete` says so. The truncated 400ms run is the wasted spend.
+		cost: {
+			knownUsd: e2bComputeUsd(100) + e2bComputeUsd(200) + e2bComputeUsd(300) + e2bComputeUsd(400),
+			perSuccessUsd:
+				(e2bComputeUsd(100) + e2bComputeUsd(200) + e2bComputeUsd(300) + e2bComputeUsd(400)) / 3,
+			wastedUsd: e2bComputeUsd(400),
+			complete: false,
+			pricedRuns: 4,
+			modelUnknownRuns: 4,
+			unpricedSubstrates: [],
+		},
 	});
 	assert.deepEqual(summary.bySubstrate.sprites, {
 		runs: 3,
 		ok: 1,
 		failed: 2,
 		successRate: 1 / 3,
+		truncatedRuns: 0,
+		truncationRate: 0,
 		p50Ms: 2000,
 		p95Ms: 3000,
 		okP50Ms: 1000,
 		okP95Ms: 1000,
-		costUsd: 0,
+		firstOutputKnownRuns: 0,
+		sandboxCostKnownRuns: 0,
+		modelCostKnownRuns: 0,
 		costKnownRuns: 0,
+		// Nothing on this lane can be priced, so there is no cost number at
+		// all -- not a zero, which would read as "this route is free".
+		cost: {
+			complete: false,
+			pricedRuns: 0,
+			modelUnknownRuns: 3,
+			unpricedSubstrates: ["sprites"],
+		},
 	});
 	// Substrates with no runs in the window are absent, not zero-filled:
 	// zero runs is not a measurement of zero success.
@@ -473,12 +606,28 @@ test("summarize computes exact success rates and percentiles per group", () => {
 		ok: 3,
 		failed: 1,
 		successRate: 0.75,
+		truncatedRuns: 0,
+		truncationRate: 0,
 		p50Ms: 200,
 		p95Ms: 2000,
 		okP50Ms: 200,
 		okP95Ms: 1000,
+		firstOutputKnownRuns: 0,
+		sandboxCostKnownRuns: 0,
+		modelCostKnownRuns: 0,
 		costUsd: 0.01 + 0.02,
 		costKnownRuns: 2,
+		// Two of the four legs are on the unpriced lane, so the lane is named
+		// and knownUsd covers only the two e2b legs.
+		cost: {
+			knownUsd: e2bComputeUsd(100) + e2bComputeUsd(200),
+			perSuccessUsd: (e2bComputeUsd(100) + e2bComputeUsd(200)) / 3,
+			wastedUsd: 0,
+			complete: false,
+			pricedRuns: 2,
+			modelUnknownRuns: 4,
+			unpricedSubstrates: ["sprites"],
+		},
 	});
 	// codex: [300,400,3000], 1 ok. p50 -> rank 2 -> 400, p95 -> rank 3.
 	assert.deepEqual(summary.byHarness.codex, {
@@ -486,12 +635,27 @@ test("summarize computes exact success rates and percentiles per group", () => {
 		ok: 1,
 		failed: 2,
 		successRate: 1 / 3,
+		truncatedRuns: 1,
+		truncationRate: 1 / 3,
 		p50Ms: 400,
 		p95Ms: 3000,
 		okP50Ms: 300,
 		okP95Ms: 300,
-		costUsd: 0,
+		firstOutputKnownRuns: 0,
+		sandboxCostKnownRuns: 0,
+		modelCostKnownRuns: 0,
 		costKnownRuns: 0,
+		cost: {
+			knownUsd: e2bComputeUsd(300) + e2bComputeUsd(400),
+			// One success, so cost per result is the whole priced spend on the
+			// route -- including the truncated attempt that produced nothing.
+			perSuccessUsd: e2bComputeUsd(300) + e2bComputeUsd(400),
+			wastedUsd: e2bComputeUsd(400),
+			complete: false,
+			pricedRuns: 2,
+			modelUnknownRuns: 3,
+			unpricedSubstrates: ["sprites"],
+		},
 	});
 	assert.equal(summary.byHarness.openclaw, undefined);
 });
@@ -509,6 +673,13 @@ test("summarize omits ok-only percentiles for a group that never succeeded", () 
 	assert.equal("okP50Ms" in summary, false);
 	assert.equal("okP95Ms" in summary, false);
 	assert.equal("okP50Ms" in (summary.bySubstrate.dedalus ?? {}), false);
+	// Dedalus publishes a rate, so both runs are priced -- but nothing
+	// succeeded, so there is no cost per result to report and every dollar
+	// spent was wasted.
+	assert.equal(summary.cost.pricedRuns, 2);
+	assert.equal("perSuccessUsd" in summary.cost, false);
+	assert.ok((summary.cost.knownUsd ?? 0) > 0);
+	assert.equal(summary.cost.wastedUsd, summary.cost.knownUsd);
 });
 
 test("summarize reports the window it covered and zeros on an empty set", () => {
@@ -535,12 +706,215 @@ test("summarize reports the window it covered and zeros on an empty set", () => 
 		ok: 0,
 		failed: 0,
 		successRate: 0,
+		truncatedRuns: 0,
+		truncationRate: 0,
 		p50Ms: 0,
 		p95Ms: 0,
-		costUsd: 0,
+		firstOutputKnownRuns: 0,
+		sandboxCostKnownRuns: 0,
+		modelCostKnownRuns: 0,
 		costKnownRuns: 0,
+		// Every cost is absent on the empty set. `complete` is vacuously true
+		// (nothing was unknown because nothing happened), which is why `runs`
+		// has to be checked before any of this is read as a measurement.
+		cost: {
+			complete: true,
+			pricedRuns: 0,
+			modelUnknownRuns: 0,
+			unpricedSubstrates: [],
+		},
 		bySubstrate: {},
 		byHarness: {},
+		byRoute: {},
+	});
+});
+
+test("summarize reports all four route numbers per harness x substrate", () => {
+	// Two routes for one harness. Every number below is hand-computed from
+	// these five records; nothing is read back out of the implementation.
+	const traces: RunTrace[] = [
+		sample({
+			substrate: "e2b",
+			harness: "claude-code",
+			durationMs: 1000,
+			timeToFirstEventMs: 993,
+			sandboxCostUsd: e2bComputeUsd(1000),
+			modelCostUsd: 0.01,
+			costUsd: e2bComputeUsd(1000) + 0.01,
+		}),
+		sample({
+			substrate: "e2b",
+			harness: "claude-code",
+			durationMs: 2000,
+			timeToFirstEventMs: 365,
+			sandboxCostUsd: e2bComputeUsd(2000),
+			modelCostUsd: 0.02,
+			costUsd: e2bComputeUsd(2000) + 0.02,
+		}),
+		// Truncated, and the harness never reported a cost: the resume proxy
+		// counts it and the model half stays unknown.
+		sample({
+			substrate: "e2b",
+			harness: "claude-code",
+			durationMs: 3000,
+			truncated: true,
+			timeToFirstEventMs: 500,
+			sandboxCostUsd: e2bComputeUsd(3000),
+		}),
+		sample({
+			substrate: "sprites",
+			harness: "claude-code",
+			durationMs: 4000,
+			timeToFirstEventMs: 2097,
+			modelCostUsd: 0.03,
+		}),
+		sample({ substrate: "sprites", harness: "claude-code", durationMs: 5000, ok: false }),
+	];
+
+	const summary = summarize(traces);
+	assert.deepEqual(Object.keys(summary.byRoute), [
+		"claude-code@e2b",
+		"claude-code@sprites",
+	]);
+	assert.equal(routeKey("claude-code", "e2b"), "claude-code@e2b");
+	// A pair with no runs in the window is absent, not a zero-filled row.
+	assert.equal(summary.byRoute["codex@e2b"], undefined);
+
+	const knownE2b =
+		e2bComputeUsd(1000) + 0.01 + (e2bComputeUsd(2000) + 0.02) + e2bComputeUsd(3000);
+	assert.deepEqual(summary.byRoute["claude-code@e2b"], {
+		harness: "claude-code",
+		substrate: "e2b",
+		runs: 3,
+		ok: 2,
+		failed: 1,
+		// 1. task success rate.
+		successRate: 2 / 3,
+		// 4. resume-reliability proxy: one of three runs ended truncated.
+		truncatedRuns: 1,
+		truncationRate: 1 / 3,
+		// durations [1000,2000,3000]: p50 -> rank 2 -> 2000, p95 -> rank 3.
+		p50Ms: 2000,
+		p95Ms: 3000,
+		okP50Ms: 1000,
+		okP95Ms: 2000,
+		// 2. time to first output, sorted [365,500,993]: p50 -> rank 2 -> 500,
+		// p95 -> rank 3 -> 993. Note the slowest first output belongs to the
+		// FASTEST run, which is why the two are reported separately.
+		firstOutputP50Ms: 500,
+		firstOutputP95Ms: 993,
+		firstOutputKnownRuns: 3,
+		sandboxCostUsd: e2bComputeUsd(1000) + e2bComputeUsd(2000) + e2bComputeUsd(3000),
+		sandboxCostKnownRuns: 3,
+		modelCostUsd: 0.01 + 0.02,
+		modelCostKnownRuns: 2,
+		// Only two of the three runs carried a full total, so the legacy
+		// aggregate covers exactly those two.
+		costUsd: e2bComputeUsd(1000) + 0.01 + (e2bComputeUsd(2000) + 0.02),
+		costKnownRuns: 2,
+		// 3. total cost to a successful result: every run on the route, the
+		// truncated one included, divided by the two results it produced.
+		cost: {
+			knownUsd: knownE2b,
+			perSuccessUsd: knownE2b / 2,
+			wastedUsd: e2bComputeUsd(3000),
+			complete: false,
+			pricedRuns: 3,
+			modelUnknownRuns: 1,
+			unpricedSubstrates: [],
+		},
+	});
+
+	// The unpriced lane: model spend is known and reported, compute is not, so
+	// there is no total and no cost per result. Absent all the way out.
+	assert.deepEqual(summary.byRoute["claude-code@sprites"], {
+		harness: "claude-code",
+		substrate: "sprites",
+		runs: 2,
+		ok: 1,
+		failed: 1,
+		successRate: 0.5,
+		truncatedRuns: 0,
+		truncationRate: 0,
+		p50Ms: 4000,
+		p95Ms: 5000,
+		okP50Ms: 4000,
+		okP95Ms: 4000,
+		firstOutputP50Ms: 2097,
+		firstOutputP95Ms: 2097,
+		firstOutputKnownRuns: 1,
+		modelCostUsd: 0.03,
+		modelCostKnownRuns: 1,
+		sandboxCostKnownRuns: 0,
+		costKnownRuns: 0,
+		cost: {
+			complete: false,
+			pricedRuns: 0,
+			modelUnknownRuns: 1,
+			unpricedSubstrates: ["sprites"],
+		},
+	});
+});
+
+test("summarize keeps an unknown cost absent instead of reporting zero", () => {
+	// One run on the lane nobody publishes a rate for, with no reported model
+	// spend either: there is no cost measurement anywhere in this summary.
+	const summary = summarize([
+		sample({ substrate: "sprites", harness: "openclaw", durationMs: 1000 }),
+	]);
+	for (const group of [summary, summary.byRoute["openclaw@sprites"] ?? {}]) {
+		assert.equal("costUsd" in group, false);
+		assert.equal("sandboxCostUsd" in group, false);
+		assert.equal("modelCostUsd" in group, false);
+	}
+	assert.equal("knownUsd" in summary.cost, false);
+	assert.equal("wastedUsd" in summary.cost, false);
+	assert.equal("perSuccessUsd" in summary.cost, false);
+	assert.equal(summary.cost.complete, false);
+	assert.equal(summary.cost.pricedRuns, 0);
+	assert.equal(summary.cost.modelUnknownRuns, 1);
+	assert.deepEqual(summary.cost.unpricedSubstrates, ["sprites"]);
+	// Serialized, the summary carries no cost key at all. A reader cannot
+	// mistake this route for a free one, which a 0 would invite.
+	assert.equal(JSON.stringify(summary).includes("ostUsd"), false);
+});
+
+test("summarize treats a corrupt amount in a shard as unreported", () => {
+	withTracesDir((dir) => {
+		const good = appendTrace(
+			sample({
+				substrate: "e2b",
+				harness: "codex",
+				durationMs: 100,
+				timeToFirstEventMs: 40,
+				sandboxCostUsd: e2bComputeUsd(100),
+			}),
+		);
+		// Hand-edited or half-written lines exist; appendTrace would have
+		// refused these. Folding them in would produce a NaN percentile and a
+		// negative bill, so they are dropped per field, not per record.
+		const shard = join(dir, "runs-2026-08-01.jsonl");
+		writeFileSync(
+			shard,
+			`${readFileSync(shard, "utf8")}${JSON.stringify({
+				...good,
+				runKey: "corrupt",
+				timeToFirstEventMs: "soon",
+				sandboxCostUsd: -5,
+				modelCostUsd: Number.NaN,
+			})}\n`,
+			"utf8",
+		);
+
+		const summary = summarize();
+		assert.equal(summary.runs, 2, "the record itself still counts as a run");
+		assert.equal(summary.firstOutputKnownRuns, 1);
+		assert.equal(summary.firstOutputP50Ms, 40);
+		assert.equal(summary.firstOutputP95Ms, 40);
+		assert.equal(summary.sandboxCostUsd, e2bComputeUsd(100));
+		assert.equal(summary.sandboxCostKnownRuns, 1);
+		assert.equal("modelCostUsd" in summary, false);
+		assert.equal(summary.modelCostKnownRuns, 0);
 	});
 });
 

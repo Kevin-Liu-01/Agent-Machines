@@ -4,6 +4,15 @@
  * the substrate's actual value (those strings ship to machine.attempts and the
  * dashboard, so they are asserted verbatim).
  *
+ * Two properties matter more than any individual case:
+ *
+ *   1. An unknown fact REJECTS. Every axis is checked with a substrate that
+ *      declares "unknown" for it, and with a capabilities record that omits
+ *      the axis entirely, because an absent axis has to behave exactly like an
+ *      explicitly unknown one.
+ *   2. Being able to ASK is not the same as getting it. A vendor that supports
+ *      an option the adapter never forwards must still fail the constraint.
+ *
  * Run: tsx --test src/mux/constraints.test.ts
  */
 
@@ -11,16 +20,18 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { resolveMuxConfig } from "./config.js";
 import {
-	SUBSTRATE_LIMITS,
 	asSkippedAttempts,
 	checkConstraints,
 	filterCandidates,
 	profileFor,
-	type SubstrateLimits,
 	type SubstrateProfile,
 } from "./constraints.js";
 import { getProvider } from "./providers/index.js";
-import type { SandboxCapabilities, SubstrateKind } from "./types.js";
+import type {
+	SandboxCapabilities,
+	SubstrateKind,
+	SubstrateLimits,
+} from "./types.js";
 
 const ROUTE: readonly SubstrateKind[] = ["e2b", "sprites", "vercel", "dedalus"];
 
@@ -36,23 +47,37 @@ function realProfiles(): SubstrateProfile[] {
 	);
 }
 
+function declared(kind: SubstrateKind): SandboxCapabilities {
+	return getProvider(kind, resolveMuxConfig({})).capabilities;
+}
+
+/**
+ * The six required behavioral axes and nothing else -- the shape a fake or a
+ * brand-new adapter has before anyone researches its vendor facts. Every new
+ * axis must reject against this.
+ */
+const BARE_CAPABILITIES: SandboxCapabilities = {
+	pty: "native",
+	persistence: "always-on",
+	reattach: true,
+	publicUrl: true,
+	streamingExec: true,
+	detachedWork: "reliable",
+};
+
 function fakeProfile(
 	substrate: SubstrateKind,
-	capabilities: Partial<SandboxCapabilities>,
+	capabilities: Partial<SandboxCapabilities> = {},
 	limits: Partial<SubstrateLimits> = {},
 ): SubstrateProfile {
+	const base = declared(substrate);
 	return {
 		substrate,
 		capabilities: {
-			pty: "native",
-			persistence: "always-on",
-			reattach: true,
-			publicUrl: true,
-			streamingExec: true,
-	detachedWork: "reliable",
+			...base,
 			...capabilities,
+			limits: { ...(base.limits as SubstrateLimits), ...limits },
 		},
-		limits: { ...SUBSTRATE_LIMITS[substrate], ...limits },
 	};
 }
 
@@ -65,12 +90,29 @@ function reasonFor(
 	return rejection.reason;
 }
 
-test("provider capabilities are the matrix the limits table was written against", () => {
-	const config = resolveMuxConfig({});
-	const declared = Object.fromEntries(
-		ROUTE.map((kind) => [kind, getProvider(kind, config).capabilities]),
-	);
-	assert.deepEqual(declared, {
+function accepted(constraints: Parameters<typeof filterCandidates>[1]): SubstrateKind[] {
+	return filterCandidates(realProfiles(), constraints).accepted;
+}
+
+test("every adapter declares every axis, each value sourced in a comment", () => {
+	// A missing axis is legal in the type (absent reads as unknown and fails
+	// closed) but is NOT acceptable in a shipped adapter: it would silently
+	// drop that lane from every constrained route. This is the guard that makes
+	// the optional fields safe.
+	for (const kind of ROUTE) {
+		const capabilities = declared(kind);
+		for (const axis of ["region", "gpu", "network", "fork", "publicPorts", "limits"] as const) {
+			assert.ok(
+				capabilities[axis] !== undefined,
+				`${kind} declares no ${axis}; declare it (with a vendor citation) or state "unknown"`,
+			);
+		}
+	}
+});
+
+test("provider capabilities are exactly what the routing model was written against", () => {
+	const declaredAll = Object.fromEntries(ROUTE.map((kind) => [kind, declared(kind)]));
+	assert.deepEqual(declaredAll, {
 		e2b: {
 			pty: "native",
 			persistence: "memory-snapshot",
@@ -78,6 +120,30 @@ test("provider capabilities are the matrix the limits table was written against"
 			publicUrl: true,
 			streamingExec: true,
 			detachedWork: "reliable",
+			region: { default: "unknown", available: "unknown", select: "unsupported" },
+			gpu: { available: "unknown", models: "unknown", request: "unsupported" },
+			// E2B documents allowInternetAccess and egress allow/deny lists; the
+			// adapter forwards neither, so the knob is "ignored", not available.
+			network: { egress: "open", control: "ignored" },
+			// Snapshots can spawn a new sandbox; the mux has no fork operation.
+			fork: { vendor: true, exposed: false },
+			publicPorts: {
+				model: "any-port",
+				vendorMax: "unknown",
+				muxMax: "unknown",
+				fixed: null,
+			},
+			limits: {
+				baseVcpu: 2,
+				baseMemoryMib: 478,
+				baseDiskGib: 9,
+				maxVcpu: 8,
+				maxMemoryMib: 8192,
+				maxDiskGib: 9,
+				maxRuntimeMs: 3_600_000,
+				maxConcurrentSandboxes: 20,
+				resourceRequest: "unknown",
+			},
 		},
 		sprites: {
 			pty: "native",
@@ -88,6 +154,27 @@ test("provider capabilities are the matrix the limits table was written against"
 			// Measured: the same install takes 17s foreground and does not
 			// finish in 15 minutes detached on this substrate.
 			detachedWork: "throttled",
+			region: { default: "unknown", available: "unknown", select: "unsupported" },
+			gpu: { available: "unknown", models: "unknown", request: "unsupported" },
+			network: { egress: "open", control: "unsupported" },
+			fork: { vendor: false, exposed: false },
+			publicPorts: {
+				model: "single-fixed",
+				vendorMax: 1,
+				muxMax: 1,
+				fixed: [8080],
+			},
+			limits: {
+				baseVcpu: "unknown",
+				baseMemoryMib: "unknown",
+				baseDiskGib: 93,
+				maxVcpu: "unknown",
+				maxMemoryMib: 7629,
+				maxDiskGib: 93,
+				maxRuntimeMs: "unknown",
+				maxConcurrentSandboxes: "unknown",
+				resourceRequest: "ignored",
+			},
 		},
 		vercel: {
 			pty: "tmux",
@@ -96,6 +183,29 @@ test("provider capabilities are the matrix the limits table was written against"
 			publicUrl: true,
 			streamingExec: true,
 			detachedWork: "reliable",
+			region: { default: "iad1", available: ["iad1"], select: "unsupported" },
+			gpu: { available: "unknown", models: "unknown", request: "unsupported" },
+			network: { egress: "open", control: "unsupported" },
+			fork: { vendor: true, exposed: false },
+			publicPorts: {
+				model: "declared-at-create",
+				vendorMax: 15,
+				muxMax: 3,
+				fixed: [3000, 8642, 18789],
+			},
+			limits: {
+				baseVcpu: 2,
+				// 4 GB, converted down. NOT 4096: rounding a baseline up is how
+				// a memory floor gets satisfied by a machine that cannot hold it.
+				baseMemoryMib: 3814,
+				baseDiskGib: 29,
+				maxVcpu: 4,
+				maxMemoryMib: 7629,
+				maxDiskGib: 29,
+				maxRuntimeMs: 2_700_000,
+				maxConcurrentSandboxes: 10,
+				resourceRequest: "ignored",
+			},
 		},
 		dedalus: {
 			pty: "tmux",
@@ -104,6 +214,28 @@ test("provider capabilities are the matrix the limits table was written against"
 			publicUrl: true,
 			streamingExec: false,
 			detachedWork: "reliable",
+			region: { default: "unknown", available: "unknown", select: "unknown" },
+			// The vendor claims GPU/CUDA; no documented way to ask for one.
+			gpu: { available: true, models: "unknown", request: "ignored" },
+			network: { egress: "unknown", control: "unsupported" },
+			fork: { vendor: "unknown", exposed: false },
+			publicPorts: {
+				model: "unknown",
+				vendorMax: "unknown",
+				muxMax: "unknown",
+				fixed: null,
+			},
+			limits: {
+				baseVcpu: "unknown",
+				baseMemoryMib: "unknown",
+				baseDiskGib: "unknown",
+				maxVcpu: 4,
+				maxMemoryMib: 16384,
+				maxDiskGib: 10,
+				maxRuntimeMs: "unknown",
+				maxConcurrentSandboxes: 5,
+				resourceRequest: "ignored",
+			},
 		},
 	});
 });
@@ -134,12 +266,8 @@ test("pty floor is ranked: native rejects the tmux lanes by name", () => {
 
 	// A native substrate over-satisfies a tmux floor, and "none" constrains
 	// nothing, so both accept everything.
-	assert.deepEqual(filterCandidates(realProfiles(), { pty: "tmux" }).accepted, [
-		...ROUTE,
-	]);
-	assert.deepEqual(filterCandidates(realProfiles(), { pty: "none" }).accepted, [
-		...ROUTE,
-	]);
+	assert.deepEqual(accepted({ pty: "tmux" }), [...ROUTE]);
+	assert.deepEqual(accepted({ pty: "none" }), [...ROUTE]);
 });
 
 test("pty floor of native rejects a none-pty substrate with its actual value", () => {
@@ -174,10 +302,7 @@ test("persistence accepts a single model or a set, and names the actual model", 
 		'persistence: requires "memory-snapshot" or "filesystem-snapshot", dedalus provides "always-on"',
 	);
 
-	assert.deepEqual(
-		filterCandidates(realProfiles(), { persistence: "always-on" }).accepted,
-		["sprites", "dedalus"],
-	);
+	assert.deepEqual(accepted({ persistence: "always-on" }), ["sprites", "dedalus"]);
 });
 
 test("streamingExec=true rejects the one substrate that declares it false", () => {
@@ -217,11 +342,7 @@ test("reattach and publicUrl reject with the same precise wording", () => {
 		],
 	);
 	// Every real lane declares both, so the whole route survives.
-	assert.deepEqual(
-		filterCandidates(realProfiles(), { reattach: true, publicUrl: true })
-			.accepted,
-		[...ROUTE],
-	);
+	assert.deepEqual(accepted({ reattach: true, publicUrl: true }), [...ROUTE]);
 });
 
 test("boolean false is an explicit no-op, not an inverted requirement", () => {
@@ -238,14 +359,140 @@ test("boolean false is an explicit no-op, not an inverted requirement", () => {
 		}),
 		[],
 	);
+	// Same for the new booleans: only `true` constrains anything.
+	assert.deepEqual(accepted({ gpu: false, fork: false }), [...ROUTE]);
+});
+
+test("region: only a declared placement or an honored selector satisfies", () => {
+	// Vercel is the one substrate that publishes where a sandbox lands.
+	assert.deepEqual(accepted({ region: "iad1" }), ["vercel"]);
+
+	const result = filterCandidates(realProfiles(), { region: "fra1" });
+	assert.deepEqual(result.accepted, []);
+	assert.equal(
+		reasonFor(result, "vercel"),
+		'region: requires "fra1", vercel places sandboxes in "iad1" (available "iad1") and region requests are unsupported',
+	);
+	// Proximity placement is not a region: Fly places a sprite "close to you"
+	// and cannot be asked for one, so no region need is satisfiable there.
+	assert.equal(
+		reasonFor(result, "sprites"),
+		'region: requires "fra1", sprites publishes no default region (available unknown) and region requests are unsupported',
+	);
+	assert.equal(
+		reasonFor(result, "dedalus"),
+		'region: requires "fra1", dedalus publishes no default region (available unknown) and region requests are unknown',
+	);
+
+	// A published list plus an honored selector is the only other pass.
+	const selectable = fakeProfile("e2b", {
+		region: { default: "iad1", available: ["iad1", "fra1"], select: "honored" },
+	});
+	assert.deepEqual(checkConstraints(selectable, { region: "fra1" }), []);
+	assert.equal(
+		checkConstraints(selectable, { region: "syd1" })[0].reason,
+		'region: requires "syd1", e2b places sandboxes in "iad1" (available "iad1", "fra1") and region requests are honored',
+	);
+	// A selector we cannot prove is honored does not count, even with a list.
+	const listedButIgnored = fakeProfile("e2b", {
+		region: { default: "iad1", available: ["iad1", "fra1"], select: "ignored" },
+	});
+	assert.equal(checkConstraints(listedButIgnored, { region: "fra1" }).length, 1);
+	// "unknown" is the model's absent value, not a region a caller can want.
+	assert.deepEqual(accepted({ region: "unknown" }), []);
+});
+
+test("gpu: a vendor with accelerators still fails when we cannot ask for one", () => {
+	const result = filterCandidates(realProfiles(), { gpu: true });
+	assert.deepEqual(result.accepted, []);
+	// Dedalus advertises GPU/CUDA, but its provision call takes no GPU field,
+	// so routing a GPU run there would be a promise we cannot keep.
+	assert.equal(
+		reasonFor(result, "dedalus"),
+		"gpu: required, dedalus reports GPU available=true and GPU requests are ignored",
+	);
+	assert.equal(
+		reasonFor(result, "e2b"),
+		"gpu: required, e2b reports GPU available=unknown and GPU requests are unsupported",
+	);
+	const failures = checkConstraints(realProfiles()[3], { gpu: true });
+	assert.equal(failures[0].actual, "available true, gpu requests ignored");
+
+	const honored = fakeProfile("dedalus", {
+		gpu: { available: true, models: ["h100"], request: "honored" },
+	});
+	assert.deepEqual(checkConstraints(honored, { gpu: true }), []);
+});
+
+test("egress: a knob the adapter never forwards does not satisfy a posture", () => {
+	assert.deepEqual(accepted({ egress: "open" }), ["e2b", "sprites", "vercel"]);
+	const result = filterCandidates(realProfiles(), { egress: "blocked" });
+	assert.deepEqual(result.accepted, []);
+	// E2B *can* create a sandbox with no internet; this adapter passes no
+	// network options, so an untrusted-code run must not be routed here.
+	assert.equal(
+		reasonFor(result, "e2b"),
+		'egress: requires "blocked", e2b provides "open" and egress control is ignored',
+	);
+	assert.equal(
+		reasonFor(result, "dedalus"),
+		'egress: requires "blocked", dedalus provides unknown and egress control is unsupported',
+	);
+
+	const controllable = fakeProfile("e2b", {
+		network: { egress: "open", control: "honored" },
+	});
+	assert.deepEqual(checkConstraints(controllable, { egress: "blocked" }), []);
+});
+
+test("fork: nothing satisfies it today, and the reason names the blocker", () => {
+	const result = filterCandidates(realProfiles(), { fork: true });
+	assert.deepEqual(result.accepted, []);
+	assert.equal(
+		reasonFor(result, "e2b"),
+		"fork: required, e2b can fork but the mux exposes no fork operation",
+	);
+	assert.equal(
+		reasonFor(result, "sprites"),
+		"fork: required, sprites reports vendor fork=false and the mux exposes no fork operation",
+	);
+	assert.equal(
+		reasonFor(result, "dedalus"),
+		"fork: required, dedalus reports vendor fork=unknown and the mux exposes no fork operation",
+	);
+	const exposed = fakeProfile("e2b", { fork: { vendor: true, exposed: true } });
+	assert.deepEqual(checkConstraints(exposed, { fork: true }), []);
+});
+
+test("minPublicPorts: any-port satisfies any count, a fixed port does not", () => {
+	// E2B maps a URL per port on demand, so there is no count to compare.
+	assert.deepEqual(accepted({ minPublicPorts: 9 }), ["e2b"]);
+	assert.deepEqual(accepted({ minPublicPorts: 1 }), ["e2b", "sprites", "vercel"]);
+	assert.deepEqual(accepted({ minPublicPorts: 3 }), ["e2b", "vercel"]);
+
+	const result = filterCandidates(realProfiles(), { minPublicPorts: 4 });
+	assert.deepEqual(result.accepted, ["e2b"]);
+	assert.equal(
+		reasonFor(result, "sprites"),
+		"minPublicPorts: requires at least 4 public ports, sprites exposes 1 (only 8080)",
+	);
+	// The vendor allows 15; this adapter declares 3 at create time, so 3 is
+	// what a run gets.
+	assert.equal(
+		reasonFor(result, "vercel"),
+		"minPublicPorts: requires at least 4 public ports, vercel exposes 3 (only 3000, 8642, 18789)",
+	);
+	assert.equal(
+		reasonFor(filterCandidates(realProfiles(), { minPublicPorts: 1 }), "dedalus"),
+		"minPublicPorts: requires at least 1 public port, dedalus publishes no public port count (unknown)",
+	);
 });
 
 test("minVcpu passes on the baseline and rejects with baseline and request state", () => {
-	const profiles = realProfiles();
 	// e2b's measured baseline is 2 vCPU, so a floor of 2 needs no request.
-	assert.deepEqual(filterCandidates(profiles, { minVcpu: 2 }).accepted, ["e2b", "vercel"]);
+	assert.deepEqual(accepted({ minVcpu: 2 }), ["e2b", "vercel"]);
 
-	const result = filterCandidates(profiles, { minVcpu: 4 });
+	const result = filterCandidates(realProfiles(), { minVcpu: 4 });
 	assert.deepEqual(result.accepted, []);
 	assert.equal(
 		reasonFor(result, "e2b"),
@@ -257,13 +504,13 @@ test("minVcpu passes on the baseline and rejects with baseline and request state
 	);
 	// An unpublished baseline fails closed even for a floor of 1.
 	assert.equal(
-		reasonFor(filterCandidates(profiles, { minVcpu: 1 }), "sprites"),
+		reasonFor(filterCandidates(realProfiles(), { minVcpu: 1 }), "sprites"),
 		"minVcpu: requires at least 1 vCPU, sprites publishes no baseline size and CreateSandboxOptions.resources is ignored on this substrate, so a larger size cannot be guaranteed",
 	);
 });
 
 test("minVcpu carries the required and actual values for the dashboard", () => {
-	const failures = checkConstraints(profileFor("e2b", realProfiles()[0].capabilities), {
+	const failures = checkConstraints(profileFor("e2b", declared("e2b")), {
 		minVcpu: 4,
 	});
 	assert.equal(failures.length, 1);
@@ -301,36 +548,77 @@ test("a honored resource request satisfies a floor up to the ceiling", () => {
 });
 
 test("minMemoryMib compares against the substrate's real baseline in MiB", () => {
-	const profiles = realProfiles();
-	// Vercel's documented default is 2 vCPU with 2 GB each.
-	assert.deepEqual(filterCandidates(profiles, { minMemoryMib: 4096 }).accepted, [
-		"vercel",
-	]);
+	// Vercel's documented default is 2 vCPU with 2 GB each = 4 GB = 3814 MiB.
+	assert.deepEqual(accepted({ minMemoryMib: 3814 }), ["vercel"]);
+	// The decimal-GB reading is load-bearing: a caller asking for 4096 MiB does
+	// NOT fit in Vercel's documented 4 GB, so the lane has to be rejected.
+	const strict = filterCandidates(realProfiles(), { minMemoryMib: 4096 });
+	assert.deepEqual(strict.accepted, []);
+	assert.equal(
+		reasonFor(strict, "vercel"),
+		"minMemoryMib: requires at least 4096 MiB, vercel baseline is 3814 MiB and CreateSandboxOptions.resources is ignored on this substrate, so a larger size cannot be guaranteed",
+	);
 
-	const result = filterCandidates(profiles, { minMemoryMib: 512 });
+	const result = filterCandidates(realProfiles(), { minMemoryMib: 512 });
 	assert.deepEqual(result.accepted, ["vercel"]);
 	assert.equal(
 		reasonFor(result, "e2b"),
 		"minMemoryMib: requires at least 512 MiB, e2b baseline is 478 MiB and CreateSandboxOptions.resources is unknown on this substrate, so a larger size cannot be guaranteed",
 	);
+});
+
+test("minDiskGib uses the disk axis, not the resources request", () => {
+	assert.deepEqual(accepted({ minDiskGib: 9 }), ["e2b", "sprites", "vercel"]);
+	assert.deepEqual(accepted({ minDiskGib: 30 }), ["sprites"]);
+	assert.deepEqual(accepted({ minDiskGib: 94 }), []);
+
+	const result = filterCandidates(realProfiles(), { minDiskGib: 30 });
+	// CreateSandboxOptions carries vcpu and memory only, so no substrate can be
+	// asked for a bigger disk -- the reason must say that, not blame resources.
 	assert.equal(
-		reasonFor(filterCandidates(profiles, { minMemoryMib: 8192 }), "vercel"),
-		"minMemoryMib: requires at least 8192 MiB, vercel baseline is 4096 MiB and CreateSandboxOptions.resources is ignored on this substrate, so a larger size cannot be guaranteed",
+		reasonFor(result, "e2b"),
+		"minDiskGib: requires at least 30 GiB, e2b baseline is 9 GiB and a disk-size request is unsupported on this substrate, so a larger size cannot be guaranteed",
+	);
+	assert.equal(
+		reasonFor(result, "dedalus"),
+		"minDiskGib: requires at least 30 GiB, dedalus publishes no baseline size and a disk-size request is unsupported on this substrate, so a larger size cannot be guaranteed",
+	);
+	// Dedalus publishes a 10 GiB tier ceiling but no default, so even a floor
+	// inside the ceiling fails: the ceiling is unreachable without a request.
+	assert.equal(
+		checkConstraints(realProfiles()[3], { minDiskGib: 10 }).length,
+		1,
+	);
+});
+
+test("minConcurrency compares against the lowest published tier", () => {
+	assert.deepEqual(accepted({ minConcurrency: 5 }), ["e2b", "vercel", "dedalus"]);
+	assert.deepEqual(accepted({ minConcurrency: 20 }), ["e2b"]);
+	assert.deepEqual(accepted({ minConcurrency: 21 }), []);
+
+	const result = filterCandidates(realProfiles(), { minConcurrency: 20 });
+	assert.equal(
+		reasonFor(result, "vercel"),
+		"minConcurrency: requires 20 concurrent sandboxes, vercel allows at most 10",
+	);
+	assert.equal(
+		reasonFor(result, "dedalus"),
+		"minConcurrency: requires 20 concurrent sandboxes, dedalus allows at most 5",
+	);
+	// Sprites returns concurrent_sprite_limit_exceeded, so a limit exists; Fly
+	// publishes no number, and an unknown ceiling must not read as generous.
+	assert.equal(
+		reasonFor(filterCandidates(realProfiles(), { minConcurrency: 2 }), "sprites"),
+		"minConcurrency: requires 2 concurrent sandboxes, sprites publishes no concurrency limit (unknown)",
 	);
 });
 
 test("maxRuntimeMs accepts the documented ceiling exactly and rejects past it", () => {
-	const profiles = realProfiles();
 	// e2b Base allows a 1-hour continuous run; vercel Hobby allows 45 minutes.
-	assert.deepEqual(filterCandidates(profiles, { maxRuntimeMs: 2_700_000 }).accepted, [
-		"e2b",
-		"vercel",
-	]);
-	assert.deepEqual(filterCandidates(profiles, { maxRuntimeMs: 3_600_000 }).accepted, [
-		"e2b",
-	]);
+	assert.deepEqual(accepted({ maxRuntimeMs: 2_700_000 }), ["e2b", "vercel"]);
+	assert.deepEqual(accepted({ maxRuntimeMs: 3_600_000 }), ["e2b"]);
 
-	const result = filterCandidates(profiles, { maxRuntimeMs: 3_600_001 });
+	const result = filterCandidates(realProfiles(), { maxRuntimeMs: 3_600_001 });
 	assert.deepEqual(result.accepted, []);
 	assert.equal(
 		reasonFor(result, "e2b"),
@@ -351,6 +639,34 @@ test("maxRuntimeMs accepts the documented ceiling exactly and rejects past it", 
 	);
 });
 
+test("an absent axis behaves exactly like an explicit unknown", () => {
+	// This is what a test fake or an unresearched adapter looks like. Every
+	// vendor-fact constraint must reject it -- optional fields are only safe
+	// because absent means unknown means no.
+	const bare = profileFor("e2b", BARE_CAPABILITIES);
+	const cases: Array<[string, Parameters<typeof checkConstraints>[1]]> = [
+		["region", { region: "iad1" }],
+		["gpu", { gpu: true }],
+		["egress", { egress: "open" }],
+		["fork", { fork: true }],
+		["minVcpu", { minVcpu: 1 }],
+		["minMemoryMib", { minMemoryMib: 1 }],
+		["minDiskGib", { minDiskGib: 1 }],
+		["minPublicPorts", { minPublicPorts: 1 }],
+		["minConcurrency", { minConcurrency: 1 }],
+		["maxRuntimeMs", { maxRuntimeMs: 1 }],
+	];
+	for (const [key, constraints] of cases) {
+		const failures = checkConstraints(bare, constraints);
+		assert.equal(failures.length, 1, `${key} must reject an undeclared axis`);
+		assert.equal(failures[0].constraint, key);
+		assert.match(failures[0].reason, /unknown|unsupported|no default region/);
+	}
+	// The behavioral axes it DOES declare still work, so a bare record is
+	// usable for unconstrained routing rather than being useless.
+	assert.deepEqual(checkConstraints(bare, { pty: "native", reattach: true }), []);
+});
+
 test("all failing dimensions are reported, joined into one attempt reason", () => {
 	const result = filterCandidates(realProfiles(), {
 		pty: "native",
@@ -367,6 +683,41 @@ test("all failing dimensions are reported, joined into one attempt reason", () =
 	assert.equal(
 		dedalus.reason,
 		'pty: requires at least "native", dedalus provides "tmux"; streamingExec: required, dedalus reports streamingExec=false; maxRuntimeMs: requires a run of up to 7200000ms, dedalus publishes no maximum run duration (unknown)',
+	);
+});
+
+test("failures are reported in one stable order across all twelve axes", () => {
+	// The dashboard renders the first failure as the headline reason, so the
+	// order is part of the contract rather than an implementation detail.
+	const failures = checkConstraints(realProfiles()[1], {
+		pty: "native",
+		persistence: "memory-snapshot",
+		region: "iad1",
+		gpu: true,
+		egress: "blocked",
+		fork: true,
+		minVcpu: 1,
+		minMemoryMib: 1,
+		minDiskGib: 1_000,
+		minPublicPorts: 2,
+		minConcurrency: 1,
+		maxRuntimeMs: 1,
+	});
+	assert.deepEqual(
+		failures.map((failure) => failure.constraint),
+		[
+			"persistence",
+			"region",
+			"gpu",
+			"egress",
+			"fork",
+			"minVcpu",
+			"minMemoryMib",
+			"minDiskGib",
+			"minPublicPorts",
+			"minConcurrency",
+			"maxRuntimeMs",
+		],
 	);
 });
 
@@ -389,37 +740,23 @@ test("rejections render as skipped route attempts", () => {
 	assert.deepEqual(asSkippedAttempts([]), []);
 });
 
-test("profileFor defaults to the sourced limits table and accepts an override", () => {
-	const capabilities = realProfiles()[0].capabilities;
-	assert.deepEqual(profileFor("e2b", capabilities).limits, SUBSTRATE_LIMITS.e2b);
-	const overridden = profileFor("e2b", capabilities, {
-		...SUBSTRATE_LIMITS.e2b,
-		maxRuntimeMs: 86_400_000,
+test("profileFor carries the provider's own capabilities, overrides included", () => {
+	assert.deepEqual(profileFor("e2b", declared("e2b")), {
+		substrate: "e2b",
+		capabilities: declared("e2b"),
 	});
-	assert.deepEqual(checkConstraints(overridden, { maxRuntimeMs: 86_400_000 }), []);
-});
-
-test("every substrate has a limits entry", () => {
-	assert.deepEqual(Object.keys(SUBSTRATE_LIMITS).sort(), [
-		"dedalus",
-		"e2b",
-		"sprites",
-		"vercel",
-	]);
+	// A caller (or a test) that overrides a limit changes the decision, which
+	// is what makes the limits a routing input rather than documentation.
+	const longer = fakeProfile("e2b", {}, { maxRuntimeMs: 86_400_000 });
+	assert.deepEqual(checkConstraints(longer, { maxRuntimeMs: 86_400_000 }), []);
 });
 
 test("asSkippedAttempts surfaces the failed dimension, not just prose", () => {
 	// A UI should not have to parse the joined reason string to say
 	// "no native PTY", so the first failed key travels structurally.
-	const profile = profileFor("vercel", {
-		pty: "tmux",
-		persistence: "filesystem-snapshot",
-		reattach: true,
-		publicUrl: true,
-		streamingExec: true,
-	detachedWork: "reliable",
+	const filtered = filterCandidates([profileFor("vercel", declared("vercel"))], {
+		pty: "native",
 	});
-	const filtered = filterCandidates([profile], { pty: "native" });
 	const skips = asSkippedAttempts(filtered.rejected);
 	assert.equal(skips.length, 1);
 	assert.equal(skips[0].constraint, "pty");

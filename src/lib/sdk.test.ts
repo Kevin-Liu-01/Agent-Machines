@@ -29,7 +29,7 @@ test("create then run performs one ordered provision/bootstrap/run flow", async 
 	});
 
 	const agent = await client.create({
-		agent: "codex",
+		agent: "claude-code",
 		sandbox: "e2b",
 		model: "claude-sonnet-4.6",
 	});
@@ -53,12 +53,47 @@ test("create then run performs one ordered provision/bootstrap/run flow", async 
 	const provision = JSON.parse(String(calls[0]?.init?.body)) as Record<string, unknown>;
 	assert.equal(provision.startBootstrap, false);
 	assert.equal(provision.providerKind, "e2b");
+	assert.equal(provision.model, "anthropic/claude-sonnet-4-6");
 	const run = JSON.parse(String(calls[2]?.init?.body)) as Record<string, unknown>;
 	assert.deepEqual(run, {
 		machineId: "machine-1",
 		prompt: "ship it",
 		timeoutMs: 12_000,
 	});
+});
+
+/**
+ * The published README paired `agent: "codex"` with an Anthropic model and
+ * this suite paired it with an Anthropic alias, so neither caught that the
+ * route could not run. The wire format is what makes it unrunnable, so assert
+ * on the model the provision request actually carries.
+ */
+test("a codex route provisions with an OpenAI model, not an Anthropic one", async () => {
+	const { calls, fetcher } = mockFetch([
+		{ body: { ok: true, machineId: "machine-3" } },
+	]);
+	const client = new AgentMachines({ fetch: fetcher, bootstrap: false });
+	const agent = await client.create({ agent: "codex", sandbox: "e2b" });
+
+	assert.equal(agent.route.upstream, "openai");
+	const provision = JSON.parse(String(calls[0]?.init?.body)) as Record<string, unknown>;
+	assert.equal(provision.model, "openai/gpt-5.2");
+});
+
+test("create rejects a model the agent's upstream cannot serve", async () => {
+	const { calls, fetcher } = mockFetch([]);
+	const client = new AgentMachines({ fetch: fetcher, bootstrap: false });
+	await assert.rejects(
+		client.create({
+			agent: "codex",
+			sandbox: "e2b",
+			model: "anthropic/claude-sonnet-4-6",
+		}),
+		/codex is locked to the native openai API/,
+	);
+	// Rejected before any HTTP call, so no sandbox time is spent on a route
+	// that would 404 on its first turn.
+	assert.equal(calls.length, 0);
 });
 
 test("bootstrap false provisions without calling bootstrap", async () => {
@@ -77,6 +112,6 @@ test("missing key gets an actionable authentication error", async () => {
 	const client = new AgentMachines({ fetch: fetcher });
 	await assert.rejects(
 		client.create({ agent: "codex", sandbox: "e2b" }),
-		/Settings → Developer API/,
+		/Settings -> Developer API/,
 	);
 });

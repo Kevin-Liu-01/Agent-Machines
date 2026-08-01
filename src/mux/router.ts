@@ -345,12 +345,19 @@ export class MuxMachine {
 		let costUsd: number | undefined;
 		let sessionId: string | undefined;
 		let eventCount = 0;
+		let timeToFirstEventMs: number | undefined;
 		let sawError: string | undefined;
 		let completed = false;
 		let settled = false;
 
 		/** Fold one event into the run result. */
 		const absorb = (event: MuxAgentEvent): void => {
+			// Only parsed harness events reach absorb -- the synthetic error and
+			// done events the stream appends do not -- so this is the first
+			// output a caller could actually render, not the first byte off the
+			// wire. RunResult.timeToFirstEventMs documents why that is the
+			// measurement we report.
+			timeToFirstEventMs ??= Date.now() - startedAt;
 			if (event.type === "result") {
 				finalText = event.text || finalText;
 				costUsd = event.costUsd ?? costUsd;
@@ -373,6 +380,7 @@ export class MuxMachine {
 				exitCode,
 				costUsd,
 				durationMs: Date.now() - startedAt,
+				timeToFirstEventMs,
 				sessionId,
 				events: eventCount,
 				substrate: sandbox.substrate,

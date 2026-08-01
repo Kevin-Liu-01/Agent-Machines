@@ -5,6 +5,13 @@
  * user's credentials. Routes call this once per request rather than
  * holding instances long-lived; provider classes are stateless so the
  * cost is just the (cheap) constructor call.
+ *
+ * Since ROADMAP 0.2 every one of those classes is a facade: the substrate
+ * itself is a mux `MuxSubstrate` (`./mux-facade`) and `MachineProvider` is
+ * derived from it, so the state and error vocabularies are translated in one
+ * place instead of four. The credential gates below stay provider-agnostic --
+ * each kind checks only its own credentials, never Dedalus's (postmortem
+ * 2026-05-18, item 3).
  */
 
 import type {
@@ -83,3 +90,25 @@ export type {
 	ProviderMachineSummary,
 } from "./types";
 export { MachineProviderError } from "./types";
+
+// The single adaptation point, exported so ROADMAP 0.3 can drive it directly
+// with a mux `SandboxProvider` once that package is reachable from the bundler.
+export {
+	asMachineProviderError,
+	createMuxBackedProvider,
+	muxErrorKindOf,
+	notSupported,
+	toMachineState,
+	toMuxErrorKind,
+	toMuxMachineState,
+	toProviderCapabilities,
+	toProviderError,
+	type MuxDescription,
+	type MuxSandbox,
+	type MuxSubstrate,
+	type MuxSubstrateBinding,
+} from "./mux-facade";
+export { createE2bSubstrate } from "./e2b";
+export { createSpritesSubstrate } from "./sprites";
+export { createVercelSubstrate } from "./vercel";
+export { createDedalusSubstrate } from "./dedalus";

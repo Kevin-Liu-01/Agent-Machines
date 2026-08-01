@@ -40,6 +40,129 @@ export type PersistenceModel =
 	| "always-on"
 	| "none";
 
+/** A vendor fact no documentation states and no measurement of ours proves. */
+export type Unknown = "unknown";
+
+/**
+ * Whether asking for something changes what a run actually gets.
+ *
+ *   "honored"     -- the mux forwards the request and it takes effect.
+ *   "ignored"     -- the vendor documents the knob; this adapter does not
+ *                    forward it, so the default is all a run can count on.
+ *   "unsupported" -- no vendor documentation exposes such a request at all.
+ *   "unknown"     -- forwarded, but never observed to take effect (E2B's
+ *                    sizing request, docs/MUX-RESULTS.md finding 10).
+ *
+ * Only "honored" may satisfy a constraint that the substrate's default does
+ * not already meet: a forwarded-but-ignored request looks like success at
+ * placement time and then starves the harness at run time.
+ */
+export type RequestSupport = "honored" | "ignored" | "unsupported" | "unknown";
+
+/** Where a sandbox physically lands, and whether a caller may choose. */
+export type RegionSupport = {
+	/** Region a create with no region argument lands in. */
+	default: string | Unknown;
+	/** Regions the vendor documents for this product, lowest published tier. */
+	available: readonly string[] | Unknown;
+	/** Can the mux pin one? */
+	select: RequestSupport;
+};
+
+/** Accelerator access. `available` is the vendor's claim, `request` ours. */
+export type GpuSupport = {
+	available: boolean | Unknown;
+	/** Accelerator models the vendor documents, when it names any. */
+	models: readonly string[] | Unknown;
+	request: RequestSupport;
+};
+
+/** Outbound network posture of a fresh sandbox. */
+export type EgressPolicy = "open" | "blocked" | "allowlist";
+
+export type NetworkPolicySupport = {
+	egress: EgressPolicy | Unknown;
+	/** Can the mux change it per sandbox? */
+	control: RequestSupport;
+};
+
+/**
+ * Starting a SECOND live sandbox from an existing one's state.
+ *
+ * Deliberately not the same axis as `persistence`: sleep/wake through a
+ * snapshot is already modeled there and is reachable through the contract
+ * (`sleep()`/`wake()`). This axis is the fork/clone operation, which the
+ * SandboxProvider contract does not expose at all today -- hence `exposed`,
+ * so a caller who needs forking is told the mux is the missing piece rather
+ * than being routed to a vendor that could do it if we called it.
+ */
+export type ForkSupport = {
+	/** Can the vendor's own documented API fork a sandbox? */
+	vendor: boolean | Unknown;
+	/** Is a fork reachable through the mux contract today? */
+	exposed: boolean;
+};
+
+/**
+ * How a listening port becomes publicly reachable.
+ *
+ *   "any-port"           -- any port maps to a URL with no declaration.
+ *   "declared-at-create" -- ports must be listed when the sandbox is made.
+ *   "single-fixed"       -- exactly one port is proxied, and it is fixed.
+ */
+export type PublicPortModel = "any-port" | "declared-at-create" | "single-fixed";
+
+export type PublicPortSupport = {
+	model: PublicPortModel | Unknown;
+	/** Simultaneous public ports the vendor documents, lowest tier. */
+	vendorMax: number | Unknown;
+	/** Public ports a run can actually get through this adapter today. */
+	muxMax: number | Unknown;
+	/** The only ports that route, where the substrate or adapter fixes them. */
+	fixed: readonly number[] | null;
+};
+
+/**
+ * Quantitative vendor limits, all read as the LOWEST published plan tier.
+ *
+ * We cannot prove which plan a caller's key is on, so routing may promise
+ * only what the cheapest plan guarantees. Memory is MiB and disk is GiB; a
+ * vendor figure written in decimal GB is converted down (1 GB = 0.931 GiB)
+ * rather than read as the same number of binary units, because rounding a
+ * ceiling up is how a floor gets satisfied by a machine that cannot hold it.
+ */
+export type SubstrateLimits = {
+	/** Size a sandbox gets without asking for anything. */
+	baseVcpu: number | Unknown;
+	baseMemoryMib: number | Unknown;
+	baseDiskGib: number | Unknown;
+	/** Documented ceiling on the lowest published plan tier. */
+	maxVcpu: number | Unknown;
+	maxMemoryMib: number | Unknown;
+	maxDiskGib: number | Unknown;
+	/** Longest single continuous run, lowest published tier. */
+	maxRuntimeMs: number | Unknown;
+	/** Sandboxes that may run at once on one account, lowest tier. */
+	maxConcurrentSandboxes: number | Unknown;
+	/** Does `CreateSandboxOptions.resources` change the machine? */
+	resourceRequest: RequestSupport;
+};
+
+/**
+ * What a substrate offers, as the router's feasibility input.
+ *
+ * The six behavioral axes are required because every adapter demonstrably
+ * implements one of the values. The vendor-fact axes below them are optional
+ * on purpose: an absent axis reads as "unknown", which is the most
+ * conservative value in the model and therefore REJECTS any constraint that
+ * needs it. A new adapter thus starts with zero capability claims and earns
+ * each one by citing a source, instead of being forced to fill in a field
+ * nobody researched -- which is how a guess gets typed in and then routed on.
+ *
+ * Every declared value must carry the vendor URL and the date it was read in
+ * a comment beside it (see the four adapters in ./providers). A value we
+ * cannot source is "unknown", never a plausible number.
+ */
 export type SandboxCapabilities = {
 	pty: PtySupport;
 	persistence: PersistenceModel;
@@ -60,6 +183,12 @@ export type SandboxCapabilities = {
 	 * Long installs must therefore stay in the foreground there.
 	 */
 	detachedWork: "reliable" | "throttled";
+	region?: RegionSupport;
+	gpu?: GpuSupport;
+	network?: NetworkPolicySupport;
+	fork?: ForkSupport;
+	publicPorts?: PublicPortSupport;
+	limits?: SubstrateLimits;
 };
 
 export type MuxErrorKind =

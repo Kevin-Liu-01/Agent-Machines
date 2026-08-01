@@ -43,8 +43,28 @@ export type MuxAgentEvent =
 export type RunResult = {
 	text: string;
 	exitCode: number;
+	/**
+	 * Model spend for this turn as the harness itself reported it (Claude
+	 * Code's `total_cost_usd` and the equivalents). Sandbox compute is NOT in
+	 * here -- the substrate bills that separately, and the two are kept apart
+	 * on the trace (RunTrace.modelCostUsd / RunTrace.sandboxCostUsd). Absent
+	 * when the harness reported nothing, never 0: a zero would read as free.
+	 */
 	costUsd?: number;
 	durationMs: number;
+	/**
+	 * Milliseconds from the run() call to the first NORMALIZED agent event.
+	 *
+	 * Normalized, not first raw byte, deliberately. Raw stdout opens with
+	 * harness banners, partial JSON and stderr noise that a caller cannot
+	 * render, so a first-byte number would flatter the measurement and would
+	 * not compare across harnesses whose CLIs differ in how chatty they are at
+	 * startup. The first MuxAgentEvent is the first instant a consumer has
+	 * something to show, which is the "time to first output" the route table
+	 * reports. Absent when the run produced no event at all (a harness that
+	 * exited silently), never 0.
+	 */
+	timeToFirstEventMs?: number;
 	sessionId?: string;
 	events: number;
 	substrate: SubstrateKind;

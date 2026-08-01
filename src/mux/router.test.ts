@@ -239,12 +239,23 @@ class FakeSandboxHandle implements SandboxHandle {
 		};
 	}
 
+	/**
+	 * Pause before the LAST scripted event. Lets a run's total duration
+	 * outlast its first event by a known margin, which is the only way to
+	 * prove time-to-first-output is measured at the first event.
+	 */
+	tailDelayMs = 0;
+
 	async *execStream(
 		command: string,
 		options?: ExecStreamOptions,
 	): AsyncGenerator<ExecStreamEvent, void, void> {
 		this.streamCalls.push({ command, env: options?.env });
-		for (const event of this.streamScript) {
+		const last = this.streamScript.length - 1;
+		for (const [index, event] of this.streamScript.entries()) {
+			if (this.tailDelayMs > 0 && index === last) {
+				await new Promise((resolve) => setTimeout(resolve, this.tailDelayMs));
+			}
 			yield event;
 		}
 	}
@@ -372,6 +383,18 @@ function eventsOf<K extends MuxAgentEvent["type"]>(
 		(event): event is Extract<MuxAgentEvent, { type: K }> =>
 			event.type === type,
 	);
+}
+
+/**
+ * cost.ts's compute arithmetic for one e2b run at the default comparison size,
+ * duplicated step by step rather than by calling estimate(), so the assertion
+ * is that the trace figure was derived from THIS run's duration and not merely
+ * that some number showed up. $0.0504/vCPU-hour and $0.0162/GiB-hour on wall
+ * clock, at 2 vCPU and 2 GiB, with no creation charged to a run.
+ */
+function e2bComputeUsd(durationMs: number): number {
+	const hours = durationMs / 3_600_000;
+	return hours * 2 * 0.0504 + 2 * hours * 0.0162;
 }
 
 const isMuxError =
@@ -992,6 +1015,138 @@ test("every run leaves a trace, keyed or not", async (t) => {
 	assert.equal(written[0].harness, "claude-code");
 	assert.ok(written[0].runKey.startsWith("run-claude-code-e2b-"));
 	assert.ok(written[0].attempts.length >= 1, "the placement decision is recorded");
+	// This stream carried no agent event at all, so there is no first output
+	// and no model cost. Both stay absent; a 0 would claim an instant answer
+	// and a free one.
+	assert.equal(written[0].events, 0);
+	assert.equal("timeToFirstEventMs" in written[0], false);
+	assert.equal("modelCostUsd" in written[0], false);
+	assert.equal("costUsd" in written[0], false);
+});
+
+test("a run records time to first output and both halves of its cost", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	const { module: harnesses } = await loadHarnesses();
+	if (!harnesses) {
+		t.skip("harness registry not importable");
+		return;
+	}
+	const dir = mkdtempSync(join(tmpdir(), "am-mux-traces3-"));
+	const saved = process.env.AGENT_MACHINES_MUX_TRACES;
+	process.env.AGENT_MACHINES_MUX_TRACES = dir;
+	t.after(() => {
+		if (saved === undefined) delete process.env.AGENT_MACHINES_MUX_TRACES;
+		else process.env.AGENT_MACHINES_MUX_TRACES = saved;
+		rmSync(dir, { recursive: true, force: true });
+	});
+	const traces = await import("./traces.js");
+
+	const resultLine = JSON.stringify({
+		type: "result",
+		subtype: "success",
+		is_error: false,
+		result: "MUX-OK",
+		session_id: "s1",
+		duration_ms: 5,
+		total_cost_usd: 0.0123,
+	});
+	const script: ExecStreamEvent[] = [
+		{ type: "stdout", data: `${resultLine}\n` },
+		{ type: "exit", exitCode: 0 },
+	];
+
+	// e2b: a published compute rate plus a harness that reports its spend, so
+	// every field is available and the total is the sum of the two halves.
+	const priced = new FakeSandboxHandle("e2b-ttfo", "e2b");
+	priced.streamScript = script;
+	// The run keeps going for 80ms after its first (and only) event, so a
+	// number captured at the end of the stream cannot pass as first output.
+	priced.tailDelayMs = 80;
+	const pricedProvider = new FakeProvider("e2b");
+	pricedProvider.handleFactory = () => priced;
+	const pricedMux = makeMux(router, {
+		keys: { anthropic: "k" },
+		sandboxes: { primary: "e2b", backups: [] },
+	});
+	pricedMux.registerProvider("e2b", pricedProvider);
+	const pricedMachine = await pricedMux.create({ agent: "claude-code", install: false });
+	const pricedResult = await pricedMachine.run("say hello").result();
+
+	assert.notEqual(pricedResult.timeToFirstEventMs, undefined);
+	const firstOutputMs = pricedResult.timeToFirstEventMs as number;
+	assert.ok(firstOutputMs >= 0, "time to first output is a real elapsed measure");
+	assert.ok(
+		pricedResult.durationMs - firstOutputMs >= 40,
+		`first output ${firstOutputMs}ms must precede the run end ${pricedResult.durationMs}ms`,
+	);
+
+	// sprites: Fly publishes no compute rate, so the sandbox half is unknown.
+	const unpriced = new FakeSandboxHandle("sprites-ttfo", "sprites");
+	unpriced.streamScript = script;
+	const unpricedProvider = new FakeProvider("sprites");
+	unpricedProvider.handleFactory = () => unpriced;
+	const unpricedMux = makeMux(router, {
+		keys: { anthropic: "k" },
+		sandboxes: { primary: "sprites", backups: [] },
+	});
+	unpricedMux.registerProvider("sprites", unpricedProvider);
+	const unpricedMachine = await unpricedMux.create({
+		agent: "claude-code",
+		install: false,
+	});
+	await unpricedMachine.run("say hello").result();
+
+	const written = traces.readTraces({ limit: 10 });
+	assert.equal(written.length, 2);
+	const [e2bTrace, spritesTrace] = written;
+
+	assert.equal(e2bTrace.substrate, "e2b");
+	assert.equal(
+		e2bTrace.timeToFirstEventMs,
+		firstOutputMs,
+		"the trace carries the same measurement the caller saw",
+	);
+	assert.equal(e2bTrace.modelCostUsd, 0.0123);
+	assert.equal(
+		e2bTrace.sandboxCostUsd,
+		e2bComputeUsd(e2bTrace.durationMs),
+		"sandbox cost is derived from this run's own wall clock",
+	);
+	assert.ok((e2bTrace.sandboxCostUsd ?? 0) > 0);
+	assert.equal(e2bTrace.costUsd, (e2bTrace.sandboxCostUsd as number) + 0.0123);
+
+	// The unpriced lane records what it knows and nothing more.
+	assert.equal(spritesTrace.substrate, "sprites");
+	assert.equal(spritesTrace.modelCostUsd, 0.0123);
+	assert.equal("sandboxCostUsd" in spritesTrace, false);
+	assert.equal(
+		"costUsd" in spritesTrace,
+		false,
+		"a total built from the model half alone would under-report the run",
+	);
+	assert.notEqual(spritesTrace.timeToFirstEventMs, undefined);
+
+	// The route table reads both back, per harness x substrate.
+	const summary = traces.summarize({ limit: 10 });
+	assert.deepEqual(Object.keys(summary.byRoute), [
+		"claude-code@e2b",
+		"claude-code@sprites",
+	]);
+	const e2bRoute = summary.byRoute["claude-code@e2b"];
+	assert.equal(e2bRoute?.runs, 1);
+	assert.equal(e2bRoute?.successRate, 1);
+	assert.equal(e2bRoute?.truncationRate, 0);
+	assert.equal(e2bRoute?.firstOutputP50Ms, firstOutputMs);
+	assert.equal(e2bRoute?.cost.perSuccessUsd, e2bRoute?.cost.knownUsd);
+	assert.equal(e2bRoute?.cost.complete, true);
+	const spritesRoute = summary.byRoute["claude-code@sprites"];
+	assert.equal(spritesRoute?.cost.complete, false);
+	assert.deepEqual(spritesRoute?.cost.unpricedSubstrates, ["sprites"]);
+	assert.equal("knownUsd" in (spritesRoute?.cost ?? {}), false);
 });
 
 test("a substrate that throttles detached work installs in the foreground", async (t) => {

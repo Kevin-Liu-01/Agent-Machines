@@ -57,6 +57,11 @@ const DEFAULT_SANDBOX_TIMEOUT_MS = 300_000;
 const DEFAULT_PTY_COLS = 100;
 const DEFAULT_PTY_ROWS = 30;
 
+/**
+ * Declared capabilities. Every vendor fact below cites the page it came from
+ * and the date it was read; anything E2B does not publish is "unknown" and
+ * fails a constraint that needs it rather than passing optimistically.
+ */
 const CAPABILITIES: SandboxCapabilities = {
 	pty: "native",
 	persistence: "memory-snapshot",
@@ -64,6 +69,80 @@ const CAPABILITIES: SandboxCapabilities = {
 	publicUrl: true,
 	streamingExec: true,
 	detachedWork: "reliable",
+	// No create-time region argument exists: the SDK reference
+	// (https://e2b.dev/docs/sdk-reference/js-sdk/v1.13.1/sandbox, read
+	// 2026-08-01) lists accessToken, apiKey, allowInternetAccess, domain,
+	// envs, headers, logger, metadata, requestTimeoutMs, secure and timeoutMs
+	// and nothing else, and no E2B page states which region a plain create
+	// lands in. `domain` points the SDK at a different API host (BYOC), not at
+	// a documented region, so it is not read as a region selector here.
+	region: { default: "unknown", available: "unknown", select: "unsupported" },
+	// No E2B-owned page documents GPU sandboxes and the create options carry
+	// no accelerator field (same SDK reference, read 2026-08-01). Third-party
+	// comparisons assert E2B has none; that is not a vendor source, so this
+	// stays "unknown" instead of claiming either direction, and a GPU need
+	// rejects the lane either way.
+	gpu: { available: "unknown", models: "unknown", request: "unsupported" },
+	// https://e2b.dev/docs/sandbox/internet-access (read 2026-08-01): "Every
+	// sandbox has outbound access to the internet by default", and the vendor
+	// exposes allowInternetAccess (default true) plus allow/deny egress lists,
+	// updatable on a running sandbox. This adapter forwards none of that
+	// (create() below passes no network options), so control is "ignored":
+	// the default is all a run may count on here.
+	network: { egress: "open", control: "ignored" },
+	// https://e2b.dev/docs/sandbox/snapshots (read 2026-08-01): a snapshot is
+	// "a persistent point-in-time capture of a running sandbox, including both
+	// its filesystem and memory state", and "The snapshot ID can be used
+	// directly with Sandbox.create() to spawn a new sandbox from the
+	// snapshot". So the vendor can fork; the mux contract has no snapshot or
+	// fork operation, hence exposed: false.
+	fork: { vendor: true, exposed: false },
+	// getHost(port) returns a host for any port with no create-time port
+	// declaration (SDK reference, read 2026-08-01), which is why publicUrl()
+	// below is a pure string build. No E2B page states how many ports may be
+	// reachable at once, so the ceilings stay unknown while the model itself
+	// is provable.
+	publicPorts: {
+		model: "any-port",
+		vendorMax: "unknown",
+		muxMax: "unknown",
+		fixed: null,
+	},
+	limits: {
+		// Baseline measured by us, not published: docs/MUX-RESULTS.md finding
+		// 10 (2026-07-31) recorded the E2B base sandbox as 478 MB and 2 vCPU,
+		// which is why a Hermes install exhausts it. That figure is read as MiB
+		// here (it has the shape of a `free -m` reading, and E2B's own pricing
+		// page meters memory in MiB); the two readings differ by 22 MiB, well
+		// inside the granularity anyone declares a memory floor at.
+		baseVcpu: 2,
+		baseMemoryMib: 478,
+		// https://e2b.dev/docs/filesystem (read 2026-08-01): "The Hobby tier
+		// sandboxes come with 10 GB of the free disk space and Pro tier
+		// sandboxes come with 20 GB." Hobby is used because the plan behind a
+		// key is unknown at routing time; 10 GB is 9.31 GiB, floored to 9. The
+		// SDK exposes no disk option, so the baseline is also the ceiling.
+		baseDiskGib: 9,
+		maxDiskGib: 9,
+		// https://e2b.dev/pricing (read 2026-08-01): vCPU tiers 1/2/4/6/8 with
+		// 2 marked default, and memory "even value between 512 MiB and 8,192
+		// MiB" -- both listed for Hobby and Pro alike.
+		maxVcpu: 8,
+		maxMemoryMib: 8192,
+		// https://e2b.dev/docs/sandbox (read 2026-08-01): "Sandboxes can run
+		// continuously for up to 24 hours (Pro) or 1 hour (Base)" -- Base here,
+		// because the plan behind a key cannot be proven.
+		maxRuntimeMs: 3_600_000,
+		// https://e2b.dev/pricing (read 2026-08-01): Hobby is "Up to 20
+		// concurrently running sandboxes" (Pro 100, extra concurrency
+		// purchasable to 1,100).
+		maxConcurrentSandboxes: 20,
+		// "unknown", not "honored": create() below does forward cpuCount and
+		// memoryMB, but docs/MUX-RESULTS.md finding 10 records that E2B ignored
+		// the sizing request on this plan, so a larger machine is not something
+		// routing may promise.
+		resourceRequest: "unknown",
+	},
 };
 
 /** Lazy, memoized SDK load; unused substrates never pay the import. */

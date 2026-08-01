@@ -40,6 +40,13 @@ const sandboxes = (listArg("--sandboxes") ?? [
 	"dedalus",
 ]) as SubstrateKind[];
 const keep = args.includes("--keep");
+/** Route model traffic through a gateway instead of a native key. */
+const upstream = (listArg("--upstream") ?? [])[0] as
+	| "anthropic"
+	| "openai"
+	| "aiGateway"
+	| "openrouter"
+	| undefined;
 
 const PROMPT =
 	"Reply with exactly the text MUX-OK and nothing else. Do not use any tools.";
@@ -57,7 +64,22 @@ type Row = {
 	error?: string;
 };
 
-const mux = createMux();
+const mux = createMux(
+	upstream
+		? {
+				// Blank every key except the requested upstream, so a gateway run
+				// cannot silently fall back to a native key and look like it
+				// proved the gateway path.
+				keys: {
+					anthropic: upstream === "anthropic" ? process.env.ANTHROPIC_API_KEY : undefined,
+					openai: upstream === "openai" ? process.env.OPENAI_API_KEY : undefined,
+					aiGateway: upstream === "aiGateway" ? process.env.AI_GATEWAY_API_KEY : undefined,
+					openrouter: upstream === "openrouter" ? process.env.OPENROUTER_API_KEY : undefined,
+				},
+			}
+		: undefined,
+);
+if (upstream) console.log(`upstream forced: ${upstream}`);
 const rows: Row[] = [];
 
 for (const sandbox of sandboxes) {

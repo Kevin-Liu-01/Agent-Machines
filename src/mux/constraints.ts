@@ -2,24 +2,39 @@
  * Normalized capabilities as a routing input.
  *
  * A caller declares what a run NEEDS (`RouteConstraints`); every substrate
- * already declares what it HAS (`SandboxCapabilities` in ./types.ts).
- * `filterCandidates` intersects the two and, for every rejection, names the
- * constraint and the substrate's actual value. Those strings are surfaced in
- * `machine.attempts` and in the dashboard's "why did this land on sprites?"
- * panel, so a vague reason is a product defect rather than a cosmetic one.
+ * already declares what it HAS (`SandboxCapabilities` in ./types.ts, declared
+ * per adapter in ./providers with a vendor URL and a read date beside every
+ * value). `filterCandidates` intersects the two and, for every rejection,
+ * names the constraint and the substrate's actual value. Those strings are
+ * surfaced in `machine.attempts` and in the dashboard's "why did this land on
+ * sprites?" panel, so a vague reason is a product defect rather than a
+ * cosmetic one.
  *
- * Two dimensions the capability record does not carry -- machine size and how
- * long a single run may stay up -- come from `SUBSTRATE_LIMITS` below, whose
- * every entry cites a vendor page or one of our own measurements. Anything a
- * vendor does not publish is `"unknown"` and fails closed: an unprovable
- * floor rejects the lane instead of hoping it holds.
+ * There is exactly ONE declaration site. This module used to carry its own
+ * `SUBSTRATE_LIMITS` table for sizing and run duration, which meant two
+ * sources of truth for the same vendor facts; those values now live in each
+ * adapter's `capabilities.limits` with their citations, and nothing here
+ * restates a vendor number.
+ *
+ * Fail closed, in both directions:
+ *
+ *   - A fact the vendor does not publish is "unknown" (or an absent axis,
+ *     which reads the same), and an unknown REJECTS a constraint that needs
+ *     it. An unprovable floor loses the lane instead of hoping it holds.
+ *   - Being able to ASK for something only counts when the request is
+ *     honored. A forwarded-but-ignored request looks like success at
+ *     placement time and starves the run later.
  */
 
 import type {
+	EgressPolicy,
 	PersistenceModel,
 	PtySupport,
+	RequestSupport,
 	SandboxCapabilities,
 	SubstrateKind,
+	SubstrateLimits,
+	Unknown,
 } from "./types.js";
 
 /**
@@ -48,10 +63,24 @@ export type RouteConstraints = {
 	reattach?: boolean;
 	publicUrl?: boolean;
 	streamingExec?: boolean;
+	/** The run must land in this region (data residency, latency to a peer). */
+	region?: string;
+	/** The run needs an accelerator it can actually reach. */
+	gpu?: boolean;
+	/** Required outbound posture: "blocked" is the untrusted-code case. */
+	egress?: EgressPolicy;
+	/** The run needs to spawn a second sandbox from this one's state. */
+	fork?: boolean;
 	/** Floor on the vCPU count the run will actually get. */
 	minVcpu?: number;
 	/** Floor on the memory the run will actually get, in MiB. */
 	minMemoryMib?: number;
+	/** Floor on the disk the run will actually get, in GiB. */
+	minDiskGib?: number;
+	/** Simultaneous public ports the run needs on one sandbox. */
+	minPublicPorts?: number;
+	/** Sandboxes the caller intends to run at once on this account. */
+	minConcurrency?: number;
 	/** Longest this run may need to stay up, in milliseconds. */
 	maxRuntimeMs?: number;
 };
@@ -82,121 +111,38 @@ export type ConstraintFilterResult = {
 	rejected: ConstraintRejection[];
 };
 
-/** A fact the vendor does not publish and we have not measured. */
-export type Unknown = "unknown";
-
 /**
- * Whether `CreateSandboxOptions.resources` changes the machine a run gets.
- * "ignored" means the mux provider does not forward the request at all;
- * "unknown" means it is forwarded but was not observed to take effect.
+ * Every axis absent, i.e. every vendor fact unknown. Used for a substrate
+ * that declares no limits at all, so the checks below can read one shape and
+ * an undeclared axis rejects exactly like an explicitly unknown one.
  */
-export type ResourceRequestSupport = "honored" | "ignored" | "unknown";
-
-export type SubstrateLimits = {
-	/** Size a sandbox gets without asking for anything. */
-	baseVcpu: number | Unknown;
-	baseMemoryMib: number | Unknown;
-	/** Documented ceiling on the lowest published plan tier. */
-	maxVcpu: number | Unknown;
-	maxMemoryMib: number | Unknown;
-	/** Longest single continuous run, lowest published tier. */
-	maxRuntimeMs: number | Unknown;
-	resourceRequest: ResourceRequestSupport;
-};
-
-/**
- * Sizing and runtime facts the capability record does not carry.
- *
- * Ceilings are the LOWEST published tier, not the highest: we cannot prove
- * which plan a caller's key is on, so routing must promise only what the
- * cheapest plan guarantees. Vendors that publish nothing get "unknown".
- * Memory written as "GB" by a vendor is read as 1024 MiB here; the two
- * conventions differ by 7% and the conservative reading is the smaller one.
- */
-export const SUBSTRATE_LIMITS: Record<SubstrateKind, SubstrateLimits> = {
-	// Baseline measured by us, not published: docs/MUX-RESULTS.md finding 10
-	// (2026-07-31) recorded the E2B base sandbox as 478 MB and 2 vCPU, which
-	// is why a Hermes install exhausts it. That figure is read as MiB here
-	// (it has the shape of a `free -m` reading, and E2B's own pricing page
-	// meters memory in MiB); the two readings differ by 22 MiB, well inside
-	// the granularity anyone declares a memory floor at. Ceilings from
-	// https://e2b.dev/pricing (read 2026-08-01): vCPU tiers 1/2/4/6/8, memory
-	// priced "between 512 MiB and 8,192 MiB". Runtime from
-	// https://e2b.dev/docs/sandbox (read 2026-08-01): "Sandboxes can run
-	// continuously for up to 24 hours (Pro) or 1 hour (Base)" -- Base here.
-	// resourceRequest is "unknown", not "honored": the provider does forward
-	// cpuCount/memoryMB (src/mux/providers/e2b.ts), but finding 10 records
-	// that "E2B ignored the sizing request on this plan", so a larger machine
-	// is not something routing may promise.
-	e2b: {
-		baseVcpu: 2,
-		baseMemoryMib: 478,
-		maxVcpu: 8,
-		maxMemoryMib: 8192,
-		maxRuntimeMs: 3_600_000,
-		resourceRequest: "unknown",
-	},
-	// Fly publishes a memory ceiling but no baseline: flyio-support on
-	// https://community.fly.io/t/16gb-ram-advertised-for-sprites-but-not-actually-available/28123
-	// (2026-06-17) says "Currently the default is up to 8GB of memory, and you
-	// can write in to support to request up to 16GB" -- an upper bound, not a
-	// guaranteed allocation, so baseMemoryMib stays unknown and the ceiling is
-	// the un-requested 8 GiB. No Fly-owned page states a vCPU ceiling or a
-	// maximum run duration (checked 2026-08-01); sprites also auto-suspend on
-	// idle (docs/MUX-RESULTS.md finding 9), which is a further reason not to
-	// claim an unbounded run. The mux provider never forwards
-	// options.resources for this substrate.
-	sprites: {
-		baseVcpu: "unknown",
-		baseMemoryMib: "unknown",
-		maxVcpu: "unknown",
-		maxMemoryMib: 8192,
-		maxRuntimeMs: "unknown",
-		resourceRequest: "ignored",
-	},
-	// https://vercel.com/docs/sandbox/pricing (page last_updated 2026-06-16,
-	// read 2026-08-01): "The default is 2 vCPUs" and "Each vCPU includes 2 GB
-	// of memory", so the baseline is 2 vCPU / 4 GiB. Hobby ceilings are 4
-	// vCPU / 8GB and a 45-minute maximum duration; Pro is 8 vCPU / 16GB / 24h
-	// and Enterprise 32 vCPU / 64GB / 24h -- Hobby is used here because the
-	// plan is unknown at routing time. The mux provider does not forward
-	// options.resources even though the Vercel API accepts a vCPU count.
-	vercel: {
-		baseVcpu: 2,
-		baseMemoryMib: 4096,
-		maxVcpu: 4,
-		maxMemoryMib: 8192,
-		maxRuntimeMs: 2_700_000,
-		resourceRequest: "ignored",
-	},
-	// https://www.dedaluslabs.ai/pricing (read 2026-08-01): Hobby is "Up to 4"
-	// vCPU per machine and "Up to 16 GiB". No default size is published. The
-	// Hobby runtime figure is "50 hrs/mo ceiling" -- a monthly aggregate, not
-	// a per-run limit -- so the per-run maximum is unknown. options.resources
-	// is not forwarded for this substrate.
-	dedalus: {
-		baseVcpu: "unknown",
-		baseMemoryMib: "unknown",
-		maxVcpu: 4,
-		maxMemoryMib: 16384,
-		maxRuntimeMs: "unknown",
-		resourceRequest: "ignored",
-	},
+export const UNKNOWN_LIMITS: SubstrateLimits = {
+	baseVcpu: "unknown",
+	baseMemoryMib: "unknown",
+	baseDiskGib: "unknown",
+	maxVcpu: "unknown",
+	maxMemoryMib: "unknown",
+	maxDiskGib: "unknown",
+	maxRuntimeMs: "unknown",
+	maxConcurrentSandboxes: "unknown",
+	resourceRequest: "unknown",
 };
 
 export type SubstrateProfile = {
 	substrate: SubstrateKind;
 	/** Read from the provider, never restated here, so it cannot drift. */
 	capabilities: SandboxCapabilities;
-	limits: SubstrateLimits;
 };
 
 export function profileFor(
 	substrate: SubstrateKind,
 	capabilities: SandboxCapabilities,
-	limits: SubstrateLimits = SUBSTRATE_LIMITS[substrate],
 ): SubstrateProfile {
-	return { substrate, capabilities, limits };
+	return { substrate, capabilities };
+}
+
+function limitsOf(profile: SubstrateProfile): SubstrateLimits {
+	return profile.capabilities.limits ?? UNKNOWN_LIMITS;
 }
 
 function quote(value: string): string {
@@ -207,6 +153,25 @@ function renderSize(value: number | Unknown, unit: string): string {
 	return value === "unknown" ? "unknown" : `${value} ${unit}`;
 }
 
+function renderList(value: readonly string[] | Unknown): string {
+	if (value === "unknown") return "unknown";
+	return value.length === 0 ? "none" : value.map(quote).join(", ");
+}
+
+/** Naming for one size dimension, so a rejection reason reads correctly. */
+type SizeDimension = {
+	constraint: "minVcpu" | "minMemoryMib" | "minDiskGib";
+	unit: string;
+	base: number | Unknown;
+	ceiling: number | Unknown;
+	/** Whether the mux can ask for more of THIS dimension. */
+	request: RequestSupport;
+	/** How the request is named in the "actual" field ("resource requests"). */
+	requestNoun: string;
+	/** What the caller would have to set for it to matter. */
+	requestLabel: string;
+};
+
 /**
  * A floor on machine size is satisfiable two ways: the substrate is already
  * that big, or it can be asked to be. Asking only counts when the request is
@@ -215,19 +180,13 @@ function renderSize(value: number | Unknown, unit: string): string {
  */
 function checkSizeFloor(
 	profile: SubstrateProfile,
-	constraint: "minVcpu" | "minMemoryMib",
 	floor: number,
-	unit: string,
-	base: number | Unknown,
-	ceiling: number | Unknown,
+	dimension: SizeDimension,
 ): ConstraintFailure | null {
-	const { substrate, limits } = profile;
+	const { substrate } = profile;
+	const { constraint, unit, base, ceiling, request } = dimension;
 	if (typeof base === "number" && base >= floor) return null;
-	if (
-		limits.resourceRequest === "honored" &&
-		typeof ceiling === "number" &&
-		ceiling >= floor
-	) {
+	if (request === "honored" && typeof ceiling === "number" && ceiling >= floor) {
 		return null;
 	}
 
@@ -235,15 +194,15 @@ function checkSizeFloor(
 	const actual = `baseline ${renderSize(base, unit)}, ceiling ${renderSize(
 		ceiling,
 		unit,
-	)}, resource requests ${limits.resourceRequest}`;
+	)}, ${dimension.requestNoun} ${request}`;
 	const head =
 		typeof base === "number"
 			? `${substrate} baseline is ${base} ${unit}`
 			: `${substrate} publishes no baseline size`;
 	const tail =
-		limits.resourceRequest === "honored"
+		request === "honored"
 			? `and its ceiling is ${renderSize(ceiling, unit)}`
-			: `and CreateSandboxOptions.resources is ${limits.resourceRequest} on this substrate, so a larger size cannot be guaranteed`;
+			: `and ${dimension.requestLabel} is ${request} on this substrate, so a larger size cannot be guaranteed`;
 	return {
 		constraint,
 		required,
@@ -257,7 +216,8 @@ export function checkConstraints(
 	profile: SubstrateProfile,
 	constraints: RouteConstraints = {},
 ): ConstraintFailure[] {
-	const { substrate, capabilities, limits } = profile;
+	const { substrate, capabilities } = profile;
+	const limits = limitsOf(profile);
 	const failures: ConstraintFailure[] = [];
 
 	if (
@@ -302,28 +262,186 @@ export function checkConstraints(
 		}
 	}
 
+	if (constraints.region !== undefined) {
+		const wanted = constraints.region;
+		const region = capabilities.region;
+		const declaredDefault = region?.default ?? "unknown";
+		const available = region?.available ?? "unknown";
+		const select = region?.select ?? "unknown";
+		// Two ways to be sure of a region: the substrate already places
+		// sandboxes there, or it lets the mux pin one from a published list.
+		// A "close to you" placement is neither, so it fails.
+		// The literal "unknown" is the model's absent value, not a region, so
+		// asking for it must never be satisfied by a lane that publishes none.
+		const placedThere = declaredDefault !== "unknown" && declaredDefault === wanted;
+		const selectable =
+			select === "honored" && available !== "unknown" && available.includes(wanted);
+		if (!placedThere && !selectable) {
+			const head =
+				declaredDefault === "unknown"
+					? `${substrate} publishes no default region`
+					: `${substrate} places sandboxes in ${quote(declaredDefault)}`;
+			failures.push({
+				constraint: "region",
+				required: quote(wanted),
+				actual: `default ${
+					declaredDefault === "unknown" ? "unknown" : quote(declaredDefault)
+				}, available ${renderList(available)}, region requests ${select}`,
+				reason: `region: requires ${quote(wanted)}, ${head} (available ${renderList(
+					available,
+				)}) and region requests are ${select}`,
+			});
+		}
+	}
+
+	if (constraints.gpu === true) {
+		const gpu = capabilities.gpu;
+		const available = gpu?.available ?? "unknown";
+		const request = gpu?.request ?? "unknown";
+		// A vendor that HAS accelerators is not enough: CreateSandboxOptions
+		// has no GPU field, so unless the request is honored a run cannot be
+		// placed on one on purpose.
+		if (available !== true || request !== "honored") {
+			failures.push({
+				constraint: "gpu",
+				required: "true",
+				actual: `available ${String(available)}, gpu requests ${request}`,
+				reason: `gpu: required, ${substrate} reports GPU available=${String(
+					available,
+				)} and GPU requests are ${request}`,
+			});
+		}
+	}
+
+	if (constraints.egress !== undefined) {
+		const wanted = constraints.egress;
+		const network = capabilities.network;
+		const egress = network?.egress ?? "unknown";
+		const control = network?.control ?? "unknown";
+		if (egress !== wanted && control !== "honored") {
+			failures.push({
+				constraint: "egress",
+				required: quote(wanted),
+				actual: `${
+					egress === "unknown" ? "unknown" : quote(egress)
+				}, egress control ${control}`,
+				reason: `egress: requires ${quote(wanted)}, ${substrate} provides ${
+					egress === "unknown" ? "unknown" : quote(egress)
+				} and egress control is ${control}`,
+			});
+		}
+	}
+
+	if (constraints.fork === true) {
+		const fork = capabilities.fork;
+		const vendor = fork?.vendor ?? "unknown";
+		const exposed = fork?.exposed ?? false;
+		if (vendor !== true || !exposed) {
+			// Naming the mux as the blocker matters: on two of four substrates
+			// the vendor can fork and only our contract cannot, which is a
+			// roadmap item rather than a substrate limitation.
+			const reason =
+				vendor === true && !exposed
+					? `fork: required, ${substrate} can fork but the mux exposes no fork operation`
+					: `fork: required, ${substrate} reports vendor fork=${String(
+							vendor,
+						)} and the mux exposes no fork operation`;
+			failures.push({
+				constraint: "fork",
+				required: "true",
+				actual: `vendor ${String(vendor)}, exposed ${String(exposed)}`,
+				reason,
+			});
+		}
+	}
+
 	if (constraints.minVcpu !== undefined) {
-		const failure = checkSizeFloor(
-			profile,
-			"minVcpu",
-			constraints.minVcpu,
-			"vCPU",
-			limits.baseVcpu,
-			limits.maxVcpu,
-		);
+		const failure = checkSizeFloor(profile, constraints.minVcpu, {
+			constraint: "minVcpu",
+			unit: "vCPU",
+			base: limits.baseVcpu,
+			ceiling: limits.maxVcpu,
+			request: limits.resourceRequest,
+			requestNoun: "resource requests",
+			requestLabel: "CreateSandboxOptions.resources",
+		});
 		if (failure) failures.push(failure);
 	}
 
 	if (constraints.minMemoryMib !== undefined) {
-		const failure = checkSizeFloor(
-			profile,
-			"minMemoryMib",
-			constraints.minMemoryMib,
-			"MiB",
-			limits.baseMemoryMib,
-			limits.maxMemoryMib,
-		);
+		const failure = checkSizeFloor(profile, constraints.minMemoryMib, {
+			constraint: "minMemoryMib",
+			unit: "MiB",
+			base: limits.baseMemoryMib,
+			ceiling: limits.maxMemoryMib,
+			request: limits.resourceRequest,
+			requestNoun: "resource requests",
+			requestLabel: "CreateSandboxOptions.resources",
+		});
 		if (failure) failures.push(failure);
+	}
+
+	if (constraints.minDiskGib !== undefined) {
+		const failure = checkSizeFloor(profile, constraints.minDiskGib, {
+			constraint: "minDiskGib",
+			unit: "GiB",
+			base: limits.baseDiskGib,
+			ceiling: limits.maxDiskGib,
+			// Disk is its own dimension: CreateSandboxOptions.resources carries
+			// vcpu and memory only, so no substrate can be asked for a bigger
+			// disk through the mux, whatever the vendor would allow.
+			request: "unsupported",
+			requestNoun: "disk requests",
+			requestLabel: "a disk-size request",
+		});
+		if (failure) failures.push(failure);
+	}
+
+	if (constraints.minPublicPorts !== undefined) {
+		const wanted = constraints.minPublicPorts;
+		const ports = capabilities.publicPorts;
+		const model = ports?.model ?? "unknown";
+		const muxMax = ports?.muxMax ?? "unknown";
+		// "any-port" satisfies any count without a published ceiling: the
+		// substrate maps a URL per port on demand, so there is no number to
+		// compare against and inventing one would be the guess.
+		const satisfied =
+			model === "any-port" || (typeof muxMax === "number" && muxMax >= wanted);
+		if (!satisfied) {
+			const fixed = ports?.fixed;
+			const fixedNote =
+				fixed && fixed.length > 0 ? ` (only ${fixed.join(", ")})` : "";
+			const head =
+				typeof muxMax === "number"
+					? `${substrate} exposes ${muxMax}${fixedNote}`
+					: `${substrate} publishes no public port count (unknown)`;
+			const plural = wanted === 1 ? "port" : "ports";
+			failures.push({
+				constraint: "minPublicPorts",
+				required: `at least ${wanted} public ${plural}`,
+				actual: `model ${String(model)}, mux exposes ${
+					muxMax === "unknown" ? "unknown" : String(muxMax)
+				}`,
+				reason: `minPublicPorts: requires at least ${wanted} public ${plural}, ${head}`,
+			});
+		}
+	}
+
+	if (constraints.minConcurrency !== undefined) {
+		const wanted = constraints.minConcurrency;
+		const ceiling = limits.maxConcurrentSandboxes;
+		if (typeof ceiling !== "number" || ceiling < wanted) {
+			const head =
+				typeof ceiling === "number"
+					? `${substrate} allows at most ${ceiling}`
+					: `${substrate} publishes no concurrency limit (unknown)`;
+			failures.push({
+				constraint: "minConcurrency",
+				required: `${wanted} concurrent sandboxes`,
+				actual: ceiling === "unknown" ? "unknown" : String(ceiling),
+				reason: `minConcurrency: requires ${wanted} concurrent sandboxes, ${head}`,
+			});
+		}
 	}
 
 	if (constraints.maxRuntimeMs !== undefined) {

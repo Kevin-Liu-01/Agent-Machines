@@ -69,6 +69,16 @@ const DEFAULT_SESSION_TIMEOUT_MS = 3_600_000;
 const DEFAULT_PORTS = [3000, 8642, 18789] as const;
 const LIST_MAX_ENTRIES = 200;
 
+/**
+ * Declared capabilities.
+ *
+ * DECLARED FROM DOCUMENTATION, NOT VERIFIED LIVE. We hold no Vercel Sandbox
+ * auth, so this lane has never run a cell in the mux matrix
+ * (docs/MUX-RESULTS.md) -- every value below is what Vercel publishes, with
+ * the page and read date cited, and none of it is a measurement of ours.
+ * Plan-tiered figures use HOBBY, the lowest published tier, because the plan
+ * behind a token cannot be proven at routing time.
+ */
 const CAPABILITIES: SandboxCapabilities = {
 	pty: "tmux",
 	persistence: "filesystem-snapshot",
@@ -76,6 +86,73 @@ const CAPABILITIES: SandboxCapabilities = {
 	publicUrl: true,
 	streamingExec: true,
 	detachedWork: "reliable",
+	// https://vercel.com/docs/sandbox/pricing (page last_updated 2026-06-16,
+	// read 2026-08-01), Regions section: "Currently, Vercel Sandbox is only
+	// available in the `iad1` region." One region and no selector, so a
+	// request for iad1 is satisfiable and anything else is not.
+	region: { default: "iad1", available: ["iad1"], select: "unsupported" },
+	// No Vercel Sandbox page mentions accelerators: the pricing page meters
+	// Active CPU, Provisioned Memory, Creations, Data Transfer and Snapshot
+	// Storage only, and /docs/sandbox lists no GPU runtime (both read
+	// 2026-08-01). Unknown rather than false, and either way a GPU need
+	// rejects the lane.
+	gpu: { available: "unknown", models: "unknown", request: "unsupported" },
+	// https://vercel.com/docs/sandbox/pricing (read 2026-08-01), Network
+	// section: "Data your sandbox sends to the internet ... is billable" and
+	// "Data your sandbox downloads from the internet, such as packages, Git
+	// repositories, artifacts, and datasets, is free" -- so egress is open out
+	// of the box. No documented option restricts it, hence control
+	// "unsupported".
+	network: { egress: "open", control: "unsupported" },
+	// https://vercel.com/docs/sandbox/concepts/snapshots (page last_updated
+	// 2026-06-30, read 2026-08-01): "Forking: Spawn new sandboxes from another
+	// sandbox's current state with `Sandbox.fork` (SDK) or `sandbox fork`
+	// (CLI)." The vendor can fork; the mux contract exposes no fork operation,
+	// so exposed stays false and the reason names us as the blocker.
+	fork: { vendor: true, exposed: false },
+	// https://vercel.com/docs/sandbox/pricing (read 2026-08-01), Resource
+	// limits table: "Maximum open ports" is 15 on every plan, and ports must be
+	// declared when the sandbox is created. This adapter declares DEFAULT_PORTS
+	// (3 of them) and has no port knob in CreateSandboxOptions, so 3 is what a
+	// run can actually get -- publicUrl() returns null for anything else.
+	publicPorts: {
+		model: "declared-at-create",
+		vendorMax: 15,
+		muxMax: DEFAULT_PORTS.length,
+		fixed: [...DEFAULT_PORTS],
+	},
+	limits: {
+		// https://vercel.com/docs/sandbox/pricing (read 2026-08-01): "The
+		// default is 2 vCPUs" and "Each vCPU includes 2 GB of memory", so a
+		// default sandbox is 2 vCPU / 4 GB. GB here is decimal and converted
+		// down: 4 GB is 3,814 MiB (4e9 / 1048576), not 4,096. Rounding a
+		// baseline up is exactly how a memory floor gets satisfied by a machine
+		// that cannot hold it.
+		baseVcpu: 2,
+		baseMemoryMib: 3814,
+		// Same page, Resource limits table, Hobby row: "Maximum vCPUs" 4 and
+		// "Maximum memory" 8GB (Pro 8 / 16GB, Enterprise 32 / 64GB). 8 GB is
+		// 7,629 MiB by the same conversion.
+		maxVcpu: 4,
+		maxMemoryMib: 7629,
+		// Same table: "Each sandbox is automatically provisioned 32 GB of
+		// ephemeral NVMe storage", 32 GB on every plan. 32 GB is 29.8 GiB,
+		// floored to 29. No disk request exists, so base equals ceiling.
+		baseDiskGib: 29,
+		maxDiskGib: 29,
+		// Same page, Runtime limits: Hobby "45 minutes", Pro/Enterprise "24
+		// hours". Hobby here. NOTE this is BELOW the adapter's own
+		// DEFAULT_SESSION_TIMEOUT_MS of one hour; that mismatch cannot be
+		// resolved without a credentialed run, so it is recorded rather than
+		// silently changed.
+		maxRuntimeMs: 2_700_000,
+		// Same page, Concurrency limits: Hobby "10", Pro "2,000".
+		maxConcurrentSandboxes: 10,
+		// The Vercel API accepts a vCPU count, but create() below does not
+		// forward options.resources, so a larger machine cannot be requested
+		// through the mux today.
+		resourceRequest: "ignored",
+	},
 };
 
 let sandboxClassPromise: Promise<SandboxClass> | null = null;

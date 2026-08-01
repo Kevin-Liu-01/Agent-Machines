@@ -1,7 +1,7 @@
 {
   "name": "agent-machines",
   "version": "0.2.0",
-  "description": "OpenRouter for agents and containers \u2014 control plane for persistent agent workers. Route runtime + substrate, provision specialist presets, supervise the fleet. 161 skills \u00b7 35 MCP servers.",
+  "description": "OpenRouter for agents and containers \u2014 control plane for persistent agent workers. Route runtime + substrate, provision specialist presets, supervise the fleet. 161 skills \u00b7 39 MCP servers.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -31,7 +31,7 @@
     "doctor": "tsx src/cli.ts doctor",
     "gc": "tsx scripts/cleanup-machines.ts",
     "benchmark": "tsx --tsconfig web/tsconfig.json web/scripts/run-benchmarks.ts",
-    "test:sdk": "tsx --test src/lib/sdk.test.ts",
+    "test:sdk": "tsx --test \"src/lib/**/*.test.ts\"",
     "sync-wiki": "node scripts/sync-from-wiki.mjs",
     "sync-manifest": "node scripts/sync-knowledge-manifest.mjs",
     "typecheck": "tsc --noEmit",

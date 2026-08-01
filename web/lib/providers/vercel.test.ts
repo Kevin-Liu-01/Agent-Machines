@@ -66,6 +66,9 @@ describe("VercelProvider", () => {
 	it("provisions a persistent named sandbox with gateway ports", async () => {
 		const sandbox = makeSandbox();
 		mockGetOrCreate.mockResolvedValue(sandbox);
+		// The facade reads the vendor phase back after create so `rawPhase`
+		// carries the real status instead of a hardcoded string.
+		mockGet.mockResolvedValue(sandbox);
 
 		const provider = new VercelProvider(TEST_CREDS);
 		const result = await provider.provision({

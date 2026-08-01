@@ -6,7 +6,10 @@
  *   traces -- one append-only JSONL record per run, sharded by UTC day.
  *             This is the measured reward signal a future router
  *             recommender needs: which substrate x harness pair actually
- *             finished, how long it took, what it cost.
+ *             finished, how long it took, how long until its first output,
+ *             and what it cost -- sandbox compute and model spend kept
+ *             apart, because they move for different reasons and a
+ *             conflated total cannot be attributed to either.
  *   claims -- a run-key registry so the same logical run is not executed
  *             twice. An agent run costs money and can have side effects,
  *             so a client that crashed and retried must be handed the
@@ -35,6 +38,7 @@ import {
 } from "node:fs";
 import { homedir, hostname } from "node:os";
 import { join } from "node:path";
+import { costToSuccessfulResult, estimate, type RunLeg } from "./cost.js";
 import type { RunResult } from "./events.js";
 import type { RouteAttempt } from "./types.js";
 import { MuxError, type HarnessKind, type SubstrateKind } from "./types.js";
@@ -61,6 +65,34 @@ export type RunTrace = {
 	exitCode: number;
 	/** Stream ended early; `text` was partial. Never counted as success. */
 	truncated: boolean;
+	/**
+	 * Milliseconds from the run() call to the first normalized agent event --
+	 * time to first output, one of the four numbers reported per route. See
+	 * RunResult.timeToFirstEventMs for why the first normalized event and not
+	 * the first raw byte. Absent when the run produced no event.
+	 */
+	timeToFirstEventMs?: number;
+	/**
+	 * Modeled sandbox compute for this run, from cost.ts published rates and
+	 * the run's own wall clock. Absent on a lane whose price the vendor does
+	 * not publish (sprites today) -- absent, not 0, so an unpriced lane is
+	 * never mistaken for a free one.
+	 */
+	sandboxCostUsd?: number;
+	/**
+	 * Model spend the harness reported for the turn. Absent when it reported
+	 * none; a harness that says nothing is unknown, not free.
+	 */
+	modelCostUsd?: number;
+	/**
+	 * sandboxCostUsd + modelCostUsd, and present ONLY when both halves are
+	 * known.
+	 *
+	 * Summing one known half with an absent one would under-report the run by
+	 * an unknown amount, and a summary built on that would rank the lane whose
+	 * price nobody publishes as the cheapest. Absent forces a reader to say
+	 * "unknown" instead, which is the honest answer.
+	 */
 	costUsd?: number;
 	/** Count of normalized MuxAgentEvents observed on the run. */
 	events: number;
@@ -127,6 +159,21 @@ function dayEndMs(date: string): number {
 // Traces: append and read
 // ---------------------------------------------------------------------------
 
+/**
+ * Reject an optional measurement that is present but not a usable number.
+ * A NaN or a negative would propagate through every sum and percentile in a
+ * summary, so it is refused at the write rather than averaged in later.
+ */
+function checkOptionalAmount(value: number | undefined, label: string): void {
+	if (value === undefined) return;
+	if (!Number.isFinite(value) || value < 0) {
+		throw new MuxError(
+			"fatal",
+			`trace ${label} must be a non-negative number when present, got ${String(value)}`,
+		);
+	}
+}
+
 function normalizeTrace(trace: RunTrace): RunTrace {
 	if (typeof trace.runKey !== "string" || trace.runKey.length === 0) {
 		throw new MuxError("fatal", "a run trace needs a non-empty runKey");
@@ -150,6 +197,10 @@ function normalizeTrace(trace: RunTrace): RunTrace {
 			`trace events must be a non-negative number, got ${String(trace.events)}`,
 		);
 	}
+	checkOptionalAmount(trace.timeToFirstEventMs, "timeToFirstEventMs");
+	checkOptionalAmount(trace.sandboxCostUsd, "sandboxCostUsd");
+	checkOptionalAmount(trace.modelCostUsd, "modelCostUsd");
+	checkOptionalAmount(trace.costUsd, "costUsd");
 	// Normalized to UTC so the shard a record lands in always matches the
 	// day its own timestamp reports, whatever offset the caller used.
 	// `since` pruning by day relies on that being true.
@@ -175,6 +226,11 @@ function normalizeTrace(trace: RunTrace): RunTrace {
 		truncated: trace.truncated,
 		events: trace.events,
 	};
+	if (trace.timeToFirstEventMs !== undefined) {
+		record.timeToFirstEventMs = trace.timeToFirstEventMs;
+	}
+	if (trace.sandboxCostUsd !== undefined) record.sandboxCostUsd = trace.sandboxCostUsd;
+	if (trace.modelCostUsd !== undefined) record.modelCostUsd = trace.modelCostUsd;
 	if (trace.costUsd !== undefined) record.costUsd = trace.costUsd;
 	if (trace.error) record.error = trace.error;
 	return record;
@@ -211,6 +267,29 @@ function syntheticRunKey(result: RunResult): string {
 	return `run-${result.harness}-${result.substrate}-${finishedAt}-${rand}`;
 }
 
+/**
+ * Sandbox compute attributable to one run, priced off the run's wall clock.
+ *
+ * `creations: 0` because run() executes on a machine that already exists:
+ * create() is the event that bills a creation, and charging one per turn would
+ * bill the same provisioning twice on a machine that takes two turns.
+ *
+ * Priced at cost.ts's default comparison size rather than at any `resources`
+ * the caller asked for. Measured on E2B (docs/MUX-RESULTS.md finding 10) a
+ * resources request can be ignored outright on the current plan, so the
+ * requested size is not evidence of the billed size, and pricing a size the
+ * substrate never granted would overstate the bill.
+ *
+ * `estimate()` returns no computeUsd on a lane whose rate the vendor does not
+ * publish, and that undefined is passed through untouched.
+ */
+function sandboxCostFor(result: RunResult): number | undefined {
+	return estimate(result.substrate, {
+		durationMs: result.durationMs,
+		creations: 0,
+	}).computeUsd;
+}
+
 export function traceFromRun(input: {
 	/**
 	 * Idempotency key when the caller set one. Absent for fire-and-forget
@@ -241,7 +320,17 @@ export function traceFromRun(input: {
 		truncated: result.truncated,
 		events: result.events,
 	};
-	if (result.costUsd !== undefined) trace.costUsd = result.costUsd;
+	if (result.timeToFirstEventMs !== undefined) {
+		trace.timeToFirstEventMs = result.timeToFirstEventMs;
+	}
+	const sandboxCostUsd = sandboxCostFor(result);
+	if (sandboxCostUsd !== undefined) trace.sandboxCostUsd = sandboxCostUsd;
+	if (result.costUsd !== undefined) trace.modelCostUsd = result.costUsd;
+	// The sum only where both halves are real. See RunTrace.costUsd: half a
+	// total reported as a total is worse than no total.
+	if (sandboxCostUsd !== undefined && result.costUsd !== undefined) {
+		trace.costUsd = sandboxCostUsd + result.costUsd;
+	}
 	if (input.error) trace.error = input.error;
 	return trace;
 }
@@ -349,26 +438,102 @@ export function readTraces(options: ReadTracesOptions = {}): RunTrace[] {
 // Summary: the measured input a recommender reads
 // ---------------------------------------------------------------------------
 
+/**
+ * Total cost to a successful result, over a group of runs.
+ *
+ * Priced through cost.ts `costToSuccessfulResult`, so failed runs count: a
+ * lane that is cheaper per hour and fails one attempt in three costs more per
+ * result than the lane it undercuts, and that is the comparison this exists
+ * to make.
+ *
+ * Every number here can be absent, and absent means unknown. `knownUsd` is a
+ * FLOOR whenever `complete` is false -- some component of some run in the
+ * group could not be priced -- and it is omitted entirely when nothing in the
+ * group could be priced at all, because a $0 there would read as free.
+ *
+ * Runs are repriced from today's price table rather than from the
+ * sandboxCostUsd stored on each record, so every lane in a comparison is
+ * priced under one table. The stored figure is what the table said the day the
+ * run happened; the aggregate below is what it says now.
+ */
+export type CostToSuccess = {
+	/** Priced spend over the whole group, failed runs included. */
+	knownUsd?: number;
+	/** knownUsd / ok. Absent when nothing succeeded: no result, no cost per result. */
+	perSuccessUsd?: number;
+	/** Priced spend on runs that produced no result. */
+	wastedUsd?: number;
+	/** True when every run in the group had both halves priced. Vacuous at runs 0. */
+	complete: boolean;
+	/** Runs whose compute could be priced. knownUsd covers exactly these. */
+	pricedRuns: number;
+	/** Runs where the harness reported no model spend -- counted, never guessed. */
+	modelUnknownRuns: number;
+	/** Lanes in the group with no published compute rate, named once each. */
+	unpricedSubstrates: SubstrateKind[];
+};
+
 export type GroupStats = {
 	runs: number;
 	ok: number;
 	failed: number;
 	/** ok / runs. Meaningless when runs is 0, where it reports 0. */
 	successRate: number;
+	/**
+	 * Runs whose stream ended early, and truncated / runs. This is the
+	 * resume-reliability proxy: the mux does not replay a broken run, so a
+	 * truncated run is exactly a run that would have needed a resume.
+	 */
+	truncatedRuns: number;
+	truncationRate: number;
 	/** Nearest-rank percentiles over every run in the group. */
 	p50Ms: number;
 	p95Ms: number;
 	/** Same, over successful runs only; absent when ok is 0. */
 	okP50Ms?: number;
 	okP95Ms?: number;
-	/** Sum of reported costs, with how many runs reported one at all. */
-	costUsd: number;
+	/**
+	 * Time to first output: nearest-rank percentiles of timeToFirstEventMs
+	 * over the runs that reported one. Absent when none did, since a run that
+	 * emitted no event has no first output and 0 would claim an instant one.
+	 */
+	firstOutputP50Ms?: number;
+	firstOutputP95Ms?: number;
+	firstOutputKnownRuns: number;
+	/**
+	 * Component sums as recorded, each absent when no run in the group
+	 * reported that component. `costUsd` covers only the runs that carried a
+	 * full total (see RunTrace.costUsd), so costKnownRuns can be lower than
+	 * both component counts.
+	 */
+	sandboxCostUsd?: number;
+	sandboxCostKnownRuns: number;
+	modelCostUsd?: number;
+	modelCostKnownRuns: number;
+	costUsd?: number;
 	costKnownRuns: number;
+	/** Total cost to a successful result for this group. */
+	cost: CostToSuccess;
+};
+
+/** harness x substrate -- one lane of the route table. */
+export type RouteKey = `${HarnessKind}@${SubstrateKind}`;
+
+export function routeKey(harness: HarnessKind, substrate: SubstrateKind): RouteKey {
+	return `${harness}@${substrate}`;
+}
+
+/** A route's stats, with the pair named so an entry stands alone. */
+export type RouteStats = GroupStats & {
+	harness: HarnessKind;
+	substrate: SubstrateKind;
 };
 
 export type TraceSummary = GroupStats & {
 	bySubstrate: Partial<Record<SubstrateKind, GroupStats>>;
 	byHarness: Partial<Record<HarnessKind, GroupStats>>;
+	/** The route table: one entry per harness x substrate pair observed. */
+	byRoute: Partial<Record<RouteKey, RouteStats>>;
 	/** startedAt of the earliest and latest run counted; absent when none. */
 	from?: string;
 	to?: string;
@@ -409,27 +574,118 @@ export function percentile(values: number[], rank: number): number {
 type Bucket = {
 	durations: number[];
 	okDurations: number[];
+	firstOutputs: number[];
+	/** One leg per run, in observed order, for costToSuccessfulResult. */
+	legs: RunLeg[];
 	runs: number;
 	ok: number;
+	truncatedRuns: number;
+	sandboxCostUsd: number;
+	sandboxCostKnownRuns: number;
+	modelCostUsd: number;
+	modelCostKnownRuns: number;
 	costUsd: number;
 	costKnownRuns: number;
 };
 
 function newBucket(): Bucket {
-	return { durations: [], okDurations: [], runs: 0, ok: 0, costUsd: 0, costKnownRuns: 0 };
+	return {
+		durations: [],
+		okDurations: [],
+		firstOutputs: [],
+		legs: [],
+		runs: 0,
+		ok: 0,
+		truncatedRuns: 0,
+		sandboxCostUsd: 0,
+		sandboxCostKnownRuns: 0,
+		modelCostUsd: 0,
+		modelCostKnownRuns: 0,
+		costUsd: 0,
+		costKnownRuns: 0,
+	};
+}
+
+/**
+ * A recorded measurement, or undefined when the field cannot be trusted.
+ *
+ * appendTrace refuses a negative or non-finite amount on write, so anything
+ * like that in a shard is a hand-edited or corrupt line. Treating it as
+ * unreported keeps one bad line from producing a negative bill or a NaN
+ * percentile that would silently poison every comparison in the summary.
+ */
+function amount(value: unknown): number | undefined {
+	return typeof value === "number" && Number.isFinite(value) && value >= 0
+		? value
+		: undefined;
 }
 
 function absorb(bucket: Bucket, trace: RunTrace): void {
 	bucket.runs += 1;
 	bucket.durations.push(trace.durationMs);
-	if (isSuccessfulTrace(trace)) {
+	const succeeded = isSuccessfulTrace(trace);
+	if (succeeded) {
 		bucket.ok += 1;
 		bucket.okDurations.push(trace.durationMs);
 	}
-	if (typeof trace.costUsd === "number" && Number.isFinite(trace.costUsd)) {
-		bucket.costUsd += trace.costUsd;
+	if (trace.truncated) bucket.truncatedRuns += 1;
+	const firstOutput = amount(trace.timeToFirstEventMs);
+	if (firstOutput !== undefined) bucket.firstOutputs.push(firstOutput);
+	const sandboxCost = amount(trace.sandboxCostUsd);
+	if (sandboxCost !== undefined) {
+		bucket.sandboxCostUsd += sandboxCost;
+		bucket.sandboxCostKnownRuns += 1;
+	}
+	const modelCost = amount(trace.modelCostUsd);
+	if (modelCost !== undefined) {
+		bucket.modelCostUsd += modelCost;
+		bucket.modelCostKnownRuns += 1;
+	}
+	const totalCost = amount(trace.costUsd);
+	if (totalCost !== undefined) {
+		bucket.costUsd += totalCost;
 		bucket.costKnownRuns += 1;
 	}
+	// One leg per run, failures included: what a route cost to produce a result
+	// has to carry the attempts that produced nothing. Priced on the same terms
+	// as the stored figure, with no creation charged to a turn -- see
+	// sandboxCostFor for why.
+	bucket.legs.push({
+		substrate: trace.substrate,
+		shape: {
+			durationMs: trace.durationMs,
+			creations: 0,
+			modelCostUsd: modelCost,
+		},
+		succeeded,
+	});
+}
+
+/** Roll a bucket's legs into the cost-to-result numbers. */
+function costOf(bucket: Bucket): CostToSuccess {
+	const rolled = costToSuccessfulResult(bucket.legs);
+	// A leg with no reported model spend is priced on compute alone, so the
+	// group total is a floor. Counted rather than filled with 0, because a
+	// zero-filled model cost is exactly how a summary under-reports a run.
+	const modelUnknownRuns = bucket.legs.filter(
+		(leg) => leg.shape.modelCostUsd === undefined,
+	).length;
+	// costToSuccessfulResult pushes one entry per unpriced leg; the same lane
+	// therefore repeats, and a reader only needs it named once.
+	const unpricedSubstrates = [...new Set(rolled.unpriced)];
+	const pricedRuns = bucket.legs.length - rolled.unpriced.length;
+	const cost: CostToSuccess = {
+		complete: rolled.complete && modelUnknownRuns === 0,
+		pricedRuns,
+		modelUnknownRuns,
+		unpricedSubstrates,
+	};
+	if (pricedRuns > 0) {
+		cost.knownUsd = rolled.knownUsd;
+		cost.wastedUsd = rolled.wastedUsd;
+		if (bucket.ok > 0) cost.perSuccessUsd = rolled.knownUsd / bucket.ok;
+	}
+	return cost;
 }
 
 function finish(bucket: Bucket): GroupStats {
@@ -438,31 +694,63 @@ function finish(bucket: Bucket): GroupStats {
 		ok: bucket.ok,
 		failed: bucket.runs - bucket.ok,
 		successRate: bucket.runs === 0 ? 0 : bucket.ok / bucket.runs,
+		truncatedRuns: bucket.truncatedRuns,
+		truncationRate: bucket.runs === 0 ? 0 : bucket.truncatedRuns / bucket.runs,
 		p50Ms: bucket.runs === 0 ? 0 : percentile(bucket.durations, 50),
 		p95Ms: bucket.runs === 0 ? 0 : percentile(bucket.durations, 95),
-		costUsd: bucket.costUsd,
+		firstOutputKnownRuns: bucket.firstOutputs.length,
+		sandboxCostKnownRuns: bucket.sandboxCostKnownRuns,
+		modelCostKnownRuns: bucket.modelCostKnownRuns,
 		costKnownRuns: bucket.costKnownRuns,
+		cost: costOf(bucket),
 	};
 	if (bucket.ok > 0) {
 		stats.okP50Ms = percentile(bucket.okDurations, 50);
 		stats.okP95Ms = percentile(bucket.okDurations, 95);
 	}
+	if (bucket.firstOutputs.length > 0) {
+		stats.firstOutputP50Ms = percentile(bucket.firstOutputs, 50);
+		stats.firstOutputP95Ms = percentile(bucket.firstOutputs, 95);
+	}
+	// Each sum is reported only where at least one run reported the component.
+	// Absent stays absent all the way out of summarize(): a 0 next to a
+	// knownRuns of 0 has been misread as "this route is free" before.
+	if (bucket.sandboxCostKnownRuns > 0) stats.sandboxCostUsd = bucket.sandboxCostUsd;
+	if (bucket.modelCostKnownRuns > 0) stats.modelCostUsd = bucket.modelCostUsd;
+	if (bucket.costKnownRuns > 0) stats.costUsd = bucket.costUsd;
 	return stats;
 }
 
 /**
- * Success rate and duration percentiles overall, per substrate and per
+ * The route table, plus the same aggregate overall, per substrate and per
  * harness. Pass a trace list to summarize it directly, or read options to
  * pull the window off disk first.
  *
- * With runs === 0 every aggregate reads 0: that is the empty set, not a
- * measurement, so check `runs` before believing a rate.
+ * `byRoute` is the harness x substrate table the route report owes, and each
+ * entry carries all four numbers:
+ *
+ *   1. task success rate            -- successRate (isSuccessfulTrace)
+ *   2. time to first output         -- firstOutputP50Ms / firstOutputP95Ms
+ *   3. total cost to a result       -- cost.knownUsd / cost.perSuccessUsd
+ *   4. resume reliability (proxy)   -- truncationRate
+ *
+ * Truncation is the proxy rather than the real thing: the mux does not replay
+ * a broken run, so a truncated run is precisely a run that would have needed a
+ * resume, and the rate is how often a route leaves one behind. It is not a
+ * measurement of resumes that succeeded, and must not be quoted as one.
+ *
+ * With runs === 0 every rate reads 0 and every cost is absent: that is the
+ * empty set, not a measurement, so check `runs` before believing a rate.
  */
 export function summarize(input?: RunTrace[] | ReadTracesOptions): TraceSummary {
 	const traces = Array.isArray(input) ? input : readTraces(input);
 	const overall = newBucket();
 	const substrates = new Map<SubstrateKind, Bucket>();
 	const harnesses = new Map<HarnessKind, Bucket>();
+	const routes = new Map<
+		RouteKey,
+		{ harness: HarnessKind; substrate: SubstrateKind; bucket: Bucket }
+	>();
 	let from: string | undefined;
 	let to: string | undefined;
 
@@ -480,6 +768,17 @@ export function summarize(input?: RunTrace[] | ReadTracesOptions): TraceSummary 
 			harnesses.set(trace.harness, harness);
 		}
 		absorb(harness, trace);
+		const key = routeKey(trace.harness, trace.substrate);
+		let route = routes.get(key);
+		if (!route) {
+			route = {
+				harness: trace.harness,
+				substrate: trace.substrate,
+				bucket: newBucket(),
+			};
+			routes.set(key, route);
+		}
+		absorb(route.bucket, trace);
 		// Compared as strings: normalized UTC ISO 8601 sorts chronologically.
 		if (from === undefined || trace.startedAt < from) from = trace.startedAt;
 		if (to === undefined || trace.startedAt > to) to = trace.startedAt;
@@ -489,9 +788,17 @@ export function summarize(input?: RunTrace[] | ReadTracesOptions): TraceSummary 
 		...finish(overall),
 		bySubstrate: {},
 		byHarness: {},
+		byRoute: {},
 	};
 	for (const [kind, bucket] of substrates) summary.bySubstrate[kind] = finish(bucket);
 	for (const [kind, bucket] of harnesses) summary.byHarness[kind] = finish(bucket);
+	for (const [key, route] of routes) {
+		summary.byRoute[key] = {
+			...finish(route.bucket),
+			harness: route.harness,
+			substrate: route.substrate,
+		};
+	}
 	if (from !== undefined) summary.from = from;
 	if (to !== undefined) summary.to = to;
 	return summary;

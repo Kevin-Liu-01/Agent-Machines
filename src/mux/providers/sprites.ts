@@ -103,6 +103,12 @@ const MAX_INLINE_B64 = 6_000;
 /** Cap for the WS fallback collector, mirroring the SDK's own default. */
 const MAX_FALLBACK_OUTPUT_BYTES = 10 * 1024 * 1024;
 
+/**
+ * Declared capabilities. Fly publishes far less about Sprites than the other
+ * substrates document, so most quantities below are "unknown" with the pages
+ * that were checked named -- an unknown rejects a constraint that needs it,
+ * which is the honest outcome for a fact no vendor page states.
+ */
 const CAPABILITIES: SandboxCapabilities = {
 	pty: "native",
 	persistence: "always-on",
@@ -110,6 +116,77 @@ const CAPABILITIES: SandboxCapabilities = {
 	publicUrl: true,
 	streamingExec: true,
 	detachedWork: "throttled",
+	// Lillian (Fly staff) on
+	// https://community.fly.io/t/where-do-sprites-dev-sprites-live-as-in-which-fly-io-region-is-it/26775
+	// (2026-01-09): "sprites are created in a Fly.io region close to you. it's
+	// not currently possible to specify a region when creating a sprite."
+	// Proximity placement means there is no single default region to declare,
+	// so a region constraint cannot be satisfied on this lane at all.
+	region: { default: "unknown", available: "unknown", select: "unsupported" },
+	// No Fly-owned Sprites page mentions accelerators: checked
+	// https://fly.io/sprites, https://fly.io/blog/design-and-implementation/
+	// and the Sprites community category on 2026-08-01. Fly does sell GPU
+	// Machines, but that is a different product and says nothing about what a
+	// sprite gets, so this stays unknown.
+	gpu: { available: "unknown", models: "unknown", request: "unsupported" },
+	// Measured, not published: every harness install on this substrate fetches
+	// from the public internet (npm, curl, apt) and succeeds
+	// (docs/MUX-RESULTS.md, 2026-08-01), so egress is open. No Fly page
+	// documents an egress policy or a way to restrict it for a sprite (checked
+	// 2026-08-01), hence control "unsupported". The sprite URL auth setting
+	// this adapter uses in publicUrl() is INBOUND access, not egress.
+	network: { egress: "open", control: "unsupported" },
+	// flyio-support on https://community.fly.io/t/sprites-forking-functionality/27838
+	// (2026-05-19): "right now, there isn't a forking functionality in general
+	// that is available" -- it exists in the admin console only, with no REST
+	// API and no timeline. The mux drives the REST API, so a fork is
+	// unreachable here from either side.
+	fork: { vendor: false, exposed: false },
+	// jfent (Fly staff) on
+	// https://community.fly.io/t/how-do-i-expose-my-sprite-as-a-url/26908
+	// (2026-01-21): "Yeh I think you need to be serving on 8080 right now.
+	// We're looking at ways to expose other ports soon, but haven't shipped
+	// anything for that yet." That is the same single port publicUrl() below
+	// returns a URL for; every other port resolves to null.
+	publicPorts: {
+		model: "single-fixed",
+		vendorMax: 1,
+		muxMax: 1,
+		fixed: [SPRITE_PROXY_PORT],
+	},
+	limits: {
+		// Fly publishes a memory ceiling but no baseline: flyio-support on
+		// https://community.fly.io/t/16gb-ram-advertised-for-sprites-but-not-actually-available/28123
+		// (2026-06-17) says "Currently the default is up to 8GB of memory, and
+		// you can write in to support to request up to 16GB" -- an upper bound,
+		// not a guaranteed allocation, so the baseline stays unknown and the
+		// ceiling is the un-requested 8GB. GB is read as decimal and converted
+		// down: 8 GB is 7,629 MiB (8e9 / 1048576), because rounding a ceiling up
+		// is how a floor gets satisfied by a machine that cannot hold it. No
+		// Fly-owned page states a vCPU ceiling (checked 2026-08-01).
+		baseVcpu: "unknown",
+		baseMemoryMib: "unknown",
+		maxVcpu: "unknown",
+		maxMemoryMib: 7629,
+		// https://fly.io/blog/design-and-implementation/ (read 2026-08-01):
+		// "Sprites all have a 100GB durable root filesystem", billed only for
+		// "storage blocks you actually write". 100 GB is 93.13 GiB, floored to
+		// 93; there is no request to make it larger or smaller.
+		baseDiskGib: 93,
+		maxDiskGib: 93,
+		// No Fly-owned page states a maximum sprite run duration (checked
+		// 2026-08-01), and sprites auto-suspend on idle
+		// (docs/MUX-RESULTS.md finding 9), which is a further reason not to
+		// read the silence as "unbounded".
+		maxRuntimeMs: "unknown",
+		// A concurrency limit demonstrably exists -- the API returns
+		// errorCode "concurrent_sprite_limit_exceeded", which mapVendorError
+		// below classifies -- but no Fly page states the number (checked
+		// 2026-08-01), so the value is unknown rather than inferred.
+		maxConcurrentSandboxes: "unknown",
+		// create() never forwards options.resources on this substrate.
+		resourceRequest: "ignored",
+	},
 };
 
 // Memoize the dynamic import so module resolution is paid once per

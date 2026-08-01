@@ -61,6 +61,17 @@ Two independent axes, one account — analogous to OpenRouter's model routing ap
 | **Substrate** | E2B, Sprites.dev, Dedalus Machines, Vercel Sandbox | `MachineProvider` in `web/lib/providers/*` |
 | **Model upstream** | Vercel AI Gateway, OpenRouter, native keys, custom OpenAI-compatible | Per-machine router + credential gate |
 
+The third axis is not free choice for every runtime, and the constraint is a
+wire format rather than a policy. Claude Code speaks Anthropic Messages, Codex
+speaks OpenAI Responses, and a gateway qualifies only when it serves that
+shape. Measured in [`UPSTREAMS.md`](./UPSTREAMS.md): OpenRouter serves **both**
+shapes, so one gateway key can drive either CLI in the multiplexer
+(`src/mux/upstreams.ts`), while the hosted bootstrap still pins Codex to native
+OpenAI and Claude Code to native Anthropic
+(`web/lib/bootstrap/runner.ts`). Model ids are namespaced per upstream -- a
+gateway requires the provider prefix, a native key does not take one -- so an
+unmapped id is a 404 at request time, not a routing error.
+
 ### 3.2 Persistent worker harness
 
 A deployed worker includes:
@@ -69,7 +80,7 @@ A deployed worker includes:
 |-------|--------|------|
 | **Skills** | `knowledge/skills/*/SKILL.md` → `~/.agent-machines/skills/` | Versioned procedures (161 today) |
 | **Service routes** | Loadout registry | MCP → CLI → skill per vendor |
-| **MCP servers** | Catalog + user install | 35 bundled entries; credential-gated SaaS |
+| **MCP servers** | Catalog + user install | 39 servers: 2 core, 32 bundled, 4 IDE, 1 reference; credential-gated SaaS |
 | **CLIs** | Bootstrap | Closed-loop verification (gh, Playwright, agent-browser, …) |
 | **Agent-native tools** | Per runtime | 9–23 tools (Hermes richest) |
 | **Cron** | User config + server tick | Scheduled exec on machines |
@@ -256,19 +267,29 @@ Flywheel: richer skills → more autonomous cron work → more substrate compute
 
 ---
 
-## 10. Live metrics (registry-derived)
+## 10. Registry snapshot
 
-Run `npm run sync-skills` before release builds. Representative snapshot:
+The application derives these at runtime from the registries
+(`web/lib/platform/harness.ts` over `web/data/skills.json` and
+`web/data/mcps-catalog.json`). The table below is a snapshot of that
+derivation, not a second source: refresh it with `cd web && npm run sync-data`
+(which runs `sync-skills`, `sync-mcp-catalog`, and the rest) before a release
+build. `src/lib/public-claims.test.ts` fails if a number here or in
+[`README.md`](../README.md) stops matching the registry.
 
 | Metric | Value |
 |--------|-------|
 | SKILL.md skills | 161 |
-| MCP catalog servers | 35 |
+| MCP catalog servers | 39 |
 | Service routes | 27 |
 | Installable registry items | 1,400+ |
 | Agent runtimes | 4 |
 | Substrates | 4 |
 | Native tools (Hermes) | 23 |
+
+Two of those numbers are counted, not proven: 161 skills are *bundled* and
+nothing tests them in production, and the four substrates are four *adapters*
+-- only E2B and Sprites have ever run a live cell ([`MUX-RESULTS.md`](./MUX-RESULTS.md)).
 
 ---
 
