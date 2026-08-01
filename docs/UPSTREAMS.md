@@ -118,12 +118,56 @@ model. `CLAUDE_CODE_MAX_OUTPUT_TOKENS` caps it. Any upstream layer routing
 Claude Code through a metered gateway should set a ceiling rather than let
 the default 32000 fail every request on a small balance.
 
+## Codex on a gateway: needs the Responses API, not chat completions
+
+Three findings, each measured:
+
+1. **Codex ignores `OPENAI_BASE_URL`.** Set it to a local listener and the
+   CLI never connected; it went to `https://api.openai.com/v1/responses`
+   and failed with a 401 on the OpenRouter key. The env var is not the
+   knob.
+2. **The knob is a config-file provider**, `~/.codex/config.toml`:
+
+   ```toml
+   model_provider = "openrouter"
+   model = "anthropic/claude-sonnet-4.5"
+
+   [model_providers.openrouter]
+   name = "openrouter"
+   base_url = "https://openrouter.ai/api/v1"
+   env_key = "OPENROUTER_API_KEY"
+   wire_api = "responses"
+   ```
+
+3. **`wire_api = "chat"` is rejected by codex 0.146**: "no longer
+   supported. How to fix: set `wire_api = \"responses\"`". So a gateway
+   must serve the OpenAI *Responses* API, not just chat completions. Both
+   do (verified HTTP 200, `object: "response"`):
+   `https://openrouter.ai/api/v1/responses` and
+   `https://ai-gateway.vercel.sh/v1/responses`.
+
+With that config the request reaches the right URL and API on both
+gateways and is refused only for account credit -- OpenRouter 402
+("requested up to 64000 tokens, but can only afford 2476") and Vercel
+("a positive credit balance is required for all requests, including
+BYOK"). So the wiring is proven; the run is not.
+
+`model_max_output_tokens = 2000` in config.toml did NOT change the
+requested ceiling (still 64000), so the Codex-side cap knob is
+unidentified. Until it is found, Codex on a metered gateway needs real
+credit rather than a smaller request.
+
+## A vck_ AI Gateway key IS a model upstream
+
+Worth separating from the earlier finding that it is not *sandbox* auth:
+the `vck_` key authenticates fine against
+`https://ai-gateway.vercel.sh/v1/responses`. So one key can be useless for
+provisioning and useful for inference at the same time, which is exactly
+why the two credential roles must stay distinct in config.
+
 ## Still unverified
 
-- Vercel AI Gateway's Anthropic-compatible endpoint (a `vck_` key is
-  present but has not been exercised against a harness).
-- Codex against OpenRouter via `OPENAI_BASE_URL` end-to-end (the raw
-  `/api/v1/chat/completions` call works, but the CLI's own path
-  construction has not been measured the way Claude Code's was -- assume
-  nothing).
+- Vercel AI Gateway's Anthropic-Messages endpoint against claude-code
+  (only its Responses endpoint has been exercised).
 - Whether OpenClaw and Hermes honor a base-URL override at all.
+- The Codex output-token cap knob (see above).
