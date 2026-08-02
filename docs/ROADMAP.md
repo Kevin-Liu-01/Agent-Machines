@@ -243,16 +243,19 @@ volume justifies the agreements. Depends on 4.3 plus commercial terms we
 do not have. Closes pillar 8. Until 4.4 ships, BYOK is the only truthful
 description.
 
-### Phase 5 -- coverage (credential-blocked)
+### Phase 5 -- coverage (5.1 and 5.2 CLOSED 2026-08-02)
 
-5.1 **Close the Vercel Sandbox lane.** BLOCKED on `VERCEL_TOKEN` +
-`VERCEL_TEAM_ID` + `VERCEL_PROJECT_ID`, or `VERCEL_OIDC_TOKEN`. The
-adapter is written (`src/mux/providers/vercel.ts`) and fails closed
-correctly; it has never run a live cell in the mux matrix.
+5.1 ~~Close the Vercel Sandbox lane.~~ **CLOSED.** All four harnesses pass with
+`VERCEL_OIDC_TOKEN` from `vercel env pull`. No code change was needed, which is
+what "blocked on a credential" meant. It is now the fastest lane measured
+(create 380-961ms, 826ms to first event).
 
-5.2 **Close the Dedalus lane.** BLOCKED on `DEDALUS_API_KEY`. Same status:
-adapter written, `streamingExec: false` declared honestly, no live mux
-cell.
+5.2 ~~Close the Dedalus lane.~~ **CLOSED.** All four harnesses pass. Its create
+is the slowest (~3s), consistent with a batch-REST substrate that has no
+streaming primitive. Teardown returns a vendor-side 500 from Dedalus's own
+metering ledger; nothing leaks, and it exposed a real bug in `Mux.remove()`
+(now fixed) that would have made an ambiguous teardown failure hide a
+possibly-live machine.
 
 5.3 **Hermes template.** Build a pre-baked image per substrate; a cold
 install is a template-build step, not a request-time one (docs/MUX-RESULTS.md

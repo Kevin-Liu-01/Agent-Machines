@@ -28,9 +28,12 @@ sprites install cells after the detached-work fix below.
 | codex | dedalus | ok | 2957 | 12241 | 8183 | 8185 |
 | openclaw | dedalus | ok | 3115 | 25979 | 10723 | 10723 |
 | hermes | dedalus | ok | 3506 | 8729 | 12866 | 12869 |
-| all four | vercel | skipped | -- | -- | -- | -- |
+| claude-code | vercel | ok | 961 | 5805 | 826 | 2889 |
+| codex | vercel | ok | 385 | 6397 | 882 | 2930 |
+| openclaw | vercel | ok | 425 | 16047 | 8580 | 9266 |
+| hermes | vercel | ok | 380 | 4086 | 2826 | 12809 |
 
-**12 of 12 credentialed cells pass.** Every `ok` row returned the exact
+**16 of 16 cells pass.** Every harness on every substrate. Every `ok` row returned the exact
 sentinel text through the normalized event stream.
 
 Two cells changed character completely:
@@ -85,18 +88,22 @@ a real flaw in our own code, now fixed: `Mux.remove()` forgot the placement in a
 machine invisible by name. It now forgets only when the substrate says the
 sandbox is gone, and rethrows otherwise so the removal can be retried.
 
-### Vercel Sandbox: the last 4 cells, blocked on a credential
+### Vercel Sandbox, closed 2026-08-02
 
-`vercel` still reports `skipped` with the exact missing variables. This is not
-an implementation gap -- the provider, its twelve declared capability axes and
-its no-wake lifecycle are written and unit-tested. It needs either
-`VERCEL_OIDC_TOKEN` or the `VERCEL_TOKEN`/`VERCEL_TEAM_ID`/`VERCEL_PROJECT_ID`
-triple, and both paths begin with an account authentication that an agent should
-not perform for a human. docs/VERCEL-SANDBOX-AUTH.md has the exact commands.
+The last four cells, opened with `VERCEL_OIDC_TOKEN` from
+`vercel env pull` (docs/VERCEL-SANDBOX-AUTH.md). No code changed to make them
+pass: the adapter, its twelve declared capability axes and its no-wake lifecycle
+were already written and unit-tested, which is what "blocked on a credential"
+meant.
 
-The local machine does have a Vercel CLI credential store, and its token is
-expired (HTTP 403 `invalidToken`, lapsed 2026-07-25), so the flow has to be
-re-run rather than reused.
+It is now the FASTEST lane measured: create 380-961ms and 826ms to first event
+for claude-code, against E2B's 425ms/993ms. Worth noting given it is also the
+lane with no native PTY -- terminals there run through tmux-over-exec -- so raw
+provisioning speed and interactive fidelity are independent axes.
+
+One thing the run confirmed that had only been inferred: the harness install
+figures (4.1-16.0s) prove `detachedWork: "reliable"` is right for this
+substrate. Sprites remains the only lane that throttles detached work.
 
 ### Fixed: the hermes diagnostic leaked into the answer
 
