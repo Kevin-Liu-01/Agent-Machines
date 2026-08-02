@@ -1716,3 +1716,130 @@ test("remove() reports when it had to resume because the substrate offers no no-
 	assert.deepEqual(outcome, { removed: true, resumed: true });
 	assert.ok(provider.connectCalls.length > 0, "the fallback is the resuming path");
 });
+
+test("a run writes a money record whose total stays absent until margin is declared", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	const dir = mkdtempSync(join(tmpdir(), "am-mux-ledger-"));
+	const tdir = mkdtempSync(join(tmpdir(), "am-mux-tr-"));
+	const saved = {
+		ledger: process.env.AGENT_MACHINES_MUX_LEDGER,
+		traces: process.env.AGENT_MACHINES_MUX_TRACES,
+	};
+	process.env.AGENT_MACHINES_MUX_LEDGER = dir;
+	process.env.AGENT_MACHINES_MUX_TRACES = tdir;
+	t.after(() => {
+		if (saved.ledger === undefined) delete process.env.AGENT_MACHINES_MUX_LEDGER;
+		else process.env.AGENT_MACHINES_MUX_LEDGER = saved.ledger;
+		if (saved.traces === undefined) delete process.env.AGENT_MACHINES_MUX_TRACES;
+		else process.env.AGENT_MACHINES_MUX_TRACES = saved.traces;
+		rmSync(dir, { recursive: true, force: true });
+		rmSync(tdir, { recursive: true, force: true });
+	});
+	const ledger = await import("./ledger.js");
+
+	// A harness that reports a cost: the model line is metered.
+	const handle = new FakeSandboxHandle("e2b-money", "e2b");
+	handle.streamScript = [
+		{
+			type: "stdout",
+			data: `${JSON.stringify({ type: "result", subtype: "success", is_error: false, result: "done", session_id: "s1", total_cost_usd: 0.0107, duration_ms: 5 })}\n`,
+		},
+		{ type: "exit", exitCode: 0 },
+	];
+	const provider = new FakeProvider("e2b");
+	provider.handleFactory = () => handle;
+	const mux = makeMux(router, {
+		keys: { anthropic: "k" },
+		sandboxes: { primary: "e2b", backups: [] },
+	});
+	mux.registerProvider("e2b", provider);
+	const machine = await mux.create({ agent: "claude-code", install: false });
+	await machine.run("spend something").result();
+
+	const entries = ledger.readLedger({});
+	assert.equal(entries.length, 1, "one money record per run");
+	const entry = entries[0];
+	assert.equal(entry.kind, "charge");
+	assert.equal(entry.harness, "claude-code");
+	assert.equal(entry.substrate, "e2b");
+
+	const model = entry.lines.find((l) => l.kind === "model");
+	assert.ok(model && "millicents" in model, "the model line is priced");
+	assert.equal(
+		model.millicents,
+		1070,
+		"$0.0107 harness-reported spend is 1070 millicents",
+	);
+	assert.equal(model.provenance, "metered", "the harness measured it");
+
+	// Margin is undeclared, so the run has NO total -- an undeclared policy is
+	// unknown, not free. This is the property that keeps BYOK honest.
+	const total = ledger.entryTotal(entry);
+	assert.equal(total.known, false, "an undeclared margin leaves the total absent");
+	assert.ok(
+		total.missing.some((m) => m.kind === "margin"),
+		"and it says margin is what is missing",
+	);
+});
+
+test("a harness that reports no cost yields an unknown model line, never zero", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	const dir = mkdtempSync(join(tmpdir(), "am-mux-ledger2-"));
+	const tdir = mkdtempSync(join(tmpdir(), "am-mux-tr2-"));
+	const saved = {
+		ledger: process.env.AGENT_MACHINES_MUX_LEDGER,
+		traces: process.env.AGENT_MACHINES_MUX_TRACES,
+	};
+	process.env.AGENT_MACHINES_MUX_LEDGER = dir;
+	process.env.AGENT_MACHINES_MUX_TRACES = tdir;
+	t.after(() => {
+		if (saved.ledger === undefined) delete process.env.AGENT_MACHINES_MUX_LEDGER;
+		else process.env.AGENT_MACHINES_MUX_LEDGER = saved.ledger;
+		if (saved.traces === undefined) delete process.env.AGENT_MACHINES_MUX_TRACES;
+		else process.env.AGENT_MACHINES_MUX_TRACES = saved.traces;
+		rmSync(dir, { recursive: true, force: true });
+		rmSync(tdir, { recursive: true, force: true });
+	});
+	const ledger = await import("./ledger.js");
+
+	// hermes reports nothing, so costUsd is absent on the result.
+	const handle = new FakeSandboxHandle("e2b-free", "e2b");
+	handle.streamScript = [
+		{ type: "stdout", data: "just text\n" },
+		{ type: "exit", exitCode: 0 },
+	];
+	const provider = new FakeProvider("e2b");
+	provider.handleFactory = () => handle;
+	const mux = makeMux(router, {
+		keys: { anthropic: "k" },
+		sandboxes: { primary: "e2b", backups: [] },
+	});
+	mux.registerProvider("e2b", provider);
+	const machine = await mux.create({ agent: "hermes", install: false });
+	await machine.run("no cost reported").result();
+
+	const entry = ledger.readLedger({})[0];
+	const model = entry.lines.find((l) => l.kind === "model");
+	assert.ok(model, "there is still a model line");
+	// The ledger writes an explicit null rather than omitting the key, so a
+	// reader cannot mistake a missing field for a zero. Either would be honest
+	// in memory; on disk the explicit null is the stronger signal.
+	assert.equal(
+		(model as { millicents: number | null }).millicents,
+		null,
+		"an unreported cost is null, not 0 -- a zero would read as free",
+	);
+	assert.match(
+		String((model as { reason?: string }).reason ?? ""),
+		/reported no cost/,
+		"and it records why",
+	);
+});

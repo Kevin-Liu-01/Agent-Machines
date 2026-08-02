@@ -15,6 +15,40 @@
  * that never finished is a failure, counted as one by `isSuccessfulTrace`, and
  * never a data point about how fast or how cheap a lane is.
  *
+ * COST IS PER SUCCESSFUL RESULT, and only half measured. The figure is
+ * cost.ts `costToSuccessfulResult` reached through `summarize()`, so the failed
+ * runs on a lane are charged to the successes it did produce: a lane that is
+ * cheaper per hour and fails a third of its runs costs MORE per result than the
+ * lane it undercuts (roadmap 4.2). Two kinds of number go into it and they do
+ * not deserve equal trust:
+ *
+ *   metered   -- model spend the harness itself reported for the turn
+ *                (`RunTrace.modelCostUsd`). Someone's meter produced it.
+ *   estimated -- sandbox compute modeled from the run's wall clock and a
+ *                published list rate (`RunTrace.sandboxCostUsd`). A model of a
+ *                bill and not a bill: cost.ts prices every lane at one
+ *                comparison size, charges an active-cpu lane at full
+ *                utilization (its own `upperBound`), and excludes plan fees,
+ *                free allowances and egress (its own `note` fields).
+ *
+ * The difference belongs in the CONFIDENCE, not in the number: an estimated
+ * figure is not shifted toward "expensive", it is believed less. Estimated runs
+ * are discounted by ESTIMATED_EVIDENCE_WEIGHT and then capped at the prior
+ * strength, so a lane priced only by the model travels at most halfway from the
+ * neutral prior toward that modeled position however many runs it holds, while a
+ * metered lane has no such ceiling. The cap is there because the model's error
+ * is systematic and not noise -- averaging a thousand runs priced at the wrong
+ * utilization does not make the utilization right -- and `costEvidence` reports
+ * which kind was used with the sample count behind each, because a caller
+ * comparing two prices has to be able to see that one of them is a model.
+ *
+ * EVERY RANK EXPLAINS ITSELF. An unexplainable route is a bug here, so
+ * `LaneScore.ranking` carries the lane's distance from the leader and the
+ * weighted term that decided its position: the term it lost the most on, or for
+ * the leader the term it beat the runner-up on. Inside the deadband the honest
+ * answer is "configured-order" -- there the evidence decided nothing and the
+ * caller's own preference stood.
+ *
  * COLD START IS THE HARD PART, and it is where a scorer usually lies. Two runs
  * on a fresh lane, one of which happened to succeed, is not evidence that the
  * lane beats one with 50 runs behind it. So every term is shrunk toward a prior
@@ -59,7 +93,7 @@ import { MuxError, type HarnessKind, type SubstrateKind } from "./types.js";
  * against the rule that produced it. Bump on any change that would move a
  * score: weights, prior, shrinkage, or the set of terms.
  */
-export const SELECTION_POLICY_VERSION = "traces-shrunk-1";
+export const SELECTION_POLICY_VERSION = "traces-metered-1";
 
 /**
  * Prior for a relative term (cost, time to first output).
@@ -70,6 +104,87 @@ export const SELECTION_POLICY_VERSION = "traces-shrunk-1";
  * available -- which is what "unknown" means. It is NOT scored as cheap.
  */
 const NEUTRAL_RELATIVE = 0.5;
+
+/**
+ * What one ESTIMATED run is worth against one metered run, as evidence about
+ * price. Four to one.
+ *
+ * Not a measured ratio, and there is none to be had: we hold no invoice to
+ * compare cost.ts's arithmetic against, so the model's error is undocumented in
+ * size and known only in direction and cause (one comparison size for every
+ * lane, full utilization on an active-cpu lane, plan fees and egress excluded).
+ * A weight is a policy choice, so it is chosen for the behavior it buys and
+ * stated here rather than dressed up as a measurement: at 1/4, an estimated
+ * lane needs four runs to move its cost term as far as a metered lane moves it
+ * with one, which keeps an estimated figure from winning a close comparison
+ * against a metered one while leaving it able to win a wide one (see
+ * `relativeToBest` -- the discount touches the sample count, never the price).
+ *
+ * Combined with the cap at `priorStrength` in `costEvidenceOf`, the guarantee
+ * is: no volume of estimated runs can push a lane's cost term past the midpoint
+ * between the neutral prior and the position the model puts it in.
+ */
+export const ESTIMATED_EVIDENCE_WEIGHT = 0.25;
+
+/**
+ * What kind of number a lane's cost-per-success rests on.
+ *
+ *   "metered"   -- every priced run behind it reported model spend. The
+ *                  DOMINANT component was metered, not the whole figure:
+ *                  sandbox compute is still modeled from duration, because no
+ *                  lane here is priced by reading a bill.
+ *   "mixed"     -- some priced runs reported spend, others were priced from
+ *                  duration alone.
+ *   "estimated" -- no run reported any spend; the figure is entirely cost.ts
+ *                  arithmetic over a published rate.
+ *   "none"      -- there is no cost figure at all. See `absentReason`.
+ */
+export type CostBasis = "metered" | "mixed" | "estimated" | "none";
+
+/**
+ * Why a lane has no cost-per-success figure. Named rather than reported as a
+ * zero, since each of these means something different to an operator and none
+ * of them means "free".
+ */
+export type CostAbsentReason =
+	/** Nothing ran on this lane in the window. */
+	| "no_runs"
+	/** The vendor publishes no compute rate for it (sprites today, cost.ts). */
+	| "unpriced_substrate"
+	/** Runs happened and none produced a result, so cost per result is undefined. */
+	| "no_successes";
+
+/** The metered/estimated split behind a lane's price, and its weight. */
+export type CostEvidence = {
+	basis: CostBasis;
+	/** Priced runs whose figure carried harness-reported model spend. */
+	meteredRuns: number;
+	/** Priced runs priced from duration alone. */
+	estimatedRuns: number;
+	/**
+	 * Sample count the cost term was actually shrunk with: metered runs at full
+	 * weight plus estimated runs discounted and capped. Policy-derived rather than
+	 * measured, and reported anyway, because it is the only thing that explains
+	 * why two lanes at the same price hold different cost terms.
+	 */
+	effectiveSamples: number;
+	/**
+	 * Priced spend on runs that produced nothing. Present whenever anything on
+	 * the lane could be priced -- including when `basis` is "none" because
+	 * nothing succeeded, which is exactly the case where an operator most wants
+	 * to know what the lane burned.
+	 */
+	wastedUsd?: number;
+	/** Set only when `basis` is "none". */
+	absentReason?: CostAbsentReason;
+};
+
+/**
+ * Which weighted term separated a lane from the one it was compared against.
+ * "configured-order" is the honest answer when no term did: inside the
+ * deadband, or with no other lane to compare against.
+ */
+export type DecidingTerm = "success" | "cost" | "firstOutput" | "configured-order";
 
 export type SelectionTuning = {
 	/** Success rate assumed for a lane with no traces. */
@@ -157,11 +272,39 @@ export type LaneMeasurement = {
 	 * how an unpriced lane wins a cost comparison it should not.
 	 */
 	costIsFloor: boolean;
-	/** Runs the cost figure rests on; the cost term's evidence count. */
+	/**
+	 * Runs the cost figure rests on, counted before the metered/estimated
+	 * discount. `costEvidence.effectiveSamples` is what the score used; this is
+	 * the raw evidence, so the two together show the discount's size.
+	 */
 	costSamples: number;
+	/** What kind of number the price is, and how much of each kind. */
+	costEvidence: CostEvidence;
 	/** p50 milliseconds to the first normalized agent event. */
 	firstOutputP50Ms?: number;
 	firstOutputSamples: number;
+};
+
+/** Where a lane landed and what put it there. */
+export type RankingExplanation = {
+	/** Position in the returned order; the chosen lane is 0. */
+	rank: number;
+	/**
+	 * Deadbands between this lane's score and the leader's. 0 means the
+	 * evidence could not separate them and the caller's order decided.
+	 */
+	bucket: number;
+	/** Score gap to the leader; exactly 0 for the leader itself. */
+	scoreGap: number;
+	/**
+	 * For a demoted lane, the weighted term it lost the most to the leader on.
+	 * For the leader, the one it beat the runner-up by the most on.
+	 */
+	decidedBy: DecidingTerm;
+	/** The gap on `decidedBy`; 0 when nothing but the configured order decided. */
+	decidedByGap: number;
+	/** Each term times its weight, so a caller can show the whole arithmetic. */
+	weighted: { success: number; cost: number; firstOutput: number };
 };
 
 export type LaneScore = {
@@ -182,6 +325,8 @@ export type LaneScore = {
 	/** The shrunk terms behind `score`, so a route can show its work. */
 	terms: { success: number; cost: number; firstOutput: number };
 	measured: LaneMeasurement;
+	/** Why this lane sits where it does, relative to the lanes it was ranked with. */
+	ranking: RankingExplanation;
 	/** Rule that produced `score`; see SELECTION_POLICY_VERSION. */
 	policy: string;
 };
@@ -316,19 +461,86 @@ type LaneEvidence = {
 	measurement: LaneMeasurement;
 };
 
+/**
+ * Split a lane's price into the evidence it rests on.
+ *
+ * `summarize()` hands over one blended figure per lane, so the split is read off
+ * the counts beside it: `cost.pricedRuns` is how many runs reached the figure at
+ * all, and `modelCostKnownRuns` is how many of the lane's runs reported metered
+ * spend. The latter is clamped to the former because a run on an unpriced
+ * substrate is dropped by `costToSuccessfulResult` whatever it reported, so its
+ * metered half never reaches the number being explained.
+ */
+function costEvidenceOf(stats: RouteStats, tuning: SelectionTuning): CostEvidence {
+	const pricedRuns = stats.cost.pricedRuns;
+	const meteredRuns = Math.min(stats.modelCostKnownRuns, pricedRuns);
+	const estimatedRuns = Math.max(pricedRuns - meteredRuns, 0);
+	const evidence: CostEvidence = {
+		basis: "none",
+		meteredRuns,
+		estimatedRuns,
+		effectiveSamples: 0,
+	};
+	if (stats.cost.wastedUsd !== undefined) evidence.wastedUsd = stats.cost.wastedUsd;
+	if (stats.cost.perSuccessUsd === undefined) {
+		// Three different gaps, and a caller acts differently on each: nothing
+		// ran, the vendor publishes no rate, or money was spent and no result
+		// came out of it. Ordered most-fundamental first, since the later
+		// conditions are also true of the earlier ones.
+		evidence.absentReason =
+			stats.runs === 0
+				? "no_runs"
+				: pricedRuns === 0
+					? "unpriced_substrate"
+					: "no_successes";
+		return evidence;
+	}
+	evidence.basis =
+		meteredRuns === 0 ? "estimated" : estimatedRuns === 0 ? "metered" : "mixed";
+	// Discounted, then capped at the prior strength so the weight a purely
+	// estimated lane can reach is at most priorStrength / (2 * priorStrength).
+	const estimated = Math.min(
+		tuning.priorStrength,
+		ESTIMATED_EVIDENCE_WEIGHT * estimatedRuns,
+	);
+	// Bounded by the successes too: perSuccessUsd divides by them, so a lane with
+	// 40 priced runs and 2 successes knows its cost per result only 2 runs well.
+	evidence.effectiveSamples = Math.min(stats.ok, meteredRuns + estimated);
+	return evidence;
+}
+
 function measureLane(
 	harness: HarnessKind,
 	substrate: SubstrateKind,
 	stats: RouteStats | undefined,
+	tuning: SelectionTuning,
 ): LaneEvidence {
+	if (!stats) {
+		return {
+			harness,
+			substrate,
+			runs: 0,
+			ok: 0,
+			measurement: {
+				costIsFloor: false,
+				costSamples: 0,
+				costEvidence: {
+					basis: "none",
+					meteredRuns: 0,
+					estimatedRuns: 0,
+					effectiveSamples: 0,
+					absentReason: "no_runs",
+				},
+				firstOutputSamples: 0,
+			},
+		};
+	}
 	const measurement: LaneMeasurement = {
 		costIsFloor: false,
 		costSamples: 0,
-		firstOutputSamples: stats?.firstOutputKnownRuns ?? 0,
+		costEvidence: costEvidenceOf(stats, tuning),
+		firstOutputSamples: stats.firstOutputKnownRuns,
 	};
-	if (!stats) {
-		return { harness, substrate, runs: 0, ok: 0, measurement };
-	}
 	// summarize() reports successRate 0 for an empty group; that is the empty
 	// set, not a measured failure rate, so it stays absent here.
 	if (stats.runs > 0) measurement.successRate = stats.successRate;
@@ -345,12 +557,15 @@ function measureLane(
 	return { harness, substrate, runs: stats.runs, ok: stats.ok, measurement };
 }
 
+/** A scored lane, before it knows what it was ranked against. */
+type ScoredLane = Omit<LaneScore, "ranking">;
+
 function scoreLane(
 	evidence: LaneEvidence,
 	bestCost: number | undefined,
 	bestFirstOutput: number | undefined,
 	tuning: SelectionTuning,
-): LaneScore {
+): ScoredLane {
 	const measured = evidence.measurement;
 	const success = shrink(
 		measured.successRate,
@@ -360,7 +575,9 @@ function scoreLane(
 	);
 	const cost = shrink(
 		relativeToBest(measured.perSuccessUsd, bestCost),
-		measured.costSamples,
+		// The discounted count, not the raw one: a price nobody metered is
+		// believed less, and this is the single place that happens.
+		measured.costEvidence.effectiveSamples,
 		NEUTRAL_RELATIVE,
 		tuning.priorStrength,
 	);
@@ -383,6 +600,49 @@ function scoreLane(
 		measured,
 		policy: SELECTION_POLICY_VERSION,
 	};
+}
+
+type WeightedTerms = { success: number; cost: number; firstOutput: number };
+
+/**
+ * Each term times its weight. Comparing lanes term by term has to happen on
+ * these and not on the raw terms: a 0.3 lead on first output is worth 0.03 of
+ * score and a 0.3 lead on success is worth 0.21, so the raw numbers would name
+ * the wrong winner as the reason.
+ */
+function weigh(terms: WeightedTerms, tuning: SelectionTuning): WeightedTerms {
+	return {
+		success: tuning.successWeight * terms.success,
+		cost: tuning.costWeight * terms.cost,
+		firstOutput: tuning.firstOutputWeight * terms.firstOutput,
+	};
+}
+
+/** The objective's priority order, which also breaks a tie between equal gaps. */
+const TERM_ORDER = ["success", "cost", "firstOutput"] as const;
+
+/**
+ * The term `ahead` gained the most on `behind`.
+ *
+ * A strictly-greater test from a starting gap of 0 means an exact tie, or a lane
+ * that is not actually ahead on any single term, reports "configured-order"
+ * rather than picking a term at random.
+ */
+function decidingTerm(
+	ahead: WeightedTerms,
+	behind: WeightedTerms | undefined,
+): { term: DecidingTerm; gap: number } {
+	if (behind === undefined) return { term: "configured-order", gap: 0 };
+	let term: DecidingTerm = "configured-order";
+	let gap = 0;
+	for (const candidate of TERM_ORDER) {
+		const difference = ahead[candidate] - behind[candidate];
+		if (difference > gap) {
+			term = candidate;
+			gap = difference;
+		}
+	}
+	return { term, gap };
 }
 
 export type RankLanesInput = {
@@ -411,8 +671,12 @@ export function rankLanes(input: RankLanesInput): LaneScore[] {
 			input.harness,
 			substrate,
 			summary.byRoute[routeKey(input.harness, substrate)],
+			tuning,
 		),
 	);
+	// A lane with no price is not in this comparison at all: `bestOf` skips
+	// undefined, so an unpriced lane can neither become the benchmark nor be
+	// scored against one, and it keeps the neutral prior on cost instead.
 	const bestCost = bestOf(evidence.map((lane) => lane.measurement.perSuccessUsd));
 	const bestFirstOutput = bestOf(
 		evidence.map((lane) => lane.measurement.firstOutputP50Ms),
@@ -420,8 +684,8 @@ export function rankLanes(input: RankLanesInput): LaneScore[] {
 	const scores = evidence.map((lane) =>
 		scoreLane(lane, bestCost, bestFirstOutput, tuning),
 	);
-	const leader = Math.max(...scores.map((score) => score.score));
-	return scores
+	const leadingScore = Math.max(...scores.map((score) => score.score));
+	const ordered = scores
 		.map((score, index) => ({
 			score,
 			index,
@@ -435,10 +699,48 @@ export function rankLanes(input: RankLanesInput): LaneScore[] {
 			// property that decides a route is a guarantee and not a coincidence:
 			// every lane within one deadband of the best lands in bucket 0 with
 			// it, so the caller's configured order picks between them.
-			bucket: Math.floor((leader - score.score) / tuning.deadband),
+			bucket: Math.floor((leadingScore - score.score) / tuning.deadband),
 		}))
-		.sort((left, right) => left.bucket - right.bucket || left.index - right.index)
-		.map((ranked) => ranked.score);
+		.sort((left, right) => left.bucket - right.bucket || left.index - right.index);
+	// An empty candidate list is a question, not an error -- a caller whose
+	// constraints excluded everything still asks for an order -- and there is no
+	// leader to explain anything against.
+	if (ordered.length === 0) return [];
+
+	const leaderWeighted = weigh(ordered[0].score.terms, tuning);
+	const runnerUp = ordered[1];
+	return ordered.map((entry, rank) => {
+		const weighted = weigh(entry.score.terms, tuning);
+		let decided: { term: DecidingTerm; gap: number };
+		if (rank === 0) {
+			// The leader's own margin is over the lane that would otherwise have
+			// been tried first -- and only when the deadband did not already put
+			// that lane level with it.
+			decided = decidingTerm(
+				weighted,
+				runnerUp !== undefined && runnerUp.bucket > 0
+					? weigh(runnerUp.score.terms, tuning)
+					: undefined,
+			);
+		} else if (entry.bucket > 0) {
+			decided = decidingTerm(leaderWeighted, weighted);
+		} else {
+			// Level with the leader on this evidence, so the caller's order is
+			// what put it here. Claiming a term decided it would be a fiction.
+			decided = { term: "configured-order", gap: 0 };
+		}
+		return {
+			...entry.score,
+			ranking: {
+				rank,
+				bucket: entry.bucket,
+				scoreGap: leadingScore - entry.score.score,
+				decidedBy: decided.term,
+				decidedByGap: decided.gap,
+				weighted,
+			},
+		};
+	});
 }
 
 /**
@@ -500,4 +802,63 @@ export class SelectionPolicy {
 	order(harness: HarnessKind, candidates: readonly SubstrateKind[]): SubstrateKind[] {
 		return this.rank(harness, candidates).map((score) => score.substrate);
 	}
+}
+
+/**
+ * Three significant figures. Enough to tell two lane prices apart, and short
+ * enough that a route report stays one line per lane; the full value is on the
+ * score for anyone who needs it.
+ */
+function usd(value: number): string {
+	return value.toPrecision(3);
+}
+
+function explainCost(measured: LaneMeasurement): string {
+	const evidence = measured.costEvidence;
+	if (measured.perSuccessUsd === undefined) {
+		const why = evidence.absentReason === undefined ? "" : ` (${evidence.absentReason})`;
+		const wasted =
+			evidence.wastedUsd === undefined || evidence.wastedUsd === 0
+				? ""
+				: `, $${usd(evidence.wastedUsd)} spent on runs that produced nothing`;
+		return `cost unknown${why}${wasted}`;
+	}
+	return [
+		`cost $${usd(measured.perSuccessUsd)} per success,`,
+		`basis ${evidence.basis}`,
+		`(${evidence.meteredRuns} metered, ${evidence.estimatedRuns} estimated runs)`,
+		measured.costIsFloor ? "-- a floor, some component was unpriced" : "",
+	]
+		.filter((part) => part.length > 0)
+		.join(" ");
+}
+
+function explainDecision(ranking: RankingExplanation): string {
+	if (ranking.decidedBy === "configured-order") {
+		return "no term separated it, so the configured order decided";
+	}
+	// "of score" because the gap is weighted score and not dollars, and it lands
+	// right after a dollar figure where it would otherwise read as one.
+	const gap = ranking.decidedByGap.toPrecision(2);
+	return ranking.rank === 0
+		? `won on ${ranking.decidedBy} (+${gap} of score)`
+		: `lost on ${ranking.decidedBy} (-${gap} of score)`;
+}
+
+/**
+ * One line saying why a lane sits where it does.
+ *
+ * Lives beside the scorer rather than in each surface so the CLI, the dashboard
+ * and a trace reader quote the same numbers in the same words. Three surfaces
+ * inventing three phrasings for one decision is how "why did it pick that?"
+ * stops being answerable, and an unexplainable route is a bug here.
+ */
+export function explainLane(score: LaneScore): string {
+	return [
+		`${score.harness}@${score.substrate}`,
+		`score ${score.score.toFixed(3)}`,
+		`${score.ok}/${score.samples} runs ok`,
+		explainCost(score.measured),
+		explainDecision(score.ranking),
+	].join(", ");
 }

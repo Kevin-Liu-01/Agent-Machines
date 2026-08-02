@@ -27,6 +27,7 @@ import {
 import { cheapestFirst, estimate } from "./cost.js";
 import { SelectionPolicy, type LaneScore } from "./selection.js";
 import { requireUpstream } from "./upstreams.js";
+import { appendCharge } from "./ledger.js";
 import {
 	appendTrace,
 	claim,
@@ -437,7 +438,7 @@ export class MuxMachine {
 			// result cannot race the write. Neither tracing nor claim
 			// bookkeeping may fail a run that already produced output.
 			try {
-				appendTrace(
+				const trace = appendTrace(
 					traceFromRun({
 						runKey: options.runKey,
 						result: finished,
@@ -445,8 +446,35 @@ export class MuxMachine {
 						error: sawError,
 					}),
 				);
+				// One money record per run, keyed to the same id as the trace so
+				// the two can be reconciled. The model half is "metered" only
+				// because the harness reported it; when it did not, the honest
+				// branch says unknown rather than zero, which keeps the run's
+				// total absent instead of under-billing it. Margin is left
+				// undeclared on purpose -- there is no margin policy yet, and an
+				// undeclared policy is unknown, not free (see ledger.ts).
+				appendCharge({
+					runKey: trace.runKey,
+					harness: finished.harness,
+					substrate: finished.substrate,
+					sandbox: { basis: "duration", durationMs: finished.durationMs },
+					model:
+						finished.costUsd === undefined
+							? {
+									unknown: `${finished.harness} reported no cost for this turn`,
+								}
+							: {
+									usd: finished.costUsd,
+									provenance: "metered",
+									rate: {
+										id: `${finished.harness}:reported`,
+										source: "harness-reported cost for the turn",
+									},
+								},
+				});
 			} catch {
-				// Observability is best effort.
+				// Observability and metering are best effort: neither may fail a
+				// run that already produced output.
 			}
 			if (options.runKey) {
 				try {

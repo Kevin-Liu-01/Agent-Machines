@@ -15,10 +15,13 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
+import { estimate } from "./cost.js";
 import {
 	DEFAULT_SELECTION_TUNING,
+	ESTIMATED_EVIDENCE_WEIGHT,
 	SELECTION_POLICY_VERSION,
 	SelectionPolicy,
+	explainLane,
 	rankLanes,
 	resolveSelectionTuning,
 	type LaneScore,
@@ -92,6 +95,36 @@ function assertClose(actual: number, expected: number, what: string): void {
 	assert.ok(
 		Math.abs(actual - expected) < 1e-12,
 		`${what}: expected ${expected}, got ${actual}`,
+	);
+}
+
+const HOUR_MS = 3_600_000;
+
+/**
+ * The wall clock whose ESTIMATED compute costs `targetUsd` on this substrate.
+ *
+ * Two lanes can then be put at the same cost per success while differing only
+ * in whether that price was metered, which is the comparison the metered-vs-
+ * estimated tests are about. Inverting one hour of rate is exact for e2b and
+ * dedalus: both price linearly in duration, with no creation charge and no
+ * billed-time minimum (src/mux/cost.ts). It would NOT be exact for vercel.
+ *
+ * summarize() reprices every leg at cost.ts's default size with `creations: 0`,
+ * so the same shape is used here rather than a size of our own choosing.
+ */
+function durationForComputeUsd(substrate: SubstrateKind, targetUsd: number): number {
+	const perHour = estimate(substrate, {
+		durationMs: HOUR_MS,
+		creations: 0,
+	}).computeUsd;
+	assert.ok(perHour !== undefined, `${substrate} needs a published rate for this test`);
+	return (targetUsd / perHour) * HOUR_MS;
+}
+
+function assertSamePrice(left: number, right: number): void {
+	assert.ok(
+		Math.abs(left - right) <= Math.abs(left) * 1e-9,
+		`the two lanes must be priced the same: ${left} vs ${right}`,
 	);
 }
 
@@ -374,6 +407,435 @@ test("a cost figure missing a component is flagged as a floor", () => {
 		),
 	});
 	assert.equal(laneOf(complete, "e2b").measured.costIsFloor, false);
+});
+
+// ---------------------------------------------------------------------------
+// Metered cost beats estimated cost (roadmap 4.2).
+// ---------------------------------------------------------------------------
+
+test("at the same price, the metered lane outranks the estimated one", () => {
+	// Both lanes cost $0.02 per successful result, are 8-for-8 on success and
+	// answer in the same time. The ONLY difference is where the price came from:
+	// e2b's runs reported model spend, dedalus's were priced from wall clock
+	// against a published rate. dedalus is offered first, so nothing but the
+	// evidence can put e2b ahead.
+	const meteredModelUsd = 0.01;
+	const traces = [
+		...repeat(8, () =>
+			trace({
+				substrate: "dedalus",
+				durationMs: durationForComputeUsd("dedalus", 0.02),
+				firstOutputMs: 1_000,
+			}),
+		),
+		...repeat(8, () =>
+			trace({
+				substrate: "e2b",
+				durationMs: durationForComputeUsd("e2b", 0.02 - meteredModelUsd),
+				firstOutputMs: 1_000,
+				modelCostUsd: meteredModelUsd,
+			}),
+		),
+	];
+
+	const ranked = rankLanes({
+		harness: "claude-code",
+		candidates: ["dedalus", "e2b"],
+		traces,
+	});
+	const metered = laneOf(ranked, "e2b");
+	const estimated = laneOf(ranked, "dedalus");
+
+	assertSamePrice(
+		metered.measured.perSuccessUsd as number,
+		estimated.measured.perSuccessUsd as number,
+	);
+	assert.equal(metered.measured.costEvidence.basis, "metered");
+	assert.equal(estimated.measured.costEvidence.basis, "estimated");
+	assert.equal(metered.terms.success, estimated.terms.success);
+	assert.equal(metered.terms.firstOutput, estimated.terms.firstOutput);
+	assert.ok(
+		metered.terms.cost > estimated.terms.cost,
+		`a metered price is stronger evidence: ${metered.terms.cost} vs ${estimated.terms.cost}`,
+	);
+	assert.deepEqual(ORDER(ranked), ["e2b", "dedalus"]);
+	assert.equal(metered.ranking.decidedBy, "cost", "cost is what separated them");
+});
+
+test("the metered/estimated split and its sample counts are reported per lane", () => {
+	// A lane that reported spend on 3 of its 6 runs is neither: calling it
+	// metered would overstate the evidence and calling it estimated would discard
+	// half of it, so the split is carried instead of being collapsed.
+	const traces = [
+		...repeat(3, () => trace({ substrate: "e2b", modelCostUsd: 0.01 })),
+		...repeat(3, () => trace({ substrate: "e2b" })),
+	];
+	const lane = laneOf(
+		rankLanes({ harness: "claude-code", candidates: ["e2b"], traces }),
+		"e2b",
+	);
+	const evidence = lane.measured.costEvidence;
+	assert.equal(evidence.basis, "mixed");
+	assert.equal(evidence.meteredRuns, 3);
+	assert.equal(evidence.estimatedRuns, 3);
+	assert.equal(lane.measured.costSamples, 6, "six priced runs behind the figure");
+	assert.equal(
+		evidence.effectiveSamples,
+		3 + ESTIMATED_EVIDENCE_WEIGHT * 3,
+		"metered runs count in full, estimated ones at the discount",
+	);
+	assert.equal(
+		lane.measured.costIsFloor,
+		true,
+		"three runs reported no model spend, so the total is a floor",
+	);
+});
+
+test("no volume of estimated runs buys more than half the distance from neutral", () => {
+	// The modeling error is systematic, not noise: pricing a thousand runs at
+	// the wrong utilization does not make the utilization right. So estimated
+	// evidence is capped, and 400 runs say no more than 24 do.
+	const cheapest = (count: number): LaneScore =>
+		laneOf(
+			rankLanes({
+				harness: "claude-code",
+				candidates: ["e2b"],
+				traces: repeat(count, () => trace({ substrate: "e2b" })),
+			}),
+			"e2b",
+		);
+
+	const some = cheapest(24);
+	const many = cheapest(400);
+	assert.equal(some.measured.costEvidence.effectiveSamples, 6);
+	assert.equal(many.measured.costEvidence.effectiveSamples, 6);
+	assert.equal(many.measured.costSamples, 400, "the raw evidence is still reported");
+	// The only lane on offer is the cheapest by definition, so the relative cost
+	// term is 1 and the ceiling is visible directly: halfway from 0.5 to 1.
+	assertClose(some.terms.cost, 0.75, "an estimated lane stops at the midpoint");
+	assert.equal(many.terms.cost, some.terms.cost);
+});
+
+test("the estimate discount lowers confidence without inverting a real price gap", () => {
+	// Guard against the obvious over-correction. An estimated lane that is ten
+	// times cheaper must still win the cost term against a metered one: the
+	// discount touches how much a price is believed, never the price itself.
+	const traces = [
+		...repeat(8, () =>
+			trace({
+				substrate: "dedalus",
+				durationMs: durationForComputeUsd("dedalus", 0.002),
+				firstOutputMs: 1_000,
+			}),
+		),
+		...repeat(8, () =>
+			trace({
+				substrate: "e2b",
+				durationMs: durationForComputeUsd("e2b", 0.0005),
+				firstOutputMs: 1_000,
+				modelCostUsd: 0.02,
+			}),
+		),
+	];
+	const ranked = rankLanes({
+		harness: "claude-code",
+		candidates: ["e2b", "dedalus"],
+		traces,
+	});
+	const cheapEstimated = laneOf(ranked, "dedalus");
+	const dearMetered = laneOf(ranked, "e2b");
+	assert.equal(cheapEstimated.measured.costEvidence.basis, "estimated");
+	assert.ok(
+		(cheapEstimated.measured.perSuccessUsd as number) * 5 <
+			(dearMetered.measured.perSuccessUsd as number),
+		"the estimated lane really is much cheaper",
+	);
+	assert.ok(cheapEstimated.terms.cost > dearMetered.terms.cost);
+	assert.deepEqual(ORDER(ranked), ["dedalus", "e2b"]);
+});
+
+test("a cheap lane that fails half its runs loses to a reliable dearer one", () => {
+	// Per RUN, e2b is a third cheaper ($0.010 against $0.015). Per RESULT it is
+	// more expensive, because the five runs that produced nothing still billed:
+	// 10 x $0.010 / 5 results = $0.020, against 10 x $0.015 / 10 = $0.015.
+	const traces = [
+		...repeat(10, (i) =>
+			trace({
+				substrate: "e2b",
+				ok: i < 5,
+				durationMs: durationForComputeUsd("e2b", 0.005),
+				firstOutputMs: 1_000,
+				modelCostUsd: 0.005,
+			}),
+		),
+		...repeat(10, () =>
+			trace({
+				substrate: "dedalus",
+				durationMs: durationForComputeUsd("dedalus", 0.005),
+				firstOutputMs: 1_000,
+				modelCostUsd: 0.01,
+			}),
+		),
+	];
+	const ranked = rankLanes({
+		harness: "claude-code",
+		candidates: ["e2b", "dedalus"],
+		traces,
+	});
+	const flaky = laneOf(ranked, "e2b");
+	const reliable = laneOf(ranked, "dedalus");
+	assertClose(flaky.measured.perSuccessUsd as number, 0.02, "cost per result");
+	assertClose(reliable.measured.perSuccessUsd as number, 0.015, "cost per result");
+	assert.ok(
+		reliable.terms.cost > flaky.terms.cost,
+		"the reliable lane is cheaper per result, so it wins the cost term too",
+	);
+	assert.deepEqual(ORDER(ranked), ["dedalus", "e2b"]);
+	assertClose(
+		flaky.measured.costEvidence.wastedUsd as number,
+		5 * 0.01,
+		"the five failed runs are reported as spend that produced nothing",
+	);
+});
+
+test("a lane with zero successes divides by nothing and never wins on price", () => {
+	// e2b burned real money and produced no result. Cost PER RESULT does not
+	// exist there -- it is not 0, and it is not the cheapest price on offer.
+	const traces = [
+		...repeat(6, () =>
+			trace({
+				substrate: "e2b",
+				ok: false,
+				durationMs: durationForComputeUsd("e2b", 0.001),
+				modelCostUsd: 0.005,
+			}),
+		),
+		...repeat(6, () =>
+			trace({
+				substrate: "dedalus",
+				durationMs: durationForComputeUsd("dedalus", 0.05),
+				modelCostUsd: 0.05,
+			}),
+		),
+	];
+	const ranked = rankLanes({
+		harness: "claude-code",
+		candidates: ["e2b", "dedalus"],
+		traces,
+	});
+	const barren = laneOf(ranked, "e2b");
+	const dear = laneOf(ranked, "dedalus");
+
+	assert.equal(barren.ok, 0);
+	assert.equal(barren.measured.perSuccessUsd, undefined, "no result, no cost per result");
+	assert.equal(barren.measured.costEvidence.basis, "none");
+	assert.equal(barren.measured.costEvidence.absentReason, "no_successes");
+	assert.equal(barren.measured.costEvidence.effectiveSamples, 0);
+	assertClose(
+		barren.measured.costEvidence.wastedUsd as number,
+		6 * 0.006,
+		"what the lane spent for nothing is known and reported",
+	);
+	for (const value of [barren.score, barren.terms.cost, dear.terms.cost]) {
+		assert.ok(Number.isFinite(value), `a zero-success lane must not produce ${value}`);
+	}
+	assert.equal(barren.terms.cost, 0.5, "unknown cost is the neutral prior");
+	assert.ok(
+		dear.terms.cost > barren.terms.cost,
+		"a lane 50x dearer per result still wins the cost term against no result at all",
+	);
+	assert.deepEqual(ORDER(ranked), ["dedalus", "e2b"]);
+});
+
+test("a lane with no cost figure at all still ranks on success and latency", () => {
+	// Fly publishes no Sprites compute rate (src/mux/cost.ts), so this lane can
+	// never hold a price. It must still be rankable on what it CAN prove --
+	// dropping it or scoring it zero would make an unpriced vendor unroutable.
+	const traces = [
+		...repeat(12, () => trace({ substrate: "sprites", firstOutputMs: 500 })),
+		...repeat(12, (i) =>
+			trace({
+				substrate: "e2b",
+				ok: i < 6,
+				firstOutputMs: 5_000,
+				modelCostUsd: 0.01,
+			}),
+		),
+	];
+	const ranked = rankLanes({
+		harness: "claude-code",
+		candidates: ["e2b", "sprites"],
+		traces,
+	});
+	const unpriced = laneOf(ranked, "sprites");
+	assert.equal(unpriced.measured.costEvidence.basis, "none");
+	assert.equal(unpriced.measured.costEvidence.absentReason, "unpriced_substrate");
+	assert.equal(unpriced.measured.costEvidence.meteredRuns, 0);
+	assert.equal(unpriced.measured.costEvidence.estimatedRuns, 0);
+	assert.equal(
+		unpriced.measured.costEvidence.wastedUsd,
+		undefined,
+		"nothing on the lane could be priced, so no spend can be claimed either",
+	);
+	assert.equal(unpriced.terms.cost, 0.5);
+	assert.equal(unpriced.measured.successRate, 1);
+	assert.equal(unpriced.measured.firstOutputP50Ms, 500);
+	assert.deepEqual(ORDER(ranked), ["sprites", "e2b"]);
+	assert.equal(ranked.length, 2, "an unpriced lane is demoted at worst, never dropped");
+});
+
+test("a lane with no runs reports no_runs rather than a price of zero", () => {
+	const lane = laneOf(
+		rankLanes({ harness: "claude-code", candidates: ["e2b"], traces: [] }),
+		"e2b",
+	);
+	assert.equal(lane.measured.costEvidence.basis, "none");
+	assert.equal(lane.measured.costEvidence.absentReason, "no_runs");
+	assert.equal(lane.measured.costEvidence.wastedUsd, undefined);
+	assert.equal(lane.measured.perSuccessUsd, undefined);
+});
+
+// ---------------------------------------------------------------------------
+// Explainability: every rank says what put it there.
+// ---------------------------------------------------------------------------
+
+test("each lane reports the term that decided its position", () => {
+	const traces = [
+		...repeat(20, (i) =>
+			trace({ substrate: "e2b", ok: i < 4, firstOutputMs: 1_000, modelCostUsd: 0.01 }),
+		),
+		...repeat(20, () =>
+			trace({ substrate: "sprites", firstOutputMs: 1_000, modelCostUsd: 0.01 }),
+		),
+	];
+	const ranked = rankLanes({
+		harness: "claude-code",
+		candidates: ["e2b", "sprites"],
+		traces,
+	});
+	const winner = ranked[0];
+	const loser = ranked[1];
+
+	assert.equal(winner.substrate, "sprites");
+	assert.equal(winner.ranking.rank, 0);
+	assert.equal(winner.ranking.bucket, 0);
+	assert.equal(winner.ranking.scoreGap, 0);
+	assert.equal(winner.ranking.decidedBy, "success");
+	assert.ok(winner.ranking.decidedByGap > 0);
+	assert.equal(loser.ranking.rank, 1);
+	assert.ok(loser.ranking.bucket > 0);
+	assertClose(
+		loser.ranking.scoreGap,
+		winner.score - loser.score,
+		"the gap is the score difference",
+	);
+	assert.equal(loser.ranking.decidedBy, "success", "success is where it lost most");
+
+	// The weighted terms are the score's own arithmetic, so they have to add up.
+	for (const lane of ranked) {
+		assertClose(
+			lane.ranking.weighted.success +
+				lane.ranking.weighted.cost +
+				lane.ranking.weighted.firstOutput,
+			lane.score,
+			`${lane.substrate} weighted terms must sum to the score`,
+		);
+		assertClose(
+			lane.ranking.weighted.success,
+			DEFAULT_SELECTION_TUNING.successWeight * lane.terms.success,
+			`${lane.substrate} weighted success`,
+		);
+	}
+});
+
+test("lanes the evidence cannot separate say so instead of naming a term", () => {
+	const ranked = rankLanes({
+		harness: "claude-code",
+		candidates: ["e2b", "sprites"],
+		traces: [],
+	});
+	for (const lane of ranked) {
+		assert.equal(lane.ranking.bucket, 0);
+		assert.equal(lane.ranking.decidedBy, "configured-order");
+		assert.equal(lane.ranking.decidedByGap, 0);
+	}
+	// A single candidate has nothing to be compared against, and inventing a
+	// deciding term for it would be a fiction.
+	const only = rankLanes({
+		harness: "claude-code",
+		candidates: ["e2b"],
+		traces: repeat(9, () => trace({ substrate: "e2b", modelCostUsd: 0.01 })),
+	});
+	assert.equal(only[0].ranking.decidedBy, "configured-order");
+	assert.equal(only[0].ranking.decidedByGap, 0);
+});
+
+test("rank order, bucket and rank index stay consistent across the result", () => {
+	const traces = [
+		...repeat(9, (i) => trace({ substrate: "e2b", ok: i < 3, modelCostUsd: 0.01 })),
+		...repeat(9, () => trace({ substrate: "sprites", firstOutputMs: 700 })),
+		...repeat(4, (i) => trace({ substrate: "vercel", ok: i < 3, modelCostUsd: 0.02 })),
+	];
+	const input = {
+		harness: "claude-code" as HarnessKind,
+		candidates: ["e2b", "sprites", "vercel", "dedalus"] as SubstrateKind[],
+		traces,
+	};
+	const ranked = rankLanes(input);
+	ranked.forEach((lane, index) => {
+		assert.equal(lane.ranking.rank, index);
+		if (index > 0) {
+			assert.ok(
+				lane.ranking.bucket >= ranked[index - 1].ranking.bucket,
+				"buckets never decrease down the order",
+			);
+			assert.ok(lane.ranking.scoreGap >= ranked[index - 1].ranking.scoreGap - 1e-12);
+		}
+	});
+	// The whole explanation, not just the order, has to be reproducible: a route
+	// report recorded twice for the same evidence must read the same both times.
+	assert.deepEqual(rankLanes({ ...input, traces: [...traces].reverse() }), ranked);
+});
+
+test("explainLane states the price, its basis and the deciding term", () => {
+	const traces = [
+		...repeat(8, () =>
+			trace({
+				substrate: "dedalus",
+				durationMs: durationForComputeUsd("dedalus", 0.02),
+				firstOutputMs: 1_000,
+			}),
+		),
+		...repeat(8, () =>
+			trace({
+				substrate: "e2b",
+				durationMs: durationForComputeUsd("e2b", 0.01),
+				firstOutputMs: 1_000,
+				modelCostUsd: 0.01,
+			}),
+		),
+		...repeat(8, () => trace({ substrate: "sprites", ok: false })),
+	];
+	const ranked = rankLanes({
+		harness: "claude-code",
+		candidates: ["dedalus", "e2b", "sprites"],
+		traces,
+	});
+
+	const metered = explainLane(laneOf(ranked, "e2b"));
+	assert.match(metered, /^claude-code@e2b, score /);
+	assert.match(metered, /8\/8 runs ok/);
+	assert.match(metered, /basis metered \(8 metered, 0 estimated runs\)/);
+	assert.match(metered, /won on cost \(\+[\d.]+ of score\)/);
+
+	const estimated = explainLane(laneOf(ranked, "dedalus"));
+	assert.match(estimated, /basis estimated \(0 metered, 8 estimated runs\)/);
+	assert.match(estimated, /a floor, some component was unpriced/);
+	assert.match(estimated, /lost on cost \(-[\d.]+ of score\)/);
+
+	const unpriced = explainLane(laneOf(ranked, "sprites"));
+	assert.match(unpriced, /cost unknown \(unpriced_substrate\)/);
+	assert.match(unpriced, /lost on success \(-[\d.]+ of score\)/);
 });
 
 test("time to first output breaks a tie on success and cost", () => {

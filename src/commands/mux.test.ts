@@ -24,6 +24,7 @@ import { fileURLToPath } from "node:url";
 import { join } from "node:path";
 import { test } from "node:test";
 import { HEALTH_SNAPSHOT_VERSION, type SubstrateHealthSnapshot } from "../mux/health.js";
+import type { ScoredRouteAttempt } from "../mux/router.js";
 import { appendTrace, type RunTrace } from "../mux/traces.js";
 import { mux } from "./mux.js";
 
@@ -142,12 +143,26 @@ function fixtureTrace(input: {
 	timeToFirstEventMs?: number;
 	modelCostUsd?: number;
 	startedAt?: string;
+	/** Annotate the winning attempt the way Mux.create() does when the policy ran. */
+	placedByPolicy?: { score: number; samples: number; policy: string };
 }): void {
+	// A RouteAttempt IS a ScoredRouteAttempt with the three annotations absent,
+	// so the fixture writes exactly the record shape the router writes.
+	const attempt: ScoredRouteAttempt = {
+		substrate: input.substrate,
+		outcome: "ok",
+		durationMs: 300,
+	};
+	if (input.placedByPolicy) {
+		attempt.selectionScore = input.placedByPolicy.score;
+		attempt.selectionSamples = input.placedByPolicy.samples;
+		attempt.selectionPolicy = input.placedByPolicy.policy;
+	}
 	const trace: RunTrace = {
 		runKey: input.runKey,
 		harness: input.harness,
 		substrate: input.substrate,
-		attempts: [{ substrate: input.substrate, outcome: "ok", durationMs: 300 }],
+		attempts: [attempt],
 		startedAt: input.startedAt ?? `${DAY}T12:00:00.000Z`,
 		durationMs: input.durationMs,
 		exitCode: input.exitCode ?? 0,
@@ -177,6 +192,9 @@ function fixtureRuns(): void {
 		durationMs: 600_000,
 		timeToFirstEventMs: 400,
 		modelCostUsd: 0.01,
+		// Two of the five runs were placed by the policy; the other three were
+		// pinned or price-ordered, which is what the count in `stats` reports.
+		placedByPolicy: { score: 0.586, samples: 1, policy: "test-policy-1" },
 	});
 	fixtureTrace({
 		runKey: "e2b-2",
@@ -185,6 +203,7 @@ function fixtureRuns(): void {
 		durationMs: 600_000,
 		timeToFirstEventMs: 500,
 		modelCostUsd: 0.01,
+		placedByPolicy: { score: 0.612, samples: 2, policy: "test-policy-1" },
 	});
 	fixtureTrace({
 		runKey: "e2b-3",
@@ -334,6 +353,19 @@ test("stats rejects a --since it cannot parse instead of silently reporting all 
 	});
 });
 
+test("a flag with no value is refused rather than read as the flag being absent", async () => {
+	await withMux(async () => {
+		// A dropped --sandbox would mean "auto", a dropped --name would silently
+		// create a throwaway machine, and a dropped --config would fall back to
+		// whatever config the working directory happens to hold. All three are the
+		// wrong answer to a shell that ate an argument.
+		await assert.rejects(() => mux(["routes", "--sandbox"]), /--sandbox requires a value/);
+		await assert.rejects(() => mux(["routes", "--config"]), /--config requires a value/);
+		await assert.rejects(() => mux(["run", "--name"]), /--name requires a value/);
+		await assert.rejects(() => mux(["run", "--model"]), /--model requires a value/);
+	});
+});
+
 test("stats --json reports unknown as null, never as 0", async () => {
 	await withMux(async () => {
 		const empty = JSON.parse((await capture(() => mux(["stats", "--json"]))).join("\n")) as {
@@ -363,6 +395,37 @@ test("stats --json reports unknown as null, never as 0", async () => {
 		assert.equal(sprites.costToSuccessUsd, null);
 		assert.equal(sprites.timeToFirstOutputP50Ms, 300);
 		assert.deepEqual(sprites.unpricedSubstrates, ["sprites"]);
+	});
+});
+
+test("stats counts the runs the learned policy placed, and never averages their scores", async () => {
+	await withMux(async () => {
+		fixtureRuns();
+		const lines = await capture(() => mux(["stats"]));
+		assert.ok(has(lines, "2 of 5 runs were placed by the learned policy (test-policy-1)"));
+		// Two of the three terms behind a score are relative to the candidate set
+		// of one request, so an average across requests would be meaningless. The
+		// output has to say that, not quietly print a mean.
+		assert.ok(has(lines, "never averaged"));
+		// And the score must not appear as a column in the route table.
+		assert.ok(!has(lines, "0.586"));
+		assert.ok(!has(lines, "0.599"));
+
+		const json = JSON.parse((await capture(() => mux(["stats", "--json"]))).join("\n")) as {
+			selection: { placedRuns: number; policies: string[] };
+		};
+		assert.equal(json.selection.placedRuns, 2);
+		assert.deepEqual(json.selection.policies, ["test-policy-1"]);
+	});
+});
+
+test("stats on an empty window reports no policy placements rather than omitting the field", async () => {
+	await withMux(async () => {
+		const json = JSON.parse((await capture(() => mux(["stats", "--json"]))).join("\n")) as {
+			selection: { placedRuns: number; policies: string[] };
+		};
+		assert.equal(json.selection.placedRuns, 0);
+		assert.deepEqual(json.selection.policies, []);
 	});
 });
 
@@ -545,6 +608,195 @@ test("routes names the dimension a lane failed when a need is declared", async (
 			"persistence",
 			'persistence: requires "memory-snapshot", sprites provides "always-on"',
 		]);
+	});
+});
+
+/**
+ * Eight clean claude-code runs on sprites and nothing on e2b, so the learned
+ * policy has real evidence for one lane and none for the other. Chosen because
+ * sprites is also the UNPRICED lane: its cost term stays at the neutral prior,
+ * which proves the lane won on measured success and speed rather than on an
+ * unknown price being read as a cheap one.
+ */
+function fixtureLearnedSprites(): void {
+	for (let index = 0; index < 8; index += 1) {
+		fixtureTrace({
+			runKey: `learn-${index}`,
+			harness: "claude-code",
+			substrate: "sprites",
+			durationMs: 300_000,
+			timeToFirstEventMs: 250,
+			modelCostUsd: 0.02,
+		});
+	}
+}
+
+test("routes reports the score and sample count that chose a lane, and 0 samples as the prior", async () => {
+	await withMux(async (box) => {
+		fixtureLearnedSprites();
+		const config = box.config({
+			providers: { e2b: "test-key", sprites: "test-token" },
+			sandboxes: { primary: "e2b", backups: ["sprites"] },
+			agents: { default: "claude-code" },
+		});
+		const lines = await capture(() => mux(["routes", "--config", config]));
+
+		// Measured evidence moved sprites ahead of the configured primary.
+		assert.ok(has(lines, "route:     sprites -> e2b"));
+		assert.deepEqual(cells(lines, "1  sprites"), [
+			"1",
+			"sprites",
+			"healthy",
+			"0.729",
+			"8",
+			"unknown",
+			"native",
+			"always-on",
+			"true",
+		]);
+		// An unexplored lane is scored at the prior with 0 runs behind it. 0 runs
+		// is a real count, not an unknown; the score is not "unknown" either,
+		// because the policy did produce one -- it just has no evidence in it.
+		assert.deepEqual(cells(lines, "2  e2b"), [
+			"2",
+			"e2b",
+			"healthy",
+			"0.500",
+			"0",
+			"$0.0222",
+			"native",
+			"memory-snapshot",
+			"true",
+		]);
+		// The stage is named, with the policy version, the harness it scored for
+		// and the window -- rendered as a duration a human reads, not 604800000ms.
+		assert.ok(has(lines, "selection    applied: policy "));
+		assert.ok(has(lines, "scored for claude-code over"));
+		assert.ok(has(lines, "in the last 7d from "));
+		assert.ok(has(lines, "a lane is never removed for a low score"));
+		// The per-lane account comes from selection.ts's own explainLane, so the
+		// CLI cannot drift from the dashboard's wording.
+		assert.ok(has(lines, "why this order:"));
+		assert.ok(has(lines, "claude-code@sprites, score 0.729, 8/8 runs ok"));
+		assert.ok(has(lines, "claude-code@e2b, score 0.500, 0/0 runs ok"));
+		// The score's blast radius is stated: it is not a cross-route number.
+		assert.ok(has(lines, "comparable only within THIS table"));
+
+		const json = JSON.parse(
+			(await capture(() => mux(["routes", "--config", config, "--json"]))).join("\n"),
+		) as {
+			agent: string;
+			selection: { policy: string; windowMs: number; lanes: { substrate: string; score: number; samples: number }[] } | null;
+			candidates: { substrate: string; selectionScore: number | null; selectionSamples: number | null }[];
+		};
+		assert.equal(json.agent, "claude-code");
+		assert.ok(json.selection);
+		assert.equal(json.selection.windowMs, 604_800_000);
+		assert.deepEqual(
+			json.selection.lanes.map((lane) => lane.substrate),
+			["sprites", "e2b"],
+		);
+		const e2b = json.candidates.find((candidate) => candidate.substrate === "e2b");
+		assert.ok(e2b);
+		assert.equal(e2b.selectionSamples, 0);
+		// The prior, reached by three weighted terms that sum in binary floating
+		// point, so it is compared with a tolerance rather than for equality.
+		assert.ok(e2b.selectionScore !== null && Math.abs(e2b.selectionScore - 0.5) < 1e-9);
+	});
+});
+
+test("routes scores the lane for --agent, not for whatever the config defaults to", async () => {
+	await withMux(async (box) => {
+		fixtureLearnedSprites();
+		const config = box.config({
+			providers: { e2b: "test-key", sprites: "test-token" },
+			sandboxes: { primary: "e2b", backups: ["sprites"] },
+			agents: { default: "codex" },
+		});
+
+		// A lane is harness x substrate: claude-code's record on sprites is no
+		// evidence about codex there, so the configured order stands for codex.
+		const codex = await capture(() => mux(["routes", "--config", config]));
+		assert.ok(has(codex, "route:     e2b -> sprites"));
+		assert.ok(has(codex, "agent:     codex (config default)"));
+		assert.ok(has(codex, "codex@sprites, score 0.500, 0/0 runs ok"));
+
+		const claude = await capture(() =>
+			mux(["routes", "--config", config, "--agent", "claude-code"]),
+		);
+		assert.ok(has(claude, "route:     sprites -> e2b"));
+		assert.ok(has(claude, "agent:     claude-code (--agent)"));
+		assert.ok(has(claude, "claude-code@sprites, score 0.729, 8/8 runs ok"));
+	});
+});
+
+test("routes refuses an --agent it does not know instead of scoring a lane nothing matches", async () => {
+	await withMux(async (box) => {
+		const config = box.config({ providers: { e2b: "test-key" } });
+		// A typo would otherwise match no trace, leave every lane at the prior,
+		// and read as "this route has no evidence yet".
+		await assert.rejects(
+			() => mux(["routes", "--config", config, "--agent", "claud-code"]),
+			/--agent wants one of/,
+		);
+		await assert.rejects(() => mux(["routes", "--config", config, "--agent"]), /--agent requires a value/);
+	});
+});
+
+test("routes says why the policy did not order the route, for each reason it did not", async () => {
+	await withMux(async (box) => {
+		fixtureLearnedSprites();
+		const config = box.config({
+			providers: { e2b: "test-key", sprites: "test-token" },
+			sandboxes: { primary: "e2b", backups: ["sprites"] },
+			agents: { default: "claude-code" },
+		});
+
+		// A pinned lane is the caller's escape hatch and comes back as asked.
+		const pinned = await capture(() => mux(["routes", "--config", config, "--sandbox", "sprites"]));
+		assert.ok(has(pinned, "selection    not applied -- --sandbox pins the lane"));
+		assert.ok(!has(pinned, "why this order:"));
+		// No score columns at all rather than a column of placeholders.
+		assert.deepEqual(cells(pinned, "1  sprites"), [
+			"1",
+			"sprites",
+			"healthy",
+			"unknown",
+			"native",
+			"always-on",
+			"true",
+		]);
+
+		const priced = await capture(() =>
+			mux(["routes", "--config", config, "--optimize", "cost"]),
+		);
+		assert.ok(has(priced, "selection    not applied -- --optimize cost is an explicit objective"));
+
+		// One surviving lane is not an order to choose.
+		const single = await capture(() =>
+			mux(["routes", "--config", config, "--needs", '{"persistence":"memory-snapshot"}']),
+		);
+		assert.ok(has(single, "selection    not applied -- 1 lane survived the filters above"));
+
+		const json = JSON.parse(
+			(await capture(() => mux(["routes", "--config", config, "--sandbox", "sprites", "--json"]))).join(
+				"\n",
+			),
+		) as { selection: unknown; candidates: { selectionScore: number | null }[] };
+		// null, because the policy did not run. Not an empty array, and above all
+		// not a score of 0 -- which would read as a lane the policy rated
+		// worthless rather than one it never looked at.
+		assert.equal(json.selection, null);
+		assert.equal(json.candidates[0].selectionScore, null);
+	});
+});
+
+test("routes with nothing credentialed still names the selection stage and exits without throwing", async () => {
+	await withMux(async (box) => {
+		const config = box.config({});
+		const lines = await capture(() => mux(["routes", "--config", config]));
+		assert.ok(has(lines, "selection    not applied -- 0 lanes survived the filters above"));
+		assert.ok(has(lines, "create() would fail closed"));
 	});
 });
 

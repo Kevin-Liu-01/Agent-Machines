@@ -67,7 +67,7 @@ Most products lock you into one runtime *or* one cloud. Agent Machines routes bo
 
 A **credential gate** blocks provisioning when the chosen runtime has no usable model upstream or the substrate has no key, so spin-up never fails silently downstream.
 
-> **Two implementations today, converging.** The hosted control plane routes through `MachineProvider` (`web/lib/providers/*`); the direct-to-substrate multiplexer routes through `SandboxProvider` (`src/mux/providers/*`). The same four vendors are adapted twice, and the two surfaces do not yet share a router: create-time failover, health ordering, and constraint filtering exist only on the mux side. Convergence is item 0 of [docs/ROADMAP.md](docs/ROADMAP.md).
+> **Two implementations today, converging.** The hosted control plane routes through `MachineProvider` (`web/lib/providers/*`); the direct-to-substrate multiplexer routes through `SandboxProvider` (`src/mux/providers/*`). The same four vendors are adapted twice, and the two surfaces do not yet share a router: create-time failover, health ordering, constraint filtering, learned lane ordering, and per-run traces exist only on the mux side. Convergence is item 0 of [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ---
 
@@ -220,7 +220,7 @@ Every substrate implements `MachineProvider`; streaming tier depends on the SDK.
 
 Native tiers relay output frame by frame with no extra `exec` calls. The poll fallback launches a detached command, tees combined output to a temp log, and polls new bytes until an exit-marker file appears.
 
-Four adapters is not four proven lanes. Only **E2B** and **Sprites** have run a live agent cell; Vercel Sandbox and Dedalus are implemented and unit-tested but uncredentialed here, so they fail closed naming the missing variables rather than routing. Measured numbers and the exact gaps are in [docs/MUX-RESULTS.md](docs/MUX-RESULTS.md).
+**Which lanes are proven, and on which surface.** The multiplexer's own adapters (`src/mux/providers/*`) have now run every agent on every substrate live: **16 of 16 cells pass** -- four harnesses x E2B, Sprites, Vercel Sandbox and Dedalus, each returning the exact sentinel text through the normalized event stream ([docs/MUX-RESULTS.md](docs/MUX-RESULTS.md), 2026-08-02). That run exercised the mux, not the table above: the hosted control plane's `MachineProvider` adapters are a second implementation of the same four vendors and are not covered by it. Convergence is item 0 of [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ---
 
@@ -310,24 +310,44 @@ const pty = await machine.pty();   // real terminal, native PTY where available
 console.log(machine.attempts);     // why it landed where it landed
 ```
 
-`sandbox: "auto"` walks `primary -> backups` and, in this order: drops lanes
-whose credentials are missing, drops lanes that cannot satisfy `constraints`
-(recording the failed dimension, e.g. `constraint: "pty"`), orders by modeled
-price when `optimize: "cost"` is set, then reorders by a rolling health window
-so a substrate that has been failing goes last. Health only reorders -- it
-never removes a lane, because an incident that opened every circuit must not
-make `create()` impossible. Provisioning errors fail over to the next lane and
-every decision lands in `machine.attempts`.
+`sandbox: "auto"` walks `primary -> backups` through five stages, in this order:
+
+1. **Credentials.** Lanes the config cannot authenticate are dropped, with the
+   missing variables named. Fail closed.
+2. **Constraints.** Lanes that cannot satisfy `constraints` are dropped, and the
+   attempt records the dimension that failed (`constraint: "pty"`). An
+   unprovable vendor fact reads as `unknown` and rejects rather than being hoped
+   for.
+3. **Price**, only with `optimize: "cost"`: cheapest modeled total first, and a
+   lane whose vendor publishes no rate sorts **last** rather than being read as
+   free.
+4. **Learned selection**, only for `auto` with no `optimize`: lanes are ordered
+   by a score over this machine's own run traces -- task success first, then
+   cost per successful result, then time to first output.
+5. **Health.** A rolling window per substrate puts a lane that is failing right
+   now at the back.
+
+Only the first two stages ever remove a lane. The last three return
+permutations, because an incident that opened every circuit -- or a policy that
+has learned to dislike every lane -- must not make `create()` impossible.
+Provisioning errors fail over to the next lane, and every decision lands in
+`machine.attempts` with its reason, health state, modeled price and learned
+score.
+
+What stage 4 is and is not: it is a deterministic scorer over the local JSONL
+trace store, shrunk toward a prior by sample count so one lucky run cannot
+outrank a long record, and it only ever **reorders** the lanes that survived
+stages 1 and 2. It is not a bandit (no exploration), it does not override a
+pinned `sandbox` or an explicit `optimize`, its evidence is local to one host,
+and the hosted dashboard has none of it.
 
 Failover is **placement-time only**. A run that dies mid-stream comes back with
 `truncated: true` and is not replayed. `runKey` is an idempotency key, not a
 retry: a second `run()` with the same key returns the stored result instead of
-executing the agent twice. Each run also appends one trace record (placement
-attempts, cost, time to first event) to a day shard in
-`~/.agent-machines/traces/`.
-
-Route selection is **not** learned yet: the order comes from your config plus
-health and price, not from a model of past outcomes.
+executing the agent twice. Each run also appends one trace record to a day shard
+in `~/.agent-machines/traces/` -- placement attempts, time to first event, and
+cost kept split into modeled sandbox compute and harness-reported model spend,
+with the total present only when both halves are known.
 
 ---
 
@@ -349,13 +369,29 @@ npm run benchmark          # cross-substrate boot/exec/IO benchmarks
 Multiplexer commands (direct to substrate, no control plane):
 
 ```bash
-npm run mux -- routes                                   # resolved route + capabilities
 npm run mux -- run --agent claude-code "review my repo"  # streamed one-shot
 npm run mux -- term --agent codex --name coder           # interactive agent PTY
 npm run mux -- shell --name coder                        # raw PTY on the sandbox
 npm run mux -- ls                                        # named machines
 npm run mux -- rm --name coder                           # destroy a named machine
 ```
+
+Read-only reporting, which works on a fresh install with no keys and no traces:
+
+```bash
+npm run mux -- routes                    # the five routing stages, and what each did
+npm run mux -- routes --needs '{"pty":"native"}' --agent codex
+npm run mux -- routes --optimize cost --json
+npm run mux -- stats --since 24h         # task success, time to first output,
+                                         # cost per successful result, truncation rate
+npm run mux -- health                    # circuit state, samples and cooldown per substrate
+```
+
+`stats` reports those four numbers per `harness@substrate` lane; `routes` adds
+the learned score and the sample count behind it when the policy ran. A number
+nobody measured renders as **unknown** -- never `0`, never a dash -- because
+zero is the best possible value for a cost, so a zero-filled unknown would
+report the lane nobody can price as the cheapest one available.
 
 Live-test every harness on every credentialed substrate:
 
@@ -468,6 +504,10 @@ agent-machines/
 
 | Doc | What it covers |
 |-----|----------------|
+| [`docs/MUX.md`](docs/MUX.md) | the multiplexer architecture — the five routing stages, capabilities, price, health, learned selection, traces, idempotency |
+| [`docs/MUX-RESULTS.md`](docs/MUX-RESULTS.md) | every measured number, and the findings that changed the implementation |
+| [`docs/ROADMAP.md`](docs/ROADMAP.md) | what exists vs what is promised, per pillar, with the file that proves each claim |
+| [`docs/UPSTREAMS.md`](docs/UPSTREAMS.md) | which model key drives which harness, verified against the live APIs |
 | [`docs/WHITEPAPER.md`](docs/WHITEPAPER.md) | technical whitepaper — primitives, patterns, architecture |
 | [`knowledge/VISION.md`](knowledge/VISION.md) | product vision and defensibility |
 | [`knowledge/BROWSER-AGENT-CONSOLE.md`](knowledge/BROWSER-AGENT-CONSOLE.md) | full Browser Agent Console architecture + positioning |

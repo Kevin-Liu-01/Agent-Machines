@@ -16,13 +16,24 @@
  * (claude, codex, vim) render correctly.
  *
  * The three read-only commands -- `stats`, `health`, `routes` -- are the
- * terminal half of route-outcome reporting (roadmap 1.3). Two rules hold
- * across all of them:
+ * terminal half of route-outcome reporting (roadmap 1.3). Between them they
+ * report everything the router actually knows: `stats` the four owed numbers
+ * per harness x substrate lane (task success, time to first output, total cost
+ * to a successful result, and truncation as the resume proxy), `health` the
+ * circuit state per substrate, and `routes` the resolved order with the
+ * learned score and sample count behind it when the policy ran. Three rules
+ * hold across all of them:
  *
  *   A number nobody measured renders as "unknown". Not 0, not a dash. A
  *   cost table that prints $0 for a lane whose vendor publishes no rate
  *   reports that lane as the cheapest one available, which is a lie that
  *   would then be acted on.
+ *
+ *   A stage that did not run is distinct from a number nobody measured, and
+ *   is labeled as such ("not applied", "no samples") or omitted with a reason
+ *   given. Printing "unknown" for a policy that deliberately did not run -- a
+ *   pinned substrate, an explicit --optimize -- would send a reader looking
+ *   for missing data instead of reading the decision.
  *
  *   A fresh install must still work. Zero traces, zero credentials and an
  *   empty state file print an explained-but-empty table and exit 0. An
@@ -33,7 +44,13 @@
  *   answer rather than an error.
  */
 
-import { createMux, forgetMachine, readMuxState, SUBSTRATE_KINDS } from "../mux/index.js";
+import {
+	createMux,
+	forgetMachine,
+	HARNESS_KINDS,
+	readMuxState,
+	SUBSTRATE_KINDS,
+} from "../mux/index.js";
 import type {
 	HarnessKind,
 	MuxAgentEvent,
@@ -49,6 +66,8 @@ import {
 	type HealthState,
 	type SubstrateHealthStats,
 } from "../mux/health.js";
+import type { ScoredRouteAttempt } from "../mux/router.js";
+import { explainLane, type LaneScore } from "../mux/selection.js";
 import { LocalJsonPlacementStore, getPlacementStore } from "../mux/state.js";
 import {
 	readTraces,
@@ -57,6 +76,7 @@ import {
 	tracesDir,
 	type GroupStats,
 	type RouteStats,
+	type RunTrace,
 	type TraceSummary,
 } from "../mux/traces.js";
 import type { EgressPolicy, PersistenceModel, PtySupport, RouteAttempt } from "../mux/types.js";
@@ -76,6 +96,22 @@ type Flags = {
 	rest: string[];
 };
 
+/**
+ * Refuse a harness this build does not have.
+ *
+ * Validated here rather than at the point of use because a typo is otherwise
+ * INVISIBLE on the reporting surfaces: selection scores the lane
+ * `<harness>@<substrate>`, so `--agent claud-code` matches no trace, every lane
+ * falls back to the prior, and the table reads "this route has no evidence yet"
+ * when the truth is that the question was misspelled.
+ */
+function parseAgent(value: string): HarnessKind {
+	if (!HARNESS_KINDS.includes(value as HarnessKind)) {
+		throw new Error(`--agent wants one of: ${HARNESS_KINDS.join(" | ")}, got: ${value}`);
+	}
+	return value as HarnessKind;
+}
+
 function parseFlags(args: string[]): Flags {
 	const flags: Flags = { json: false, rest: [] };
 	for (let index = 0; index < args.length; index += 1) {
@@ -89,12 +125,12 @@ function parseFlags(args: string[]): Flags {
 			if (raw === undefined) throw new Error(`${arg} requires a value`);
 			return raw;
 		};
-		if (arg === "--agent" || arg === "-a") flags.agent = next() as HarnessKind;
+		if (arg === "--agent" || arg === "-a") flags.agent = parseAgent(value());
 		else if (arg === "--sandbox" || arg === "-s")
-			flags.sandbox = next() as SubstrateKind | "auto";
-		else if (arg === "--name" || arg === "-n") flags.name = next();
-		else if (arg === "--model" || arg === "-m") flags.model = next();
-		else if (arg === "--config" || arg === "-c") flags.config = next();
+			flags.sandbox = value() as SubstrateKind | "auto";
+		else if (arg === "--name" || arg === "-n") flags.name = value();
+		else if (arg === "--model" || arg === "-m") flags.model = value();
+		else if (arg === "--config" || arg === "-c") flags.config = value();
 		else if (arg === "--since") flags.since = value();
 		else if (arg === "--limit") flags.limit = value();
 		else if (arg === "--optimize") flags.optimize = value();
@@ -250,11 +286,29 @@ function usd(value: number | undefined, bound?: "floor" | "upper"): string {
 	return `${prefix}$${usdAmount(value)}`;
 }
 
+/**
+ * A duration at the coarsest unit that still says something.
+ *
+ * The hour and day steps exist because the two windows on these surfaces are
+ * 30 seconds (health cooldown) and 7 days (the selection window), and rendering
+ * the latter in minutes -- "10080m0s" -- is a number a reader has to do
+ * arithmetic on before it means anything.
+ */
 function formatDuration(ms: number): string {
 	if (ms < 1000) return `${Math.round(ms)}ms`;
 	if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
-	const minutes = Math.floor(ms / 60_000);
-	return `${minutes}m${Math.round((ms % 60_000) / 1000)}s`;
+	if (ms < 3_600_000) {
+		const minutes = Math.floor(ms / 60_000);
+		return `${minutes}m${Math.round((ms % 60_000) / 1000)}s`;
+	}
+	if (ms < 86_400_000) {
+		const hours = Math.floor(ms / 3_600_000);
+		const minutes = Math.round((ms % 3_600_000) / 60_000);
+		return minutes === 0 ? `${hours}h` : `${hours}h${minutes}m`;
+	}
+	const days = Math.floor(ms / 86_400_000);
+	const hours = Math.round((ms % 86_400_000) / 3_600_000);
+	return hours === 0 ? `${days}d` : `${days}d${hours}h`;
 }
 
 /**
@@ -400,10 +454,45 @@ function statsJsonRow(
 	};
 }
 
+/**
+ * How many runs in the window were placed by the learned policy, and under
+ * which scoring rules.
+ *
+ * The score itself is deliberately NOT aggregated into the route table. Two of
+ * the three terms behind it are relative to the candidate set of one request
+ * (see `LaneScore.score`), so an average over runs that faced different
+ * candidate sets would be a number with no meaning -- while the count and the
+ * policy version are facts. `am mux routes` is where a live, comparable score
+ * per lane belongs.
+ *
+ * A trace is read here as a `ScoredRouteAttempt`, which is a `RouteAttempt`
+ * with three optional annotations, so no cast is involved -- but the record
+ * came off disk as JSON, so each field is still checked before it is believed.
+ */
+function placementPolicies(traces: readonly RunTrace[]): {
+	placedRuns: number;
+	policies: string[];
+} {
+	let placedRuns = 0;
+	const policies = new Set<string>();
+	for (const trace of traces) {
+		for (const attempt of trace.attempts) {
+			const scored: ScoredRouteAttempt = attempt;
+			if (attempt.outcome !== "ok") continue;
+			if (typeof scored.selectionScore !== "number") continue;
+			placedRuns += 1;
+			if (typeof scored.selectionPolicy === "string") policies.add(scored.selectionPolicy);
+		}
+	}
+	return { placedRuns, policies: [...policies].sort() };
+}
+
 function statsCommand(flags: Flags): void {
 	const window = parseSince(flags.since);
 	const limit = parseLimit(flags.limit);
-	const summary = summarize(readTraces({ since: window.sinceMs, limit }));
+	const traces = readTraces({ since: window.sinceMs, limit });
+	const summary = summarize(traces);
+	const placement = placementPolicies(traces);
 	const routes = sortedRoutes(summary);
 
 	if (flags.json) {
@@ -418,6 +507,11 @@ function statsCommand(flags: Flags): void {
 						to: summary.to ?? null,
 					},
 					tracesDir: tracesDir(),
+					// Counted, never averaged: see placementPolicies.
+					selection: {
+						placedRuns: placement.placedRuns,
+						policies: placement.policies,
+					},
 					overall: statsJsonRow(summary, null),
 					routes: routes.map((route) =>
 						statsJsonRow(route, { harness: route.harness, substrate: route.substrate }),
@@ -478,6 +572,20 @@ function statsCommand(flags: Flags): void {
 		notes.push(
 			`  ${summary.cost.modelUnknownRuns} of ${summary.runs} runs reported no model spend and are priced on compute alone.`,
 		);
+	}
+	if (summary.runs > 0) {
+		notes.push(
+			`  ${placement.placedRuns} of ${summary.runs} runs were placed by the learned policy${
+				placement.policies.length > 0 ? ` (${placement.policies.join(", ")})` : ""
+			}; the rest`,
+		);
+		notes.push(
+			"  were pinned, price-ordered, or the only lane left. A score is comparable only within",
+		);
+		notes.push(
+			'  the ranking that produced it, so it is counted here, never averaged -- "am mux routes"',
+		);
+		notes.push("  shows the live per-lane score.");
 	}
 	if (notes.length > 0) {
 		console.log("");
@@ -573,7 +681,7 @@ function healthCommand(flags: Flags): void {
 
 	console.log(`state file: ${stateLocation()}`);
 	console.log(
-		`window:     last ${tuning.windowSize} attempts within ${tuning.windowMs}ms; opens after ${tuning.openAfter} consecutive transport failures; cooldown ${tuning.cooldownMs}ms`,
+		`window:     last ${tuning.windowSize} attempts within ${formatDuration(tuning.windowMs)}; opens after ${tuning.openAfter} consecutive transport failures; cooldown ${formatDuration(tuning.cooldownMs)}`,
 	);
 	if (state.health && state.health.version !== HEALTH_SNAPSHOT_VERSION) {
 		console.log(
@@ -755,6 +863,11 @@ function parseSubstrate(value: string | undefined): SubstrateKind | "auto" | und
 	return value as SubstrateKind;
 }
 
+/**
+ * Two shapes, because the score columns are only printed when the policy
+ * actually ran. Two columns of "not scored" on every pinned route would be
+ * noise, and the stage line above the table says why they are absent.
+ */
 const CANDIDATE_HEADER = [
 	"try",
 	"substrate",
@@ -766,6 +879,19 @@ const CANDIDATE_HEADER = [
 ] as const;
 const CANDIDATE_RIGHT = [true, false, false, true, false, false, false];
 
+const SCORED_HEADER = [
+	"try",
+	"substrate",
+	"health",
+	"score",
+	"runs",
+	"price (10-min run)",
+	"pty",
+	"persistence",
+	"stream",
+] as const;
+const SCORED_RIGHT = [true, false, false, true, true, true, false, false, false];
+
 /** Modeled price of one create+run on a lane, at cost.ts's comparison shape. */
 function priceCell(estimated: ReturnType<typeof estimate>): string {
 	return usd(estimated.totalUsd, estimated.upperBound ? "upper" : undefined);
@@ -775,6 +901,8 @@ function candidateRow(
 	position: number,
 	kind: SubstrateKind,
 	health: HealthState,
+	/** Absent for every row when the policy did not run; never for one row. */
+	score: LaneScore | undefined,
 	price: string,
 	caps: SandboxCapabilities,
 ): string[] {
@@ -782,6 +910,9 @@ function candidateRow(
 		String(position),
 		kind,
 		health,
+		// Three decimals because the deadband is 0.02: two would round two lanes
+		// the policy separated into the same printed number.
+		...(score === undefined ? [] : [score.score.toFixed(3), String(score.samples)]),
 		price,
 		caps.pty,
 		caps.persistence,
@@ -789,16 +920,56 @@ function candidateRow(
 	];
 }
 
+/**
+ * Why the learned policy did not order this route, in the same order
+ * `Mux.routeFor()` checks. Each reason is a deliberate design decision rather
+ * than a gap, so it is stated as one.
+ */
+function selectionSkipReason(
+	router: ReturnType<typeof createMux>,
+	sandbox: SubstrateKind | "auto" | undefined,
+	optimize: "cost" | undefined,
+	candidates: readonly SubstrateKind[],
+): string {
+	if (router.selection === null) {
+		return "not applied -- this router was constructed with selection disabled.";
+	}
+	if (sandbox && sandbox !== "auto") {
+		return "not applied -- --sandbox pins the lane, so the route comes back exactly as asked.";
+	}
+	if (optimize !== undefined) {
+		return `not applied -- --optimize ${optimize} is an explicit objective the policy does not override.`;
+	}
+	if (candidates.length <= 1) {
+		return `not applied -- ${candidates.length} lane${
+			candidates.length === 1 ? "" : "s"
+		} survived the filters above, so there was no order to choose.`;
+	}
+	// Reached only if rank() threw, which routeFor swallows on purpose: a
+	// corrupt trace store costs the ordering, never the create().
+	return "not applied -- the policy could not read the trace store; the configured order stands.";
+}
+
 function routesCommand(flags: Flags): void {
 	const constraints = parseNeeds(flags);
 	const optimize = parseOptimize(flags.optimize);
 	const sandbox = parseSubstrate(flags.sandbox);
 	const router = createMux(flags.config);
+	// The lane is harness x substrate, so a score only means anything against a
+	// named harness: claude-code's record on e2b says nothing about hermes there
+	// (docs/MUX-RESULTS.md finding 10). Passed through so `--agent` reports the
+	// route the caller asked about rather than the configured default's.
+	const agent = flags.agent ?? router.config.agents.default;
 	const requested =
 		sandbox && sandbox !== "auto"
 			? [sandbox]
 			: [router.config.sandboxes.primary, ...router.config.sandboxes.backups];
-	const { candidates, skipped } = router.routeFor(sandbox, { constraints, optimize });
+	const { candidates, skipped, selection } = router.routeFor(sandbox, {
+		constraints,
+		optimize,
+		agent,
+	});
+	const scores = new Map((selection ?? []).map((lane) => [lane.substrate, lane] as const));
 	const prices = new Map(
 		candidates.map((kind) => [kind, estimate(kind, DEFAULT_RUN_SHAPE)] as const),
 	);
@@ -811,9 +982,40 @@ function routesCommand(flags: Flags): void {
 			JSON.stringify(
 				{
 					requested,
+					agent,
 					constraints: constraints ?? null,
 					optimize: optimize ?? null,
 					route: candidates,
+					// null, not an empty array: "the policy did not run" and "the
+					// policy ranked nothing" are different facts.
+					selection:
+						selection === undefined
+							? null
+							: {
+									policy: router.selection?.version ?? null,
+									windowMs: router.selection?.tuning.windowMs ?? null,
+									tracesDir: tracesDir(),
+									lanes: selection.map((lane) => ({
+										substrate: lane.substrate,
+										score: lane.score,
+										samples: lane.samples,
+										ok: lane.ok,
+										terms: lane.terms,
+										// Passed through whole rather than field by field: this is
+										// the policy's own explanation of the order, and restating
+										// its shape here would be a second place to keep in sync.
+										ranking: lane.ranking,
+										measured: {
+											successRate: lane.measured.successRate ?? null,
+											costToSuccessUsd: lane.measured.perSuccessUsd ?? null,
+											costIsFloor: lane.measured.costIsFloor,
+											costSamples: lane.measured.costSamples,
+											costEvidence: lane.measured.costEvidence,
+											timeToFirstOutputP50Ms: lane.measured.firstOutputP50Ms ?? null,
+											firstOutputSamples: lane.measured.firstOutputSamples,
+										},
+									})),
+								},
 					skipped: skipped.map((attempt) => ({
 						substrate: attempt.substrate,
 						stage: isConstraintSkip(attempt) ? "constraints" : "credentials",
@@ -822,10 +1024,14 @@ function routesCommand(flags: Flags): void {
 					})),
 					candidates: candidates.map((kind, index) => {
 						const estimated = prices.get(kind);
+						const lane = scores.get(kind);
 						return {
 							try: index + 1,
 							substrate: kind,
 							health: router.health.state(kind),
+							selectionScore: lane?.score ?? null,
+							selectionSamples: lane?.samples ?? null,
+							selectionPolicy: lane?.policy ?? null,
 							estimatedUsd: estimated?.totalUsd ?? null,
 							estimateIsUpperBound: estimated?.upperBound === true,
 							priceKnown: estimated?.known === true,
@@ -843,6 +1049,9 @@ function routesCommand(flags: Flags): void {
 
 	console.log(`route:     ${candidates.join(" -> ") || "(none -- nothing survived the filters below)"}`);
 	console.log(`requested: ${requested.join(" -> ")}${sandbox && sandbox !== "auto" ? " (pinned)" : " (config primary -> backups)"}`);
+	console.log(
+		`agent:     ${agent}${flags.agent ? " (--agent)" : " (config default)"} -- lanes are scored per harness`,
+	);
 	console.log("");
 	console.log("how this order was reached:");
 	console.log("  credentials  lanes the config cannot authenticate are dropped (fail closed).");
@@ -860,6 +1069,26 @@ function routesCommand(flags: Flags): void {
 				: "not applied -- configured order kept. Pass --optimize cost to order by price."
 		}`,
 	);
+	if (selection === undefined) {
+		console.log(
+			`  selection    ${selectionSkipReason(router, sandbox, optimize, candidates)}`,
+		);
+	} else {
+		// selection !== undefined implies routeFor ran the policy, which it only
+		// does when router.selection is non-null. The guard is still written out
+		// rather than asserted, so a future refactor renders "unknown" instead of
+		// a fabricated window.
+		const policy = router.selection;
+		console.log(
+			`  selection    applied: policy ${policy?.version ?? UNKNOWN}, scored for ${agent} over`,
+		);
+		console.log(
+			`               completed runs in the last ${
+				policy === null ? UNKNOWN : formatDuration(policy.tuning.windowMs)
+			} from ${tracesDir()}.`,
+		);
+		console.log("               It only reorders -- a lane is never removed for a low score.");
+	}
 	console.log(
 		"  health       applied last: healthy, then degraded, then open. It only reorders --",
 	);
@@ -902,22 +1131,51 @@ function routesCommand(flags: Flags): void {
 	}
 	console.log("candidates, in the order create() would try them:");
 	for (const line of renderTable(
-		CANDIDATE_HEADER,
+		selection === undefined ? CANDIDATE_HEADER : SCORED_HEADER,
 		candidates.map((kind, index) => {
 			const estimated = prices.get(kind);
 			return candidateRow(
 				index + 1,
 				kind,
 				router.health.state(kind),
+				selection === undefined ? undefined : scores.get(kind),
 				estimated === undefined ? UNKNOWN : priceCell(estimated),
 				router.provider(kind).capabilities,
 			);
 		}),
-		CANDIDATE_RIGHT,
+		selection === undefined ? CANDIDATE_RIGHT : SCORED_RIGHT,
 	)) {
 		console.log(line);
 	}
 	console.log("");
+	if (selection !== undefined) {
+		// explainLane() lives in selection.ts so the CLI, the dashboard and a
+		// trace reader quote one decision in one wording. Three surfaces
+		// inventing three phrasings is how "why did it pick that?" stops being
+		// answerable, so this block deliberately renders nothing of its own.
+		console.log("why this order:");
+		for (const lane of selection) console.log(`  ${explainLane(lane)}`);
+		console.log("");
+		console.log(
+			"score is 0..1, higher is better, and comparable only within THIS table: two of its three",
+		);
+		console.log(
+			"terms (cost, time to first output) are relative to the lanes on offer here, so the same",
+		);
+		console.log(
+			"lane scores differently against a different candidate set. runs = completed runs behind it;",
+		);
+		console.log(
+			`at runs 0 the score IS the prior (${
+				router.selection === null ? UNKNOWN : router.selection.tuning.priorSuccessRate
+			} success, neither good nor bad), not a measurement. Every`,
+		);
+		console.log(
+			"term is shrunk toward that prior by its own sample count, so one lucky run cannot outrank a",
+		);
+		console.log('long record. The absolute per-lane numbers are in "am mux stats".');
+		console.log("");
+	}
 	console.log(
 		`price is modeled from published rates for a ${DEFAULT_RUN_SHAPE.durationMs / 60_000}-minute run at ${DEFAULT_RUN_SHAPE.vcpu} vCPU /`,
 	);
@@ -1059,7 +1317,8 @@ export async function mux(args: string[]): Promise<void> {
 	console.log("  am mux term   [--agent <a>] [--name <n>]          interactive agent PTY");
 	console.log("  am mux ls                                        named machines");
 	console.log("  am mux routes [--sandbox <s>] [--needs <json>]   resolved route, and why");
-	console.log("                [--pty <p>] [--optimize cost] [--json]");
+	console.log("                [--agent <a>] [--pty <p>]          (score is per harness)");
+	console.log("                [--optimize cost] [--json]");
 	console.log("  am mux stats  [--since 24h] [--limit <n>]        measured outcomes by route");
 	console.log("                [--json]");
 	console.log("  am mux health [--json]                           substrate circuit breakers");
