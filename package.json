@@ -15,29 +15,30 @@
     }
   },
   "scripts": {
+    "benchmark": "tsx --tsconfig web/tsconfig.json web/scripts/run-benchmarks.ts",
+    "build": "npm run build:sdk && pnpm --filter agent-machines-web build",
     "build:sdk": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.sdk.json",
-    "prepack": "npm run build:sdk",
+    "chat": "tsx src/cli.ts chat",
     "deploy": "tsx src/cli.ts deploy",
     "deploy:openclaw": "tsx src/cli.ts deploy:openclaw",
-    "chat": "tsx src/cli.ts chat",
-    "status": "tsx src/cli.ts status",
-    "logs": "tsx src/cli.ts logs",
-    "wake": "tsx src/cli.ts wake",
-    "sleep": "tsx src/cli.ts sleep",
     "destroy": "tsx src/cli.ts destroy",
-    "shell": "tsx src/cli.ts shell",
-    "reload": "tsx src/cli.ts reload-knowledge",
-    "reset": "tsx src/cli.ts reset",
     "doctor": "tsx src/cli.ts doctor",
     "gc": "tsx scripts/cleanup-machines.ts",
-    "benchmark": "tsx --tsconfig web/tsconfig.json web/scripts/run-benchmarks.ts",
-    "test:sdk": "tsx --test \"src/lib/**/*.test.ts\"",
-    "sync-wiki": "node scripts/sync-from-wiki.mjs",
+    "logs": "tsx src/cli.ts logs",
+    "mux": "tsx src/cli.ts mux",
+    "prepack": "npm run build:sdk",
+    "reload": "tsx src/cli.ts reload-knowledge",
+    "reset": "tsx src/cli.ts reset",
+    "shell": "tsx src/cli.ts shell",
+    "sleep": "tsx src/cli.ts sleep",
+    "status": "tsx src/cli.ts status",
     "sync-manifest": "node scripts/sync-knowledge-manifest.mjs",
-    "typecheck": "tsc --noEmit",
-    "web": "cd web && npm run dev",
+    "sync-wiki": "node scripts/sync-from-wiki.mjs",
     "test:mux": "tsx --test \"src/mux/**/*.test.ts\"",
-    "mux": "tsx src/cli.ts mux"
+    "test:sdk": "tsx --test \"src/lib/**/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "wake": "tsx src/cli.ts wake",
+    "web": "pnpm --filter agent-machines-web dev"
   },
   "devDependencies": {
     "@fly/sprites": "^0.1.0",
@@ -67,6 +68,14 @@
     },
     "@vercel/sandbox": {
       "optional": true
+    }
+  },
+  "packageManager": "pnpm@10.30.0",
+  "pnpm": {
+    "overrides": {
+      "@clerk/backend": "3.4.6",
+      "@clerk/react": "6.6.1",
+      "@clerk/shared": "4.10.1"
     }
   }
 }

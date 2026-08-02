@@ -1,3 +1,21 @@
+# One workspace, two packages: the published `agent-machines` SDK at the root
+# and the Next.js control plane in web/.
+#
+# This used to carry settings only, with no `packages` list, while web/ kept a
+# second lockfile. That topology broke the Vercel build: pnpm at the repo root
+# installed the root package alone, so web's own dependencies (gsap, lenis)
+# were absent and `next build` failed with module-not-found on
+# components/motion/MotionProvider.tsx. It also meant ANY pnpm command run
+# inside web/ silently attached to this file and relocated web's dependency
+# store into the root, which put `next` itself outside the old
+# turbopack.root and broke the build a second, harder-to-see way.
+#
+# Declaring both packages makes one root lockfile the single source of truth,
+# so an install at either directory produces the same tree.
+packages:
+  - "."
+  - "web"
+
 allowBuilds:
   esbuild: set this to true or false
 minimumReleaseAgeExclude:

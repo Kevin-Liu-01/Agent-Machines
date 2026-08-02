@@ -1,6 +1,6 @@
 {
   "description": "Session attach packages for Add ___ composer chips — one per Cursor Marketplace plugin.",
-  "syncedAt": "2026-07-31T22:22:06.040Z",
+  "syncedAt": "2026-08-02T07:47:40.652Z",
   "packages": [
     {
       "id": "1inch",
@@ -3152,15 +3152,42 @@
       "marketplaceUrl": "https://cursor.com/marketplace/firecrawl",
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/25f8bd2aa6e05e6b.png",
       "triggers": [
-        "firecrawl"
+        "firecrawl",
+        "firecrawl-agent",
+        "firecrawl-crawl",
+        "firecrawl-download",
+        "firecrawl-interact",
+        "firecrawl-map",
+        "firecrawl-monitor",
+        "firecrawl-parse",
+        "firecrawl-scrape",
+        "firecrawl-search"
       ],
       "skillIds": [
-        "firecrawl"
+        "firecrawl-agent",
+        "firecrawl",
+        "firecrawl-crawl",
+        "firecrawl-download",
+        "firecrawl-interact",
+        "firecrawl-map",
+        "firecrawl-monitor",
+        "firecrawl-parse",
+        "firecrawl-scrape",
+        "firecrawl-search"
       ],
       "mcpServerIds": [],
       "registryItemIds": [
         "plugin-firecrawl",
+        "skill-firecrawl-agent",
         "skill-firecrawl",
+        "skill-firecrawl-crawl",
+        "skill-firecrawl-download",
+        "skill-firecrawl-interact",
+        "skill-firecrawl-map",
+        "skill-firecrawl-monitor",
+        "skill-firecrawl-parse",
+        "skill-firecrawl-scrape",
+        "skill-firecrawl-search",
         "cli-firecrawl"
       ]
     },
@@ -4804,6 +4831,7 @@
         "generate-opal",
         "observe-cli",
         "opentelemetry-auto-instrumentation",
+        "opentelemetry-manual-instrumentation",
         "opentelemetry-validation",
         "outlier-detection-analysis",
         "query-card-visualization",
@@ -4821,6 +4849,7 @@
         "generate-opal",
         "observe-cli",
         "opentelemetry-auto-instrumentation",
+        "opentelemetry-manual-instrumentation",
         "opentelemetry-validation",
         "outlier-detection-analysis",
         "query-card-visualization",
@@ -4842,6 +4871,7 @@
         "skill-generate-opal",
         "skill-observe-cli",
         "skill-opentelemetry-auto-instrumentation",
+        "skill-opentelemetry-manual-instrumentation",
         "skill-opentelemetry-validation",
         "skill-outlier-detection-analysis",
         "skill-query-card-visualization",
@@ -6790,10 +6820,7 @@
         "sentry-get-started",
         "sentry-instrument",
         "sentry-otel-exporter-setup",
-        "sentry-sdk-upgrade",
-        "sentry-setup-ai-monitoring",
-        "sentry-snapshots-cocoa",
-        "sentry-workflow"
+        "sentry-snapshots-cocoa"
       ],
       "skillIds": [
         "sentry-create-alert",
@@ -6802,10 +6829,7 @@
         "sentry-get-started",
         "sentry-instrument",
         "sentry-otel-exporter-setup",
-        "sentry-sdk-upgrade",
-        "sentry-setup-ai-monitoring",
-        "sentry-snapshots-cocoa",
-        "sentry-workflow"
+        "sentry-snapshots-cocoa"
       ],
       "mcpServerIds": [
         "sentry"
@@ -6818,10 +6842,7 @@
         "skill-sentry-get-started",
         "skill-sentry-instrument",
         "skill-sentry-otel-exporter-setup",
-        "skill-sentry-sdk-upgrade",
-        "skill-sentry-setup-ai-monitoring",
         "skill-sentry-snapshots-cocoa",
-        "skill-sentry-workflow",
         "mcp-sentry"
       ]
     },
@@ -7916,15 +7937,19 @@
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/7f370ad754918269.png",
       "triggers": [
         "vercel",
+        "access-protected-vercel-deployment",
         "ai-gateway",
         "ai-sdk",
         "auth",
         "bootstrap",
+        "cdn-caching",
         "chat-sdk",
         "deployments-cicd",
         "env-vars",
+        "eve",
         "knowledge-update",
         "marketplace",
+        "microfrontends",
         "next-cache-components",
         "next-forge",
         "next-upgrade",
@@ -7934,22 +7959,22 @@
         "runtime-cache",
         "shadcn",
         "turbopack",
-        "vercel-agent",
-        "vercel-cli",
-        "vercel-functions",
-        "vercel-sandbox",
-        "vercel-storage"
+        "vercel-agent"
       ],
       "skillIds": [
+        "access-protected-vercel-deployment",
         "ai-gateway",
         "ai-sdk",
         "auth",
         "bootstrap",
+        "cdn-caching",
         "chat-sdk",
         "deployments-cicd",
         "env-vars",
+        "eve",
         "knowledge-update",
         "marketplace",
+        "microfrontends",
         "next-cache-components",
         "next-forge",
         "next-upgrade",
@@ -7961,6 +7986,8 @@
         "turbopack",
         "vercel-agent",
         "vercel-cli",
+        "vercel-connect",
+        "vercel-firewall",
         "vercel-functions",
         "vercel-sandbox",
         "vercel-storage",
@@ -7972,15 +7999,19 @@
       ],
       "registryItemIds": [
         "plugin-vercel",
+        "skill-access-protected-vercel-deployment",
         "skill-ai-gateway",
         "skill-ai-sdk",
         "skill-auth",
         "skill-bootstrap",
+        "skill-cdn-caching",
         "skill-chat-sdk",
         "skill-deployments-cicd",
         "skill-env-vars",
+        "skill-eve",
         "skill-knowledge-update",
         "skill-marketplace",
+        "skill-microfrontends",
         "skill-next-cache-components",
         "skill-next-forge",
         "skill-next-upgrade",
@@ -7992,6 +8023,8 @@
         "skill-turbopack",
         "skill-vercel-agent",
         "skill-vercel-cli",
+        "skill-vercel-connect",
+        "skill-vercel-firewall",
         "skill-vercel-functions",
         "skill-vercel-sandbox",
         "skill-vercel-storage",

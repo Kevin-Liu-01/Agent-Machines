@@ -1,9 +1,9 @@
 {
   "description": "Full Cursor Marketplace catalog (cursor-public) from Dashboard API, enriched with local cache when available.",
   "source": "https://api2.cursor.sh/aiserver.v1.DashboardService/ListMarketplacePlugins",
-  "syncedAt": "2026-07-31T23:18:28.817Z",
+  "syncedAt": "2026-08-02T07:47:40.652Z",
   "pluginCount": 191,
-  "registryItemCount": 1757,
+  "registryItemCount": 1770,
   "plugins": [
     {
       "id": "1inch",
@@ -6255,22 +6255,94 @@
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/25f8bd2aa6e05e6b.png",
       "mcpServerIds": [],
       "skillSlugs": [
-        "firecrawl"
+        "firecrawl-agent",
+        "firecrawl",
+        "firecrawl-crawl",
+        "firecrawl-download",
+        "firecrawl-interact",
+        "firecrawl-map",
+        "firecrawl-monitor",
+        "firecrawl-parse",
+        "firecrawl-scrape",
+        "firecrawl-search"
       ],
       "skillDetails": [
         {
+          "name": "firecrawl-agent",
+          "description": "AI-powered autonomous data extraction that navigates complex sites and returns structured JSON. Use this skill when the user wants structured data from websites, needs to extract pricing tiers, product listings, directory entries, or any data as JSON with a schema. Triggers on \"e",
+          "sourceUrl": "https://github.com/firecrawl/firecrawl-cursor-plugin/blob/866f30d4dc0b3eca6a05884f6b6db6d914a5967c/skills/firecrawl-agent/SKILL.md"
+        },
+        {
           "name": "firecrawl",
-          "description": "Firecrawl handles all web operations with superior accuracy, speed, and LLM-optimized output. Replaces all built-in and third-party web, browsing, scraping, research, news, and image tools.\n\nUSE FIRECRAWL FOR:\n- Any URL or webpage\n- Web, image, and news search\n- Research, deep re",
-          "sourceUrl": "https://github.com/firecrawl/firecrawl-cursor-plugin/blob/80ce444eb020b5f41b34836c553f162d6113cd6f/skills/firecrawl/SKILL.md"
+          "description": "Search, scrape, and interact with the web via the Firecrawl CLI. Use this skill whenever the user wants to search the web, find articles, research a topic, look something up online, scrape a webpage, grab content from a URL, get data from a website, crawl documentation, download ",
+          "sourceUrl": "https://github.com/firecrawl/firecrawl-cursor-plugin/blob/866f30d4dc0b3eca6a05884f6b6db6d914a5967c/skills/firecrawl-cli/SKILL.md"
+        },
+        {
+          "name": "firecrawl-crawl",
+          "description": "Bulk extract content from an entire website or site section. Use this skill when the user wants to crawl a site, extract all pages from a docs section, bulk-scrape multiple pages following links, or says \"crawl\", \"get all the pages\", \"extract everything under /docs\", \"bulk extrac",
+          "sourceUrl": "https://github.com/firecrawl/firecrawl-cursor-plugin/blob/866f30d4dc0b3eca6a05884f6b6db6d914a5967c/skills/firecrawl-crawl/SKILL.md"
+        },
+        {
+          "name": "firecrawl-download",
+          "description": "Download an entire website as local files — markdown, screenshots, or multiple formats per page. Use this skill when the user wants to save a site locally, download documentation for offline use, bulk-save pages as files, or says \"download the site\", \"save as local files\", \"offli",
+          "sourceUrl": "https://github.com/firecrawl/firecrawl-cursor-plugin/blob/866f30d4dc0b3eca6a05884f6b6db6d914a5967c/skills/firecrawl-download/SKILL.md"
+        },
+        {
+          "name": "firecrawl-interact",
+          "description": "Control and interact with a live browser session on any scraped page — click buttons, fill forms, navigate flows, and extract data using natural language prompts or code. Use when the user needs to interact with a webpage beyond simple scraping: logging into a site, submitting fo",
+          "sourceUrl": "https://github.com/firecrawl/firecrawl-cursor-plugin/blob/866f30d4dc0b3eca6a05884f6b6db6d914a5967c/skills/firecrawl-interact/SKILL.md"
+        },
+        {
+          "name": "firecrawl-map",
+          "description": "Discover and list all URLs on a website, with optional search filtering. Use this skill when the user wants to find a specific page on a large site, list all URLs, see the site structure, find where something is on a domain, or says \"map the site\", \"find the URL for\", \"what pages",
+          "sourceUrl": "https://github.com/firecrawl/firecrawl-cursor-plugin/blob/866f30d4dc0b3eca6a05884f6b6db6d914a5967c/skills/firecrawl-map/SKILL.md"
+        },
+        {
+          "name": "firecrawl-monitor",
+          "description": "Detect when content on a website changes and get notified by webhook or email — no cron jobs, scrapers, or diff scripts required. Use this skill whenever the user wants to track changes on a page, watch competitor pricing, alert on new job postings or blog posts, monitor docs/cha",
+          "sourceUrl": "https://github.com/firecrawl/firecrawl-cursor-plugin/blob/866f30d4dc0b3eca6a05884f6b6db6d914a5967c/skills/firecrawl-monitor/SKILL.md"
+        },
+        {
+          "name": "firecrawl-parse",
+          "description": "Efficiently extract and convert the contents of any local file—such as PDF, DOCX, DOC, ODT, RTF, XLSX, XLS, or HTML—into clean, well-formatted markdown saved to disk. Use this skill whenever the user requests to parse, read, or extract information from a file on their computer, i",
+          "sourceUrl": "https://github.com/firecrawl/firecrawl-cursor-plugin/blob/866f30d4dc0b3eca6a05884f6b6db6d914a5967c/skills/firecrawl-parse/SKILL.md"
+        },
+        {
+          "name": "firecrawl-scrape",
+          "description": "Extract clean markdown from any URL, including JavaScript-rendered SPAs. Use this skill whenever the user provides a URL and wants its content, says \"scrape\", \"grab\", \"fetch\", \"pull\", \"get the page\", \"extract from this URL\", or \"read this webpage\". Handles JS-rendered pages, mult",
+          "sourceUrl": "https://github.com/firecrawl/firecrawl-cursor-plugin/blob/866f30d4dc0b3eca6a05884f6b6db6d914a5967c/skills/firecrawl-scrape/SKILL.md"
+        },
+        {
+          "name": "firecrawl-search",
+          "description": "Web search with full page content extraction. Use this skill whenever the user asks to search the web, find articles, research a topic, look something up, find recent news, discover sources, or says \"search for\", \"find me\", \"look up\", \"what are people saying about\", or \"find arti",
+          "sourceUrl": "https://github.com/firecrawl/firecrawl-cursor-plugin/blob/866f30d4dc0b3eca6a05884f6b6db6d914a5967c/skills/firecrawl-search/SKILL.md"
         }
       ],
       "registryItemIds": [
         "plugin-firecrawl",
+        "skill-firecrawl-agent",
         "skill-firecrawl",
+        "skill-firecrawl-crawl",
+        "skill-firecrawl-download",
+        "skill-firecrawl-interact",
+        "skill-firecrawl-map",
+        "skill-firecrawl-monitor",
+        "skill-firecrawl-parse",
+        "skill-firecrawl-scrape",
+        "skill-firecrawl-search",
         "cli-firecrawl"
       ],
       "triggers": [
-        "firecrawl"
+        "firecrawl",
+        "firecrawl-agent",
+        "firecrawl-crawl",
+        "firecrawl-download",
+        "firecrawl-interact",
+        "firecrawl-map",
+        "firecrawl-monitor",
+        "firecrawl-parse",
+        "firecrawl-scrape",
+        "firecrawl-search"
       ],
       "publisher": "Firecrawl",
       "isVerified": true,
@@ -9593,6 +9665,7 @@
         "generate-opal",
         "observe-cli",
         "opentelemetry-auto-instrumentation",
+        "opentelemetry-manual-instrumentation",
         "opentelemetry-validation",
         "outlier-detection-analysis",
         "query-card-visualization",
@@ -9605,77 +9678,82 @@
         {
           "name": "alert-investigation",
           "description": "Investigate alerts using systematic SRE methodology to understand issues, assess impact, test hypotheses, and identify root causes with evidence-based analysis. Use when: (1) User asks to investigate or analyze an alert (2) User mentions a specific alert or monitor that is firing",
-          "sourceUrl": null
+          "sourceUrl": "https://github.com/observeinc/skills/blob/eadaa21706c712b206e66d7af198caed56a65bf4/skills/alert-investigation/SKILL.md"
         },
         {
           "name": "debug-k8s-collection",
           "description": "Troubleshoot and debug Observe Agent data collection on Kubernetes. Use this skill whenever the user reports any K8s-side problem with Observe — pods crashing, stuck Pending, ImagePullBackOff, \"no data in Observe\", missing datastreams, suspected token/secret issues, endpoint reac",
-          "sourceUrl": null
+          "sourceUrl": "https://github.com/observeinc/skills/blob/eadaa21706c712b206e66d7af198caed56a65bf4/skills/debug-k8s-collection/SKILL.md"
         },
         {
           "name": "debug-linux-host-collection",
           "description": "Troubleshoot and debug Observe Agent data collection on Linux hosts. Use this skill whenever the user reports any host-side problem with Observe — the agent failing to start, `observe-agent status` reporting errors, `init-config` failing with unknown flags, \"no data in Observe\" f",
-          "sourceUrl": null
+          "sourceUrl": "https://github.com/observeinc/skills/blob/eadaa21706c712b206e66d7af198caed56a65bf4/skills/debug-linux-host-collection/SKILL.md"
         },
         {
           "name": "deploy-k8s-explorer",
           "description": "End-to-end onboarding of a Kubernetes cluster to Observe — creates the backend datastreams + content via the Observe CLI and deploys the observe/agent helm chart. Use for ANY request to install or set up the Observe Agent on Kubernetes, onboard a K8s cluster to Observe, or send K",
-          "sourceUrl": null
+          "sourceUrl": "https://github.com/observeinc/skills/blob/eadaa21706c712b206e66d7af198caed56a65bf4/skills/deploy-k8s-explorer/SKILL.md"
         },
         {
           "name": "deploy-linux-host-explorer",
           "description": "End-to-end Host Explorer deployment for Observe — creates backend resources (datastreams, content, ingest token) via the Observe CLI and installs the observe-agent on a Linux host. Use this skill whenever the user mentions setting up Observe on a Linux machine, onboarding a host ",
-          "sourceUrl": null
+          "sourceUrl": "https://github.com/observeinc/skills/blob/eadaa21706c712b206e66d7af198caed56a65bf4/skills/deploy-linux-host-explorer/SKILL.md"
         },
         {
           "name": "generate-opal",
           "description": "Contains dataset kind selection, column selection rules, core syntax, and the skill index. NEVER generate OPAL, and NEVER invoke an opal-* reference, without first loading this skill.",
-          "sourceUrl": null
+          "sourceUrl": "https://github.com/observeinc/skills/blob/eadaa21706c712b206e66d7af198caed56a65bf4/skills/generate-opal/SKILL.md"
         },
         {
           "name": "observe-cli",
           "description": "Use the Observe CLI (`observe`) to investigate production systems and pull telemetry. Reach for this skill whenever the user wants to: search or tail logs; query metrics (CPU, memory, latency, error rate, request volume, custom app metrics); explore traces and spans; correlate ev",
-          "sourceUrl": null
+          "sourceUrl": "https://github.com/observeinc/skills/blob/eadaa21706c712b206e66d7af198caed56a65bf4/skills/observe-cli/SKILL.md"
         },
         {
           "name": "opentelemetry-auto-instrumentation",
           "description": "Installs and configures OpenTelemetry auto-instrumentation for applications written in Java, .NET, Node.js, Python, Ruby. Use when instrumenting applications with opentelemetry auto-instrumentation, auditing existing auto-instrumentation implementations,  migrating from vendor lo",
-          "sourceUrl": null
+          "sourceUrl": "https://github.com/observeinc/skills/blob/eadaa21706c712b206e66d7af198caed56a65bf4/skills/opentelemetry-auto-instrumentation/SKILL.md"
+        },
+        {
+          "name": "opentelemetry-manual-instrumentation",
+          "description": "Add, change, or debug OpenTelemetry (OTel) instrumentation in code: custom spans, metrics, logs, attributes, context propagation, and resource attributes. Use when writing, changing, reviewing, or debugging manual instrumentation, including OTel SDK setup.",
+          "sourceUrl": "https://github.com/observeinc/skills/blob/eadaa21706c712b206e66d7af198caed56a65bf4/skills/opentelemetry-manual-instrumentation/SKILL.md"
         },
         {
           "name": "opentelemetry-validation",
           "description": "Canned queries for various APM features in Observe. Use to validate auto-instrumentation, or when validating or troubleshooting OpenTelemetry instrumentation for a service sending telemetry to Observe.",
-          "sourceUrl": null
+          "sourceUrl": "https://github.com/observeinc/skills/blob/eadaa21706c712b206e66d7af198caed56a65bf4/skills/opentelemetry-validation/SKILL.md"
         },
         {
           "name": "outlier-detection-analysis",
           "description": "Identify which field values correlate with bad behavior (slowness, errors, anomalies, unusual values) using phi-coefficient correlation analysis over OPAL. Works on any time-series data — metrics, structured logs, span/trace data, or any dataset where rows can be split into a 'ba",
-          "sourceUrl": null
+          "sourceUrl": "https://github.com/observeinc/skills/blob/eadaa21706c712b206e66d7af198caed56a65bf4/skills/outlier-detection-analysis/SKILL.md"
         },
         {
           "name": "query-card-visualization",
           "description": "How to fill in a query card's `visualizationTemplate` (the JSON object that renders a chart). Load this whenever the user asks for a chart, graph, plot, trend, \"show me over time\", ranking, single number/KPI, scatter, waterfall, or map. Acts as the directory for the per-chart JSO",
-          "sourceUrl": null
+          "sourceUrl": "https://github.com/observeinc/skills/blob/eadaa21706c712b206e66d7af198caed56a65bf4/skills/query-card-visualization/SKILL.md"
         },
         {
           "name": "setup-k8s-backend",
           "description": "Create the Observe backend resources required for Kubernetes Explorer: datastreams, content packages, and an ingest token. Use this skill whenever the user needs to provision Observe backend objects for K8s monitoring — whether they're starting a fresh setup, recreating resources",
-          "sourceUrl": null
+          "sourceUrl": "https://github.com/observeinc/skills/blob/eadaa21706c712b206e66d7af198caed56a65bf4/skills/setup-k8s-backend/SKILL.md"
         },
         {
           "name": "setup-k8s-collection",
           "description": "Deploy the Observe Agent helm chart on Kubernetes to collect logs, metrics, traces, Prometheus metrics, and K8s events. Use this skill whenever the user mentions installing the observe/agent helm chart, configuring helm values for an Observe agent, deploying observability to a K8",
-          "sourceUrl": null
+          "sourceUrl": "https://github.com/observeinc/skills/blob/eadaa21706c712b206e66d7af198caed56a65bf4/skills/setup-k8s-collection/SKILL.md"
         },
         {
           "name": "setup-linux-host-backend",
           "description": "Create the Observe backend resources required for Host Explorer: datastreams, content packages, and an ingest token. Use this skill whenever the user needs to provision Observe backend objects for a Linux host — whether they're starting a fresh setup, recreating resources after m",
-          "sourceUrl": null
+          "sourceUrl": "https://github.com/observeinc/skills/blob/eadaa21706c712b206e66d7af198caed56a65bf4/skills/setup-linux-host-backend/SKILL.md"
         },
         {
           "name": "setup-linux-host-collection",
           "description": "Install and configure the Observe Agent on a Linux host. Use this skill whenever the user mentions installing observe-agent, configuring host monitoring on Ubuntu/Debian or RHEL/CentOS, running `init-config` for the agent, upgrading or uninstalling the observe-agent package, or f",
-          "sourceUrl": null
+          "sourceUrl": "https://github.com/observeinc/skills/blob/eadaa21706c712b206e66d7af198caed56a65bf4/skills/setup-linux-host-collection/SKILL.md"
         }
       ],
       "registryItemIds": [
@@ -9688,6 +9766,7 @@
         "skill-generate-opal",
         "skill-observe-cli",
         "skill-opentelemetry-auto-instrumentation",
+        "skill-opentelemetry-manual-instrumentation",
         "skill-opentelemetry-validation",
         "skill-outlier-detection-analysis",
         "skill-query-card-visualization",
@@ -9709,6 +9788,7 @@
         "generate-opal",
         "observe-cli",
         "opentelemetry-auto-instrumentation",
+        "opentelemetry-manual-instrumentation",
         "opentelemetry-validation",
         "outlier-detection-analysis",
         "query-card-visualization",
@@ -14154,61 +14234,43 @@
         "sentry-get-started",
         "sentry-instrument",
         "sentry-otel-exporter-setup",
-        "sentry-sdk-upgrade",
-        "sentry-setup-ai-monitoring",
-        "sentry-snapshots-cocoa",
-        "sentry-workflow"
+        "sentry-snapshots-cocoa"
       ],
       "skillDetails": [
         {
           "name": "sentry-create-alert",
           "description": "Create Sentry alerts using the workflow engine API. Use when asked to create alerts, set up notifications, configure issue priority alerts, or build workflow automations. Supports email, Slack, PagerDuty, Discord, and other notification actions.",
-          "sourceUrl": "https://github.com/getsentry/plugin-cursor/blob/4aa3696cb5e7ed545b59f069afcf81a30fcbaf86/skills/sentry-create-alert/SKILL.md"
+          "sourceUrl": "https://github.com/getsentry/plugin-cursor/blob/55f18a2438eae2be57258d48651685e5fc391be1/skills/sentry-create-alert/SKILL.md"
         },
         {
           "name": "sentry-debug-issue",
           "description": "Debug and fix a Sentry issue — find it (by link, ID, or search), pull full context (stack trace, breadcrumbs, trace, logs), optionally run Seer root-cause / autofix, apply the code fix, and resolve it via a `Fixes PROJECT-NAME-12A` commit/PR. Use when working a known error or hun",
-          "sourceUrl": "https://github.com/getsentry/plugin-cursor/blob/4aa3696cb5e7ed545b59f069afcf81a30fcbaf86/skills/sentry-debug-issue/SKILL.md"
+          "sourceUrl": "https://github.com/getsentry/plugin-cursor/blob/55f18a2438eae2be57258d48651685e5fc391be1/skills/sentry-debug-issue/SKILL.md"
         },
         {
           "name": "sentry-feature-setup",
-          "description": "Configure specific Sentry features beyond basic SDK setup. Use when asked to monitor AI/LLM calls, set up OpenTelemetry pipelines, create alerts and notifications, or set up Sentry Snapshots.",
-          "sourceUrl": "https://github.com/getsentry/plugin-cursor/blob/4aa3696cb5e7ed545b59f069afcf81a30fcbaf86/skills/sentry-feature-setup/SKILL.md"
+          "description": "Configure specific Sentry features beyond basic SDK setup. Use when asked to set up OpenTelemetry pipelines, create alerts and notifications, or set up Sentry Snapshots.",
+          "sourceUrl": "https://github.com/getsentry/plugin-cursor/blob/55f18a2438eae2be57258d48651685e5fc391be1/skills/sentry-feature-setup/SKILL.md"
         },
         {
           "name": "sentry-get-started",
           "description": "Guided entry point for using Sentry through your agent. Orients you to your current setup and, for a new project, sets up Sentry end to end with sane defaults — provision a project, install the SDK (errors, tracing, and whatever it enables by default), and confirm real telemetry ",
-          "sourceUrl": "https://github.com/getsentry/plugin-cursor/blob/4aa3696cb5e7ed545b59f069afcf81a30fcbaf86/skills/sentry-get-started/SKILL.md"
+          "sourceUrl": "https://github.com/getsentry/plugin-cursor/blob/55f18a2438eae2be57258d48651685e5fc391be1/skills/sentry-get-started/SKILL.md"
         },
         {
           "name": "sentry-instrument",
-          "description": "Instrument an application with Sentry — detect the platform, install and initialize the SDK if needed, and wire up any signal — error monitoring, tracing/performance, logging, metrics, profiling, session replay, user feedback, cron check-ins, and AI/LLM monitoring. Use to add Sen",
-          "sourceUrl": "https://github.com/getsentry/plugin-cursor/blob/4aa3696cb5e7ed545b59f069afcf81a30fcbaf86/skills/sentry-instrument/SKILL.md"
+          "description": "Instrument an application with Sentry — detect the platform, install and initialize the SDK if needed, and wire up any signal — error monitoring, tracing/performance, logging, metrics, profiling, session replay, user feedback, cron check-ins, and AI/LLM monitoring (agent runs, to",
+          "sourceUrl": "https://github.com/getsentry/plugin-cursor/blob/55f18a2438eae2be57258d48651685e5fc391be1/skills/sentry-instrument/SKILL.md"
         },
         {
           "name": "sentry-otel-exporter-setup",
           "description": "Configure the OpenTelemetry Collector with Sentry Exporter for multi-project routing and automatic project creation. Use when setting up OTel with Sentry, configuring collector pipelines for traces and logs, or routing telemetry from multiple services to Sentry projects.",
-          "sourceUrl": "https://github.com/getsentry/plugin-cursor/blob/4aa3696cb5e7ed545b59f069afcf81a30fcbaf86/skills/sentry-otel-exporter-setup/SKILL.md"
-        },
-        {
-          "name": "sentry-sdk-upgrade",
-          "description": "Upgrade the Sentry JavaScript SDK across major versions. Use when asked to upgrade Sentry, migrate to a newer version, fix deprecated Sentry APIs, or resolve breaking changes after a Sentry version bump.",
-          "sourceUrl": "https://github.com/getsentry/plugin-cursor/blob/4aa3696cb5e7ed545b59f069afcf81a30fcbaf86/skills/sentry-sdk-upgrade/SKILL.md"
-        },
-        {
-          "name": "sentry-setup-ai-monitoring",
-          "description": "Setup Sentry AI Agent Monitoring in any project. Use when asked to monitor LLM calls, track AI agents, track conversations, or instrument OpenAI/Anthropic/Vercel AI/LangChain/Google GenAI/Pydantic AI/Laravel AI. Detects installed AI SDKs and configures appropriate integrations.",
-          "sourceUrl": "https://github.com/getsentry/plugin-cursor/blob/4aa3696cb5e7ed545b59f069afcf81a30fcbaf86/skills/sentry-setup-ai-monitoring/SKILL.md"
+          "sourceUrl": "https://github.com/getsentry/plugin-cursor/blob/55f18a2438eae2be57258d48651685e5fc391be1/skills/sentry-otel-exporter-setup/SKILL.md"
         },
         {
           "name": "sentry-snapshots-cocoa",
           "description": "Full Sentry Snapshots setup for Apple/Cocoa projects. Use when asked to \"setup SnapshotPreviews\", \"setup Apple snapshot testing\", \"upload Apple snapshots to Sentry\", \"setup Apple snapshot GitHub Actions\", or \"setup Apple selective snapshot testing\".",
-          "sourceUrl": "https://github.com/getsentry/plugin-cursor/blob/4aa3696cb5e7ed545b59f069afcf81a30fcbaf86/skills/sentry-snapshots-cocoa/SKILL.md"
-        },
-        {
-          "name": "sentry-workflow",
-          "description": "Keep Sentry SDKs up to date. Use when asked to upgrade the Sentry SDK across major versions, migrate SDK versions, or fix deprecated APIs.",
-          "sourceUrl": "https://github.com/getsentry/plugin-cursor/blob/4aa3696cb5e7ed545b59f069afcf81a30fcbaf86/skills/sentry-workflow/SKILL.md"
+          "sourceUrl": "https://github.com/getsentry/plugin-cursor/blob/55f18a2438eae2be57258d48651685e5fc391be1/skills/sentry-snapshots-cocoa/SKILL.md"
         }
       ],
       "registryItemIds": [
@@ -14219,10 +14281,7 @@
         "skill-sentry-get-started",
         "skill-sentry-instrument",
         "skill-sentry-otel-exporter-setup",
-        "skill-sentry-sdk-upgrade",
-        "skill-sentry-setup-ai-monitoring",
         "skill-sentry-snapshots-cocoa",
-        "skill-sentry-workflow",
         "mcp-sentry"
       ],
       "triggers": [
@@ -14233,10 +14292,7 @@
         "sentry-get-started",
         "sentry-instrument",
         "sentry-otel-exporter-setup",
-        "sentry-sdk-upgrade",
-        "sentry-setup-ai-monitoring",
-        "sentry-snapshots-cocoa",
-        "sentry-workflow"
+        "sentry-snapshots-cocoa"
       ],
       "publisher": "Sentry",
       "isVerified": true,
@@ -16500,15 +16556,19 @@
         "vercel"
       ],
       "skillSlugs": [
+        "access-protected-vercel-deployment",
         "ai-gateway",
         "ai-sdk",
         "auth",
         "bootstrap",
+        "cdn-caching",
         "chat-sdk",
         "deployments-cicd",
         "env-vars",
+        "eve",
         "knowledge-update",
         "marketplace",
+        "microfrontends",
         "next-cache-components",
         "next-forge",
         "next-upgrade",
@@ -16520,6 +16580,8 @@
         "turbopack",
         "vercel-agent",
         "vercel-cli",
+        "vercel-connect",
+        "vercel-firewall",
         "vercel-functions",
         "vercel-sandbox",
         "vercel-storage",
@@ -16528,142 +16590,176 @@
       ],
       "skillDetails": [
         {
+          "name": "access-protected-vercel-deployment",
+          "description": "Access and test Vercel deployments protected by Vercel Authentication, SSO, or Deployment Protection. Use when curl, agent-browser, Playwright, or another automated request reaches a Vercel login or protection page; when a protected preview or production URL returns 401 or 403; w",
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/access-protected-vercel-deployment/SKILL.md"
+        },
+        {
           "name": "ai-gateway",
           "description": "Vercel AI Gateway expert guidance. Use when configuring model routing, provider failover, cost tracking, or managing multiple AI providers through a unified API.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/ai-gateway/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/ai-gateway/SKILL.md"
         },
         {
           "name": "ai-sdk",
           "description": "Vercel AI SDK expert guidance. Use when building AI-powered features — chat interfaces, text generation, structured output, tool calling, agents, MCP integration, streaming, embeddings, reranking, image generation, or working with any LLM provider.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/ai-sdk/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/ai-sdk/SKILL.md"
         },
         {
           "name": "auth",
           "description": "Authentication integration guidance — Clerk (native Vercel Marketplace), Descope, and Auth0 setup for Next.js applications. Covers middleware auth patterns, sign-in/sign-up flows, and Marketplace provisioning. Use when implementing user authentication.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/auth/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/auth/SKILL.md"
         },
         {
           "name": "bootstrap",
           "description": "Project bootstrapping orchestrator for repos that depend on Vercel-linked resources (databases, auth, and managed integrations). Use when setting up or repairing a repository so linking, environment provisioning, env pulls, and first-run db/dev commands happen in the correct safe",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/bootstrap/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/bootstrap/SKILL.md"
+        },
+        {
+          "name": "cdn-caching",
+          "description": "Debug Vercel CDN caching — cache hit rate, stale content, revalidation behavior, ISR + PPR, per-request cache reasons (cacheReason) and PPR state (ppr_state), and costs.",
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/cdn-caching/SKILL.md"
         },
         {
           "name": "chat-sdk",
           "description": "Vercel Chat SDK expert guidance. Use when building multi-platform chat bots — Slack, Telegram, Microsoft Teams, Discord, Google Chat, GitHub, Linear — with a single codebase. Covers the Chat class, adapters, threads, messages, cards, modals, streaming, state management, and webho",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/chat-sdk/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/chat-sdk/SKILL.md"
         },
         {
           "name": "deployments-cicd",
           "description": "Vercel deployment and CI/CD expert guidance. Use when deploying, promoting, rolling back, inspecting deployments, building with --prebuilt, or configuring CI workflow files for Vercel.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/deployments-cicd/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/deployments-cicd/SKILL.md"
         },
         {
           "name": "env-vars",
           "description": "Vercel environment variable expert guidance. Use when working with .env files, vercel env commands, OIDC tokens, or managing environment-specific configuration.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/env-vars/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/env-vars/SKILL.md"
+        },
+        {
+          "name": "eve",
+          "description": "Build durable AI agents and agent-powered applications with the eve framework. Use when creating, editing, or debugging an eve project, or when choosing architecture for a new agent or agent experience that could benefit from eve's filesystem-first runtime, durable sessions, tool",
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/eve/SKILL.md"
         },
         {
           "name": "knowledge-update",
           "description": "Corrects outdated LLM knowledge about the Vercel platform and introduces new products. Injected at session start.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/knowledge-update/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/knowledge-update/SKILL.md"
         },
         {
           "name": "marketplace",
-          "description": "Vercel Marketplace expert guidance — discovering, installing, and building integrations, auto-provisioned environment variables, unified billing, and the vercel integration CLI. Use when consuming third-party services, building custom integrations, or managing marketplace resourc",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/marketplace/SKILL.md"
+          "description": "Vercel Marketplace expert guidance — discovering, installing, and managing third-party integrations via the `vercel integration` CLI. Use when building any app that needs an external capability without a dedicated skill — commerce (stores, storefronts, selling products), payments",
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/marketplace/SKILL.md"
+        },
+        {
+          "name": "microfrontends",
+          "description": "Guide for building, configuring, and deploying microfrontends on Vercel. Use this skill when the user mentions microfrontends, multi-zones, splitting an app across teams, independent deployments, cross-app routing, incremental migration, composing multiple frontends under one dom",
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/microfrontends/SKILL.md"
         },
         {
           "name": "next-cache-components",
           "description": "Next.js 16 Cache Components guidance — PPR, use cache directive, cacheLife, cacheTag, updateTag, and migration from unstable_cache. Use when implementing partial prerendering, caching strategies, or migrating from older Next.js cache patterns.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/next-cache-components/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/next-cache-components/SKILL.md"
         },
         {
           "name": "next-forge",
           "description": "next-forge expert guidance — production-grade Turborepo monorepo SaaS starter by Vercel. Use when working in a next-forge project, scaffolding with `npx next-forge init`, or editing @repo/* workspace packages.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/next-forge/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/next-forge/SKILL.md"
         },
         {
           "name": "next-upgrade",
           "description": "Upgrade Next.js to the latest version following official migration guides and codemods. Use when upgrading Next.js versions, running codemods, or migrating between major releases.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/next-upgrade/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/next-upgrade/SKILL.md"
         },
         {
           "name": "nextjs",
           "description": "Next.js App Router expert guidance. Use when building, debugging, or architecting Next.js applications — routing, Server Components, Server Actions, Cache Components, layouts, middleware/proxy, data fetching, rendering strategies, and deployment on Vercel.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/nextjs/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/nextjs/SKILL.md"
         },
         {
           "name": "react-best-practices",
           "description": "React best-practices reviewer for TSX files. Triggers after editing multiple TSX components to run a condensed quality checklist covering component structure, hooks usage, accessibility, performance, and TypeScript patterns.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/react-best-practices/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/react-best-practices/SKILL.md"
         },
         {
           "name": "routing-middleware",
           "description": "Vercel Routing Middleware guidance — request interception before cache, rewrites, redirects, personalization. Works with any framework. Supports Edge, Node.js, and Bun runtimes. Use when intercepting requests at the platform level.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/routing-middleware/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/routing-middleware/SKILL.md"
         },
         {
           "name": "runtime-cache",
           "description": "Vercel Runtime Cache API guidance — ephemeral per-region key-value cache with tag-based invalidation. Shared across Functions, Routing Middleware, and Builds. Use when implementing caching strategies beyond framework-level caching.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/runtime-cache/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/runtime-cache/SKILL.md"
         },
         {
           "name": "shadcn",
           "description": "shadcn/ui expert guidance — CLI, component installation, composition patterns, custom registries, theming, Tailwind CSS integration, and high-quality interface design. Use when initializing shadcn, adding components, composing product UI, building custom registries, configuring t",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/shadcn/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/shadcn/SKILL.md"
         },
         {
           "name": "turbopack",
           "description": "Turbopack expert guidance. Use when configuring the Next.js bundler, optimizing HMR, debugging build issues, or understanding the Turbopack vs Webpack differences.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/turbopack/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/turbopack/SKILL.md"
         },
         {
           "name": "vercel-agent",
           "description": "Vercel Agent guidance — AI-powered code review, incident investigation, and SDK installation. Automates PR analysis and anomaly debugging. Use when configuring or understanding Vercel's AI development tools.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/vercel-agent/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/vercel-agent/SKILL.md"
         },
         {
           "name": "vercel-cli",
-          "description": "Vercel CLI expert guidance. Use when deploying, managing environment variables, linking projects, viewing logs, managing domains, or interacting with the Vercel platform from the command line.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/vercel-cli/SKILL.md"
+          "description": "Vercel CLI expert guidance. Use when deploying, managing environment variables, linking projects, viewing logs, querying metrics, managing domains, or interacting with the Vercel platform from the command line.",
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/vercel-cli/SKILL.md"
+        },
+        {
+          "name": "vercel-connect",
+          "description": "Vercel Connect expert guidance — securely obtain scoped OAuth tokens for third-party services (Slack, GitHub, MCP servers, OAuth, Snowflake) on behalf of apps or users via Vercel OIDC. Use when wiring up third-party API access, connecting to MCP servers, sending Slack messages, a",
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/vercel-connect/SKILL.md"
+        },
+        {
+          "name": "vercel-firewall",
+          "description": "Vercel Firewall expert guidance — automatic DDoS mitigation, the Vercel WAF (custom rules, IP blocking, managed rulesets, rate limiting), Attack Mode, system bypass, bot management, and the `vercel firewall` CLI. Use when configuring platform-level security, responding to attacks",
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/vercel-firewall/SKILL.md"
         },
         {
           "name": "vercel-functions",
           "description": "Vercel Functions expert guidance — Serverless Functions, Edge Functions, Fluid Compute, streaming, Cron Jobs, and runtime configuration. Use when configuring, debugging, or optimizing server-side code running on Vercel.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/vercel-functions/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/vercel-functions/SKILL.md"
         },
         {
           "name": "vercel-sandbox",
           "description": "Vercel Sandbox guidance — ephemeral Firecracker microVMs for running untrusted code safely. Supports AI agents, code generation, and experimentation. Use when executing user-generated or AI-generated code in isolation.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/vercel-sandbox/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/vercel-sandbox/SKILL.md"
         },
         {
           "name": "vercel-storage",
           "description": "Vercel storage expert guidance — Blob, Edge Config, and Marketplace storage (Neon Postgres, Upstash Redis). Use when choosing, configuring, or using data storage with Vercel applications.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/vercel-storage/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/vercel-storage/SKILL.md"
         },
         {
           "name": "verification",
           "description": "Full-story verification — infers what the user is building, then verifies the complete flow end-to-end: browser → API → data → response. Triggers on dev server start and 'why isn't this working' signals.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/verification/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/verification/SKILL.md"
         },
         {
           "name": "workflow",
           "description": "Vercel Workflow DevKit (WDK) expert guidance. Use when building durable workflows, long-running tasks, API routes or agents that need pause/resume, retries, step-based execution, or crash-safe orchestration with Vercel Workflow.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/3d9d9cd0fe5d1bdaedb891135a5c45f19190b83f/skills/workflow/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/workflow/SKILL.md"
         }
       ],
       "registryItemIds": [
         "plugin-vercel",
+        "skill-access-protected-vercel-deployment",
         "skill-ai-gateway",
         "skill-ai-sdk",
         "skill-auth",
         "skill-bootstrap",
+        "skill-cdn-caching",
         "skill-chat-sdk",
         "skill-deployments-cicd",
         "skill-env-vars",
+        "skill-eve",
         "skill-knowledge-update",
         "skill-marketplace",
+        "skill-microfrontends",
         "skill-next-cache-components",
         "skill-next-forge",
         "skill-next-upgrade",
@@ -16675,6 +16771,8 @@
         "skill-turbopack",
         "skill-vercel-agent",
         "skill-vercel-cli",
+        "skill-vercel-connect",
+        "skill-vercel-firewall",
         "skill-vercel-functions",
         "skill-vercel-sandbox",
         "skill-vercel-storage",
@@ -16684,15 +16782,19 @@
       ],
       "triggers": [
         "vercel",
+        "access-protected-vercel-deployment",
         "ai-gateway",
         "ai-sdk",
         "auth",
         "bootstrap",
+        "cdn-caching",
         "chat-sdk",
         "deployments-cicd",
         "env-vars",
+        "eve",
         "knowledge-update",
         "marketplace",
+        "microfrontends",
         "next-cache-components",
         "next-forge",
         "next-upgrade",
@@ -16704,6 +16806,8 @@
         "turbopack",
         "vercel-agent",
         "vercel-cli",
+        "vercel-connect",
+        "vercel-firewall",
         "vercel-functions",
         "vercel-sandbox",
         "vercel-storage",
