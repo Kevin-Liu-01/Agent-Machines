@@ -24,10 +24,13 @@ sprites install cells after the detached-work fix below.
 | codex | sprites | ok | 615 | 298 | 2890 | 9992 |
 | openclaw | sprites | ok | 1375 | 13595 | 12258 | 13151 |
 | hermes | sprites | ok | 536 | 4535 | 3868 | 18642 |
+| claude-code | dedalus | ok | 3232 | 11007 | 4947 | 4949 |
+| codex | dedalus | ok | 2957 | 12241 | 8183 | 8185 |
+| openclaw | dedalus | ok | 3115 | 25979 | 10723 | 10723 |
+| hermes | dedalus | ok | 3506 | 8729 | 12866 | 12869 |
 | all four | vercel | skipped | -- | -- | -- | -- |
-| all four | dedalus | skipped | -- | -- | -- | -- |
 
-**8 of 8 credentialed cells pass.** Every `ok` row returned the exact
+**12 of 12 credentialed cells pass.** Every `ok` row returned the exact
 sentinel text through the normalized event stream.
 
 Two cells changed character completely:
@@ -58,14 +61,42 @@ the error. The fix also made hermes on sprites 100x faster -- 4.5s
 foreground against 455s detached -- so the throttling had been silently
 taxing the cells that did pass.
 
-### The two uncredentialed substrates
+### Dedalus, added 2026-08-02
 
-`vercel` and `dedalus` report `skipped` with the exact missing variables --
-`VERCEL_TOKEN`/`VERCEL_TEAM_ID`/`VERCEL_PROJECT_ID` (or
-`VERCEL_OIDC_TOKEN`) and `DEDALUS_API_KEY`. Those 8 cells have never been
-run. They are implemented and unit-tested, not verified. Do not read
-`skipped` as passing: half the matrix is unproven and only credentials will
-change that.
+All four harnesses run on Dedalus. Two things worth recording.
+
+Its `create` is the slowest of the three working substrates (~3s against
+E2B's ~0.4s), which matches the batch-REST design: there is no streaming
+primitive, so every exec is submit-then-poll.
+
+**Teardown returns a vendor 500 that is not ours.** `destroy` answered:
+
+```
+500 failed to close storage usage before deleting machine spec
+  query latest storage bucket: usage ledger query returned 400:
+  column org_metering_buckets.stripe_submitted_at does not exist
+```
+
+That is a missing column in Dedalus's own metering ledger. The machine spec was
+deleted anyway -- a follow-up list showed only two pre-existing machines from
+June and May, so nothing leaked against the 5-machine Hobby quota. It did expose
+a real flaw in our own code, now fixed: `Mux.remove()` forgot the placement in a
+`finally`, so an ambiguous teardown failure would have made a possibly-alive
+machine invisible by name. It now forgets only when the substrate says the
+sandbox is gone, and rethrows otherwise so the removal can be retried.
+
+### Vercel Sandbox: the last 4 cells, blocked on a credential
+
+`vercel` still reports `skipped` with the exact missing variables. This is not
+an implementation gap -- the provider, its twelve declared capability axes and
+its no-wake lifecycle are written and unit-tested. It needs either
+`VERCEL_OIDC_TOKEN` or the `VERCEL_TOKEN`/`VERCEL_TEAM_ID`/`VERCEL_PROJECT_ID`
+triple, and both paths begin with an account authentication that an agent should
+not perform for a human. docs/VERCEL-SANDBOX-AUTH.md has the exact commands.
+
+The local machine does have a Vercel CLI credential store, and its token is
+expired (HTTP 403 `invalidToken`, lapsed 2026-07-25), so the flow has to be
+re-run rather than reused.
 
 ### Fixed: the hermes diagnostic leaked into the answer
 

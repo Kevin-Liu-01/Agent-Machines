@@ -894,17 +894,32 @@ export class Mux {
 		const remembered = this.rememberedOrThrow(name);
 		const provider = this.provider(remembered.substrate);
 		try {
+			let resumed = false;
 			if (provider.remove) {
 				await provider.remove(remembered.sandboxId);
+			} else {
+				// No no-wake teardown here: fall back, but report it, so a caller
+				// can tell a paid resume happened.
+				const handle = await provider.connect(remembered.sandboxId);
+				await handle.destroy();
+				resumed = true;
+			}
+			forgetMachine(name);
+			return { removed: true, resumed };
+		} catch (error) {
+			// Forget ONLY when the substrate says the sandbox is gone. Any other
+			// failure may leave it alive and billing, and a placement that has
+			// been forgotten cannot be retried by name -- which is how a machine
+			// becomes the invisible orphan of POSTMORTEM-2026-05-18 item 5.
+			// Measured on Dedalus 2026-08-02: destroy returned a 500 from the
+			// vendor's own metering ledger ("column
+			// org_metering_buckets.stripe_submitted_at does not exist"), which
+			// says nothing about whether the machine survived.
+			if (error instanceof MuxError && error.kind === "fatal" && /not found/i.test(error.message)) {
+				forgetMachine(name);
 				return { removed: true, resumed: false };
 			}
-			// No no-wake teardown on this substrate: fall back, but say so, so a
-			// caller can tell a paid resume happened.
-			const handle = await provider.connect(remembered.sandboxId);
-			await handle.destroy();
-			return { removed: true, resumed: true };
-		} finally {
-			forgetMachine(name);
+			throw error;
 		}
 	}
 

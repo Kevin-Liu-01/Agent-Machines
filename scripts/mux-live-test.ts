@@ -15,9 +15,26 @@ import { createMux } from "../src/mux/index.js";
 import type { HarnessKind, SubstrateKind } from "../src/mux/index.js";
 
 const ROOT = resolve(import.meta.dirname, "..");
-for (const line of readFileSync(resolve(ROOT, ".env"), "utf8").split("\n")) {
-	const match = line.match(/^([A-Z0-9_]+)=(.+)$/);
-	if (match && !process.env[match[1]]) process.env[match[1]] = match[2].trim();
+// Both files, because they carry different credentials: .env holds the
+// substrate and model keys, while `vercel env pull` writes VERCEL_OIDC_TOKEN
+// into web/.env.local (see docs/VERCEL-SANDBOX-AUTH.md). Reading only the first
+// left the vercel lane reporting "missing credentials" even after a successful
+// login, which looks like a code problem and is not one. Missing files are
+// skipped: neither is required.
+for (const file of [".env", "web/.env.local"]) {
+	let text: string;
+	try {
+		text = readFileSync(resolve(ROOT, file), "utf8");
+	} catch {
+		continue;
+	}
+	for (const line of text.split("\n")) {
+		const match = line.match(/^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.+)$/);
+		if (!match) continue;
+		// Strip surrounding quotes: `vercel env pull` quotes its values.
+		const value = match[2].trim().replace(/^(['"])(.*)\1$/, "$2");
+		if (!process.env[match[1]]) process.env[match[1]] = value;
+	}
 }
 
 const args = process.argv.slice(2);
