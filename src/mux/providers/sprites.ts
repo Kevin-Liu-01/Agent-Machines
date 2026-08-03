@@ -208,10 +208,10 @@ function loadSprites(): Promise<typeof import("@fly/sprites")> {
 		spritesModulePromise = import("@fly/sprites").catch((error: unknown) => {
 			spritesModulePromise = null;
 			// Only a resolution failure means "not installed". Discarding the
-			// error (this used to be `void error`) is how the e2b lane spent a
-			// release telling people to reinstall a dependency that was already
-			// installed while the real ERR_REQUIRE_ESM was thrown away -- see
-			// the loadSdk note in ./e2b.ts, measured 2026-08-02.
+			// error (this used to be `void error`) is how the e2b lane told the
+			// deployed dashboard to reinstall a dependency that was already
+			// installed, while the real ERR_REQUIRE_ESM went in the bin -- the
+			// 2026-08-02 incident, see the loadSdk note in ./e2b.ts.
 			const code =
 				error && typeof error === "object" && "code" in error
 					? String((error as { code?: unknown }).code)
