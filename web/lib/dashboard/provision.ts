@@ -26,6 +26,15 @@ export type CreateMachineOpts = {
 	gatewayProfileId?: string | null;
 	/** Optional saved environment profile whose vars are installed on the VM. */
 	environmentProfileId?: string | null;
+	/**
+	 * Point the user at the new machine (activeMachineId + setupStep). Default
+	 * true -- the wizard/deploy behavior. Migration passes false: flipping the
+	 * active machine to an UNVERIFIED target before copy/verify would violate
+	 * "a failure at any step leaves the original machine intact and
+	 * addressable" -- the record is still upserted, so a crashed migration
+	 * leaves a VISIBLE, destroyable machine, never an invisible orphan.
+	 */
+	activate?: boolean;
 };
 
 export type CreatedMachine = { machineId: string; phase: string; state: string };
@@ -82,8 +91,9 @@ export async function createMachineForConfig(
 	};
 	await setUserConfig({
 		upsertMachine: ref,
-		activeMachineId: ref.id,
-		setupStep: "provisioned",
+		...(opts.activate === false
+			? {}
+			: { activeMachineId: ref.id, setupStep: "provisioned" as const }),
 	});
 	return { machineId: ref.id, phase: result.rawPhase, state: result.state };
 }

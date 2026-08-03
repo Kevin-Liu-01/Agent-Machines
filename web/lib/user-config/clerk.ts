@@ -30,6 +30,7 @@ import { getDevUserConfig, setDevUserConfig } from "./dev-store";
 import { getEffectiveUserId, isDevUserId } from "./identity";
 import {
 	BOOTSTRAP_PHASES,
+	MIGRATION_STEPS,
 	DEFAULT_MACHINE_SPEC,
 	DEFAULT_MODEL,
 	DEFAULT_USER_CONFIG,
@@ -56,6 +57,9 @@ import {
 	type LoadoutSourceKind,
 	type MachineRef,
 	type MachineSpec,
+	type MigrationReport,
+	type MigrationState,
+	type MigrationStepId,
 	type AiProviderKeys,
 	type ProviderCredentials,
 	type ProviderKind,
@@ -177,6 +181,45 @@ function asBootstrapState(value: unknown): BootstrapState {
 	};
 }
 
+const KNOWN_MIGRATION_STEPS: ReadonlySet<MigrationStepId> = new Set(MIGRATION_STEPS);
+
+/**
+ * Defensive parse for MachineRef.migrationState. Returns undefined (field
+ * absent) rather than an initial state when nothing is stored, so a machine
+ * that has never migrated does not grow a phantom "idle" record.
+ */
+function asMigrationState(value: unknown): MigrationState | undefined {
+	if (!value || typeof value !== "object") return undefined;
+	const raw = value as Record<string, unknown>;
+	const phase = asString(raw.phase);
+	const allowed = new Set(["idle", "running", "succeeded", "failed"]);
+	if (!allowed.has(phase ?? "")) return undefined;
+	const stepRaw = asString(raw.step);
+	const target = asString(raw.targetSubstrate);
+	return {
+		phase: phase as MigrationState["phase"],
+		step:
+			stepRaw && KNOWN_MIGRATION_STEPS.has(stepRaw as MigrationStepId)
+				? (stepRaw as MigrationStepId)
+				: null,
+		startedAt: asString(raw.startedAt) ?? null,
+		finishedAt: asString(raw.finishedAt) ?? null,
+		lastError: asString(raw.lastError) ?? null,
+		targetSubstrate:
+			target && KNOWN_PROVIDERS.has(target as ProviderKind)
+				? (target as ProviderKind)
+				: null,
+		newMachineId: asString(raw.newMachineId) ?? null,
+		// The report is written only by our own orchestrator; passing it through
+		// (rather than re-validating every list) keeps the parse honest without
+		// retyping the state-move contract here.
+		report:
+			raw.report && typeof raw.report === "object"
+				? (raw.report as MigrationReport)
+				: null,
+	};
+}
+
 function asMachineRefShallow(value: unknown): Omit<MachineRef, "apiKey"> | null {
 	if (!value || typeof value !== "object") return null;
 	const v = value as Record<string, unknown>;
@@ -196,6 +239,7 @@ function asMachineRefShallow(value: unknown): Omit<MachineRef, "apiKey"> | null 
 		createdAt: asString(v.createdAt) ?? new Date().toISOString(),
 		apiUrl: asString(v.apiUrl) ?? null,
 		bootstrapState: asBootstrapState(v.bootstrapState),
+		migrationState: asMigrationState(v.migrationState),
 		archived: v.archived === true,
 	};
 }

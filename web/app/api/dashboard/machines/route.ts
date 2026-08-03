@@ -78,6 +78,7 @@ async function probe(
 		createdAt: machine.createdAt,
 		apiUrl: machine.apiUrl,
 		bootstrapState: machine.bootstrapState,
+		migrationState: machine.migrationState,
 		archived: machine.archived,
 		hasApiKey: Boolean(machine.apiKey),
 	};

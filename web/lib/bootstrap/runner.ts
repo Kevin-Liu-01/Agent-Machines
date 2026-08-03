@@ -631,32 +631,35 @@ function commandFor(
 		case "configure-hermes": {
 			// Sprites proxies the sprite URL to port 8080; E2B uses per-port URLs
 			const gwPort = isSprites ? 8080 : HERMES_PORT;
-			if (agent === "openclaw") {
-				const ocPort = isSprites ? 8080 : OPENCLAW_PORT;
-				return configureOpenClaw(
-					model,
-					gatewayKey,
-					upstreamApiKey,
-					upstreamBaseUrl,
-					p,
-					machine,
-					config,
-					ocPort,
-					upstream.baseUrl,
-				);
-			}
-			if (agent === "claude-code" || agent === "codex") {
-				return configureCliAgent(
-					agent,
-					upstream.key,
-					upstream.baseUrl,
-					p,
-					isSandbox,
-					machine,
-					config,
-				);
-			}
-			return configureHermes(model, gatewayKey, upstreamApiKey, upstreamBaseUrl, p, gwPort, upstream.baseUrl);
+			const configured =
+				agent === "openclaw"
+					? configureOpenClaw(
+							model,
+							gatewayKey,
+							upstreamApiKey,
+							upstreamBaseUrl,
+							p,
+							machine,
+							config,
+							isSprites ? 8080 : OPENCLAW_PORT,
+							upstream.baseUrl,
+						)
+					: agent === "claude-code" || agent === "codex"
+						? configureCliAgent(
+								agent,
+								upstream.key,
+								upstream.baseUrl,
+								p,
+								isSandbox,
+								machine,
+								config,
+							)
+						: configureHermes(model, gatewayKey, upstreamApiKey, upstreamBaseUrl, p, gwPort, upstream.baseUrl);
+			// Joined with "\n", never " && ": configureHermes ends in a heredoc,
+			// and "EOF && ..." never terminates one (the writeRemoteFile rule).
+			// The rewrite keeps the tmux console honest after an agent swap --
+			// terminal-session.ts relaunches the REMEMBERED desiredAgentKind.
+			return [configured, terminalAgentRewriteCommand(agent, p.APP_HOME)].join("\n");
 		}
 		case "register-cursor-mcp":
 			// buildMcpRegisterShell writes into hermes' config.yaml via the hermes
@@ -730,6 +733,62 @@ type GatewayConfig = {
 	startCmd: string;
 };
 
+/**
+ * Every gateway command pattern any agent on this box may have started --
+ * BOTH of them, not just the current agentKind's. An agent swap (POST
+ * machines/[id]/agent -> force bootstrap) leaves the OLD agent's gateway
+ * running: on Sprites both agents bind port 8080 (gatewayConfigFor), so a
+ * port-only readiness probe returns a FALSE "ready" from the lingering old
+ * gateway and the swap reports succeeded on the old agent's socket; on
+ * E2B/Vercel the ports differ, so instead of a false ready the two gateways
+ * double-run. Killing only the new agent's pattern (the pre-2026-08-03
+ * behavior) fixes neither.
+ */
+export const GATEWAY_KILL_PATTERNS = [
+	"openclaw gateway run",
+	"hermes gateway",
+] as const;
+
+/** One kill that clears every agent's gateway before (re)starting one. */
+export function killAllGatewaysCommand(): string {
+	const pattern = GATEWAY_KILL_PATTERNS.join("|");
+	return `ps -eo pid,cmd 2>/dev/null | awk '/${pattern}/ && !/awk/ {print \\$1}' | xargs -r kill 2>/dev/null || true`;
+}
+
+/**
+ * Readiness probe that cannot be satisfied by the OLD agent's gateway: the
+ * port must be listening AND a process matching the NEW agent's own command
+ * pattern must exist. A bare `ss | grep :port` cannot tell whose gateway
+ * answered -- the sprites-8080 false-ready trap above.
+ */
+export function gatewayReadyProbeCommand(port: number, ownPattern: string): string {
+	return (
+		`ss -ltn 2>/dev/null | grep -q ":${port} " && ` +
+		`ps -eo cmd 2>/dev/null | grep -F '${ownPattern}' | grep -v grep >/dev/null 2>&1 && ` +
+		`echo ready || echo waiting`
+	);
+}
+
+/**
+ * Rewrite the remembered console agent after a swap. terminal-session.ts
+ * re-launches the REMEMBERED desiredAgentKind on tmux restore, so after an
+ * agent swap the console would relaunch the old harness forever. Only the
+ * kind is rewritten (sed, to a temp file then mv -- `sed -i` differs between
+ * BSD and GNU); status/updatedAt are preserved so a live console session's
+ * state is not clobbered.
+ */
+export function terminalAgentRewriteCommand(
+	agentKind: MachineRef["agentKind"],
+	appHome: string,
+): string {
+	const stateFile = `${appHome}/state/terminal-agent.json`;
+	return (
+		`if [ -f ${stateFile} ]; then ` +
+		`sed 's/"desiredAgentKind"[[:space:]]*:[[:space:]]*"[^"]*"/"desiredAgentKind":"${agentKind}"/' ${stateFile} > ${stateFile}.am-swap && ` +
+		`mv ${stateFile}.am-swap ${stateFile}; fi`
+	);
+}
+
 function gatewayConfigFor(machine: MachineRef, paths: BootstrapPaths): GatewayConfig {
 	if (machine.agentKind === "openclaw") {
 		const port = machine.providerKind === "sprites" ? 8080 : OPENCLAW_PORT;
@@ -764,18 +823,22 @@ async function startGatewaySandbox(
 	const probeTimeoutMs = isSprites ? 25_000 : 5_000;
 	const cleanupTimeoutMs = isSprites ? 25_000 : 10_000;
 
+	// Pattern-aware probe: "the port answers" is not "MY gateway answers".
+	// See gatewayReadyProbeCommand -- the sprites-8080 false-ready trap.
 	const alreadyUp = await provider.exec(
 		machine.id,
-		`ss -ltn 2>/dev/null | grep -q ":${gw.port} " && echo ready || echo waiting`,
+		gatewayReadyProbeCommand(gw.port, gw.killPattern),
 		{ timeoutMs: isSprites ? 25_000 : 15_000 },
 	);
 	if (alreadyUp.stdout.trim() === "ready") return;
 
-	// 1. Kill existing gateway
+	// 1. Kill EVERY agent's gateway, not just this agentKind's -- an agent
+	// swap leaves the old harness's gateway alive (false ready on sprites,
+	// double-run on e2b/vercel; see GATEWAY_KILL_PATTERNS).
 	await provider.exec(machine.id, [
 		"set -e",
 		gw.envSetup,
-		`ps -eo pid,cmd 2>/dev/null | awk '/${gw.killPattern}/ && !/awk/ {print \\$1}' | xargs -r kill 2>/dev/null || true`,
+		killAllGatewaysCommand(),
 		"sleep 1",
 		`mkdir -p ${paths.MACHINE_HOME}/logs/services`,
 	].join(" && "), { timeoutMs: cleanupTimeoutMs });
@@ -797,11 +860,13 @@ async function startGatewaySandbox(
 		).catch(() => {});
 	}
 
-	// 3. Poll for readiness instead of blind sleep
+	// 3. Poll for readiness instead of blind sleep. Same pattern-aware probe:
+	// only the gateway we just started can satisfy it, because step 1 killed
+	// every other agent's gateway.
 	const MAX_POLLS = isSprites ? 12 : 45;
 	for (let i = 0; i < MAX_POLLS; i++) {
 		const probe = await provider.exec(machine.id,
-			`ss -ltn 2>/dev/null | grep -q ":${gw.port}" && echo ready || echo waiting`,
+			gatewayReadyProbeCommand(gw.port, gw.killPattern),
 			{ timeoutMs: probeTimeoutMs },
 		);
 		if (probe.stdout.trim() === "ready") return;

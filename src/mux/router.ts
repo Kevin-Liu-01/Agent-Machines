@@ -12,6 +12,7 @@
  * everywhere else).
  */
 
+import { randomUUID } from "node:crypto";
 import { loadMuxConfig, resolveMuxConfig, type MuxConfig, type MuxConfigInput } from "./config.js";
 import { LineBuffer, type MuxAgentEvent, type RunResult } from "./events.js";
 import { getHarness } from "./harnesses/index.js";
@@ -23,6 +24,7 @@ import {
 	readMuxStateAsync,
 	rememberMachineAsync,
 	saveHealthAsync,
+	type RememberedMachine,
 } from "./state.js";
 import { SubstrateHealth, outcomeForError } from "./health.js";
 import {
@@ -58,6 +60,22 @@ import {
 	type SandboxProvider,
 	type SubstrateKind,
 } from "./types.js";
+import {
+	MIGRATION_MARKER_PATH,
+	MOVE_ALLOWLIST,
+	MOVE_NOTES,
+	REDERIVED,
+	buildExportCommand,
+	exportTar,
+	lostState,
+	probeIncludes,
+	readHome,
+	restoreTar,
+	verifyMarker,
+	writeMarker,
+	DEFAULT_TAR_TIMEOUT_MS,
+	type MigrationMarker,
+} from "./statemove.js";
 
 export type MuxCreateOptions = {
 	agent?: HarnessKind;
@@ -138,6 +156,102 @@ export type ScoredRouteAttempt = RouteAttempt & {
 
 export type RunStream = AsyncIterable<MuxAgentEvent> & {
 	result(): Promise<RunResult>;
+};
+
+/**
+ * One claim key per machine for BOTH placement-mutating verbs (switchAgent and
+ * migrate), so they exclude each other, not just themselves. Two functions
+ * deriving "their own" key from the same name is how the cross-verb race
+ * shipped the first time.
+ */
+function machineOpClaimKey(name: string): string {
+	return `am-machine-op:${name}`;
+}
+
+/**
+ * What `Mux.switchAgent()` proved before it flipped the placement.
+ *
+ * The agent router's half of the product's two verbs: the sandbox and its
+ * load stay put, the harness that ANSWERS on it changes. `migrate()` is the
+ * other half. The two never compose in one call -- "hermes on sprites,
+ * starting from openclaw on e2b" is switchAgent then migrate (or vice
+ * versa), so each step has exactly one point of no return.
+ */
+export type SwitchReport = {
+	name: string;
+	substrate: SubstrateKind;
+	sandboxId: string;
+	from: HarnessKind;
+	to: HarnessKind;
+	/** False when from === to: an idempotent no-op, still probed. */
+	changed: boolean;
+	/** False = the harness was already present (the fast rollback path). */
+	installed: boolean;
+	/** The versionCommand that proved the harness answers. */
+	probe: { command: string };
+	/**
+	 * Whether connecting resumed a parked sandbox, read from the provider's
+	 * no-wake describe() BEFORE connecting. "unknown" where the substrate has
+	 * no describe -- never invented.
+	 */
+	woke: boolean | "unknown";
+};
+
+export type MigrateStep = {
+	step: "gate" | "provision" | "install" | "export" | "restore" | "verify" | "commit" | "source";
+	detail?: string;
+};
+
+export type MigrateOptions = {
+	to: SubstrateKind;
+	/** Ship the $HOME-relative file state (default). `false` = fresh box,
+	 * same agent, same name, and the report's `lost` list says everything
+	 * file-shaped was left behind. */
+	moveState?: boolean;
+	/** What happens to the OLD sandbox after commit. Default "destroy":
+	 * park does not exist on sprites/dedalus and always-on substrates bill
+	 * while parked, so a default that silently accrues cost fails closed
+	 * the wrong way. The copied state plus an intact source until commit is
+	 * the rollback story; the cautious caller opts into park/keep. */
+	source?: "destroy" | "park" | "keep";
+	env?: Record<string, string>;
+	resources?: { vcpu?: number; memoryMib?: number; diskGib?: number };
+	template?: string;
+	onProgress?: (step: MigrateStep) => void;
+};
+
+/**
+ * What `Mux.migrate()` moved, re-derived, lost, and did with the source.
+ * The report IS the API surface: what moved and what did not is returned,
+ * not logged, because a migration whose losses are only in a log is a
+ * migration that over-claims.
+ */
+export type MigrateReport = {
+	name: string;
+	/** migrate never changes the agent; switchAgent is the other verb. */
+	agent: HarnessKind;
+	from: { substrate: SubstrateKind; sandboxId: string };
+	to: { substrate: SubstrateKind; sandboxId: string };
+	state: {
+		moved: string[];
+		rederived: string[];
+		lost: string[];
+		skipped: Array<{ path: string; reason: string }>;
+		bytes: number;
+		/** Named unknowns (unverified vendor layouts), never silent promises. */
+		notes: string[];
+	};
+	verified: {
+		probe: string;
+		/** "skipped" only when moveState: false. */
+		marker: boolean | "skipped";
+	};
+	/** `error` names an orphaned sandbox, never silently. A post-commit
+	 * source failure does NOT fail the migration: the load is already safe
+	 * on the new sandbox. */
+	source: { action: "destroyed" | "parked" | "kept"; resumed?: boolean; error?: string };
+	/** The pinned-lane record, same shape create() produces. */
+	attempts: RouteAttempt[];
 };
 
 
@@ -256,14 +370,18 @@ export class MuxMachine {
 	 * outlived E2B's sandbox budget and tripped Sprites' WebSocket
 	 * keepalive. Detach-and-poll makes install duration independent of
 	 * any connection limit, and the sentinel makes it idempotent.
+	 *
+	 * Returns whether an install actually ran: `installed: false` is the
+	 * probe-passed fast path, which is what makes switchAgent's rollback
+	 * ("switch back to the old harness") seconds instead of minutes.
 	 */
 	async ensureInstalled(
 		options: { timeoutMs?: number; pollMs?: number } = {},
-	): Promise<void> {
+	): Promise<{ installed: boolean }> {
 		const probe = await this.sandbox.exec(this.harness.isInstalledCommand(), {
 			timeoutMs: 30_000,
 		});
-		if (probe.exitCode === 0) return;
+		if (probe.exitCode === 0) return { installed: false };
 
 		const budgetMs =
 			options.timeoutMs ?? this.harness.installBudgetMs ?? INSTALL_BUDGET_MS;
@@ -299,7 +417,7 @@ export class MuxMachine {
 					{ substrate: this.substrate, harness: this.harness.kind },
 				);
 			}
-			return;
+			return { installed: true };
 		}
 
 		const tag = `${this.harness.kind}-${Date.now().toString(36)}`;
@@ -347,6 +465,31 @@ export class MuxMachine {
 				{ substrate: this.substrate, harness: this.harness.kind },
 			);
 		}
+		return { installed: true };
+	}
+
+	/**
+	 * Prove the harness ANSWERS, not merely that its install exited 0.
+	 *
+	 * `isInstalledCommand` is a `command -v` existence check; a binary can
+	 * exist and still fail its own startup (wrong node ABI, half-written
+	 * venv). switchAgent and migrate both refuse to persist a placement whose
+	 * harness cannot answer this probe, because a placement pointing at a
+	 * mute harness is a machine the dashboard says is ready and is not.
+	 */
+	async probe(): Promise<{ command: string }> {
+		const command = this.harness.versionCommand();
+		const result = await this.sandbox.exec(command, { timeoutMs: 30_000 });
+		if (result.exitCode !== 0) {
+			throw new MuxError(
+				"fatal",
+				`${this.harness.kind} installed but does not answer on ${this.substrate} (exit ${result.exitCode}): ${
+					(result.stderr || result.stdout).trim().slice(-500)
+				}`,
+				{ substrate: this.substrate, harness: this.harness.kind },
+			);
+		}
+		return { command };
 	}
 
 	private async tailInstallLog(log: string): Promise<string> {
@@ -1031,6 +1174,15 @@ export class Mux {
 		return remembered;
 	}
 
+	/**
+	 * Reconnect to a machine created earlier with a name.
+	 *
+	 * The `agent` override is PER-CONNECTION and ephemeral: it changes which
+	 * harness this handle drives, but it installs nothing and writes nothing
+	 * -- the placement still remembers the old agent, and the next
+	 * connect(name) gets the old harness back. Use `switchAgent()` when the
+	 * change should install, be verified, and persist.
+	 */
 	async connect(name: string, agent?: HarnessKind): Promise<MuxMachine> {
 		const remembered = (await readMuxStateAsync()).machines[name];
 		if (!remembered) {
@@ -1045,6 +1197,442 @@ export class Mux {
 			config: this.config,
 			name,
 		});
+	}
+
+	/**
+	 * Switch which harness answers on a remembered machine -- the agent
+	 * router's persisting verb.
+	 *
+	 * The sandbox and its load stay put; the target harness is installed
+	 * (reusing ensureInstalled's budgets, the detached-poll path, and the
+	 * sprites foreground-install trap unchanged), proven to ANSWER via its
+	 * version probe, and only then written to the placement. Every failure
+	 * before that write leaves the placement byte-identical, so a broken
+	 * switch can never relabel a machine whose new harness does not run --
+	 * the exact defect the hosted PATCH-agentKind path had (it rewrote the
+	 * record and never touched the sandbox).
+	 *
+	 * The old harness is NEVER uninstalled. Rollback is therefore
+	 * switchAgent(name, oldAgent): the isInstalled probe passes, the version
+	 * probe re-proves it, and the placement flips back -- seconds, no
+	 * install.
+	 *
+	 * A parked sandbox IS woken: describe() exists because reads must not
+	 * wake, but a switch is a write and is meaningless against a stopped
+	 * filesystem -- installing needs a running sandbox. Failing on parked
+	 * would make switchAgent unusable on every idle machine; a caller who
+	 * cares about the wake cost calls mux.describe(name) first. Where the
+	 * provider has describe(), it is read pre-connect to fill the report's
+	 * `woke`; where not, "unknown" -- never invented.
+	 */
+	async switchAgent(
+		name: string,
+		agent: HarnessKind,
+		options: { timeoutMs?: number; pollMs?: number } = {},
+	): Promise<SwitchReport> {
+		const remembered = await this.rememberedOrThrow(name);
+		// Fail closed BEFORE connect: a harness with no drivable upstream must
+		// not cost a wake (the same gate create() runs before provisioning).
+		this.assertUpstream(agent);
+
+		// Same claim key as migrate(), so the two verbs exclude each other per
+		// machine. Without it, this method's install window (6s to the full
+		// 15-minute budget) is long enough for a migrate to commit and destroy
+		// the source sandbox -- and the placement write below would then
+		// resurrect a pointer to the destroyed box while the load sits
+		// unreachable on the new one.
+		const claimKey = machineOpClaimKey(name);
+		if (claim(claimKey) !== "claimed") {
+			throw new MuxError(
+				"transient",
+				`another migrate/switch of "${name}" is already in flight; retry after it settles`,
+			);
+		}
+		try {
+			return await this.switchAgentClaimed(name, agent, remembered, options);
+		} finally {
+			releaseClaim(claimKey);
+		}
+	}
+
+	private async switchAgentClaimed(
+		name: string,
+		agent: HarnessKind,
+		remembered: RememberedMachine,
+		options: { timeoutMs?: number; pollMs?: number },
+	): Promise<SwitchReport> {
+		const provider = this.provider(remembered.substrate);
+		let woke: boolean | "unknown" = "unknown";
+		if (provider.describe) {
+			try {
+				const state = (await provider.describe(remembered.sandboxId)).state;
+				if (state === "sleeping") woke = true;
+				else if (state === "ready") woke = false;
+			} catch {
+				// Informational only: connect() below is the authoritative
+				// operation, and its error is the one worth surfacing.
+			}
+		}
+
+		const sandbox = await provider.connect(remembered.sandboxId);
+		const machine = new MuxMachine({
+			sandbox,
+			harness: getHarness(agent),
+			config: this.config,
+			name,
+		});
+		const { installed } = await machine.ensureInstalled({
+			timeoutMs: options.timeoutMs,
+			pollMs: options.pollMs,
+		});
+		// Install success without an answering harness never persists: probe
+		// throws before the placement write, so the record cannot claim an
+		// agent that does not run.
+		const probe = await machine.probe();
+
+		// Re-read before committing. The claim already excludes migrate() in
+		// this process and any other process using the same claims directory;
+		// this guards the remaining writers (a raw rememberMachine/forget from
+		// a script, a second host with a different claims dir). The stale
+		// snapshot must never be re-asserted over a placement that moved.
+		const current = (await readMuxStateAsync()).machines[name];
+		if (!current) {
+			throw new MuxError(
+				"fatal",
+				`"${name}" was removed while switching agents; the ${agent} install on ${remembered.substrate}/${remembered.sandboxId} is orphaned but the placement was already gone`,
+			);
+		}
+		if (
+			current.substrate !== remembered.substrate ||
+			current.sandboxId !== remembered.sandboxId
+		) {
+			throw new MuxError(
+				"fatal",
+				`"${name}" moved to ${current.substrate}/${current.sandboxId} while switching agents on ${remembered.substrate}/${remembered.sandboxId}; re-run switchAgent against the new placement`,
+			);
+		}
+
+		const changed = agent !== current.agent;
+		if (changed) {
+			// The store's per-key upsert is the atomic commit. If this write
+			// fails the error propagates and the placement is unchanged (the
+			// store refused atomically); the new harness staying installed is
+			// harmless -- installs are idempotent -- and a retry hits the
+			// isInstalled fast path and just flips the record.
+			await rememberMachineAsync(name, {
+				substrate: current.substrate,
+				sandboxId: current.sandboxId,
+				agent,
+			});
+		}
+		return {
+			name,
+			substrate: current.substrate,
+			sandboxId: current.sandboxId,
+			from: remembered.agent,
+			to: agent,
+			changed,
+			installed,
+			probe,
+			woke,
+		};
+	}
+
+	/**
+	 * Move a remembered machine's load to another substrate -- the sandbox
+	 * router's persisting verb.
+	 *
+	 * The name and the agent survive; the sandboxId changes. What moves is
+	 * the $HOME-relative FILE state (src/mux/statemove.ts is the one source
+	 * of truth for the list); toolchains and credentials are re-derived, and
+	 * running processes are declared lost in the report. This is never
+	 * marketed as full-disk or live migration: fork is unexposed on every
+	 * substrate and e2b's RAM snapshot cannot leave the vendor.
+	 *
+	 * POINT OF NO RETURN = the rememberMachineAsync at the commit step. The
+	 * state is COPIED, never destructively moved, so every failure before
+	 * commit destroys the NEW sandbox best-effort and leaves the ORIGINAL
+	 * placement intact and addressable. The old sandbox is touched
+	 * destructively only AFTER the commit -- and by its raw id through the
+	 * provider, never via mux.remove(name), because the name now points at
+	 * the new sandbox.
+	 */
+	async migrate(name: string, options: MigrateOptions): Promise<MigrateReport> {
+		const remembered = await this.rememberedOrThrow(name);
+		// migrate never changes the agent; switchAgent is the other verb, and
+		// composing both in one call would create two points of no return.
+		const agent = remembered.agent;
+		if (options.to === remembered.substrate) {
+			throw new MuxError(
+				"fatal",
+				`"${name}" is already on ${options.to}; migrate moves between substrates, and a same-lane rebuild reported as a migration would lie. Rebuild/refresh is a different operation.`,
+				{ substrate: options.to },
+			);
+		}
+		const progress = options.onProgress ?? (() => {});
+		progress({
+			step: "gate",
+			detail: `${agent} from ${remembered.substrate}:${remembered.sandboxId} to ${options.to}`,
+		});
+
+		// One migration per name at a time, via the same exclusive-create
+		// registry run keys use (traces.ts). Two concurrent migrations would
+		// race the commit and one would destroy a sandbox the other just
+		// committed to.
+		//
+		// The key is shared with switchAgent, not migrate-private: the verbs
+		// race EACH OTHER too. A switch that snapshots the placement, spends
+		// 6s-15min in connect+install, and then re-asserts its stale snapshot
+		// would silently clobber a migrate that committed and destroyed the
+		// source inside that window -- placement pointing at a destroyed
+		// sandbox, the migrated load stranded live but unreachable, both verbs
+		// reporting success. (Found by an adversarial review 2026-08-03; the
+		// hosted plane already 409s on exactly this overlap.)
+		const claimKey = machineOpClaimKey(name);
+		if (claim(claimKey) !== "claimed") {
+			throw new MuxError(
+				"transient",
+				`another migrate/switch of "${name}" is already in flight; retry after it settles`,
+			);
+		}
+		try {
+			const moveState = options.moveState !== false;
+			const plan = MOVE_ALLOWLIST(agent);
+
+			// Credential + upstream gate AND target provisioning in one step,
+			// by delegating to create() with the lane pinned: an uncredentialed
+			// target throws missing_credentials naming the exact missing keys
+			// BEFORE the source is connected or woken; install reuses budgets
+			// and the sprites foreground trap; health and attempts are
+			// recorded; and a post-provision install failure already tears the
+			// fresh sandbox down (create()'s provisioned-teardown branch).
+			// Deliberately NO name: a named create would rememberMachineAsync
+			// BEFORE verification, clobbering the placement -- the exact
+			// premature commit this ordering exists to prevent.
+			progress({ step: "provision", detail: `pinned lane ${options.to}, via create()` });
+			const target = await this.create({
+				agent,
+				sandbox: options.to,
+				install: true,
+				env: options.env,
+				resources: options.resources,
+				template: options.template,
+			});
+			progress({ step: "install", detail: `${agent} installed inside create()` });
+			const newId = target.sandbox.id;
+			const attempts: ScoredRouteAttempt[] = [...target.attempts];
+
+			const marker: MigrationMarker = {
+				name,
+				fromSubstrate: remembered.substrate,
+				fromSandboxId: remembered.sandboxId,
+				nonce: randomUUID(),
+				at: new Date().toISOString(),
+			};
+			let moved: string[] = [];
+			let skipped: Array<{ path: string; reason: string }> = [];
+			let bytes = 0;
+			let markerVerified: boolean | "skipped" = "skipped";
+			let probeCommand = "";
+
+			try {
+				if (moveState) {
+					progress({
+						step: "export",
+						detail: `allowlist tar off ${remembered.substrate}:${remembered.sandboxId}`,
+					});
+					// Connecting WAKES a parked source; a migration is a write
+					// and cannot read a stopped filesystem.
+					const source = await this.provider(remembered.substrate).connect(
+						remembered.sandboxId,
+					);
+					if (source.keepAlive) {
+						try {
+							// The export must outlive the source's idle budget;
+							// failure to extend surfaces later as a transient
+							// export error, which is retryable.
+							await source.keepAlive(DEFAULT_TAR_TIMEOUT_MS + 120_000);
+						} catch {
+							// Best effort.
+						}
+					}
+					const oldHome = await readHome(source);
+					// The ONLY source mutation before commit: additive and
+					// harmless. Written before the tar so it rides it.
+					await writeMarker(source, marker);
+					const presence = await probeIncludes(source, plan.include);
+					// The marker is the verification vehicle, not user load;
+					// reporting it under `moved` would pad the list.
+					moved = presence.present.filter((path) => path !== MIGRATION_MARKER_PATH);
+					skipped = presence.skipped;
+					const tarPath = `/tmp/am-migrate-${marker.nonce}.tgz`;
+					const build = await source.exec(
+						buildExportCommand({ include: presence.present, exclude: plan.exclude }, tarPath),
+						{ timeoutMs: DEFAULT_TAR_TIMEOUT_MS },
+					);
+					if (build.exitCode !== 0) {
+						throw new MuxError(
+							"transient",
+							`state export tar failed on ${remembered.substrate} (exit ${build.exitCode}): ${
+								(build.stderr || build.stdout).trim().slice(-500)
+							}`,
+							{ substrate: remembered.substrate, harness: agent },
+						);
+					}
+					const exported = await exportTar(source, tarPath, { include: presence.present });
+					bytes = exported.bytes.length;
+					// Best-effort tidy; the tar under /tmp is already declared
+					// lost state and costs nothing if it stays.
+					await source.exec(`rm -f '${tarPath}'`, { timeoutMs: 30_000 }).catch(() => {});
+
+					progress({ step: "restore", detail: `${bytes} bytes onto ${options.to}:${newId}` });
+					await restoreTar(target.sandbox, exported.bytes, {
+						sha256: exported.sha256,
+						agent,
+						...(oldHome ? { oldHome } : {}),
+					});
+				}
+
+				progress({ step: "verify" });
+				probeCommand = (await target.probe()).command;
+				if (moveState) {
+					const verdict = await verifyMarker(target.sandbox, marker);
+					if (!verdict.ok) {
+						throw new MuxError(
+							"fatal",
+							`migration marker check failed on ${options.to}: ${verdict.reason}`,
+							{ substrate: options.to, harness: agent },
+						);
+					}
+					markerVerified = true;
+				}
+
+				// COMMIT -- the point of no return. The store's per-key upsert
+				// is atomic: readers see the old placement or the new one,
+				// never a gap. A failed write lands in the catch below, which
+				// destroys the NEW sandbox -- safe, because the state was
+				// copied and the source still holds everything.
+				progress({ step: "commit", detail: `"${name}" -> ${options.to}:${newId}` });
+				await rememberMachineAsync(name, {
+					substrate: options.to,
+					sandboxId: newId,
+					agent,
+				});
+			} catch (error) {
+				// Any pre-commit failure: the new sandbox is torn down
+				// best-effort so a failed migration does not leave a second
+				// machine billing, and the ORIGINAL placement is untouched and
+				// addressable. A teardown failure is recorded, never allowed
+				// to mask the real error.
+				await target.sandbox.destroy().catch((teardownError: unknown) => {
+					attempts.push({
+						substrate: options.to,
+						outcome: "failed",
+						reason: `orphaned sandbox ${newId}: teardown failed: ${
+							teardownError instanceof Error ? teardownError.message : String(teardownError)
+						}`,
+					});
+				});
+				throw error;
+			}
+
+			// Post-commit source disposition: best-effort, reported, never
+			// silent -- and never a failure of the migration itself, because
+			// the load is already safe on the new sandbox.
+			progress({ step: "source", detail: options.source ?? "destroy" });
+			const source = await this.disposeSource(remembered, options.source ?? "destroy");
+
+			return {
+				name,
+				agent,
+				from: { substrate: remembered.substrate, sandboxId: remembered.sandboxId },
+				to: { substrate: options.to, sandboxId: newId },
+				state: {
+					moved,
+					rederived: REDERIVED(agent),
+					// moveState:false is the honest "fresh box, same agent,
+					// same name" outcome: the ENTIRE file-state contract is
+					// enumerated under lost, not implied.
+					lost: moveState
+						? lostState(remembered.substrate)
+						: [...plan.include, ...lostState(remembered.substrate)],
+					skipped,
+					bytes,
+					notes: MOVE_NOTES(agent),
+				},
+				verified: { probe: probeCommand, marker: markerVerified },
+				source,
+				attempts,
+			};
+		} finally {
+			releaseClaim(claimKey);
+		}
+	}
+
+	/**
+	 * What happens to the OLD sandbox after a committed migration.
+	 *
+	 * Always by raw sandbox id through the provider -- NEVER mux.remove(name),
+	 * because the name now points at the NEW sandbox and removing it by name
+	 * would destroy the machine the migration just produced. A confirmed
+	 * not-found counts as destroyed (the remove() rule: the requested end
+	 * state already holds); any other failure reports the orphan's id and
+	 * substrate instead of failing a migration whose load is already safe.
+	 */
+	private async disposeSource(
+		remembered: { substrate: SubstrateKind; sandboxId: string },
+		action: "destroy" | "park" | "keep",
+	): Promise<MigrateReport["source"]> {
+		const provider = this.provider(remembered.substrate);
+		if (action === "keep") {
+			return { action: "kept" };
+		}
+		if (action === "park") {
+			if (!provider.park) {
+				// Fail honest, not silent: sprites and dedalus cannot park by
+				// id, and resolving as "parked" would report a pause that
+				// never happened while the sandbox keeps billing.
+				return {
+					action: "kept",
+					error: `${remembered.substrate} cannot park a sandbox by id (not_supported); the source sandbox ${remembered.sandboxId} was left running`,
+				};
+			}
+			try {
+				await provider.park(remembered.sandboxId);
+				return { action: "parked" };
+			} catch (error) {
+				return {
+					action: "kept",
+					error: `park failed, orphaning ${remembered.substrate}:${remembered.sandboxId}: ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+				};
+			}
+		}
+		try {
+			if (provider.remove) {
+				// The no-wake path; the source may have re-parked since export.
+				await provider.remove(remembered.sandboxId);
+				return { action: "destroyed", resumed: false };
+			}
+			const handle = await provider.connect(remembered.sandboxId);
+			await handle.destroy();
+			return { action: "destroyed", resumed: true };
+		} catch (error) {
+			if (
+				error instanceof MuxError &&
+				error.kind === "fatal" &&
+				/not found/i.test(error.message)
+			) {
+				return { action: "destroyed", resumed: false };
+			}
+			return {
+				action: "kept",
+				error: `destroy failed, orphaning ${remembered.substrate}:${remembered.sandboxId}: ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+			};
+		}
 	}
 
 	/**

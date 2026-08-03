@@ -94,6 +94,75 @@ export const INITIAL_BOOTSTRAP_STATE: BootstrapState = {
 	lastError: null,
 };
 
+/**
+ * Steps a substrate migration walks through, persisted after every one so the
+ * dashboard can render real progress (the bootstrapState idiom). Stable keys --
+ * never reorder, only append (same rule as BOOTSTRAP_PHASES).
+ */
+export const MIGRATION_STEPS = [
+	"validate",
+	"provision",
+	"bootstrap",
+	"export",
+	"restore",
+	"verify",
+	"commit",
+	"source-teardown",
+] as const;
+
+export type MigrationStepId = (typeof MIGRATION_STEPS)[number];
+
+/**
+ * Terminal record of one substrate migration. The state lists come verbatim
+ * from the mux state-move contract (`agent-machines/mux` MOVE_ALLOWLIST /
+ * REDERIVED / lostState) so the API answer and the SDK report share ONE
+ * wording -- what moved / was re-derived / was lost is returned, not logged.
+ */
+export type MigrationReport = {
+	from: { providerKind: ProviderKind; machineId: string };
+	to: { providerKind: ProviderKind; machineId: string };
+	state: {
+		moved: string[];
+		rederived: string[];
+		lost: string[];
+		skipped: Array<{ path: string; reason: string }>;
+		bytes: number;
+	};
+	/** marker is "skipped" only when the caller sent moveState:false. */
+	verified: { probe: string; marker: boolean | "skipped" };
+	/** error names an orphaned sandbox, never silent. */
+	source: { action: "destroyed" | "parked" | "kept"; error?: string };
+	newMachineId: string;
+	notes: string[];
+};
+
+/**
+ * Mirror of BootstrapState for the migrate operation. Lives on the MachineRef
+ * being migrated FROM (the record the user is watching) and, once committed,
+ * also on the new ref so both ends can explain what happened.
+ */
+export type MigrationState = {
+	phase: "idle" | "running" | "succeeded" | "failed";
+	step: MigrationStepId | null;
+	startedAt: string | null;
+	finishedAt: string | null;
+	lastError: string | null;
+	targetSubstrate: ProviderKind | null;
+	newMachineId: string | null;
+	report: MigrationReport | null;
+};
+
+export const INITIAL_MIGRATION_STATE: MigrationState = {
+	phase: "idle",
+	step: null,
+	startedAt: null,
+	finishedAt: null,
+	lastError: null,
+	targetSubstrate: null,
+	newMachineId: null,
+	report: null,
+};
+
 export type SetupStep =
 	| "api-key"
 	| "agent"
@@ -245,6 +314,11 @@ export type MachineRef = {
 	apiUrl: string | null;
 	apiKey: string | null;
 	bootstrapState: BootstrapState;
+	/**
+	 * Present once a migration has touched this machine (as source or target).
+	 * Holds no secrets, so it rides the public projection like bootstrapState.
+	 */
+	migrationState?: MigrationState;
 	archived?: boolean;
 };
 

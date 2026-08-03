@@ -1,4 +1,9 @@
-import type { MachineRef, MachineSpec, BootstrapState } from "@/lib/user-config/schema";
+import type {
+	MachineRef,
+	MachineSpec,
+	BootstrapState,
+	MigrationState,
+} from "@/lib/user-config/schema";
 
 import { supabaseAdmin } from "./client";
 
@@ -17,6 +22,8 @@ type MachineRow = {
 	environment_profile_id: string | null;
 	bootstrap_preset_id: string | null;
 	bootstrap_state: BootstrapState;
+	/** Added by 007_machine_migration_state.sql; absent rows read undefined. */
+	migration_state?: MigrationState | null;
 	archived: boolean;
 	created_at: string;
 	updated_at: string;
@@ -37,6 +44,10 @@ function rowToRef(row: MachineRow): MachineRef {
 		environmentProfileId: row.environment_profile_id,
 		bootstrapPresetId: row.bootstrap_preset_id,
 		bootstrapState: row.bootstrap_state,
+		// Supabase is the machines source of truth when rows exist
+		// (clerk.ts getUserConfigById), so this MUST round-trip here or every
+		// read drops the field and migration progress polling reads nothing.
+		migrationState: row.migration_state ?? undefined,
 		archived: row.archived,
 		createdAt: row.created_at,
 	};
@@ -106,6 +117,22 @@ export async function upsertMachine(
 		);
 
 	if (error) throw new Error(`upsertMachine: ${error.message}`);
+
+	// Same isolation rationale as patchMachine below: migration_state rides a
+	// second statement so an unapplied 007 migration cannot fail the upsert of
+	// the machine row itself.
+	if (machine.migrationState !== undefined) {
+		const { error: migrationError } = await sb
+			.from("machines")
+			.update({ migration_state: machine.migrationState })
+			.eq("user_id", userId)
+			.eq("id", machine.id);
+		if (migrationError) {
+			console.warn(
+				`upsertMachine(${machine.id}): migration_state write failed (apply web/supabase/migrations/007_machine_migration_state.sql): ${migrationError.message}`,
+			);
+		}
+	}
 }
 
 export async function patchMachine(
@@ -139,6 +166,29 @@ export async function patchMachine(
 		.eq("id", machineId);
 
 	if (error) throw new Error(`patchMachine: ${error.message}`);
+
+	// migration_state is written in a SEPARATE statement (the memory_bundles /
+	// workers precedent in clerk.ts): the column lands with
+	// 007_machine_migration_state.sql, and folding it into the main update
+	// would make EVERY patch -- including plain bootstrapState progress -- fail
+	// with "unknown column" on a deployment that has not applied the migration
+	// yet. Isolated, only migration progress is lost pre-migration, never the
+	// bootstrap state machine.
+	if (patch.migrationState !== undefined) {
+		const { error: migrationError } = await sb
+			.from("machines")
+			.update({
+				migration_state: patch.migrationState,
+				updated_at: new Date().toISOString(),
+			})
+			.eq("user_id", userId)
+			.eq("id", machineId);
+		if (migrationError) {
+			console.warn(
+				`patchMachine(${machineId}): migration_state write failed (apply web/supabase/migrations/007_machine_migration_state.sql): ${migrationError.message}`,
+			);
+		}
+	}
 }
 
 export async function archiveMachine(

@@ -76,16 +76,22 @@ type MachineCatalogResponse = {
  * shows both agents with logo, source, and tagline so the choice is
  * informed even on first visit.
  *
- * What the swap actually does:
+ * Each agent row carries TWO clearly distinguished verbs (the agent router,
+ * hosted plane):
  *
- *   1. POST /api/dashboard/admin/setup with `draftAgentKind` so the
- *      next provisioned machine ships with the chosen agent.
- *   2. If a real machine already runs that agent, open its console and set it
- *      active in the background.
+ *   1. Open (the row itself): jump to ANOTHER machine already running that
+ *      agent -- router.push to its console, PATCH {active:true} + draft save
+ *      in the background. When no machine runs it and there is no current
+ *      machine, only the draft is saved for the next provision.
+ *   2. "Switch here" (rendered only in a machine context): convert THIS
+ *      machine -- POST /api/dashboard/machines/<id>/agent, which installs the
+ *      harness, verifies it answers, and only then relabels. Progress rides
+ *      the machine's polled bootstrapState (BootstrapPhaseBadge).
  *
- * We intentionally do not mutate the current machine's `agentKind`. That field
- * describes what was bootstrapped on the VM; changing it here would relabel a
- * Hermes box as OpenClaw without installing OpenClaw.
+ * We never mutate agentKind directly -- relabeling without installing was the
+ * trap (a Hermes box labeled OpenClaw with no OpenClaw on it); the action
+ * endpoint installs, verifies, then relabels. Rollback is switching back:
+ * the old harness stays installed, so the force re-run is fast.
  */
 export function AgentSwitcher({
 	value,
@@ -96,6 +102,7 @@ export function AgentSwitcher({
 	const router = useRouter();
 	const [open, setOpen] = useState(false);
 	const [pending, setPending] = useState<AgentKind | null>(null);
+	const [switchPending, setSwitchPending] = useState<AgentKind | null>(null);
 	const [message, setMessage] = useState<SwitcherMessage | null>(null);
 	const [catalog, setCatalog] = useState<AgentMachineCandidate[]>([]);
 	const ref = useRef<HTMLDivElement | null>(null);
@@ -169,6 +176,52 @@ export function AgentSwitcher({
 			body: JSON.stringify({ active: true }),
 		});
 		if (!response.ok) throw new Error(`machine HTTP ${response.status}`);
+	}
+
+	/**
+	 * Convert THIS machine to the chosen agent via the action endpoint. No
+	 * optimistic state: on 202 the caller's polling (bootstrapState) shows the
+	 * install; a 409 (missing credentials / operation running) surfaces inline
+	 * with the server's message, which names the missing key.
+	 */
+	async function switchHere(next: AgentKind) {
+		if (!activeMachineId || pending || switchPending) return;
+		setSwitchPending(next);
+		setMessage(null);
+		try {
+			const response = await fetch(
+				`/api/dashboard/machines/${encodeURIComponent(activeMachineId)}/agent`,
+				{
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ agentKind: next }),
+				},
+			);
+			if (response.status === 202) {
+				setMessage({
+					tone: "info",
+					text: `Installing ${LABEL[next]} on this machine. The old agent stays installed -- switching back is fast.`,
+				});
+				void saveDraft(next).catch(() => undefined);
+				router.refresh();
+			} else {
+				const body = (await response.json().catch(() => ({}))) as {
+					message?: string;
+					error?: string;
+				};
+				setMessage({
+					tone: "error",
+					text: body.message ?? body.error ?? `switch HTTP ${response.status}`,
+				});
+			}
+		} catch (err) {
+			setMessage({
+				tone: "error",
+				text: err instanceof Error ? err.message : "switch failed",
+			});
+		} finally {
+			setSwitchPending(null);
+		}
 	}
 
 	async function pick(next: AgentKind) {
@@ -282,6 +335,8 @@ export function AgentSwitcher({
 						{AGENT_KINDS.map((kind) => {
 							const selected = kind === value;
 							const inFlight = pending === kind;
+							const switchInFlight = switchPending === kind;
+							const anyPending = Boolean(pending) || Boolean(switchPending);
 							const targetMachine = selected
 								? null
 								: selectAgentMachine({
@@ -291,7 +346,7 @@ export function AgentSwitcher({
 										currentMachineId: activeMachineId,
 									});
 							const className = cn(
-								"flex w-full min-w-0 items-start gap-3 overflow-hidden border-b border-[var(--ret-border)] px-3 py-2.5 text-left transition-colors last:border-b-0",
+								"flex w-full min-w-0 items-start gap-3 overflow-hidden px-3 py-2.5 text-left transition-colors",
 								selected
 									? "bg-[var(--ret-purple-glow)] text-[var(--ret-purple)]"
 									: "hover:bg-[var(--ret-surface)]",
@@ -312,7 +367,7 @@ export function AgentSwitcher({
 											className="mt-0.5 block truncate font-mono text-[10px] text-[var(--ret-text-muted)]"
 											title={TAGLINE[kind]}
 										>
-											{inFlight ? "switching..." : TAGLINE[kind]}
+											{inFlight ? "switching..." : switchInFlight ? "installing..." : TAGLINE[kind]}
 										</span>
 										{targetMachine ? (
 											<span className="mt-1 block truncate font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--ret-text-muted)]">
@@ -328,15 +383,37 @@ export function AgentSwitcher({
 								</>
 							);
 							return (
-								<li key={kind}>
+								<li
+									key={kind}
+									className="border-b border-[var(--ret-border)] last:border-b-0"
+								>
 									<button
 										type="button"
 										onClick={() => void pick(kind)}
-										disabled={Boolean(pending)}
+										disabled={anyPending}
 										className={className}
 									>
 										{option}
 									</button>
+									{/* The second verb, only in a machine context: convert THIS
+									    machine instead of jumping to another one. Separate button
+									    (never nested) so the two actions stay legible. */}
+									{!selected && activeMachineId ? (
+										<div className="flex justify-end px-3 pb-2">
+											<button
+												type="button"
+												onClick={() => void switchHere(kind)}
+												disabled={anyPending}
+												className={cn(
+													"border border-[var(--ret-purple)]/40 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ret-purple)] transition-colors hover:bg-[var(--ret-purple)]/10",
+													anyPending && "opacity-50",
+												)}
+												title={`Install ${LABEL[kind]} on this machine and switch to it -- same sandbox, same files; the current agent stays installed for instant rollback`}
+											>
+												{switchInFlight ? "installing..." : "switch this machine"}
+											</button>
+										</div>
+									) : null}
 								</li>
 							);
 					})}
@@ -354,7 +431,7 @@ export function AgentSwitcher({
 					) : null}
 					<li className="break-words border-t border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-3 py-1.5 font-mono text-[10px] leading-relaxed text-[var(--ret-text-muted)]">
 						{activeMachineId
-							? "switches to that agent's machine, or saves the draft"
+							? "row: opens another machine already running that agent. switch this machine: installs the agent here -- same sandbox, old agent stays for instant rollback."
 							: "sets the agent for the next provisioned machine"}
 					</li>
 				</ul>

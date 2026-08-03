@@ -1,12 +1,14 @@
 /**
  * Terminal surface for the multiplexer.
  *
- *   am mux run    --agent claude-code --sandbox auto "review my repo"
- *   am mux shell  --name reviewer
- *   am mux term   --agent codex --name coder
+ *   am mux run     --agent claude-code --sandbox auto "review my repo"
+ *   am mux shell   --name reviewer
+ *   am mux term    --agent codex --name coder
  *   am mux ls
- *   am mux routes --needs '{"pty":"native"}' --optimize cost
- *   am mux stats  --since 24h
+ *   am mux switch  --name reviewer --agent hermes
+ *   am mux migrate --name reviewer --to sprites
+ *   am mux routes  --needs '{"pty":"native"}' --optimize cost
+ *   am mux stats   --since 24h
  *   am mux health
  *   am mux rm     --name reviewer
  *
@@ -92,7 +94,13 @@ type Flags = {
 	optimize?: string;
 	needs?: string;
 	pty?: string;
+	/** Migration target substrate (validated by parseMigrateTarget). */
+	to?: string;
+	/** Source-sandbox disposition after a migrate commit. */
+	source?: string;
 	json: boolean;
+	/** `am mux migrate --no-move-state`: fresh box, same agent, same name. */
+	noMoveState: boolean;
 	rest: string[];
 };
 
@@ -113,7 +121,7 @@ function parseAgent(value: string): HarnessKind {
 }
 
 function parseFlags(args: string[]): Flags {
-	const flags: Flags = { json: false, rest: [] };
+	const flags: Flags = { json: false, noMoveState: false, rest: [] };
 	for (let index = 0; index < args.length; index += 1) {
 		const arg = args[index];
 		const next = () => args[(index += 1)];
@@ -136,6 +144,9 @@ function parseFlags(args: string[]): Flags {
 		else if (arg === "--optimize") flags.optimize = value();
 		else if (arg === "--needs") flags.needs = value();
 		else if (arg === "--pty") flags.pty = value();
+		else if (arg === "--to") flags.to = value();
+		else if (arg === "--source") flags.source = value();
+		else if (arg === "--no-move-state") flags.noMoveState = true;
 		else if (arg === "--json") flags.json = true;
 		else flags.rest.push(arg);
 	}
@@ -864,6 +875,31 @@ function parseSubstrate(value: string | undefined): SubstrateKind | "auto" | und
 }
 
 /**
+ * `--to` for migrate. REFUSES "auto" where parseSubstrate would accept it:
+ * a migration destroys the source by default, so the destination has to be
+ * a decision the operator made, not one a routing policy made for them.
+ */
+function parseMigrateTarget(value: string): SubstrateKind {
+	if (value === "auto") {
+		throw new Error(
+			'migrate wants an explicit substrate; "am mux routes" shows the credentialed lanes',
+		);
+	}
+	if (!SUBSTRATE_KINDS.includes(value as SubstrateKind)) {
+		throw new Error(`--to wants one of: ${SUBSTRATE_KINDS.join(" | ")}, got: ${value}`);
+	}
+	return value as SubstrateKind;
+}
+
+function parseSourceDisposition(value: string | undefined): "destroy" | "park" | "keep" {
+	if (value === undefined) return "destroy";
+	if (value !== "destroy" && value !== "park" && value !== "keep") {
+		throw new Error(`--source wants one of: destroy | park | keep, got: ${value}`);
+	}
+	return value;
+}
+
+/**
  * Two shapes, because the score columns are only printed when the policy
  * actually ran. Two columns of "not scored" on every pinned route would be
  * noise, and the stage line above the table says why they are absent.
@@ -1270,6 +1306,101 @@ export async function mux(args: string[]): Promise<void> {
 		return;
 	}
 
+	if (subcommand === "switch") {
+		// Flag validation before any router is built: a typo'd agent must not
+		// cost a config parse, let alone a connect.
+		if (!flags.name) throw new Error("am mux switch requires --name");
+		if (!flags.agent) {
+			throw new Error(`am mux switch requires --agent (${HARNESS_KINDS.join(" | ")})`);
+		}
+		const router = createMux(flags.config);
+		const report = await router.switchAgent(flags.name, flags.agent);
+		if (flags.json) {
+			console.log(JSON.stringify(report, null, 2));
+			return;
+		}
+		console.log(
+			`${report.name}: ${report.from} -> ${report.to} on ${report.substrate} (${report.sandboxId})`,
+		);
+		if (!report.changed) {
+			console.log(`already running ${report.to}; probed anyway, nothing was written`);
+		}
+		console.log(
+			report.installed
+				? `install:  ${report.to} was installed`
+				: `install:  ${report.to} was already present -- fast path, nothing installed`,
+		);
+		console.log(`probe:    ${report.probe.command} answered (exit 0)`);
+		if (report.woke !== "unknown") {
+			console.log(
+				`woke:     ${report.woke ? "yes -- the sandbox was parked and the switch resumed it" : "no -- the sandbox was already running"}`,
+			);
+		}
+		if (report.changed) {
+			console.log(
+				`rollback: am mux switch --name ${report.name} --agent ${report.from} -- instant, the old harness stays installed`,
+			);
+		}
+		return;
+	}
+
+	if (subcommand === "migrate") {
+		if (!flags.name) throw new Error("am mux migrate requires --name");
+		if (!flags.to) {
+			throw new Error(`am mux migrate requires --to (${SUBSTRATE_KINDS.join(" | ")})`);
+		}
+		const to = parseMigrateTarget(flags.to);
+		const source = parseSourceDisposition(flags.source);
+		const router = createMux(flags.config);
+		const report = await router.migrate(flags.name, {
+			to,
+			source,
+			moveState: !flags.noMoveState,
+			// Progress on stderr so --json stdout stays parseable.
+			onProgress: (step) =>
+				process.stderr.write(`[migrate] ${step.step}${step.detail ? `: ${step.detail}` : ""}\n`),
+		});
+		if (flags.json) {
+			console.log(JSON.stringify(report, null, 2));
+			return;
+		}
+		console.log(
+			`${report.name}: ${report.agent} moved ${report.from.substrate}:${report.from.sandboxId} -> ${report.to.substrate}:${report.to.sandboxId}`,
+		);
+		console.log(
+			`verified: ${report.verified.probe} answered; marker ${
+				report.verified.marker === "skipped" ? "skipped (--no-move-state)" : "matched"
+			}`,
+		);
+		console.log("");
+		console.log(`moved (${report.state.moved.length} entries, ${report.state.bytes} bytes):`);
+		for (const path of report.state.moved) console.log(`  ${path}`);
+		if (report.state.skipped.length > 0) {
+			console.log("skipped:");
+			for (const entry of report.state.skipped) console.log(`  ${entry.path} -- ${entry.reason}`);
+		}
+		console.log("re-derived (never copied):");
+		for (const line of report.state.rederived) console.log(`  ${line}`);
+		console.log("lost (declared, not implied):");
+		for (const line of report.state.lost) console.log(`  ${line}`);
+		if (report.state.notes.length > 0) {
+			console.log("notes:");
+			for (const line of report.state.notes) console.log(`  ${line}`);
+		}
+		console.log("");
+		const src = report.source;
+		if (src.action === "destroyed") {
+			console.log(
+				`source: destroyed${src.resumed ? " (no no-wake teardown on that substrate, so it was resumed first)" : ""}`,
+			);
+		} else if (src.action === "parked") {
+			console.log("source: parked");
+		} else {
+			console.log(`source: kept${src.error ? ` -- ${src.error}` : ""}`);
+		}
+		return;
+	}
+
 	if (subcommand === "run") {
 		const prompt = flags.rest.join(" ").trim();
 		if (!prompt) throw new Error('am mux run requires a prompt: am mux run "..."');
@@ -1316,6 +1447,12 @@ export async function mux(args: string[]): Promise<void> {
 	console.log("  am mux shell  [--name <n>] [--sandbox <s>]        raw PTY on the sandbox");
 	console.log("  am mux term   [--agent <a>] [--name <n>]          interactive agent PTY");
 	console.log("  am mux ls                                        named machines");
+	console.log("  am mux switch  --name <n> --agent <a> [--json]   switch which harness answers on a");
+	console.log("                                                   machine; sandbox and load stay put,");
+	console.log("                                                   old harness stays installed");
+	console.log("  am mux migrate --name <n> --to <s> [--json]      move the machine's $HOME file state");
+	console.log("                 [--no-move-state]                 to another substrate; name survives,");
+	console.log("                 [--source destroy|park|keep]      sandbox id changes, agent unchanged");
 	console.log("  am mux routes [--sandbox <s>] [--needs <json>]   resolved route, and why");
 	console.log("                [--agent <a>] [--pty <p>]          (score is per harness)");
 	console.log("                [--optimize cost] [--json]");

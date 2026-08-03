@@ -452,6 +452,11 @@ const MUX_ONLY_ROWS = [/health/i, /constraint/i, /learned/i];
  */
 const SHARED_BUT_LIMITED_ROWS = [
 	{ row: /failover/i, limit: /\bstatic\b/i },
+	// Landed on both planes 2026-08-03. The hosted cell said "none" in the same
+	// changeset that shipped the hosted endpoints -- the guard's row list had
+	// not been extended, so the false claim sailed through. The hosted limit
+	// worth pinning: no step-level progress stream (migrationState only).
+	{ row: /agent switch|substrate migrate/i, limit: /\bno MigrateStep stream\b/i },
 ];
 
 test("MUX.md separates what src/mux does from what the hosted plane does", () => {

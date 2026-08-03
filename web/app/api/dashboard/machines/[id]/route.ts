@@ -2,8 +2,11 @@
  * GET / PATCH / DELETE /api/dashboard/machines/[id]
  *
  *   GET    -- single machine + live state
- *   PATCH  -- mutate stored fields (name, agentKind, model, apiUrl, apiKey)
- *             or set this machine as active via { active: true }
+ *   PATCH  -- mutate stored fields (name, model, apiUrl, apiKey)
+ *             or set this machine as active via { active: true }.
+ *             agentKind is NOT patchable: relabeling without installing was
+ *             the trap (a Hermes box labeled OpenClaw with no OpenClaw on
+ *             it); POST machines/[id]/agent installs, verifies, relabels.
  *   DELETE -- archive (default) or hard-destroy via ?destroy=1
  */
 
@@ -11,11 +14,7 @@ import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import { MachineProviderError, getProvider } from "@/lib/providers";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
-import {
-	AGENT_KINDS,
-	type AgentKind,
-	type MachineRef,
-} from "@/lib/user-config/schema";
+import type { MachineRef } from "@/lib/user-config/schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,7 +24,8 @@ type Ctx = { params: Promise<{ id: string }> };
 
 type PatchBody = {
 	name?: string;
-	agentKind?: AgentKind;
+	/** Rejected with 400 -- see PATCH below. */
+	agentKind?: unknown;
 	model?: string;
 	apiUrl?: string | null;
 	apiKey?: string | null;
@@ -33,10 +33,6 @@ type PatchBody = {
 	gatewayProfileId?: string | null;
 	environmentProfileId?: string | null;
 };
-
-function isAgent(value: unknown): value is AgentKind {
-	return typeof value === "string" && (AGENT_KINDS as ReadonlyArray<string>).includes(value);
-}
 
 async function find(id: string): Promise<MachineRef | null> {
 	const config = await getUserConfig();
@@ -87,10 +83,17 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
 		patch.name = body.name.trim().slice(0, 80);
 	}
 	if (body.agentKind !== undefined) {
-		if (!isAgent(body.agentKind)) {
-			return Response.json({ error: "invalid_agent_kind" }, { status: 400 });
-		}
-		patch.agentKind = body.agentKind;
+		// PATCH used to accept this and write ONLY the DB record -- the sandbox
+		// kept running the old harness, so the label and the machine disagreed.
+		// The action endpoint installs the harness, verifies it answers, and
+		// only then relabels.
+		return Response.json(
+			{
+				error: "agent_kind_immutable",
+				message: `agentKind changes install a harness; POST /api/dashboard/machines/${id}/agent`,
+			},
+			{ status: 400 },
+		);
 	}
 	if (typeof body.model === "string") {
 		patch.model = body.model.trim();

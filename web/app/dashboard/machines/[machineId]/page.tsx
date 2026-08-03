@@ -21,6 +21,8 @@ import {
 	MachineActions,
 	type MachineState as MachineActionState,
 } from "@/components/dashboard/MachineActions";
+import { MigrationPhaseBadge } from "@/components/dashboard/MigrationPhaseBadge";
+import { SubstrateMoveMenu } from "@/components/dashboard/SubstrateMoveMenu";
 import { useMachineContext } from "@/components/dashboard/MachineProvider";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import {
@@ -38,7 +40,12 @@ import {
 	type NormalizedMachineUsage,
 } from "@/lib/dashboard/usage-metrics";
 import { cn } from "@/lib/cn";
-import { AGENT_LABEL, PROVIDER_LABEL } from "@/lib/user-config/schema";
+import {
+	AGENT_LABEL,
+	PROVIDER_LABEL,
+	type BootstrapState,
+	type MigrationState,
+} from "@/lib/user-config/schema";
 
 type MachineStatus = {
 	state: string;
@@ -49,6 +56,10 @@ type MachineStatus = {
 type MachineRouteResponse =
 	| {
 			ok: true;
+			machine?: {
+				bootstrapState?: BootstrapState;
+				migrationState?: MigrationState | null;
+			} | null;
 			live?: {
 				state?: string;
 				rawPhase?: string;
@@ -61,6 +72,12 @@ type MachineRouteResponse =
 export default function MachineOverviewPage() {
 	const { machineId, machine, isActive } = useMachineContext();
 	const [status, setStatus] = useState<MachineStatus | null>(null);
+	const [migration, setMigration] = useState<MigrationState | null>(
+		machine?.migrationState ?? null,
+	);
+	const [bootstrapPhase, setBootstrapPhase] = useState<BootstrapState["phase"] | null>(
+		machine?.bootstrapState.phase ?? null,
+	);
 	const [loading, setLoading] = useState(true);
 	const [usageData, setUsageData] = useState<NormalizedMachineUsage | null>(null);
 	const [usageLoading, setUsageLoading] = useState(true);
@@ -107,6 +124,10 @@ export default function MachineOverviewPage() {
 						rawPhase: live?.rawPhase ?? live?.state ?? "unknown",
 						lastError: live?.lastError ?? live?.error ?? null,
 					});
+					if (data.ok && data.machine) {
+						setMigration(data.machine.migrationState ?? null);
+						setBootstrapPhase(data.machine.bootstrapState?.phase ?? null);
+					}
 				}
 			} catch {
 				/* ignore */
@@ -174,18 +195,61 @@ export default function MachineOverviewPage() {
 				title={machine.name}
 				description={`${PROVIDER_LABEL[machine.providerKind]} / ${AGENT_LABEL[machine.agentKind]} / ${machine.model}`}
 				right={
-					<MachineActions
-						machineId={machineId}
-						state={stateName as MachineActionState}
-						capabilities={null}
-						active={isActive}
-						archived={machine.archived ?? false}
-						allowDestroy
-						onChange={async () => { window.location.reload(); }}
-					/>
+					<div className="flex flex-wrap items-center justify-end gap-1">
+						{/* The two router verbs live beside MachineActions, not inside
+						    it, so its routing-table doc comment stays true. */}
+						<SubstrateMoveMenu
+							machineId={machineId}
+							migrationState={migration}
+							bootstrapRunning={bootstrapPhase === "running"}
+							onScheduled={() => {
+								/* the 5s poll picks up migrationState on the next tick */
+							}}
+						/>
+						<MachineActions
+							machineId={machineId}
+							state={stateName as MachineActionState}
+							capabilities={null}
+							active={isActive}
+							archived={machine.archived ?? false}
+							allowDestroy
+							onChange={async () => { window.location.reload(); }}
+						/>
+					</div>
 				}
 			/>
 			<DashboardPageBody>
+				{migration && migration.phase !== "idle" ? (
+					<div className="flex flex-wrap items-center gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-4 py-2.5">
+						<MigrationPhaseBadge state={migration} />
+						{migration.phase === "succeeded" && migration.report ? (
+							<>
+								<span className="font-mono text-[11px] text-[var(--ret-text-dim)]">
+									moved to {PROVIDER_LABEL[migration.report.to.providerKind]} --{" "}
+									{migration.report.state.moved.length} paths,{" "}
+									{(migration.report.state.bytes / 1024).toFixed(0)} KB; old sandbox{" "}
+									{migration.report.source.action}
+									{migration.report.source.error ? ` (${migration.report.source.error})` : ""}
+								</span>
+								{/* A button, not a redirect -- the user may be mid-read. */}
+								<a
+									href={`/dashboard/machines/${encodeURIComponent(migration.report.newMachineId)}`}
+									className="border border-[var(--ret-purple)]/40 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-purple)] hover:bg-[var(--ret-purple)]/10"
+								>
+									open new machine
+								</a>
+							</>
+						) : null}
+						{migration.phase === "failed" && migration.lastError ? (
+							<span
+								className="min-w-0 truncate font-mono text-[11px] text-[var(--ret-red)]"
+								title={migration.lastError}
+							>
+								{migration.lastError}
+							</span>
+						) : null}
+					</div>
+				) : null}
 				<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 					<StatCard label="Status" icon={<Activity size={12} />}>
 						{loading ? (

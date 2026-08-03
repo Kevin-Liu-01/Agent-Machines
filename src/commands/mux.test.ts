@@ -827,6 +827,44 @@ test("routes refuses a need it does not know instead of filtering on nothing", a
 });
 
 // ---------------------------------------------------------------------------
+// am mux switch / am mux migrate -- flag validation
+// ---------------------------------------------------------------------------
+
+test("switch refuses missing or unknown flags before building a router", async () => {
+	await withMux(async () => {
+		await assert.rejects(() => mux(["switch", "--agent", "codex"]), /requires --name/);
+		await assert.rejects(() => mux(["switch", "--name", "m"]), /requires --agent/);
+		// A typo'd agent must be refused, not resolved to "no such machine
+		// state" later -- the same rationale as parseAgent on `routes`.
+		await assert.rejects(
+			() => mux(["switch", "--name", "m", "--agent", "claud-code"]),
+			/--agent wants one of/,
+		);
+		await assert.rejects(() => mux(["switch", "--name", "m", "--agent"]), /--agent requires a value/);
+	});
+});
+
+test("migrate refuses auto, unknown substrates and bad dispositions with the fix named", async () => {
+	await withMux(async () => {
+		await assert.rejects(() => mux(["migrate", "--to", "sprites"]), /requires --name/);
+		await assert.rejects(() => mux(["migrate", "--name", "m"]), /requires --to/);
+		// "auto" is valid for --sandbox and deliberately NOT for --to: a
+		// migration destroys the source by default, so the destination must
+		// be the operator's decision, not a routing policy's.
+		await assert.rejects(
+			() => mux(["migrate", "--name", "m", "--to", "auto"]),
+			/migrate wants an explicit substrate/,
+		);
+		await assert.rejects(() => mux(["migrate", "--name", "m", "--to", "fly"]), /--to wants one of/);
+		await assert.rejects(
+			() => mux(["migrate", "--name", "m", "--to", "sprites", "--source", "sometimes"]),
+			/--source wants one of/,
+		);
+		await assert.rejects(() => mux(["migrate", "--name", "m", "--to"]), /--to requires a value/);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Exit codes, through the real dispatcher
 // ---------------------------------------------------------------------------
 

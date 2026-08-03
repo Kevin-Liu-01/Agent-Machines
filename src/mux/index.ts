@@ -2,10 +2,43 @@ export {
 	Mux,
 	MuxMachine,
 	createMux,
+	type MigrateOptions,
+	type MigrateReport,
+	type MigrateStep,
 	type MuxCreateOptions,
 	type MuxRunOptions,
 	type RunStream,
+	type SwitchReport,
 } from "./router.js";
+// The state-move contract, exported so the hosted plane value-imports the
+// SAME lists (via "agent-machines/mux") instead of retyping them: what
+// migrate moves, re-derives and loses must be one wording on every surface.
+export {
+	EXPORT_CHUNK_RAW_BYTES,
+	LOST_ALWAYS,
+	MAX_STATE_TAR_BYTES,
+	MIGRATION_MARKER_PATH,
+	MOVE_ALLOWLIST,
+	MOVE_NOTES,
+	REDERIVED,
+	buildExportCommand,
+	buildPresenceProbe,
+	exportTar,
+	lostState,
+	probeIncludes,
+	readHome,
+	restoreTar,
+	verifyMarker,
+	writeMarker,
+	type ExportedTar,
+	type MarkerVerdict,
+	type MigrationMarker,
+	type MoveSource,
+	type MoveTarget,
+	type PresenceReport,
+	type RestoreOptions,
+	type StateMovePlan,
+} from "./statemove.js";
 export {
 	loadMuxConfig,
 	resolveMuxConfig,

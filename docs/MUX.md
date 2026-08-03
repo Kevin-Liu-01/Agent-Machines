@@ -31,6 +31,7 @@ order. See
 - [Traces, and idempotency](#traces-and-idempotency)
 - [Failover semantics](#failover-semantics)
 - [Lifecycle without waking the machine](#lifecycle-without-waking-the-machine)
+- [Agent switch and substrate migration](#agent-switch-and-substrate-migration)
 - [Model upstreams](#model-upstreams)
 - [Detached work](#detached-work)
 - [Reporting surface](#reporting-surface)
@@ -449,6 +450,52 @@ without parking would be a false claim.
 sandbox is gone, and rethrows otherwise: an ambiguous teardown failure must not
 make a possibly-alive machine invisible by name.
 
+## Agent switch and substrate migration
+
+The product's two persisting verbs, one per plane. `switchAgent(name, agent)`
+changes which harness ANSWERS on a machine -- the sandbox and its load stay
+put. `migrate(name, { to })` changes which substrate CARRIES the load -- the
+agent and the name stay put. They never compose in one call: "hermes on
+sprites, starting from openclaw on e2b" is one verb then the other, so each
+step has exactly one point of no return. The two verbs also exclude each other
+per machine (a shared claim), because a switch that re-asserted a stale
+snapshot over a mid-flight migration would point the placement at a destroyed
+sandbox.
+
+`switchAgent` connects (waking a parked sandbox: a switch is a write),
+installs the target harness if missing -- same budgets and the same
+foreground-install rule on throttled lanes as `create()` -- then proves the
+harness ANSWERS with its version probe before the placement flips. An install
+that exits 0 but does not answer never persists. The old harness is never
+uninstalled, so rollback is `switchAgent` back: seconds, no install.
+
+`migrate` orders its steps so that every failure before the commit leaves the
+ORIGINAL placement intact and addressable: gate (an uncredentialed target
+names its missing keys before the source is even woken), provision on the
+pinned lane, install, export, restore, verify, and only then the placement
+write, after which the source is destroyed (or parked/kept via `source:`).
+State is copied, never moved destructively; checksums are verified on both
+ends, and a marker written on the source must read back byte-identical on the
+target before anything commits.
+
+What moves is an explicit allowlist, not the disk: the `~/.agent-machines`
+persona and state tree (SOUL/AGENTS/MEMORY/USER docs, skills, loadout, state,
+chats, artifacts, crons, mcps, sessions) plus each harness's own resumable
+state (`~/.claude` + `~/.claude.json`, `~/.codex`, `~/.openclaw`, hermes's
+config and state db). Toolchains are re-derived by the idempotent installers
+rather than copied (an x64 binary shipped to an arm64 box is a broken machine),
+and credentials are re-injected from config, never round-tripped. Losses are
+DECLARED in the report, not implied: running processes and tmux scrollback,
+`/tmp`, ad-hoc system packages, create-time env vars, and e2b RAM state (its
+persistence is a memory snapshot no file copy captures). `moveState: false`
+ships nothing and says so -- the report's `lost` list then names the whole
+file contract.
+
+The report is the API response: moved, re-derived, lost, skipped, bytes, both
+sandbox ids, the verify evidence, and what happened to the source -- including
+a named orphan if the post-commit destroy failed. CLI: `am mux switch --name X
+--agent hermes`, `am mux migrate --name X --to sprites`.
+
 ## Model upstreams
 
 `src/mux/upstreams.ts` decides which key drives which harness, per harness and
@@ -552,6 +599,7 @@ on Sprites never finished until detached work was understood (see
 | --- | --- | --- |
 | Provider contract | `SandboxProvider` | `MachineProvider` -- same four vendors, adapted twice |
 | Create-time failover | yes, with every attempt recorded | yes, over a static credentialed order, attempts recorded (`web/lib/mux/failover.ts`) |
+| Agent switch / substrate migrate | yes -- `switchAgent()` verifies then flips the placement; `migrate()` copies $HOME file state and commits last | yes, same ordering via its own endpoints (`machines/[id]/agent`, `machines/[id]/migrate`), progress in `migrationState` only -- no MigrateStep stream |
 | Health ordering | yes, persisted circuit breaker | none |
 | Constraint filtering | yes, naming the failed dimension | none |
 | Learned ordering | yes, from local run traces | advisory recommendation only, from cron probes |
@@ -598,3 +646,6 @@ Neither changes the data plane: whichever renderer is used, it consumes the same
 - **Not a fifth sandbox.** Route, don't rebuild.
 - **Not multi-host.** `mux.connect(name)` reads a local file, so it works from
   the host that created the machine and nowhere else.
+- **Not live migration.** `migrate()` moves files, not processes: running tmux
+  sessions, in-flight agent runs and RAM state do not survive the move, and the
+  report says so rather than implying otherwise.
