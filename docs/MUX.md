@@ -188,9 +188,36 @@ const pty = await machine.pty();
 pty.write("ls -la\n");
 for await (const bytes of pty.output) render(bytes);
 
-// later, from any process on THIS host (the placement store is a local file):
+// later, from any process on this host -- or any host, under a hosted store:
 const same = await mux.connect("reviewer");
 ```
+
+### Where placements live
+
+By default a local JSON file (`~/.agent-machines/mux-state.json`, overridable
+with `AGENT_MACHINES_MUX_STATE`), written under a lock with an atomic rename so
+two processes on one host cannot lose each other's writes.
+
+`PlacementStore` is the seam, and it is await-tolerant: `read`, `remember`,
+`forget`, `saveHealth`, plus a `synchronous` flag the router reads to decide how
+much it may do inline. `setPlacementStore()` installs another one --
+`web/lib/mux/placement-store.ts` is a Supabase implementation, for callers with
+no durable home directory (a serverless function's `$HOME` does not survive the
+next invocation, so the local store silently forgets every machine it created
+there).
+
+Two consequences of an async store, both deliberate:
+
+- `Mux`'s constructor cannot await, so persisted health is loaded eagerly only
+  when the store says it is synchronous. Under an async store the breaker starts
+  empty and is filled before the first operation health can influence. Health
+  never removes a lane, so "no history yet" degrades to the configured order --
+  which is why this is safe to defer and a placement read is not.
+- `readMuxState()` and the other synchronous functions THROW under an async
+  store, naming the async API, rather than returning a promise from a function
+  typed to return state. That mistake would read as "no machines remembered" and
+  provision a duplicate. The CLI keeps using them: it is the local-first path by
+  definition.
 
 `PtyHandle.output` is single-consumer by contract: it is a live byte stream with
 no buffer to replay from, so a second iteration throws instead of silently

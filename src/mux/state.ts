@@ -529,7 +529,43 @@ function syncStore(): SyncPlacementStore {
 }
 
 // ---------------------------------------------------------------------------
-// Synchronous API (what the router and CLI call today)
+// Asynchronous API -- works with ANY store
+// ---------------------------------------------------------------------------
+
+/**
+ * These four are what the router calls. They await whatever store is installed,
+ * so a hosted store (`web/lib/mux/placement-store.ts`, over Supabase) is
+ * usable without the local one changing behavior: awaiting a value the local
+ * store returns inline costs a microtask and nothing else.
+ *
+ * The synchronous versions below stay, because the CLI is a synchronous program
+ * end to end and rewriting it buys nothing -- it is the local-first path by
+ * definition. They throw a clear error under an async store rather than
+ * returning a promise from a function typed to return state.
+ */
+export async function readMuxStateAsync(): Promise<MuxState> {
+	return getPlacementStore().read();
+}
+
+export async function rememberMachineAsync(
+	name: string,
+	machine: MachinePlacement,
+): Promise<void> {
+	await getPlacementStore().remember(name, machine);
+}
+
+export async function forgetMachineAsync(name: string): Promise<void> {
+	await getPlacementStore().forget(name);
+}
+
+export async function saveHealthAsync(
+	snapshot: SubstrateHealthSnapshot,
+): Promise<void> {
+	await getPlacementStore().saveHealth(snapshot);
+}
+
+// ---------------------------------------------------------------------------
+// Synchronous API (the CLI, and any caller that knows the store is local)
 // ---------------------------------------------------------------------------
 
 export function readMuxState(): MuxState {

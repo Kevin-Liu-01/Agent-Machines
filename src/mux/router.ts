@@ -16,7 +16,14 @@ import { loadMuxConfig, resolveMuxConfig, type MuxConfig, type MuxConfigInput } 
 import { LineBuffer, type MuxAgentEvent, type RunResult } from "./events.js";
 import { getHarness } from "./harnesses/index.js";
 import { getProvider } from "./providers/index.js";
-import { readMuxState, rememberMachine, forgetMachine, saveHealth } from "./state.js";
+import {
+	forgetMachineAsync,
+	getPlacementStore,
+	readMuxState,
+	readMuxStateAsync,
+	rememberMachineAsync,
+	saveHealthAsync,
+} from "./state.js";
 import { SubstrateHealth, outcomeForError } from "./health.js";
 import {
 	asSkippedAttempts,
@@ -582,13 +589,20 @@ export class MuxMachine {
 
 	async destroy(): Promise<void> {
 		await this.sandbox.destroy();
-		if (this.name) forgetMachine(this.name);
+		if (this.name) await forgetMachineAsync(this.name);
 	}
 }
 
 export class Mux {
 	readonly config: MuxConfig;
-	readonly health: SubstrateHealth;
+	/**
+	 * The circuit breaker. Not `readonly`: under an async store it is replaced
+	 * once, by `ensureHealth()`, with what the store had persisted. Readers get
+	 * an empty breaker until then rather than a promise.
+	 */
+	health: SubstrateHealth;
+	/** False only between construction and the first `ensureHealth()`. */
+	private healthLoaded: boolean;
 	/** Learned lane ordering for "auto" routes; null disables it entirely. */
 	readonly selection: SelectionPolicy | null;
 	private readonly providers = new Map<SubstrateKind, SandboxProvider>();
@@ -600,11 +614,27 @@ export class Mux {
 
 	constructor(config: MuxConfig, options: CreateMuxOptions = {}) {
 		this.config = config;
-		// Restored from the shared state file so a substrate that was failing
-		// stays de-prioritized for the next process. Injectable for tests.
-		this.health =
-			options.health ??
-			SubstrateHealth.fromJSON(readMuxState().health);
+		// Restored from the shared store so a substrate that was failing stays
+		// de-prioritized for the next process. Injectable for tests.
+		//
+		// A constructor cannot await, and a hosted store's read is a network
+		// round trip -- so the load is synchronous only when the store says it
+		// can be. Under the local JSON store (every CLI and SDK caller today)
+		// that is the same eager load as before, byte for byte: `routeFor()`
+		// called immediately after `createMux()` still sees persisted health.
+		// Under an async store the breaker starts empty and `ensureHealth()`
+		// fills it before the first operation that can be influenced by it.
+		const store = getPlacementStore();
+		if (options.health) {
+			this.health = options.health;
+			this.healthLoaded = true;
+		} else if (store.synchronous) {
+			this.health = SubstrateHealth.fromJSON(readMuxState().health);
+			this.healthLoaded = true;
+		} else {
+			this.health = new SubstrateHealth();
+			this.healthLoaded = false;
+		}
 		this.persistHealth = options.persistHealth ?? options.health === undefined;
 		// Default on: `sandbox: "auto"` is the common case and the roadmap's
 		// automatic selection. With an empty trace store every lane scores the
@@ -615,19 +645,38 @@ export class Mux {
 			options.selection === undefined ? new SelectionPolicy() : options.selection;
 	}
 
+	/**
+	 * Load persisted health when the store could not be read in the constructor.
+	 *
+	 * Called at the top of every operation whose result health can change. The
+	 * flag is set BEFORE the read, not after: a store that is failing must cost
+	 * one attempt, not one per call, and an empty breaker only means the
+	 * configured order is used -- health never removes a lane, so degrading to
+	 * "no history" is safe where degrading to "retry forever" would not be.
+	 */
+	private async ensureHealth(): Promise<void> {
+		if (this.healthLoaded) return;
+		this.healthLoaded = true;
+		try {
+			this.health = SubstrateHealth.fromJSON((await readMuxStateAsync()).health);
+		} catch {
+			// Keep the empty breaker constructed above.
+		}
+	}
+
 	/** Record a lane outcome and persist the breaker. */
-	private noteHealth(
+	private async noteHealth(
 		substrate: SubstrateKind,
 		outcome: "ok" | "transient" | "fatal",
 		latencyMs?: number,
-	): void {
+	): Promise<void> {
 		this.health.record(substrate, outcome, latencyMs);
 		if (!this.persistHealth) return;
 		try {
-			saveHealth(this.health.toJSON());
+			await saveHealthAsync(this.health.toJSON());
 		} catch {
 			// Losing a sample only delays opening a circuit; never fail a
-			// create() because the state file could not be written.
+			// create() because the store could not be written.
 		}
 	}
 
@@ -776,6 +825,8 @@ export class Mux {
 		const agent = options.agent ?? this.config.agents.default;
 		const harness = getHarness(agent);
 		this.assertUpstream(agent);
+		// Before routeFor, which orders lanes by health.
+		await this.ensureHealth();
 
 		const { candidates, skipped, selection } = this.routeFor(options.sandbox, {
 			constraints: options.constraints,
@@ -825,14 +876,14 @@ export class Mux {
 					await machine.ensureInstalled();
 				}
 				if (options.name) {
-					rememberMachine(options.name, {
+					await rememberMachineAsync(options.name, {
 						substrate: kind,
 						sandboxId: provisioned.id,
 						agent,
 					});
 				}
 				const okMs = Date.now() - startedAt;
-				this.noteHealth(kind, "ok", okMs);
+				await this.noteHealth(kind, "ok", okMs);
 				attempts.push({
 					substrate: kind,
 					outcome: "ok",
@@ -862,7 +913,7 @@ export class Mux {
 				// substrate's health, so it must not open a circuit -- only
 				// transport-class outcomes do.
 				const signal = outcomeForError(error);
-				if (signal) this.noteHealth(kind, signal, Date.now() - startedAt);
+				if (signal) await this.noteHealth(kind, signal, Date.now() - startedAt);
 				attempts.push({
 					substrate: kind,
 					outcome: "failed",
@@ -896,7 +947,7 @@ export class Mux {
 	 * that rather than resuming behind the caller's back.
 	 */
 	async describe(name: string): Promise<SandboxDescription> {
-		const remembered = this.rememberedOrThrow(name);
+		const remembered = await this.rememberedOrThrow(name);
 		const provider = this.provider(remembered.substrate);
 		if (!provider.describe) {
 			throw new MuxError(
@@ -919,7 +970,7 @@ export class Mux {
 	 * already gone can otherwise never be cleaned up.
 	 */
 	async remove(name: string): Promise<{ removed: boolean; resumed: boolean }> {
-		const remembered = this.rememberedOrThrow(name);
+		const remembered = await this.rememberedOrThrow(name);
 		const provider = this.provider(remembered.substrate);
 		try {
 			let resumed = false;
@@ -932,7 +983,7 @@ export class Mux {
 				await handle.destroy();
 				resumed = true;
 			}
-			forgetMachine(name);
+			await forgetMachineAsync(name);
 			return { removed: true, resumed };
 		} catch (error) {
 			// Forget ONLY when the substrate says the sandbox is gone. Any other
@@ -944,7 +995,7 @@ export class Mux {
 			// org_metering_buckets.stripe_submitted_at does not exist"), which
 			// says nothing about whether the machine survived.
 			if (error instanceof MuxError && error.kind === "fatal" && /not found/i.test(error.message)) {
-				forgetMachine(name);
+				await forgetMachineAsync(name);
 				return { removed: true, resumed: false };
 			}
 			throw error;
@@ -960,7 +1011,7 @@ export class Mux {
 	 * resolving as though it parked something.
 	 */
 	async park(name: string): Promise<void> {
-		const remembered = this.rememberedOrThrow(name);
+		const remembered = await this.rememberedOrThrow(name);
 		const provider = this.provider(remembered.substrate);
 		if (!provider.park) {
 			throw new MuxError(
@@ -972,8 +1023,8 @@ export class Mux {
 		await provider.park(remembered.sandboxId);
 	}
 
-	private rememberedOrThrow(name: string) {
-		const remembered = readMuxState().machines[name];
+	private async rememberedOrThrow(name: string) {
+		const remembered = (await readMuxStateAsync()).machines[name];
 		if (!remembered) {
 			throw new MuxError("fatal", `No remembered machine named "${name}".`);
 		}
@@ -981,7 +1032,7 @@ export class Mux {
 	}
 
 	async connect(name: string, agent?: HarnessKind): Promise<MuxMachine> {
-		const remembered = readMuxState().machines[name];
+		const remembered = (await readMuxStateAsync()).machines[name];
 		if (!remembered) {
 			throw new MuxError("fatal", `No remembered machine named "${name}".`);
 		}

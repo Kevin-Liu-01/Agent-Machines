@@ -453,11 +453,34 @@ three env overrides exist and work -- `AGENT_MACHINES_MUX_STATE` (a file),
 `AGENT_MACHINES_MUX_TRACES` and `AGENT_MACHINES_MUX_LEDGER` (directories, kept
 separate so retention policies never merge). A serverless caller can therefore
 READ from a bundled path and must redirect writes;
-`web/lib/mux/placement-store.ts` now implements the hosted `PlacementStore` for
-placements and health. Two things it still needs: a human to apply its DDL, and
-an async-capable installer -- `setPlacementStore()` and the synchronous
-`readMuxState`/`rememberMachine` API in `src/mux/state.ts` cannot yet accept a
-store that returns promises.
+`web/lib/mux/placement-store.ts` implements the hosted `PlacementStore` for
+placements and health.
+
+**The async installer landed 2026-08-02.** It was the blocker that made that
+store dead code: the router called the synchronous state functions inline, and
+`Mux`'s constructor read persisted health, which a constructor cannot await. Now
+the router drives the store through `readMuxStateAsync` and friends, and health
+loads eagerly only when the store reports `synchronous: true` -- so the local
+path is unchanged (a `routeFor()` immediately after `createMux()` still sees
+persisted health) while an async store gets its breaker filled before the first
+operation health can influence. Safe to defer because health never removes a
+lane; a placement read is NOT deferrable, and the synchronous functions still
+throw under an async store rather than returning a promise something would read
+as "no machines remembered".
+
+Proven by 13 tests against a store that resolves on a later macrotask (a
+microtask-only fake passes even if nothing is awaited), including an invariant
+that no two store operations overlap -- which is what a dropped `await` actually
+produces. Ten mutations of the router were checked and all ten fail the suite.
+Two branches that had no test before now do: `remove()` forgetting on a
+confirmed not-found, and `remove()` REFUSING to forget on any other error.
+Live-verified afterwards on e2b (create 758ms, `MUX-OK`, destroyed) with the
+health sample persisted at the measured 756ms.
+
+Still needed before the hosted store does anything: **a human must apply
+`web/supabase/migrations/006_mux_placements.sql`** (the table does not exist in
+any project yet), and something must call `setPlacementStore()` on the hosted
+path -- nothing does today.
 
 ### Contract gaps 0.2 surfaced (unchanged, still worth fixing)
 

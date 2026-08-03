@@ -24,10 +24,20 @@ export {
 } from "./events.js";
 export {
 	forgetMachine,
+	forgetMachineAsync,
+	getPlacementStore,
 	readMuxState,
+	readMuxStateAsync,
 	rememberMachine,
+	rememberMachineAsync,
+	saveHealthAsync,
+	setPlacementStore,
+	type Awaitable,
+	type MachinePlacement,
 	type MuxState,
+	type PlacementStore,
 	type RememberedMachine,
+	type SyncPlacementStore,
 } from "./state.js";
 export { getProvider } from "./providers/index.js";
 export { getHarness } from "./harnesses/index.js";
