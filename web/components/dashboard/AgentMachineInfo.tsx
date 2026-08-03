@@ -13,6 +13,7 @@ import {
 	requiredNativeUpstream,
 } from "@/lib/agents/upstreams";
 import { cn } from "@/lib/cn";
+import { normalizeMachineSpec, specMemoryGib } from "@/lib/fleet/view-model";
 import {
 	PROVIDER_LABEL,
 	type AgentKind,
@@ -133,9 +134,9 @@ export function MachineInfoPanel({
 			</div>
 			{spec ? (
 				<dl className="grid grid-cols-3 gap-1">
-					<SpecCell label="vCPU" value={`${spec.vcpu}`} />
-					<SpecCell label="memory" value={`${(spec.memoryMib / 1024).toFixed(1)} GiB`} />
-					<SpecCell label="storage" value={`${spec.storageGib} GiB`} />
+					<SpecCell label="vCPU" value={`${normalizeMachineSpec(spec).vcpu ?? "—"}`} />
+					<SpecCell label="memory" value={specMemoryGib(spec)} />
+					<SpecCell label="storage" value={`${normalizeMachineSpec(spec).storageGib ?? "—"} GiB`} />
 				</dl>
 			) : null}
 			<p className="text-[11px] leading-relaxed text-[var(--ret-text-dim)]">

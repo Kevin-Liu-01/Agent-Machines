@@ -25,6 +25,7 @@ import {
 	type ProviderKind,
 } from "@/lib/user-config/schema";
 import type { ProviderCapabilities } from "@/lib/providers";
+import { compactSpec } from "@/lib/fleet/view-model";
 
 /**
  * Persistent machine switcher in the dashboard header.
@@ -283,7 +284,7 @@ export function MachineSwitcher({
 							const isActive = machine.id === data?.activeMachineId;
 							const isViewing = machine.id === displayed?.id;
 							const stateName = machine.live.ok ? machine.live.state : "unknown";
-							const memGib = (machine.spec.memoryMib / 1024).toFixed(1);
+							const specText = compactSpec(machine.spec);
 							return (
 								<li
 									key={machine.id}
@@ -338,7 +339,7 @@ export function MachineSwitcher({
 												<span className="truncate">{AGENT_LABEL[machine.agentKind]}</span>
 												<span>.</span>
 												<span className="shrink-0">
-													{machine.spec.vcpu}v . {memGib}G
+													{specText}
 												</span>
 												<span>.</span>
 												<span className="shrink-0 capitalize">{stateName}</span>

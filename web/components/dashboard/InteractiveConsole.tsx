@@ -81,6 +81,22 @@ export function InteractiveConsole({
 	const hostRef = useRef<HTMLDivElement>(null);
 	const [status, setStatus] = useState<Status>("connecting");
 	const [detail, setDetail] = useState<string>("");
+	/**
+	 * WHY the failure gets classified instead of just displayed: a dead stream
+	 * has three different fixes depending on the cause, and a bare
+	 * "HTTP 401" card with no way forward strands the user (2026-08-03
+	 * screenshot: a live tmux scrollback behind an unrecoverable error card).
+	 *
+	 *  - "session": the DASHBOARD auth expired (the terminal routes 401 when
+	 *    getEffectiveUserId() is null -- a stale tab, not a dead machine).
+	 *    Re-authenticating fixes it; restarting the console cannot.
+	 *  - "expired": the machine itself is gone or destroyed, confirmed by the
+	 *    machines/[id] probe -- restarting cannot help, say so plainly.
+	 *  - null: transient/unknown. Offer restart, which re-runs the whole
+	 *    attach + stream effect via retryNonce.
+	 */
+	const [failureKind, setFailureKind] = useState<"session" | "expired" | null>(null);
+	const [retryNonce, setRetryNonce] = useState(0);
 	const [detailCopy, setDetailCopy] = useState<"idle" | "copied" | "failed">(
 		"idle",
 	);
@@ -233,8 +249,65 @@ export function InteractiveConsole({
 		const scopedMachineId = machineId;
 		setStatus("connecting");
 		setDetail("");
+		setFailureKind(null);
 
 		let alive = true;
+
+		/**
+		 * Classify a failed request so the error card can offer the right
+		 * action. 401 needs no probe -- the terminal routes return it only when
+		 * the dashboard session is gone. Anything else asks machines/[id],
+		 * which does a no-wake live-state read: a 404 or a destroyed/missing
+		 * state means the INSTANCE expired, which no number of restarts fixes.
+		 * Probe failures leave the kind null (restart stays available) --
+		 * fail open here, because withholding the restart button on a guess
+		 * would strand exactly the transient cases restart exists for.
+		 */
+		async function diagnose(httpStatus: number): Promise<void> {
+			if (httpStatus === 401) {
+				if (!alive) return;
+				setFailureKind("session");
+				setDetail(
+					"Your dashboard session expired, so the terminal stream was refused (HTTP 401). " +
+						"The machine itself is likely still running. Sign in again to reattach.",
+				);
+				return;
+			}
+			try {
+				const probe = await fetch(
+					`/api/dashboard/machines/${encodeURIComponent(scopedMachineId)}`,
+				);
+				if (!alive) return;
+				if (probe.status === 404) {
+					setFailureKind("expired");
+					setDetail(
+						"This machine no longer exists -- it was destroyed or removed. " +
+							"Provision a new machine to continue.",
+					);
+					return;
+				}
+				if (!probe.ok) return;
+				const body = (await probe.json().catch(() => null)) as {
+					live?: { state?: string; error?: string } | null;
+				} | null;
+				if (!alive || !body) return;
+				const live = body.live ?? null;
+				const liveError = live?.error ?? "";
+				if (
+					live?.state === "destroyed" ||
+					/not found|no longer exists|terminated|expired/i.test(liveError)
+				) {
+					setFailureKind("expired");
+					setDetail(
+						`This machine's sandbox has expired or been destroyed${
+							liveError ? ` (provider: ${liveError})` : ""
+						}. Provision a new machine to continue.`,
+					);
+				}
+			} catch {
+				// Probe unreachable: keep the generic error, restart stays offered.
+			}
+		}
 		let term: XTerm | null = null;
 		let fit: FitAddonType | null = null;
 		let resizeObs: ResizeObserver | null = null;
@@ -276,6 +349,7 @@ export function InteractiveConsole({
 			if (!created.ok || payload.ok === false) {
 				setStatus(payload.error === "machine_offline" || created.status === 503 ? "offline" : "error");
 				setDetail(payload.message ?? payload.error ?? `HTTP ${created.status}`);
+				void diagnose(created.status);
 				return null;
 			}
 			return payload;
@@ -296,6 +370,7 @@ export function InteractiveConsole({
 								? "Machine is not awake."
 								: `Terminal stream failed with HTTP ${r.status}.`,
 						);
+						if (r.status !== 503) void diagnose(r.status);
 						return;
 					}
 					const reader = r.body.getReader();
@@ -640,7 +715,9 @@ export function InteractiveConsole({
 			flushPendingWrite();
 			term?.dispose();
 		};
-	}, [machineId, agentKind]);
+		// retryNonce: bumped by the restart button; re-running this effect IS
+		// the restart (fresh session POST, fresh stream, fresh xterm).
+	}, [machineId, agentKind, retryNonce]);
 
 	return (
 		<div className="flex flex-col gap-2">
@@ -713,7 +790,13 @@ export function InteractiveConsole({
 							<div className="pointer-events-auto flex w-full min-w-0 max-w-[min(80ch,100%)] flex-col gap-1.5 border border-white/10 bg-[#0d0d12] px-3 py-2 text-left">
 								<div className="flex items-center justify-between gap-3">
 									<p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--ret-amber)]">
-										{status === "offline" ? "machine offline" : "console error"}
+										{failureKind === "expired"
+											? "instance expired"
+											: failureKind === "session"
+												? "session expired"
+												: status === "offline"
+													? "machine offline"
+													: "console error"}
 									</p>
 									{detail ? (
 										<button
@@ -747,6 +830,41 @@ export function InteractiveConsole({
 									<pre className="max-h-60 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-[1.6] text-white/70">
 										{detail}
 									</pre>
+								) : null}
+								{/*
+								  * One action per failure kind, never a dead end:
+								  *  - session expired: reload; Clerk re-authenticates on
+								  *    navigation and the console reattaches to the SAME tmux
+								  *    session (the pane log offset survives server-side).
+								  *  - instance expired: nothing to restart -- a button that
+								  *    re-runs the effect would fail identically and teach the
+								  *    user the button lies. The card copy already says what
+								  *    to do (provision a new machine).
+								  *  - anything else (transient error, offline): restart the
+								  *    console. Bumping retryNonce re-runs the whole connect
+								  *    effect: fresh session POST, fresh SSE stream, fresh
+								  *    xterm.
+								  */}
+								{failureKind === "session" ? (
+									<button
+										type="button"
+										onClick={() => window.location.reload()}
+										className="self-start border border-[var(--ret-amber)]/40 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-amber)] transition-colors hover:border-[var(--ret-amber)]"
+									>
+										sign in again
+									</button>
+								) : failureKind !== "expired" ? (
+									<button
+										type="button"
+										onClick={() => {
+											setStatus("connecting");
+											setDetail("");
+											setRetryNonce((nonce) => nonce + 1);
+										}}
+										className="self-start border border-white/20 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-white/70 transition-colors hover:border-white/50 hover:text-white"
+									>
+										restart console
+									</button>
 								) : null}
 							</div>
 						)}

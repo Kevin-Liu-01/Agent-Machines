@@ -4,10 +4,9 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ReactLenis, type LenisRef } from "lenis/react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
 	type ReactNode,
-	useCallback,
 	useEffect,
 	useMemo,
 	useRef,
@@ -15,6 +14,32 @@ import {
 } from "react";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger);
+
+/**
+ * Smooth scrolling + scroll-triggered section reveals. NOT page transitions.
+ *
+ * This provider used to also own two route-level effects, removed 2026-08-03
+ * at the user's request after both misbehaved on the dashboard:
+ *
+ *  - A "route curtain" that captured every same-origin link click, played a
+ *    three-panel wipe, and only then called router.push -- with a 4.5s
+ *    fallback timer as the only guarantee the curtain ever left the screen.
+ *    Any hiccup between the click and the next route's mount left the user
+ *    staring at panels.
+ *  - A route-enter tween from `autoAlpha: 0, filter: blur(7px)` over the
+ *    whole shell on every pathname change. `clearProps` only ran when the
+ *    tween COMPLETED; interrupt it (fast navigation, revertOnUpdate racing
+ *    the next route) and the page stayed dimmed and blurred -- which is
+ *    exactly how the machine dashboard was captured in the 2026-08-03
+ *    screenshot that triggered the removal.
+ *
+ * An app surface (the dashboard) shares this layout with the marketing
+ * pages, and an interaction cost that is tolerable on a landing page is not
+ * tolerable on a working console. What stays is scroll behavior only: Lenis
+ * smoothing, the top progress bar, and the ScrollTrigger reveals for
+ * `[data-motion-section]` marketing sections -- none of which run between
+ * routes or gate navigation.
+ */
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 const NATIVE_SCROLL_SELECTOR = [
@@ -41,35 +66,11 @@ function shouldUseNativeScroll(node: HTMLElement) {
 	return scrollsVertically || scrollsHorizontally;
 }
 
-function MotionMark() {
-	return (
-		<svg aria-hidden="true" height="34" viewBox="0 0 32 32" width="34">
-			<path
-				fill="#9b98a8"
-				d="M10 4h12v6H10V4ZM4 10h6v12H4V10ZM22 10h6v12h-6V10ZM10 22h12v6H10V22Z"
-			/>
-			<path
-				fill="#fff"
-				d="M23 5h4v4h-4V5ZM10 10h6v6h-6v-6ZM16 16h6v6h-6v-6ZM5 23h4v4H5v-4Z"
-			/>
-			<path
-				fill="#09090b"
-				d="M16 10h6v6h-6v-6ZM10 16h6v6h-6v-6Z"
-			/>
-		</svg>
-	);
-}
-
 export function MotionProvider({ children }: { children: ReactNode }) {
 	const pathname = usePathname();
-	const router = useRouter();
 	const lenisRef = useRef<LenisRef>(null);
 	const shellRef = useRef<HTMLDivElement>(null);
-	const curtainRef = useRef<HTMLDivElement>(null);
-	const identityRef = useRef<HTMLDivElement>(null);
 	const progressRef = useRef<HTMLDivElement>(null);
-	const isTransitioningRef = useRef(false);
-	const fallbackTimerRef = useRef<number | null>(null);
 	const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
 	useEffect(() => {
@@ -133,151 +134,12 @@ export function MotionProvider({ children }: { children: ReactNode }) {
 		};
 	}, [prefersReducedMotion]);
 
-	const resetCurtain = useCallback(() => {
-		const curtain = curtainRef.current;
-		if (!curtain) return;
-		const panels = curtain.querySelectorAll<HTMLElement>(
-			".am-route-curtain__panel",
-		);
-
-		gsap.killTweensOf([curtain, identityRef.current, ...panels]);
-		gsap
-			.timeline({
-				onComplete: () => {
-					isTransitioningRef.current = false;
-					gsap.set(curtain, {
-						autoAlpha: 0,
-						pointerEvents: "none",
-					});
-				},
-			})
-			.to(identityRef.current, {
-				autoAlpha: 0,
-				duration: 0.18,
-				ease: "power2.out",
-				y: -6,
-			})
-			.set(panels, { transformOrigin: "right center" }, 0)
-			.to(
-				panels,
-				{
-					duration: prefersReducedMotion ? 0 : 0.62,
-					ease: "expo.inOut",
-					scaleX: 0,
-					stagger: prefersReducedMotion ? 0 : 0.045,
-				},
-				0,
-			);
-	}, [prefersReducedMotion]);
-
-	const navigateWithCurtain = useCallback(
-		(destination: string) => {
-			if (prefersReducedMotion) {
-				router.push(destination);
-				return;
-			}
-
-			const curtain = curtainRef.current;
-			if (!curtain || isTransitioningRef.current) return;
-			isTransitioningRef.current = true;
-			const panels = curtain.querySelectorAll<HTMLElement>(
-				".am-route-curtain__panel",
-			);
-
-			gsap.killTweensOf([curtain, identityRef.current, ...panels]);
-			gsap
-				.timeline({
-					onComplete: () => {
-					router.push(destination);
-					fallbackTimerRef.current = window.setTimeout(
-						resetCurtain,
-						4500,
-					);
-				},
-				})
-				.set(curtain, { autoAlpha: 1, pointerEvents: "auto" })
-				.set(panels, {
-					scaleX: 0,
-					transformOrigin: "left center",
-				})
-				.to(panels, {
-					duration: 0.48,
-					ease: "power4.inOut",
-					scaleX: 1,
-					stagger: 0.04,
-				})
-				.fromTo(
-					identityRef.current,
-					{ autoAlpha: 0, y: 8 },
-					{
-						autoAlpha: 1,
-						duration: 0.24,
-						ease: "power3.out",
-						y: 0,
-					},
-					"-=0.2",
-				);
-		},
-		[prefersReducedMotion, resetCurtain, router],
-	);
-
-	useEffect(() => {
-		const handleInternalLink = (event: MouseEvent) => {
-			if (
-				event.defaultPrevented ||
-				event.button !== 0 ||
-				event.metaKey ||
-				event.ctrlKey ||
-				event.shiftKey ||
-				event.altKey
-			) {
-				return;
-			}
-
-			const target = event.target;
-			if (!(target instanceof Element)) return;
-			const anchor = target.closest<HTMLAnchorElement>("a[href]");
-			if (
-				!anchor ||
-				anchor.target === "_blank" ||
-				anchor.hasAttribute("download") ||
-				anchor.hasAttribute("data-no-transition")
-			) {
-				return;
-			}
-
-			const url = new URL(anchor.href, window.location.href);
-			if (
-				url.origin !== window.location.origin ||
-				url.pathname === window.location.pathname
-			) {
-				return;
-			}
-
-			event.preventDefault();
-			event.stopPropagation();
-			navigateWithCurtain(`${url.pathname}${url.search}${url.hash}`);
-		};
-
-		document.addEventListener("click", handleInternalLink, true);
-		return () => document.removeEventListener("click", handleInternalLink, true);
-	}, [navigateWithCurtain]);
-
 	useGSAP(
 		() => {
-			if (fallbackTimerRef.current !== null) {
-				window.clearTimeout(fallbackTimerRef.current);
-				fallbackTimerRef.current = null;
-			}
-			resetCurtain();
-
 			const shell = shellRef.current;
 			if (!shell) return;
-			const routeTarget =
-				shell.querySelector<HTMLElement>("[data-motion-route-root]") ?? shell;
 
 			if (prefersReducedMotion) {
-				gsap.set(routeTarget, { clearProps: "all" });
 				gsap.set(
 					shell.querySelectorAll<HTMLElement>(
 						"[data-motion-section], .ret-page-enter, [data-motion-item]",
@@ -287,21 +149,9 @@ export function MotionProvider({ children }: { children: ReactNode }) {
 				return;
 			}
 
-			gsap
-				.timeline()
-				.fromTo(
-					routeTarget,
-					{ autoAlpha: 0, filter: "blur(7px)", y: 14 },
-					{
-						autoAlpha: 1,
-						duration: 0.62,
-						ease: "power3.out",
-						filter: "blur(0px)",
-						y: 0,
-					},
-				)
-				.set(routeTarget, { clearProps: "transform,filter" });
-
+			// Scroll reveals only. These never touch the route root, so a route
+			// change can no longer strand the whole page dimmed or blurred --
+			// the worst an interrupted reveal can do is one marketing section.
 			const sections = shell.querySelectorAll<HTMLElement>(
 				"[data-motion-section]",
 			);
@@ -332,7 +182,7 @@ export function MotionProvider({ children }: { children: ReactNode }) {
 			requestAnimationFrame(() => ScrollTrigger.refresh());
 		},
 		{
-			dependencies: [pathname, prefersReducedMotion, resetCurtain],
+			dependencies: [pathname, prefersReducedMotion],
 			revertOnUpdate: true,
 			scope: shellRef,
 		},
@@ -345,19 +195,6 @@ export function MotionProvider({ children }: { children: ReactNode }) {
 				{children}
 			</div>
 			<div className="am-scroll-progress" ref={progressRef} aria-hidden="true" />
-			<div
-				aria-hidden="true"
-				className="am-route-curtain"
-				ref={curtainRef}
-			>
-				<div className="am-route-curtain__panel" />
-				<div className="am-route-curtain__panel" />
-				<div className="am-route-curtain__panel" />
-				<div className="am-route-curtain__identity" ref={identityRef}>
-					<MotionMark />
-					<span>agent-machines</span>
-				</div>
-			</div>
 		</>
 	);
 }

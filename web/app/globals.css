@@ -482,9 +482,10 @@ li {
 }
 
 /*
- * GSAP + Lenis motion layer. CSS owns the initial geometry so the route
- * curtain never flashes before hydration; GSAP only drives transforms and
- * opacity after the provider is live.
+ * GSAP + Lenis motion layer: smooth scroll, the top progress bar, and
+ * scroll-triggered section reveals. The route curtain and the route-enter
+ * blur were removed 2026-08-03 (they could strand a page mid-transition --
+ * see components/motion/MotionProvider.tsx for the account).
  */
 .am-route-shell {
 	min-height: 100dvh;
@@ -506,57 +507,6 @@ li {
 	transform: scaleX(0);
 	transform-origin: left center;
 	will-change: transform;
-}
-
-.am-route-curtain {
-	position: fixed;
-	inset: 0;
-	z-index: 9999;
-	visibility: hidden;
-	pointer-events: none;
-	opacity: 0;
-}
-
-.am-route-curtain__panel {
-	position: absolute;
-	top: 0;
-	bottom: 0;
-	width: 34%;
-	background:
-		linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.035)),
-		#09090b;
-	border-right: 1px solid rgba(255, 255, 255, 0.12);
-	transform: scaleX(0);
-	transform-origin: left center;
-	will-change: transform;
-}
-
-.am-route-curtain__panel:nth-child(1) {
-	left: 0;
-}
-
-.am-route-curtain__panel:nth-child(2) {
-	left: 33%;
-}
-
-.am-route-curtain__panel:nth-child(3) {
-	left: 66%;
-}
-
-.am-route-curtain__identity {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	color: rgba(255, 255, 255, 0.9);
-	font-size: 17px;
-	font-weight: 600;
-	letter-spacing: -0.015em;
-	opacity: 0;
-	transform: translate(-50%, -50%);
-	will-change: transform, opacity;
 }
 
 [data-motion-section] {
@@ -643,8 +593,7 @@ details[open] .ret-details-chevron {
 		transform: none;
 	}
 
-	.am-scroll-progress,
-	.am-route-curtain {
+	.am-scroll-progress {
 		display: none;
 	}
 

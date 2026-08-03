@@ -14,6 +14,7 @@ import {
 } from "@/lib/fleet/logos";
 import { MetaGlyph, type MetaGlyphKind } from "@/lib/fleet/meta-icons";
 import { BootstrapPhaseBadge } from "@/components/dashboard/BootstrapPhaseBadge";
+import { MigrationPhaseBadge } from "@/components/dashboard/MigrationPhaseBadge";
 import {
 	MachineActions,
 	type MachineState as MachineActionState,
@@ -27,12 +28,14 @@ import type { LoadoutDisplayBadge } from "@/lib/fleet/loadout-badges";
 import { resolveMachineLoadoutBadges } from "@/lib/fleet/loadout-badges";
 import type { FleetLoadoutSnapshot } from "@/lib/fleet/use-fleet-loadout";
 import type { FleetStreamCardModel } from "@/lib/fleet/view-model";
+import { compactSpec } from "@/lib/fleet/view-model";
 import type { ProviderCapabilities } from "@/lib/providers";
 import {
 	AGENT_LABEL,
 	type AgentKind,
 	type BootstrapState,
 	type MachineSpec,
+	type MigrationState,
 	type ProviderKind,
 } from "@/lib/user-config/schema";
 
@@ -50,6 +53,7 @@ type LiveMachine = {
 	archived?: boolean;
 	capabilities: ProviderCapabilities | null;
 	bootstrapState: BootstrapState;
+	migrationState?: MigrationState | null;
 	live:
 		| { ok: true; state: string; rawPhase: string; lastError: string | null }
 		| { ok: false; reason: string };
@@ -263,7 +267,7 @@ export function MachineFleetCard({
 	const providerMessage =
 		machine.live.ok && machine.live.lastError ? machine.live.lastError : null;
 	const isActualError = stateName === "error";
-	const memGib = (machine.spec.memoryMib / 1024).toFixed(1);
+	const specText = compactSpec(machine.spec);
 
 	const loadoutBadges = useMemo(() => {
 		if (!loadout) {
@@ -329,6 +333,7 @@ export function MachineFleetCard({
 				) : null}
 				<StateBadge tone={stateTone}>{stateLabel}</StateBadge>
 				<BootstrapPhaseBadge state={machine.bootstrapState} />
+				<MigrationPhaseBadge state={machine.migrationState} />
 				<span className="ml-auto font-mono text-[9px]" style={{ color }}>
 					{card.shortId}
 				</span>
@@ -441,7 +446,7 @@ export function MachineFleetCard({
 						/>
 						<MetaCell
 							label="spec"
-							value={`${machine.spec.vcpu}v · ${memGib}G · ${machine.spec.storageGib}G`}
+							value={specText}
 							glyph="spec"
 						/>
 						<MetaCell label="model" value={machine.model} mark={modelMark} />

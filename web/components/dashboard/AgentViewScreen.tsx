@@ -46,6 +46,7 @@ import { cn } from "@/lib/cn";
 import { withMachineId } from "@/lib/dashboard/api-url";
 import { agentLabel, agentLaunchCommand, isCliAgent } from "@/lib/dashboard/agent-launch";
 import { formatAge, formatBytes } from "@/lib/dashboard/format";
+import { normalizeMachineSpec, specMemoryGib } from "@/lib/fleet/view-model";
 import type {
 	GatewaySummary,
 	LiveDataEnvelope,
@@ -912,15 +913,15 @@ export function AgentViewScreen() {
 				<div className="grid gap-4 xl:grid-cols-[minmax(360px,0.8fr)_minmax(0,1.2fr)]">
 					<Panel title="Machine Spec" icon={<Cpu size={13} />}>
 						<div className="grid gap-3 sm:grid-cols-3">
-							<Metric label="vCPU" value={String(machine.spec.vcpu)} icon={<Cpu size={14} />} />
+							<Metric label="vCPU" value={String(normalizeMachineSpec(machine.spec).vcpu ?? "—")} icon={<Cpu size={14} />} />
 							<Metric
 								label="RAM"
-								value={`${(machine.spec.memoryMib / 1024).toFixed(1)} GiB`}
+								value={specMemoryGib(machine.spec)}
 								icon={<MemoryStick size={14} />}
 							/>
 							<Metric
 								label="Disk"
-								value={`${machine.spec.storageGib} GiB`}
+								value={`${normalizeMachineSpec(machine.spec).storageGib ?? "—"} GiB`}
 								icon={<HardDrive size={14} />}
 							/>
 						</div>

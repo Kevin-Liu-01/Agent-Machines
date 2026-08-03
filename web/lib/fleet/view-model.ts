@@ -58,11 +58,74 @@ type MachineInput = {
 		| { ok: false; reason: string };
 };
 
-export function formatResourceRow(spec: MachineSpec): { cpu: string; mem: string; disk: string } {
+/**
+ * Best-effort read of a stored machine spec, for every renderer of one.
+ *
+ * Returns only the axes that are actually numbers, mapping the legacy/foreign
+ * `cpuCount` spelling (the e2b SDK's field name, found in real stored records
+ * on 2026-08-03) onto `vcpu`. Renderers show "—" for what is absent. This is
+ * the ONE place spec-shape tolerance lives; interpolating `spec.vcpu` raw in a
+ * component is how "undefinedv · 2.0G · undefinedG" shipped.
+ */
+export function normalizeMachineSpec(
+	spec: Partial<MachineSpec & { cpuCount: number }> | null | undefined,
+): { vcpu?: number; memoryMib?: number; storageGib?: number } {
+	const vcpu =
+		typeof spec?.vcpu === "number"
+			? spec.vcpu
+			: typeof spec?.cpuCount === "number"
+				? spec.cpuCount
+				: undefined;
 	return {
-		cpu: `${spec.vcpu} vCPU`,
-		mem: spec.memoryMib >= 1024 ? `${(spec.memoryMib / 1024).toFixed(1)} GB` : `${spec.memoryMib} MB`,
-		disk: `${spec.storageGib.toFixed(1)} GB`,
+		...(vcpu !== undefined ? { vcpu } : {}),
+		...(typeof spec?.memoryMib === "number" ? { memoryMib: spec.memoryMib } : {}),
+		...(typeof spec?.storageGib === "number" ? { storageGib: spec.storageGib } : {}),
+	};
+}
+
+/** "2.0 GiB", or an em-dash when the record has no numeric memoryMib. */
+export function specMemoryGib(
+	spec: Partial<MachineSpec & { cpuCount: number }> | null | undefined,
+): string {
+	const { memoryMib } = normalizeMachineSpec(spec);
+	return memoryMib === undefined ? "— GiB" : `${(memoryMib / 1024).toFixed(1)} GiB`;
+}
+
+/** Compact "2v · 2.0G · 10G" line, with an em-dash for any missing axis. */
+export function compactSpec(
+	spec: Partial<MachineSpec & { cpuCount: number }> | null | undefined,
+): string {
+	const normal = normalizeMachineSpec(spec);
+	const mem =
+		normal.memoryMib === undefined ? "—" : (normal.memoryMib / 1024).toFixed(1);
+	return `${normal.vcpu ?? "—"}v · ${mem}G · ${normal.storageGib ?? "—"}G`;
+}
+
+/**
+ * Render a machine's size WITHOUT trusting the MachineSpec type.
+ *
+ * Stored records outlive the schema: on 2026-08-03 the fleet panel crashed on
+ * two real config records whose spec was {cpuCount: 2, memoryMib: 2048} --
+ * the e2b SDK's field name instead of vcpu, and no storageGib at all --
+ * written by an external caller of the config store. `spec.storageGib
+ * .toFixed(1)` threw and the ErrorBoundary took down the whole MachinesPanel,
+ * so every machine disappeared because one record was malformed. A renderer
+ * of persisted data gets Partial-of-unknown, shows an honest placeholder for
+ * what is missing, and never decides the page.
+ */
+export function formatResourceRow(
+	spec: Partial<MachineSpec & { cpuCount: number }> | null | undefined,
+): { cpu: string; mem: string; disk: string } {
+	const { vcpu, memoryMib, storageGib } = normalizeMachineSpec(spec);
+	return {
+		cpu: typeof vcpu === "number" ? `${vcpu} vCPU` : "— vCPU",
+		mem:
+			memoryMib === undefined
+				? "— MB"
+				: memoryMib >= 1024
+					? `${(memoryMib / 1024).toFixed(1)} GB`
+					: `${memoryMib} MB`,
+		disk: storageGib === undefined ? "— GB" : `${storageGib.toFixed(1)} GB`,
 	};
 }
 

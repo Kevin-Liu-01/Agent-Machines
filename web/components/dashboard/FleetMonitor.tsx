@@ -31,6 +31,8 @@ import {
 } from "@/lib/agents/upstreams";
 import { cn } from "@/lib/cn";
 import type { ProviderCapabilities } from "@/lib/providers";
+import { MigrationPhaseBadge } from "@/components/dashboard/MigrationPhaseBadge";
+import { compactSpec } from "@/lib/fleet/view-model";
 import {
 	AGENT_KINDS,
 	AGENT_LABEL,
@@ -38,6 +40,7 @@ import {
 	PROVIDER_LABEL,
 	type AgentKind,
 	type MachineSpec,
+	type MigrationState,
 	type ProviderKind,
 } from "@/lib/user-config/schema";
 
@@ -69,6 +72,7 @@ type LiveMachine = {
 	hasApiKey: boolean;
 	archived?: boolean;
 	capabilities: ProviderCapabilities | null;
+	migrationState?: MigrationState | null;
 	live:
 		| { ok: true; state: string; rawPhase: string; lastError: string | null }
 		| { ok: false; reason: string };
@@ -415,7 +419,7 @@ function MachineRow({
 	const providerMessage =
 		machine.live.ok && machine.live.lastError ? machine.live.lastError : null;
 	const isActualError = stateName === "error";
-	const memGib = (machine.spec.memoryMib / 1024).toFixed(1);
+	const specText = compactSpec(machine.spec);
 	const providerMark = PROVIDER_MARK[machine.providerKind];
 	const ageHrs = Math.max(
 		0,
@@ -482,6 +486,7 @@ function MachineRow({
 							active
 						</ReticleBadge>
 					) : null}
+					<MigrationPhaseBadge state={machine.migrationState} />
 				</div>
 				<StateChip tone={tone}>{stateName}</StateChip>
 			</div>
@@ -494,7 +499,7 @@ function MachineRow({
 				</Cell>
 				<Cell label="spec">
 					<span className="text-[var(--ret-text)]">
-						{machine.spec.vcpu}v . {memGib}G
+						{specText}
 					</span>
 				</Cell>
 				<Cell label="age">
@@ -765,8 +770,7 @@ function SpinUpForm({
 				{/* Endpoint + payload preview stays mono: it's literally
 				    a wire-protocol fragment, not body copy. */}
 				<p className="font-mono text-[10px] text-[var(--ret-text-muted)]">
-					POST /api/dashboard/admin/provision-machine . spec {spec.vcpu}v
-					. {(spec.memoryMib / 1024).toFixed(1)}G . {spec.storageGib}G
+					POST /api/dashboard/admin/provision-machine . spec {compactSpec(spec)}
 				</p>
 				<div className="flex items-center gap-2">
 					{result.phase === "ok" ? (
