@@ -6,8 +6,13 @@ demo values. Re-run it to refresh; the script exits non-zero if any
 credentialed cell fails.
 
 Prompt for every cell: `Reply with exactly the text MUX-OK and nothing
-else. Do not use any tools.` A cell is `ok` only when the harness exits 0
-and the normalized stream carries the text back.
+else. Do not use any tools.` A cell is `ok` when the harness exits 0 --
+that is the entire pass criterion in the script
+(`row.outcome = result.exitCode === 0 ? "ok" : "failed"`). The normalized
+text is captured and printed per cell for a human to read, but it is not
+asserted, so a cell whose text came back empty, or as a vendor banner
+instead of the answer, would still print `ok`. Corrected 2026-08-03: this
+line used to say the text was part of the gate.
 
 ## The 4x4 matrix, measured 2026-08-01
 
@@ -33,8 +38,10 @@ sprites install cells after the detached-work fix below.
 | openclaw | vercel | ok | 425 | 16047 | 8580 | 9266 |
 | hermes | vercel | ok | 380 | 4086 | 2826 | 12809 |
 
-**16 of 16 cells pass.** Every harness on every substrate. Every `ok` row returned the exact
-sentinel text through the normalized event stream.
+**16 of 16 cells pass.** Every harness on every substrate: 16 runs, all exit 0. The
+per-cell text was printed and read while the matrix ran, but it is not recorded in this
+table and the script does not assert it, so "returned the sentinel" is an operator
+observation rather than something these rows back (corrected 2026-08-03).
 
 Two cells changed character completely:
 
@@ -127,6 +134,121 @@ Test fixtures now carry the exact wire bytes as escapes.
 Verified live on e2b after the fix: `text: "MUX-OK"`, with no diagnostic. The
 lesson generalizes -- a fixture copied out of prose documentation is not the
 wire, and a filter tested only against prose will pass while doing nothing.
+
+Scope correction, 2026-08-03: what shipped on 2026-08-01 fixed **one line**, not
+the class. The filter held exactly one phrase, so it was a record of sightings
+rather than of the vendor's behaviour, and two further layers of the same trap
+were still live. See below.
+
+### Fixed: the same trap, two layers down (2026-08-03)
+
+A user running hermes in an e2b sandbox saw the main chat answer normally and
+then this:
+
+```
+U+26A0 Auxiliary title generation failed: HTTP 400: Error code: 400 - {'detail': {'error':
+{'message': 'This request requires streaming. Set "stream": true and retry.', 'type':
+'invalid_request_error', 'code': 'streaming_required', ...
+```
+
+`U+26A0` above is the NAME of the leading codepoint, not text hermes prints. This
+file is ASCII by house rule, and sanitizing that glyph away silently is precisely
+how the 2026-08-01 matcher was written wrong -- so from here on this file names
+codepoints instead of dropping them, and **fixtures come from a capture or from
+the vendor's source, never from this page**. The wire form is a bare U+26A0 and
+one space, with no U+FE0F: a different decoration from the tirith line above,
+from the same vendor, in the same release.
+
+Fed to `hermesHarness.parseLine`, that line came back as a **text delta** -- the
+vendor's warning about its own failed background task, reported as the model's
+answer. Three things came out of chasing it, all checked against the pinned
+wheel (`hermes_agent-0.19.0-py3-none-any.whl`, sha256 `bd0bac01...3bef327f`,
+equal to the digest PyPI publishes) and against live runs on e2b.
+
+**1. The phrase list was a list of sightings.** It is now enumerated from the
+vendor's source, restricted to print sites that can reach the parser. The
+restriction is the point: hermes has two print channels that behave in opposite
+ways under our flags. `_vprint` (`run_agent.py:835`) returns as soon as
+`suppress_status_output` is set, *before* it honours `force=True` (`:854`), and
+`--quiet` sets that flag (`cli.py:15971`) -- so every `_emit_warning` is dropped
+on a headless run. `_safe_print` (`run_agent.py:817`) and the CLI's `_cprint`
+have no such gate, and those are the lines that reach us. That is also why the
+tirith banner was in `RunResult.text` at all: `cli.py:6217` prints it through
+`_cprint`. Four more ungated writers are now covered, each cited in the code:
+the context-probe line, the compaction notice, and the streaming-unsupported
+notice *with its second physical line* (one `print` containing newlines, so the
+hint arrives sigil-less and reads like prose).
+
+The auxiliary warning itself is one **family**, not one line:
+`run_agent.py:1188-1197` builds all of them from a single f-string with the task
+interpolated, hermes runs 13 auxiliary tasks, and none of its auxiliary call
+sites requests streaming -- so any of them can fail this exact way against an
+SSE-only endpoint. One bounded-wildcard entry covers all 13 instead of a list
+that grows once per incident report.
+
+**2. `undecorate()` was defeated by ANSI styling, and that was luck, not
+design.** Hermes wraps these lines in colour (`_DIM = "\x1b[2;3m"`,
+`cli.py:2452`), and a CSI escape body contains **digits** -- so `undecorate()`,
+which strips leading non-letter/non-digit characters, stops at the first one.
+Measured against the shipped matcher using the exact prefix captured from a live
+PTY run:
+
+| line as it arrives | after `undecorate()` | matched? |
+| --- | --- | --- |
+| `U+26A0 tirith security scanner ...` | `tirith security scanner ...` | yes |
+| `ESC[0mU+26A0 tirith security scanner ...` | `0mU+26A0 tirith security ...` | **no** |
+| `  ESC[2;3mU+26A0 tirith ...ESC[0m` | `2;3mU+26A0 tirith ...` | **no** |
+
+The 2026-08-01 fix worked only because the headless lane's stdout is a pipe,
+where the styling is rendered away. Any substrate whose exec allocated a TTY
+would have silently reverted it. Escapes are now stripped before matching, which
+makes the phrase list a property of the line instead of a property of the
+transport.
+
+**3. The 400 was not ours, and there is nothing here to align.** Auxiliary tasks
+default to provider `auto`, and `auto` step 1 is the main runtime
+(`agent/auxiliary_client.py:4383-4392`), so they follow `--provider`. Measured
+2026-08-03 on e2b through this adapter: hermes logged `Auxiliary
+title_generation: using auto (claude-fable-5) at https://api.anthropic.com`, a
+CONNECT-logging proxy inside the sandbox saw `api.anthropic.com:443` as the only
+host dialled in the turn, and the title call **succeeded**. A FastAPI-shaped
+`{'detail': ...}` envelope with a `code` field is not Anthropic's, and hermes's
+Anthropic auxiliary transport prefers streaming anyway
+(`agent/anthropic_adapter.py:2769-2806`), so `streaming_required` is unreachable
+through it. The reported failure came from a runtime this wiring did not choose.
+Correctly classifying the line is the whole of what this adapter owes it -- there
+is no base URL, env var or flag on our side to change, and inventing one would be
+guessing at someone else's endpoint. Hermes's only real kill switch is
+`auxiliary.title_generation.enabled: false` in its `config.yaml`; there is no env
+var and no CLI flag, so turning auxiliary work off would mean writing a config
+file into every sandbox, which is a bigger decision than this bug.
+
+Two facts worth keeping for whoever reads this next. `--quiet` is **load-bearing**
+in `runCommand`, not just terse: it sets `suppress_status_output`, which drops
+every `_emit_warning`, and `quiet_mode`, which is what actually keeps the
+per-tool progress line out of the answer (`tool_executor.py:930-940` reaches a
+`not agent.quiet_mode` guard before it ever reads `tool_progress_mode`, and the
+branch above that is already dead because `cli_agent_setup_mixin.py:396` always
+passes a `tool_progress_callback`). Without `--quiet` the turn routes through
+`HermesCLI.chat()` (`cli.py:16076`) instead of `run_conversation`
+(`cli.py:15979`), and only that path starts the auxiliary title request on this
+lane -- it is NOT the only caller of `maybe_auto_title`, which has four
+(`cli.py:12308`, `tui_gateway/server.py:10300`, `acp_adapter/server.py:1625`,
+`gateway/run.py:21160`). That last one matters for planning: because the ACP
+server calls it too, switching this adapter to `hermes-acp` would not remove the
+auxiliary title call.
+
+And the auxiliary warning reaches a **PTY** today, not a headless run: `pty()`
+goes straight to `sandbox.openPty` and the router never runs `parseLine` over it.
+The family entry is therefore load-bearing on the PTY lane and prophylactic on
+the headless one, held there by one flag.
+
+The first pass at that head list modeled only two print channels and missed
+Python's builtin `print()`, which nothing this adapter passes can gate. Seven
+bare-print diagnostics from the wheel were reaching `RunResult.text` as text
+deltas, two of them on runs that exit 0 with a real answer
+(`chat_completion_helpers.py:1905` and `conversation_loop.py:2961`). Covered as
+of 2026-08-03, each head mutation-checked.
 
 ### Substrate primitives
 

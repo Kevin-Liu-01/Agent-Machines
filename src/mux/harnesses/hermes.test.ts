@@ -478,3 +478,389 @@ test("undecorating cannot swallow a real answer", () => {
 		assert.equal(events[0]?.type, "text", `must stay answer text: ${line}`);
 	}
 });
+
+/**
+ * The auxiliary-failure family, reported 2026-08-03.
+ *
+ * Every fixture below is the real bytes, either captured from a live
+ * mux-driven run or taken from the vendor f-string in the pinned 0.19.0
+ * wheel. A fixture retyped from a rendered transcript is how the tirith
+ * matcher shipped broken, so nothing here is normalized.
+ */
+
+/** Bare U+26A0 plus ONE space -- run_agent.py:1197, no variation selector. */
+const AUX_SIGIL = "\u26a0 ";
+
+test("the auxiliary warning is filtered as it actually arrives on the wire", () => {
+	// EXACT bytes captured 2026-08-03 from a PTY run driven through this
+	// adapter's own interactiveCommand() on e2b. Note the sigil: a BARE U+26A0,
+	// with NO U+FE0F, unlike the tirith line above. A fixture written as
+	// "\u26a0\ufe0f Auxiliary" would pass while the wire form failed.
+	const wire = `${AUX_SIGIL}Auxiliary title generation failed: Connection error.`;
+	assert.equal(
+		wire.codePointAt(0),
+		0x26a0,
+		"the fixture must start with the warning sign",
+	);
+	assert.notEqual(
+		wire.codePointAt(1),
+		0xfe0f,
+		"the wire form carries no variation selector -- do not add one",
+	);
+
+	const parse = turnParser();
+	const events = [wire, "Hi. What do you need?"].flatMap((line) => parse(line));
+	assert.equal(
+		accumulate(events),
+		"Hi. What do you need?\n",
+		"the vendor's warning must not reach RunResult.text as the model's words",
+	);
+	assert.deepEqual(events.filter((event) => event.type === "status"), [
+		{ type: "status", label: wire },
+	]);
+	assert.ok(
+		!events.some((event) => event.type === "error"),
+		"a failed auxiliary task is not a failed run",
+	);
+});
+
+test("the reported 400 line is filtered whole, truncation and all", () => {
+	// The line the user actually saw. hermes truncates the vendor detail at 217
+	// chars and appends its own "..." (run_agent.py:1195-1196), so there is no
+	// closing brace to anchor on -- the head is all a matcher gets.
+	const reported =
+		`${AUX_SIGIL}Auxiliary title generation failed: HTTP 400: Error code: 400 - ` +
+		`{'detail': {'error': {'message': 'This request requires streaming. Set "stream": true and retry.', ` +
+		`'type': 'invalid_request_error', 'code': 'streaming_required', 'request_id': '019fc8a413df...`;
+	const parse = turnParser();
+	const events = parse(reported);
+	assert.deepEqual(
+		events.map((event) => event.type),
+		["status"],
+		"the upstream's 400 is a vendor diagnostic, not the agent's answer",
+	);
+	assert.equal(accumulate(events), "");
+});
+
+test("one head covers every auxiliary task hermes can run", () => {
+	// The warning is built from a single f-string with the task interpolated
+	// (run_agent.py:1197), and none of hermes's 34 auxiliary call sites asks for
+	// streaming -- so any task can fail this way against an SSE-only endpoint.
+	// Matching the family is what makes that a fixed list of one entry instead
+	// of a list that grows once per incident report.
+	const tasks = [
+		// The two labels that reach the emitter in 0.19.0.
+		"title generation",
+		"background review",
+		// hermes_cli/main.py's _AUX_TASKS, any of which can route the same way.
+		"vision",
+		"compression",
+		"web_extract",
+		"approval",
+		"mcp",
+		"title_generation",
+		"memory_query_rewrite",
+		"tts_audio_tags",
+		"skills_hub",
+		"triage_specifier",
+		"kanban_decomposer",
+		"profile_describer",
+		"curator",
+	];
+	for (const task of tasks) {
+		const parse = turnParser();
+		const events = parse(`${AUX_SIGIL}Auxiliary ${task} failed: Connection error.`);
+		assert.deepEqual(
+			events.map((event) => event.type),
+			["status"],
+			`task ${JSON.stringify(task)} must be recognized`,
+		);
+	}
+});
+
+test("the decorated sigil variant is recognized too", () => {
+	// The vendor is inconsistent: run_agent.py:1197 emits a bare U+26A0,
+	// cli_agent_setup_mixin.py:73 emits U+26A0 U+FE0F. Matching must not depend
+	// on which one a given call site chose.
+	for (const sigil of ["\u26a0 ", "\u26a0\ufe0f ", "\u26a0\ufe0f  "]) {
+		const parse = turnParser();
+		const events = parse(`${sigil}Auxiliary title generation failed: x`);
+		assert.deepEqual(
+			events.map((event) => event.type),
+			["status"],
+			`sigil ${JSON.stringify(sigil)} must not hide the phrase`,
+		);
+	}
+});
+
+test("an answer about a failed auxiliary task is still the answer", () => {
+	// The case a family matcher has to survive: the user asked what the warning
+	// meant, so the agent's first line is about it. The head is anchored, so an
+	// answer that opens with any other word is untouched.
+	const parse = turnParser();
+	for (const line of [
+		'The warning "Auxiliary title generation failed" means hermes could not title the session.',
+		"Auxiliary tasks are optional in hermes.",
+		"Auxiliary failed: that is not the vendor's format.",
+		"Auxiliary title generation failed silently, with no colon.",
+	]) {
+		const events = parse(line);
+		assert.deepEqual(
+			events,
+			[{ type: "text", delta: `${line}\n` }],
+			`must stay answer text: ${line}`,
+		);
+	}
+});
+
+test("hermes's other ungated stdout writers are not answer text either", () => {
+	// These four are the set that can actually reach a `chat --quiet -q` run:
+	// they print through _safe_print / _cprint, which have no
+	// suppress_status_output gate (unlike _vprint, run_agent.py:854). Verified
+	// 2026-08-03 against the pinned wheel; each carries its vendor site.
+	const cases: ReadonlyArray<readonly [string, string]> = [
+		[
+			"agent/conversation_loop.py:2270",
+			"\u{1F4BE} Cached context length: 200,000 tokens for claude-fable-5",
+		],
+		["agent/conversation_loop.py:5143", "  \u27f3 compacting context\u2026"],
+		[
+			"agent/chat_completion_helpers.py:3529",
+			"\u26a0  Streaming is not supported for this model/provider. Switching to non-streaming.",
+		],
+		[
+			"agent/chat_completion_helpers.py:3531 (continuation line)",
+			"   To avoid this delay, set display.streaming: false in config.yaml",
+		],
+		[
+			"hermes_cli/cli_agent_setup_mixin.py:73",
+			"\u26a0\ufe0f  Primary auth failed \u2014 switching to fallback: openai-api / gpt-5.1",
+		],
+	];
+	for (const [site, wire] of cases) {
+		const parse = turnParser();
+		const events = [wire, "MUX-OK"].flatMap((line) => parse(line));
+		assert.equal(
+			accumulate(events),
+			"MUX-OK\n",
+			`${site} leaked into RunResult.text`,
+		);
+		assert.equal(
+			events.filter((event) => event.type === "status").length,
+			1,
+			`${site} must still be reported`,
+		);
+	}
+});
+
+test("the streaming notice keeps both of its physical lines out of the answer", () => {
+	// chat_completion_helpers.py:3529-3532 is ONE print containing newlines, so
+	// the hint arrives as a separate line with no sigil. Without its own head it
+	// becomes the first line of the answer -- and it would flip the
+	// already-saw-text latch, so every later diagnostic would leak too.
+	const parse = turnParser();
+	const events = [
+		"",
+		"\u26a0  Streaming is not supported for this model/provider. Switching to non-streaming.",
+		"   To avoid this delay, set display.streaming: false in config.yaml",
+		"",
+		"MUX-OK",
+	].flatMap((line) => parse(line));
+	assert.equal(accumulate(events), "MUX-OK\n");
+	assert.equal(
+		events.filter((event) => event.type === "status").length,
+		2,
+		"both lines of the notice must be classified",
+	);
+});
+
+test("ANSI styling cannot hide a diagnostic", () => {
+	// The second layer of the same trap. hermes wraps these lines in styling
+	// (_DIM = "\\x1b[2;3m", cli.py:2452; the tirith print at cli.py:6217), and a
+	// CSI body contains DIGITS, so undecorate() alone stops at the first one and
+	// the phrase never matches. The filter only ever worked because the headless
+	// lane's stdout is a pipe. First fixture below is the vendor's own wrap;
+	// second is the exact prefix captured from a live PTY run 2026-08-03.
+	const cases = [
+		`  \u001b[2;3m\u26a0 tirith security scanner enabled but not available \u2014 command scanning will use pattern matching only\u001b[0m`,
+		`\u001b[0m${AUX_SIGIL}Auxiliary title generation failed: Connection error.\r`,
+		// OSC 8 is NOT something hermes was observed to emit -- the claim that
+		// agent/display.py builds a clickable hyperlink was false (that file has no
+		// escape bytes at all, and cli.py:3473/3505 strips OSC before printing).
+		// Kept as a guard on stripAnsi's OSC arm, which is defensive by choice.
+		`\u001b]8;;https://example.com\u0007\u26a0 tirith security scanner enabled but not available\u001b]8;;\u0007`,
+	];
+	for (const wire of cases) {
+		const parse = turnParser();
+		const events = [wire, "MUX-OK"].flatMap((line) => parse(line));
+		assert.equal(
+			accumulate(events),
+			"MUX-OK\n",
+			`styling defeated the filter: ${JSON.stringify(wire)}`,
+		);
+		const statuses = events.filter((event) => event.type === "status");
+		assert.equal(statuses.length, 1);
+		assert.ok(
+			!statuses[0]?.label.includes("\u001b"),
+			`the status label must be de-styled: ${JSON.stringify(statuses[0]?.label)}`,
+		);
+	}
+});
+
+test("the styling stripper holds no state between lines or turns", () => {
+	// The strip regexes are module-level and carry the /g flag, which is
+	// stateful under .test()/.exec(). If one ever leaked a lastIndex, the
+	// SECOND styled diagnostic of a session would slip through -- an
+	// intermittent leak that a single-line test could never catch.
+	const styled = `  \u001b[2;3m\u26a0 tirith security scanner enabled but not available \u2014 x\u001b[0m`;
+	for (let turn = 0; turn < 3; turn += 1) {
+		const parse = turnParser();
+		for (let line = 0; line < 5; line += 1) {
+			assert.deepEqual(
+				parse(styled).map((event) => event.type),
+				["status"],
+				`turn ${turn}, line ${line} was misclassified`,
+			);
+		}
+		assert.equal(accumulate([...parse("MUX-OK")]), "MUX-OK\n");
+	}
+});
+
+test("an answer keeps its own escape sequences byte for byte", () => {
+	// Stripping is for MATCHING and for the status label only. An agent that
+	// prints colored output, or explains an escape sequence, must get its bytes
+	// back unchanged -- including on the first line of the turn.
+	const parse = turnParser();
+	const colored = "\u001b[1mBold answer\u001b[0m and \u001b]8;;https://x\u0007link\u001b]8;;\u0007";
+	assert.deepEqual(parse(colored), [{ type: "text", delta: `${colored}\n` }]);
+	const second = "\u001b[2;3mstill the answer\u001b[0m";
+	assert.deepEqual(parse(second), [{ type: "text", delta: `${second}\n` }]);
+});
+
+test("a wrapped diagnostic tail is a known limitation, not a silent one", () => {
+	// If a terminal hard-wraps the warning, the continuation fragment has no
+	// head to match and becomes answer text. That is confined to the PTY lane
+	// -- the router never runs parseLine over pty() output -- so it cannot
+	// affect RunResult.text today. Asserted rather than assumed, so that if
+	// anyone starts parsing the PTY stream this test says what breaks.
+	const parse = turnParser();
+	const events = [
+		`${AUX_SIGIL}Auxiliary title generation failed: HTTP 400: Error code: 400 - {'detail': {'error':`,
+		`{'message': 'This request requires streaming. Set "stream": true and retry.', 'type':`,
+	].flatMap((line) => parse(line));
+	assert.equal(events[0]?.type, "status", "the head line is still classified");
+	assert.equal(
+		events[1]?.type,
+		"text",
+		"a wrapped tail has no head to match; only the PTY lane can produce one",
+	);
+});
+
+// ---------------------------------------------------------------------------
+// The bare-print channel
+// ---------------------------------------------------------------------------
+
+/**
+ * Diagnostics hermes writes with Python's BUILTIN print().
+ *
+ * This channel is why the first version of VENDOR_DIAGNOSTIC_HEADS was
+ * incomplete: it modeled _vprint (gated by --quiet) and _safe_print/_cprint
+ * (ungated) and stopped there. print() is ungated by anything this adapter
+ * sets, does not route through agent._print_fn, and is used in ~132 places on
+ * the `chat -q` turn path. Seven of those reached this parser as text deltas.
+ *
+ * Every string below is the literal from the pinned wheel (sha256
+ * bd0bac01...3bef327f), read out of the source on 2026-08-03 with the
+ * `{agent.log_prefix}` prefix removed because agent_init.py:297 defaults it to
+ * "". The sigils are deliberately varied and are NOT all U+26A0: three
+ * different emoji appear, two of them with a U+FE0F variation selector and one
+ * without. A test written from the prose in a report would have normalized all
+ * of that away -- which is exactly how this class of bug shipped twice.
+ */
+const BARE_PRINT_DIAGNOSTICS: ReadonlyArray<{
+	readonly where: string;
+	readonly line: string;
+	/** True when the run still exits 0, so the leak corrupts a SUCCESS. */
+	readonly onPassingRun: boolean;
+}> = [
+	{
+		where: "agent/chat_completion_helpers.py:1905",
+		line: "⚠️  Reached maximum iterations (90). Requesting summary...",
+		onPassingRun: true,
+	},
+	{
+		where: "agent/conversation_loop.py:2961",
+		line: "\u{1f510} Anthropic credentials refreshed after 401. Retrying request...",
+		onPassingRun: true,
+	},
+	{
+		where: "agent/conversation_loop.py:2965",
+		line: "\u{1f510} Anthropic 401 — authentication failed.",
+		onPassingRun: false,
+	},
+	{
+		where: "agent/conversation_loop.py:4440",
+		line: "❌ All API retries exhausted with no successful response.",
+		onPassingRun: false,
+	},
+	{
+		where: "agent/tool_executor.py:346",
+		line: "⚡ Interrupt: skipping 3 tool call(s)",
+		onPassingRun: false,
+	},
+	{
+		where: "hermes_cli/cli_agent_setup_mixin.py:114",
+		line: "⚠️  Provider resolver returned an empty API key. Set OPENROUTER_API_KEY or run: hermes setup",
+		onPassingRun: false,
+	},
+	{
+		where: "hermes_cli/cli_agent_setup_mixin.py:118",
+		line: "⚠️  Provider resolver returned an empty base URL. Check your provider config or run: hermes setup",
+		onPassingRun: false,
+	},
+];
+
+test("bare print() diagnostics are status, not the model's words", () => {
+	for (const { where, line, onPassingRun } of BARE_PRINT_DIAGNOSTICS) {
+		const parse = turnParser();
+		const events = [line, "MUX-OK"].flatMap((wire) => parse(wire));
+		assert.equal(
+			accumulate(events),
+			"MUX-OK\n",
+			`${where} leaked into RunResult.text${
+				onPassingRun ? " ON A RUN THAT EXITS 0" : ""
+			}: ${JSON.stringify(line)}`,
+		);
+		assert.ok(
+			events.some((event) => event.type === "status"),
+			`${where} was dropped instead of reported as status: ${JSON.stringify(line)}`,
+		);
+	}
+});
+
+test("the two diagnostics that leak on a PASSING run are covered", () => {
+	// Called out separately because these are the severe ones. The others
+	// accompany a run that fails anyway, where a polluted text field is untidy;
+	// these two land in the text of a run the router reports as a success, so
+	// the caller cannot tell the vendor's line from the model's answer.
+	const passing = BARE_PRINT_DIAGNOSTICS.filter((entry) => entry.onPassingRun);
+	assert.equal(passing.length, 2, "expected exactly the two known exit-0 leaks");
+	for (const { where, line } of passing) {
+		const parse = turnParser();
+		const events = [line, "The answer is 42."].flatMap((wire) => parse(wire));
+		assert.equal(accumulate(events), "The answer is 42.\n", where);
+	}
+});
+
+test("a bare-print diagnostic does not flip the saw-text latch", () => {
+	// The latch matters: once a turn has emitted text, later diagnostics are
+	// treated as part of the answer. A vendor line arriving FIRST must not open
+	// that gate, or one leak becomes every subsequent leak.
+	const parse = turnParser();
+	const events = [
+		"⚠️  Reached maximum iterations (90). Requesting summary...",
+		"⚠ tirith security scanner enabled but not available",
+		"MUX-OK",
+	].flatMap((wire) => parse(wire));
+	assert.equal(accumulate(events), "MUX-OK\n");
+});
