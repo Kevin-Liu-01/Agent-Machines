@@ -161,6 +161,13 @@ export type MuxSubstrateBinding = {
 	 * the trim is still worth doing, but it is a behavior change, not a fix.
 	 */
 	readonly trimOutput: boolean;
+	/**
+	 * Opaque per-credential scope for the connected-handle cache. Build it with
+	 * `credentialScope([...])` from whatever the provider authenticates with. See
+	 * `handleCache`: without this, one warm instance can hand one tenant's
+	 * authenticated handle to another.
+	 */
+	readonly cacheScope: string;
 	readonly defaultExecTimeoutMs?: number;
 	readonly defaultStreamTimeoutMs?: number;
 };
@@ -323,6 +330,77 @@ export function toProviderCapabilities(
 	};
 }
 
+/**
+ * How long a connected sandbox handle may be reused for the SAME machine.
+ *
+ * This is a property of the caller, not of any substrate. A serverless route
+ * builds a fresh provider per request, so a handle cached inside one -- which is
+ * what `src/mux/providers/*` does, correctly, for a long-lived process -- never
+ * survives to a second call here. Without a cache across providers, every exec
+ * on a warm instance pays another vendor connect round trip.
+ *
+ * 45s because it must be shorter than the vendor's own idle-park windows: a
+ * handle to a sandbox that has since parked is worse than no handle, since the
+ * failure arrives mid-exec instead of at connect.
+ */
+const HANDLE_CACHE_MS = 45_000;
+
+type CachedHandle = { handle: Promise<MuxSandbox>; expiresAt: number };
+
+/**
+ * Keyed by substrate, CREDENTIAL SCOPE, and machine id.
+ *
+ * The credential scope is not optional. One warm serverless instance serves many
+ * users, and a machine id is only unique within the account that owns it -- a
+ * sprite is named per organization, so two tenants can each have
+ * `am-mux-reviewer`. Keyed without the scope, the second tenant's request would
+ * be answered with a handle authenticated as the first. That is a cross-tenant
+ * read, not a cache miss, so the scope is a required field on the binding rather
+ * than something an adapter can forget to pass.
+ */
+const handleCache = new Map<string, CachedHandle>();
+
+function cacheKey(kind: ProviderKind, scope: string, machineId: string): string {
+	return `${kind}\u0000${scope}\u0000${machineId}`;
+}
+
+/**
+ * Digest of the credentials a provider was built with, for cache scoping.
+ *
+ * Hashed rather than used directly so the key cannot become a way for a secret
+ * to reach a log, a heap dump or an error message. Non-cryptographic is fine --
+ * it separates tenants, it does not authenticate them, and the value never leaves
+ * this process. What matters is that different credentials cannot collide in
+ * practice, which a 64-bit FNV-1a over the full material gives us.
+ */
+export function credentialScope(parts: Array<string | undefined>): string {
+	let hash = 0xcbf29ce484222325n;
+	const material = parts.map((part) => part ?? "").join("\u0000");
+	for (let index = 0; index < material.length; index += 1) {
+		hash ^= BigInt(material.charCodeAt(index));
+		hash = (hash * 0x100000001b3n) & 0xffffffffffffffffn;
+	}
+	return hash.toString(36);
+}
+
+/**
+ * Drop a cached handle. Called after pause, destroy, and any transport error --
+ * a handle whose connection died would otherwise be handed to the next caller,
+ * turning one failure into a run of them until the TTL expired.
+ */
+export function invalidateHandle(
+	kind: ProviderKind,
+	scope: string,
+	machineId: string,
+): void {
+	handleCache.delete(cacheKey(kind, scope, machineId));
+}
+
+/** Test seam: drop every cached handle. Nothing in production calls this. */
+export function clearHandleCache(): void {
+	handleCache.clear();
+}
+
 function toSummary(machineId: string, described: MuxDescription): ProviderMachineSummary {
 	return {
 		id: machineId,
@@ -362,9 +440,27 @@ export function createMuxBackedProvider(
 	/** Every call is addressed by the machineId the caller passed. Never by a
 	 * globally "active" machine -- the 2026-05-18 postmortem's routing bug. */
 	async function attach(machineId: string, operation: string): Promise<MuxSandbox> {
+		const key = cacheKey(kind, binding.cacheScope, machineId);
+		const now = Date.now();
+		const hit = handleCache.get(key);
+		if (hit && hit.expiresAt > now) {
+			try {
+				return await hit.handle;
+			} catch {
+				// A cached REJECTION must not be served to the next caller: it
+				// would turn one connect failure into every failure until the TTL
+				// expired. Fall through and connect again.
+				handleCache.delete(key);
+			}
+		}
+		// The PROMISE is cached, not the resolved handle, so two concurrent calls
+		// on a warm instance share one connect instead of racing two.
+		const pending = substrate.connect(machineId);
+		handleCache.set(key, { handle: pending, expiresAt: now + HANDLE_CACHE_MS });
 		try {
-			return await substrate.connect(machineId);
+			return await pending;
 		} catch (error) {
+			handleCache.delete(key);
 			throw fail(operation, machineId, error);
 		}
 	}
@@ -432,6 +528,11 @@ export function createMuxBackedProvider(
 				}
 			} catch (error) {
 				throw fail("sleep", machineId, error);
+			} finally {
+				// Whether or not the park reported success: a handle to a sandbox
+				// that may now be parked fails mid-exec instead of at connect, and
+				// reconnecting is one cheap round trip.
+				invalidateHandle(kind, binding.cacheScope, machineId);
 			}
 			return provider.state(machineId);
 		},
@@ -446,6 +547,11 @@ export function createMuxBackedProvider(
 				await sandbox.destroy();
 			} catch (error) {
 				throw fail("destroy", machineId, error);
+			} finally {
+				// In `finally` because a failed destroy is exactly when a stale
+				// handle is most dangerous: the id may be gone on the vendor side
+				// even though the call reported an error.
+				invalidateHandle(kind, binding.cacheScope, machineId);
 			}
 		},
 

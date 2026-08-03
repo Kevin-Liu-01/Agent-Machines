@@ -18,6 +18,7 @@
 
 import { bridgeExecStream } from "./stream-util";
 import {
+	credentialScope,
 	createMuxBackedProvider,
 	type MuxDescription,
 	type MuxExecOptions,
@@ -345,6 +346,7 @@ function e2bBinding(creds: E2BCreds): MuxSubstrateBinding {
 	return {
 		kind: "e2b",
 		substrate,
+		cacheScope: credentialScope([apiKey]),
 		describe: (machineId) => describeE2b(machineId, apiKey),
 		park: (machineId) => parkE2b(machineId, apiKey),
 		remove: (machineId) => removeE2b(machineId, apiKey),

@@ -23,6 +23,7 @@ import type {
 
 import { bridgeExecStream } from "./stream-util";
 import {
+	credentialScope,
 	createMuxBackedProvider,
 	type MuxDescription,
 	type MuxExecOptions,
@@ -392,6 +393,7 @@ function spritesBinding(creds: SpritesCreds): MuxSubstrateBinding {
 	return {
 		kind: "sprites",
 		substrate: createSpritesSubstrate(creds),
+		cacheScope: credentialScope([creds.apiKey]),
 		describe: (machineId) => describeSprites(machineId, rest),
 		createOptions: (input: ProvisionInput) => ({
 			name: input.name,

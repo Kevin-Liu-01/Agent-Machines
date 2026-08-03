@@ -504,15 +504,51 @@ converging would have regressed whichever surface lost.
   keeping: under a unique name the adopt-on-409 recovery still applies, because
   a 409 there can only be our own retried create (the measured vendor 500 that
   provisioned anyway) and never another caller's sandbox.
-- Sprites `wake` in the control plane only reads status; the mux wakes with an
-  exec probe, which is more correct but needs a wake-specific timeout above the
-  measured 17-31s cold start. **STILL OPEN.**
+- Sprites wake timeout -- **ALREADY CLOSED**, and this entry was stale when
+  written. `src/mux/providers/sprites.ts` has carried `WAKE_TIMEOUT_MS =
+  180_000` since the no-wake work, used both for the wake probe and to escalate
+  the caller's exec timeout, with the reasoning stated against the measurement:
+  a cold sprite took ~31s to accept its first exec and a wake under load is
+  slower than a boot, so the budget outlasts a boot instead of tracking the
+  warm-path timeout.
 
-What remains for 0.2 itself is the deletion: `web/lib/providers/{e2b,sprites,
-vercel,dedalus}.ts` (~2,100 lines) reimplement adapters that `src/mux/providers`
-already has (~4,100 lines, with a conformance suite). The boundary is live (3c),
-`MachineProvider` is already a facade over the mux substrate shape, and the
-behavioral blockers above are down to one.
+**Every behavioral blocker to 0.2 is now closed.** What remains is the deletion
+itself: `web/lib/providers/{e2b,sprites,vercel,dedalus}.ts` (~2,100 lines)
+reimplement adapters `src/mux/providers` already has (~4,100 lines, behind a
+conformance suite). The boundary is live and proven at runtime (3c),
+`MachineProvider` is already a facade over the mux substrate shape, and each
+place the two behaviors genuinely differed is now an option on
+`CreateSandboxOptions` rather than a fork in the code.
+
+#### One prerequisite found by starting the deletion, and fixed (2026-08-02)
+
+The web e2b adapter cached CONNECTED handles for 45s in a module-level map, and
+the mux's adapters cache inside the handle instance instead. Those are not the
+same thing: a serverless route builds a fresh provider per request, so a
+per-instance cache never survives to a second call and every exec would have paid
+another vendor connect. Swapping in the mux provider would have quietly
+regressed hosted exec latency.
+
+The cache is a property of the CALLER, not of a substrate, so it now lives at the
+facade's single `connect` point (`attach()` in `mux-facade.ts`) and all four
+substrates inherit it -- including the three that never had one.
+
+Writing it surfaced a hazard the old code shared: keyed by machine id alone, one
+warm serverless instance can serve one tenant a handle authenticated as another,
+because an id is only unique inside the account that owns it and a sprite is named
+per organization -- two orgs can each have `am-mux-reviewer`. The key is now
+`(substrate, credential scope, machine id)`, where the scope is a digest of the
+credentials the provider was built with (hashed so a key cannot carry a secret
+into a log or a heap dump), and `cacheScope` is a REQUIRED binding field so no
+adapter can omit it. The promise is cached rather than the resolved handle, so
+concurrent calls share one connect instead of racing; a rejection is never
+served; and sleep and destroy invalidate in `finally`, since a failed destroy is
+when a stale handle is most dangerous.
+
+Six tests, six mutations checked, all caught. What the e2b deletion still needs:
+`MuxDescription.spec` (vcpu/memoryMib/storageGib) has to be derived from the mux's
+`SandboxDescription.resources` (vcpu/memoryMib/diskGib). That mapping belongs in
+the facade so all four adapters drop their `describe` together, not one each.
 
 ## 4. Must not claim
 

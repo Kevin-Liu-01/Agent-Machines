@@ -20,6 +20,7 @@
 import { randomUUID } from "node:crypto";
 
 import {
+	credentialScope,
 	createMuxBackedProvider,
 	type MuxDescription,
 	type MuxExecOptions,
@@ -457,6 +458,14 @@ function vercelBinding(creds: VercelCreds | null): MuxSubstrateBinding {
 	return {
 		kind: "vercel",
 		substrate: createVercelSubstrate(creds),
+		// All three, plus the OIDC token: a machine id is only unique within the
+		// project that owns it, and OIDC vs token-triple are different identities.
+		cacheScope: credentialScope([
+			resolved?.token,
+			resolved?.teamId,
+			resolved?.projectId,
+			process.env.VERCEL_OIDC_TOKEN,
+		]),
 		describe: (machineId) => describeVercel(machineId, auth),
 		createOptions: (input: ProvisionInput) => ({
 			name: input.name,

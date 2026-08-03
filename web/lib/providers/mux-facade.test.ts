@@ -62,7 +62,11 @@ type FakeOptions = {
 	remove?: boolean;
 };
 
+/** Distinct credential scope per fake binding. See the cacheScope field below. */
+let bindingSequence = 0;
+
 function fakeBinding(options: FakeOptions = {}) {
+	let connectFailsOnce = false;
 	const calls: string[] = [];
 	const description: MuxDescription = {
 		state: "ready",
@@ -137,6 +141,10 @@ function fakeBinding(options: FakeOptions = {}) {
 				throw muxError("missing_credentials", "E2B provider is not credentialed");
 			}
 			calls.push(`connect:${id}`);
+			if (connectFailsOnce) {
+				connectFailsOnce = false;
+				throw muxError("transient", "connect blipped");
+			}
 			return sandbox(id);
 		}),
 	};
@@ -144,6 +152,10 @@ function fakeBinding(options: FakeOptions = {}) {
 	const binding: MuxSubstrateBinding = {
 		kind: "e2b",
 		substrate,
+		// Unique per binding, so one test's connected handle is never served to
+		// the next -- which is the same property that keeps one tenant's handle
+		// away from another in a warm serverless instance.
+		cacheScope: `test-${(bindingSequence += 1)}`,
 		describe: vi.fn(async (machineId: string) => {
 			calls.push(`describe:${machineId}`);
 			if (options.describeFails) throw muxError("transient", "status read blipped");
@@ -167,7 +179,15 @@ function fakeBinding(options: FakeOptions = {}) {
 		trimOutput: options.trimOutput ?? false,
 	};
 
-	return { binding, substrate, calls };
+	return {
+		binding,
+		substrate,
+		calls,
+		/** Make the next connect reject once, for the cached-rejection test. */
+		failNextConnect: () => {
+			connectFailsOnce = true;
+		},
+	};
 }
 
 describe("state vocabulary", () => {
@@ -273,14 +293,97 @@ describe("machineId scoping", () => {
 		await provider.exec("machine-B", "whoami");
 		await provider.execBackground!("machine-B", "tmux send-keys");
 		await provider.getPublicUrl!("machine-B", 8642);
+		// One connect, then all three operations on it: the connected handle is
+		// cached per (substrate, credential scope, machine id). It used to
+		// reconnect per call.
 		expect(calls).toEqual([
 			"connect:machine-B",
 			"exec:machine-B:whoami:30000",
-			"connect:machine-B",
 			"background:machine-B:tmux send-keys",
-			"connect:machine-B",
 			"publicUrl:machine-B:8642",
 		]);
+		// The property this test is actually for (2026-05-18 postmortem): no
+		// operation may reach a machine the caller did not name. Asserted
+		// separately from the call ORDER so a future caching change cannot
+		// weaken it by editing the array above.
+		for (const call of calls) {
+			expect(call, `${call} addressed a machine the caller never named`).toContain(
+				"machine-B",
+			);
+		}
+	});
+
+	it("never serves one credential scope's handle to another", async () => {
+		// A warm serverless instance serves many users, and a machine id is only
+		// unique inside the account that owns it -- two sprites organizations can
+		// each have `am-mux-reviewer`. Sharing a handle across scopes would answer
+		// one tenant with a connection authenticated as another.
+		const first = fakeBinding();
+		const second = fakeBinding();
+		expect(first.binding.cacheScope).not.toEqual(second.binding.cacheScope);
+		await createMuxBackedProvider(first.binding).exec("shared-name", "whoami");
+		await createMuxBackedProvider(second.binding).exec("shared-name", "whoami");
+		// Each connected for itself.
+		expect(first.calls).toContain("connect:shared-name");
+		expect(second.calls).toContain("connect:shared-name");
+	});
+
+	it("reuses one connect across calls, and drops the handle on sleep and destroy", async () => {
+		const { binding, calls } = fakeBinding();
+		const provider = createMuxBackedProvider(binding);
+		await provider.exec("sbx-1", "one");
+		await provider.exec("sbx-1", "two");
+		expect(calls.filter((call) => call === "connect:sbx-1")).toHaveLength(1);
+
+		// A handle to a sandbox that may now be parked fails mid-exec instead of
+		// at connect, so parking must drop it even though the park succeeded.
+		await provider.sleep("sbx-1");
+		await provider.exec("sbx-1", "three");
+		expect(calls.filter((call) => call === "connect:sbx-1")).toHaveLength(2);
+
+		await provider.destroy("sbx-1");
+		await provider.exec("sbx-1", "four");
+		expect(calls.filter((call) => call === "connect:sbx-1")).toHaveLength(3);
+	});
+
+	it("stops reusing a handle once the TTL has passed", async () => {
+		// The TTL exists because the vendors park sandboxes on their own schedule:
+		// a handle held past that window fails mid-exec instead of at connect, so
+		// it must expire on its own even when nothing invalidated it.
+		vi.useFakeTimers();
+		try {
+			const { binding, calls } = fakeBinding();
+			const provider = createMuxBackedProvider(binding);
+			await provider.exec("sbx-1", "one");
+			vi.advanceTimersByTime(44_000);
+			await provider.exec("sbx-1", "two");
+			expect(
+				calls.filter((call) => call === "connect:sbx-1"),
+				"still inside the window",
+			).toHaveLength(1);
+			vi.advanceTimersByTime(2_000);
+			await provider.exec("sbx-1", "three");
+			expect(
+				calls.filter((call) => call === "connect:sbx-1"),
+				"past the window, so reconnect",
+			).toHaveLength(2);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it("does not cache a failed connect", async () => {
+		// A cached rejection would turn one connect blip into every call failing
+		// until the TTL expired.
+		const { binding, calls, failNextConnect } = fakeBinding();
+		const provider = createMuxBackedProvider(binding);
+		failNextConnect();
+		await expect(provider.exec("sbx-1", "one")).rejects.toBeInstanceOf(
+			MachineProviderError,
+		);
+		await provider.exec("sbx-1", "two");
+		expect(calls.filter((call) => call.startsWith("exec:"))).toHaveLength(1);
+		expect(calls.filter((call) => call === "connect:sbx-1")).toHaveLength(2);
 	});
 });
 

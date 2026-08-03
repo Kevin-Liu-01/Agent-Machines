@@ -24,6 +24,7 @@
 import type { MachineSpec } from "@/lib/user-config/schema";
 
 import {
+	credentialScope,
 	createMuxBackedProvider,
 	notSupported,
 	type MuxDescription,
@@ -534,6 +535,9 @@ function dedalusBinding(creds: DedalusCreds): MuxSubstrateBinding {
 	return {
 		kind: "dedalus",
 		substrate: createDedalusSubstrate(creds),
+		// baseUrl included: the same key against two deployments addresses two
+		// different machine namespaces.
+		cacheScope: credentialScope([creds.apiKey, creds.baseUrl]),
 		describe: async (machineId) => describeRaw(await rest.getRaw(machineId)),
 		createOptions: (input: ProvisionInput) => {
 			const storageGib = input.spec?.storageGib ?? DEFAULT_STORAGE_GIB;
