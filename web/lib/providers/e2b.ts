@@ -75,9 +75,113 @@ async function connectSandbox(
 	return sandbox;
 }
 
-async function getSandbox() {
-	const { Sandbox } = await import("e2b");
-	return Sandbox;
+/**
+ * The class type, still named through the package specifier so every
+ * annotation in this file keeps pointing at `e2b` rather than at a dist path.
+ */
+type E2bSandboxClass = typeof import("e2b").Sandbox;
+
+/** Memoized so a warm serverless instance resolves the SDK once. */
+let sandboxClass: Promise<E2bSandboxClass> | null = null;
+
+/**
+ * Load e2b's ESM build by its explicit path, never the bare specifier.
+ *
+ * THE FAILURE THIS PREVENTS -- the deployed dashboard error this replaced:
+ *
+ *   e2b provision failed / e2b exec failed on ijtx3orav1glc11bfv9k2:
+ *   Failed to load external module e2b-f4587dfd9ddf46bd:
+ *   Error [ERR_REQUIRE_ESM]: require() of ES Module
+ *   .../chalk@5.6.2/node_modules/chalk/source/index.js
+ *   from .../e2b@2.37.0/node_modules/e2b/dist/index.js not supported.
+ *
+ * WHY the bare specifier cannot work here (measured 2026-08-02, e2b 2.37.0):
+ * e2b ships NO "exports" map -- `main` is dist/index.js (CJS), `module` is
+ * dist/index.mjs (ESM) -- and Node's ESM resolver never reads "module", so
+ * even `import("e2b")` lands on the CJS build. Turbopack reads the same
+ * metadata and classifies e2b as CommonJS, so it emits `externalRequire`
+ * (`.x`, a real `require()`) for it rather than `externalImport` (`.y`). That
+ * CJS build does `require("chalk")` at dist/index.js:40 and chalk 5 is
+ * ESM-only, so the load only succeeds on a Node that supports require(ESM)
+ * (>= 20.19 / >= 22.12). The deployed function's Node does not.
+ *
+ * REPRODUCED AND FIXED LOCALLY, 2026-08-02, node v24.13.0 with
+ * `--no-experimental-require-module` (that flag turns require(ESM) off, so
+ * `process.features.require_module === false` -- the deployed condition):
+ *   import("e2b")                 FAIL ERR_REQUIRE_ESM (same chalk@5.6.2 path)
+ *   require("e2b")                FAIL ERR_REQUIRE_ESM (same chalk@5.6.2 path)
+ *   import("e2b/dist/index.mjs")  OK, Sandbox = function
+ * The .mjs path passes in BOTH modes, and Turbopack emits `.y`/externalImport
+ * for it, so this fix does not depend on the bundler's classification, on a
+ * Vercel dashboard setting, or on which Node the function is given.
+ *
+ * WHY THIS AND NOT THE ALTERNATIVES, both of which were also measured to work:
+ *  - Raising the function's Node (engines/Project Settings) only moves the
+ *    floor, and the floor is not fully ours: the same adapter is what the
+ *    `agent-machines` package will ship, and a consumer picks their own Node.
+ *    (Unpublished as of 2026-08-03: `npm view agent-machines` 404s.) The
+ *    floor is still being raised, as defense in depth -- see the root and web
+ *    `engines.node` -- but it is not the fix.
+ *  - Bundling e2b (dropping it from `serverExternalPackages`) works in the web
+ *    app, but e2b declares undici, tar, glob, dockerfile-ast and
+ *    @bufbuild/protobuf (read from its package.json 2026-08-02), and packages
+ *    like those are the reason `serverExternalPackages` exists -- a clean build
+ *    is not evidence they run bundled. It also does nothing for the published
+ *    package.
+ *  - Pinning chalk 4 through a root pnpm override works too, but it fights
+ *    e2b's declared `chalk: ^5.3.0` on every upgrade, and a workspace override
+ *    does not travel to anyone installing `agent-machines`. A parallel
+ *    investigation reported that pnpm accepts an override with no validation
+ *    against the declared range (a deliberately wrong `e2b>chalk: ^1.0.0`
+ *    installed with no warning and failed only at provision time); not re-run
+ *    here, because it needs a lockfile rewrite.
+ *
+ * THE COST, and how it is guarded: this is a deep path into a dependency's
+ * dist, reachable only because e2b has no "exports" map, so a future e2b could
+ * rename it. There is deliberately NO fallback to `import("e2b")`, for one
+ * reason only: a fallback keeps working on a Node with require(ESM) and dies on
+ * one without, which is exactly how this bug shipped green in the first place.
+ *
+ * The build fails closed either way, and an earlier version of this comment was
+ * wrong to credit that to the missing fallback. Measured 2026-08-03 by renaming
+ * e2b/dist/index.mjs and running `npx next build`:
+ *   lone specifier:        exit 1, "Turbopack build failed with 1 errors:
+ *                          Module not found: Can't resolve 'e2b/dist/index.mjs'"
+ *   WITH a .catch(() => import("e2b")) fallback: exit 1, SAME error.
+ * Turbopack does not downgrade an unresolvable specifier to a warning just
+ * because a resolvable branch exists next to it. Good news for the guard, and a
+ * reminder that the no-fallback decision rests on the runtime argument above.
+ *
+ * Three layers, then, in the order they fire:
+ *   1. scripts/assert-e2b-esm-entry.mjs, run by the root `build:sdk` that
+ *      web's `prebuild` calls. It fails before the two-minute compile, names
+ *      the cause and the remedy instead of a resolver error, checks BOTH
+ *      resolution roots, and covers `build:sdk`/`prepack` producing the
+ *      published package -- where `next build` never runs at all.
+ *   2. src/mux/providers/e2b-esm-entry.test.ts, which asserts the entry loads
+ *      with require(ESM) disabled and that the bare specifier still fails.
+ *   3. the throw below, for the case the build cannot see: the file resolves
+ *      but no longer exports Sandbox.
+ */
+function getSandbox(): Promise<E2bSandboxClass> {
+	if (!sandboxClass) {
+		sandboxClass = import("e2b/dist/index.mjs").then((mod) => {
+			const { Sandbox } = mod as unknown as { Sandbox?: E2bSandboxClass };
+			if (typeof Sandbox !== "function") {
+				throw new MachineProviderError(
+					"e2b",
+					"fatal",
+					'e2b/dist/index.mjs no longer exports Sandbox. e2b 2.37.0 shipped no "exports" map, so this deep ESM path is load-bearing (the CJS entry requires ESM-only chalk 5 and needs Node >= 20.19 / >= 22.12). Re-check e2b\'s published dist and update this specifier plus scripts/assert-e2b-esm-entry.mjs.',
+				);
+			}
+			return Sandbox;
+		});
+		sandboxClass.catch(() => {
+			// Let a later call retry rather than caching a rejected promise.
+			sandboxClass = null;
+		});
+	}
+	return sandboxClass;
 }
 
 export type E2BCreds = {

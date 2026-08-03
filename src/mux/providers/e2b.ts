@@ -47,13 +47,90 @@ import {
 } from "../types.js";
 
 /**
- * The awaited dynamic-import shape, not `typeof import("e2b")`: the SDK
- * re-exports Sandbox as its default, so under NodeNext the namespace
- * type and the dynamic-import type disagree on `default` and the
- * declaration build fails.
+ * Load e2b's ESM build by its explicit path, never the bare specifier.
+ *
+ * THE FAILURE THIS PREVENTS -- the production error this replaced, from the
+ * deployed dashboard:
+ *
+ *   e2b provision failed / e2b exec failed on ijtx3orav1glc11bfv9k2:
+ *   Failed to load external module e2b-f4587dfd9ddf46bd:
+ *   Error [ERR_REQUIRE_ESM]: require() of ES Module
+ *   .../chalk@5.6.2/node_modules/chalk/source/index.js
+ *   from .../e2b@2.37.0/node_modules/e2b/dist/index.js not supported.
+ *
+ * WHY the bare specifier cannot work (measured 2026-08-02, e2b 2.37.0): e2b
+ * ships NO "exports" map -- `main` is dist/index.js (CJS), `module` is
+ * dist/index.mjs (ESM) -- and Node's ESM resolver never reads "module", so
+ * even `import("e2b")` resolves to the CJS build. That build does
+ * `require("chalk")` at dist/index.js:40 and chalk 5 is ESM-only, so it loads
+ * only on a Node that supports require(ESM) (>= 20.19 / >= 22.12).
+ *
+ * REPRODUCED AND FIXED LOCALLY, 2026-08-02, node v24.13.0 with
+ * `--no-experimental-require-module` (require(ESM) off, so
+ * `process.features.require_module === false` -- the deployed condition):
+ *   import("e2b")                 FAIL ERR_REQUIRE_ESM (same chalk@5.6.2 path)
+ *   require("e2b")                FAIL ERR_REQUIRE_ESM (same chalk@5.6.2 path)
+ *   import("e2b/dist/index.mjs")  OK, Sandbox = function
+ *
+ * WHY THIS FILE AND NOT ONLY THE WEB APP: this adapter is what the
+ * `agent-machines` package SHIPS (dist/mux/providers/e2b.js is in `files`),
+ * where there is no bundler in front of it and we do not choose the consumer's
+ * Node. (Not on npm yet -- `npm view agent-machines` was a 404 on 2026-08-03 and
+ * the repo has no tags -- so this is about what the first publish carries, not
+ * about installs that exist today.) The two alternatives
+ * that were also measured to fix the web app -- bundling e2b instead of
+ * externalizing it, and pinning chalk 4 through a root pnpm override -- are
+ * both unavailable to a consumer's install. Raising `engines` alone is advice,
+ * not enforcement. Removing the require(ESM) dependency is the only fix that
+ * travels.
+ *
+ * THE COST, and how it is guarded: this is a deep path into a dependency's
+ * dist, legal only because e2b has no "exports" map, so a future e2b could
+ * rename it. There is deliberately NO fallback to `import("e2b")` -- a
+ * fallback works on a Node with require(ESM) and dies on one without, which is
+ * exactly how this bug shipped green. It fails closed instead:
+ * scripts/assert-e2b-esm-entry.mjs runs inside `build:sdk` (so the entry
+ * disappearing fails the build rather than a provision, and it checks both the
+ * repo root and web's resolution root), ./e2b-esm-entry.test.ts asserts it
+ * loads with require(ESM) disabled, and loadSdk() below reports the real error
+ * rather than guessing at a cause.
  */
-const importE2b = () => import("e2b");
-type E2bModule = Awaited<ReturnType<typeof importE2b>>;
+const E2B_ESM_ENTRY = "e2b/dist/index.mjs";
+const importE2b = (): Promise<E2bModule> => import(E2B_ESM_ENTRY);
+
+/**
+ * Typed against the PACKAGE, not the dist path, so every annotation below still
+ * names `e2b` while only the specifier above knows about the deep path.
+ *
+ * NO CAST is needed, and an earlier version of this comment was wrong to claim
+ * one was "unavoidable". TS2719 (two near-identical declaration files,
+ * dist/index.d.ts and dist/index.d.mts, whose `Sandbox` classes each have a
+ * protected member and so are nominally unrelated) is real, but it only fires
+ * for a LITERAL import specifier. This imports a const, which TypeScript widens
+ * to `any`, so the annotation alone types it. Re-measured 2026-08-03 with the
+ * cast deleted: `tsc --noEmit`, `tsc -p tsconfig.sdk.json --noEmit` and the real
+ * `build:sdk` emit are all clean, and the emitted d.ts still says
+ * `Pick<E2bModule, "Sandbox">`.
+ *
+ * The tradeoff that leaves: a dynamic `import()` of a non-literal specifier is
+ * `any` either way, so NOTHING here checks the deep path against `E2bModule` --
+ * with or without a cast. A shape change in e2b surfaces at the `Sandbox` use
+ * sites, not at this line. What actually guards it is outside the type system:
+ * scripts/assert-e2b-esm-entry.mjs fails the build if the entry stops resolving,
+ * ./e2b-esm-entry.test.ts loads it for real on both sides of the require(ESM)
+ * boundary, and `loadSdk()` below separates "not installed" from "loaded and
+ * broken" instead of guessing.
+ *
+ * The note that stood here said the namespace type broke the declaration build
+ * (the SDK re-exports Sandbox as its default, so the namespace type and the
+ * dynamic-import type disagreed on `default`). Re-measured 2026-08-02 with the
+ * import specifier changed: `tsc --noEmit` and `tsc -p tsconfig.sdk.json` are
+ * both clean on `typeof import("e2b")`, and `Pick<E2bModule, "Sandbox">` is all
+ * the declaration build emits. Why it stopped mattering was not established --
+ * only that it no longer reproduces, so the workaround is gone rather than kept
+ * on faith. If a future change reintroduces TS2719 here, that is the cause.
+ */
+type E2bModule = typeof import("e2b");
 type E2bSandbox = import("e2b").Sandbox;
 type E2bSandboxInfo = import("e2b").SandboxInfo;
 
@@ -164,15 +241,47 @@ const CAPABILITIES: SandboxCapabilities = {
 /** Lazy, memoized SDK load; unused substrates never pay the import. */
 let sdkModule: Promise<E2bModule> | null = null;
 
+/**
+ * Never relabel a load failure as "not installed" unless it IS that.
+ *
+ * The old body caught EVERY error from the import and asserted
+ * "e2b is not installed; npm i e2b", discarding the original. On a Node without
+ * require(ESM) that sent the caller to reinstall a dependency that was present
+ * and correct, while the real ERR_REQUIRE_ESM was thrown away -- and `ready()`
+ * meanwhile reported the lane usable, so nothing contradicted the wrong advice.
+ *
+ * Measured on the published dist 2026-08-02, node v24.13.0, after this fix, in
+ * both modes (`--no-experimental-require-module` and default):
+ *   ready()   {"ok":true,"missing":[]}          -- identical in both
+ *   create()  MuxError/fatal :: e2b create failed: Invalid API key format...
+ * i.e. the lane now reaches e2b's own rejection of the fake key on the runtime
+ * that used to be told e2b was missing. Only a resolution failure means "not
+ * installed"; everything else keeps its own code and message.
+ */
 function loadSdk(): Promise<E2bModule> {
 	const cached = sdkModule;
 	if (cached) return cached;
-	const pending = importE2b().catch(() => {
+	const pending = importE2b().catch((error: unknown) => {
 		// Clear the memo so a later call can retry once the dep exists.
 		sdkModule = null;
-		throw new MuxError("fatal", "e2b is not installed; npm i e2b", {
-			substrate: "e2b",
-		});
+		const code =
+			error && typeof error === "object" && "code" in error
+				? String((error as { code?: unknown }).code)
+				: "";
+		if (code === "ERR_MODULE_NOT_FOUND" || code === "MODULE_NOT_FOUND") {
+			throw new MuxError(
+				"fatal",
+				`e2b could not be resolved at ${E2B_ESM_ENTRY}; run \`npm i e2b\`. If e2b IS installed, its dist layout changed and this adapter's ESM entry needs updating -- the entry is load-bearing because e2b's CommonJS main require()s ESM-only chalk 5.`,
+				{ substrate: "e2b" },
+			);
+		}
+		throw new MuxError(
+			"fatal",
+			`e2b failed to load from ${E2B_ESM_ENTRY} on node ${process.versions.node}: ${
+				code ? `${code}: ` : ""
+			}${error instanceof Error ? error.message : String(error)}`,
+			{ substrate: "e2b" },
+		);
 	});
 	sdkModule = pending;
 	return pending;

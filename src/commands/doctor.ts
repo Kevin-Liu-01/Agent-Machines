@@ -178,10 +178,27 @@ async function checkLocalEnv(): Promise<Config | null> {
 
 	const nodeVersion = localCmd("node --version");
 	if (nodeVersion) {
-		const major = Number.parseInt(nodeVersion.replace("v", ""), 10);
-		major >= 20
+		// Major-only (`major >= 20`) passed 20.0-20.18 and 22.0-22.11, none of
+		// which can `require()` an ES module. That matters here, not in the
+		// abstract: the package's `require("agent-machines")` entry is reached
+		// through the `module-sync` export condition, which only a Node with
+		// require(ESM) matches (>= 20.19 / >= 22.12) -- see ROADMAP "The exports
+		// map". So this check went green on the exact Nodes where the CommonJS
+		// consumer path fails, which is the class of false pass that let the
+		// ERR_REQUIRE_ESM production failure through (measured 2026-08-02).
+		// Keep in step with engines.node in package.json.
+		const [major = 0, minor = 0] = nodeVersion
+			.replace(/^v/, "")
+			.split(".")
+			.map((part) => Number.parseInt(part, 10));
+		const supported =
+			major > 22 || (major === 22 && minor >= 12) || (major === 20 && minor >= 19);
+		supported
 			? pass("Node.js", nodeVersion)
-			: FAIL("Node.js", `${nodeVersion} -- need >=20`);
+			: FAIL(
+					"Node.js",
+					`${nodeVersion} -- need ^20.19 || >=22.12 (older Node cannot require() an ES module)`,
+				);
 	} else {
 		FAIL("Node.js", "not found in PATH");
 	}

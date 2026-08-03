@@ -25,3 +25,8 @@ docs/yc-application*.md
 # Playwright MCP scratch output (screenshots, snapshots, console logs)
 .playwright-mcp/
 .env*
+
+# Agent worktrees (Workflow isolation: "worktree"). Removed automatically when
+# unchanged, but a killed run can leave one holding a modified lockfile -- and an
+# untracked directory here is one `git add -A` away from being committed.
+.claude/worktrees/

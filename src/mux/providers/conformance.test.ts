@@ -258,10 +258,19 @@ for (const lane of LANES) {
  * Resolve-hook that refuses the vendor packages. Registered in a child process,
  * it turns "the SDK was loaded" into a hard failure instead of something a test
  * has to infer.
+ *
+ * Subpaths are blocked too, not just the bare name. An exact-match Set stopped
+ * proving anything the moment ./e2b.ts started loading `e2b/dist/index.mjs`
+ * (2026-08-02): the real SDK would have resolved, `list()` would have failed on
+ * the fake API key, and e2b's own message contains "e2b" -- so the probe below
+ * would have printed GATED and this suite would have gone green while no longer
+ * gating anything. A skip is how a regression hides, and so is a stale matcher.
  */
-const BLOCKER_SOURCE = `const BLOCKED = new Set(["e2b", "@fly/sprites", "@vercel/sandbox"]);
+const BLOCKER_SOURCE = `const BLOCKED = ["e2b", "@fly/sprites", "@vercel/sandbox"];
 export async function resolve(specifier, context, next) {
-	if (BLOCKED.has(specifier)) throw new Error("VENDOR_SDK_RESOLVED:" + specifier);
+	if (BLOCKED.some((pkg) => specifier === pkg || specifier.startsWith(pkg + "/"))) {
+		throw new Error("VENDOR_SDK_RESOLVED:" + specifier);
+	}
 	return next(specifier, context);
 }
 `;
@@ -291,8 +300,10 @@ for (const lane of lanes) {
 		console.log("REACHED_SDK " + lane.name);
 	} catch (error) {
 		const message = String(error && error.message).replace(/\\s+/g, " ");
+		const shape = [error && error.name, error && error.kind, error && error.substrate].join("/");
 		console.log(
-			(message.includes(lane.specifier) ? "GATED " : "UNEXPECTED ") + lane.name + " " + message,
+			(message.includes(lane.specifier) ? "GATED " : "UNEXPECTED ") +
+				lane.name + " " + shape + " " + message,
 		);
 	}
 }
@@ -343,10 +354,39 @@ test("importing an adapter does not load its vendor SDK", () => {
 		!lines.some((line) => line.startsWith("UNEXPECTED")),
 		`a lazy SDK load failed for the wrong reason:\n${output}`,
 	);
-	assert.ok(
-		lines.some((line) => line.includes("is not installed")),
-		`a blocked SDK must surface as a MuxError naming the missing package:\n${output}`,
-	);
+	// A blocked load must arrive as a fatal MuxError attributed to the right
+	// substrate, AND it must carry the hook's own marker.
+	//
+	// The marker is what closes a hole this suite had until 2026-08-02. The
+	// blocker matched specifiers exactly, so when ./e2b.ts started importing
+	// `e2b/dist/index.mjs` the hook stopped intercepting it: the real SDK
+	// loaded, `list()` failed on the fake API key, and e2b's own message
+	// contains "e2b", so the lane still printed GATED and this test still went
+	// green -- measured, by reverting the matcher and watching it pass. Nothing
+	// here distinguished "the hook refused the SDK" from "the SDK loaded and
+	// then failed". VENDOR_SDK_RESOLVED does, because only the hook emits it.
+	//
+	// This also replaces an assertion on the literal string "is not installed".
+	// That string stopped being the right property the same day: the loaders
+	// relabelled EVERY load failure that way, so on a Node without require(ESM)
+	// they told callers to reinstall an e2b that was already installed and threw
+	// the real ERR_REQUIRE_ESM away -- which is also why the marker survives to
+	// be asserted on now. "Not installed" is claimed only for
+	// ERR_MODULE_NOT_FOUND, and the taxonomy below is what the contract needs.
+	for (const substrate of ["e2b", "sprites", "vercel"]) {
+		const gated = lines.find((line) =>
+			line.startsWith(`GATED ${substrate} MuxError/fatal/${substrate} `),
+		);
+		assert.ok(
+			gated,
+			`${substrate}'s blocked SDK load must surface as a fatal MuxError scoped to ${substrate}:\n${output}`,
+		);
+		assert.match(
+			gated,
+			/VENDOR_SDK_RESOLVED:/,
+			`${substrate} failed for some reason other than the blocker, so the SDK was reachable and this test proves nothing. Check that BLOCKER_SOURCE still matches the specifier the adapter imports:\n${output}`,
+		);
+	}
 });
 
 // ---------------------------------------------------------------------------

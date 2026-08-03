@@ -78,11 +78,27 @@ test("files: dist is the only thing shipped, so nothing outside it may be export
 test("require() support goes through module-sync, never a require condition", () => {
 	// This package is ESM-only ("type": "module"). A `require` condition would
 	// resolve on EVERY Node and then throw ERR_REQUIRE_ESM at runtime on
-	// 20.0-20.18, which engines ">=20" still admits. `module-sync` is matched
-	// only by Nodes that can require() ESM (>= 20.19 / 22.12); the rest skip it
-	// and get a clear "not exported" instead of a runtime explosion. Measured:
-	// with module-sync, `require("agent-machines")` returns 22 exports on v24.
+	// 20.0-20.18. `module-sync` is matched only by Nodes that can require() ESM
+	// (>= 20.19 / 22.12); the rest skip it and get a clear "not exported"
+	// instead of a runtime explosion. Measured: with module-sync,
+	// `require("agent-machines")` resolves and returns the root exports on v24
+	// (28 of them as of 2026-08-03, measured against an installed tarball; the
+	// count is incidental -- that require() RESOLVES AT ALL is the claim).
+	//
+	// engines.node said ">=20" when this was written, which admitted exactly the
+	// Nodes where that require never resolves -- a support claim the package did
+	// not honor. It is now "^20.19.0 || >=22.12.0" (2026-08-02) and the
+	// assertion below keeps the two in step.
 	assert.equal(pkg.type, "module", "the reasoning below assumes an ESM-only package");
+	// A tripwire, not a range check: there is no semver dependency to evaluate a
+	// range with here, and the floor should not be editable without re-reading
+	// the paragraph above. Any Node this range admits must be able to require()
+	// an ES module, or `require("agent-machines")` resolves nothing.
+	assert.equal(
+		pkg.engines?.node,
+		"^20.19.0 || >=22.12.0",
+		"engines.node must admit only Nodes that can require() ESM, since require() of this package goes through module-sync",
+	);
 	for (const [subpath, conditions] of conditionalEntries()) {
 		assert.ok(
 			!("require" in conditions),

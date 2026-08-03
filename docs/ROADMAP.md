@@ -392,10 +392,48 @@ that failed `ERR_PACKAGE_PATH_NOT_EXPORTED`.
 `require` works via the `module-sync` condition rather than a `require` one.
 That choice matters: this package is ESM-only, and a `require` condition pointing
 at ESM would resolve on any Node and then CRASH with `ERR_REQUIRE_ESM` on
-20.0-20.18, which `engines: ">=20"` still admits. `module-sync` is matched only
-by the Nodes that can actually `require()` ESM (>= 20.19 / 22.12); older ones
-skip it and get the clear "not exported" error instead of a runtime explosion.
-Safe here because nothing in `dist/` uses top-level await (checked).
+20.0-20.18. `module-sync` is matched only by the Nodes that can actually
+`require()` ESM (>= 20.19 / 22.12); older ones skip it and get the clear "not
+exported" error instead of a runtime explosion. Safe here because nothing in
+`dist/` uses top-level await (checked).
+
+`engines.node` used to say `">=20"`, which admitted exactly the 20.0-20.18 and
+22.0-22.11 Nodes where that `require` never resolves -- the package claimed
+support it did not have. It is now `"^20.19.0 || >=22.12.0"` (2026-08-02), and
+`npm run doctor` checks major AND minor for the same reason; a major-only check
+passed on every Node the CommonJS entry fails on.
+
+### ERR_REQUIRE_ESM in the deployed e2b lane, closed 2026-08-02
+
+The Vercel function failed every e2b provision and exec with
+`Failed to load external module e2b-f4587dfd9ddf46bd: Error [ERR_REQUIRE_ESM]:
+require() of ES Module .../chalk@5.6.2/... from .../e2b/dist/index.js not
+supported`. e2b 2.37.0 ships no `exports` map, so `main` (dist/index.js,
+CommonJS) is what both `require("e2b")` and `import("e2b")` land on -- Node's ESM
+resolver never reads `module`. That CommonJS build `require`s ESM-only chalk 5,
+so it loads only on a Node with require(ESM); the deployed one has none.
+
+Reproduced locally by running node v24.13.0 with
+`--no-experimental-require-module`, which turns require(ESM) off
+(`process.features.require_module === false`) and yields the identical error text
+and chalk path. Both e2b adapters now import `e2b/dist/index.mjs` explicitly,
+which passes in both modes. Chosen over the two alternatives that were also
+measured to work -- bundling e2b instead of externalizing it, and pinning chalk 4
+through a root pnpm override -- because neither travels to a consumer of the
+published package, where there is no bundler and no workspace override and we do
+not pick the Node.
+
+The deep path is the cost, and it is guarded rather than trusted. There is no
+fallback to `import("e2b")`: a fallback works on a Node with require(ESM) and
+dies on one without, which is how this shipped green in the first place, and
+keeping the specifier alone is also what makes `next build` fail closed --
+measured 2026-08-02 by renaming the entry, the build exits 1 with "Module not
+found: Can't resolve 'e2b/dist/index.mjs'". `scripts/assert-e2b-esm-entry.mjs`
+(run by `build:sdk`, which web's `prebuild` calls) fails earlier and covers what
+`next build` cannot: both resolution roots, and the `build:sdk`/`prepack` path
+that produces the published package without ever running `next build`.
+`src/mux/providers/e2b-esm-entry.test.ts` re-runs the two-mode measurement, and
+asserts the bare specifier STILL fails so a green run cannot be vacuous.
 
 The raw `dist/` path staying closed is the point of an exports map, not a
 leftover gap: `agent-machines/mux/state` is its supported replacement, and the

@@ -205,12 +205,29 @@ function loadSprites(): Promise<typeof import("@fly/sprites")> {
 		);
 	}
 	if (!spritesModulePromise) {
-		spritesModulePromise = import("@fly/sprites").catch((error) => {
+		spritesModulePromise = import("@fly/sprites").catch((error: unknown) => {
 			spritesModulePromise = null;
-			void error;
+			// Only a resolution failure means "not installed". Discarding the
+			// error (this used to be `void error`) is how the e2b lane spent a
+			// release telling people to reinstall a dependency that was already
+			// installed while the real ERR_REQUIRE_ESM was thrown away -- see
+			// the loadSdk note in ./e2b.ts, measured 2026-08-02.
+			const code =
+				error && typeof error === "object" && "code" in error
+					? String((error as { code?: unknown }).code)
+					: "";
+			if (code === "ERR_MODULE_NOT_FOUND" || code === "MODULE_NOT_FOUND") {
+				throw new MuxError(
+					"fatal",
+					"@fly/sprites is not installed; npm i @fly/sprites",
+					SCOPE,
+				);
+			}
 			throw new MuxError(
 				"fatal",
-				"@fly/sprites is not installed; npm i @fly/sprites",
+				`@fly/sprites failed to load on node ${process.versions.node}: ${
+					code ? `${code}: ` : ""
+				}${error instanceof Error ? error.message : String(error)}`,
 				SCOPE,
 			);
 		});

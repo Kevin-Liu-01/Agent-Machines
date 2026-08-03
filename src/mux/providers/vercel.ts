@@ -170,10 +170,32 @@ function loadSandboxClass(): Promise<SandboxClass> {
 	if (!sandboxClassPromise) {
 		sandboxClassPromise = import("@vercel/sandbox").then(
 			(mod) => mod.Sandbox,
-			() => {
+			(error: unknown) => {
+				// Only a resolution failure means "not installed". This lane is
+				// one bundler heuristic away from the e2b failure: measured
+				// 2026-08-02, `require("@vercel/sandbox")` on a Node without
+				// require(ESM) dies with ERR_REQUIRE_ESM on ESM-only
+				// @workflow/serde (via dist/command.cjs), and it is safe today
+				// only because both Turbopack and Node choose the `import`
+				// condition. If that ever changes, the error must say so rather
+				// than send the caller to reinstall a working dependency -- see
+				// the loadSdk note in ./e2b.ts.
+				const code =
+					error && typeof error === "object" && "code" in error
+						? String((error as { code?: unknown }).code)
+						: "";
+				if (code === "ERR_MODULE_NOT_FOUND" || code === "MODULE_NOT_FOUND") {
+					throw new MuxError(
+						"fatal",
+						"@vercel/sandbox is not installed; npm i @vercel/sandbox",
+						{ substrate: "vercel" },
+					);
+				}
 				throw new MuxError(
 					"fatal",
-					"@vercel/sandbox is not installed; npm i @vercel/sandbox",
+					`@vercel/sandbox failed to load on node ${process.versions.node}: ${
+						code ? `${code}: ` : ""
+					}${error instanceof Error ? error.message : String(error)}`,
 					{ substrate: "vercel" },
 				);
 			},

@@ -29,7 +29,7 @@
   "scripts": {
     "benchmark": "tsx --tsconfig web/tsconfig.json web/scripts/run-benchmarks.ts",
     "build": "pnpm --filter agent-machines-web build",
-    "build:sdk": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.sdk.json",
+    "build:sdk": "node scripts/assert-e2b-esm-entry.mjs && node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.sdk.json",
     "chat": "tsx src/cli.ts chat",
     "deploy": "tsx src/cli.ts deploy",
     "deploy:openclaw": "tsx src/cli.ts deploy:openclaw",
@@ -63,7 +63,7 @@
     "dotenv": "^17.4.1"
   },
   "engines": {
-    "node": ">=20"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "license": "MIT",
   "peerDependencies": {

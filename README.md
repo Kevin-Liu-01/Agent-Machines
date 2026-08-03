@@ -234,7 +234,9 @@ npm install
 npm run deploy   # CLI path (Hermes); or use /dashboard/setup for any provider
 ```
 
-Requires Node >= 20.
+Requires Node `^20.19` or `>= 22.12`. Not merely ">= 20": `require("agent-machines")`
+resolves through the `module-sync` export condition, which only those Nodes match,
+and older ones cannot `require()` an ES module at all.
 
 ### Agent Machines SDK
 

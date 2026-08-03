@@ -81,11 +81,34 @@ export function InteractiveConsole({
 	const hostRef = useRef<HTMLDivElement>(null);
 	const [status, setStatus] = useState<Status>("connecting");
 	const [detail, setDetail] = useState<string>("");
+	const [detailCopy, setDetailCopy] = useState<"idle" | "copied" | "failed">(
+		"idle",
+	);
 	const launchedRef = useRef(false);
 
 	useEffect(() => {
 		prefetchXterm();
 	}, []);
+
+	// The provider errors surfaced here are the ones worth pasting into an issue
+	// (the 2026-08-02 e2b failure was a 5-line ERR_REQUIRE_ESM message carrying
+	// two /var/task/node_modules/.pnpm/... paths, which wrapped to roughly a
+	// dozen lines in this panel), so it needs a copy affordance rather than
+	// asking the reader to hand-select wrapped mono text.
+	// `writeText` rejects outside a secure context and when the permission is
+	// denied; say so instead of showing a "copied!" that did not happen.
+	const copyDetail = useCallback(() => {
+		void navigator.clipboard
+			.writeText(detail)
+			.then(() => setDetailCopy("copied"))
+			.catch(() => setDetailCopy("failed"));
+	}, [detail]);
+
+	useEffect(() => {
+		if (detailCopy === "idle") return;
+		const timer = window.setTimeout(() => setDetailCopy("idle"), 1_500);
+		return () => window.clearTimeout(timer);
+	}, [detailCopy]);
 
 	// Keep only one POST in flight and merge everything typed while it runs into
 	// the next batch. This preserves order without building a fetch-per-10ms
@@ -660,25 +683,73 @@ export function InteractiveConsole({
 						role={status === "connecting" ? "status" : "alert"}
 						aria-live={status === "connecting" ? "polite" : "assertive"}
 					>
-						<div className="flex flex-col items-center gap-2 text-center">
-							{status === "connecting" ? (
-								<>
-									<BrailleSpinner name="scan" className="text-[var(--ret-purple)]" />
-									<p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--ret-text-dim)]">
-										attaching tmux console...
-									</p>
-								</>
-							) : (
-								<>
+						{status === "connecting" ? (
+							<div className="flex flex-col items-center gap-2 text-center">
+								<BrailleSpinner name="scan" className="text-[var(--ret-purple)]" />
+								<p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--ret-text-dim)]">
+									attaching tmux console...
+								</p>
+							</div>
+						) : (
+							/*
+							 * Errors get their own left-aligned card instead of sharing the
+							 * spinner's centered stack. Centering a one-line "attaching..."
+							 * reads fine; centering a multi-line provider stack trace does
+							 * not -- every line starts at a different x, so there is no
+							 * column to scan down. `pointer-events-auto` re-enables input on
+							 * this card only (the overlay stays transparent to clicks) --
+							 * without it the internal scroll, the copy button, and plain
+							 * text selection are all dead.
+							 *
+							 * Fixed white-on-#0d0d12 rather than --ret-text-muted /
+							 * --ret-surface, because this console hard-codes background
+							 * #0a0a0e in both themes (see the xterm theme above) while the
+							 * light branch of globals.css sets --ret-text-muted to
+							 * rgba(0,0,0,0.35): dark grey on near-black, i.e. the error was
+							 * effectively invisible for anyone on the light theme. Same
+							 * white-scale-on-a-dark-terminal convention as
+							 * WorkflowNavigator's bg-[#0d0d12] panel.
+							 */
+							<div className="pointer-events-auto flex w-full min-w-0 max-w-[min(80ch,100%)] flex-col gap-1.5 border border-white/10 bg-[#0d0d12] px-3 py-2 text-left">
+								<div className="flex items-center justify-between gap-3">
 									<p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--ret-amber)]">
 										{status === "offline" ? "machine offline" : "console error"}
 									</p>
-									<p className="max-w-[min(48ch,calc(100vw-3rem))] break-words font-mono text-[11px] text-[var(--ret-text-muted)]">
+									{detail ? (
+										<button
+											type="button"
+											onClick={copyDetail}
+											className="shrink-0 font-mono text-[9px] uppercase tracking-[0.18em] text-white/45 transition-colors hover:text-white"
+										>
+											{detailCopy === "copied"
+												? "copied!"
+												: detailCopy === "failed"
+													? "copy failed"
+													: "copy"}
+										</button>
+									) : null}
+								</div>
+								{detail ? (
+									/*
+									 * whitespace-pre-wrap: these messages are multi-line and the
+									 * line structure carries the meaning (which module required
+									 * which file). break-words: the tokens are /var/task/... paths
+									 * with no spaces, and letting them set the min-content width
+									 * would stretch the card past its max-w and scroll the page
+									 * sideways. overflow-auto + max-h-60: anything that still
+									 * cannot break scrolls inside this block, and a long trace
+									 * cannot push the console around it. max-h-60 is this repo's
+									 * scrolling-output height: CursorRunsList.tsx:148, Chat.tsx
+									 * and agent-console/EventCard.tsx all use it. (TerminalPanel
+									 * is NOT one of them -- it uses max-h-[400px] and
+									 * max-h-[65dvh] -- so do not cite it here.)
+									 */
+									<pre className="max-h-60 overflow-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-[1.6] text-white/70">
 										{detail}
-									</p>
-								</>
-							)}
-						</div>
+									</pre>
+								) : null}
+							</div>
+						)}
 					</div>
 				) : null}
 			</div>
