@@ -12,19 +12,32 @@
  * The new model supports many machines per user, so we always create
  * unless the user passes the *same* (provider, agent, spec) combo
  * within the last 60 seconds (cheap dedupe to absorb double-clicks).
+ *
+ * Failover (ROADMAP 0.3): the requested substrate is the FIRST lane, not the
+ * only one. A routable error walks on to the next credentialed lane
+ * (`lib/mux/failover.ts`) instead of returning 502 on the first provider error,
+ * and every lane's outcome comes back in `attempts` so the dashboard can
+ * explain why a machine landed where it did. This is create-time failover
+ * across a credential-gated order -- not health-aware and not learned
+ * selection; the hosted side has neither.
  */
 
-import { randomUUID } from "node:crypto";
 import { after } from "next/server";
 
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import { agentUsesRouter } from "@/lib/agents/upstreams";
-import { MachineProviderError, getProvider } from "@/lib/providers";
+import { getProvider } from "@/lib/providers";
 import { scheduleWebBootstrap } from "@/lib/bootstrap/schedule-bootstrap";
 import { createMachineForConfig } from "@/lib/dashboard/provision";
 import { primeConsoleSession } from "@/lib/dashboard/terminal-session";
 import { recommendArm } from "@/lib/learning/recommend";
+import {
+	assertUsableProvisionState,
+	provisionWithFailover,
+	type ProvisionAttempt,
+} from "@/lib/mux/failover";
+import { resolveRoute, toSubstrateKind } from "@/lib/mux/route";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 import {
 	AGENT_KINDS,
@@ -54,6 +67,12 @@ type Body = {
 	autoRoute?: boolean;
 	/** SDK/full-flow callers can own bootstrap sequencing and disable auto-start. */
 	startBootstrap?: boolean;
+	/**
+	 * Pin the placement to `providerKind` with no backups. The escape hatch for
+	 * a caller who needs THIS substrate or nothing -- mirroring the mux, where
+	 * an explicitly named sandbox is a one-lane route.
+	 */
+	failover?: boolean;
 };
 
 function isProvider(value: unknown): value is ProviderKind {
@@ -142,11 +161,36 @@ export async function POST(request: Request): Promise<Response> {
 					.toISOString()
 					.slice(0, 10)}`;
 
-	if (!config.providers[providerKind]) {
+	// The credential-gated route: requested lane first, then the backups, with
+	// uncredentialed lanes dropped. `resolveRoute` is the provider-agnostic gate
+	// (postmortem 2026-05-18, item 3) and it knows the two shapes of Vercel auth,
+	// which a raw `config.providers[kind]` check does not -- an OIDC deployment
+	// was reported as uncredentialed here while the router placed machines fine.
+	const primary = toSubstrateKind(providerKind);
+	const { route, skipped } = resolveRoute(
+		config,
+		body.failover === false ? { primary, order: [primary] } : { primary },
+	);
+
+	// The lane the caller ASKED for having no credentials stays a 400 with the
+	// actionable message, rather than silently placing the machine somewhere the
+	// user did not choose. Failover covers lanes that fail, not lanes that were
+	// never authenticated.
+	const primaryMissing = skipped.find((entry) => entry.substrate === primary);
+	if (primaryMissing) {
 		return Response.json(
 			{
 				error: "missing_provider_credentials",
-				message: `No ${providerKind} credentials on file. Add them in /dashboard/setup step 1.`,
+				message: `No ${providerKind} credentials on file. Add them in /dashboard/setup step 1. Missing: ${primaryMissing.missing.join(
+					", ",
+				)}`,
+				attempts: skipped.map(
+					(entry): ProvisionAttempt => ({
+						substrate: entry.substrate,
+						outcome: "skipped",
+						reason: `missing credentials: ${entry.missing.join(", ")}`,
+					}),
+				),
 			},
 			{ status: 400 },
 		);
@@ -167,96 +211,137 @@ export async function POST(request: Request): Promise<Response> {
 				ok: true,
 				deduped: true,
 				machineId: recent.id,
+				providerKind: recent.providerKind,
+				// No lane was walked, so there is nothing to explain. Present and
+				// empty rather than absent, so a caller can render `attempts`
+				// without special-casing the dedupe reply.
+				attempts: [] as ProvisionAttempt[],
 				message: "Returning the machine you just provisioned (same spec, <60s).",
 			});
 		}
 	}
 
-	try {
-		const created = await createMachineForConfig(config, {
-			providerKind,
-			agentKind,
-			spec,
-			model,
-			name,
-			gatewayProfileId,
-			environmentProfileId: body.environmentProfileId ?? null,
-		});
-		let bootstrapScheduled = false;
-		let bootstrapMessage: string | null = null;
-		if (body.startBootstrap !== false) {
-			try {
-				const latestConfig = await getUserConfig();
-				const machine = latestConfig.machines.find((m) => m.id === created.machineId);
-				if (machine) {
-					const provider = getProvider(machine.providerKind, latestConfig.providers);
-					primeConsoleSession(provider, machine.id);
-					await setUserConfig({
-						patchMachine: {
-							id: machine.id,
-							patch: {
-								bootstrapState: {
-									...machine.bootstrapState,
-									phase: "running",
-									current: null,
-									finishedAt: null,
-									lastError: null,
-									startedAt:
-										machine.bootstrapState.startedAt ?? new Date().toISOString(),
-								},
-							},
-						},
-					});
-					const scheduledConfig = await getUserConfig();
-					const scheduledMachine =
-						scheduledConfig.machines.find((m) => m.id === machine.id) ?? machine;
-					after(() =>
-						scheduleWebBootstrap(scheduledMachine, provider, scheduledConfig),
-					);
-					bootstrapScheduled = true;
-				}
-			} catch (scheduleErr) {
-				bootstrapMessage =
-					scheduleErr instanceof Error
-						? scheduleErr.message
-						: "background bootstrap could not be scheduled";
-				console.warn(
-					`[provision-machine] background bootstrap scheduling failed for ${created.machineId}:`,
-					bootstrapMessage,
-				);
-			}
-		}
-		return Response.json({
-			ok: true,
-			machineId: created.machineId,
-			phase: created.phase,
-			state: created.state,
-			bootstrapScheduled,
-			bootstrapMessage,
-			message:
-				bootstrapScheduled
-					? "Machine accepted. Console is priming now; agent runtime install continues in the background."
-					: body.startBootstrap === false
-						? "Machine accepted. Bootstrap is waiting for the caller."
-						: "Machine accepted. Console is available; run repair bootstrap from the dashboard to install the selected agent runtime.",
-		});
-	} catch (err) {
-		const message =
-			err instanceof MachineProviderError
-				? err.message
-				: err instanceof Error
-					? err.message
-					: "provision failed";
-		const status = err instanceof MachineProviderError && err.kind === "not_supported" ? 501 : 502;
+	const placement = await provisionWithFailover({
+		primary,
+		route,
+		skipped,
+		lane: {
+			provision: (substrate) =>
+				createMachineForConfig(config, {
+					providerKind: substrate,
+					agentKind,
+					spec,
+					model,
+					name,
+					gatewayProfileId,
+					environmentProfileId: body.environmentProfileId ?? null,
+				}),
+			accept: (substrate, created) =>
+				assertUsableProvisionState(substrate, created.machineId, created.state),
+			teardown: async (substrate, machineId) => {
+				// Explicit machineId, never a globally resolved active machine.
+				await getProvider(substrate, config.providers).destroy(machineId);
+				// Drop the row only once the substrate says the sandbox is gone. A
+				// row kept for a sandbox we failed to destroy is how the operator
+				// can still see and retry it; removing it first would turn it into
+				// an invisible quota leak (docs/MUX-RESULTS.md, dedalus teardown).
+				await setUserConfig({ removeMachine: machineId });
+			},
+		},
+	});
+
+	if (!placement.ok) {
+		const { error } = placement;
+		const status =
+			error.kind === "missing_credentials"
+				? 400
+				: error.kind === "not_supported"
+					? 501
+					: 502;
 		// Surface the real reason in Vercel logs -- the client only sees the HTTP
 		// status, so an opaque 502 is otherwise undiagnosable in production.
 		console.error(
 			`[provision-machine] ${providerKind}/${agentKind} provision failed (${status}):`,
-			message,
+			error.message,
 		);
 		return Response.json(
-			{ error: "provision_failed", message },
+			{
+				error:
+					status === 400 ? "missing_provider_credentials" : "provision_failed",
+				message: error.message,
+				attempts: placement.attempts,
+			},
 			{ status },
 		);
 	}
+
+	const created = placement.created;
+	let bootstrapScheduled = false;
+	let bootstrapMessage: string | null = null;
+	if (body.startBootstrap !== false) {
+		try {
+			const latestConfig = await getUserConfig();
+			const machine = latestConfig.machines.find((m) => m.id === created.machineId);
+			if (machine) {
+				const provider = getProvider(machine.providerKind, latestConfig.providers);
+				primeConsoleSession(provider, machine.id);
+				await setUserConfig({
+					patchMachine: {
+						id: machine.id,
+						patch: {
+							bootstrapState: {
+								...machine.bootstrapState,
+								phase: "running",
+								current: null,
+								finishedAt: null,
+								lastError: null,
+								startedAt:
+									machine.bootstrapState.startedAt ?? new Date().toISOString(),
+							},
+						},
+					},
+				});
+				const scheduledConfig = await getUserConfig();
+				const scheduledMachine =
+					scheduledConfig.machines.find((m) => m.id === machine.id) ?? machine;
+				after(() =>
+					scheduleWebBootstrap(scheduledMachine, provider, scheduledConfig),
+				);
+				bootstrapScheduled = true;
+			}
+		} catch (scheduleErr) {
+			bootstrapMessage =
+				scheduleErr instanceof Error
+					? scheduleErr.message
+					: "background bootstrap could not be scheduled";
+			console.warn(
+				`[provision-machine] background bootstrap scheduling failed for ${created.machineId}:`,
+				bootstrapMessage,
+			);
+		}
+	}
+	const baseMessage = bootstrapScheduled
+		? "Machine accepted. Console is priming now; agent runtime install continues in the background."
+		: body.startBootstrap === false
+			? "Machine accepted. Bootstrap is waiting for the caller."
+			: "Machine accepted. Console is available; run repair bootstrap from the dashboard to install the selected agent runtime.";
+	// A machine that landed somewhere the caller did not ask for must say so in
+	// the prose too, not only in `attempts`: the dashboard shows the message
+	// before anyone opens the route detail.
+	return Response.json({
+		ok: true,
+		machineId: created.machineId,
+		phase: created.phase,
+		state: created.state,
+		// The lane the machine actually landed on, which may not be the one asked for.
+		providerKind: placement.substrate,
+		// Every lane the route touched, in order, with its reason.
+		attempts: placement.attempts,
+		bootstrapScheduled,
+		bootstrapMessage,
+		message:
+			placement.substrate === primary
+				? baseMessage
+				: `${baseMessage} Placed on ${placement.substrate} after ${primary} failed; see attempts.`,
+	});
 }

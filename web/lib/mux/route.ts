@@ -8,6 +8,10 @@
  * reads them from the user's config. This module is the adapter between
  * those two credential sources so the dashboard and the SDK agree on
  * which lane a machine would land on.
+ *
+ * The order computed here is WALKED by `lib/mux/failover.ts`, which the hosted
+ * provisioning route drives (ROADMAP 0.3). Until that landed this module only
+ * described a route nobody followed.
  */
 
 import { substrateCapability, type SubstrateKind } from "@/lib/mux/capabilities";

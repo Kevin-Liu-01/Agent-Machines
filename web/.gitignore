@@ -8,7 +8,7 @@ out
 .vercel
 .turbo
 next-env.d.ts
-tsconfig.tsbuildinfo
+*.tsbuildinfo
 
 # clerk configuration (can include secrets)
 /.clerk/
