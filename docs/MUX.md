@@ -12,8 +12,10 @@ build if this file and the source disagree.
 
 **Two surfaces, and only one of them is this.** The hosted control plane
 (`web/`) adapts the same four vendors through its own `MachineProvider`
-contract and has none of the routing below: no failover, no health, no
-constraints, and an advisory recommendation rather than a learned order. See
+contract and has only part of the routing below: create-time failover over a
+static credentialed order (2026-08-02, `web/lib/mux/failover.ts`), but no
+health, no constraints, and an advisory recommendation rather than a learned
+order. See
 [which surface has what](#which-surface-has-what) and item 0 of
 [ROADMAP.md](./ROADMAP.md).
 
@@ -494,7 +496,7 @@ on Sprites never finished until detached work was understood (see
 | Capability | src/mux (this doc) | hosted control plane (`web/`) |
 | --- | --- | --- |
 | Provider contract | `SandboxProvider` | `MachineProvider` -- same four vendors, adapted twice |
-| Create-time failover | yes, with every attempt recorded | none: the first provider error returns 502 |
+| Create-time failover | yes, with every attempt recorded | yes, over a static credentialed order, attempts recorded (`web/lib/mux/failover.ts`) |
 | Health ordering | yes, persisted circuit breaker | none |
 | Constraint filtering | yes, naming the failed dimension | none |
 | Learned ordering | yes, from local run traces | advisory recommendation only, from cron probes |

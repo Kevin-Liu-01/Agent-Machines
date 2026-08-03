@@ -429,8 +429,23 @@ test("MUX.md makes none of the claims the roadmap forbids", () => {
  * (docs/ROADMAP.md section 3b: "All of this landed in src/mux/* only"), so a
  * doc that lists it without saying the dashboard lacks it invites a reader to
  * assume the product routes when only the library does.
+ *
+ * `failover` used to be on this list. ROADMAP 0.3 gave the hosted plane
+ * create-time failover for real, so a flat "none" there became the false claim
+ * -- see SHARED_BUT_LIMITED_ROWS.
  */
-const MUX_ONLY_ROWS = [/failover/i, /health/i, /constraint/i, /learned/i];
+const MUX_ONLY_ROWS = [/health/i, /constraint/i, /learned/i];
+
+/**
+ * Rows where BOTH surfaces do the thing but the hosted one does strictly less.
+ * The hosted cell may say yes; it must also name its limit, because "failover"
+ * unqualified is exactly what a reader upgrades to "health-aware failover" in
+ * their head -- the claim ROADMAP section 4 forbids. `limit` is the qualifier
+ * that has to survive any future rewrite of the cell.
+ */
+const SHARED_BUT_LIMITED_ROWS = [
+	{ row: /failover/i, limit: /\bstatic\b/i },
+];
 
 test("MUX.md separates what src/mux does from what the hosted plane does", () => {
 	const doc = readText(MUX_DOC);
@@ -458,6 +473,20 @@ test("MUX.md separates what src/mux does from what the hosted plane does", () =>
 			row[hostedAt] ?? "",
 			/\bnone\b|\bonly\b/i,
 			`${MUX_DOC}: the hosted plane does not have ${row[0]}; its cell reads "${row[hostedAt]}"`,
+		);
+	}
+	for (const { row: pattern, limit } of SHARED_BUT_LIMITED_ROWS) {
+		const row = table.rows.find((cells) => pattern.test(cells[0] ?? ""));
+		assert.ok(row, `${MUX_DOC}: the surface table needs a row matching ${String(pattern)}`);
+		assert.match(
+			row[muxAt] ?? "",
+			/^yes/i,
+			`${MUX_DOC}: src/mux does have ${row[0]}, so its cell must say yes`,
+		);
+		assert.match(
+			row[hostedAt] ?? "",
+			limit,
+			`${MUX_DOC}: the hosted plane's ${row[0]} is narrower than the mux's, so its cell must say so (expected ${String(limit)}); it reads "${row[hostedAt]}"`,
 		);
 	}
 });

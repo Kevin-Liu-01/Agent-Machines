@@ -100,7 +100,7 @@ sandboxes"). **P1** is required before charging money. **P2** is expansion.
 | 3 | Four agent runtimes | YC "How far along"; WHITEPAPER.md:60; README.md:64 | Four harness adapters behind one contract: `src/mux/harnesses/index.ts` -> `claude-code.ts`, `codex.ts`, `openclaw.ts`, `hermes.ts`; `HarnessAdapter` in `src/mux/types.ts:219-253`. | 8 of 16 cells attempted, and the matrix's own 6 "ok" marks overstate it: the later openclaw-on-sprites section of docs/MUX-RESULTS.md supersedes that row and calls the cell unconfirmed, leaving 5 confirmed. hermes/e2b fails (installer exhausts the base sandbox; E2B ignored the `resources` request on the current plan) and hermes/sprites did not finish inside the 40-minute budget -- docs/MUX-RESULTS.md finding 10. Hermes needs a pre-baked template, which does not exist. | P1 |
 | 4 | Normalized capabilities | YC table "Normalized capabilities" (next: region, GPU, network policy, snapshot, port, persistence, max-runtime); WHITEPAPER.md:118-134 | `SandboxCapabilities` in `src/mux/types.ts:43-52`: `pty`, `persistence`, `reattach`, `publicUrl`, `streamingExec`. Declared per provider, mirrored for the UI in `web/lib/mux/capabilities.ts` with a drift test (`web/lib/mux/capabilities.test.ts`) that reads the mux sources. | Five axes of the promised twelve. No region, GPU, network policy, snapshot/fork, port count, max runtime, disk size, or concurrency limit. `CreateSandboxOptions` (`src/mux/types.ts:167-185`) carries only name/env/timeoutMs/template/resources. Worse, capabilities do not affect routing at all: `Mux.routeFor` (`src/mux/router.ts:382-405`) filters on credentials only. `nativePtyLanes()` exists (`web/lib/mux/route.ts:98`) and nothing calls it. | P0 |
 | 5 | Intelligent selection | YC table "Intelligent selection" (advisory today, automatic next); docs/SELF_LEARNING.md Loop A; YC "Adaptive routing" row | A real contextual bandit, advisory: arms `web/lib/learning/arms.ts`, posteriors/reward `web/lib/learning/{bandit,reward,policy}.ts`, greedy pick `web/lib/learning/recommend.ts`, snapshot recompute `web/app/api/internal/learning/recompute/route.ts`, surfaced at `web/app/api/dashboard/admin/route-recommendation/route.ts` and consumed by `web/components/dashboard/DeployAndTalk.tsx:92`. Opt-in fill of omitted axes via `autoRoute` (`web/app/api/dashboard/admin/provision-machine/route.ts:54,115`). | Selection is not automatic anywhere a user can reach. The mux router has no learned selection at all -- `routeFor` walks a static config order (`src/mux/config.ts:112-115`, default `e2b` then the rest). `autoRoute` exists only on one HTTP route and the published SDK never sends it (`src/lib/sdk.ts:90-109`). And the policy is label-starved: `run_traces` are written only by cron ingest (`web/lib/learning/ingest.ts:103`, called from `web/app/api/internal/cron/tick/route.ts:91`) -- no mux run, no `/api/agents/run` call, and no console run produces a trace. | P0 |
-| 6 | Health-aware fallback | YC table "Health-aware fallback" -- explicitly "Not yet safe to claim"; docs/MUX.md:148-158; README.md:294-296; `web/components/StatsRow.tsx:194,241` | Create-time failover in the mux only: `src/mux/router.ts:439-496` walks candidates, `isRoutableError` (`src/mux/types.ts:79-88`) advances on transient/rate_limited/fatal/unknown, a sandbox provisioned before a later failure is torn down, and every attempt lands in `machine.attempts` (`src/mux/router.ts:60-65`). Per-provider error taxonomy in all four adapters (429 -> rate_limited, 5xx -> transient, 4xx -> fatal). Covered by `src/mux/router.test.ts`. | There is no health signal, so nothing is health-*aware*: no outcome window per substrate, no error-rate threshold, no cooldown, no circuit breaker anywhere in `src/mux` or `web/lib`. Failover is blind retry in a static order. The hosted control plane has no failover at all -- the first provider error returns 502 (`web/app/api/dashboard/admin/provision-machine/route.ts:243-261`). No idempotent replay: a run that dies mid-stream is reported `truncated: true` (`src/mux/router.ts:244-258`) and nothing retries it. | P0 |
+| 6 | Health-aware fallback | YC table "Health-aware fallback" -- explicitly "Not yet safe to claim"; docs/MUX.md:148-158; README.md:294-296; `web/components/StatsRow.tsx:194,241` | Create-time failover in the mux only: `src/mux/router.ts:439-496` walks candidates, `isRoutableError` (`src/mux/types.ts:79-88`) advances on transient/rate_limited/fatal/unknown, a sandbox provisioned before a later failure is torn down, and every attempt lands in `machine.attempts` (`src/mux/router.ts:60-65`). Per-provider error taxonomy in all four adapters (429 -> rate_limited, 5xx -> transient, 4xx -> fatal). Covered by `src/mux/router.test.ts`. | There is no health signal, so nothing is health-*aware*: no outcome window per substrate, no error-rate threshold, no cooldown, no circuit breaker anywhere in `src/mux` or `web/lib`. Failover is blind retry in a static order. The hosted control plane now has CREATE-TIME FAILOVER (`web/lib/mux/failover.ts`, driven by the provisioning route, 2026-08-02): it walks the credential-gated order from `web/lib/mux/route.ts`, aborts after one attempt on `missing_credentials`/`not_supported`, tears down a sandbox provisioned before a later failure, and returns every attempt with its reason. It still has no health signal and no learned selection, so "health-aware" remains unsayable there too. No idempotent replay: a run that dies mid-stream is reported `truncated: true` (`src/mux/router.ts:244-258`) and nothing retries it. | P0 |
 | 7 | Price optimization | YC table "Price optimization" (reward accepts cost; next: ingest current prices) | Reward normalizes cost (`web/lib/learning/reward.ts:31-37`) and the bandit tracks it with Welford stats (`web/lib/learning/bandit.ts:56-61`). A per-provider price table with provenance exists at `web/data/benchmarks.json` (`profiles[].pricing`, `basis: published \| unknown`) and renders in `web/components/dashboard/benchmarks/PricingMatrix.tsx`. | The cost the router optimizes is not a price. `web/lib/learning/ingest.ts:70-73` derives it from `estimateCost(machine.spec, latencyMs/1000)`, and `web/lib/metrics/cost.ts:9-11` is one hard-coded rate table written for Dedalus and applied to all four substrates. The real price table is display-only: `web/lib/learning/policy.ts:148-150` reads only `provider_kind, ok` from `provider_benchmarks`, never pricing -- and 2 of 4 providers have `basis: unknown` (sprites, dedalus). Model cost is captured live by the mux (`RunResult.costUsd`, `src/mux/events.ts:35,46`) and persisted nowhere. | P1 |
 | 8 | One bill | YC table "One bill" -- "Not implemented; current setup is BYOK"; YC "How do you make money" | Nothing. No metering ledger, no credits, no invoices, no payment integration -- a repo-wide search finds Stripe only as an MCP catalog entry and skills. Usage rollups exist (`web/lib/metrics/collector.ts` -> Supabase, `/dashboard/usage`) and `web/app/pricing/page.tsx:24-26` states BYOK, $0 seats, model costs billed by the selected path. | Not started, and correctly not claimed. Depends on pillar 7 (real rates) and on a metering ledger that does not exist; the current rollups are estimates from one rate table and cover machine compute only, not model tokens. Provider resale needs commercial agreements that do not exist. | P1 |
 | 9 | Observability by route | YC table "Observability" (next: report task success, time-to-first-output, total cost, resume reliability by route); WHITEPAPER.md:5.5 | Broad surfaces: metrics collector on cron tick, `/dashboard/usage`, activity/sessions/logs/artifacts, and an 11-metric cross-provider benchmark harness (`web/lib/benchmarks/types.ts:21-31`, engine/probes/stats in the same directory). Route explanation after the fact via `machine.attempts`. | None of the four promised numbers is reported by route. `RunTrace` (`web/lib/learning/types.ts`) has success/latency/cost but no time-to-first-output and no resume outcome, and is cron-only. Time-to-first-event is measured only by the one-shot `scripts/mux-live-test.ts` and lives as prose in docs/MUX-RESULTS.md; nothing stores it. Benchmarks measure empty boxes, not completed agent work. | P1 |
@@ -115,8 +115,10 @@ sandboxes"). **P1** is required before charging money. **P2** is expansion.
 
 Pillars 1, 2, 4, 6, 11, 12, and 15 all degrade to one root cause. Four
 substrate vendors are implemented twice against two different contracts,
-and the routing intelligence sits on the side that has no failover while
-the failover sits on the side that has no intelligence:
+and until 0.3 the routing intelligence sat on the side that had no failover
+while the failover sat on the side that had no intelligence. 0.3 closed the
+failover half (`web/lib/mux/failover.ts`); the hosted side still has no health,
+no constraints and no learned order:
 
 | Concern | `src/mux/*` (direct) | `web/lib/*` (hosted) |
 |---|---|---|
@@ -323,97 +325,90 @@ which was simply wrong. OpenRouter serves an Anthropic-Messages endpoint
 now lives in `src/mux/upstreams.ts`, per harness and per wire format.
 
 What did NOT change: the cross-cutting defect above. All of this landed in
-`src/mux/*` only, so the hosted control plane still has no failover, no
-health and no constraints, and the two provider contracts still coexist.
-Convergence remains item 0.
+`src/mux/*` only. 0.3 has since given the hosted plane create-time failover
+(`web/lib/mux/failover.ts`), but it still has no health and no constraints, and
+the two provider contracts still coexist. Convergence remains item 0.
 
 ---
 
-## 3c. BLOCKER found: web cannot import the mux at runtime
+## 3c. The packaging blocker, MEASURED and corrected (2026-08-02)
 
-The build order assumed 0.2 and 0.3 were sequential refactors. They are not:
-**0.3 is blocked on packaging, not effort.**
+This section previously blamed `turbopack.root`. **That was wrong**, and the
+correction matters because it changes which fix works.
 
-`web/next.config.ts` pins `turbopack.root` to `web/` -- deliberately, with the
-comment "web/ has its own lockfile; keep Turbopack rooted here, not the
-monorepo parent". That walls off everything above it. Measured with three
-`next build` runs against a probe route: `../../../src/mux/config.js`, the
-extensionless form, and even the prebuilt `../../../dist/mux/providers/
-index.js` all fail with "Module not found", while `tsc --noEmit` and `vitest`
-resolve all three. `dist/` is also gitignored, so it is absent at deploy time.
-So `getProvider(kind, creds)` cannot construct a `src/mux` provider today, and
-the hosted `provision-machine` route cannot call `Mux.create()`.
+### What is actually true
 
-What 0.2 delivered instead is the roadmap's other stated option -- "make
-web/lib/providers adapt to SandboxProvider" -- as far as it goes without a
-runtime import: one facade, exhaustive bidirectional state and error mapping,
-and the adapter shapes typed as `Pick<>` slices of the REAL `src/mux/types.ts`
-contracts via type-only imports (SWC erases those before Turbopack sees them),
-plus a compile-time proof that the mux provider still satisfies the slice. So
-the CONTRACT is converged and cannot drift silently. **The four vendors are
-still implemented twice.** Do not read 0.2 as "the duplication is gone".
+`turbopack.root` is now the workspace root and the resolver crosses out of
+`web/` fine. Measured with a probe route and a real `npx next build`, four
+specifiers:
 
-### Deciding 0.3
+| specifier | result |
+| --- | --- |
+| `../../../../src/mux/index` (extensionless) | **resolved** |
+| `../../../../src/mux/index.ts` | **resolved** |
+| `../../../../src/mux/index.js` | Module not found |
+| `agent-machines` (bare) | Module not found -- not a declared dep of `web/` |
 
-Three options, and one of them is now measured rather than assumed.
+The real blocker is one line deeper: **Turbopack applies no `.js` -> `.ts`
+extension alias anywhere in this project.** Proven by a control that removes the
+monorepo from the question entirely -- a `./helper.js` import of a `helper.ts`
+sitting in the SAME directory inside `web/` also failed. So every ESM `.js`
+specifier in `src/mux` (the house rule, and correct for Node ESM) is
+unresolvable from Turbopack, and no amount of root-moving fixes it. `web/` has
+only three `.js`-suffixed relative imports and two of those are type-only, which
+is why nothing had contradicted the old theory before.
 
-1. **Link the root package into `web/`** (`pnpm add agent-machines@link:..`).
-   **TESTED 2026-08-01 -- DOES NOT WORK, and it is destructive.** The symlink
-   lands at `web/node_modules/agent-machines -> ../..`, and Turbopack follows
-   it out of the project directory and loses its own workspace root:
-   `next build` then fails with "We couldn't find the Next.js package
-   (next/package.json) from the project directory: web/app". Worse, the repo
-   root has a `pnpm-workspace.yaml` (settings only, no `packages:` list), so
-   **any pnpm command run inside `web/` attaches to the root workspace and
-   relocates web's dependency store into the root's `.pnpm`** -- which puts
-   `next` itself physically outside the Turbopack root and breaks the build
-   even after the link is removed. Recovering requires
-   `pnpm install --ignore-workspace` from `web/`. Anyone working here should
-   know that footgun independent of 0.3.
-2. **Depend on the published `agent-machines` package** from `web/`. Cleanest
-   boundary and it dogfoods what we ship, at the cost of a publish step between
-   a mux change and the dashboard seeing it. Note this ALSO needs the
-   `--ignore-workspace` discipline above.
-3. **Make `web/` a real workspace member** (add a `packages:` list to
-   `pnpm-workspace.yaml`) with the mux as a workspace dependency, and set
-   `turbopack.root` to the repo. Largest change to how the repo builds and
-   deploys, and the only option that makes the dependency first-class rather
-   than smuggled. The build-graph and deploy consequences are exactly what
-   option 1 demonstrated are real.
+### What DOES work, proven at runtime
 
-Option 1 is eliminated on evidence. Choosing between 2 and 3 is a deployment
-decision (Vercel project root, install command, and whether `dist/` is built
-before `next build`), so it still wants a human call -- but the field is now
-two, not three, and the failure mode of guessing is documented above.
+The COMPILED output. Both the bare `agent-machines` specifier (via the root
+package `exports` -> `dist/index.js`) and a relative path into `dist/` resolve,
+once `npm run build:sdk` has run. `npx next start` plus a curl proved it is not
+merely a compile: `createMux()` ran inside a route handler, `getProvider("e2b",
+config)` constructed a live provider, and `readMuxState()` returned four
+remembered machines.
 
-### Contract gaps 0.2 surfaced (worth fixing regardless of which option wins)
+So `dist/` is a build-order dependency of `next build`. The root `build` script
+already runs `build:sdk` first; this only bites if Vercel is configured to run
+`next build` inside `web/` instead of the root build.
 
-- ~~`SandboxProvider` has no no-wake status read.~~ **CLOSED.** `describe(id)`,
-  `remove(id)` and `park(id)` are optional provider members, each verified
-  against the vendor SDK source: vercel's `Sandbox.get` defaults to
-  `resume: true` so all three pass `resume: false`, and its `delete`/`stop` are
-  among the few instance methods outside the SDK's `withResume` wrapper.
-  `Mux.describe/remove/park` expose them, and `am mux rm` no longer resumes
-  before destroying. Sprites and dedalus deliberately omit `park()` -- the
-  sprites SDK has no suspend (`restart()` replaces the machine and would kill
-  detached installs) and dedalus's sleep is an HMAC-gated internal route a
-  public key gets 401 on; a `park()` that resolved without parking would be a
-  false claim. Tests are negative by construction (the resuming entry point is
-  never called), with a per-lane guard proving the fake would record a resume
-  if one happened. Still open: the hosted dashboard's own fleet polling, which
-  cannot use this until the packaging question above is settled.
-- `CreateSandboxOptions.resources` has no disk axis, though Dedalus accepts
-  one. Fixed forward for vcpu/memory in commit ca6d1f5; disk still fails
-  closed rather than silently shrinking the machine.
+**This is the strongest argument for the published-package boundary** (0.2/0.3):
+the compiled package is not one option among several, it is the only import form
+that works. Two packaging gaps to close first -- `web/package.json` must declare
+`"agent-machines": "workspace:*"`, and the root `exports` map has no `require`
+condition and no subpath exports, so CJS `require.resolve` and
+`agent-machines/dist/mux/state.js` both fail today.
+
+### A measurement trap worth knowing
+
+A probe at `web/app/api/__spike03/route.ts` compiled with exit 0 and produced no
+route: Next treats `_`-prefixed folders as private and opts them out of routing.
+Anyone measuring this with an underscore-prefixed name gets a false green.
+
+### Local-first state, and the read-only filesystem
+
+Measured with a 0500 parent directory: reads succeed, writes throw EACCES. All
+three env overrides exist and work -- `AGENT_MACHINES_MUX_STATE` (a file),
+`AGENT_MACHINES_MUX_TRACES` and `AGENT_MACHINES_MUX_LEDGER` (directories, kept
+separate so retention policies never merge). A serverless caller can therefore
+READ from a bundled path and must redirect writes;
+`web/lib/mux/placement-store.ts` now implements the hosted `PlacementStore` for
+placements and health. Two things it still needs: a human to apply its DDL, and
+an async-capable installer -- `setPlacementStore()` and the synchronous
+`readMuxState`/`rememberMachine` API in `src/mux/state.ts` cannot yet accept a
+store that returns promises.
+
+### Contract gaps 0.2 surfaced (unchanged, still worth fixing)
+
+- No no-wake status read -- **CLOSED**, see 3b.
+- `CreateSandboxOptions.resources` has no disk axis, though Dedalus accepts one.
 - Sprites naming differs by design: the mux derives a deterministic
-  `am-mux-<name>` and adopts on conflict, while the control plane uses a
-  random suffix. Adopting the mux rule would make two dashboard machines with
+  `am-mux-<name>` and adopts on conflict, the control plane uses a random
+  suffix. Adopting the mux rule wholesale would make two dashboard machines with
   the same name the same sprite -- MUX-RESULTS records a live failure from
-  exactly that. Decide before 0.3 swaps the adapter in.
-- Sprites `wake` in the control plane only reads status. The mux wakes for
-  real with an exec probe, which is more correct, but a cold sprite measures
-  17-31s against a 30s exec default, so adopting it needs a wake-specific
-  timeout above 31s.
+  exactly that.
+- Sprites `wake` in the control plane only reads status; the mux wakes with an
+  exec probe, which is more correct but needs a wake-specific timeout above the
+  measured 17-31s cold start.
 
 ## 4. Must not claim
 
@@ -434,9 +429,11 @@ becomes true is named.
    Failover is placement-time only, by design (docs/MUX.md:180-186). Runs
    are never replayed; a broken run returns `truncated: true`.
 
-4. **"The dashboard fails over between providers."** It does not -- the
-   first provider error returns 502
-   (`web/app/api/dashboard/admin/provision-machine/route.ts:243-261`).
+4. **"The dashboard fails over between providers *using health or learned
+   order*."** As of 2026-08-02 it DOES fail over at create time, walking the
+   credentialed order and recording every attempt (`web/lib/mux/failover.ts`).
+   What is still unsayable there: health-aware, learned, or constraint-filtered
+   ordering. The hosted order is static.
 
 5. **"One bill" / "unified billing" / "no provider onboarding" / "one
    account means you don't need provider accounts."** No billing code
