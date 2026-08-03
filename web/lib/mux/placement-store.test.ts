@@ -33,6 +33,7 @@ import {
 	HEALTH_KIND,
 	HEALTH_ROW_NAME,
 	HostedMuxError,
+	PLACEMENTS_MIGRATION,
 	PLACEMENTS_TABLE,
 	PLACEMENT_KIND,
 	READ_COLUMNS,
@@ -359,11 +360,41 @@ describe("SupabasePlacementStore contract", () => {
 		await expect(store(db).read()).resolves.toEqual({ machines: {} });
 	});
 
+	it("names a migration that exists and declares what the store depends on", () => {
+		// The 42P01 message quotes this path as the fix. If the file is renamed
+		// or never written, the only instruction a caller gets when the schema is
+		// missing points at nothing -- and it points there precisely when they
+		// are already confused about why their tenant looks empty.
+		const ddl = readFileSync(
+			join(process.cwd(), "..", PLACEMENTS_MIGRATION),
+			"utf8",
+		);
+		expect(ddl).toMatch(
+			new RegExp(`create table if not exists ${PLACEMENTS_TABLE}\\b`, "i"),
+		);
+		// Guarantee 10: updated_at from the database clock needs the TRIGGER, not
+		// just the column default -- PostgREST's upsert does not re-apply a
+		// default on the ON CONFLICT UPDATE path, so a column-only schema would
+		// freeze a re-remembered placement at its first-insert timestamp.
+		expect(ddl).toMatch(/create trigger trg_mux_placements_touch/i);
+		expect(ddl).toMatch(/before insert or update on mux_placements/i);
+		// Both check constraints, since the fake enforces them and would
+		// otherwise be testing rules the real table does not have.
+		expect(ddl).toMatch(/constraint mux_placements_kind check/i);
+		expect(ddl).toMatch(/constraint mux_placements_shape check/i);
+		for (const column of READ_COLUMNS.split(",").map((c) => c.trim())) {
+			expect(ddl, `read() selects ${column}`).toMatch(
+				new RegExp(`^\\s*${column}\\s`, "m"),
+			);
+		}
+	});
+
 	it("crosses the package boundary type-only, so next build can still resolve it", () => {
-		// ROADMAP 3c, measured: a VALUE import above web/'s Turbopack root fails
-		// with "Module not found" at build time while tsc and vitest both resolve
-		// it happily -- so nothing else in this suite would notice. Asserting the
-		// import form is the only cheap guard against re-breaking the deploy.
+		// ROADMAP 3c, measured: the compiled dist is the only import form
+		// Turbopack resolves, because it applies no .js -> .ts alias and every
+		// src/mux specifier carries .js. tsc and vitest resolve the source
+		// happily, so nothing else in this suite would notice a value import --
+		// asserting the import form is the only cheap guard against the deploy.
 		const source = readFileSync(
 			join(process.cwd(), "lib", "mux", "placement-store.ts"),
 			"utf8",
@@ -707,7 +738,7 @@ describe("no TTL", () => {
 // ---------------------------------------------------------------------------
 
 describe("error mapping", () => {
-	it("maps a missing schema to fatal and names the DDL to run", async () => {
+	it("maps a missing schema to fatal and names the migration to run", async () => {
 		const db = new FakeDb();
 		db.nextError = {
 			code: "42P01",
@@ -715,9 +746,10 @@ describe("error mapping", () => {
 		};
 		const failure = await failureOf(() => store(db).read());
 		expect(muxErrorKindOf(failure)).toBe("fatal");
-		expect(String((failure as Error).message)).toMatch(
-			/web\/lib\/mux\/placement-store\.ts/,
-		);
+		// The path, not just "run the DDL": an unapplied schema is indistinguishable
+		// from an empty tenant at the call site, so the message is the only place
+		// the fix can appear. The sibling test proves the path resolves to a file.
+		expect(String((failure as Error).message)).toContain(PLACEMENTS_MIGRATION);
 	});
 
 	it.each([

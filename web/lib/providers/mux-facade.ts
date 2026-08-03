@@ -8,17 +8,23 @@
  * `SandboxProvider`) and `createMuxBackedProvider` is the single place that
  * translates it back into the `MachineProvider` the dashboard consumes.
  *
- * WHY the mux types are imported `type`-only, and why nothing here imports a
- * mux *value*: `web/next.config.ts` pins Turbopack's root to `web/`, so any
- * runtime import above that root fails to resolve. Measured 2026-08-01 with
- * `next build`: `../../../src/mux/config.js`, the extensionless
- * `../../../src/mux/config`, and even the prebuilt
- * `../../../dist/mux/providers/index.js` all fail with "Module not found",
- * while `tsc --noEmit` and `vitest` resolve all three. Type-only imports are
- * erased before the bundler sees them, so the contract is checked against the
- * real source with no bundling cost and no mirror to drift. Adding a value
- * import here breaks `next build` -- that is item 0.3's precondition, not
- * something to work around.
+ * TWO WAYS this file reaches the mux, and the rule for choosing:
+ *
+ * - `../../../src/mux/types.js` -- TYPES ONLY. SWC erases these before Turbopack
+ *   sees them, so the contract is checked against the real source with no
+ *   bundling cost and no build order to get wrong. A *value* on this path does
+ *   not build: Turbopack applies no `.js` -> `.ts` extension alias anywhere in
+ *   this project (measured 2026-08-02, ROADMAP 3c -- proven by a `./helper.js`
+ *   import of a same-directory `helper.ts` inside `web/` failing too), and every
+ *   ESM specifier in `src/mux` carries `.js`.
+ * - `agent-machines/mux/types` -- VALUES. The compiled `dist/` is the only form
+ *   Turbopack resolves, so a runtime value has to come through the built
+ *   package. That makes `build:sdk` a build-order dependency of `next build`;
+ *   the root `build` script runs it first, which is the sequence the deploy uses.
+ *
+ * So: reach for the source path for types, the package for values, and never the
+ * reverse. `lib/mux/failover.ts` and `lib/mux/placement-store.ts` are type-only
+ * and stay that way -- a test in each asserts it.
  *
  * Vocabulary is mapped in BOTH directions with exhaustive switches. The two
  * `MachineState` unions and the two error taxonomies happen to have identical
@@ -26,6 +32,8 @@
  * a compile error instead of a silent `unknown`/`fatal` that would break the
  * dashboard's fail-closed behavior.
  */
+
+import { MUX_ERROR_NAME, isMuxErrorKind } from "agent-machines/mux/types";
 
 import type {
 	CreateSandboxOptions,
@@ -245,33 +253,26 @@ export function toMuxErrorKind(kind: ProviderError): MuxErrorKind {
 	}
 }
 
-const MUX_ERROR_KINDS: ReadonlySet<string> = new Set<MuxErrorKind>([
-	"missing_credentials",
-	"not_supported",
-	"rate_limited",
-	"transient",
-	"fatal",
-]);
-
 /**
  * Recover a MuxError's kind structurally rather than with `instanceof`.
  *
- * WHY: the `MuxError` class lives above Turbopack's root (see the module
- * header), so the constructor is not importable here. Even when it is, an
- * error that crossed a package boundary can fail `instanceof` against a
- * second copy of the class. Matching on `name` + a known `kind` keeps the
- * taxonomy intact either way; losing it would downgrade every
- * `missing_credentials` to `transient` and make the dashboard retry a request
- * that can never succeed.
+ * WHY structural, now that the class IS importable: an error that crossed a
+ * package boundary can fail `instanceof` against a second copy of the class --
+ * and this facade exists to receive errors from exactly that direction. Matching
+ * on `name` + a known `kind` survives it. Losing the taxonomy would downgrade
+ * every `missing_credentials` to `transient` and make the dashboard retry a
+ * request that can never succeed.
+ *
+ * The name and the kind list come from the mux as VALUES
+ * (`agent-machines/mux/types`), not as a hand-copy. They used to be copied here,
+ * which meant a sixth kind added upstream would silently read as "not a
+ * MuxError" and take the retry-forever path this function exists to prevent.
  */
 export function muxErrorKindOf(error: unknown): MuxErrorKind | null {
 	if (!error || typeof error !== "object") return null;
 	const candidate = error as { name?: unknown; kind?: unknown };
-	if (candidate.name !== "MuxError") return null;
-	if (typeof candidate.kind !== "string") return null;
-	return MUX_ERROR_KINDS.has(candidate.kind)
-		? (candidate.kind as MuxErrorKind)
-		: null;
+	if (candidate.name !== MUX_ERROR_NAME) return null;
+	return isMuxErrorKind(candidate.kind) ? candidate.kind : null;
 }
 
 /**

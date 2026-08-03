@@ -191,12 +191,42 @@ export type SandboxCapabilities = {
 	limits?: SubstrateLimits;
 };
 
-export type MuxErrorKind =
-	| "missing_credentials"
-	| "not_supported"
-	| "rate_limited"
-	| "transient"
-	| "fatal";
+/**
+ * Every error kind, as a VALUE. The union is derived from it rather than
+ * declared alongside it, so there is one list.
+ *
+ * Why a value at all: a consumer that has to decide whether a thrown thing is a
+ * MuxError cannot use `instanceof` if the error crossed a package boundary --
+ * two copies of the class fail that check -- so it matches on `name` and `kind`
+ * instead, which means it needs the list of kinds at runtime. The hosted control
+ * plane hand-copied these five for exactly that reason, and a hand-copy is a
+ * thing that silently misses the sixth: an unrecognized kind degrades to
+ * `transient`, so the dashboard would retry a `missing_credentials` forever.
+ */
+export const MUX_ERROR_KINDS = [
+	"missing_credentials",
+	"not_supported",
+	"rate_limited",
+	"transient",
+	"fatal",
+] as const;
+
+export type MuxErrorKind = (typeof MUX_ERROR_KINDS)[number];
+
+/**
+ * The `name` every MuxError carries. Exported because structural recovery
+ * across a package boundary matches on this string, and a string literal
+ * repeated in another package is a rename waiting to go unnoticed.
+ */
+export const MUX_ERROR_NAME = "MuxError";
+
+/** Narrow an unknown to a kind, for consumers reading `error.kind` off a plain object. */
+export function isMuxErrorKind(value: unknown): value is MuxErrorKind {
+	return (
+		typeof value === "string" &&
+		(MUX_ERROR_KINDS as readonly string[]).includes(value)
+	);
+}
 
 export class MuxError extends Error {
 	readonly kind: MuxErrorKind;
@@ -208,7 +238,7 @@ export class MuxError extends Error {
 		scope?: { substrate?: SubstrateKind; harness?: HarnessKind },
 	) {
 		super(message);
-		this.name = "MuxError";
+		this.name = MUX_ERROR_NAME;
 		this.kind = kind;
 		this.substrate = scope?.substrate;
 		this.harness = scope?.harness;

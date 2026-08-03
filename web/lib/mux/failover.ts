@@ -7,11 +7,14 @@
  * "The hosted control plane has no failover at all"). This module walks it.
  *
  * The contract is the one `src/mux/router.ts` `create()` proved out, and it is
- * REIMPLEMENTED rather than imported on purpose: `web/next.config.ts` pins
- * Turbopack's root to `web/`, so a runtime import of `src/mux` does not resolve
- * (ROADMAP 3c, measured with three `next build` runs). Only the mux *types* are
- * imported here -- SWC erases them before the bundler sees them -- which is what
- * keeps the attempt record from drifting away from `RouteAttempt`.
+ * REIMPLEMENTED rather than imported on purpose: the compiled `dist/` is the
+ * only import form Turbopack resolves, because it applies no `.js` -> `.ts`
+ * extension alias anywhere in this project and every ESM specifier in `src/mux`
+ * carries `.js` (measured 2026-08-02, ROADMAP 3c). Importing the built package
+ * would make `build:sdk` a build-order dependency of `next build`; importing
+ * only the mux *types* -- which SWC erases before the bundler sees them -- costs
+ * nothing and still keeps the attempt record from drifting away from
+ * `RouteAttempt`.
  *
  * What this is NOT: health-aware, capability-filtered, or learned selection.
  * The hosted side has no outcome window, no circuit breaker, no constraint

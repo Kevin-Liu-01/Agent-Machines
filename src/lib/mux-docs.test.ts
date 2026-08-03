@@ -314,9 +314,16 @@ test("MUX.md quotes the selection tuning that selection.ts actually uses", () =>
 test("MUX.md documents every MuxError kind the contract defines", () => {
 	const doc = readText(MUX_DOC);
 	const types = readText("src/mux/types.ts");
-	const union = /export type MuxErrorKind =([\s\S]*?);/.exec(types);
-	assert.ok(union, "types.ts no longer declares MuxErrorKind as a union");
-	const kinds = [...union[1].matchAll(/"([a-z_]+)"/g)].map((match) => match[1]);
+	// The kinds are a const array now, with the union derived from it -- the
+	// hosted plane needs them at runtime to recognize a MuxError that crossed a
+	// package boundary (see MUX_ERROR_KINDS in types.ts). Read the array, since
+	// that is where a sixth kind would be added.
+	const declared = /export const MUX_ERROR_KINDS = \[([\s\S]*?)\] as const;/.exec(types);
+	assert.ok(
+		declared,
+		"types.ts no longer declares MUX_ERROR_KINDS as a const array; this scanner reads that array",
+	);
+	const kinds = [...declared[1].matchAll(/"([a-z_]+)"/g)].map((match) => match[1]);
 	assert.ok(kinds.length >= 5, `parsed only ${kinds.length} MuxError kinds -- the scanner is broken`);
 	for (const kind of kinds) {
 		assert.ok(doc.includes(kind), `${MUX_DOC} never mentions the MuxError kind "${kind}"`);

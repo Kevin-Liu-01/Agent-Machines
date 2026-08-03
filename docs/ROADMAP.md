@@ -373,10 +373,72 @@ already runs `build:sdk` first; this only bites if Vercel is configured to run
 
 **This is the strongest argument for the published-package boundary** (0.2/0.3):
 the compiled package is not one option among several, it is the only import form
-that works. Two packaging gaps to close first -- `web/package.json` must declare
-`"agent-machines": "workspace:*"`, and the root `exports` map has no `require`
-condition and no subpath exports, so CJS `require.resolve` and
-`agent-machines/dist/mux/state.js` both fail today.
+that works.
+
+### The exports map, closed 2026-08-02
+
+Measured against a real `npm pack` + `npm install` of the tarball, not read off
+the spec. Before: only the bare root specifier resolved, and `require` of even
+that failed `ERR_PACKAGE_PATH_NOT_EXPORTED`.
+
+| specifier | before | after |
+| --- | --- | --- |
+| `import "agent-machines"` | ok | ok |
+| `require("agent-machines")` | ERR_PACKAGE_PATH_NOT_EXPORTED | **ok** |
+| `agent-machines/mux` | not exported | **ok** |
+| `agent-machines/mux/state` | not exported | **ok** |
+| `agent-machines/dist/mux/state.js` | not exported | not exported, **on purpose** |
+
+`require` works via the `module-sync` condition rather than a `require` one.
+That choice matters: this package is ESM-only, and a `require` condition pointing
+at ESM would resolve on any Node and then CRASH with `ERR_REQUIRE_ESM` on
+20.0-20.18, which `engines: ">=20"` still admits. `module-sync` is matched only
+by the Nodes that can actually `require()` ESM (>= 20.19 / 22.12); older ones
+skip it and get the clear "not exported" error instead of a runtime explosion.
+Safe here because nothing in `dist/` uses top-level await (checked).
+
+The raw `dist/` path staying closed is the point of an exports map, not a
+leftover gap: `agent-machines/mux/state` is its supported replacement, and the
+wildcard covers the mux plane only -- `dist/lib` (the hosted client's internals)
+stays private, because MUX.md documents the mux plane module by module and
+nothing documents those.
+
+### The boundary is live, 2026-08-02
+
+`web/package.json` now declares `"agent-machines": "workspace:*"` and the first
+VALUE import across the boundary is in production code:
+`web/lib/providers/mux-facade.ts` imports `MUX_ERROR_NAME` and `isMuxErrorKind`
+from `agent-machines/mux/types`, replacing a hand-copied list of the five error
+kinds. That copy was a real hazard, not a style problem -- a sixth kind added
+upstream would have read as "not a MuxError" and taken the retry-forever path
+that function exists to prevent. `MUX_ERROR_KINDS` is now a const array in
+`src/mux/types.ts` with the union derived from it, so there is one list.
+
+The error kind is still recovered STRUCTURALLY (`name` + `kind`) rather than with
+`instanceof`, and that stays: an error that crossed a package boundary can fail
+`instanceof` against a second copy of the class, which is precisely the direction
+this facade receives errors from. Importing the class would have been a
+regression dressed as convergence.
+
+The rule the facade header now states: **the source path for types, the package
+for values, never the reverse.** `lib/mux/failover.ts` and
+`lib/mux/placement-store.ts` remain type-only, each with a test asserting it.
+
+Build order is no longer something to remember. `web`'s `prebuild` runs
+`build:sdk` itself, so `next build` cannot start without `dist/`, and the root
+`build` just delegates to web. Verified by deleting `dist/` and running both
+entry points: `pnpm run build` at the root (the deploy's own command) and
+`pnpm run build` inside `web/`, each exit 0 with the SDK built by the build.
+A bare `npx next build` still bypasses package scripts and would fail on the
+missing `dist/` -- that is npx's contract, not a regression.
+
+`exports` itself is guarded by `src/lib/package-exports.test.ts`, which needs no
+build: seven assertions, each mutation-verified, covering the module-sync rule,
+the types-first ordering, the dist-only rule, and the mux/lib public boundary.
+
+Still open (item 0.2): the four substrate adapters are still implemented twice.
+The boundary that makes deleting one copy possible now exists and is proven; the
+deletion has not happened.
 
 ### A measurement trap worth knowing
 

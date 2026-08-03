@@ -11,71 +11,33 @@
  * local store silently forgets every machine it ever created there).
  *
  * WHY the mux contract is imported `type`-only, and why nothing here imports a
- * mux *value*: `web/next.config.ts` pins Turbopack's root to `web/`, so any
- * runtime import above that root fails to resolve -- measured 2026-08-01 with
- * three `next build` runs (ROADMAP 3c), including against the prebuilt
- * `dist/`. Type-only imports are erased by SWC before Turbopack sees them, so
- * this file is checked against the REAL interface with no bundling cost and no
- * mirror to drift. Adding a value import from `../../../src` here breaks
- * `next build`; that is item 0.3's precondition, not something to work around.
+ * mux *value*: the compiled `dist/` is the ONLY import form Turbopack
+ * resolves. Measured 2026-08-02 (ROADMAP 3c): `turbopack.root` is the workspace
+ * root and crossing out of `web/` is fine, but Turbopack applies no `.js` ->
+ * `.ts` extension alias anywhere in this project -- proven by a `./helper.js`
+ * import of a same-directory `helper.ts` inside `web/` failing too -- and every
+ * ESM specifier in `src/mux` carries `.js`. A value import therefore has to go
+ * through `agent-machines` (the built package), which makes `build:sdk` a
+ * build-order dependency of `next build`. Type-only imports are erased by SWC
+ * before Turbopack sees them, so this file is checked against the REAL contract
+ * with no bundling cost, no mirror to drift, and no build order to get wrong.
  *
  * ---------------------------------------------------------------------------
- * SCHEMA -- NOT YET APPLIED. A HUMAN MUST RUN THIS.
+ * SCHEMA -- WRITTEN, NOT YET APPLIED
  * ---------------------------------------------------------------------------
  *
- * There is no `mux_placements` table in web/supabase/migrations today (001-005
- * are users, user_config, provider_benchmarks, workers_memory, self_learning).
- * Inventing a migration file silently would be worse than failing closed, so
- * the DDL lives here and `read()`/`remember()` raise a `fatal` MuxError naming
- * this header when Postgres reports the relation is undefined (42P01).
+ * The DDL is `web/supabase/migrations/006_mux_placements.sql`, and that file is
+ * the only copy: a second copy in this header would be a second thing to keep
+ * in sync, and the one that drifts is always the comment. `read()` and
+ * `remember()` raise a `fatal` MuxError naming that migration when Postgres
+ * reports the relation is undefined (42P01), so an unapplied schema fails closed
+ * with the fix in the message rather than looking like an empty tenant.
  *
- *   -- Migration 006: hosted mux placement store (ROADMAP 0.4).
- *   create table if not exists mux_placements (
- *     tenant_id  text not null,
- *     kind       text not null,
- *     name       text not null,
- *     substrate  text,
- *     sandbox_id text,
- *     agent      text,
- *     health     jsonb,
- *     updated_at timestamptz not null default now(),
- *     primary key (tenant_id, kind, name),
- *     constraint mux_placements_kind check (kind in ('placement', 'health')),
- *     constraint mux_placements_shape check (
- *       (kind = 'placement'
- *         and name <> '' and substrate is not null
- *         and sandbox_id is not null and agent is not null
- *         and health is null)
- *       or (kind = 'health'
- *         and name = '' and health is not null
- *         and substrate is null and sandbox_id is null and agent is null)
- *     )
- *   );
- *
- *   -- updated_at comes from the DATABASE clock (guarantee 10). A column
- *   -- default is not enough: PostgREST's upsert is INSERT .. ON CONFLICT DO
- *   -- UPDATE SET <supplied columns>, and a default does not re-apply on the
- *   -- update path -- so without this trigger a re-remembered name would keep
- *   -- its first-insert timestamp forever. Sending the client's own clock
- *   -- instead is what guarantee 10 forbids: entries written by clock-skewed
- *   -- hosts have to stay comparable.
- *   create or replace function mux_placements_touch() returns trigger as $$
- *   begin
- *     new.updated_at := now();
- *     return new;
- *   end;
- *   $$ language plpgsql;
- *
- *   drop trigger if exists trg_mux_placements_touch on mux_placements;
- *   create trigger trg_mux_placements_touch
- *     before insert or update on mux_placements
- *     for each row execute function mux_placements_touch();
- *
- * No second index: the primary key's leading column is `tenant_id`, so the one
- * query `read()` issues is already an index scan on it. No RLS policy either,
- * matching every other table here -- `lib/supabase/client.ts` uses the service
- * role key and the scope is enforced by filtering every statement on
- * `tenant_id`, which is why that filter is not optional anywhere below.
+ * Writing the file does not apply it. Someone with database access still has to
+ * run it against the project (Supabase SQL editor, or `supabase db push`), and
+ * until they do, nothing here works against a real Postgres -- the upsert
+ * semantics, the check constraints and the trigger are reproduced in the fake
+ * and argued from the DDL, never observed.
  *
  * ---------------------------------------------------------------------------
  * The ten guarantees, and where each is kept
@@ -178,6 +140,14 @@ import { supabaseAdmin } from "@/lib/supabase/client";
 // ---------------------------------------------------------------------------
 
 export const PLACEMENTS_TABLE = "mux_placements";
+
+/**
+ * Where the DDL lives, quoted in the 42P01 message. Exported so a test can
+ * assert the file exists: this string is the only instruction a caller gets
+ * when the schema is missing, and a path that has been renamed out from under
+ * it turns "here is your fix" into a dead end at the worst moment.
+ */
+export const PLACEMENTS_MIGRATION = "web/supabase/migrations/006_mux_placements.sql";
 
 /** Discriminators. See the DDL: the check constraint enforces both shapes. */
 export const PLACEMENT_KIND = "placement";
@@ -371,7 +341,7 @@ function fromDbError(
 		return new HostedMuxError(
 			"fatal",
 			`${where}: ${suffix}. The ${PLACEMENTS_TABLE} schema has not been applied -- ` +
-				"run the DDL in the header of web/lib/mux/placement-store.ts.",
+				`run ${PLACEMENTS_MIGRATION}.`,
 		);
 	}
 	if (CREDENTIAL_CODES.has(code)) {
