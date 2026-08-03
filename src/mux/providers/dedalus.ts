@@ -137,13 +137,12 @@ const CAPABILITIES: SandboxCapabilities = {
 		maxRuntimeMs: "unknown",
 		// Same page, Hobby column: "Concurrent machines: 5" (Pro 20).
 		maxConcurrentSandboxes: 5,
-		// provision() below now sends the caller's vcpu/memory clamped to the
-		// Hobby ceilings instead of a hardcoded spec. "unknown" rather than
-		// "honored" because this lane has no credentials and has never run a
-		// live cell, so the request is sent but its effect is unverified. Disk
-		// is still fixed at DEFAULT_SPEC: CreateSandboxOptions has no disk
-		// axis, and inventing one here would put a second source of truth
-		// beside the contract.
+		// provision() below sends all three of the caller's axes clamped to the
+		// Hobby ceilings instead of a hardcoded spec -- disk included, now that
+		// CreateSandboxOptions carries `diskGib` (adding it to the contract was
+		// the alternative to a second source of truth here). "unknown" rather
+		// than "honored" because the request is sent but its effect on the
+		// running machine has never been read back on a live cell.
 		resourceRequest: "unknown",
 	},
 };
@@ -157,6 +156,8 @@ const DEFAULT_SPEC = { vcpu: 1, memory_mib: 2048, storage_gib: 10 };
 // behind a key is unknowable at routing time.
 const HOBBY_MAX_VCPU = 4;
 const HOBBY_MAX_MEMORY_MIB = 16384;
+// Same page, Hobby column: Storage "10 GiB" (Pro "20 GiB (expandable)").
+const HOBBY_MAX_DISK_GIB = 10;
 
 function clamp(value: number, min: number, max: number): number {
 	return Math.min(Math.max(Math.round(value), min), max);
@@ -409,6 +410,7 @@ class DedalusRest {
 	async provision(spec?: {
 		vcpu?: number;
 		memoryMib?: number;
+		diskGib?: number;
 	}): Promise<RawMachine> {
 		const body = {
 			vcpu: clamp(spec?.vcpu ?? DEFAULT_SPEC.vcpu, 1, HOBBY_MAX_VCPU),
@@ -417,7 +419,14 @@ class DedalusRest {
 				512,
 				HOBBY_MAX_MEMORY_MIB,
 			),
-			storage_gib: DEFAULT_SPEC.storage_gib,
+			// Disk is a request like the other two now that the contract carries
+			// the axis. Clamped to the Hobby ceiling for the same reason: a
+			// request above the plan limit is still satisfiable, just smaller.
+			storage_gib: clamp(
+				spec?.diskGib ?? DEFAULT_SPEC.storage_gib,
+				1,
+				HOBBY_MAX_DISK_GIB,
+			),
 		};
 		const response = await this.request("/v1/machines", {
 			method: "POST",

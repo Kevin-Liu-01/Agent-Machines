@@ -246,6 +246,32 @@ when the request is `"honored"`: a forwarded-but-ignored request looks like
 success at placement time and starves the run later. E2B's sizing request is
 declared `"unknown"` for exactly that reason (MUX-RESULTS.md finding 10).
 
+### Asking for a size, and asking what a name means
+
+`CreateSandboxOptions.resources` takes `vcpu`, `memoryMib` and `diskGib` -- the
+same three axes `SandboxDescription.resources` reports back, so a request and the
+vendor's answer to it are directly comparable. Substrates that do not expose
+sizing ignore the request rather than failing; only Dedalus takes all three
+today, clamped to its documented plan ceilings (an over-plan request is still
+satisfiable, just smaller, and `limits` already states the ceiling).
+
+`CreateSandboxOptions.onNameConflict` decides what `name` MEANS on substrates
+where the caller names the sandbox (sprites; the others get vendor ids and ignore
+it):
+
+| | `"adopt"` (default) | `"unique"` |
+| --- | --- | --- |
+| the name is | an identity | a label |
+| derived name | deterministic | suffixed |
+| existing sandbox with that name | adopted | never |
+| two callers, one name | one sandbox | two sandboxes |
+
+Both are correct for someone. A named `create()` has to be idempotent for
+`connect(name)` to work from another process, which is `"adopt"`. A dashboard
+lets two machines share a display name, and adopting there made them the same
+sprite -- a live failure in MUX-RESULTS. The axis is what lets one adapter serve
+both.
+
 `RouteConstraints` (`src/mux/constraints.ts`) is the caller's side of the same
 model: `pty`, `persistence`, `reattach`, `publicUrl`, `streamingExec`, `region`,
 `gpu`, `egress`, `fork`, `minVcpu`, `minMemoryMib`, `minDiskGib`,

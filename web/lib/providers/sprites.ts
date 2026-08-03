@@ -396,6 +396,10 @@ function spritesBinding(creds: SpritesCreds): MuxSubstrateBinding {
 		createOptions: (input: ProvisionInput) => ({
 			name: input.name,
 			env: input.env,
+			// A dashboard name is a label, not an identity -- see spriteNameFor
+			// below. Declared here so the intent survives the switch to the mux's
+			// adapter, rather than living only in this adapter's own code.
+			onNameConflict: "unique" as const,
 		}),
 		// This adapter has always trimmed sprites output. Callers that need
 		// exact bytes must not rely on this lane; missing-file detection no
@@ -470,12 +474,20 @@ export class SpritesProvider implements MachineProvider {
 }
 
 /**
- * Unique per provision. NOTE: `src/mux` derives a deterministic
- * `am-mux-<name>` and adopts an existing sprite on conflict, which would make
- * two dashboard machines with the same name the same sprite -- and
- * docs/MUX-RESULTS.md records a live failure from exactly that ("sprite not
- * found -- a concurrent run destroyed the same deterministically-named
- * sprite"). Keep the random suffix here so the control plane cannot collide.
+ * Unique per provision, because a dashboard name is a LABEL: two machines may
+ * share one and must stay two sandboxes. `src/mux` defaults to treating a name
+ * as an IDENTITY (deterministic `am-mux-<name>`, adopt on conflict) so that
+ * `connect(name)` works across processes -- and adopting here made two machines
+ * the same sprite, which docs/MUX-RESULTS.md records as a live failure ("sprite
+ * not found -- a concurrent run destroyed the same deterministically-named
+ * sprite").
+ *
+ * That difference used to be the reason this adapter could not be deleted in
+ * favor of the mux's. It is now expressible: `CreateSandboxOptions
+ * .onNameConflict: "unique"` (declared in `createOptions` below) asks the mux's
+ * sprites adapter for exactly this behavior, tested in
+ * `src/mux/providers/sprites-naming.test.ts`. So this function is duplicated
+ * work now, not a divergence -- ROADMAP 0.2 can delete it with the rest.
  */
 function spriteNameFor(name: string | undefined): string {
 	const suffix = Math.random().toString(36).slice(2, 10);

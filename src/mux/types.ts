@@ -402,8 +402,34 @@ export type CreateSandboxOptions = {
 	 * (Hermes builds a Python venv) can exhaust the default and leave the
 	 * sandbox unresponsive. Substrates that do not expose sizing ignore
 	 * this rather than failing.
+	 *
+	 * `diskGib` is here because Dedalus's create API takes `storage_gib` and
+	 * had to hardcode it -- the alternative was a second source of truth beside
+	 * this contract. Same three axes as `SandboxDescription.resources`, so a
+	 * request and the vendor's report of it are directly comparable.
 	 */
-	resources?: { vcpu?: number; memoryMib?: number };
+	resources?: { vcpu?: number; memoryMib?: number; diskGib?: number };
+	/**
+	 * What `name` means on substrates where the CALLER names the sandbox
+	 * (sprites today; the others get vendor-generated ids and ignore this).
+	 *
+	 * - `"adopt"` (default) -- the name is an identity. It derives a
+	 *   deterministic sandbox name and adopts an existing sandbox that already
+	 *   has it. This is what makes a named `create()` idempotent and lets a
+	 *   different process reach the same machine by name, which the CLI relies
+	 *   on. It also means two callers using one name get ONE sandbox.
+	 * - `"unique"` -- the name is a label. A collision-proof suffix is added and
+	 *   nothing is ever adopted, so two machines may share a display name.
+	 *
+	 * This axis exists because the two surfaces genuinely need different
+	 * behavior and neither is wrong: the hosted control plane lets two machines
+	 * share a name, and adopting there made them the same sandbox --
+	 * docs/MUX-RESULTS.md records the live failure ("sprite not found -- a
+	 * concurrent run destroyed the same deterministically-named sprite").
+	 * Encoding the intent is what lets both surfaces use one adapter (ROADMAP
+	 * 0.2) instead of one copy each.
+	 */
+	onNameConflict?: "adopt" | "unique";
 };
 
 export type SandboxProvider = {

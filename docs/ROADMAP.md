@@ -482,18 +482,37 @@ Still needed before the hosted store does anything: **a human must apply
 any project yet), and something must call `setPlacementStore()` on the hosted
 path -- nothing does today.
 
-### Contract gaps 0.2 surfaced (unchanged, still worth fixing)
+### Contract gaps 0.2 surfaced
+
+These are the behavioral differences that made "just delete one copy"
+impossible. Each one had to become expressible in the contract first, or
+converging would have regressed whichever surface lost.
 
 - No no-wake status read -- **CLOSED**, see 3b.
-- `CreateSandboxOptions.resources` has no disk axis, though Dedalus accepts one.
-- Sprites naming differs by design: the mux derives a deterministic
-  `am-mux-<name>` and adopts on conflict, the control plane uses a random
-  suffix. Adopting the mux rule wholesale would make two dashboard machines with
-  the same name the same sprite -- MUX-RESULTS records a live failure from
-  exactly that.
+- Disk axis -- **CLOSED 2026-08-02.** `CreateSandboxOptions.resources` carries
+  `diskGib`, matching `SandboxDescription.resources` so a request and the
+  vendor's report of it are comparable. Dedalus now clamps and forwards all
+  three axes instead of hardcoding `storage_gib`; the vcpu/memory clamps had no
+  test at all before and now do (6 tests, 4 mutations checked).
+- Sprites naming -- **CLOSED 2026-08-02** by making the intent explicit rather
+  than picking a winner. `CreateSandboxOptions.onNameConflict` is `"adopt"`
+  (default: a name is an IDENTITY, deterministic and adopted on conflict, which
+  is what makes `connect(name)` work across processes) or `"unique"` (a name is
+  a LABEL, suffixed, never adopted). The hosted sprites adapter already declares
+  `"unique"` in its `createOptions`, so the switch to the mux's adapter is now a
+  deletion rather than a redesign. 8 tests, 4 mutations checked. A subtlety worth
+  keeping: under a unique name the adopt-on-409 recovery still applies, because
+  a 409 there can only be our own retried create (the measured vendor 500 that
+  provisioned anyway) and never another caller's sandbox.
 - Sprites `wake` in the control plane only reads status; the mux wakes with an
   exec probe, which is more correct but needs a wake-specific timeout above the
-  measured 17-31s cold start.
+  measured 17-31s cold start. **STILL OPEN.**
+
+What remains for 0.2 itself is the deletion: `web/lib/providers/{e2b,sprites,
+vercel,dedalus}.ts` (~2,100 lines) reimplement adapters that `src/mux/providers`
+already has (~4,100 lines, with a conformance suite). The boundary is live (3c),
+`MachineProvider` is already a facade over the mux substrate shape, and the
+behavioral blockers above are down to one.
 
 ## 4. Must not claim
 

@@ -376,7 +376,12 @@ export function createSpritesProvider(
 			// Note: options.timeoutMs (idle park timeout) has no Sprites
 			// equivalent -- sprites auto-suspend on their own schedule.
 			const spritesClient = await client();
-			const name = spriteNameFor(options.name);
+			// "unique" only changes the NAME. The adopt-on-409 below still
+			// applies, because with a unique name a 409 can only mean our own
+			// retried create already succeeded -- the measured vendor behavior
+			// (a 500 that created the sprite anyway, MUX-RESULTS finding 5) --
+			// never another caller's sandbox.
+			const name = spriteNameFor(options.name, options.onNameConflict === "unique");
 			const { sprite, adopted } = await createOrAdoptSprite(
 				spritesClient,
 				name,
@@ -1320,16 +1325,29 @@ function ttyCommand(command?: string): string {
 	return `exec bash -lc "$(printf '%s' '${b64}' | base64 -d)"`;
 }
 
-function spriteNameFor(name?: string): string {
+/**
+ * Sprite name from a caller's name, per `CreateSandboxOptions.onNameConflict`.
+ *
+ * `unique` appends a suffix even to an already-prefixed name: the whole point is
+ * that the result cannot equal another caller's, and a caller passing the
+ * derived name straight through would otherwise get the deterministic one back.
+ */
+function spriteNameFor(name: string | undefined, unique: boolean): string {
 	if (name) {
-		if (name.startsWith(NAME_PREFIX)) return name;
+		if (name.startsWith(NAME_PREFIX)) {
+			return unique ? `${name}-${uniqueSuffix()}` : name;
+		}
 		const safe = name
 			.toLowerCase()
 			.replace(/[^a-z0-9-]/g, "-")
 			.replace(/^-+|-+$/g, "")
 			.slice(0, 40);
-		return `${NAME_PREFIX}${safe || uniqueSuffix()}`;
+		const base = safe || uniqueSuffix();
+		return unique
+			? `${NAME_PREFIX}${base}-${uniqueSuffix()}`
+			: `${NAME_PREFIX}${base}`;
 	}
+	// No name: there is nothing to collide with either way.
 	return `${NAME_PREFIX}${uniqueSuffix()}`;
 }
 
