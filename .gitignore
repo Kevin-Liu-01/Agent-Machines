@@ -17,10 +17,12 @@ yc-application-s26.md
 knowledge/YC-PARTNER-PREP.md
 # Any YC application draft, wherever it lands. Case-insensitive variants are
 # listed explicitly because git patterns are case-sensitive on Linux/CI.
-YC-APPLICATION*.md
-yc-application*.md
-docs/YC-APPLICATION*.md
-docs/yc-application*.md
+# The glob must survive a renamed draft: YC-SPRING-2027-APPLICATION.md slipped
+# past YC-APPLICATION*.md on 2026-08-03 because the season landed mid-name.
+YC*APPLICATION*.md
+yc*application*.md
+**/YC*APPLICATION*.md
+**/yc*application*.md
 
 # Playwright MCP scratch output (screenshots, snapshots, console logs)
 .playwright-mcp/
