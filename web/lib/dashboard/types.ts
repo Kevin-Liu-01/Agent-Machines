@@ -24,9 +24,15 @@ export type MachineSummary = {
 	machineId: string;
 	phase: MachinePhase;
 	desired: "running" | "sleeping" | "destroyed" | "unknown";
-	vcpu: number;
-	memoryMib: number;
-	storageGib: number;
+	/**
+	 * Null when the provider's live status read did not report the axis
+	 * (ROADMAP 0.2). These used to be backfilled with 1/2048/10, which told the
+	 * UI a size no vendor ever stated; the one renderer of these axes
+	 * (ObservabilityPanel) already handles null.
+	 */
+	vcpu: number | null;
+	memoryMib: number | null;
+	storageGib: number | null;
 	createdAt: string;
 	configuredAt: string | null;
 	reason: string | null;

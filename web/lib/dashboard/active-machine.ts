@@ -105,14 +105,18 @@ export async function sleepActiveMachine(): Promise<MachineSummary> {
 
 function toMachineSummary(summary: ProviderMachineSummary): MachineSummary {
 	const phase = toPhase(summary);
-	const spec = summary.spec ?? { vcpu: 1, memoryMib: 2048, storageGib: 10 };
+	// Absent stays absent (ROADMAP 0.2): this used to substitute 1/2048/10 for
+	// any axis the provider did not report, which told the dashboard a size no
+	// vendor ever stated. The wire type carries null now and the one renderer
+	// of these axes (ObservabilityPanel) already handles it.
+	const spec = summary.spec ?? {};
 	return {
 		machineId: summary.id,
 		phase,
 		desired: toDesired(summary),
-		vcpu: spec.vcpu ?? 1,
-		memoryMib: spec.memoryMib ?? 2048,
-		storageGib: spec.storageGib ?? 10,
+		vcpu: spec.vcpu ?? null,
+		memoryMib: spec.memoryMib ?? null,
+		storageGib: spec.storageGib ?? null,
 		createdAt: summary.createdAt ?? new Date(0).toISOString(),
 		configuredAt: null,
 		reason: summary.lastError,

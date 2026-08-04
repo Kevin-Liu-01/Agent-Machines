@@ -597,7 +597,7 @@ on Sprites never finished until detached work was understood (see
 
 | Capability | src/mux (this doc) | hosted control plane (`web/`) |
 | --- | --- | --- |
-| Provider contract | `SandboxProvider` | `MachineProvider` -- same four vendors, adapted twice |
+| Provider contract | `SandboxProvider` | `MachineProvider`, since 2026-08-03 a facade over the same four mux providers -- the vendor code exists once |
 | Create-time failover | yes, with every attempt recorded | yes, over a static credentialed order, attempts recorded (`web/lib/mux/failover.ts`) |
 | Agent switch / substrate migrate | yes -- `switchAgent()` verifies then flips the placement; `migrate()` copies $HOME file state and commits last | yes, same ordering via its own endpoints (`machines/[id]/agent`, `machines/[id]/migrate`), progress in `migrationState` only -- no MigrateStep stream |
 | Health ordering | yes, persisted circuit breaker | none |
@@ -609,11 +609,11 @@ on Sprites never finished until detached work was understood (see
 | Browser console | PTY contract, single consumer | tmux-over-exec plus SSE, shipped |
 | Placement store | local JSON file on one host | Clerk `UserConfig` plus Supabase |
 
-`web/` cannot import `src/mux` at runtime today -- the packaging decision is
-open, and measured attempts are recorded in ROADMAP.md section 3c. Type-only
-imports do work, and the web facade is typed as slices of the real
-`src/mux/types.ts` contracts, so the CONTRACT is converged even though the
-implementations are not.
+`web/` value-imports `src/mux` at runtime through the compiled package
+(`agent-machines/mux/providers/*`; the measurement history is ROADMAP.md
+section 3c), and since the 0.2 deletion (2026-08-03) its four adapters are thin
+bindings over these providers. Contract AND implementation are converged; the
+web facade is still TYPE-checked against the real `src/mux/types.ts` source.
 
 ## Terminal front-end options
 

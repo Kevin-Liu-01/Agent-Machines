@@ -33,7 +33,15 @@ export type ProviderMachineSummary = {
 	id: string;
 	state: MachineState;
 	rawPhase: string;
-	spec: MachineSpec;
+	/**
+	 * Only the axes the vendor reported for THIS machine (ROADMAP 0.2). Three
+	 * of the four pre-0.2 adapters filled the gaps with invented numbers (e2b
+	 * memoryMib ?? 512, vercel ?? 2048, sprites a hardcoded 2/4096/100); the
+	 * mux describe() reports proven axes only, and this type now says so
+	 * instead of forcing a lie. Renderers already show placeholders for a
+	 * missing axis (lib/fleet/view-model.ts normalizeMachineSpec).
+	 */
+	spec: Partial<MachineSpec>;
 	createdAt: string | null;
 	lastError: string | null;
 };

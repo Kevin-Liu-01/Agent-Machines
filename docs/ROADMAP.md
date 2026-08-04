@@ -327,7 +327,8 @@ now lives in `src/mux/upstreams.ts`, per harness and per wire format.
 What did NOT change: the cross-cutting defect above. All of this landed in
 `src/mux/*` only. 0.3 has since given the hosted plane create-time failover
 (`web/lib/mux/failover.ts`), but it still has no health and no constraints, and
-the two provider contracts still coexist. Convergence remains item 0.
+at that point the two provider contracts still coexisted. Convergence remained
+item 0 until the 0.2 deletion landed (2026-08-03, below).
 
 ---
 
@@ -474,9 +475,12 @@ missing `dist/` -- that is npx's contract, not a regression.
 build: seven assertions, each mutation-verified, covering the module-sync rule,
 the types-first ordering, the dist-only rule, and the mux/lib public boundary.
 
-Still open (item 0.2): the four substrate adapters are still implemented twice.
-The boundary that makes deleting one copy possible now exists and is proven; the
-deletion has not happened.
+Item 0.2 CLOSED (2026-08-03): the four web vendor halves are deleted.
+`web/lib/providers/{e2b,sprites,vercel,dedalus}.ts` are thin bindings over
+`agent-machines/mux/providers/*` (value-imported through the compiled package),
+and the one shared `toMuxDescription` derivation in `mux-facade.ts` maps the
+mux's `SandboxDescription` onto the hosted no-wake read -- absent spec axes stay
+absent instead of being backfilled with invented numbers.
 
 ### A measurement trap worth knowing
 
@@ -583,10 +587,12 @@ concurrent calls share one connect instead of racing; a rejection is never
 served; and sleep and destroy invalidate in `finally`, since a failed destroy is
 when a stale handle is most dangerous.
 
-Six tests, six mutations checked, all caught. What the e2b deletion still needs:
-`MuxDescription.spec` (vcpu/memoryMib/storageGib) has to be derived from the mux's
+Six tests, six mutations checked, all caught. What the e2b deletion still needed:
+`MuxDescription.spec` (vcpu/memoryMib/storageGib) had to be derived from the mux's
 `SandboxDescription.resources` (vcpu/memoryMib/diskGib). That mapping belongs in
 the facade so all four adapters drop their `describe` together, not one each.
+(Done 2026-08-03: `toMuxDescription` in `web/lib/providers/mux-facade.ts`, with
+the deletion itself -- see the 0.2 closure note in 3c above.)
 
 ## 4. Must not claim
 

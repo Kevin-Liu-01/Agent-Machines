@@ -14,7 +14,9 @@ import {
 	createMuxBackedProvider,
 	muxErrorKindOf,
 	notSupported,
+	requireNoWake,
 	toMachineState,
+	toMuxDescription,
 	toMuxErrorKind,
 	toMuxMachineState,
 	toProviderCapabilities,
@@ -221,6 +223,79 @@ describe("state vocabulary", () => {
 			createdAt: "2026-08-01T00:00:00.000Z",
 			lastError: "boom",
 		});
+	});
+});
+
+describe("toMuxDescription (the one SandboxDescription derivation)", () => {
+	it("maps every field the vendor reported, renaming diskGib to storageGib", () => {
+		expect(
+			toMuxDescription({
+				state: "ready",
+				rawPhase: "running",
+				createdAt: "2026-08-01T00:00:00.000Z",
+				lastError: "quota warning",
+				resources: { vcpu: 4, memoryMib: 8192, diskGib: 10 },
+			}),
+		).toEqual({
+			state: "ready",
+			rawPhase: "running",
+			// The GiB axis is a RENAME (mux `diskGib` -> control-plane
+			// `storageGib`), never a conversion.
+			spec: { vcpu: 4, memoryMib: 8192, storageGib: 10 },
+			createdAt: "2026-08-01T00:00:00.000Z",
+			lastError: "quota warning",
+		});
+	});
+
+	it("keeps an absent axis absent instead of inventing a number", () => {
+		// e2b reports vcpu+memory but never disk; sprites usually reports
+		// nothing. Filling the gaps (the pre-0.2 adapters' 512/2048/100
+		// defaults) would claim a size no vendor stated.
+		expect(
+			toMuxDescription({
+				state: "ready",
+				rawPhase: "running",
+				resources: { vcpu: 2, memoryMib: 478 },
+			}).spec,
+		).toEqual({ vcpu: 2, memoryMib: 478 });
+		expect(
+			toMuxDescription({ state: "sleeping", rawPhase: "cold" }).spec,
+		).toEqual({});
+	});
+
+	it("falls back to the state string when the vendor has no phase word", () => {
+		// Every mux describe() reports {state: "destroyed", rawPhase: null} for
+		// an id the vendor no longer knows; ProviderMachineSummary.rawPhase is a
+		// non-null string stored verbatim by the metrics collector.
+		const described = toMuxDescription({ state: "destroyed", rawPhase: null });
+		expect(described.rawPhase).toBe("destroyed");
+		expect(described.state).toBe("destroyed");
+	});
+
+	it("normalizes absent createdAt/lastError to null", () => {
+		const described = toMuxDescription({ state: "ready", rawPhase: "running" });
+		expect(described.createdAt).toBeNull();
+		expect(described.lastError).toBeNull();
+	});
+});
+
+describe("requireNoWake", () => {
+	it("returns a present member and throws fatal for an absent one", () => {
+		const member = async (): Promise<void> => {};
+		expect(requireNoWake("e2b", "describe", member)).toBe(member);
+		const error = (() => {
+			try {
+				requireNoWake("e2b", "park", undefined);
+				return null;
+			} catch (err) {
+				return err;
+			}
+		})();
+		expect(error).toBeInstanceOf(MachineProviderError);
+		// fatal, not missing_credentials: the key is fine, the build is wrong --
+		// and the facade fallback this guards against would resume parked
+		// sandboxes.
+		expect((error as MachineProviderError).kind).toBe("fatal");
 	});
 });
 

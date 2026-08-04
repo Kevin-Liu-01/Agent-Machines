@@ -1,38 +1,47 @@
 /**
- * Dedalus substrate, expressed as a mux `MuxSubstrate` (ROADMAP 0.2).
+ * Dedalus binding (ROADMAP 0.2): the vendor half lives in the mux.
  *
- * Vendor calls are unchanged from the pre-facade adapter: same REST paths, same
- * dual-auth headers, same adaptive exec poll, same HMAC-gate workarounds for
- * wake/sleep. Only the shape changed -- `DedalusProvider` is now produced by
- * `createMuxBackedProvider`.
+ * `src/mux/providers/dedalus.ts` is the one Dedalus adapter now -- the raw
+ * REST surface (dual-auth headers, Idempotency-Key), the adaptive exec poll
+ * (60ms x1.6 capped at 1s), the HMAC-gate workarounds (wake via a no-op
+ * execution, sleep swallowing exactly the "internal route signature" 401),
+ * the setsid/nohup execBackground launcher that stopped detached installs
+ * dying at the 30s tracked-execution timeout, previews for public URLs, and
+ * the no-wake describe/remove pair. This module keeps only what is
+ * hosted-plane-specific: the credential gate message, the provision mapping
+ * with its fail-closed disk rule (below), the cache scope, and the
+ * `DedalusProvider` class shape (`createPreview` is feature-detected by
+ * `lib/bootstrap/runner.ts`).
  *
- * We wrap the REST API directly with `fetch` rather than importing the SDK
- * because the dashboard only needs a small read-write surface and skipping the
- * SDK keeps the Vercel function bundle tiny.
+ * VALUE-imported through the compiled package ("agent-machines/mux/providers/
+ * dedalus") -- see the mux-facade header for the values-vs-types rule.
  *
- * Phase mapping:
- *   running                       -> ready
- *   starting | wake_pending |     -> starting
- *     placement_pending | accepted
- *   sleeping | sleep_pending      -> sleeping
- *   destroying                    -> destroying
- *   destroyed                     -> destroyed
- *   failed                        -> error
- *   anything else                 -> unknown
+ * Behavior shifts the deletion carries, decided rather than inherited (delta
+ * report, 2026-08-03):
+ *   - create() now BLOCKS until the machine runs (waitUntilReady, 240s budget)
+ *     instead of returning after the POST; the provision route's maxDuration
+ *     is 300s, so the budget holds, but the wizard's poll phase mostly
+ *     completes inside provision now.
+ *   - exec runs through `bash -lc` with env/cwd support (login shell; PATH may
+ *     differ from the old bare `bash -c`), and provision env actually applies
+ *     (per-exec) where the deleted adapter dropped it.
+ *   - destroy of an unknown id resolves (idempotent remove) instead of
+ *     throwing fatal; describe of an unknown id returns state "destroyed".
+ *   - wake() keys off the mapped state, so placement_pending/accepted return
+ *     quietly instead of throwing fatal.
+ *   - vcpu/memory requests are clamped to the documented Hobby ceilings
+ *     (4 vCPU / 16384 MiB) by the mux instead of being forwarded raw; disk
+ *     keeps the stricter web-side refusal below.
  */
 
-import type { MachineSpec } from "@/lib/user-config/schema";
+import { createDedalusProvider } from "agent-machines/mux/providers/dedalus";
 
 import {
 	credentialScope,
 	createMuxBackedProvider,
 	notSupported,
-	type MuxDescription,
-	type MuxExecOptions,
-	type MuxExecResult,
-	type MuxMachineState,
-	type MuxSandbox,
-	type MuxSubstrate,
+	requireNoWake,
+	toMuxDescription,
 	type MuxSubstrateBinding,
 } from "./mux-facade";
 import {
@@ -46,518 +55,70 @@ import {
 	type ProvisionResult,
 } from "./types";
 
-// Adaptive exec polling. The execution status endpoint is cheap, so we poll
-// quickly at first (a no-op finishes in well under a second) and back off
-// toward POLL_MAX_MS for long-running commands. A fixed 1s interval added a
-// full second of latency to every exec round-trip -- the dominant cost in
-// benchmarks and the interactive terminal alike.
-const POLL_INITIAL_MS = 60;
-const POLL_MAX_MS = 1000;
-const POLL_BACKOFF = 1.6;
-const DEFAULT_EXEC_TIMEOUT_MS = 30_000;
-
 /**
- * Disk size requested at provision. The mux `CreateSandboxOptions` carries
- * vcpu and memory but has no disk axis, and Dedalus is the only substrate that
- * accepts one, so this adapter provisions the platform default and the binding
- * below refuses any other request instead of silently shrinking the machine.
- * Matches `DEFAULT_MACHINE_SPEC.storageGib`.
+ * Documented Hobby-plan disk ceiling (https://www.dedaluslabs.ai/pricing, read
+ * 2026-08-01 by the mux adapter; matches its HOBBY_MAX_DISK_GIB and the old
+ * DEFAULT_MACHINE_SPEC.storageGib).
  */
-const DEFAULT_STORAGE_GIB = 10;
-
-type RawMachine = {
-	machine_id: string;
-	vcpu: number;
-	memory_mib: number;
-	storage_gib: number;
-	created_at: string;
-	configured_at?: string | null;
-	desired_state: string;
-	status: {
-		phase: string;
-		revision?: string | number;
-		reason?: string | null;
-		last_error?: string | null;
-	};
-};
-
-const BENIGN_REASONS = new Set([
-	"DesiredStateReached",
-	"Machine already reached desired state",
-]);
-
-function mapPhase(phase: string): MuxMachineState {
-	switch (phase) {
-		case "running":
-			return "ready";
-		case "starting":
-		case "wake_pending":
-		case "placement_pending":
-		case "accepted":
-			return "starting";
-		case "sleeping":
-		case "sleep_pending":
-			return "sleeping";
-		case "destroying":
-			return "destroying";
-		case "destroyed":
-			return "destroyed";
-		case "failed":
-			return "error";
-		default:
-			return "unknown";
-	}
-}
-
-function lastError(raw: RawMachine): string | null {
-	const value = raw.status.last_error ?? raw.status.reason ?? null;
-	if (!value) return null;
-	if (BENIGN_REASONS.has(value)) return null;
-	return value;
-}
-
-function summarize(raw: RawMachine): ProviderMachineSummary {
-	return {
-		id: raw.machine_id,
-		state: mapPhase(raw.status.phase),
-		rawPhase: raw.status.phase,
-		spec: {
-			vcpu: raw.vcpu,
-			memoryMib: raw.memory_mib,
-			storageGib: raw.storage_gib,
-		},
-		createdAt: raw.created_at,
-		lastError: lastError(raw),
-	};
-}
-
-function describeRaw(raw: RawMachine): MuxDescription {
-	return {
-		state: mapPhase(raw.status.phase),
-		rawPhase: raw.status.phase,
-		spec: {
-			vcpu: raw.vcpu,
-			memoryMib: raw.memory_mib,
-			storageGib: raw.storage_gib,
-		},
-		createdAt: raw.created_at,
-		lastError: lastError(raw),
-	};
-}
-
-type ExecRaw = {
-	execution_id: string;
-	status: "queued" | "running" | "succeeded" | "failed" | "expired" | "cancelled";
-	exit_code?: number | null;
-};
-
-type ExecOutputRaw = {
-	stdout?: string;
-	stderr?: string;
-};
-
-function sleep(ms: number): Promise<void> {
-	return new Promise((resolve) => setTimeout(resolve, ms));
-}
+const HOBBY_MAX_STORAGE_GIB = 10;
 
 export type DedalusCreds = {
 	apiKey: string;
 	baseUrl?: string;
 };
 
-/** REST surface. One auth path, one error taxonomy. */
-class DedalusRest {
-	readonly baseUrl: string;
-
-	constructor(
-		private readonly apiKey: string,
-		baseUrl?: string,
-	) {
-		this.baseUrl = (baseUrl ?? "https://dcs.dedaluslabs.ai").trim().replace(/\/$/, "");
-	}
-
-	async fetch(path: string, init?: RequestInit): Promise<Response> {
-		// Dedalus auth: send BOTH `Authorization: Bearer <key>` (used by the
-		// wake/sleep "internal route" signature check) AND `X-API-Key` for
-		// compatibility with older endpoints. The SDK uses Bearer; the dashboard
-		// kept getting 401 "missing internal route signature" with X-API-Key
-		// alone.
-		//
-		// `Idempotency-Key` is required on mutating requests so retried
-		// operations don't double-spend. UUID per call -- the SDK does the same.
-		// Caller can override by passing the header explicitly when retrying the
-		// same logical operation.
-		const headers: Record<string, string> = {
-			Authorization: `Bearer ${this.apiKey}`,
-			"X-API-Key": this.apiKey,
-			"Content-Type": "application/json",
-			...(init?.headers as Record<string, string> | undefined),
-		};
-		const method = (init?.method ?? "GET").toUpperCase();
-		if (method !== "GET" && method !== "HEAD" && !headers["Idempotency-Key"]) {
-			headers["Idempotency-Key"] = crypto.randomUUID();
-		}
-		return fetch(`${this.baseUrl}${path}`, { ...init, headers, cache: "no-store" });
-	}
-
-	async getRaw(machineId: string): Promise<RawMachine> {
-		const response = await this.fetch(`/v1/machines/${machineId}`);
-		if (!response.ok) {
-			throw new MachineProviderError(
-				"dedalus",
-				response.status === 404 ? "fatal" : "transient",
-				`dedalus ${response.status}: ${(await response.text()).slice(0, 200)}`,
-			);
-		}
-		const text = await response.text();
-		if (!text) {
-			throw new MachineProviderError(
-				"dedalus",
-				"transient",
-				`dedalus ${response.status}: empty response body for machine ${machineId}`,
-			);
-		}
-		try {
-			return JSON.parse(text) as RawMachine;
-		} catch {
-			throw new MachineProviderError(
-				"dedalus",
-				"transient",
-				`dedalus ${response.status}: malformed JSON: ${text.slice(0, 200)}`,
-			);
-		}
-	}
-}
-
-function dedalusSandbox(machineId: string, rest: DedalusRest): MuxSandbox {
-	return {
-		id: machineId,
-
-		async exec(command: string, options?: MuxExecOptions): Promise<MuxExecResult> {
-			const startedAt = Date.now();
-			const timeoutMs = options?.timeoutMs ?? DEFAULT_EXEC_TIMEOUT_MS;
-			const create = await rest.fetch(`/v1/machines/${machineId}/executions`, {
-				method: "POST",
-				body: JSON.stringify({
-					command: ["/bin/bash", "-c", command],
-					timeout_ms: timeoutMs,
-				}),
-			});
-			if (!create.ok) {
-				throw new MachineProviderError(
-					"dedalus",
-					"transient",
-					`exec create ${create.status}: ${(await create.text()).slice(0, 200)}`,
-				);
-			}
-			const created = (await create.json()) as ExecRaw;
-
-			const deadline = Date.now() + timeoutMs + 5_000;
-			let current = created;
-			let pollInterval = POLL_INITIAL_MS;
-			while (
-				current.status !== "succeeded" &&
-				current.status !== "failed" &&
-				current.status !== "expired" &&
-				current.status !== "cancelled"
-			) {
-				if (Date.now() > deadline) {
-					throw new MachineProviderError(
-						"dedalus",
-						"transient",
-						`exec poll timed out after ${timeoutMs}ms: ${command.slice(0, 80)}`,
-					);
-				}
-				await sleep(pollInterval);
-				pollInterval = Math.min(POLL_MAX_MS, Math.round(pollInterval * POLL_BACKOFF));
-				const poll = await rest.fetch(
-					`/v1/machines/${machineId}/executions/${created.execution_id}`,
-				);
-				if (!poll.ok) {
-					throw new MachineProviderError(
-						"dedalus",
-						"transient",
-						`exec poll ${poll.status}: ${(await poll.text()).slice(0, 200)}`,
-					);
-				}
-				current = (await poll.json()) as ExecRaw;
-			}
-
-			const out = await rest.fetch(
-				`/v1/machines/${machineId}/executions/${created.execution_id}/output`,
-			);
-			const output: ExecOutputRaw = out.ok ? ((await out.json()) as ExecOutputRaw) : {};
-			const exitCode = current.exit_code ?? (current.status === "succeeded" ? 0 : 1);
-			return {
-				stdout: output.stdout ?? "",
-				stderr: output.stderr ?? "",
-				exitCode,
-				durationMs: Date.now() - startedAt,
-			};
-		},
-
-		/**
-		 * Dedalus exposes execution output only after the execution reaches a
-		 * terminal status, so there is no incremental stream to relay. The
-		 * substrate declares `streamingExec: false` and the facade therefore
-		 * omits `streamExec` entirely, which is what makes
-		 * `lib/dashboard/exec-stream.ts` fall back to log-tail polling.
-		 */
-		execStream(): AsyncGenerator<never, void, void> {
-			throw notSupported("dedalus", "incremental exec streaming");
-		},
-
-		/**
-		 * Submit work without polling for completion. Interactive terminal input
-		 * only needs Dedalus to accept the tmux send-keys command; waiting for
-		 * status and output added several provider round-trips per input batch.
-		 */
-		async execBackground(command: string): Promise<void> {
-			const create = await rest.fetch(`/v1/machines/${machineId}/executions`, {
-				method: "POST",
-				body: JSON.stringify({
-					command: ["/bin/bash", "-c", command],
-					timeout_ms: DEFAULT_EXEC_TIMEOUT_MS,
-				}),
-			});
-			if (!create.ok) {
-				throw new MachineProviderError(
-					"dedalus",
-					"transient",
-					`background exec create ${create.status}: ${(await create.text()).slice(0, 200)}`,
-				);
-			}
-		},
-
-		publicUrl(port: number): Promise<string | null> {
-			return createPreview(rest, machineId, port);
-		},
-
-		async state(): Promise<MuxMachineState> {
-			return mapPhase((await rest.getRaw(machineId)).status.phase);
-		},
-
-		async sleep(): Promise<void> {
-			const raw = await rest.getRaw(machineId);
-			if (raw.status.phase !== "running") return;
-			// Like /wake, POST /v1/machines/<id>/sleep is an internal lifecycle
-			// route guarded by HMAC signing on the dev fleet -- public API keys
-			// return 401 "missing internal route signature". We still attempt the
-			// call (older deployments accept it) but swallow that specific 401
-			// instead of throwing: every Dedalus machine has `autosleep_seconds`
-			// (default 300s) so the machine will sleep on its own once traffic
-			// stops. The "sleep" button then reads as "sleep sooner" rather than
-			// "sleep at all", which is consistent with the platform.
-			const revision = raw.status.revision;
-			if (revision === undefined || revision === null) {
-				throw new MachineProviderError(
-					"dedalus",
-					"fatal",
-					"machine has no revision token; cannot submit sleep",
-				);
-			}
-			const response = await rest.fetch(`/v1/machines/${machineId}/sleep`, {
-				method: "POST",
-				headers: { "If-Match": String(revision) },
-			});
-			if (!response.ok) {
-				const text = (await response.text()).slice(0, 400);
-				if (response.status === 401 && text.includes("internal route signature")) {
-					console.warn(
-						`[dedalus] sleep blocked by HMAC gate; relying on autosleep (${machineId})`,
-					);
-					return;
-				}
-				throw new MachineProviderError(
-					"dedalus",
-					"transient",
-					`sleep ${response.status}: ${text.slice(0, 200)}`,
-				);
-			}
-		},
-
-		async wake(): Promise<void> {
-			const raw = await rest.getRaw(machineId);
-			const phase = raw.status.phase;
-			if (phase === "running" || phase === "wake_pending" || phase === "starting") {
-				return;
-			}
-			if (phase !== "sleeping") {
-				throw new MachineProviderError(
-					"dedalus",
-					"fatal",
-					`cannot wake machine in phase '${phase}'; expected 'sleeping'`,
-				);
-			}
-			// Why not POST /v1/machines/<id>/wake?
-			//
-			// The Dedalus controlplane classifies POST /wake (and /sleep, /admit,
-			// /purge) as INTERNAL LIFECYCLE ROUTES guarded by an HMAC signing
-			// middleware (see `internal_route_auth.go`). Public API keys reliably
-			// 401 with "missing internal route signature" on those paths; the
-			// official SDK hits the same wall.
-			//
-			// The supported public path is to submit ANY execution against the
-			// sleeping machine. The execution scheduler internally calls the
-			// HMAC-signed admit/wake gate, and the machine transitions from
-			// sleeping -> wake_pending -> starting -> running. We submit a fast
-			// no-op (`/bin/true`) and don't wait for it to complete; the
-			// desired_state flip is what we care about.
-			const exec = await rest.fetch(`/v1/machines/${machineId}/executions`, {
-				method: "POST",
-				headers: { "Idempotency-Key": crypto.randomUUID() },
-				body: JSON.stringify({ command: ["/bin/true"], timeout_ms: 5000 }),
-			});
-			if (!exec.ok) {
-				throw new MachineProviderError(
-					"dedalus",
-					"transient",
-					`wake-via-exec ${exec.status}: ${(await exec.text()).slice(0, 200)}`,
-				);
-			}
-		},
-
-		async destroy(): Promise<void> {
-			const raw = await rest.getRaw(machineId);
-			if (raw.status.phase === "destroyed") return;
-			const revision = raw.status.revision;
-			if (revision === undefined || revision === null) return;
-			const response = await rest.fetch(`/v1/machines/${machineId}`, {
-				method: "DELETE",
-				headers: { "If-Match": String(revision) },
-			});
-			if (!response.ok && response.status !== 404) {
-				throw new MachineProviderError(
-					"dedalus",
-					"transient",
-					`destroy ${response.status}: ${(await response.text()).slice(0, 200)}`,
-				);
-			}
-		},
-	};
-}
-
-/**
- * Create or reuse a Dedalus preview URL for a port. Preview URLs are
- * platform-managed and survive sleep/wake -- unlike cloudflared quick tunnels
- * which die on sleep. Returns null if previews aren't configured for the org.
- */
-async function createPreview(
-	rest: DedalusRest,
-	machineId: string,
-	port: number,
-): Promise<string | null> {
-	try {
-		const list = await rest.fetch(`/v1/machines/${machineId}/previews`);
-		if (list.ok) {
-			const body = (await list.json()) as {
-				items?: Array<{ port: number; status: string; url: string }>;
-			};
-			const match = body.items?.find((p) => p.port === port && p.status === "ready");
-			if (match?.url) return match.url;
-		}
-
-		const create = await rest.fetch(`/v1/machines/${machineId}/previews`, {
-			method: "POST",
-			body: JSON.stringify({ port, protocol: "http", visibility: "public" }),
-		});
-		if (create.ok) {
-			const body = (await create.json()) as { url?: string };
-			if (body.url) return body.url;
-		}
-	} catch {
-		// Previews not available for this org -- fall back to cloudflared.
-	}
-	return null;
-}
-
-export function createDedalusSubstrate(creds: {
-	apiKey?: string;
-	baseUrl?: string;
-}): MuxSubstrate {
-	const apiKey = creds.apiKey?.trim() || undefined;
-	const rest = apiKey ? new DedalusRest(apiKey, creds.baseUrl) : null;
-
-	function requireRest(): DedalusRest {
-		if (!rest) {
-			throw new MachineProviderError(
-				"dedalus",
-				"missing_credentials",
-				"DEDALUS_API_KEY is required to talk to the Dedalus provider.",
-			);
-		}
-		return rest;
-	}
-
-	return {
-		kind: "dedalus",
-		capabilities: {
-			pty: "tmux",
-			persistence: "always-on",
-			reattach: true,
-			publicUrl: true,
-			// The execution API exposes output only after the command finishes.
-			streamingExec: false,
-			detachedWork: "reliable",
-		},
-		ready() {
-			return apiKey ? { ok: true, missing: [] } : { ok: false, missing: ["DEDALUS_API_KEY"] };
-		},
-		async create(options): Promise<MuxSandbox> {
-			const api = requireRest();
-			const response = await api.fetch("/v1/machines", {
-				method: "POST",
-				body: JSON.stringify({
-					vcpu: options?.resources?.vcpu ?? 1,
-					memory_mib: options?.resources?.memoryMib ?? 2048,
-					storage_gib: DEFAULT_STORAGE_GIB,
-				}),
-			});
-			if (!response.ok) {
-				const text = (await response.text()).slice(0, 400);
-				throw new MachineProviderError(
-					"dedalus",
-					response.status >= 500 ? "transient" : "fatal",
-					`dedalus provision ${response.status}: ${text}`,
-				);
-			}
-			const raw = (await response.json()) as RawMachine;
-			return dedalusSandbox(raw.machine_id, api);
-		},
-		async connect(id: string): Promise<MuxSandbox> {
-			return dedalusSandbox(id, requireRest());
-		},
-	};
-}
-
 function dedalusBinding(creds: DedalusCreds): MuxSubstrateBinding {
-	const rest = new DedalusRest(creds.apiKey, creds.baseUrl);
+	const provider = createDedalusProvider({
+		apiKey: creds.apiKey,
+		baseUrl: creds.baseUrl,
+	});
+	requireNoWake("dedalus", "describe", provider.describe);
+	requireNoWake("dedalus", "remove", provider.remove);
+	// No park() binding: POST /sleep is an HMAC-gated internal lifecycle route
+	// (public keys 401 "missing internal route signature"), so the mux omits
+	// park() rather than stubbing a false claim. The facade's sleep fallback
+	// (connect + handle.sleep()) reaches the mux handle's sleep(), which
+	// carries the identical 401-swallow-and-rely-on-autosleep behavior the
+	// deleted adapter had.
 	return {
 		kind: "dedalus",
-		substrate: createDedalusSubstrate(creds),
+		substrate: provider,
 		// baseUrl included: the same key against two deployments addresses two
 		// different machine namespaces.
 		cacheScope: credentialScope([creds.apiKey, creds.baseUrl]),
-		describe: async (machineId) => describeRaw(await rest.getRaw(machineId)),
+		describe: async (machineId) =>
+			toMuxDescription(await provider.describe!(machineId)),
+		remove: (machineId) => provider.remove!(machineId),
 		createOptions: (input: ProvisionInput) => {
-			const storageGib = input.spec?.storageGib ?? DEFAULT_STORAGE_GIB;
-			if (storageGib !== DEFAULT_STORAGE_GIB) {
-				// Fail closed rather than shrink the machine behind the user's
-				// back. Removing this needs a disk axis on the mux
-				// CreateSandboxOptions (see the mux-facade contract-gap note).
+			const storageGib = input.spec?.storageGib;
+			// The contract can carry the axis now (CreateSandboxOptions
+			// .resources.diskGib -- the gap the old guard named is closed), but
+			// the mux CLAMPS every axis to the documented Hobby ceilings
+			// (src/mux/providers/dedalus.ts provision, disk 1..10 GiB), so a
+			// 20 GiB request would silently come up as 10. This adapter has
+			// always refused to shrink the machine behind the user's back, so a
+			// request the clamp would cut is rejected here, before any vendor
+			// call.
+			if (storageGib !== undefined && storageGib > HOBBY_MAX_STORAGE_GIB) {
 				throw notSupported(
 					"dedalus",
-					`a ${storageGib} GiB disk: the shared substrate contract carries vcpu and memory only, so provisioning is pinned to ${DEFAULT_STORAGE_GIB} GiB`,
+					`a ${storageGib} GiB disk: the Dedalus Hobby plan tops out at ${HOBBY_MAX_STORAGE_GIB} GiB, and provisioning refuses to silently shrink the request`,
 				);
 			}
 			return {
 				name: input.name,
 				env: input.env,
-				resources: { vcpu: input.spec?.vcpu, memoryMib: input.spec?.memoryMib },
+				resources: {
+					vcpu: input.spec?.vcpu,
+					memoryMib: input.spec?.memoryMib,
+					diskGib: storageGib,
+				},
 			};
 		},
-		// This adapter has always trimmed dedalus output; `readTextFile` in
-		// lib/storage/machine-fs.ts compares stdout to the exact `__MISSING__`.
+		// This adapter has always trimmed dedalus output. The mux handle trims
+		// its own exec() too, so the facade trim is idempotent -- kept so the
+		// flag, not the mux internals, stays the documented source of truth for
+		// the bytes existing callers see.
 		trimOutput: true,
 	};
 }
@@ -566,7 +127,6 @@ export class DedalusProvider implements MachineProvider {
 	readonly kind = "dedalus" as const;
 	readonly capabilities: ProviderCapabilities;
 	private readonly facade: MachineProvider;
-	private readonly rest: DedalusRest;
 
 	constructor(creds: DedalusCreds) {
 		if (!creds.apiKey) {
@@ -576,7 +136,6 @@ export class DedalusProvider implements MachineProvider {
 				"DEDALUS_API_KEY is required to talk to the Dedalus provider.",
 			);
 		}
-		this.rest = new DedalusRest(creds.apiKey, creds.baseUrl);
 		this.facade = createMuxBackedProvider(dedalusBinding(creds));
 		this.capabilities = this.facade.capabilities;
 	}
@@ -616,21 +175,12 @@ export class DedalusProvider implements MachineProvider {
 	/**
 	 * Dedalus-native preview URL. `lib/bootstrap/runner.ts` feature-detects
 	 * this (`"createPreview" in provider`) before falling back to exec-only
-	 * gateway access, so it stays on the public surface.
+	 * gateway access, so it stays on the public surface. The implementation is
+	 * the mux handle's publicUrl (the same list-then-create against
+	 * /previews), reached through the facade so previews ride the same
+	 * per-credential handle cache as every other call.
 	 */
 	createPreview(machineId: string, port: number): Promise<string | null> {
-		return createPreview(this.rest, machineId, port);
+		return this.facade.getPublicUrl!(machineId, port);
 	}
 }
-
-export function _summarize(raw: RawMachine): ProviderMachineSummary {
-	return summarize(raw);
-}
-
-// Re-exported so route helpers that need to coerce a phase string keep the
-// canonical mapping in one place.
-export { mapPhase as mapDedalusPhase };
-
-// MachineSpec import unused at runtime; re-export keeps typecheck happy when
-// downstream files mirror this module's dependency graph.
-export type { MachineSpec };

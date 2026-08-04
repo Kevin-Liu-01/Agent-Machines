@@ -40,6 +40,7 @@ import type {
 	MachineState as MuxMachineState,
 	MuxErrorKind,
 	SandboxCapabilities,
+	SandboxDescription,
 	SandboxHandle,
 	SandboxProvider,
 } from "../../../src/mux/types.js";
@@ -117,26 +118,95 @@ export type MuxProviderSatisfiesSlice = SandboxProvider extends MuxSubstrate
 export const MUX_PROVIDER_SATISFIES_SLICE: MuxProviderSatisfiesSlice = true;
 
 /**
- * A status read that does not wake a parked machine, plus the three fields
- * `ProviderMachineSummary` needs that the mux contract cannot express.
+ * A status read that does not wake a parked machine, in the shape
+ * `ProviderMachineSummary` consumes.
  *
- * CONTRACT GAP (report to the src/mux owner): `SandboxProvider` can only
- * reach a machine's state through `connect(id)` + `handle.state()`, and
- * `connect` resumes a paused sandbox on e2b (`Sandbox.connect`) and vercel
- * (`Sandbox.get({ resume: true })`). The dashboard polls state on every fleet
- * render, so delegating there would silently un-sleep every parked sandbox
- * and bill for it. The mux also has no vendor phase string, no live sizing
- * and no last-error field. Until `SandboxProvider` grows a no-wake
- * `describe(id)`, each adapter supplies it here.
+ * The contract gap that used to be documented here is CLOSED: the mux
+ * `SandboxProvider` grew the no-wake trio `describe()/remove()/park()`
+ * (src/mux/types.ts), so every binding now derives this record from the mux's
+ * `SandboxDescription` through `toMuxDescription` below instead of hand-writing
+ * a vendor status read of its own.
  */
 export type MuxDescription = {
 	state: MuxMachineState;
 	/** Vendor phase verbatim ("warm", "wake_pending", "snapshotting", ...). */
 	rawPhase: string;
-	spec: MachineSpec;
+	/**
+	 * Only the axes the vendor actually reported for THIS machine. Absent stays
+	 * absent: every renderer already shows a placeholder for a missing axis
+	 * (lib/fleet/view-model.ts normalizeMachineSpec), and substituting
+	 * DEFAULT_MACHINE_SPEC here would claim a size no vendor ever stated.
+	 */
+	spec: Partial<MachineSpec>;
 	createdAt: string | null;
 	lastError: string | null;
 };
+
+/**
+ * The ONE derivation from the mux's no-wake read (`SandboxDescription`) to the
+ * hosted plane's `MuxDescription`. All four bindings route describe() through
+ * here, so these rules cannot drift apart per adapter:
+ *
+ * - `resources.diskGib` -> `spec.storageGib`: a RENAME, not a conversion. The
+ *   mux speaks the vendors' vocabulary (Dedalus's create API takes
+ *   `storage_gib`, so the contract axis is `diskGib`); the control plane has
+ *   always called the same GiB axis `storageGib` (user-config MachineSpec),
+ *   and this line is the only place the two spellings meet.
+ * - An absent axis STAYS absent. The deleted vendor halves invented numbers
+ *   here (e2b filled memoryMib ?? 512, vercel ?? 2048, sprites hardcoded
+ *   2/4096/100 -- read from those files before deletion, 2026-08-03); the mux
+ *   deliberately reports only what the vendor proves, unit included
+ *   (src/mux/types.ts SandboxDescription.resources). Inventing a default here
+ *   would lie about a machine's size to the one consumer of this spec
+ *   (lib/dashboard/active-machine.ts).
+ * - `rawPhase: null` (an id the vendor's API no longer knows, or an instance
+ *   with no session to report) becomes the normalized state string:
+ *   `ProviderMachineSummary.rawPhase` is a non-null string that
+ *   lib/metrics/collector.ts stores verbatim, and "destroyed" is an honest
+ *   phase for a machine whose vendor record is gone -- unlike an invented
+ *   vendor word.
+ */
+export function toMuxDescription(described: SandboxDescription): MuxDescription {
+	const resources = described.resources;
+	return {
+		state: described.state,
+		rawPhase: described.rawPhase ?? described.state,
+		spec: {
+			...(typeof resources?.vcpu === "number" ? { vcpu: resources.vcpu } : {}),
+			...(typeof resources?.memoryMib === "number"
+				? { memoryMib: resources.memoryMib }
+				: {}),
+			...(typeof resources?.diskGib === "number"
+				? { storageGib: resources.diskGib }
+				: {}),
+		},
+		createdAt: described.createdAt ?? null,
+		lastError: described.lastError ?? null,
+	};
+}
+
+/**
+ * Assert a mux provider actually carries an optional no-wake member before a
+ * binding delegates to it. `describe`/`remove`/`park` are OPTIONAL on
+ * `SandboxProvider` (src/mux/types.ts), so a silently absent member would send
+ * the facade down its connect() fallback -- which RESUMES a parked sandbox on
+ * e2b and vercel, the exact billing defect the no-wake trio exists to prevent.
+ * `fatal`, not `missing_credentials`: the key is fine, the build is wrong.
+ */
+export function requireNoWake<T>(
+	kind: ProviderKind,
+	member: "describe" | "remove" | "park",
+	value: T | undefined,
+): T {
+	if (value === undefined) {
+		throw new MachineProviderError(
+			kind,
+			"fatal",
+			`${kind} mux provider no longer supplies ${member}(); refusing to fall back to a connect() that would resume parked machines.`,
+		);
+	}
+	return value;
+}
 
 export type MuxSubstrateBinding = {
 	readonly kind: ProviderKind;
