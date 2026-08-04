@@ -565,11 +565,12 @@ APIs with real model keys:
 
 **16 of 16 cells pass** live: every one of the 4 harnesses on every one of the
 4 substrates -- e2b, sprites, dedalus and vercel -- each exiting 0 with text
-flowing back through the normalized event stream. The live script gates on the
-exit code, not on the text; corrected 2026-08-03, and MUX-RESULTS.md says what
-that does and does not prove. The last four cells opened on
-2026-08-02 with a `VERCEL_OIDC_TOKEN` and no code change, which is what "blocked
-on a credential" meant.
+flowing back through the normalized event stream. Since 2026-08-03 the live
+script asserts BOTH the exit code and the `MUX-OK` sentinel in the text; the
+recorded 16/16 numbers predate that and were gated on the exit code alone --
+MUX-RESULTS.md says what each vintage does and does not prove. The last four
+cells opened on 2026-08-02 with a `VERCEL_OIDC_TOKEN` and no code change,
+which is what "blocked on a credential" meant.
 
 | Substrate | create | first event (claude-code) | Notes |
 | --- | --- | --- | --- |

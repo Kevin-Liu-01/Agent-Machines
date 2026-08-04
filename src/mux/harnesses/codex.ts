@@ -19,6 +19,11 @@
  * payloads for agent_message, reasoning and command_execution. Older
  * releases emitted {"id","msg":{...}} envelopes; both shapes are
  * tolerated because the protocol drifted across versions.
+ *
+ * Both `error` channels -- top-level {"type":"error"} and error-typed
+ * items -- are NOTICE channels, not terminal failure; only turn.failed
+ * and a nonzero exit code mean the run failed. See parseLineWith for the
+ * 2026-08-03 measurements.
  */
 
 import { amNpmInstall, ensureNodeCommand, withAmNode } from "./node-runtime.js";
@@ -76,20 +81,46 @@ function upstreamArgs(resolved: UpstreamSuccess): string[] {
 }
 
 /**
- * Codex reports the final agent message on the item that completed, not
- * on turn.completed, so the adapter carries a little cross-line state to
- * stamp result events. Reset on thread/turn boundaries. Note: the
- * exported harness is a singleton, so two machines parsing interleaved
- * output would share this; the router independently accumulates text
- * deltas per run, which keeps RunResult.text correct regardless.
+ * Codex reports agent text on the items that complete, not on
+ * turn.completed, so the adapter carries a little cross-line state to
+ * stamp result events. Reset on thread/turn boundaries.
+ *
+ * `agentText` ACCUMULATES every agent_message of the turn -- it is not
+ * the last message. Measured live 2026-08-03 (codex-cli
+ * 0.146.0-alpha.3.1, capture-03): one turn emitted TWO complete
+ * agent_message items, "Starting now." then "hello". The previous
+ * overwrite (`lastAgentText = text`) put only the last one into the
+ * turn.completed result, and the router replaces its accumulated deltas
+ * with a non-empty result.text (router.ts absorb()), so RunResult.text
+ * silently dropped the preamble. Note: the exported harness is a
+ * singleton, so two machines parsing interleaved output would share
+ * this; the router builds a fresh parser per run via newTurnParser.
  */
-type TurnState = { threadId?: string; lastAgentText: string };
+type TurnState = { threadId?: string; agentText: string };
 
 function newTurnState(): TurnState {
-	return { threadId: undefined, lastAgentText: "" };
+	return { threadId: undefined, agentText: "" };
 }
 
 const turnState: TurnState = newTurnState();
+
+/**
+ * Append one complete agent message and return the delta to emit,
+ * separator included. The separator rides INSIDE the delta -- fleet
+ * convention: the harness owns separators (hermes embeds "\n" per line)
+ * and the router concatenates deltas with nothing -- so the router's
+ * accumulation, any onEvent consumer, and the turn.completed result all
+ * produce the identical string; the result then CONFIRMS the
+ * accumulation instead of replacing it. "\n\n" because agent_message
+ * items are complete markdown messages (measured 2026-08-03: text
+ * arrives only whole, on item.completed; no item.updated deltas exist in
+ * exec --json); "" or "\n" would fuse two messages into one paragraph.
+ */
+function appendAgentText(state: TurnState, text: string): string {
+	const delta = state.agentText ? `\n\n${text}` : text;
+	state.agentText += delta;
+	return delta;
+}
 
 function parseItem(state: TurnState, phase: string, itemRaw: unknown): MuxAgentEvent[] {
 	const item = obj(itemRaw);
@@ -97,13 +128,16 @@ function parseItem(state: TurnState, phase: string, itemRaw: unknown): MuxAgentE
 	const itemType = str(item.type) ?? str(item.item_type) ?? "";
 	const id = str(item.id) ?? "item";
 	if (itemType === "agent_message") {
-		// Deltas arrive on item.updated; emit once on completion to avoid
-		// duplicating text the consumer already concatenated.
+		// agent_message text arrives ONLY as the complete message on
+		// item.completed -- across the 2026-08-03 six-run corpus no
+		// item.updated ever carried agent_message text, while todo_list
+		// proves item.updated is a real channel in this binary. The gate
+		// stays anyway: if a lifecycle ever appears, emitting only the
+		// completed text cannot duplicate.
 		if (phase !== "item.completed") return [];
 		const text = str(item.text) ?? str(item.message) ?? "";
 		if (!text) return [];
-		state.lastAgentText = text;
-		return [{ type: "text", delta: text }];
+		return [{ type: "text", delta: appendAgentText(state, text) }];
 	}
 	if (itemType === "command_execution") {
 		if (phase === "item.started") {
@@ -128,8 +162,27 @@ function parseItem(state: TurnState, phase: string, itemRaw: unknown): MuxAgentE
 		return text ? [{ type: "thinking", delta: text }] : [];
 	}
 	if (itemType === "error") {
+		// NOTICE, not failure. Measured live 2026-08-03 (codex-cli
+		// 0.146.0-alpha.3.1, capture-01): a run emitted
+		//   {"type":"item.completed","item":{...,"type":"error","message":
+		//    "Model metadata for `gpt-5.1` not found. Defaulting to
+		//    fallback metadata; ..."}}
+		// then answered correctly and exited 0. Mapping this to an "error"
+		// event set RunResult.error on a successful run, so
+		// isSuccessfulTrace() (traces.ts) recorded the run as FAILED and
+		// the learned policy skewed its successRate at selection weight
+		// 0.7 (selection.ts DEFAULT_SELECTION_TUNING) -- a healthy lane
+		// taught as failing. Terminal failure is only turn.failed (below)
+		// or a nonzero exit (the router fails the trace on exitCode
+		// alone), both present in every failing capture that had one.
+		//
+		// Phase gate: all 7 error items in the corpus arrived exactly once,
+		// via item.completed only -- never item.started/item.updated -- so
+		// gating guarantees ONE status per notice even if an error-item
+		// lifecycle ever appears.
+		if (phase !== "item.completed") return [];
 		const message = str(item.message) ?? "codex reported an error item";
-		return [{ type: "error", message }];
+		return [{ type: "status", label: message }];
 	}
 	return [];
 }
@@ -141,7 +194,7 @@ function parseLegacy(state: TurnState, msg: Record<string, unknown>): MuxAgentEv
 		case "session_configured": {
 			const sessionId = str(msg.session_id);
 			state.threadId = sessionId;
-			state.lastAgentText = "";
+			state.agentText = "";
 			return [
 				{ type: "started", harness: "codex", sessionId, model: str(msg.model) },
 			];
@@ -149,10 +202,13 @@ function parseLegacy(state: TurnState, msg: Record<string, unknown>): MuxAgentEv
 		case "task_started":
 			return [{ type: "status", label: "turn started" }];
 		case "agent_message": {
+			// Same accumulation as the item.* path: a turn can carry
+			// several complete agent messages, and keeping only the last
+			// discards the preamble (measured on the 0.146 stream,
+			// capture-03; the legacy envelope shares the overwrite shape).
 			const text = str(msg.message) ?? str(msg.text) ?? "";
 			if (!text) return [];
-			state.lastAgentText = text;
-			return [{ type: "text", delta: text }];
+			return [{ type: "text", delta: appendAgentText(state, text) }];
 		}
 		case "agent_reasoning": {
 			const text = str(msg.text) ?? "";
@@ -183,15 +239,28 @@ function parseLegacy(state: TurnState, msg: Record<string, unknown>): MuxAgentEv
 			];
 		}
 		case "task_complete":
+			// Accumulated stream first: last_agent_message is documented
+			// "last" -- the same overwrite semantic as `--output-last-message`
+			// -- so preferring it drops every earlier message of a
+			// multi-message turn. It remains only as the fallback for a
+			// stream that completed without ever emitting agent_message.
 			return [
 				{
 					type: "result",
-					text: str(msg.last_agent_message) ?? state.lastAgentText,
+					text: state.agentText || (str(msg.last_agent_message) ?? ""),
 					sessionId: state.threadId,
 				},
 			];
 		case "error":
-			return [{ type: "error", message: str(msg.message) ?? "codex error" }];
+			// Same contract as the 0.146 stream: error channels are
+			// notices and may not set RunResult.error; a genuinely dead
+			// legacy run still fails via its nonzero exit code (the legacy
+			// envelope has no turn.failed). Unmeasured on a pre-0.4x
+			// binary -- none exists on this machine -- but leaving this
+			// mapped to "error" would let an unverified channel record
+			// successful runs as failed, the exact policy corruption the
+			// 2026-08-03 captures proved for the modern notice channels.
+			return [{ type: "status", label: str(msg.message) ?? "codex error" }];
 		default:
 			return [];
 	}
@@ -210,11 +279,11 @@ function parseLineWith(state: TurnState, line: string): MuxAgentEvent[] {
 		case "session.created": {
 			const sessionId = str(json.thread_id) ?? str(json.session_id);
 			state.threadId = sessionId;
-			state.lastAgentText = "";
+			state.agentText = "";
 			return [{ type: "started", harness: "codex", sessionId }];
 		}
 		case "turn.started":
-			state.lastAgentText = "";
+			state.agentText = "";
 			return [{ type: "status", label: "turn started" }];
 		case "item.started":
 		case "item.updated":
@@ -223,14 +292,25 @@ function parseLineWith(state: TurnState, line: string): MuxAgentEvent[] {
 		case "turn.completed":
 			// Usage tokens are reported here but MuxAgentEvent has no
 			// token fields and codex reports no cost -- both omitted.
+			// text equals the deltas already emitted (appendAgentText puts
+			// the separator inside each delta), so the router's replace of
+			// its accumulation with result.text is a no-op confirm. The
+			// event itself must stay: it is the only carrier of sessionId
+			// into RunResult, which `codex exec resume` needs.
 			return [
 				{
 					type: "result",
-					text: state.lastAgentText,
+					text: state.agentText,
 					sessionId: state.threadId,
 				},
 			];
 		case "turn.failed": {
+			// The ONLY stream-level failure signal. Both failing captures
+			// of 2026-08-03 (401 retry exhaustion, 400 bad model) ended in
+			// a turn.failed duplicating the final notice message, and the
+			// SIGINT capture shows a failure can also arrive with NO
+			// terminal event at all -- the router covers that by failing
+			// the trace on the nonzero exit code.
 			const error = obj(json.error);
 			const message =
 				(error ? str(error.message) : undefined) ??
@@ -238,8 +318,29 @@ function parseLineWith(state: TurnState, line: string): MuxAgentEvent[] {
 				"codex turn failed";
 			return [{ type: "error", message }];
 		}
-		case "error":
-			return [{ type: "error", message: str(json.message) ?? line.trim() }];
+		case "error": {
+			// NOTICE channel, not terminal failure. Measured live
+			// 2026-08-03 (capture-02): nine
+			//   {"type":"error","message":"Reconnecting... N/5 (unexpected
+			//    status 401 ...)"}
+			// retry notices (plus a tenth top-level error carrying the
+			// terminal message itself) preceded the genuine turn.failed, so mapping
+			// this to "error" recorded a run as failed the moment it
+			// merely RETRIED -- and a retry that then succeeded was logged
+			// failed, corrupting successRate in the learned policy
+			// (selection weight 0.7). Every terminal message observed was
+			// duplicated into turn.failed, so nothing is lost by demoting
+			// this channel.
+			//
+			// Field order: `message` was present on every live line,
+			// including the 400 path (capture-04). The binary's string
+			// table places an optional `kind` (CodexErrorInfo: bad_request,
+			// usage_limit_exceeded, ...) next to `message` -- never
+			// observed live, but read it before dumping the raw JSON line
+			// as the label. No `text` field exists on this event.
+			const label = str(json.message) ?? str(json.kind) ?? line.trim();
+			return [{ type: "status", label }];
+		}
 		default:
 			return [];
 	}

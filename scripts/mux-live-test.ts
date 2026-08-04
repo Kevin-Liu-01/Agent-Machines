@@ -151,12 +151,34 @@ for (const sandbox of sandboxes) {
 			row.firstEventMs = firstEvent;
 			row.events = result.events;
 			row.text = result.text.trim().slice(0, 120);
-			row.outcome = result.exitCode === 0 ? "ok" : "failed";
-			if (result.exitCode !== 0) row.error = `exit ${result.exitCode}`;
+			// BOTH conditions, not the exit code alone. Gating on the exit code
+			// was fail-open: a cell whose normalized text came back EMPTY, or
+			// carrying a vendor diagnostic instead of the model's answer, still
+			// printed ok -- which is exactly the failure mode the 2026-08-03
+			// hermes classifier bug produced (the vendor's own warning reported
+			// as agent text), and this matrix could not have caught it. Same
+			// hole for openclaw's documented in_flight/timeout statuses: zero
+			// events, empty text, exit 0. Case-insensitive so a model that
+			// shifts case does not read as a red lane.
+			const sentinelSeen = result.text.toUpperCase().includes("MUX-OK");
+			const exitOk = result.exitCode === 0;
+			row.outcome = exitOk && sentinelSeen ? "ok" : "failed";
+			if (!exitOk) {
+				row.error = `exit ${result.exitCode}`;
+			} else if (!sentinelSeen) {
+				// Name what DID come back, so a red cell says which condition
+				// failed and what to look at -- an empty string here points at
+				// event classification, a diagnostic points at the harness.
+				row.error =
+					row.text.length > 0
+						? `exit 0 but no MUX-OK in the text; got: ${JSON.stringify(row.text)}`
+						: "exit 0 but the normalized text was EMPTY (zero text events reached the router)";
+			}
 			console.log(
 				`  run: ${row.runMs}ms (first event ${row.firstEventMs}ms, ${row.events} events, exit ${result.exitCode})`,
 			);
 			console.log(`  text: ${JSON.stringify(row.text)}`);
+			if (row.error) console.log(`  FAILED: ${row.error}`);
 			if (!keep) {
 				await machine.destroy();
 				console.log("  destroyed");
@@ -191,7 +213,9 @@ for (const row of rows) {
 			String(row.installMs ?? "-").padEnd(8),
 			String(row.firstEventMs ?? "-").padEnd(9),
 			String(row.runMs ?? "-").padEnd(8),
-			row.text ?? row.error ?? "",
+			// On a failed row the error names which gate failed (exit vs
+			// sentinel) -- the text alone would make the reader re-derive it.
+			(row.outcome === "failed" ? row.error ?? row.text : row.text ?? row.error) ?? "",
 		].join(" "),
 	);
 }

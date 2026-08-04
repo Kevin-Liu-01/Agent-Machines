@@ -6,13 +6,16 @@ demo values. Re-run it to refresh; the script exits non-zero if any
 credentialed cell fails.
 
 Prompt for every cell: `Reply with exactly the text MUX-OK and nothing
-else. Do not use any tools.` A cell is `ok` when the harness exits 0 --
-that is the entire pass criterion in the script
-(`row.outcome = result.exitCode === 0 ? "ok" : "failed"`). The normalized
-text is captured and printed per cell for a human to read, but it is not
-asserted, so a cell whose text came back empty, or as a vendor banner
-instead of the answer, would still print `ok`. Corrected 2026-08-03: this
-line used to say the text was part of the gate.
+else. Do not use any tools.` A cell is `ok` only when BOTH hold: the
+harness exits 0 AND the normalized text contains `MUX-OK`
+(case-insensitive, so a model that shifts case is not a false red). When
+the sentinel is missing, `row.error` names what did come back -- an empty
+string points at event classification, a diagnostic points at the
+harness. The script gated on the exit code alone until 2026-08-03, which
+was fail-open: an empty text, or a vendor banner reported as agent text
+(the hermes classifier bug found that same day), still printed `ok`.
+Matrix numbers recorded before that date were gated on the exit code
+only; "returned the sentinel" for those rows is an operator observation.
 
 ## The 4x4 matrix, measured 2026-08-01
 
@@ -38,10 +41,12 @@ sprites install cells after the detached-work fix below.
 | openclaw | vercel | ok | 425 | 16047 | 8580 | 9266 |
 | hermes | vercel | ok | 380 | 4086 | 2826 | 12809 |
 
-**16 of 16 cells pass.** Every harness on every substrate: 16 runs, all exit 0. The
-per-cell text was printed and read while the matrix ran, but it is not recorded in this
-table and the script does not assert it, so "returned the sentinel" is an operator
-observation rather than something these rows back (corrected 2026-08-03).
+**16 of 16 cells pass.** Every harness on every substrate: 16 runs, all exit 0. These
+rows predate 2026-08-03, when the script still gated on the exit code alone -- the
+per-cell text was printed and read while the matrix ran, but not asserted, so for THESE
+recorded numbers "returned the sentinel" is an operator observation. Runs after
+2026-08-03 assert the sentinel too (see the pass criterion above), so a future matrix
+table backs that claim by construction.
 
 Two cells changed character completely:
 
