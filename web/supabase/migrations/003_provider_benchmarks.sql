@@ -24,6 +24,16 @@ create table if not exists provider_benchmarks (
   created_at timestamptz not null default now()
 );
 
+-- RLS enabled 2026-08-03. An audit of the live database that day found this was
+-- the ONE table in `public` with row security OFF while anon and authenticated
+-- held full grants (DELETE/INSERT/SELECT/UPDATE/TRUNCATE) -- so anyone with the
+-- publishable anon key, which ships in the client bundle, could read or truncate
+-- the fleet's benchmark history. Every other table already had RLS on. Zero
+-- policies is the intended state: the service role bypasses RLS, and
+-- supabaseAdmin() is the only reader (lib/benchmarks/store.ts,
+-- lib/learning/policy.ts). No app code uses the Supabase anon key at all.
+alter table provider_benchmarks enable row level security;
+
 create index if not exists idx_provider_benchmarks_recent
   on provider_benchmarks (provider_kind, finished_at desc);
 

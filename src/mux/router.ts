@@ -24,6 +24,7 @@ import {
 	readMuxStateAsync,
 	rememberMachineAsync,
 	saveHealthAsync,
+	type PlacementStore,
 	type RememberedMachine,
 } from "./state.js";
 import { SubstrateHealth, outcomeForError } from "./health.js";
@@ -325,6 +326,8 @@ export class MuxMachine {
 	readonly harness: HarnessAdapter;
 	readonly name?: string;
 	readonly attempts: ScoredRouteAttempt[];
+	/** Null means the process global; see the constructor note. */
+	private readonly placementStore: PlacementStore | null;
 	/**
 	 * The ranking that produced this placement, with the per-term breakdown
 	 * behind each score. Empty when the policy did not run (a pinned substrate,
@@ -343,6 +346,13 @@ export class MuxMachine {
 		model?: string;
 		attempts?: ScoredRouteAttempt[];
 		selection?: LaneScore[];
+		/**
+		 * The store destroy() forgets this placement in. Threaded from the Mux
+		 * that built the machine so a tenant-scoped store is honored here too --
+		 * otherwise destroy() would fall back to the process global and forget
+		 * the WRONG tenant's placement (or none at all).
+		 */
+		placementStore?: PlacementStore;
 	}) {
 		this.sandbox = input.sandbox;
 		this.harness = input.harness;
@@ -351,6 +361,7 @@ export class MuxMachine {
 		this.model = input.model;
 		this.attempts = input.attempts ?? [];
 		this.selection = input.selection ?? [];
+		this.placementStore = input.placementStore ?? null;
 	}
 
 	get substrate(): SubstrateKind {
@@ -732,7 +743,9 @@ export class MuxMachine {
 
 	async destroy(): Promise<void> {
 		await this.sandbox.destroy();
-		if (this.name) await forgetMachineAsync(this.name);
+		if (this.name) {
+			await (this.placementStore ?? getPlacementStore()).forget(this.name);
+		}
 	}
 }
 
@@ -746,6 +759,12 @@ export class Mux {
 	health: SubstrateHealth;
 	/** False only between construction and the first `ensureHealth()`. */
 	private healthLoaded: boolean;
+	/**
+	 * Null means "use the process global". Resolved per call rather than
+	 * captured at construction, because the global is legitimately swapped by
+	 * tests and by the CLI between operations.
+	 */
+	private readonly placementStore: PlacementStore | null;
 	/** Learned lane ordering for "auto" routes; null disables it entirely. */
 	readonly selection: SelectionPolicy | null;
 	private readonly providers = new Map<SubstrateKind, SandboxProvider>();
@@ -767,7 +786,8 @@ export class Mux {
 		// called immediately after `createMux()` still sees persisted health.
 		// Under an async store the breaker starts empty and `ensureHealth()`
 		// fills it before the first operation that can be influenced by it.
-		const store = getPlacementStore();
+		this.placementStore = options.placementStore ?? null;
+		const store = this.store();
 		if (options.health) {
 			this.health = options.health;
 			this.healthLoaded = true;
@@ -797,11 +817,31 @@ export class Mux {
 	 * configured order is used -- health never removes a lane, so degrading to
 	 * "no history" is safe where degrading to "retry forever" would not be.
 	 */
+	/** This mux's store: the injected one, else the process global. */
+	private store(): PlacementStore {
+		return this.placementStore ?? getPlacementStore();
+	}
+
+	private async readPlacements(): Promise<Awaited<ReturnType<PlacementStore["read"]>>> {
+		return this.store().read();
+	}
+
+	private async remember(
+		name: string,
+		placement: Parameters<PlacementStore["remember"]>[1],
+	): Promise<void> {
+		await this.store().remember(name, placement);
+	}
+
+	private async forget(name: string): Promise<void> {
+		await this.store().forget(name);
+	}
+
 	private async ensureHealth(): Promise<void> {
 		if (this.healthLoaded) return;
 		this.healthLoaded = true;
 		try {
-			this.health = SubstrateHealth.fromJSON((await readMuxStateAsync()).health);
+			this.health = SubstrateHealth.fromJSON((await this.readPlacements()).health);
 		} catch {
 			// Keep the empty breaker constructed above.
 		}
@@ -816,7 +856,7 @@ export class Mux {
 		this.health.record(substrate, outcome, latencyMs);
 		if (!this.persistHealth) return;
 		try {
-			await saveHealthAsync(this.health.toJSON());
+			await this.store().saveHealth(this.health.toJSON());
 		} catch {
 			// Losing a sample only delays opening a circuit; never fail a
 			// create() because the store could not be written.
@@ -1007,6 +1047,7 @@ export class Mux {
 			try {
 				provisioned = await this.provider(kind).create(createOptions);
 				const machine = new MuxMachine({
+					placementStore: this.placementStore ?? undefined,
 					sandbox: provisioned,
 					harness,
 					config: this.config,
@@ -1019,7 +1060,7 @@ export class Mux {
 					await machine.ensureInstalled();
 				}
 				if (options.name) {
-					await rememberMachineAsync(options.name, {
+					await this.remember(options.name, {
 						substrate: kind,
 						sandboxId: provisioned.id,
 						agent,
@@ -1126,7 +1167,7 @@ export class Mux {
 				await handle.destroy();
 				resumed = true;
 			}
-			await forgetMachineAsync(name);
+			await this.forget(name);
 			return { removed: true, resumed };
 		} catch (error) {
 			// Forget ONLY when the substrate says the sandbox is gone. Any other
@@ -1138,7 +1179,7 @@ export class Mux {
 			// org_metering_buckets.stripe_submitted_at does not exist"), which
 			// says nothing about whether the machine survived.
 			if (error instanceof MuxError && error.kind === "fatal" && /not found/i.test(error.message)) {
-				await forgetMachineAsync(name);
+				await this.forget(name);
 				return { removed: true, resumed: false };
 			}
 			throw error;
@@ -1167,7 +1208,7 @@ export class Mux {
 	}
 
 	private async rememberedOrThrow(name: string) {
-		const remembered = (await readMuxStateAsync()).machines[name];
+		const remembered = (await this.readPlacements()).machines[name];
 		if (!remembered) {
 			throw new MuxError("fatal", `No remembered machine named "${name}".`);
 		}
@@ -1184,7 +1225,7 @@ export class Mux {
 	 * change should install, be verified, and persist.
 	 */
 	async connect(name: string, agent?: HarnessKind): Promise<MuxMachine> {
-		const remembered = (await readMuxStateAsync()).machines[name];
+		const remembered = (await this.readPlacements()).machines[name];
 		if (!remembered) {
 			throw new MuxError("fatal", `No remembered machine named "${name}".`);
 		}
@@ -1192,6 +1233,7 @@ export class Mux {
 			remembered.sandboxId,
 		);
 		return new MuxMachine({
+			placementStore: this.placementStore ?? undefined,
 			sandbox,
 			harness: getHarness(agent ?? remembered.agent),
 			config: this.config,
@@ -1276,6 +1318,7 @@ export class Mux {
 
 		const sandbox = await provider.connect(remembered.sandboxId);
 		const machine = new MuxMachine({
+			placementStore: this.placementStore ?? undefined,
 			sandbox,
 			harness: getHarness(agent),
 			config: this.config,
@@ -1295,7 +1338,7 @@ export class Mux {
 		// this guards the remaining writers (a raw rememberMachine/forget from
 		// a script, a second host with a different claims dir). The stale
 		// snapshot must never be re-asserted over a placement that moved.
-		const current = (await readMuxStateAsync()).machines[name];
+		const current = (await this.readPlacements()).machines[name];
 		if (!current) {
 			throw new MuxError(
 				"fatal",
@@ -1319,7 +1362,7 @@ export class Mux {
 			// store refused atomically); the new harness staying installed is
 			// harmless -- installs are idempotent -- and a retry hits the
 			// isInstalled fast path and just flips the record.
-			await rememberMachineAsync(name, {
+			await this.remember(name, {
 				substrate: current.substrate,
 				sandboxId: current.sandboxId,
 				agent,
@@ -1513,7 +1556,7 @@ export class Mux {
 				// destroys the NEW sandbox -- safe, because the state was
 				// copied and the source still holds everything.
 				progress({ step: "commit", detail: `"${name}" -> ${options.to}:${newId}` });
-				await rememberMachineAsync(name, {
+				await this.remember(name, {
 					substrate: options.to,
 					sandboxId: newId,
 					agent,
@@ -1668,6 +1711,21 @@ export type CreateMuxOptions = {
 	 * `null` to route on the configured order alone.
 	 */
 	selection?: SelectionPolicy | null;
+	/**
+	 * Placement store for THIS mux, instead of the process-global one.
+	 *
+	 * `setPlacementStore()` is a module singleton, which is correct for the CLI
+	 * (one host, one user) and a cross-tenant hazard anywhere else: a serverless
+	 * function serves concurrent requests for different users in one process, so
+	 * "set the global to user A's tenant-scoped store, then run A's operation"
+	 * races user B doing the same and A reads B's placements. Passing the store
+	 * per instance removes the global from that path entirely -- the same reason
+	 * the hosted connect cache is keyed by credential scope
+	 * (web/lib/providers/mux-facade.ts).
+	 *
+	 * Omitted: the global is used, so CLI and SDK behavior is unchanged.
+	 */
+	placementStore?: PlacementStore;
 };
 
 /** Build a Mux from a config file path, inline object, or environment. */

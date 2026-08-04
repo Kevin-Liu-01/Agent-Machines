@@ -478,3 +478,61 @@ test("create() persists the health sample it just recorded", async () => {
 		["ok"],
 	);
 });
+
+// ---------------------------------------------------------------------------
+// Per-instance placement store (the hosted plane's tenant scoping)
+// ---------------------------------------------------------------------------
+
+test("an injected placementStore is used instead of the global, and never replaces it", async () => {
+	// The hosted plane cannot use setPlacementStore(): it is a module singleton,
+	// and a serverless process serves concurrent requests for different users,
+	// so setting the global per request lets one tenant read another's
+	// placements. web/lib/mux/hosted-mux.ts passes the store per instance; this
+	// is the mux-side half of that contract.
+	const globalStore = store; // installed by beforeEach
+	const injected = new AsyncStore();
+	injected.machines.alpha = {
+		substrate: "e2b",
+		sandboxId: "injected-sbx",
+		agent: "claude-code",
+		updatedAt: "2026-08-03T12:00:00.000Z",
+	};
+
+	const mux = createMux(CONFIG, {
+		selection: new SelectionPolicy({ traces: [] }),
+		placementStore: injected,
+	});
+	mux.registerProvider("e2b", stubProvider("e2b") as unknown as SandboxProvider);
+
+	// Reads come from the injected store: the global has no "alpha" at all, so
+	// a global read would throw "No remembered machine named".
+	assert.deepEqual(await mux.describe("alpha"), {
+		state: "running",
+		rawPhase: "running",
+	});
+
+	// Writes land in the injected store and the global stays empty.
+	await mux.create({ name: "beta", install: false });
+	assert.ok(injected.machines.beta, "the write went to the injected store");
+	assert.equal(globalStore.machines.beta, undefined, "the global was written to");
+	assert.equal(getPlacementStore().kind, "test-async", "the global was swapped");
+});
+
+test("a machine built by an injected-store mux forgets in THAT store on destroy", async () => {
+	// MuxMachine.destroy() reaches the store directly, so the store has to be
+	// threaded into the machine too -- otherwise destroy() falls back to the
+	// global and forgets the wrong tenant's placement, or none.
+	const globalStore = store;
+	const injected = new AsyncStore();
+	const mux = createMux(CONFIG, {
+		selection: new SelectionPolicy({ traces: [] }),
+		placementStore: injected,
+	});
+	mux.registerProvider("e2b", stubProvider("e2b") as unknown as SandboxProvider);
+
+	const machine = await mux.create({ name: "gamma", install: false });
+	assert.ok(injected.machines.gamma);
+	await machine.destroy();
+	assert.equal(injected.machines.gamma, undefined, "forgot in the injected store");
+	assert.equal(globalStore.machines.gamma, undefined, "and never touched the global");
+});

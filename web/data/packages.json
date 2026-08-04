@@ -1,6 +1,6 @@
 {
   "description": "Session attach packages for Add ___ composer chips — one per Cursor Marketplace plugin.",
-  "syncedAt": "2026-08-03T01:52:39.203Z",
+  "syncedAt": "2026-08-04T19:29:19.426Z",
   "packages": [
     {
       "id": "1inch",
@@ -775,6 +775,27 @@
       ]
     },
     {
+      "id": "atscale",
+      "name": "AtScale",
+      "description": "Query governed business metrics, definitions and context from Cursor via AtScale MCP.",
+      "brand": null,
+      "homepage": "https://atscale.com",
+      "docsUrl": "https://github.com/AtScaleInc/atscale-cursor-plugin",
+      "marketplaceUrl": "https://cursor.com/marketplace/atscale",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ffa5358d6ed68892.png",
+      "triggers": [
+        "atscale"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "atscale"
+      ],
+      "registryItemIds": [
+        "plugin-atscale",
+        "mcp-atscale"
+      ]
+    },
+    {
       "id": "auth0",
       "name": "Auth0",
       "description": "A single unified Auth0 skill that detects your framework, feature, and tooling, then loads the right reference guides for adding authentication — login, MFA, Organizations, ACUL, custom domains, branding, JWT validation, migration, and debugging — to any app.",
@@ -1398,6 +1419,31 @@
         "skill-bd-search",
         "skill-bd-structured-data",
         "mcp-bright-data"
+      ]
+    },
+    {
+      "id": "browser-use",
+      "name": "Browser Use",
+      "description": "Give Cursor a real browser — your Chrome or a Browser Use Cloud browser. Use it whenever a task involves a website or web app: browsing, scraping and data extraction, filling forms, testing sites, taking screenshots, automating web workflows.",
+      "brand": null,
+      "homepage": "https://browser-use.com",
+      "docsUrl": "https://github.com/browser-use/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/browser-use",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e58a922f79bd4400.png",
+      "triggers": [
+        "browser-use",
+        "browser use"
+      ],
+      "skillIds": [
+        "browser-use"
+      ],
+      "mcpServerIds": [
+        "browser-use"
+      ],
+      "registryItemIds": [
+        "plugin-browser-use",
+        "skill-browser-use",
+        "mcp-browser-use"
       ]
     },
     {
@@ -2994,28 +3040,63 @@
     },
     {
       "id": "endorlabs",
-      "name": "Endor Labs",
-      "description": "Endor Labs skills for setting up endorctl and analyzing dependency upgrade impact",
+      "name": "Endor Labs Agent Kit",
+      "description": "Endor Labs Agent Kit setup and security workflow agents and skills for Cursor.",
       "brand": null,
       "homepage": "https://www.endorlabs.com",
       "docsUrl": "https://github.com/endorlabs/ai-plugins",
       "marketplaceUrl": "https://cursor.com/marketplace/endorlabs",
-      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/endor-labs.png",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/f88b16ad1dae7597.png",
       "triggers": [
         "endorlabs",
+        "endor labs agent kit",
         "endor labs",
-        "endor-setup",
-        "endor-upgrade-impact"
+        "ai-sast-remediation",
+        "cicd-posture",
+        "configuration-automation",
+        "dependency-reviewer",
+        "endor-agent-kit-setup",
+        "findings-browser",
+        "malware-responder",
+        "oss-upgrade-investigator",
+        "remediation-planning",
+        "sca-remediation",
+        "troubleshooting",
+        "vulnerability-explainer",
+        "endor-cli-tools"
       ],
       "skillIds": [
-        "endor-setup",
-        "endor-upgrade-impact"
+        "ai-sast-remediation",
+        "cicd-posture",
+        "configuration-automation",
+        "dependency-reviewer",
+        "endor-agent-kit-setup",
+        "findings-browser",
+        "malware-responder",
+        "oss-upgrade-investigator",
+        "remediation-planning",
+        "sca-remediation",
+        "troubleshooting",
+        "vulnerability-explainer"
       ],
-      "mcpServerIds": [],
+      "mcpServerIds": [
+        "endor-cli-tools"
+      ],
       "registryItemIds": [
         "plugin-endorlabs",
-        "skill-endor-setup",
-        "skill-endor-upgrade-impact"
+        "skill-ai-sast-remediation",
+        "skill-cicd-posture",
+        "skill-configuration-automation",
+        "skill-dependency-reviewer",
+        "skill-endor-agent-kit-setup",
+        "skill-findings-browser",
+        "skill-malware-responder",
+        "skill-oss-upgrade-investigator",
+        "skill-remediation-planning",
+        "skill-sca-remediation",
+        "skill-troubleshooting",
+        "skill-vulnerability-explainer",
+        "mcp-endor-cli-tools"
       ]
     },
     {
@@ -3300,6 +3381,34 @@
       ]
     },
     {
+      "id": "githits",
+      "name": "GitHits",
+      "description": "The code context layer for AI coding agents",
+      "brand": null,
+      "homepage": "https://githits.com/",
+      "docsUrl": "https://github.com/githits-com/githits-cli",
+      "marketplaceUrl": "https://cursor.com/marketplace/githits",
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/githits-ZAD0u85ZCJ2Exwr1lJ1Rgn6gHR5D97.png",
+      "triggers": [
+        "githits",
+        "onboarding",
+        "search"
+      ],
+      "skillIds": [
+        "onboarding",
+        "search"
+      ],
+      "mcpServerIds": [
+        "githits"
+      ],
+      "registryItemIds": [
+        "plugin-githits",
+        "skill-onboarding",
+        "skill-search",
+        "mcp-githits"
+      ]
+    },
+    {
       "id": "gitlab",
       "name": "GitLab",
       "description": "Connect Cursor to GitLab with the GitLab MCP server. Plan, track, and manage issues, merge requests, and pipelines from your editor.",
@@ -3392,6 +3501,74 @@
         "skill-similar-code",
         "skill-stakeholders",
         "skill-synthesis-patterns"
+      ]
+    },
+    {
+      "id": "gmail",
+      "name": "Gmail",
+      "description": "Connect Cursor to Gmail via Google's remote MCP server — search, read, draft, label, and manage email.",
+      "brand": null,
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/gmail",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/c710946a3d12d95e.png",
+      "triggers": [
+        "gmail",
+        "cursor"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "gmail"
+      ],
+      "registryItemIds": [
+        "plugin-gmail",
+        "mcp-gmail"
+      ]
+    },
+    {
+      "id": "google-calendar",
+      "name": "Google Calendar",
+      "description": "Connect Cursor to Google Calendar via Google's remote MCP server — list calendars, search events, and create or update meetings.",
+      "brand": null,
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/google-calendar",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/67220e240fb84c37.png",
+      "triggers": [
+        "google-calendar",
+        "google calendar",
+        "cursor"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "google-calendar"
+      ],
+      "registryItemIds": [
+        "plugin-google-calendar",
+        "mcp-google-calendar"
+      ]
+    },
+    {
+      "id": "google-drive",
+      "name": "Google Drive",
+      "description": "Connect Cursor to Google Drive via Google's remote MCP server — search, read, create, share, and manage files.",
+      "brand": null,
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/google-drive",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ab2ccc6f8def26df.png",
+      "triggers": [
+        "google-drive",
+        "google drive",
+        "cursor"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "google-drive"
+      ],
+      "registryItemIds": [
+        "plugin-google-drive",
+        "mcp-google-drive"
       ]
     },
     {
@@ -3823,7 +4000,7 @@
     {
       "id": "jfrog",
       "name": "JFrog",
-      "description": "JFrog Platform integration with MCP, security skills, supply-chain best practices, and JFrog Agent Guard governance for adding, removing, and listing MCP servers.",
+      "description": "JFrog Platform integration with MCP, security skills, Agent Package Resolution, supply-chain best practices, and JFrog Agent Guard governance for adding, removing, and listing MCP servers.",
       "brand": null,
       "homepage": "https://jfrog.com",
       "docsUrl": "https://github.com/jfrog/cursor-plugin",
@@ -3832,12 +4009,18 @@
       "triggers": [
         "jfrog",
         "jfrog-ai-catalog-skills",
-        "jfrog-package-safety-and-download"
+        "jfrog-mcp-management",
+        "jfrog-package-safety-and-download",
+        "jfrog-reference-architecture",
+        "jfrog-setup-package-managers"
       ],
       "skillIds": [
         "jfrog",
         "jfrog-ai-catalog-skills",
-        "jfrog-package-safety-and-download"
+        "jfrog-mcp-management",
+        "jfrog-package-safety-and-download",
+        "jfrog-reference-architecture",
+        "jfrog-setup-package-managers"
       ],
       "mcpServerIds": [
         "jfrog"
@@ -3846,7 +4029,10 @@
         "plugin-jfrog",
         "skill-jfrog",
         "skill-jfrog-ai-catalog-skills",
+        "skill-jfrog-mcp-management",
         "skill-jfrog-package-safety-and-download",
+        "skill-jfrog-reference-architecture",
+        "skill-jfrog-setup-package-managers",
         "mcp-jfrog"
       ]
     },
@@ -4263,22 +4449,64 @@
       "homepage": "https://mem0.ai",
       "docsUrl": "https://github.com/mem0ai/mem0",
       "marketplaceUrl": "https://cursor.com/marketplace/mem0",
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/bdd5bc078d1cb38b.png",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/93e3566b58b06659.png",
       "triggers": [
         "mem0",
-        "mem0-codex"
+        "context-loader",
+        "dream",
+        "export",
+        "forget",
+        "health",
+        "import",
+        "list-projects",
+        "memory-reviewer",
+        "onboard",
+        "peek",
+        "pin",
+        "remember",
+        "stats",
+        "switch-project",
+        "tour"
       ],
       "skillIds": [
+        "context-loader",
+        "dream",
+        "export",
+        "forget",
+        "health",
+        "import",
+        "list-projects",
         "mem0",
-        "mem0-codex"
+        "memory-reviewer",
+        "onboard",
+        "peek",
+        "pin",
+        "remember",
+        "stats",
+        "switch-project",
+        "tour"
       ],
       "mcpServerIds": [
         "mem0"
       ],
       "registryItemIds": [
         "plugin-mem0",
+        "skill-context-loader",
+        "skill-dream",
+        "skill-export",
+        "skill-forget",
+        "skill-health",
+        "skill-import",
+        "skill-list-projects",
         "skill-mem0",
-        "skill-mem0-codex",
+        "skill-memory-reviewer",
+        "skill-onboard",
+        "skill-peek",
+        "skill-pin",
+        "skill-remember",
+        "skill-stats",
+        "skill-switch-project",
+        "skill-tour",
         "mcp-mem0"
       ]
     },
@@ -4302,16 +4530,16 @@
       ]
     },
     {
-      "id": "meta-quest-agentic-tools",
+      "id": "meta-vr",
       "name": "Meta Reality Labs",
-      "description": "Agent skills for Meta Quest and Horizon OS development — debugging, performance tracing, code review, porting guides, and best practices across Unity, Spatial SDK, Android, and WebXR. Uses hzdb (Horizon Debug Bridge) CLI for device interaction.",
+      "description": "Agent skills for Meta Quest and Horizon OS development. Helps Claude assist with Quest app debugging, performance analysis, project setup, Unity and WebXR workflows, Spatial SDK and Platform SDK integration, store submission checks, and metavr device workflows.",
       "brand": null,
       "homepage": "https://developers.meta.com/horizon",
       "docsUrl": "https://github.com/meta-quest/agentic-tools",
-      "marketplaceUrl": "https://cursor.com/marketplace/meta-quest-agentic-tools",
+      "marketplaceUrl": "https://cursor.com/marketplace/meta-vr",
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/meta.png",
       "triggers": [
-        "meta-quest-agentic-tools",
+        "meta-vr",
         "meta reality labs",
         "meta-reality-labs",
         "hz-android-2d-porting",
@@ -4321,13 +4549,20 @@
         "hz-new-project-creation",
         "hz-perfetto-debug",
         "hz-platform-sdk",
+        "hz-psdk-integration",
+        "hz-quest-verify-first",
+        "hz-simpleperf-debug",
         "hz-spatial-sdk",
+        "hz-store-pwa",
+        "hz-store-submit",
         "hz-unity-code-review",
-        "hz-vr-debug",
-        "hz-vrc-check",
-        "hz-xr-simulator-setup",
-        "hzdb-cli",
-        "hzdb"
+        "hz-unity-face-tracking",
+        "hz-unity-fbx-import",
+        "hz-unity-meta-core-sdk",
+        "hz-unity-meta-mixed-reality-utility-kit",
+        "hz-unity-meta-movement-sdk-retargeting",
+        "hz-unity-meta-quest-ui",
+        "hz-unity-passthrough-camera-access"
       ],
       "skillIds": [
         "hz-android-2d-porting",
@@ -4337,18 +4572,34 @@
         "hz-new-project-creation",
         "hz-perfetto-debug",
         "hz-platform-sdk",
+        "hz-psdk-integration",
+        "hz-quest-verify-first",
+        "hz-simpleperf-debug",
         "hz-spatial-sdk",
+        "hz-store-pwa",
+        "hz-store-submit",
         "hz-unity-code-review",
+        "hz-unity-face-tracking",
+        "hz-unity-fbx-import",
+        "hz-unity-meta-core-sdk",
+        "hz-unity-meta-mixed-reality-utility-kit",
+        "hz-unity-meta-movement-sdk-retargeting",
+        "hz-unity-meta-quest-ui",
+        "hz-unity-passthrough-camera-access",
+        "hz-unity-placement",
+        "hz-unity-platform-sdk",
+        "hz-unity-project-analyzer",
+        "hz-unity-tmp-resources",
         "hz-vr-debug",
-        "hz-vrc-check",
         "hz-xr-simulator-setup",
-        "hzdb-cli"
+        "metavr-cli",
+        "portal"
       ],
       "mcpServerIds": [
-        "hzdb"
+        "metavr"
       ],
       "registryItemIds": [
-        "plugin-meta-quest-agentic-tools",
+        "plugin-meta-vr",
         "skill-hz-android-2d-porting",
         "skill-hz-api-upgrade",
         "skill-hz-immersive-designer",
@@ -4356,13 +4607,29 @@
         "skill-hz-new-project-creation",
         "skill-hz-perfetto-debug",
         "skill-hz-platform-sdk",
+        "skill-hz-psdk-integration",
+        "skill-hz-quest-verify-first",
+        "skill-hz-simpleperf-debug",
         "skill-hz-spatial-sdk",
+        "skill-hz-store-pwa",
+        "skill-hz-store-submit",
         "skill-hz-unity-code-review",
+        "skill-hz-unity-face-tracking",
+        "skill-hz-unity-fbx-import",
+        "skill-hz-unity-meta-core-sdk",
+        "skill-hz-unity-meta-mixed-reality-utility-kit",
+        "skill-hz-unity-meta-movement-sdk-retargeting",
+        "skill-hz-unity-meta-quest-ui",
+        "skill-hz-unity-passthrough-camera-access",
+        "skill-hz-unity-placement",
+        "skill-hz-unity-platform-sdk",
+        "skill-hz-unity-project-analyzer",
+        "skill-hz-unity-tmp-resources",
         "skill-hz-vr-debug",
-        "skill-hz-vrc-check",
         "skill-hz-xr-simulator-setup",
-        "skill-hzdb-cli",
-        "mcp-hzdb"
+        "skill-metavr-cli",
+        "skill-portal",
+        "mcp-metavr"
       ]
     },
     {
@@ -4573,15 +4840,15 @@
     {
       "id": "mongodb",
       "name": "MongoDB",
-      "description": "Official Cursor plugin for MongoDB (MCP Server + Skills). Connect to databases, explore data, manage collections, optimize queries, generate reliable code, implement best practices, develop advanced features, and more.",
+      "description": "Connect to any MongoDB deployment (Community, Enterprise Advanced, local dev container via Atlas CLI or Atlas clusters) through a self-managed MongoDB MCP Server using your connection string. Explore data, manage collections, optimize queries, and generate reliable code with MongoDB best practices.",
       "brand": "mongodb",
       "homepage": "https://www.mongodb.com",
       "docsUrl": "https://www.mongodb.com/docs",
       "marketplaceUrl": "https://cursor.com/marketplace/mongodb",
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/012c006bcb239314.png",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/d7c85fafb1e96700.png",
       "triggers": [
         "mongodb",
-        "atlas-stream-processing",
+        "mongodb-atlas-stream-processing",
         "mongodb-connection",
         "mongodb-mcp-setup",
         "mongodb-natural-language-querying",
@@ -4590,7 +4857,7 @@
         "mongodb-search-and-ai"
       ],
       "skillIds": [
-        "atlas-stream-processing",
+        "mongodb-atlas-stream-processing",
         "mongodb-connection",
         "mongodb-mcp-setup",
         "mongodb-natural-language-querying",
@@ -4603,7 +4870,7 @@
       ],
       "registryItemIds": [
         "plugin-mongodb",
-        "skill-atlas-stream-processing",
+        "skill-mongodb-atlas-stream-processing",
         "skill-mongodb-connection",
         "skill-mongodb-mcp-setup",
         "skill-mongodb-natural-language-querying",
@@ -4642,7 +4909,7 @@
     {
       "id": "neon",
       "name": "Neon Postgres",
-      "description": "Manage your Neon projects and databases with the neon-postgres agent skill and the Neon MCP Server",
+      "description": "Manage your Neon projects, databases, and branches with the Neon agent skills and the Neon MCP Server",
       "brand": "neon",
       "homepage": "https://neon.tech",
       "docsUrl": "https://neon.tech/docs",
@@ -4651,14 +4918,37 @@
       "triggers": [
         "neon",
         "neon-postgres",
-        "neon postgres"
+        "neon postgres",
+        "claimable-postgres",
+        "neon-ai-gateway",
+        "neon-functions",
+        "neon-object-storage",
+        "neon-postgres-branches",
+        "neon-postgres-egress-optimizer"
       ],
-      "skillIds": [],
+      "skillIds": [
+        "claimable-postgres",
+        "neon",
+        "neon-ai-gateway",
+        "neon-functions",
+        "neon-object-storage",
+        "neon-postgres",
+        "neon-postgres-branches",
+        "neon-postgres-egress-optimizer"
+      ],
       "mcpServerIds": [
         "neon"
       ],
       "registryItemIds": [
         "plugin-neon",
+        "skill-claimable-postgres",
+        "skill-neon",
+        "skill-neon-ai-gateway",
+        "skill-neon-functions",
+        "skill-neon-object-storage",
+        "skill-neon-postgres",
+        "skill-neon-postgres-branches",
+        "skill-neon-postgres-egress-optimizer",
         "mcp-neon"
       ]
     },
@@ -5532,7 +5822,7 @@
     {
       "id": "postman",
       "name": "Postman",
-      "description": "Full API lifecycle management for Cursor. Sync collections, generate client code, discover APIs, run tests, create mocks, improve docs, and audit security. Powered by the Postman MCP Server.",
+      "description": "Full API lifecycle management for Cursor. Sync collections, generate OpenAPI specs, discover APIs, run tests and Flows, create mocks, improve docs, and audit security. Powered by the Postman MCP Server.",
       "brand": null,
       "homepage": "https://postman.com",
       "docsUrl": "https://github.com/Postman-Devrel/cursor-postman-plugin",
@@ -7300,71 +7590,56 @@
     {
       "id": "subtext",
       "name": "Subtext",
-      "description": "Tools that let coding agents verify and show their work against your running application",
+      "description": "Review Subtext session recordings and manage privacy rules",
       "brand": null,
       "homepage": "https://subtext.fullstory.com/",
       "docsUrl": "https://github.com/fullstorydev/subtext",
       "marketplaceUrl": "https://cursor.com/marketplace/subtext",
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/0075fceeb4120f20.png",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/971dd04f930cd8d8.png",
       "triggers": [
         "subtext",
-        "comments",
-        "docs",
-        "first-session",
-        "live",
-        "onboard",
-        "proof",
-        "recipe-sightmap-setup",
-        "review",
-        "session",
-        "setup-plugin",
-        "shared",
-        "sightmap",
-        "tunnel",
-        "using-subtext",
-        "subtext-eu1",
-        "subtext-tunnel"
+        "sightmap-authoring",
+        "sightmap-browser",
+        "subtext-privacy",
+        "subtext-review",
+        "subtext-session",
+        "subtext-setup-plugin",
+        "subtext-shared",
+        "subtext-sightmap",
+        "subtext-telemetry",
+        "subtext-using-subtext",
+        "subtext-eu1"
       ],
       "skillIds": [
-        "comments",
-        "docs",
-        "first-session",
-        "live",
-        "onboard",
-        "proof",
-        "recipe-sightmap-setup",
-        "review",
-        "session",
-        "setup-plugin",
-        "shared",
-        "sightmap",
-        "tunnel",
-        "using-subtext"
+        "sightmap-authoring",
+        "sightmap-browser",
+        "subtext-privacy",
+        "subtext-review",
+        "subtext-session",
+        "subtext-setup-plugin",
+        "subtext-shared",
+        "subtext-sightmap",
+        "subtext-telemetry",
+        "subtext-using-subtext"
       ],
       "mcpServerIds": [
         "subtext",
-        "subtext-eu1",
-        "subtext-tunnel"
+        "subtext-eu1"
       ],
       "registryItemIds": [
         "plugin-subtext",
-        "skill-comments",
-        "skill-docs",
-        "skill-first-session",
-        "skill-live",
-        "skill-onboard",
-        "skill-proof",
-        "skill-recipe-sightmap-setup",
-        "skill-review",
-        "skill-session",
-        "skill-setup-plugin",
-        "skill-shared",
-        "skill-sightmap",
-        "skill-tunnel",
-        "skill-using-subtext",
+        "skill-sightmap-authoring",
+        "skill-sightmap-browser",
+        "skill-subtext-privacy",
+        "skill-subtext-review",
+        "skill-subtext-session",
+        "skill-subtext-setup-plugin",
+        "skill-subtext-shared",
+        "skill-subtext-sightmap",
+        "skill-subtext-telemetry",
+        "skill-subtext-using-subtext",
         "mcp-subtext",
-        "mcp-subtext-eu1",
-        "mcp-subtext-tunnel"
+        "mcp-subtext-eu1"
       ]
     },
     {

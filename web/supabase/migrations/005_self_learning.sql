@@ -7,6 +7,13 @@
 -- routing_policy: versioned global policy snapshots (no user_id -- routing
 --   priors pool across the fleet, like provider_benchmarks).
 
+-- APPLIED 2026-08-03, not before. The 2026-08-03 audit found neither table
+-- existed in the live database even though lib/learning/policy.ts reads both --
+-- so the self-learning loop had been failing silently against a schema that was
+-- never applied. Applied with RLS on from the start (zero policies; the service
+-- role bypasses it and supabaseAdmin() is the only reader), which is the state
+-- every other table in `public` is in as of that date.
+
 create table if not exists run_traces (
   id bigint generated always as identity primary key,
   user_id text not null,
@@ -31,6 +38,8 @@ create table if not exists run_traces (
   extra jsonb
 );
 
+alter table run_traces enable row level security;
+
 create index if not exists idx_run_traces_arm
   on run_traces (task_class, runtime, substrate, model, recorded_at desc);
 
@@ -46,6 +55,8 @@ create table if not exists routing_policy (
   n_traces integer not null default 0,
   active boolean not null default true
 );
+
+alter table routing_policy enable row level security;
 
 create index if not exists idx_routing_policy_active
   on routing_policy (active, version desc);
