@@ -20,7 +20,21 @@ import { getUserConfig } from "@/lib/user-config/clerk";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+/*
+ * 300s, not the 120 this route carried until 2026-08-03.
+ *
+ * Same exposure as the wake route, by a less obvious path: sprites binds no
+ * park() (its SDK has no suspend), so the facade falls back to connect +
+ * handle.sleep(), and the mux's sprites connect() WAKES an adopted sprite
+ * before first use -- a real exec probe budgeted at
+ * WAKE_TIMEOUT_MS = 180_000 (src/mux/providers/sprites.ts). Measured cold
+ * starts are 17-31s, so 120 usually held, but a wake under load could exceed
+ * the function budget and time out INSIDE a sleep that was still going to
+ * succeed, which reads to the user as a machine stuck awake.
+ * 300 is what provision-machine, migrate and agent already use, so the plan
+ * supports it.
+ */
+export const maxDuration = 300;
 
 type Ctx = { params: Promise<{ id: string }> };
 

@@ -22,7 +22,20 @@ import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+/*
+ * 300s, not the 120 this route carried until 2026-08-03.
+ *
+ * The 0.2 convergence swapped the hand-written vendor half for the mux's
+ * sprites adapter, whose wake is a REAL exec probe budgeted at
+ * WAKE_TIMEOUT_MS = 180_000 (src/mux/providers/sprites.ts) -- the old web
+ * wake() only read the sprite record and let the sprite auto-wake on the next
+ * request. Measured cold starts are 17-31s, so 120 usually held, but a wake
+ * under load could exceed the function budget and time out INSIDE a wake that
+ * was still going to succeed, which reads to the user as a broken machine.
+ * 300 is what provision-machine, migrate and agent already use, so the plan
+ * supports it.
+ */
+export const maxDuration = 300;
 
 type Ctx = { params: Promise<{ id: string }> };
 
