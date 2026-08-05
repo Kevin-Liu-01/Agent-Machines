@@ -17,9 +17,17 @@
  * only one. A routable error walks on to the next credentialed lane
  * (`lib/mux/failover.ts`) instead of returning 502 on the first provider error,
  * and every lane's outcome comes back in `attempts` so the dashboard can
- * explain why a machine landed where it did. This is create-time failover
- * across a credential-gated order -- not health-aware and not learned
- * selection; the hosted side has neither.
+ * explain why a machine landed where it did.
+ *
+ * Health (ROADMAP pillar 6, 2026-08-04): that walk is no longer blind. The
+ * calling tenant's persisted circuit breaker (`lib/mux/health.ts`, one row per
+ * tenant in `mux_placements`) reorders the credentialed lanes -- healthy, then
+ * degraded, then open -- and every lane's outcome is fed back into it, so a
+ * substrate that is refusing requests right now stops costing a full failed
+ * provisioning attempt on every create. It only ever REORDERS: a demoted lane is
+ * still walked, last. Pass `failover: false` for the one-lane pin.
+ *
+ * Still not on this path: constraint filtering and learned selection.
  */
 
 import { after } from "next/server";
@@ -37,6 +45,7 @@ import {
 	provisionWithFailover,
 	type ProvisionAttempt,
 } from "@/lib/mux/failover";
+import { loadTenantHealth } from "@/lib/mux/health";
 import { resolveRoute, toSubstrateKind } from "@/lib/mux/route";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 import {
@@ -221,10 +230,16 @@ export async function POST(request: Request): Promise<Response> {
 		}
 	}
 
+	// Read once, after the dedupe reply so a double-click costs no round trip.
+	// Scoped to this user: one tenant's expired key must not open another's
+	// circuit. Never throws -- an unreadable snapshot degrades to no history.
+	const health = await loadTenantHealth({ tenantId: userId });
+
 	const placement = await provisionWithFailover({
 		primary,
 		route,
 		skipped,
+		health,
 		lane: {
 			provision: (substrate) =>
 				createMachineForConfig(config, {
@@ -328,6 +343,30 @@ export async function POST(request: Request): Promise<Response> {
 	// A machine that landed somewhere the caller did not ask for must say so in
 	// the prose too, not only in `attempts`: the dashboard shows the message
 	// before anyone opens the route detail.
+	//
+	// And it must say WHICH reason. Before health ordering existed there was only
+	// one -- the requested lane was tried and failed -- so the message hard-coded
+	// it. Health can now place a machine on a backup WITHOUT the requested lane
+	// being tried at all, and "after e2b failed" would then be a plain untruth
+	// about a lane that was never touched.
+	const elsewhere = (): string => {
+		const primaryFailed = placement.attempts.some(
+			(attempt) => attempt.substrate === primary && attempt.outcome === "failed",
+		);
+		if (primaryFailed) {
+			return `Placed on ${placement.substrate} after ${primary} failed; see attempts.`;
+		}
+		// Defensive: the machine EXISTS and is already recorded by this point, so
+		// nothing about composing its confirmation message may throw. A breaker
+		// verdict is worth a sentence, never a 500 on a successful provision.
+		let verdict = "demoted by health";
+		try {
+			verdict = `circuit ${health.stateOf(primary)}`;
+		} catch {
+			// Keep the generic wording.
+		}
+		return `Placed on ${placement.substrate} ahead of ${primary}, whose recent failures have its ${verdict}; see attempts.`;
+	};
 	return Response.json({
 		ok: true,
 		machineId: created.machineId,
@@ -340,8 +379,6 @@ export async function POST(request: Request): Promise<Response> {
 		bootstrapScheduled,
 		bootstrapMessage,
 		message:
-			placement.substrate === primary
-				? baseMessage
-				: `${baseMessage} Placed on ${placement.substrate} after ${primary} failed; see attempts.`,
+			placement.substrate === primary ? baseMessage : `${baseMessage} ${elsewhere()}`,
 	});
 }

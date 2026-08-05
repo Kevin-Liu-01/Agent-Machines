@@ -221,10 +221,28 @@ describe("POST /api/dashboard/machines/[id]/agent", () => {
 			MachineRef,
 			unknown,
 			unknown,
-			{ force?: boolean },
+			{ force?: boolean; placementTenantId?: string },
 		];
 		expect(schedMachine.agentKind).toBe("openclaw");
 		expect(schedMachine.bootstrapState.completed).toEqual([]);
-		expect(options).toEqual({ force: true });
+		// placementTenantId is THIS REQUEST's user id: the mux placement mirror
+		// that runs after the install is a tenant-scoped write, and a global (or
+		// missing) tenant would put one user's placement in another's namespace.
+		expect(options).toEqual({ force: true, placementTenantId: "user-1" });
+	});
+
+	it("carries the SIGNED-IN user into the placement mirror, not a constant", async () => {
+		// Mutation guard for the scoping assertion above: with a different signed-in
+		// user the tenant handed to the mirror must change with it.
+		mocks.getEffectiveUserId.mockResolvedValue("user-beta");
+		const res = await POST(req({ agentKind: "openclaw" }), ctx("m-1"));
+		expect(res.status).toBe(202);
+		const [, , , options] = mocks.scheduleWebBootstrap.mock.calls[0] as [
+			MachineRef,
+			unknown,
+			unknown,
+			{ placementTenantId?: string },
+		];
+		expect(options.placementTenantId).toBe("user-beta");
 	});
 });

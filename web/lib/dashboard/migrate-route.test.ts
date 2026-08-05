@@ -201,6 +201,10 @@ describe("POST /api/dashboard/machines/[id]/migrate", () => {
 			to: "vercel",
 			moveState: true,
 			source: "destroy",
+			// The signed-in user, carried into the background task: the post-commit
+			// placement mirror is a tenant-scoped write, and re-resolving identity
+			// inside after() is how such a write lands under the wrong tenant.
+			userId: "user-1",
 		});
 
 		const withoutState = await POST(req({ to: "vercel", moveState: false }), ctx("m-1"));
@@ -210,6 +214,7 @@ describe("POST /api/dashboard/machines/[id]/migrate", () => {
 			to: "vercel",
 			moveState: false,
 			source: "destroy",
+			userId: "user-1",
 		});
 	});
 
@@ -240,6 +245,18 @@ describe("POST /api/dashboard/machines/[id]/migrate", () => {
 			to: "sprites",
 			moveState: true,
 			source: "keep",
+			userId: "user-1",
 		});
+	});
+
+	it("hands the migration the SIGNED-IN user, not a constant", async () => {
+		// Mutation guard for the scoping assertion above: change who is signed in
+		// and the tenant carried into the background task must change with them.
+		mocks.getEffectiveUserId.mockResolvedValue("user-beta");
+		const res = await POST(req({ to: "sprites" }), ctx("m-1"));
+		expect(res.status).toBe(202);
+		expect(mocks.runMachineMigration).toHaveBeenCalledWith(
+			expect.objectContaining({ userId: "user-beta" }),
+		);
 	});
 });

@@ -439,9 +439,16 @@ test("MUX.md makes none of the claims the roadmap forbids", () => {
  *
  * `failover` used to be on this list. ROADMAP 0.3 gave the hosted plane
  * create-time failover for real, so a flat "none" there became the false claim
- * -- see SHARED_BUT_LIMITED_ROWS.
+ * -- see SHARED_BUT_LIMITED_ROWS. `health` left it the same way on 2026-08-04,
+ * when the hosted provisioning route started consulting a per-tenant breaker.
+ *
+ * Note what this list can NOT catch, and why `health` had to move rather than
+ * stay: the hosted assertion below accepts "only" as a qualifier, so a cell
+ * reading "yes at provisioning only" would have passed this check while
+ * contradicting it. A row that becomes true on both planes has to move to
+ * SHARED_BUT_LIMITED_ROWS, where the limit itself is asserted.
  */
-const MUX_ONLY_ROWS = [/health/i, /constraint/i, /learned/i];
+const MUX_ONLY_ROWS = [/constraint/i, /learned/i];
 
 /**
  * Rows where BOTH surfaces do the thing but the hosted one does strictly less.
@@ -451,12 +458,24 @@ const MUX_ONLY_ROWS = [/health/i, /constraint/i, /learned/i];
  * that has to survive any future rewrite of the cell.
  */
 const SHARED_BUT_LIMITED_ROWS = [
-	{ row: /failover/i, limit: /\bstatic\b/i },
+	// The limit used to be the word "static", because the hosted walk was blind.
+	// Health ordering landed on the provisioning route 2026-08-04, so "static"
+	// became the false half of the cell -- and forcing the doc to keep saying it
+	// would have made this guard the reason for the lie. What is still narrower
+	// than the mux, and is what the cell must keep admitting: no constraint
+	// filter, no price ordering and no learned order feed the hosted walk.
+	{ row: /failover/i, limit: /\bno constraint filter\b/i },
 	// Landed on both planes 2026-08-03. The hosted cell said "none" in the same
 	// changeset that shipped the hosted endpoints -- the guard's row list had
 	// not been extended, so the false claim sailed through. The hosted limit
 	// worth pinning: no step-level progress stream (migrationState only).
 	{ row: /agent switch|substrate migrate/i, limit: /\bno MigrateStep stream\b/i },
+	// Health ordering, 2026-08-04. The hosted breaker is per tenant, persisted in
+	// mux_placements, and consulted by ONE route: the provisioning walk. Nothing
+	// else on that plane reads it -- migrate pins a single lane, and wake/sleep/run
+	// do not route at all -- so "provisioning only" is the qualifier that has to
+	// survive any rewrite. Drop it and the cell reads as a plane-wide breaker.
+	{ row: /health/i, limit: /\bprovisioning only\b/i },
 ];
 
 test("MUX.md separates what src/mux does from what the hosted plane does", () => {

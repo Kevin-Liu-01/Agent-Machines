@@ -134,6 +134,15 @@ export type MigrationReport = {
 	source: { action: "destroyed" | "parked" | "kept"; error?: string };
 	newMachineId: string;
 	notes: string[];
+	/**
+	 * Whether the mux ROUTER's placement for this name was re-pointed at the new
+	 * sandbox (lib/mux/placements.ts). Post-commit and best-effort, so `false`
+	 * with a reason is a normal outcome, not a failed migration -- but it must be
+	 * VISIBLE, because a stale placement means the SDK's `mux.connect(name)`
+	 * still resolves to the old substrate while the dashboard shows the new one.
+	 * Optional: reports persisted before this field existed must still parse.
+	 */
+	placement?: { recorded: boolean; name?: string; reason?: string };
 };
 
 /**

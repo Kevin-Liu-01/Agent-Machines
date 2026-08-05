@@ -1120,7 +1120,23 @@ export class Mux {
 		);
 	}
 
-	/** Reconnect to a machine created earlier with a name. */
+	/**
+	 * What THIS mux remembers: name -> substrate / sandboxId / agent.
+	 *
+	 * `readMuxState()` and `readMuxStateAsync()` read the PROCESS GLOBAL store,
+	 * so a mux constructed with `placementStore` -- the hosted plane's tenant
+	 * scoping, web/lib/mux/hosted-mux.ts -- could not be asked what it
+	 * remembered: a reader had to reach around the router to the store object it
+	 * happened to pass in, and a reader that never goes through the router
+	 * cannot notice that the router is reading a DIFFERENT (global, wrong
+	 * tenant) store. This closes that hole for the same reason `describe()`
+	 * exists rather than `connect()`: reads must be cheap and side-effect free.
+	 * One store round trip, no provider call, no wake, nothing billed.
+	 */
+	async placements(): Promise<Record<string, RememberedMachine>> {
+		return (await this.readPlacements()).machines;
+	}
+
 	/**
 	 * Status of a remembered machine WITHOUT waking it.
 	 *

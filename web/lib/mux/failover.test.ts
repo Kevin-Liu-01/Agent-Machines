@@ -13,8 +13,10 @@ import {
 	provisionWithFailover,
 	type ProvisionAttempt,
 } from "@/lib/mux/failover";
+import type { HealthState } from "../../../src/mux/health.js";
 import type { SubstrateKind } from "@/lib/mux/capabilities";
-import { MachineProviderError } from "@/lib/providers/types";
+import type { HostedHealthGate } from "@/lib/mux/health";
+import { MachineProviderError, type ProviderError } from "@/lib/providers/types";
 
 type Created = { machineId: string; state: string };
 
@@ -388,5 +390,287 @@ describe("isRoutableProviderError", () => {
 		expect(isRoutableProviderError("fatal")).toBe(true);
 		expect(isRoutableProviderError("missing_credentials")).toBe(false);
 		expect(isRoutableProviderError("not_supported")).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Health ordering (2026-08-04). The gate is faked here on purpose: this file
+// tests what the WALK does with a gate, and lib/mux/health.test.ts tests the
+// gate against the real breaker. Faking it both places would prove nothing;
+// faking it neither place would put Supabase in a unit test.
+// ---------------------------------------------------------------------------
+
+type Note = ["ok" | "failed", SubstrateKind, ProviderError | null, number | undefined];
+
+function healthGate(options: {
+	order?: (route: readonly SubstrateKind[]) => SubstrateKind[];
+	stateOf?: (substrate: SubstrateKind) => HealthState;
+	throwOnNote?: boolean;
+} = {}): { gate: HostedHealthGate; notes: Note[] } {
+	const notes: Note[] = [];
+	return {
+		notes,
+		gate: {
+			order: options.order ?? ((route) => [...route]),
+			stateOf: options.stateOf ?? (() => "healthy"),
+			noteOk: async (substrate, latencyMs) => {
+				if (options.throwOnNote) throw new Error("breaker exploded");
+				notes.push(["ok", substrate, null, latencyMs]);
+			},
+			noteFailure: async (substrate, kind, latencyMs) => {
+				if (options.throwOnNote) throw new Error("breaker exploded");
+				notes.push(["failed", substrate, kind, latencyMs]);
+			},
+			loaded: true,
+		},
+	};
+}
+
+describe("provisionWithFailover -- health ordering", () => {
+	it("walks the order the breaker returns, not the configured one", async () => {
+		const tried: SubstrateKind[] = [];
+		const { lane: l } = lane({
+			provision: async (substrate) => {
+				tried.push(substrate);
+				return { machineId: `${substrate}-1`, state: "ready" };
+			},
+		});
+		// e2b is the caller's primary and the breaker has it open.
+		const { gate, notes } = healthGate({
+			order: () => ["sprites", "e2b"],
+			stateOf: (substrate) => (substrate === "e2b" ? "open" : "healthy"),
+		});
+
+		const result = await provisionWithFailover({
+			primary: "e2b",
+			route: ["e2b", "sprites"],
+			skipped: [],
+			lane: l,
+			health: gate,
+			now: clock(10),
+		});
+
+		// The demoted lane was never touched -- which is the whole saving: a full
+		// failed provisioning attempt on a lane that is down (17-31s on a cold
+		// sprites create, docs/MUX-RESULTS.md) is what this avoids.
+		expect(tried).toEqual(["sprites"]);
+		if (!result.ok) throw new Error("expected sprites to place");
+		expect(result.substrate).toBe("sprites");
+		expect(notes).toEqual<Note[]>([["ok", "sprites", null, 10]]);
+	});
+
+	it("annotates every attempted lane with the verdict its own outcome produced", async () => {
+		const { lane: l } = lane({
+			provision: async (substrate) => {
+				if (substrate === "e2b") {
+					throw new MachineProviderError("e2b", "transient", "e2b 503");
+				}
+				return { machineId: "sp-1", state: "ready" };
+			},
+		});
+		// A gate that answers from what it has been told, like a real breaker: the
+		// annotation is "degraded" ONLY if the failure was recorded before the
+		// verdict was read. Annotating first would report the lane as healthy and
+		// make the record describe the previous request instead of this one.
+		const seen: SubstrateKind[] = [];
+		const { gate } = healthGate({
+			stateOf: (substrate) => (seen.includes(substrate) ? "degraded" : "healthy"),
+		});
+		const recording: HostedHealthGate = {
+			...gate,
+			noteFailure: async (substrate, kind, latencyMs) => {
+				seen.push(substrate);
+				await gate.noteFailure(substrate, kind, latencyMs);
+			},
+		};
+
+		const result = await provisionWithFailover({
+			primary: "e2b",
+			route: ["e2b", "sprites"],
+			skipped: [{ substrate: "vercel", missing: ["VERCEL_TOKEN"] }],
+			lane: l,
+			health: recording,
+			now: clock(10),
+		});
+
+		if (!result.ok) throw new Error("expected sprites to place");
+		expect(result.attempts).toEqual<ProvisionAttempt[]>([
+			// A lane that was never tried has no outcome to have a verdict for.
+			{
+				substrate: "vercel",
+				outcome: "skipped",
+				reason: "missing credentials: VERCEL_TOKEN",
+			},
+			{
+				substrate: "e2b",
+				outcome: "failed",
+				reason: "e2b 503",
+				durationMs: 10,
+				health: "degraded",
+			},
+			{ substrate: "sprites", outcome: "ok", durationMs: 10, health: "healthy" },
+		]);
+	});
+
+	it("feeds back every lane's outcome with its measured latency and kind", async () => {
+		const { lane: l } = lane({
+			provision: async (substrate) => {
+				if (substrate === "e2b") {
+					throw new MachineProviderError("e2b", "rate_limited", "429");
+				}
+				if (substrate === "sprites") {
+					throw new MachineProviderError("sprites", "fatal", "quota wall");
+				}
+				return { machineId: "vc-1", state: "ready" };
+			},
+		});
+		const { gate, notes } = healthGate();
+
+		await provisionWithFailover({
+			primary: "e2b",
+			route: ["e2b", "sprites", "vercel"],
+			skipped: [],
+			lane: l,
+			health: gate,
+			now: clock(10),
+		});
+
+		// The KIND is passed through, not pre-digested: only the gate decides
+		// which kinds count, and a fatal must reach it (recorded, never opening).
+		expect(notes).toEqual<Note[]>([
+			["failed", "e2b", "rate_limited", 10],
+			["failed", "sprites", "fatal", 10],
+			["ok", "vercel", null, 10],
+		]);
+	});
+
+	it("records a lane that provisioned a DEAD machine as a failure", async () => {
+		const { lane: l, teardown } = lane({
+			provision: async (substrate) => ({
+				machineId: `${substrate}-1`,
+				state: substrate === "e2b" ? "error" : "ready",
+			}),
+			accept: (substrate, created) =>
+				assertUsableProvisionState(substrate, created.machineId, created.state),
+		});
+		const { gate, notes } = healthGate();
+
+		const result = await provisionWithFailover({
+			primary: "e2b",
+			route: ["e2b", "sprites"],
+			skipped: [],
+			lane: l,
+			health: gate,
+			now: clock(10),
+		});
+
+		// A lane whose create "succeeded" and handed back a dead machine is a
+		// failing lane; recording it ok would leave the breaker blind to exactly
+		// the failure mode that produces invisible orphans.
+		if (!result.ok) throw new Error("expected sprites to place");
+		expect(teardown).toHaveBeenCalledWith("e2b", "e2b-1");
+		expect(notes).toEqual<Note[]>([
+			["failed", "e2b", "transient", 10],
+			["ok", "sprites", null, 10],
+		]);
+	});
+});
+
+describe("provisionWithFailover -- health is advisory, never exclusive", () => {
+	it("ignores an order that DROPPED a lane and walks the configured one", async () => {
+		const tried: SubstrateKind[] = [];
+		const { lane: l } = lane({
+			provision: async (substrate) => {
+				tried.push(substrate);
+				throw new MachineProviderError(substrate, "transient", `${substrate} down`);
+			},
+		});
+		// A gate that can remove a lane turns a provider-wide blip into "cannot
+		// provision at all", which is strictly worse than a wasted attempt.
+		const { gate } = healthGate({ order: () => ["sprites"] });
+
+		const result = await provisionWithFailover({
+			primary: "e2b",
+			route: ["e2b", "sprites"],
+			skipped: [],
+			lane: l,
+			health: gate,
+		});
+
+		expect(tried).toEqual(["e2b", "sprites"]);
+		expect(result.ok).toBe(false);
+	});
+
+	it("ignores an order that INVENTED a lane", async () => {
+		const tried: SubstrateKind[] = [];
+		const { lane: l } = lane({
+			provision: async (substrate) => {
+				tried.push(substrate);
+				return { machineId: `${substrate}-1`, state: "ready" };
+			},
+		});
+		const { gate } = healthGate({ order: () => ["dedalus", "e2b"] });
+
+		await provisionWithFailover({
+			primary: "e2b",
+			route: ["e2b"],
+			skipped: [],
+			lane: l,
+			health: gate,
+		});
+
+		expect(tried).toEqual(["e2b"]);
+	});
+
+	it("places the machine even when the gate throws on every call", async () => {
+		const { lane: l } = lane({
+			provision: async (substrate) => ({ machineId: `${substrate}-1`, state: "ready" }),
+		});
+		const { gate } = healthGate({ throwOnNote: true });
+		const exploding: HostedHealthGate = {
+			...gate,
+			order: () => {
+				throw new Error("order exploded");
+			},
+			stateOf: () => {
+				throw new Error("stateOf exploded");
+			},
+		};
+
+		const result = await provisionWithFailover({
+			primary: "e2b",
+			route: ["e2b"],
+			skipped: [],
+			lane: l,
+			health: exploding,
+			now: clock(10),
+		});
+
+		if (!result.ok) throw new Error("a broken breaker must not cost a machine");
+		expect(result.substrate).toBe("e2b");
+		// No verdict is recorded rather than a wrong one.
+		expect(result.attempts).toEqual<ProvisionAttempt[]>([
+			{ substrate: "e2b", outcome: "ok", durationMs: 10 },
+		]);
+	});
+
+	it("is byte-identical to the pre-health walk when no gate is passed", async () => {
+		const { lane: l } = lane({
+			provision: async (substrate) => ({ machineId: `${substrate}-1`, state: "ready" }),
+		});
+		const result = await provisionWithFailover({
+			primary: "e2b",
+			route: ["e2b"],
+			skipped: [],
+			lane: l,
+			now: clock(10),
+		});
+		if (!result.ok) throw new Error("expected e2b to place");
+		// The `health` key must be ABSENT, not undefined: an absent field is what
+		// tells a reader no breaker informed this route.
+		expect(result.attempts).toEqual<ProvisionAttempt[]>([
+			{ substrate: "e2b", outcome: "ok", durationMs: 10 },
+		]);
+		expect("health" in result.attempts[0]).toBe(false);
 	});
 });

@@ -100,7 +100,7 @@ sandboxes"). **P1** is required before charging money. **P2** is expansion.
 | 3 | Four agent runtimes | YC "How far along"; WHITEPAPER.md:60; README.md:64 | Four harness adapters behind one contract: `src/mux/harnesses/index.ts` -> `claude-code.ts`, `codex.ts`, `openclaw.ts`, `hermes.ts`; `HarnessAdapter` in `src/mux/types.ts:219-253`. | 8 of 16 cells attempted, and the matrix's own 6 "ok" marks overstate it: the later openclaw-on-sprites section of docs/MUX-RESULTS.md supersedes that row and calls the cell unconfirmed, leaving 5 confirmed. hermes/e2b fails (installer exhausts the base sandbox; E2B ignored the `resources` request on the current plan) and hermes/sprites did not finish inside the 40-minute budget -- docs/MUX-RESULTS.md finding 10. Hermes needs a pre-baked template, which does not exist. | P1 |
 | 4 | Normalized capabilities | YC table "Normalized capabilities" (next: region, GPU, network policy, snapshot, port, persistence, max-runtime); WHITEPAPER.md:118-134 | `SandboxCapabilities` in `src/mux/types.ts:43-52`: `pty`, `persistence`, `reattach`, `publicUrl`, `streamingExec`. Declared per provider, mirrored for the UI in `web/lib/mux/capabilities.ts` with a drift test (`web/lib/mux/capabilities.test.ts`) that reads the mux sources. | Five axes of the promised twelve. No region, GPU, network policy, snapshot/fork, port count, max runtime, disk size, or concurrency limit. `CreateSandboxOptions` (`src/mux/types.ts:167-185`) carries only name/env/timeoutMs/template/resources. Worse, capabilities do not affect routing at all: `Mux.routeFor` (`src/mux/router.ts:382-405`) filters on credentials only. `nativePtyLanes()` exists (`web/lib/mux/route.ts:98`) and nothing calls it. | P0 |
 | 5 | Intelligent selection | YC table "Intelligent selection" (advisory today, automatic next); docs/SELF_LEARNING.md Loop A; YC "Adaptive routing" row | A real contextual bandit, advisory: arms `web/lib/learning/arms.ts`, posteriors/reward `web/lib/learning/{bandit,reward,policy}.ts`, greedy pick `web/lib/learning/recommend.ts`, snapshot recompute `web/app/api/internal/learning/recompute/route.ts`, surfaced at `web/app/api/dashboard/admin/route-recommendation/route.ts` and consumed by `web/components/dashboard/DeployAndTalk.tsx:92`. Opt-in fill of omitted axes via `autoRoute` (`web/app/api/dashboard/admin/provision-machine/route.ts:54,115`). | Selection is not automatic anywhere a user can reach. The mux router has no learned selection at all -- `routeFor` walks a static config order (`src/mux/config.ts:112-115`, default `e2b` then the rest). `autoRoute` exists only on one HTTP route and the published SDK never sends it (`src/lib/sdk.ts:90-109`). And the policy is label-starved: `run_traces` are written only by cron ingest (`web/lib/learning/ingest.ts:103`, called from `web/app/api/internal/cron/tick/route.ts:91`) -- no mux run, no `/api/agents/run` call, and no console run produces a trace. | P0 |
-| 6 | Health-aware fallback | YC table "Health-aware fallback" -- explicitly "Not yet safe to claim"; docs/MUX.md:148-158; README.md:294-296; `web/components/StatsRow.tsx:194,241` | Create-time failover in the mux only: `src/mux/router.ts:439-496` walks candidates, `isRoutableError` (`src/mux/types.ts:79-88`) advances on transient/rate_limited/fatal/unknown, a sandbox provisioned before a later failure is torn down, and every attempt lands in `machine.attempts` (`src/mux/router.ts:60-65`). Per-provider error taxonomy in all four adapters (429 -> rate_limited, 5xx -> transient, 4xx -> fatal). Covered by `src/mux/router.test.ts`. | There is no health signal, so nothing is health-*aware*: no outcome window per substrate, no error-rate threshold, no cooldown, no circuit breaker anywhere in `src/mux` or `web/lib`. Failover is blind retry in a static order. The hosted control plane now has CREATE-TIME FAILOVER (`web/lib/mux/failover.ts`, driven by the provisioning route, 2026-08-02): it walks the credential-gated order from `web/lib/mux/route.ts`, aborts after one attempt on `missing_credentials`/`not_supported`, tears down a sandbox provisioned before a later failure, and returns every attempt with its reason. It still has no health signal and no learned selection, so "health-aware" remains unsayable there too. No idempotent replay: a run that dies mid-stream is reported `truncated: true` (`src/mux/router.ts:244-258`) and nothing retries it. | P0 |
+| 6 | Health-aware fallback | YC table "Health-aware fallback" -- explicitly "Not yet safe to claim"; docs/MUX.md:148-158; README.md:294-296; `web/components/StatsRow.tsx:194,241` | Create-time failover in the mux only: `src/mux/router.ts:439-496` walks candidates, `isRoutableError` (`src/mux/types.ts:79-88`) advances on transient/rate_limited/fatal/unknown, a sandbox provisioned before a later failure is torn down, and every attempt lands in `machine.attempts` (`src/mux/router.ts:60-65`). Per-provider error taxonomy in all four adapters (429 -> rate_limited, 5xx -> transient, 4xx -> fatal). Covered by `src/mux/router.test.ts`. | The mux half is CLOSED (see 3b): `src/mux/health.ts` is a rolling-window breaker per substrate, `routeFor()` orders by it, `create()` feeds outcomes back, and it persists through the placement store. The hosted half is closed FOR ONE ROUTE, 2026-08-04: `web/lib/mux/health.ts` value-imports that same breaker (no second tuning), loads and saves it as the per-tenant `kind='health'` row of `mux_placements`, and the provisioning route hands it to the failover walk (`web/lib/mux/failover.ts`), which reorders its credentialed lanes and records every outcome with the verdict on the attempt. `web/lib/mux/hosted-mux.ts` likewise persists health per tenant now (`persistHealth: true`, writing through the per-instance store, never the module global) -- but nothing on that path RECORDS yet: the mux only feeds the breaker from `create()`, and the hosted routes that build a mux use it for placement reads. So the health signal a user's request actually exercises today is the provisioning route's walk. What is STILL not true anywhere: health-aware ordering on any hosted verb other than provisioning (migrate pins one lane; wake/sleep/run do not route), constraint filtering or learned order in the hosted walk, and idempotent replay -- a run that dies mid-stream is reported `truncated: true` (`src/mux/router.ts:244-258`) and nothing retries it. | P0 |
 | 7 | Price optimization | YC table "Price optimization" (reward accepts cost; next: ingest current prices) | Reward normalizes cost (`web/lib/learning/reward.ts:31-37`) and the bandit tracks it with Welford stats (`web/lib/learning/bandit.ts:56-61`). A per-provider price table with provenance exists at `web/data/benchmarks.json` (`profiles[].pricing`, `basis: published \| unknown`) and renders in `web/components/dashboard/benchmarks/PricingMatrix.tsx`. | The cost the router optimizes is not a price. `web/lib/learning/ingest.ts:70-73` derives it from `estimateCost(machine.spec, latencyMs/1000)`, and `web/lib/metrics/cost.ts:9-11` is one hard-coded rate table written for Dedalus and applied to all four substrates. The real price table is display-only: `web/lib/learning/policy.ts:148-150` reads only `provider_kind, ok` from `provider_benchmarks`, never pricing -- and 2 of 4 providers have `basis: unknown` (sprites, dedalus). Model cost is captured live by the mux (`RunResult.costUsd`, `src/mux/events.ts:35,46`) and persisted nowhere. | P1 |
 | 8 | One bill | YC table "One bill" -- "Not implemented; current setup is BYOK"; YC "How do you make money" | Nothing. No metering ledger, no credits, no invoices, no payment integration -- a repo-wide search finds Stripe only as an MCP catalog entry and skills. Usage rollups exist (`web/lib/metrics/collector.ts` -> Supabase, `/dashboard/usage`) and `web/app/pricing/page.tsx:24-26` states BYOK, $0 seats, model costs billed by the selected path. | Not started, and correctly not claimed. Depends on pillar 7 (real rates) and on a metering ledger that does not exist; the current rollups are estimates from one rate table and cover machine compute only, not model tokens. Provider resale needs commercial agreements that do not exist. | P1 |
 | 9 | Observability by route | YC table "Observability" (next: report task success, time-to-first-output, total cost, resume reliability by route); WHITEPAPER.md:5.5 | Broad surfaces: metrics collector on cron tick, `/dashboard/usage`, activity/sessions/logs/artifacts, and an 11-metric cross-provider benchmark harness (`web/lib/benchmarks/types.ts:21-31`, engine/probes/stats in the same directory). Route explanation after the fact via `machine.attempts`. | None of the four promised numbers is reported by route. `RunTrace` (`web/lib/learning/types.ts`) has success/latency/cost but no time-to-first-output and no resume outcome, and is cron-only. Time-to-first-event is measured only by the one-shot `scripts/mux-live-test.ts` and lives as prose in docs/MUX-RESULTS.md; nothing stores it. Benchmarks measure empty boxes, not completed agent work. | P1 |
@@ -117,14 +117,16 @@ Pillars 1, 2, 4, 6, 11, 12, and 15 all degrade to one root cause. Four
 substrate vendors are implemented twice against two different contracts,
 and until 0.3 the routing intelligence sat on the side that had no failover
 while the failover sat on the side that had no intelligence. 0.3 closed the
-failover half (`web/lib/mux/failover.ts`); the hosted side still has no health,
-no constraints and no learned order:
+failover half (`web/lib/mux/failover.ts`) and 2026-08-04 gave that walk the
+mux's own circuit breaker per tenant (`web/lib/mux/health.ts`, provisioning
+route only); the hosted side still has no constraint filter and no learned
+order. The table below is the state as of those dates, not the original one:
 
 | Concern | `src/mux/*` (direct) | `web/lib/*` (hosted) |
 |---|---|---|
 | Provider contract | `SandboxProvider` (`src/mux/types.ts:187`) | `MachineProvider` (`web/lib/providers/types.ts`) |
-| Route ordering | static primary -> backups (`src/mux/router.ts:382`) | credential filter only (`web/lib/mux/route.ts:75`) |
-| Failover | yes, create-time (`src/mux/router.ts:439`) | none (502 on first error) |
+| Route ordering | credentials, constraints, price, learned, then health (`src/mux/router.ts` `routeFor`) | credential filter (`web/lib/mux/route.ts:75`) then health, at provisioning only |
+| Failover | yes, create-time (`src/mux/router.ts:439`) | yes, create-time since 2026-08-02 (`web/lib/mux/failover.ts`); it was 502-on-first-error before that |
 | Learned selection | none | advisory bandit (`web/lib/learning/*`) |
 | Run traces emitted | none | cron only (`web/lib/learning/ingest.ts`) |
 | PTY | native + tmux (`src/mux/pty/tmux.ts`) | tmux-over-exec (`web/lib/dashboard/terminal-session.ts`) |
@@ -207,11 +209,17 @@ Closes pillar 4.
 3.1 **Provider health store.** Rolling window of provisioning outcomes per
 substrate (success, transient, rate_limited, fatal) with a cooldown after
 a burst. The error taxonomy already exists in all four adapters; nothing
-records it. Depends on 0.4 for durability.
+records it. Depends on 0.4 for durability. **DONE** in `src/mux/health.ts`
+(see 3b), and on the hosted plane 2026-08-04 as the per-tenant
+`kind='health'` row of `mux_placements` (`web/lib/mux/health.ts`) -- the
+same breaker, not a second one.
 
 3.2 **Health-aware ordering + cooldown skip** in `routeFor()`. Depends on
 2.3, 3.1. This is the first moment "health-aware fallback" may be said out
-loud.
+loud. **DONE** in `routeFor()` (see 3b); on the hosted plane the
+provisioning route's failover walk consults the tenant's breaker
+(2026-08-04). Still scoped: no other hosted verb orders by health, so the
+claim must name machine creation (section 4, item 2).
 
 3.3 **Idempotent replay.** A caller-declared `idempotent: true` lets a
 mid-run failure be retried on the next lane; everything else keeps the
@@ -324,10 +332,12 @@ which was simply wrong. OpenRouter serves an Anthropic-Messages endpoint
 (measured, docs/UPSTREAMS.md), so a gateway key drives claude-code. The rule
 now lives in `src/mux/upstreams.ts`, per harness and per wire format.
 
-What did NOT change: the cross-cutting defect above. All of this landed in
-`src/mux/*` only. 0.3 has since given the hosted plane create-time failover
-(`web/lib/mux/failover.ts`), but it still has no health and no constraints, and
-at that point the two provider contracts still coexisted. Convergence remained
+What did NOT change at the time: the cross-cutting defect above. All of this
+landed in `src/mux/*` only. 0.3 has since given the hosted plane create-time
+failover (`web/lib/mux/failover.ts`), and 2026-08-04 gave that walk the SAME
+breaker per tenant (`web/lib/mux/health.ts`, provisioning route only) -- so
+health is no longer mux-only, though constraints still are. At the time of this
+section the two provider contracts also still coexisted; convergence remained
 item 0 until the 0.2 deletion landed (2026-08-03, below).
 
 ---
@@ -519,10 +529,16 @@ confirmed not-found, and `remove()` REFUSING to forget on any other error.
 Live-verified afterwards on e2b (create 758ms, `MUX-OK`, destroyed) with the
 health sample persisted at the measured 756ms.
 
-Still needed before the hosted store does anything: **a human must apply
-`web/supabase/migrations/006_mux_placements.sql`** (the table does not exist in
-any project yet), and something must call `setPlacementStore()` on the hosted
-path -- nothing does today.
+Both remaining gaps are CLOSED. Migration 006 was applied 2026-08-03 (with RLS
+enabled and zero policies -- the service role bypasses it and is the only
+reader). And the install step is NOT `setPlacementStore()`: that function is a
+module singleton, so setting it per request in a serverless process lets one
+tenant read another's placements. `web/lib/mux/hosted-mux.ts` passes the store
+PER INSTANCE instead (`CreateMuxOptions.placementStore`), and a test asserts the
+global is never touched. Since 2026-08-04 that mux also persists health per
+tenant (`persistHealth: true`), which the same per-instance store makes safe:
+`noteHealth` writes through the instance, so a sample cannot land in another
+tenant's row.
 
 ### Contract gaps 0.2 surfaced
 
@@ -605,19 +621,26 @@ becomes true is named.
    published SDK never sets (`src/lib/sdk.ts:90-109`). Say: "the
    recommendation is advisory and the user confirms the route."
 
-2. **"Health-aware fallback."** There is no health signal in the codebase.
-   Say: "create-time failover across a configured substrate order, with
-   every attempt recorded." True per `src/mux/router.ts:439-496`.
+2. **"Health-aware fallback"** as a property of the product, unqualified.
+   The SIGNAL now exists on both planes (`src/mux/health.ts`; per tenant on
+   the hosted side via `web/lib/mux/health.ts`, 2026-08-04) and both order a
+   create-time route by it -- so a scoped claim is true: "at machine
+   creation, a substrate that is failing right now is tried last, per
+   account." What stays false is the unscoped version: nothing is
+   health-aware on a hosted verb other than provisioning, and a run is never
+   re-placed (see 3).
 
 3. **"Automatic failover"** without the words *at machine creation*.
    Failover is placement-time only, by design (docs/MUX.md:180-186). Runs
    are never replayed; a broken run returns `truncated: true`.
 
-4. **"The dashboard fails over between providers *using health or learned
-   order*."** As of 2026-08-02 it DOES fail over at create time, walking the
-   credentialed order and recording every attempt (`web/lib/mux/failover.ts`).
-   What is still unsayable there: health-aware, learned, or constraint-filtered
-   ordering. The hosted order is static.
+4. **"The dashboard fails over between providers *using a learned order*."**
+   As of 2026-08-02 it DOES fail over at create time, walking the credentialed
+   order and recording every attempt (`web/lib/mux/failover.ts`), and as of
+   2026-08-04 that order is reordered by the calling tenant's circuit breaker
+   (`web/lib/mux/health.ts`) on the provisioning route. What is still
+   unsayable there: learned or constraint-filtered ordering, and health on any
+   other hosted verb.
 
 5. **"One bill" / "unified billing" / "no provider onboarding" / "one
    account means you don't need provider accounts."** No billing code
@@ -686,8 +709,10 @@ partner who read the code agree?* Today the sentence that survives is:
 
 > Four agent harnesses and four sandbox adapters behind one contract, with
 > credential-gated create-time failover across a configured substrate
-> order, an advisory learned recommender, and a browser console that drives
-> the real CLI on any of them. Automatic capability-aware selection,
-> health-aware fallback, and one bill are next.
+> order -- and, per account, a circuit breaker that tries a substrate which
+> is failing right now last when a machine is created -- an advisory learned
+> recommender, and a browser console that drives the real CLI on any of them.
+> Automatic capability-aware selection, health-aware *runs* (a broken run is
+> still never re-placed), and one bill are next.
 
 Everything in section 3 exists to shorten that second sentence.

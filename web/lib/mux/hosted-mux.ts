@@ -96,13 +96,25 @@ export function createHostedMux(userId: string, config: UserConfig): Mux {
 			"createHostedMux needs a non-empty userId: an unscoped mux would read every tenant's placements",
 		);
 	}
+	const placementStore = createSupabasePlacementStore(userId);
 	return createMux(muxConfigForUser(config), {
-		placementStore: createSupabasePlacementStore(userId),
-		// Health stays on the default (the local file / whatever the mux
-		// resolves): the hosted plane has no circuit-breaker table yet, and
-		// silently persisting one user's breaker samples into a shared file
-		// would be worse than not persisting them. Roadmap pillar 6 -- the
-		// hosted plane has failover but no health -- is unchanged by this file.
-		persistHealth: false,
+		placementStore,
+		// Health persists into THIS TENANT's row (2026-08-04, ROADMAP pillar 6).
+		//
+		// It used to be false, and the reason given was that there was no hosted
+		// breaker table -- which was already wrong when it was written: migration
+		// 006 (applied 2026-08-03) carries a `kind = 'health'` row and
+		// `SupabasePlacementStore` has implemented `read()`/`saveHealth()` against
+		// it from the start. The real hazard was the module-global store, and this
+		// mux does not use it: `noteHealth` writes through the INSTANCE store
+		// above, so a sample can only ever land in `userId`'s row. One user's
+		// expired key must not open another user's circuit, and with a per-tenant
+		// row it structurally cannot.
+		//
+		// Load path: a constructor cannot await, so under an async store the mux
+		// opens with an empty breaker and `ensureHealth()` fills it from
+		// `store.read()` before the first operation health can influence
+		// (src/mux/router.ts). Nothing here has to sequence that.
+		persistHealth: true,
 	});
 }

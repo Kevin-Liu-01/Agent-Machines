@@ -8,10 +8,18 @@
  *             the trap (a Hermes box labeled OpenClaw with no OpenClaw on
  *             it); POST machines/[id]/agent installs, verifies, relabels.
  *   DELETE -- archive (default) or hard-destroy via ?destroy=1
+ *
+ * DELETE also prunes this machine's mux placement on the two paths that end the
+ * record (?destroy=1, ?remove=1), never on archive: an archived machine is
+ * still addressable and unarchivable, so its placement must survive. The prune
+ * is guarded by sandbox id (lib/mux/placements.ts) -- after a migration the
+ * name points at the NEW sandbox, and destroying the old record must not
+ * strand it.
  */
 
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
+import { forgetHostedPlacement } from "@/lib/mux/placements";
 import { MachineProviderError, getProvider } from "@/lib/providers";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 import type { MachineRef } from "@/lib/user-config/schema";
@@ -162,8 +170,14 @@ export async function DELETE(request: Request, ctx: Ctx): Promise<Response> {
 	}
 
 	if (url.searchParams.get("remove") === "1") {
+		// Prune the mux placement BEFORE the record goes: once the row is gone
+		// nothing on this plane could ever identify the placement again, and the
+		// store deliberately has no TTL (src/mux/state.ts "Staleness"), so it
+		// would be an unprunable entry pointing at a sandbox no dashboard row
+		// explains. Guarded by sandbox id inside, and best-effort -- see below.
+		const placement = await forgetHostedPlacement({ userId, machine });
 		await setUserConfig({ removeMachine: id });
-		return Response.json({ ok: true, action: "removed" });
+		return Response.json({ ok: true, action: "removed", placement });
 	}
 
 	const hardDestroy = url.searchParams.get("destroy") === "1";
@@ -179,8 +193,15 @@ export async function DELETE(request: Request, ctx: Ctx): Promise<Response> {
 				{ status: 502 },
 			);
 		}
+		// The substrate has confirmed the sandbox is gone, which is the ONLY
+		// authority src/mux/state.ts accepts for pruning a placement. Runs after
+		// the destroy and before the record write, and never throws (the
+		// function returns a reason instead), so a placement-store hiccup cannot
+		// turn a successful destroy into a 502 -- a stale placement is a
+		// bookkeeping problem, a leaked sandbox is a billing one.
+		const placement = await forgetHostedPlacement({ userId, machine });
 		await setUserConfig({ removeMachine: id });
-		return Response.json({ ok: true, action: "destroyed" });
+		return Response.json({ ok: true, action: "destroyed", placement });
 	}
 
 	await setUserConfig({ archiveMachine: id });

@@ -57,6 +57,7 @@ import {
 	assertUsableProvisionState,
 	provisionWithFailover,
 } from "@/lib/mux/failover";
+import { recordHostedPlacement } from "@/lib/mux/placements";
 import { resolveRoute } from "@/lib/mux/route";
 import { defaultMemoryBundle, resolveBundle } from "@/lib/memory/bundle";
 import { bundleInstallLines } from "@/lib/memory/install";
@@ -81,6 +82,15 @@ export type RunMigrationArgs = {
 	moveState: boolean;
 	/** default "destroy" -- see sourceDisposition() for the justification. */
 	source: MigrationSourceOption;
+	/**
+	 * The tenant whose mux placement gets re-pointed after commit. REQUIRED and
+	 * passed in from the route's `getEffectiveUserId()` rather than resolved
+	 * here: this function runs inside `after()`, and re-resolving identity in a
+	 * background task is exactly how a tenant-scoped write ends up under the
+	 * wrong tenant (or under none). Required so the type system, not a reviewer,
+	 * catches a call site that forgot it.
+	 */
+	userId: string;
 };
 
 /** The tar rides /tmp on both ends; machine-fs's ~/.agent-machines jail and
@@ -492,6 +502,43 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 			// Active flips ONLY here, and only if the user was on the old box.
 			...(wasActive ? { activeMachineId: newMachineId } : {}),
 		});
+
+		// -- placement mirror (post-commit, best-effort, reported) -------------
+		// Re-point the mux ROUTER's memory of this name at the new sandbox, so
+		// the SDK's `mux.connect(name)` and the dashboard agree about where the
+		// machine lives. Immediately after commit and before the source
+		// teardown: that is the shortest window in which the router could still
+		// hand a caller a sandbox this migration is about to destroy.
+		//
+		// The config is RE-READ because the ambiguity guard in
+		// resolvePlacementName reads the archived flag the commit above just
+		// wrote -- against the pre-commit snapshot both records are live under
+		// the same name and every migration would decline to record. Under
+		// `source: "keep"` both really do stay live, and declining is then the
+		// correct answer (see the placements.ts header).
+		try {
+			const postCommit = await getUserConfig();
+			const mirror = await recordHostedPlacement({
+				userId: args.userId,
+				config: postCommit,
+				machine: {
+					id: newMachineId,
+					name: machine.name,
+					providerKind: args.to,
+					agentKind: machine.agentKind,
+				},
+			});
+			report.placement = mirror.recorded
+				? { recorded: true, name: mirror.name }
+				: { recorded: false, reason: mirror.reason };
+		} catch (err) {
+			// Bookkeeping for a second plane cannot fail a migration that has
+			// already committed; the load is on the new sandbox either way.
+			report.placement = {
+				recorded: false,
+				reason: err instanceof Error ? err.message : "placement mirror failed",
+			};
+		}
 
 		// -- source disposition (post-commit, best-effort, reported, never
 		// silent; a failure here does NOT fail the migration -- the load is

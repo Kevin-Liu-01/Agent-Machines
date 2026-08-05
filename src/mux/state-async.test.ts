@@ -536,3 +536,83 @@ test("a machine built by an injected-store mux forgets in THAT store on destroy"
 	assert.equal(injected.machines.gamma, undefined, "forgot in the injected store");
 	assert.equal(globalStore.machines.gamma, undefined, "and never touched the global");
 });
+
+test("placements() reports the INJECTED store, never the global", async () => {
+	// The hosted read path (web/lib/mux/placements.ts) asks the ROUTER what it
+	// remembers instead of reading the store object it passed in, so that a mux
+	// which fell back to the process global -- i.e. to another tenant's
+	// placements -- is visible to the caller. That only works if placements()
+	// goes through the same store() resolution every other operation uses.
+	const globalStore = store; // installed by beforeEach
+	globalStore.machines["other-tenant"] = {
+		substrate: "e2b",
+		sandboxId: "global-sbx",
+		agent: "codex",
+		updatedAt: "2026-08-04T00:00:00.000Z",
+	};
+	const injected = new AsyncStore();
+	injected.machines.alpha = {
+		substrate: "sprites",
+		sandboxId: "injected-sbx",
+		agent: "claude-code",
+		updatedAt: "2026-08-04T01:00:00.000Z",
+	};
+
+	const mux = createMux(CONFIG, {
+		selection: new SelectionPolicy({ traces: [] }),
+		placementStore: injected,
+	});
+
+	assert.deepEqual(await mux.placements(), {
+		alpha: {
+			substrate: "sprites",
+			sandboxId: "injected-sbx",
+			agent: "claude-code",
+			updatedAt: "2026-08-04T01:00:00.000Z",
+		},
+	});
+	// A read, not a wake: no provider was registered above, so any provider call
+	// would have thrown -- and the global's entry must not leak in.
+	assert.equal(injected.reads > 0, true, "the injected store was never read");
+	assert.equal(globalStore.reads, 0, "the global store was read");
+});
+
+test("health loads from and persists to the INJECTED store, never the global", async () => {
+	// The mux-side half of `persistHealth: true` in web/lib/mux/hosted-mux.ts
+	// (2026-08-04). The hosted plane turns persistence ON precisely because the
+	// store it injects is scoped to one tenant, so this asserts the sample can
+	// only reach that store: one user's failing key must not open another user's
+	// circuit, and there is no per-tenant health without this property.
+	const globalStore = store; // installed by beforeEach
+	// A fixture that is distinguishable from the injected one, so "which store
+	// was read" is answerable from the samples rather than from a call count.
+	const globalFixture = new SubstrateHealth();
+	globalFixture.record("e2b", "fatal");
+	globalStore.health = globalFixture.toJSON();
+
+	const injected = new AsyncStore();
+	injected.health = openBreaker().toJSON();
+
+	const mux = createMux(CONFIG, {
+		selection: new SelectionPolicy({ traces: [] }),
+		placementStore: injected,
+	});
+	mux.registerProvider("e2b", stubProvider("e2b") as unknown as SandboxProvider);
+
+	await mux.create({ name: "alpha", install: false });
+
+	// Loaded from the injected store: the three transient samples were adopted
+	// and this run appended to them. The global's lone fatal never appears.
+	assert.deepEqual(
+		mux.health.toJSON().substrates.e2b?.samples.map((sample) => sample.outcome),
+		["transient", "transient", "transient", "ok"],
+	);
+	// Persisted to the injected store...
+	assert.deepEqual(
+		injected.health?.substrates.e2b?.samples.map((sample) => sample.outcome),
+		["transient", "transient", "transient", "ok"],
+	);
+	// ...and the global is byte-for-byte what it was. A write there would be
+	// another tenant's row on the hosted path.
+	assert.deepEqual(globalStore.health, globalFixture.toJSON());
+});

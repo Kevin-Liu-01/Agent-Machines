@@ -12,10 +12,12 @@ build if this file and the source disagree.
 
 **Two surfaces, and only one of them is this.** The hosted control plane
 (`web/`) adapts the same four vendors through its own `MachineProvider`
-contract and has only part of the routing below: create-time failover over a
-static credentialed order (2026-08-02, `web/lib/mux/failover.ts`), but no
-health, no constraints, and an advisory recommendation rather than a learned
-order. See
+contract and has only part of the routing below: create-time failover
+(2026-08-02, `web/lib/mux/failover.ts`) whose order is credential-gated and,
+since 2026-08-04, reordered by this same circuit breaker held per tenant
+(`web/lib/mux/health.ts`) -- but still no constraints and an advisory
+recommendation rather than a learned order, and health there informs the
+provisioning route only. See
 [which surface has what](#which-surface-has-what) and item 0 of
 [ROADMAP.md](./ROADMAP.md).
 
@@ -334,6 +336,25 @@ intermittent 500s that still create the sprite, and 2 of 3 identical requests
 failed in one measured run, so a threshold of 2 would trip on a substrate that
 was working.
 
+### On the hosted plane (2026-08-04)
+
+The breaker above is the only one: `web/lib/mux/health.ts` value-imports it
+through the compiled package rather than reimplementing it, so there is one
+tuning, one snapshot version and one "fatal never opens a circuit" rule to
+reason about. What the hosted side adds is scope and I/O -- the snapshot is read
+and written **per tenant**, as the `kind = 'health'` row of `mux_placements`
+(migration 006), because one user's expired key says nothing about another
+user's lane.
+
+Precisely what consults it: the provisioning route's failover walk
+(`web/app/api/dashboard/admin/provision-machine/route.ts`), which reorders its
+credentialed lanes and feeds every lane's outcome back. Nothing else does. A
+substrate migration pins one lane by construction, so there is no order for
+health to change there, and wake/sleep/run do not route at all. A requested lane
+that health demotes is still walked -- last -- and the response says the machine
+was placed *ahead of* it rather than *after it failed*, because it was never
+tried.
+
 ## Learned selection
 
 `src/mux/selection.ts` scores `harness x substrate` lanes from **our own run
@@ -599,9 +620,9 @@ on Sprites never finished until detached work was understood (see
 | Capability | src/mux (this doc) | hosted control plane (`web/`) |
 | --- | --- | --- |
 | Provider contract | `SandboxProvider` | `MachineProvider`, since 2026-08-03 a facade over the same four mux providers -- the vendor code exists once |
-| Create-time failover | yes, with every attempt recorded | yes, over a static credentialed order, attempts recorded (`web/lib/mux/failover.ts`) |
+| Create-time failover | yes, with every attempt recorded | yes, attempts recorded, ordered by credentials then health -- no constraint filter, no price, no learned order (`web/lib/mux/failover.ts`) |
 | Agent switch / substrate migrate | yes -- `switchAgent()` verifies then flips the placement; `migrate()` copies $HOME file state and commits last | yes, same ordering via its own endpoints (`machines/[id]/agent`, `machines/[id]/migrate`), progress in `migrationState` only -- no MigrateStep stream |
-| Health ordering | yes, persisted circuit breaker | none |
+| Health ordering | yes, persisted circuit breaker | yes at provisioning only -- the same breaker, per tenant in `mux_placements` (`web/lib/mux/health.ts`); migrate, wake and run do not consult it |
 | Constraint filtering | yes, naming the failed dimension | none |
 | Learned ordering | yes, from local run traces | advisory recommendation only, from cron probes |
 | Run traces | one per run | cron ingest only |

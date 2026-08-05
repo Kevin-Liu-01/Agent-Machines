@@ -48,6 +48,12 @@ const mocks = vi.hoisted(() => {
 		exportTar: vi.fn(),
 		restoreTar: vi.fn(),
 		verifyMarker: vi.fn(),
+		/** Tenants the placement store was constructed for, in order. */
+		placementTenants: [] as string[],
+		/** Placement writes that reached the store. */
+		placementWrites: [] as Array<{ tenantId: string; name: string; placement: unknown }>,
+		/** Set to make the next remember() reject, for the best-effort path. */
+		placementFails: false,
 	};
 });
 
@@ -88,7 +94,28 @@ vi.mock("@/lib/memory/install", () => ({
 vi.mock("@/lib/workers/resolve", () => ({
 	resolveMachineWorker: vi.fn(() => ({ memoryBundleId: "mb" })),
 }));
+// Only the STORE is faked; lib/mux/placements.ts runs for real, so the tenant
+// threading and the name-ambiguity guard under test are the production ones.
+vi.mock("@/lib/mux/placement-store", () => ({
+	createSupabasePlacementStore: (tenantId: string) => {
+		mocks.placementTenants.push(tenantId);
+		return {
+			remember: async (name: string, placement: unknown) => {
+				if (mocks.placementFails) throw new Error("supabase placement write failed");
+				mocks.trace.push(`placement:remember:${name}`);
+				mocks.placementWrites.push({ tenantId, name, placement });
+			},
+			read: async () => ({ machines: {} }),
+			forget: async (name: string) => {
+				mocks.trace.push(`placement:forget:${name}`);
+			},
+		};
+	},
+}));
 vi.mock("agent-machines/mux", () => ({
+	// hosted-mux.ts value-imports this; migrate never builds a mux, but the
+	// import binding must exist or the mocked module throws on access.
+	createMux: vi.fn(),
 	MOVE_ALLOWLIST: (agent: string) => ({
 		include: [".agent-machines/MEMORY.md", ".agent-machines/skills", `${agent}-state`],
 		exclude: [".env"],
@@ -217,6 +244,9 @@ function refOf(machineId: string): MachineRef | undefined {
 beforeEach(() => {
 	vi.clearAllMocks();
 	mocks.trace.length = 0;
+	mocks.placementTenants.length = 0;
+	mocks.placementWrites.length = 0;
+	mocks.placementFails = false;
 	delete process.env.VERCEL_OIDC_TOKEN;
 
 	store = {
@@ -304,6 +334,7 @@ const run = (overrides: Partial<Parameters<typeof runMachineMigration>[0]> = {})
 		to: "sprites",
 		moveState: true,
 		source: "destroy",
+		userId: "user-alpha",
 		...overrides,
 	});
 
@@ -570,5 +601,87 @@ describe("validate gate", () => {
 		expect(state?.phase).toBe("failed");
 		expect(state?.step).toBe("validate");
 		expect(state?.lastError).toContain("DEDALUS_API_KEY");
+	});
+});
+
+/* ------------------------------------------------------------------ */
+/* Mux placement mirror (post-commit, tenant-scoped, best-effort)       */
+/* ------------------------------------------------------------------ */
+
+describe("mux placement mirror", () => {
+	it("re-points the placement at the new sandbox, under the CALLER's tenant", async () => {
+		await run({ userId: "user-alpha" });
+
+		// The store is constructed per operation with the tenant the route
+		// resolved -- never a process-global store, which under concurrency is
+		// another tenant's placements.
+		expect(mocks.placementTenants).toEqual(["user-alpha"]);
+		expect(mocks.placementWrites).toEqual([
+			{
+				tenantId: "user-alpha",
+				name: "box",
+				// The NEW sandbox on the NEW substrate, carrying the agent that
+				// survived the move; the name is what stays constant.
+				placement: { substrate: "sprites", sandboxId: "new-1", agent: "codex" },
+			},
+		]);
+		const report = migrationStateOf("new-1")?.report;
+		expect(report?.placement).toEqual({ recorded: true, name: "box" });
+	});
+
+	it("mirrors AFTER the commit and BEFORE the source is destroyed", async () => {
+		// Ordering matters in one direction only: between commit and teardown is
+		// the shortest window in which the router could hand a caller a sandbox
+		// this migration is about to destroy.
+		await run();
+		const commit = mocks.trace.indexOf("commit");
+		const mirror = mocks.trace.indexOf("placement:remember:box");
+		const teardown = mocks.trace.indexOf("destroy:e2b:old-1");
+		expect(commit).toBeGreaterThanOrEqual(0);
+		expect(mirror).toBeGreaterThan(commit);
+		expect(teardown).toBeGreaterThan(mirror);
+	});
+
+	it("another tenant's id is the only thing that changes the write's scope", async () => {
+		await run({ userId: "user-beta" });
+		expect(mocks.placementTenants).toEqual(["user-beta"]);
+		expect(mocks.placementWrites.map((w) => w.tenantId)).toEqual(["user-beta"]);
+	});
+
+	it("declines to record when source:keep leaves TWO live machines named box", async () => {
+		// Both records stay live under the same name, and a placement keyed by
+		// that name would resolve to whichever wrote last -- i.e. the SDK could
+		// get either sandbox. Refusing is the fail-closed answer, and the reason
+		// names both ids.
+		await run({ source: "keep" });
+		expect(mocks.placementWrites).toEqual([]);
+		const report = migrationStateOf("new-1")?.report;
+		expect(report?.placement?.recorded).toBe(false);
+		expect(report?.placement?.reason).toContain("old-1");
+		expect(report?.placement?.reason).toContain("new-1");
+		// The migration itself still succeeded: the mirror is bookkeeping.
+		expect(migrationStateOf("new-1")?.phase).toBe("succeeded");
+	});
+
+	it("a placement-store failure does NOT fail a committed migration, and is REPORTED", async () => {
+		mocks.placementFails = true;
+		await run();
+		const state = migrationStateOf("new-1");
+		expect(state?.phase).toBe("succeeded");
+		expect(state?.report?.placement).toEqual({
+			recorded: false,
+			reason: "supabase placement write failed",
+		});
+		// And the source disposition still ran: a mirror failure must not skip
+		// the teardown and leak a sandbox.
+		expect(mocks.trace).toContain("destroy:e2b:old-1");
+	});
+
+	it("never writes a placement for a migration that failed before commit", async () => {
+		mocks.verifyMarker.mockImplementation(async () => ({ ok: false, reason: "sha mismatch" }));
+		await run();
+		expect(mocks.placementWrites).toEqual([]);
+		expect(mocks.placementTenants).toEqual([]);
+		expect(migrationStateOf("old-1")?.phase).toBe("failed");
 	});
 });

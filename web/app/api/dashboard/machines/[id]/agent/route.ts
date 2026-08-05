@@ -148,8 +148,19 @@ export async function POST(request: Request, ctx: Ctx): Promise<Response> {
 		return Response.json({ error: "not_found" }, { status: 404 });
 	}
 
+	// placementTenantId mirrors the mux placement AFTER the install lands, so
+	// the router's memory of "which harness answers on this sandbox" agrees with
+	// the record -- the SDK's `mux.connect(name)` would otherwise keep handing
+	// back the old harness. Deliberately post-install and best-effort: the
+	// placement must never claim an agent that is not installed (the SDK's
+	// switchAgent writes only after its version probe passes), and a
+	// placement-store failure must not fail a swap that worked. userId is this
+	// request's, resolved above -- never a global.
 	after(() =>
-		scheduleWebBootstrap(machineForBootstrap, provider, latestConfig, { force: true }),
+		scheduleWebBootstrap(machineForBootstrap, provider, latestConfig, {
+			force: true,
+			placementTenantId: userId,
+		}),
 	);
 
 	return Response.json(

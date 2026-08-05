@@ -185,7 +185,11 @@ export async function POST(request: Request, ctx: Ctx): Promise<Response> {
 	};
 	await setUserConfig({ patchMachine: { id, patch: { migrationState } } });
 
-	after(() => runMachineMigration({ machineId: id, to, moveState, source }));
+	// userId is captured HERE, from this request, and carried into the background
+	// task: the placement re-point after commit is a tenant-scoped write, and
+	// re-resolving identity inside `after()` is how such a write lands under the
+	// wrong tenant.
+	after(() => runMachineMigration({ machineId: id, to, moveState, source, userId }));
 
 	return Response.json({ ok: true, machineId: id, migration: "scheduled" }, { status: 202 });
 }

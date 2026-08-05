@@ -16,16 +16,24 @@
  * nothing and still keeps the attempt record from drifting away from
  * `RouteAttempt`.
  *
- * What this is NOT: health-aware, capability-filtered, or learned selection.
- * The hosted side has no outcome window, no circuit breaker, no constraint
- * filter and no policy in this path. It is create-time failover across a
- * credential-gated order, and the docs must say that and no more (ROADMAP
- * section 4).
+ * Health arrived 2026-08-04 and is OPTIONAL, injected (`lib/mux/health.ts`).
+ * Without a gate this walk behaves exactly as it did: the resolved order, in
+ * order, blind. With one, the order is reordered by the calling tenant's
+ * persisted circuit breaker and every lane's outcome is fed back. The gate is
+ * injected rather than constructed here so this module keeps no I/O and no
+ * tenant scope of its own, and so a test can drive the ordering deterministically
+ * instead of through Supabase.
+ *
+ * What this is STILL NOT: capability-filtered or learned selection. The hosted
+ * side has no constraint filter and no policy in this path, and the docs must
+ * say that and no more (ROADMAP section 4).
  */
 
+import type { HealthState } from "../../../src/mux/health.js";
 import type { RouteAttempt } from "../../../src/mux/types.js";
 
 import type { SubstrateKind } from "@/lib/mux/capabilities";
+import type { HostedHealthGate } from "@/lib/mux/health";
 import type { ResolvedRoute } from "@/lib/mux/route";
 import { asMachineProviderError } from "@/lib/providers/mux-facade";
 import {
@@ -46,6 +54,14 @@ export type ProvisionAttempt = {
 	reason?: string;
 	/** Measured wall time for a lane that was actually tried. */
 	durationMs?: number;
+	/**
+	 * Breaker verdict for the lane AFTER this outcome was recorded, present only
+	 * when a health gate was supplied. Same field the mux writes on its own
+	 * attempts (`RouteAttempt.health`), so one dashboard component renders either
+	 * source -- and so "why was this lane tried second?" is answerable from the
+	 * record instead of from a guess.
+	 */
+	health?: HealthState;
 };
 
 /**
@@ -150,6 +166,67 @@ export function assertUsableProvisionState(
 	);
 }
 
+/**
+ * The order the walk will actually use.
+ *
+ * A gate may only PERMUTE. If it returns anything else -- a lane dropped, a lane
+ * invented, a duplicate -- the configured order is used instead, because health
+ * that can remove a lane turns a provider-wide blip (or a bug in a gate) into
+ * "provisioning is impossible", which is strictly worse than a wasted attempt on
+ * a lane that is probably down. Same rule as `src/mux/health.ts`: advisory,
+ * never exclusive.
+ */
+function orderedRoute(
+	route: readonly SubstrateKind[],
+	health: HostedHealthGate | undefined,
+): readonly SubstrateKind[] {
+	if (!health) return route;
+	let ordered: readonly SubstrateKind[];
+	try {
+		ordered = health.order(route);
+	} catch {
+		return route;
+	}
+	if (!Array.isArray(ordered)) return route;
+	const permutation =
+		ordered.length === route.length &&
+		route.every((substrate) => ordered.includes(substrate));
+	return permutation ? ordered : route;
+}
+
+/**
+ * Feed one outcome back, and never let that fail the provision. `kind: null` is
+ * the success case. The gate already swallows its own store errors; this catch
+ * covers the gate itself, which is injected and therefore not ours.
+ */
+async function noteHealth(
+	health: HostedHealthGate | undefined,
+	substrate: SubstrateKind,
+	kind: ProviderError | null,
+	latencyMs: number,
+): Promise<void> {
+	if (!health) return;
+	try {
+		if (kind === null) await health.noteOk(substrate, latencyMs);
+		else await health.noteFailure(substrate, kind, latencyMs);
+	} catch {
+		// A machine that exists is worth more than a sample that was recorded.
+	}
+}
+
+/** Attempt annotation, absent (not `undefined`-valued) when there is no gate. */
+function healthOf(
+	health: HostedHealthGate | undefined,
+	substrate: SubstrateKind,
+): { health?: HealthState } {
+	if (!health) return {};
+	try {
+		return { health: health.stateOf(substrate) };
+	} catch {
+		return {};
+	}
+}
+
 function describeAttempts(attempts: readonly ProvisionAttempt[]): string {
 	return attempts
 		.map(
@@ -177,6 +254,11 @@ export async function provisionWithFailover<T extends ProvisionedMachine>(input:
 	/** The lane the caller asked for, used to attribute a route-wide failure. */
 	primary: SubstrateKind;
 	lane: FailoverLane<T>;
+	/**
+	 * The calling tenant's circuit breaker (`lib/mux/health.ts`). Omit it and the
+	 * walk is exactly the blind static walk it was before 2026-08-04.
+	 */
+	health?: HostedHealthGate;
 	/** Injectable clock so attempt durations are assertable in tests. */
 	now?: () => number;
 }): Promise<FailoverResult<T>> {
@@ -202,7 +284,9 @@ export async function provisionWithFailover<T extends ProvisionedMachine>(input:
 	}
 
 	let lastError: MachineProviderError | null = null;
-	for (const substrate of input.route) {
+	// Health reorders, and only ever reorders. A lane the breaker demoted is
+	// still walked -- last -- so a wrong verdict costs ordering, never a machine.
+	for (const substrate of orderedRoute(input.route, input.health)) {
 		const startedAt = now();
 		// Tracked so a failure *after* provisioning tears the sandbox down
 		// instead of leaving it billing while the walk moves on. This is the
@@ -212,10 +296,16 @@ export async function provisionWithFailover<T extends ProvisionedMachine>(input:
 		try {
 			created = await input.lane.provision(substrate);
 			await input.lane.accept?.(substrate, created);
+			const okMs = now() - startedAt;
+			// Recorded BEFORE the attempt is annotated, so `health` is the verdict
+			// this outcome produced rather than the one that preceded it -- the
+			// same order src/mux/router.ts create() uses.
+			await noteHealth(input.health, substrate, null, okMs);
 			attempts.push({
 				substrate,
 				outcome: "ok",
-				durationMs: now() - startedAt,
+				durationMs: okMs,
+				...healthOf(input.health, substrate),
 			});
 			return { ok: true, substrate, created, attempts };
 		} catch (error) {
@@ -241,11 +331,17 @@ export async function provisionWithFailover<T extends ProvisionedMachine>(input:
 					});
 				}
 			}
+			const failedMs = now() - startedAt;
+			// `healthOutcomeFor` inside the gate decides what this failure means:
+			// a credential or capability gap is not recorded at all, and a `fatal`
+			// is recorded but cannot open a circuit.
+			await noteHealth(input.health, substrate, failure.kind, failedMs);
 			attempts.push({
 				substrate,
 				outcome: "failed",
 				reason: failure.message,
-				durationMs: now() - startedAt,
+				durationMs: failedMs,
+				...healthOf(input.health, substrate),
 			});
 			lastError = failure;
 			if (!isRoutableProviderError(failure.kind)) {

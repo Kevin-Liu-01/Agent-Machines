@@ -74,10 +74,17 @@ describe("createHostedMux", () => {
 		expect(mocks.createMux).not.toHaveBeenCalled();
 	});
 
-	it("does not persist health: there is no hosted breaker table", () => {
+	it("persists health, and only ever into the tenant's own store", () => {
 		createHostedMux("user-alpha", config({ e2b: { apiKey: "k" } }));
 		const [, options] = mocks.createMux.mock.calls[0];
-		expect(options.persistHealth).toBe(false);
+		// The breaker row is per tenant (migration 006's kind='health' row), so a
+		// sample can only reach the store handed to THIS instance. It used to be
+		// false on the grounds that no hosted breaker table existed; it does.
+		expect(options.persistHealth).toBe(true);
+		expect(options.placementStore.tenantId).toBe("user-alpha");
+		// The saving property: the router writes health through the instance
+		// store, so persistence cannot leak across tenants via the global.
+		expect(mocks.setPlacementStore).not.toHaveBeenCalled();
 	});
 });
 

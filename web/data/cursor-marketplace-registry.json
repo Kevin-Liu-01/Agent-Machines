@@ -1,6 +1,6 @@
 {
   "description": "Generated registry stubs for marketplace plugins, skills, and MCPs (used by bundled catalog lookup).",
-  "syncedAt": "2026-08-04T19:29:19.426Z",
+  "syncedAt": "2026-08-05T17:35:40.070Z",
   "items": [
     {
       "id": "plugin-1inch",
@@ -176,11 +176,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Run the full repository compatibility pass: scanner score, startup path, validation loop, and docs reliability.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/agent-compatibility/skills/check-agent-compatibility/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/agent-compatibility/skills/check-agent-compatibility/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/d7d2cc82f335c257.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/agent-compatibility/skills/check-agent-compatibility/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/agent-compatibility/skills/check-agent-compatibility/SKILL.md"
     },
     {
       "id": "plugin-aikido",
@@ -4304,11 +4304,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Designs or reviews CLIs so coding agents can run them reliably: non-interactive flags, layered --help with examples, stdin/pipelines, fast actionable errors, idempotency, dry-run, and predictable structure. Use when building a CLI, adding commands, writing --help, or when the use",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cli-for-agent/skills/cli-for-agents/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cli-for-agent/skills/cli-for-agents/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cli-for-agent/skills/cli-for-agents/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cli-for-agent/skills/cli-for-agents/SKILL.md"
     },
     {
       "id": "plugin-clickhouse",
@@ -5408,11 +5408,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Orchestrate continual learning by delegating transcript mining and AGENTS.md updates to `agents-memory-updater`.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/continual-learning/skills/continual-learning/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/continual-learning/skills/continual-learning/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/013db0017f4467de.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/continual-learning/skills/continual-learning/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/continual-learning/skills/continual-learning/SKILL.md"
     },
     {
       "id": "plugin-convex",
@@ -5612,11 +5612,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Create a new Cursor plugin scaffold with a valid manifest, component directories, and marketplace wiring. Use when starting a new plugin or adding a plugin to a multi-plugin repository.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/create-plugin/skills/create-plugin-scaffold/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/create-plugin/skills/create-plugin-scaffold/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/3006a84a2fcdd3bd.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/create-plugin/skills/create-plugin-scaffold/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/create-plugin/skills/create-plugin-scaffold/SKILL.md"
     },
     {
       "id": "skill-review-plugin-submission",
@@ -5624,11 +5624,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Audit a Cursor plugin for marketplace readiness. Use when validating manifests, component metadata, discovery paths, and submission quality before publishing.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/create-plugin/skills/review-plugin-submission/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/create-plugin/skills/review-plugin-submission/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/3006a84a2fcdd3bd.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/create-plugin/skills/review-plugin-submission/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/create-plugin/skills/review-plugin-submission/SKILL.md"
     },
     {
       "id": "plugin-cursor-sdk",
@@ -5648,11 +5648,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Guide users building apps, scripts, CI pipelines, or automations on top of the Cursor TypeScript SDK (`@cursor/sdk`). Use this skill whenever the user mentions integrating, installing, or writing code against the Cursor SDK; whenever they say `Agent.create`, `Agent.prompt`, `Agen",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-sdk/skills/cursor-sdk/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-sdk/skills/cursor-sdk/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-sdk/skills/cursor-sdk/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-sdk/skills/cursor-sdk/SKILL.md"
     },
     {
       "id": "plugin-cursor-team-kit",
@@ -5672,11 +5672,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Run compile and type-check commands and report failures",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/check-compiler-errors/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/check-compiler-errors/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e7f9aa0a9a21eba2.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/check-compiler-errors/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/check-compiler-errors/SKILL.md"
     },
     {
       "id": "skill-control-cli",
@@ -5684,11 +5684,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Build or adapt a local harness to drive, inspect, and profile an interactive CLI or TUI without external services. Use for CLI UX checks, startup regressions, memory leaks, hangs, prompt flows, or terminal demos.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/control-cli/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/control-cli/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e7f9aa0a9a21eba2.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/control-cli/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/control-cli/SKILL.md"
     },
     {
       "id": "skill-control-ui",
@@ -5696,11 +5696,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Build or adapt a local browser/CDP harness to drive and inspect a web, IDE, or Electron UI. Use for local UI verification, screenshots, accessibility snapshots, perf profiles, visual diffs, or reproducing UI bugs.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/control-ui/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/control-ui/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e7f9aa0a9a21eba2.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/control-ui/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/control-ui/SKILL.md"
     },
     {
       "id": "skill-deslop",
@@ -5708,11 +5708,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Remove AI-generated code slop and clean up code style",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/deslop/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/deslop/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e7f9aa0a9a21eba2.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/deslop/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/deslop/SKILL.md"
     },
     {
       "id": "skill-fix-ci",
@@ -5720,11 +5720,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Find failing PR checks, inspect logs or external check links, and apply focused fixes",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/fix-ci/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/fix-ci/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e7f9aa0a9a21eba2.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/fix-ci/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/fix-ci/SKILL.md"
     },
     {
       "id": "skill-fix-merge-conflicts",
@@ -5732,11 +5732,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Resolve merge conflicts non-interactively, validate build and tests, and finalize conflict resolution",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/fix-merge-conflicts/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/fix-merge-conflicts/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e7f9aa0a9a21eba2.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/fix-merge-conflicts/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/fix-merge-conflicts/SKILL.md"
     },
     {
       "id": "skill-get-pr-comments",
@@ -5744,11 +5744,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Fetch and summarize review comments from the active pull request",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/get-pr-comments/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/get-pr-comments/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e7f9aa0a9a21eba2.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/get-pr-comments/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/get-pr-comments/SKILL.md"
     },
     {
       "id": "skill-loop-on-ci",
@@ -5756,11 +5756,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Monitor PR checks and fix failures until green. Uses gh pr checks as the source of truth for PR-attached checks.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/loop-on-ci/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/loop-on-ci/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e7f9aa0a9a21eba2.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/loop-on-ci/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/loop-on-ci/SKILL.md"
     },
     {
       "id": "skill-make-pr-easy-to-review",
@@ -5768,11 +5768,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Prepare PRs for review by cleaning noisy history, improving PR descriptions, and adding reviewer guidance without changing code behavior. Use for \"make this easy to review\", \"tidy this PR\", \"clean up commits\", or \"annotate the diff\".",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/make-pr-easy-to-review/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/make-pr-easy-to-review/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e7f9aa0a9a21eba2.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/make-pr-easy-to-review/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/make-pr-easy-to-review/SKILL.md"
     },
     {
       "id": "skill-new-branch-and-pr",
@@ -5780,11 +5780,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Create a fresh branch, complete work, and open a pull request",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/new-branch-and-pr/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/new-branch-and-pr/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e7f9aa0a9a21eba2.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/new-branch-and-pr/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/new-branch-and-pr/SKILL.md"
     },
     {
       "id": "skill-pr-review-canvas",
@@ -5792,11 +5792,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Generate an interactive PR review walkthrough as an HTML page. Fetches PR data via gh API, categorizes files into core vs mechanical changes, adds reviewer annotations, and renders diffs with moved-code detection. Use when the user pastes a GitHub PR URL and asks for a review, wa",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/pr-review-canvas/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/pr-review-canvas/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e7f9aa0a9a21eba2.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/pr-review-canvas/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/pr-review-canvas/SKILL.md"
     },
     {
       "id": "skill-review-and-ship",
@@ -5804,11 +5804,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Review the current branch for bugs, intent fit, and test coverage; run or write tests; commit focused work; open or update a PR.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/review-and-ship/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/review-and-ship/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e7f9aa0a9a21eba2.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/review-and-ship/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/review-and-ship/SKILL.md"
     },
     {
       "id": "skill-run-smoke-tests",
@@ -5816,11 +5816,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Run Playwright smoke tests, debug failures, and verify fixes",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/run-smoke-tests/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/run-smoke-tests/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e7f9aa0a9a21eba2.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/run-smoke-tests/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/run-smoke-tests/SKILL.md"
     },
     {
       "id": "skill-thermo-nuclear-code-quality-review",
@@ -5828,11 +5828,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Run an extremely strict maintainability review for abstraction quality, giant files, and spaghetti-condition growth. Use for a thermo-nuclear code quality review, thermonuclear review, deep code quality audit, or especially harsh maintainability review.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/thermo-nuclear-code-quality-review/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/thermo-nuclear-code-quality-review/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e7f9aa0a9a21eba2.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/thermo-nuclear-code-quality-review/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/thermo-nuclear-code-quality-review/SKILL.md"
     },
     {
       "id": "skill-verify-this",
@@ -5840,11 +5840,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Verify a claim with fresh local evidence: restate it falsifiably, capture baseline and treatment, compare artifacts, and return VERIFIED, NOT VERIFIED, or INCONCLUSIVE.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/verify-this/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/verify-this/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e7f9aa0a9a21eba2.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/verify-this/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/verify-this/SKILL.md"
     },
     {
       "id": "skill-weekly-review",
@@ -5852,11 +5852,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Produce a weekly synthesis of authored commits with highlights by bugfix, tech debt, and net-new work",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/weekly-review/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/weekly-review/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e7f9aa0a9a21eba2.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/weekly-review/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/weekly-review/SKILL.md"
     },
     {
       "id": "skill-what-did-i-get-done",
@@ -5864,11 +5864,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Summarize authored commits over a user-specified time period into a concise update",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/what-did-i-get-done/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/what-did-i-get-done/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e7f9aa0a9a21eba2.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/what-did-i-get-done/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/what-did-i-get-done/SKILL.md"
     },
     {
       "id": "skill-workflow-from-chats",
@@ -5876,11 +5876,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Extract durable working preferences from recent Cursor chats and convert them into skills, rules, or workflow docs. Use when asked to learn preferences, mine feedback, personalize workflows, or generate team/person-specific agent guidance.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/workflow-from-chats/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/workflow-from-chats/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e7f9aa0a9a21eba2.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/cursor-team-kit/skills/workflow-from-chats/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/workflow-from-chats/SKILL.md"
     },
     {
       "id": "plugin-dnb-commercial-graph",
@@ -6175,12 +6175,12 @@
       "name": "datarobot-agent-assist",
       "kind": "skill",
       "provider": "DataRobot",
-      "description": "Use when the user wants to design, build, code, simulate, or deploy an AI agent (not a predictive model) to DataRobot; mentions agent_spec.md, dr-assist, datarobot-agent-assist, dress rehearsal, or the DataRobot agent template; wants to scaffold a LangGraph, CrewAI, LlamaIndex, N",
-      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-agent-assist/SKILL.md",
+      "description": "Use when the user wants to design, build, code, simulate, or deploy an AI agent (not a predictive model) to DataRobot; mentions agent_spec.md, dr-assist, datarobot-agent-assist, dress rehearsal, swarm simulation, or the DataRobot agent template; wants to scaffold a LangGraph, Cre",
+      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-agent-assist/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/datarobot-logo.png",
-      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-agent-assist/SKILL.md"
+      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-agent-assist/SKILL.md"
     },
     {
       "id": "skill-datarobot-app-framework-cicd",
@@ -6188,11 +6188,11 @@
       "kind": "skill",
       "provider": "DataRobot",
       "description": "Guidance for setting up CI/CD pipelines for DataRobot application templates using GitLab, GitHub Actions, and Pulumi for infrastructure as code. Use when setting up CI/CD pipelines, configuring deployments, or managing infrastructure for DataRobot application templates.",
-      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-app-framework-cicd/SKILL.md",
+      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-app-framework-cicd/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/datarobot-logo.png",
-      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-app-framework-cicd/SKILL.md"
+      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-app-framework-cicd/SKILL.md"
     },
     {
       "id": "skill-datarobot-data-preparation",
@@ -6200,11 +6200,23 @@
       "kind": "skill",
       "provider": "DataRobot",
       "description": "Tools and guidance for data upload, dataset management, data validation, and preparing data for DataRobot projects. Use when uploading datasets, managing data, or validating data for DataRobot.",
-      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-data-preparation/SKILL.md",
+      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-data-preparation/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/datarobot-logo.png",
-      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-data-preparation/SKILL.md"
+      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-data-preparation/SKILL.md"
+    },
+    {
+      "id": "skill-datarobot-discover",
+      "name": "datarobot-discover",
+      "kind": "skill",
+      "provider": "DataRobot",
+      "description": "Use when the user wants to find DataRobot capabilities — skills, MCP servers, agents, or platform resources — for a task. Fetches the live DataRobot catalog directly so results are always current, regardless of third-party search index lag. Also checks the user's own DataRobot in",
+      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-discover/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/datarobot-logo.png",
+      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-discover/SKILL.md"
     },
     {
       "id": "skill-datarobot-external-agent-monitoring",
@@ -6212,11 +6224,11 @@
       "kind": "skill",
       "provider": "DataRobot",
       "description": "Instrument any external or existing AI agent with OpenTelemetry to send traces, logs, and metrics to DataRobot for monitoring, observability, and governance. Use when the user says \"add tracing/observability/monitoring to my agent\", wants to instrument an existing agent project i",
-      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-external-agent-monitoring/SKILL.md",
+      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-external-agent-monitoring/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/datarobot-logo.png",
-      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-external-agent-monitoring/SKILL.md"
+      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-external-agent-monitoring/SKILL.md"
     },
     {
       "id": "skill-datarobot-feature-engineering",
@@ -6224,11 +6236,11 @@
       "kind": "skill",
       "provider": "DataRobot",
       "description": "Guidance for feature engineering, feature discovery, feature importance analysis, and understanding DataRobot's automated feature engineering capabilities. Use when working with feature engineering, feature discovery, or analyzing feature importance in DataRobot.",
-      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-feature-engineering/SKILL.md",
+      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-feature-engineering/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/datarobot-logo.png",
-      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-feature-engineering/SKILL.md"
+      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-feature-engineering/SKILL.md"
     },
     {
       "id": "skill-datarobot-model-deployment",
@@ -6236,11 +6248,11 @@
       "kind": "skill",
       "provider": "DataRobot",
       "description": "Tools and guidance for deploying DataRobot models, managing deployments, configuring prediction environments, and deployment operations. Use when deploying models, creating or updating deployments, or configuring prediction environments.",
-      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-model-deployment/SKILL.md",
+      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-model-deployment/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/datarobot-logo.png",
-      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-model-deployment/SKILL.md"
+      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-model-deployment/SKILL.md"
     },
     {
       "id": "skill-datarobot-model-explainability",
@@ -6248,11 +6260,11 @@
       "kind": "skill",
       "provider": "DataRobot",
       "description": "Tools and guidance for model explainability, prediction explanations, feature impact analysis, SHAP values, SHAP distributions, anomaly assessment, and model diagnostics. Use when analyzing model explanations, feature impact, SHAP values, SHAP distributions, anomaly assessment, o",
-      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-model-explainability/SKILL.md",
+      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-model-explainability/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/datarobot-logo.png",
-      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-model-explainability/SKILL.md"
+      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-model-explainability/SKILL.md"
     },
     {
       "id": "skill-datarobot-model-monitoring",
@@ -6260,11 +6272,11 @@
       "kind": "skill",
       "provider": "DataRobot",
       "description": "Tools and guidance for monitoring model performance, tracking data drift, managing model health, and detecting prediction anomalies. Use when monitoring deployed models, tracking drift, or investigating prediction anomalies.",
-      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-model-monitoring/SKILL.md",
+      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-model-monitoring/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/datarobot-logo.png",
-      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-model-monitoring/SKILL.md"
+      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-model-monitoring/SKILL.md"
     },
     {
       "id": "skill-datarobot-model-training",
@@ -6272,11 +6284,11 @@
       "kind": "skill",
       "provider": "DataRobot",
       "description": "Comprehensive guidance for training models in DataRobot, including project creation, AutoML configuration, feature engineering, and model selection. Use when training models, creating AutoML projects, or selecting models in DataRobot.",
-      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-model-training/SKILL.md",
+      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-model-training/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/datarobot-logo.png",
-      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-model-training/SKILL.md"
+      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-model-training/SKILL.md"
     },
     {
       "id": "skill-datarobot-predictions",
@@ -6284,11 +6296,11 @@
       "kind": "skill",
       "provider": "DataRobot",
       "description": "Tools and guidance for making predictions with DataRobot deployments, including real-time predictions, batch scoring, prediction dataset generation, and prediction explanations (SHAP/XEMP). Use when making predictions, running batch scoring, generating prediction datasets, or exp",
-      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-predictions/SKILL.md",
+      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-predictions/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/datarobot-logo.png",
-      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-predictions/SKILL.md"
+      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-predictions/SKILL.md"
     },
     {
       "id": "skill-datarobot-setup",
@@ -6296,11 +6308,11 @@
       "kind": "skill",
       "provider": "DataRobot",
       "description": "Sets up DataRobot for local development including Python SDK, dr-cli, Agent Assist, and all required dependencies. Use when the user has not yet worked with DataRobot on this machine, OR when any DataRobot task fails due to missing or invalid credentials. Covers first-time setup,",
-      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-setup/SKILL.md",
+      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-setup/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/datarobot-logo.png",
-      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-setup/SKILL.md"
+      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-setup/SKILL.md"
     },
     {
       "id": "skill-datarobot-workload-api",
@@ -6308,11 +6320,11 @@
       "kind": "skill",
       "provider": "DataRobot",
       "description": "Use when the user wants to create, configure, scale, debug, observe, or roll out container workloads on DataRobot's Workload API. Triggers include: deploying a container as a managed service, listing/starting/stopping workloads, changing replica counts or autoscaling, picking CPU",
-      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-workload-api/SKILL.md",
+      "source": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-workload-api/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/datarobot-logo.png",
-      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/5434cb0618939c0ea0b61da32cdb942dc599715d/skills/datarobot-workload-api/SKILL.md"
+      "homepage": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-workload-api/SKILL.md"
     },
     {
       "id": "plugin-dbt",
@@ -6452,11 +6464,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Render a documentation-style Cursor Canvas that organizes architecture notes, API references, walkthroughs, and how-tos into a navigable layout with sections, tables of contents, and cross-references. Use when the user asks for a docs canvas, documentation overview, architecture ",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/docs-canvas/skills/docs-canvas/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/docs-canvas/skills/docs-canvas/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/c686397705e14122.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/docs-canvas/skills/docs-canvas/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/docs-canvas/skills/docs-canvas/SKILL.md"
     },
     {
       "id": "plugin-elastic",
@@ -7863,28 +7875,64 @@
       "homepage": "https://github.com/firetiger-oss/cursor-plugin"
     },
     {
+      "id": "skill-artifact-collaboration",
+      "name": "artifact-collaboration",
+      "kind": "skill",
+      "provider": "Opsera",
+      "description": "Display, edit, and collaborate on Forge journey artifacts — formatted downloads, markdown updates, impact analysis, and inline section comments. Use when the user wants to view formatted artifacts, update PRD/BRD/intent, comment on artifact sections, or analyze downstream impact ",
+      "source": "https://github.com/securefactory/forge-cursor-plugin/blob/e943f314a30e591a4a086676cb0453c03bc074eb/plugins/forge/skills/artifact-collaboration/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/09121ad7231a669b.png",
+      "homepage": "https://github.com/securefactory/forge-cursor-plugin/blob/e943f314a30e591a4a086676cb0453c03bc074eb/plugins/forge/skills/artifact-collaboration/SKILL.md"
+    },
+    {
       "id": "skill-dev-activity",
       "name": "dev-activity",
       "kind": "skill",
       "provider": "Opsera",
       "description": "Sync and validate developer activity in Forge — pull commits and PRs from linked repos, verify data consistency, and replay missed events. Use when the user wants to sync development activity, validate commit history, or recover from missed events.",
-      "source": "https://github.com/securefactory/forge-cursor-plugin",
+      "source": "https://github.com/securefactory/forge-cursor-plugin/blob/e943f314a30e591a4a086676cb0453c03bc074eb/plugins/forge/skills/dev-activity/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/09121ad7231a669b.png",
-      "homepage": "https://github.com/securefactory/forge-cursor-plugin"
+      "homepage": "https://github.com/securefactory/forge-cursor-plugin/blob/e943f314a30e591a4a086676cb0453c03bc074eb/plugins/forge/skills/dev-activity/SKILL.md"
+    },
+    {
+      "id": "skill-forge-score",
+      "name": "forge-score",
+      "kind": "skill",
+      "provider": "Opsera",
+      "description": "Query ForgeScore codebase health metrics for a project — composite score, dimension breakdown, findings, and history. Use when the user asks about code health, ForgeScore, maturity level, or score trends over time.",
+      "source": "https://github.com/securefactory/forge-cursor-plugin/blob/e943f314a30e591a4a086676cb0453c03bc074eb/plugins/forge/skills/forge-score/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/09121ad7231a669b.png",
+      "homepage": "https://github.com/securefactory/forge-cursor-plugin/blob/e943f314a30e591a4a086676cb0453c03bc074eb/plugins/forge/skills/forge-score/SKILL.md"
+    },
+    {
+      "id": "skill-journey",
+      "name": "journey",
+      "kind": "skill",
+      "provider": "Opsera",
+      "description": "Manage Forge journey progress — stage approvals, generation, chat, and blockers. Use when the user asks about journey progress, stage approvals, unlocking stages, generating artifacts, journey chat, or staleness/blockers.",
+      "source": "https://github.com/securefactory/forge-cursor-plugin/blob/e943f314a30e591a4a086676cb0453c03bc074eb/plugins/forge/skills/journey/SKILL.md",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/09121ad7231a669b.png",
+      "homepage": "https://github.com/securefactory/forge-cursor-plugin/blob/e943f314a30e591a4a086676cb0453c03bc074eb/plugins/forge/skills/journey/SKILL.md"
     },
     {
       "id": "skill-project-context",
       "name": "project-context",
       "kind": "skill",
       "provider": "Opsera",
-      "description": "Set up and query Forge project context — select projects, list linked repos, manage artifacts, and configure repositories. Use when the user asks about project setup, linked repositories, artifacts, UX references, journey state, or wants to switch between projects.",
-      "source": "https://github.com/securefactory/forge-cursor-plugin",
+      "description": "Set up and query Forge project context — select projects, list linked repos, manage artifacts, and configure repositories. Use when the user asks about project setup, linked repositories, artifacts, UX references, journey state, project search, or wants to switch between projects",
+      "source": "https://github.com/securefactory/forge-cursor-plugin/blob/e943f314a30e591a4a086676cb0453c03bc074eb/plugins/forge/skills/project-context/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/09121ad7231a669b.png",
-      "homepage": "https://github.com/securefactory/forge-cursor-plugin"
+      "homepage": "https://github.com/securefactory/forge-cursor-plugin/blob/e943f314a30e591a4a086676cb0453c03bc074eb/plugins/forge/skills/project-context/SKILL.md"
     },
     {
       "id": "skill-work-orders",
@@ -7892,11 +7940,11 @@
       "kind": "skill",
       "provider": "Opsera",
       "description": "Manage Forge work orders — list, pick, update, transition, and complete development tasks. Use when the user asks about their current task, next work item, wants to update progress, create PRs, prepare commits, post comments, ask clarifications, or manage workflow stages.",
-      "source": "https://github.com/securefactory/forge-cursor-plugin",
+      "source": "https://github.com/securefactory/forge-cursor-plugin/blob/e943f314a30e591a4a086676cb0453c03bc074eb/plugins/forge/skills/work-orders/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/09121ad7231a669b.png",
-      "homepage": "https://github.com/securefactory/forge-cursor-plugin"
+      "homepage": "https://github.com/securefactory/forge-cursor-plugin/blob/e943f314a30e591a4a086676cb0453c03bc074eb/plugins/forge/skills/work-orders/SKILL.md"
     },
     {
       "id": "plugin-gitbook",
@@ -8291,7 +8339,7 @@
       "source": "https://github.com/cursor/plugins",
       "command": null,
       "brand": null,
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/c710946a3d12d95e.png",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/0df2f63c7ffbd16f.png",
       "homepage": "https://github.com/cursor/plugins"
     },
     {
@@ -8303,7 +8351,31 @@
       "source": "https://github.com/cursor/plugins",
       "command": null,
       "brand": null,
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/c710946a3d12d95e.png",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/0df2f63c7ffbd16f.png",
+      "homepage": "https://github.com/cursor/plugins"
+    },
+    {
+      "id": "plugin-gong",
+      "name": "Gong skill pack",
+      "kind": "plugin",
+      "provider": "Cursor",
+      "description": "Gong MCP integration for revenue intelligence — account summaries, deal insights, and call briefs.",
+      "source": "https://github.com/cursor/plugins",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/62ec1e243a37a940.png",
+      "homepage": "https://github.com/cursor/plugins"
+    },
+    {
+      "id": "mcp-gong",
+      "name": "Gong MCP",
+      "kind": "mcp",
+      "provider": "Cursor",
+      "description": "MCP server from the Gong Cursor plugin.",
+      "source": "https://github.com/cursor/plugins",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/62ec1e243a37a940.png",
       "homepage": "https://github.com/cursor/plugins"
     },
     {
@@ -8315,7 +8387,7 @@
       "source": "https://github.com/cursor/plugins",
       "command": null,
       "brand": null,
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/67220e240fb84c37.png",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/2d862de92d6b7b39.png",
       "homepage": "https://github.com/cursor/plugins"
     },
     {
@@ -8327,7 +8399,7 @@
       "source": "https://github.com/cursor/plugins",
       "command": null,
       "brand": null,
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/67220e240fb84c37.png",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/2d862de92d6b7b39.png",
       "homepage": "https://github.com/cursor/plugins"
     },
     {
@@ -8339,7 +8411,7 @@
       "source": "https://github.com/cursor/plugins",
       "command": null,
       "brand": null,
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ab2ccc6f8def26df.png",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/b09928369fe4bc8a.png",
       "homepage": "https://github.com/cursor/plugins"
     },
     {
@@ -8351,7 +8423,7 @@
       "source": "https://github.com/cursor/plugins",
       "command": null,
       "brand": null,
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ab2ccc6f8def26df.png",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/b09928369fe4bc8a.png",
       "homepage": "https://github.com/cursor/plugins"
     },
     {
@@ -10471,7 +10543,7 @@
       "name": "Magic Patterns skill pack",
       "kind": "plugin",
       "provider": "Magic Patterns",
-      "description": "Use Magic Patterns (magicpatterns.com) from your coding agent: prototype ideas, generate UI inspiration, upload local UI, and integrate Magic Patterns designs into your codebase.",
+      "description": "Use Magic Patterns (magicpatterns.com) from Cursor: prototype ideas, generate UI inspiration, upload local UI, and integrate Magic Patterns designs into your codebase.",
       "source": "https://github.com/magicpatterns/agent-plugins",
       "command": null,
       "brand": null,
@@ -10484,11 +10556,11 @@
       "kind": "skill",
       "provider": "Magic Patterns",
       "description": "Explore several distinct UI design directions for a screen or component in Magic Patterns (magicpatterns.com). First recreates the current UI as a faithful baseline, then creates a shareable magicpatterns.com/inspiration/<id> document and streams in four self-contained HTML conce",
-      "source": "https://github.com/magicpatterns/agent-plugins/blob/09c411f689368027bd39053cf9af168772ec1fef/claude-code/plugins/magic-patterns/skills/inspiration/SKILL.md",
+      "source": "https://github.com/magicpatterns/agent-plugins/blob/95423dbebeed508436bcedad8df39334f05b7f28/cursor/skills/inspiration/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/magic-patterns.png",
-      "homepage": "https://github.com/magicpatterns/agent-plugins/blob/09c411f689368027bd39053cf9af168772ec1fef/claude-code/plugins/magic-patterns/skills/inspiration/SKILL.md"
+      "homepage": "https://github.com/magicpatterns/agent-plugins/blob/95423dbebeed508436bcedad8df39334f05b7f28/cursor/skills/inspiration/SKILL.md"
     },
     {
       "id": "skill-integrate-magic-patterns-design",
@@ -10496,11 +10568,11 @@
       "kind": "skill",
       "provider": "Magic Patterns",
       "description": "Adapt code generated by Magic Patterns (magicpatterns.com) into an existing codebase. Use when the user shares a Magic Patterns design, prototype, exported zip, \"Copy Code as Prompt\" output, or a magicpatterns.com URL and wants it implemented, integrated, or productionized in the",
-      "source": "https://github.com/magicpatterns/agent-plugins/blob/09c411f689368027bd39053cf9af168772ec1fef/claude-code/plugins/magic-patterns/skills/integrate-magic-patterns-design/SKILL.md",
+      "source": "https://github.com/magicpatterns/agent-plugins/blob/95423dbebeed508436bcedad8df39334f05b7f28/cursor/skills/integrate-magic-patterns-design/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/magic-patterns.png",
-      "homepage": "https://github.com/magicpatterns/agent-plugins/blob/09c411f689368027bd39053cf9af168772ec1fef/claude-code/plugins/magic-patterns/skills/integrate-magic-patterns-design/SKILL.md"
+      "homepage": "https://github.com/magicpatterns/agent-plugins/blob/95423dbebeed508436bcedad8df39334f05b7f28/cursor/skills/integrate-magic-patterns-design/SKILL.md"
     },
     {
       "id": "skill-prototype",
@@ -10508,11 +10580,11 @@
       "kind": "skill",
       "provider": "Magic Patterns",
       "description": "Prototype an idea in Magic Patterns (magicpatterns.com) starting from your local UI. Use when the user gives a prompt for something they want to prototype or explore and wants an iterable Magic Patterns design grounded in their existing code. Seeds a design by recreating the rele",
-      "source": "https://github.com/magicpatterns/agent-plugins/blob/09c411f689368027bd39053cf9af168772ec1fef/claude-code/plugins/magic-patterns/skills/prototype/SKILL.md",
+      "source": "https://github.com/magicpatterns/agent-plugins/blob/95423dbebeed508436bcedad8df39334f05b7f28/cursor/skills/prototype/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/magic-patterns.png",
-      "homepage": "https://github.com/magicpatterns/agent-plugins/blob/09c411f689368027bd39053cf9af168772ec1fef/claude-code/plugins/magic-patterns/skills/prototype/SKILL.md"
+      "homepage": "https://github.com/magicpatterns/agent-plugins/blob/95423dbebeed508436bcedad8df39334f05b7f28/cursor/skills/prototype/SKILL.md"
     },
     {
       "id": "skill-recreate-as-raw-html",
@@ -10520,11 +10592,11 @@
       "kind": "skill",
       "provider": "Magic Patterns",
       "description": "Recreate a component, screen, or pasted code from any codebase as a single self-contained raw HTML file (Tailwind Play CDN + web fonts) that faithfully reproduces its styling, colors, spacing, and fonts. Use when the user asks for a \"raw HTML recreation\", an \"HTML version\" of a c",
-      "source": "https://github.com/magicpatterns/agent-plugins/blob/09c411f689368027bd39053cf9af168772ec1fef/claude-code/plugins/magic-patterns/skills/recreate-as-raw-html/SKILL.md",
+      "source": "https://github.com/magicpatterns/agent-plugins/blob/95423dbebeed508436bcedad8df39334f05b7f28/cursor/skills/recreate-as-raw-html/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/magic-patterns.png",
-      "homepage": "https://github.com/magicpatterns/agent-plugins/blob/09c411f689368027bd39053cf9af168772ec1fef/claude-code/plugins/magic-patterns/skills/recreate-as-raw-html/SKILL.md"
+      "homepage": "https://github.com/magicpatterns/agent-plugins/blob/95423dbebeed508436bcedad8df39334f05b7f28/cursor/skills/recreate-as-raw-html/SKILL.md"
     },
     {
       "id": "skill-recreate-as-react",
@@ -10532,11 +10604,11 @@
       "kind": "skill",
       "provider": "Magic Patterns",
       "description": "Recreate a component, screen, or pasted code from any codebase as a self-contained React + TypeScript + Tailwind prototype (App.tsx / index.tsx / index.css, named exports, one component per file) that renders in the Magic Patterns prototype environment and faithfully reproduces t",
-      "source": "https://github.com/magicpatterns/agent-plugins/blob/09c411f689368027bd39053cf9af168772ec1fef/claude-code/plugins/magic-patterns/skills/recreate-as-react/SKILL.md",
+      "source": "https://github.com/magicpatterns/agent-plugins/blob/95423dbebeed508436bcedad8df39334f05b7f28/cursor/skills/recreate-as-react/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/magic-patterns.png",
-      "homepage": "https://github.com/magicpatterns/agent-plugins/blob/09c411f689368027bd39053cf9af168772ec1fef/claude-code/plugins/magic-patterns/skills/recreate-as-react/SKILL.md"
+      "homepage": "https://github.com/magicpatterns/agent-plugins/blob/95423dbebeed508436bcedad8df39334f05b7f28/cursor/skills/recreate-as-react/SKILL.md"
     },
     {
       "id": "skill-upload-to-magic-patterns",
@@ -10544,11 +10616,11 @@
       "kind": "skill",
       "provider": "Magic Patterns",
       "description": "Upload UI you are building locally into Magic Patterns (magicpatterns.com) and return the editor link. Use when the user wants to push a component/screen they are working on in their codebase into Magic Patterns as a design — for review, stakeholder sign-off, or further iteration",
-      "source": "https://github.com/magicpatterns/agent-plugins/blob/09c411f689368027bd39053cf9af168772ec1fef/claude-code/plugins/magic-patterns/skills/upload-to-magic-patterns/SKILL.md",
+      "source": "https://github.com/magicpatterns/agent-plugins/blob/95423dbebeed508436bcedad8df39334f05b7f28/cursor/skills/upload-to-magic-patterns/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/magic-patterns.png",
-      "homepage": "https://github.com/magicpatterns/agent-plugins/blob/09c411f689368027bd39053cf9af168772ec1fef/claude-code/plugins/magic-patterns/skills/upload-to-magic-patterns/SKILL.md"
+      "homepage": "https://github.com/magicpatterns/agent-plugins/blob/95423dbebeed508436bcedad8df39334f05b7f28/cursor/skills/upload-to-magic-patterns/SKILL.md"
     },
     {
       "id": "mcp-magic-patterns",
@@ -11478,7 +11550,7 @@
       "id": "plugin-modern-web-guidance",
       "name": "Modern Web Guidance skill pack",
       "kind": "plugin",
-      "provider": "Chrome Modern Web Guidance",
+      "provider": "Google Chrome Devtools",
       "description": "Modern Web Guidance is an agent skill and CLI tool designed to help AI coding agents build web applications using modern, secure, and high-performance APIs rather than outdated workarounds. Supported by the Google Chrome team, it injects expert-curated web platform best practices directly into an agent's context window to prevent the generation of bloated, legacy code.",
       "source": "https://github.com/GoogleChrome/modern-web-guidance",
       "command": null,
@@ -11490,7 +11562,7 @@
       "id": "skill-chrome-extensions",
       "name": "chrome-extensions",
       "kind": "skill",
-      "provider": "Chrome Modern Web Guidance",
+      "provider": "Google Chrome Devtools",
       "description": "Build and publish Chrome Extensions using Manifest V3 best practices. Use this skill whenever the user asks to create, modify, debug, or understand Chrome browser extensions, add-ons, or anything involving the Chrome Extensions API. Trigger on mentions of: 'Chrome extension', 'br",
       "source": "https://github.com/GoogleChrome/modern-web-guidance/blob/1dee00c2ae94d2e0c26d4a0c9fecb87c52bd82f9/skills/chrome-extensions/SKILL.md",
       "command": null,
@@ -11502,7 +11574,7 @@
       "id": "skill-modern-web-guidance",
       "name": "modern-web-guidance",
       "kind": "skill",
-      "provider": "Chrome Modern Web Guidance",
+      "provider": "Google Chrome Devtools",
       "description": "Search tool for modern web development best practices. MANDATORY: Execute FIRST for all HTML/CSS and clientside JS tasks. Do NOT skip — web APIs evolve rapidly and training weights contain obsolete patterns.\n\nTrigger immediately for:\n- UI/Layout: Modals, dialogs, popovers, Glassm",
       "source": "https://github.com/GoogleChrome/modern-web-guidance/blob/1dee00c2ae94d2e0c26d4a0c9fecb87c52bd82f9/skills/modern-web-guidance/SKILL.md",
       "command": null,
@@ -12776,11 +12848,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Use only when the user explicitly types `/orchestrate <goal>` to decompose a large task, spawn a tree of parallel cloud-agent workers/subplanners/verifiers via the Cursor SDK, and collect structured handoffs; do not invoke autonomously.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/orchestrate/skills/orchestrate/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/orchestrate/skills/orchestrate/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/3b987c929335c420.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/orchestrate/skills/orchestrate/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/orchestrate/skills/orchestrate/SKILL.md"
     },
     {
       "id": "plugin-paper-desktop",
@@ -14864,11 +14936,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Sketch types, signatures, and module structure before code, then stay in the loop while implementation fills in. Use for /architect, 'architect this', 'design this', or non-trivial work where jumping to code would lock in the wrong shape.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/architect/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/architect/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/architect/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/architect/SKILL.md"
     },
     {
       "id": "skill-arena",
@@ -14876,11 +14948,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Spawn N parallel candidates at the same task, pick a base, graft the strongest parts of the losers into it. Use for /arena, 'arena this', 'throw it in the arena', or when one attempt at a non-trivial artifact would lock in the wrong shape.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/arena/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/arena/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/arena/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/arena/SKILL.md"
     },
     {
       "id": "skill-automate-me",
@@ -14888,11 +14960,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Use for \"automate me\", \"create/update/refresh my -mode skill\", \"turn/capture my preferences or working style into a skill\", or wanting agents to follow how the user works. Drafts or revises a personal -mode skill via create-skill + unslop, optionally pulling fresh evidence from r",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/automate-me/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/automate-me/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/automate-me/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/automate-me/SKILL.md"
     },
     {
       "id": "skill-blast-radius",
@@ -14900,11 +14972,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Find what a change could break somewhere else before it ships, beyond the diff, and prove the one fact it's safe because of by running real code instead of writing it up. Use for 'blast radius of X', 'what could this break', or reviewing a small diff you don't trust.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/blast-radius/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/blast-radius/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/blast-radius/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/blast-radius/SKILL.md"
     },
     {
       "id": "skill-bro",
@@ -14912,11 +14984,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Restate the last message in plain human language, with no jargon.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/bro/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/bro/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/bro/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/bro/SKILL.md"
     },
     {
       "id": "skill-create-verification-skill",
@@ -14924,11 +14996,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Generate a project-local verification skill that drives your app the way a user does — any language, framework, or platform. Use for /create-verification-skill, \"make a control skill for this repo\", or when a project has no scripted way to prove UI/CLI/service behavior.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/create-verification-skill/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/create-verification-skill/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/create-verification-skill/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/create-verification-skill/SKILL.md"
     },
     {
       "id": "skill-figure-it-out",
@@ -14936,11 +15008,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Design an auditable playbook when no narrower one fits: a large migration, an ambitious multi-part change, or work a human reviews after stepping away. Scales rigor to the task, runs a hypothesis loop, and logs decisions via show-me-your-work. Use for /figure-it-out, 'figure it o",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/figure-it-out/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/figure-it-out/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/figure-it-out/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/figure-it-out/SKILL.md"
     },
     {
       "id": "skill-how",
@@ -14948,11 +15020,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Use for \"how does X work\", code walkthroughs before changing something, and placement / ownership / layering questions (\"where should this live\", \"which package owns this\", \"is this the right layer\"). Explains subsystem architecture, runtime flow, onboarding mental models. Can cr",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/how/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/how/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/how/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/how/SKILL.md"
     },
     {
       "id": "skill-interrogate",
@@ -14960,11 +15032,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Use for \"interrogate\", \"adversarial review\", \"multi-model review\", \"challenge this\", \"stress test this code\", \"find blind spots\", or \"tear this apart\". Multiple LLM reviewers challenge changes from independent angles.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/interrogate/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/interrogate/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/interrogate/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/interrogate/SKILL.md"
     },
     {
       "id": "skill-maintain-verification-skill",
@@ -14972,11 +15044,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Periodic pass that keeps a project's verification skill and feature map honest: parallel source readers per feature, one live session driving every feature, at most one PR of proven corrections. Use for /maintain-verification-skill or \"audit the verify skill\".",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/maintain-verification-skill/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/maintain-verification-skill/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/maintain-verification-skill/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/maintain-verification-skill/SKILL.md"
     },
     {
       "id": "skill-no-comments",
@@ -14984,11 +15056,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Spawn Comment Sicko, fix accepted findings, and offer encodings for claimed constraints.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/no-comments/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/no-comments/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/no-comments/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/no-comments/SKILL.md"
     },
     {
       "id": "skill-poteto-mode",
@@ -14996,11 +15068,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "poteto's agent style for concise, detailed responses, deliberate subagents, unslopped prose, simple code, and verified work. Use for poteto, /poteto-mode, or requests to work in this style.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/poteto-mode/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/poteto-mode/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/poteto-mode/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/poteto-mode/SKILL.md"
     },
     {
       "id": "skill-principle-boundary-discipline",
@@ -15008,11 +15080,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Apply when wiring validation, error handling, or framework adapters. Concentrate guards at system boundaries (CLI, config, network, external APIs); trust internal types and keep business logic in pure functions.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-boundary-discipline/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-boundary-discipline/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-boundary-discipline/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-boundary-discipline/SKILL.md"
     },
     {
       "id": "skill-principle-build-the-lever",
@@ -15020,11 +15092,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Apply to any non-trivial work, not just bulk work: edits, migrations, analyses, checks. Build the tool that does it or proves it (codemod, script, generator, or a skill your subagents follow) instead of working by hand. The tool is the artifact a reviewer can rerun.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-build-the-lever/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-build-the-lever/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-build-the-lever/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-build-the-lever/SKILL.md"
     },
     {
       "id": "skill-principle-encode-lessons-in-structure",
@@ -15032,11 +15104,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Apply when you catch yourself writing the same instruction a second time, or notice a recurring correction. Encode the rule as a lint, metadata flag, runtime check, or script instead of more text.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-encode-lessons-in-structure/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-encode-lessons-in-structure/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-encode-lessons-in-structure/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-encode-lessons-in-structure/SKILL.md"
     },
     {
       "id": "skill-principle-exhaust-the-design-space",
@@ -15044,11 +15116,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Apply when facing a novel UI interaction or architectural decision with no precedent in the codebase. Build 2-3 competing prototypes and compare side by side before committing.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-exhaust-the-design-space/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-exhaust-the-design-space/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-exhaust-the-design-space/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-exhaust-the-design-space/SKILL.md"
     },
     {
       "id": "skill-principle-experience-first",
@@ -15056,11 +15128,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Apply when product, UX, or feature-scope tradeoffs come up. Choose user delight over implementation convenience; ship fewer polished features over more rough ones.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-experience-first/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-experience-first/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-experience-first/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-experience-first/SKILL.md"
     },
     {
       "id": "skill-principle-fix-root-causes",
@@ -15068,11 +15140,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Apply when debugging. Trace each symptom to its root cause and fix it there; reproduce first, ask why until you reach it, resist nil-check guards that silence crashes.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-fix-root-causes/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-fix-root-causes/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-fix-root-causes/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-fix-root-causes/SKILL.md"
     },
     {
       "id": "skill-principle-foundational-thinking",
@@ -15080,11 +15152,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Apply before writing logic: choosing core types and data structures, sequencing scaffold-vs-feature work, asking what concurrent actors share. Get the data structures right so downstream code becomes obvious.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-foundational-thinking/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-foundational-thinking/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-foundational-thinking/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-foundational-thinking/SKILL.md"
     },
     {
       "id": "skill-principle-guard-the-context-window",
@@ -15092,11 +15164,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Apply when context is filling up: large outputs, long files, repeated reads, fan-out planning. Route bulk to subagents; keep summaries in the main thread, not raw payloads.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-guard-the-context-window/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-guard-the-context-window/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-guard-the-context-window/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-guard-the-context-window/SKILL.md"
     },
     {
       "id": "skill-principle-laziness-protocol",
@@ -15104,11 +15176,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Apply when refactoring, evaluating diff size, or tempted to add abstractions, layers, or signal threading. Bias toward deletion and the smallest change that solves the problem.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-laziness-protocol/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-laziness-protocol/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-laziness-protocol/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-laziness-protocol/SKILL.md"
     },
     {
       "id": "skill-principle-make-operations-idempotent",
@@ -15116,11 +15188,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Apply when designing commands, lifecycle steps, or processing loops that run amid crashes, restarts, and retries. Converge to the same end state regardless of partial prior runs.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-make-operations-idempotent/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-make-operations-idempotent/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-make-operations-idempotent/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-make-operations-idempotent/SKILL.md"
     },
     {
       "id": "skill-principle-migrate-callers-then-delete-legacy-apis",
@@ -15128,11 +15200,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Apply when introducing a new internal API while old callers still exist. Migrate callers and delete the old API in the same wave instead of preserving compatibility layers.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-migrate-callers-then-delete-legacy-apis/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-migrate-callers-then-delete-legacy-apis/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-migrate-callers-then-delete-legacy-apis/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-migrate-callers-then-delete-legacy-apis/SKILL.md"
     },
     {
       "id": "skill-principle-minimize-reader-load",
@@ -15140,11 +15212,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Apply when reviewing or shaping code that's hard to trace. Count layers between question and answer, and hidden state in the reader's head; collapse one-caller wrappers and shrink mutable scope.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-minimize-reader-load/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-minimize-reader-load/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-minimize-reader-load/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-minimize-reader-load/SKILL.md"
     },
     {
       "id": "skill-principle-model-the-domain",
@@ -15152,11 +15224,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Apply when writing stateful logic, or when code branches a lot or repeats a shape assumption across files. Encode the domain in a structure instead of scattered conditionals.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-model-the-domain/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-model-the-domain/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-model-the-domain/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-model-the-domain/SKILL.md"
     },
     {
       "id": "skill-principle-never-block-on-the-human",
@@ -15164,11 +15236,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Apply when tempted to ask 'should I do X?' on reversible work. Proceed, present the result, let the human course-correct after the fact; reserve confirmation for irreversible actions.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-never-block-on-the-human/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-never-block-on-the-human/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-never-block-on-the-human/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-never-block-on-the-human/SKILL.md"
     },
     {
       "id": "skill-principle-outcome-oriented-execution",
@@ -15176,11 +15248,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Apply during planned rewrites and migrations with explicit phase boundaries. Converge on the target architecture; don't preserve smooth intermediate states with throwaway compatibility code.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-outcome-oriented-execution/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-outcome-oriented-execution/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-outcome-oriented-execution/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-outcome-oriented-execution/SKILL.md"
     },
     {
       "id": "skill-principle-prove-it-works",
@@ -15188,11 +15260,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Apply after completing a task, before declaring done. Verify against the real artifact (run the feature, read the actual value, inspect the diff), not a proxy, self-report, or 'it compiles.'",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-prove-it-works/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-prove-it-works/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-prove-it-works/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-prove-it-works/SKILL.md"
     },
     {
       "id": "skill-principle-redesign-from-first-principles",
@@ -15200,11 +15272,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Apply when integrating a new requirement into an existing design. Redesign as if the requirement had been a foundational assumption from day one, instead of bolting it on.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-redesign-from-first-principles/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-redesign-from-first-principles/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-redesign-from-first-principles/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-redesign-from-first-principles/SKILL.md"
     },
     {
       "id": "skill-principle-separate-before-serializing-shared-state",
@@ -15212,11 +15284,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Apply when concurrent actors might write to the same file, branch, key, or state object. Eliminate the sharing first; serialize structurally only when one shared writer is a real invariant.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-separate-before-serializing-shared-state/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-separate-before-serializing-shared-state/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-separate-before-serializing-shared-state/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-separate-before-serializing-shared-state/SKILL.md"
     },
     {
       "id": "skill-principle-sequence-verifiable-units",
@@ -15224,11 +15296,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Apply to multi-step work (sweeps, migrations, runs of similar edits) and to how you stack commits and PRs. Break work into small units that each end in a verifiable state, check each before the next, and order delivery so the sequence proves itself to a reviewer.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-sequence-verifiable-units/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-sequence-verifiable-units/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-sequence-verifiable-units/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-sequence-verifiable-units/SKILL.md"
     },
     {
       "id": "skill-principle-subtract-before-you-add",
@@ -15236,11 +15308,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Apply when sequencing an addition, refactor, or rewrite. Remove dead weight, redundant validators, and stub references first, then build on the simpler base.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-subtract-before-you-add/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-subtract-before-you-add/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-subtract-before-you-add/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-subtract-before-you-add/SKILL.md"
     },
     {
       "id": "skill-principle-type-system-discipline",
@@ -15248,11 +15320,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Apply when designing types, reviewing a function signature, or writing code in any statically-typed language. Make illegal states unrepresentable, brand semantic primitives, parse external data at boundaries, refuse to lie to the compiler, exhaust variants, derive from authoritat",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-type-system-discipline/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-type-system-discipline/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/principle-type-system-discipline/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-type-system-discipline/SKILL.md"
     },
     {
       "id": "skill-recall",
@@ -15260,11 +15332,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Reconstruct your recent working context from your own chat history, live state, and the shared record (user reports, prior fixes, incidents), then hand back a tight current-state brief. Use for 'recall my work on X', 'catch me up', 'what have I been working on', 'where did I leav",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/recall/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/recall/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/recall/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/recall/SKILL.md"
     },
     {
       "id": "skill-reflect",
@@ -15272,11 +15344,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Spawn three parallel review subagents over the active transcript, surface learnings, and route each to a concrete edit on an existing skill. Use when the user says reflect.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/reflect/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/reflect/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/reflect/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/reflect/SKILL.md"
     },
     {
       "id": "skill-setup-pstack",
@@ -15284,11 +15356,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Configure which models pstack uses per role. Detects your available models and writes an always-applied rule that overrides the skill defaults. Use for /setup-pstack, \"configure pstack models\", or changing pstack's model choices.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/setup-pstack/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/setup-pstack/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/setup-pstack/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/setup-pstack/SKILL.md"
     },
     {
       "id": "skill-show-me-your-work",
@@ -15296,11 +15368,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Keep a reviewable decision trail for long-running or unattended work: a TSV log with one row per decision (what, why, evidence, result). Local by default; commit it when a reviewer needs the trail to trust the result. Use for /show-me-your-work, autonomous or multi-phase runs, or",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/show-me-your-work/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/show-me-your-work/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/show-me-your-work/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/show-me-your-work/SKILL.md"
     },
     {
       "id": "skill-swarm",
@@ -15308,11 +15380,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Fan out N parallel workers, drain them, and return one report. Use for /swarm, 'swarm this', or parallel coverage, races, gauntlets, and exploration.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/swarm/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/swarm/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/swarm/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/swarm/SKILL.md"
     },
     {
       "id": "skill-tdd",
@@ -15320,11 +15392,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Use only when the user explicitly asks for TDD, a failing test, or a regression test, OR when the bug has an obvious cheap local test target. Skip when the test path is unclear, expensive, integration-heavy, or not requested.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/tdd/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/tdd/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/tdd/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/tdd/SKILL.md"
     },
     {
       "id": "skill-teach",
@@ -15332,11 +15404,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Explain a body of work plainly so a person actually understands it. Runs the `how` and `why` skills and weaves what they find into one clear explanation. Use for 'teach me this', 'help me really understand X', 'explain this change or subsystem to me'.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/teach/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/teach/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/teach/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/teach/SKILL.md"
     },
     {
       "id": "skill-technical-writing",
@@ -15344,11 +15416,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Layered technical-writing standard: Diátaxis structure, Google developer style sentences, STE instruction rules, Global English syntax. Use for /technical-writing or when writing or reviewing docs, RFCs, readmes, PR descriptions, or commit messages.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/technical-writing/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/technical-writing/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/technical-writing/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/technical-writing/SKILL.md"
     },
     {
       "id": "skill-typescript-best-practices",
@@ -15356,11 +15428,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "TypeScript best practices. Use when reading or editing any .ts or .tsx file.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/typescript-best-practices/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/typescript-best-practices/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/typescript-best-practices/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/typescript-best-practices/SKILL.md"
     },
     {
       "id": "skill-unslop",
@@ -15368,11 +15440,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Cut AI tells from any writing. Must always apply.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/unslop/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/unslop/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/unslop/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/unslop/SKILL.md"
     },
     {
       "id": "skill-why",
@@ -15380,11 +15452,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Use for 'why does X work this way', 'why we picked Y', design rationale, regressions, postmortems, or data-backed thresholds. Discovers available MCPs and queries each evidence category (source control, issue tracker, long-form docs, real-time chat, infrastructure observability, ",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/why/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/why/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": null,
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/pstack/skills/why/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/why/SKILL.md"
     },
     {
       "id": "plugin-quiverai",
@@ -17077,6 +17149,30 @@
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/9f50d30fad839c5b.png",
       "homepage": "https://github.com/runlayer/plugins/blob/32f6a6c6c957528c475406b38a5f9b77a5b15d4b/cursor-plugin/skills/plugin-builder/SKILL.md"
+    },
+    {
+      "id": "plugin-salesforce",
+      "name": "Salesforce skill pack",
+      "kind": "plugin",
+      "provider": "Cursor",
+      "description": "Connect Cursor to Salesforce via Salesforce Hosted MCP — query, search, create, update, and traverse records in your org.",
+      "source": "https://github.com/cursor/plugins",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/b8b0c3be68ad69d3.png",
+      "homepage": "https://github.com/cursor/plugins"
+    },
+    {
+      "id": "mcp-salesforce",
+      "name": "Salesforce MCP",
+      "kind": "mcp",
+      "provider": "Cursor",
+      "description": "MCP server from the Salesforce Cursor plugin.",
+      "source": "https://github.com/cursor/plugins",
+      "command": null,
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/b8b0c3be68ad69d3.png",
+      "homepage": "https://github.com/cursor/plugins"
     },
     {
       "id": "plugin-sanity",
@@ -19275,159 +19371,147 @@
       "homepage": "https://docs.stripe.com"
     },
     {
-      "id": "plugin-subtext",
+      "id": "plugin-subtext-verify",
       "name": "Subtext skill pack",
       "kind": "plugin",
       "provider": "Subtext",
-      "description": "Review Subtext session recordings and manage privacy rules",
+      "description": "Drive a hosted browser, capture before/after proof, and leave reviewer-facing evidence against your running app",
       "source": "https://github.com/fullstorydev/subtext",
       "command": null,
       "brand": null,
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/971dd04f930cd8d8.png",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/609889383eced9aa.png",
       "homepage": "https://github.com/fullstorydev/subtext"
     },
     {
-      "id": "skill-sightmap-authoring",
-      "name": "sightmap-authoring",
+      "id": "skill-subtext-comments",
+      "name": "subtext-comments",
       "kind": "skill",
       "provider": "Subtext",
-      "description": "Use when building or maintaining a sightmap corpus — defining components, authoring .sightmap/ YAML, seeding from a live site or the codebase, running snapshot/coverage/validate/lint, or diagnosing coverage gaps. Activate whenever a .sightmap/ directory is present in the project.",
-      "source": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/sightmap-authoring/SKILL.md",
+      "description": "Comment MCP tools for agent-user collaboration. Use when reviewing sessions or live pages to leave observations, read user feedback, reply, and resolve.",
+      "source": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-comments/SKILL.md",
       "command": null,
       "brand": null,
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/971dd04f930cd8d8.png",
-      "homepage": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/sightmap-authoring/SKILL.md"
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/609889383eced9aa.png",
+      "homepage": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-comments/SKILL.md"
     },
     {
-      "id": "skill-sightmap-browser",
-      "name": "sightmap-browser",
+      "id": "skill-subtext-docs",
+      "name": "subtext-docs",
       "kind": "skill",
       "provider": "Subtext",
-      "description": "Use when driving a live browser session with a sightmap — starting or navigating a Chrome session, taking annotated component snapshots to read page state, and interacting with elements by component ID or component query. Activate when a .sightmap/ directory is present and you ne",
-      "source": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/sightmap-browser/SKILL.md",
+      "description": "Proof document MCP tools for creating, updating, and closing agent work documentation. Use when tracking a bug fix, UX review, or changeset to produce a permanent, evidence-backed record.",
+      "source": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-docs/SKILL.md",
       "command": null,
       "brand": null,
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/971dd04f930cd8d8.png",
-      "homepage": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/sightmap-browser/SKILL.md"
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/609889383eced9aa.png",
+      "homepage": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-docs/SKILL.md"
     },
     {
-      "id": "skill-subtext-privacy",
-      "name": "subtext-privacy",
+      "id": "skill-subtext-first-session",
+      "name": "subtext-first-session",
       "kind": "skill",
       "provider": "Subtext",
-      "description": "Privacy rule management — detect PII in sessions and manage element-block, URL, and network privacy rules. Use when you need to propose, create, list, delete, or promote privacy rules for a Fullstory org.",
-      "source": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-privacy/SKILL.md",
+      "description": "Agent explores the user's site via hosted broswer (live), leaving comments as it goes. Accepts a user-described flow or explores organically. Capped at ~10 interactions across 2-3 pages. Returns session URL, trace URL, and metrics.",
+      "source": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-first-session/SKILL.md",
       "command": null,
       "brand": null,
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/971dd04f930cd8d8.png",
-      "homepage": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-privacy/SKILL.md"
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/609889383eced9aa.png",
+      "homepage": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-first-session/SKILL.md"
     },
     {
-      "id": "skill-subtext-review",
-      "name": "subtext-review",
+      "id": "skill-subtext-live",
+      "name": "subtext-live",
       "kind": "skill",
       "provider": "Subtext",
-      "description": "Review a completed Subtext session and produce a structured summary. Use when you have a session URL and want to understand what happened — verify a flow, walk through a dev / staging / preview session, or summarize a captured session. Optionally emits reproduction steps on reque",
-      "source": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-review/SKILL.md",
+      "description": "Live browser MCP tools for driving a hosted browser — connections, views, interactions, console, network, and tunnel. Use when reproducing flows, taking screenshots, or interacting with a running app.",
+      "source": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-live/SKILL.md",
       "command": null,
       "brand": null,
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/971dd04f930cd8d8.png",
-      "homepage": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-review/SKILL.md"
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/609889383eced9aa.png",
+      "homepage": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-live/SKILL.md"
     },
     {
-      "id": "skill-subtext-session",
-      "name": "subtext-session",
+      "id": "skill-subtext-onboard",
+      "name": "subtext-onboard",
       "kind": "skill",
       "provider": "Subtext",
-      "description": "Session replay tools for analyzing Fullstory session recordings. Sparse API catalog — tools are self-describing.",
-      "source": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-session/SKILL.md",
+      "description": "Interactive first-run onboarding for new Subtext users. Connects to the user's local dev server, proves a small change with before/after evidence in a watchable trace, then bootstraps a starter sightmap from what was learned.",
+      "source": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-onboard/SKILL.md",
       "command": null,
       "brand": null,
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/971dd04f930cd8d8.png",
-      "homepage": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-session/SKILL.md"
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/609889383eced9aa.png",
+      "homepage": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-onboard/SKILL.md"
     },
     {
-      "id": "skill-subtext-setup-plugin",
-      "name": "subtext-setup-plugin",
+      "id": "skill-subtext-proof",
+      "name": "subtext-proof",
       "kind": "skill",
       "provider": "Subtext",
-      "description": "Install the Subtext plugin and verify the MCP server is connected. Authenticates via OAuth or API key.",
-      "source": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-setup-plugin/SKILL.md",
+      "description": "You MUST use this skill when implementing, fixing, or refactoring code. Captures evidence artifacts (screenshots, network traces, code diffs, trace session links) into a proof document as you work.",
+      "source": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-proof/SKILL.md",
       "command": null,
       "brand": null,
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/971dd04f930cd8d8.png",
-      "homepage": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-setup-plugin/SKILL.md"
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/609889383eced9aa.png",
+      "homepage": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-proof/SKILL.md"
     },
     {
-      "id": "skill-subtext-shared",
-      "name": "subtext-shared",
+      "id": "skill-subtext-recipe-sightmap-setup",
+      "name": "subtext-recipe-sightmap-setup",
       "kind": "skill",
       "provider": "Subtext",
-      "description": "Foundation skill for the Subtext plugin. MCP tool conventions and security rules. Read this when any skill lists it in PREREQUISITE.",
-      "source": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-shared/SKILL.md",
+      "description": "Short recipe to create sightmap definitions for a project from scratch.",
+      "source": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-recipe-sightmap-setup/SKILL.md",
       "command": null,
       "brand": null,
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/971dd04f930cd8d8.png",
-      "homepage": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-shared/SKILL.md"
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/609889383eced9aa.png",
+      "homepage": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-recipe-sightmap-setup/SKILL.md"
     },
     {
-      "id": "skill-subtext-sightmap",
-      "name": "subtext-sightmap",
+      "id": "skill-subtext-tunnel",
+      "name": "subtext-tunnel",
       "kind": "skill",
       "provider": "Subtext",
-      "description": "Connect a project's .sightmap/ corpus to Subtext session review — maintain it with the bundled sightmap skills and upload its definitions into review tools so snapshots come back with semantic component names.",
-      "source": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-sightmap/SKILL.md",
+      "description": "Use when opening a hosted browser connection against a localhost or local dev server URL. Sets up a reverse tunnel so the hosted browser can reach the user's local server.",
+      "source": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-tunnel/SKILL.md",
       "command": null,
       "brand": null,
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/971dd04f930cd8d8.png",
-      "homepage": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-sightmap/SKILL.md"
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/609889383eced9aa.png",
+      "homepage": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-tunnel/SKILL.md"
     },
     {
-      "id": "skill-subtext-telemetry",
-      "name": "subtext-telemetry",
+      "id": "skill-subtext-verify-shared",
+      "name": "subtext-verify-shared",
       "kind": "skill",
       "provider": "Subtext",
-      "description": "Workflow telemetry logging — record AI-reported workflow milestones (currently the onboarding flow) for funnel analysis. Use when executing an instrumented Subtext workflow and you need to log step-by-step progress events.",
-      "source": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-telemetry/SKILL.md",
+      "description": "Foundation for the Subtext Verify skills — verify-specific MCP tool prefixes, sightmap upload, and the tunnel server. Read this when a Verify skill lists it in PREREQUISITE.",
+      "source": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-verify-shared/SKILL.md",
       "command": null,
       "brand": null,
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/971dd04f930cd8d8.png",
-      "homepage": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-telemetry/SKILL.md"
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/609889383eced9aa.png",
+      "homepage": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-verify-shared/SKILL.md"
     },
     {
-      "id": "skill-subtext-using-subtext",
-      "name": "subtext-using-subtext",
+      "id": "skill-subtext-verify-using",
+      "name": "subtext-verify-using",
       "kind": "skill",
       "provider": "Subtext",
-      "description": "Overview of the Subtext plugin — when to reach for session review vs privacy tools. Read to orient before reviewing a Fullstory session or managing privacy rules.",
-      "source": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-using-subtext/SKILL.md",
+      "description": "Use when starting any conversation that may involve rendered UI, driving a running app, or producing reviewer-facing evidence (screenshots, viewer links, code diffs). Establishes how the Subtext Verify skills compose and when to invoke them before any response or action.",
+      "source": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-verify-using/SKILL.md",
       "command": null,
       "brand": null,
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/971dd04f930cd8d8.png",
-      "homepage": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-using-subtext/SKILL.md"
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/609889383eced9aa.png",
+      "homepage": "https://github.com/fullstorydev/subtext/blob/5507c2a104f98666022b324a200b2c96138ea787/skills/subtext-verify-using/SKILL.md"
     },
     {
-      "id": "mcp-subtext",
-      "name": "Subtext MCP",
+      "id": "mcp-subtext-tunnel",
+      "name": "Subtext Tunnel MCP",
       "kind": "mcp",
       "provider": "Subtext",
       "description": "MCP server from the Subtext Cursor plugin.",
       "source": "https://github.com/fullstorydev/subtext",
       "command": null,
       "brand": null,
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/971dd04f930cd8d8.png",
-      "homepage": "https://github.com/fullstorydev/subtext"
-    },
-    {
-      "id": "mcp-subtext-eu1",
-      "name": "Subtext Eu1 MCP",
-      "kind": "mcp",
-      "provider": "Subtext",
-      "description": "MCP server from the Subtext Cursor plugin.",
-      "source": "https://github.com/fullstorydev/subtext",
-      "command": null,
-      "brand": null,
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/971dd04f930cd8d8.png",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/609889383eced9aa.png",
       "homepage": "https://github.com/fullstorydev/subtext"
     },
     {
@@ -20000,11 +20084,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Comprehensive security and correctness audit of a branch's changes. Use for thermo nuclear, thermonuclear, or deep review requests, or branch/PR diff audits focused on bugs, breaking changes, security issues, devex regressions, and feature-gate leaks.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/thermos/skills/thermo-nuclear-review/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/thermos/skills/thermo-nuclear-review/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e4b79e7704362fe6.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/thermos/skills/thermo-nuclear-review/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/thermos/skills/thermo-nuclear-review/SKILL.md"
     },
     {
       "id": "skill-thermos",
@@ -20012,11 +20096,11 @@
       "kind": "skill",
       "provider": "Cursor",
       "description": "Launch both thermo-nuclear review subagents in parallel, then synthesize their findings. Use for thermos, double thermo review, or combined bug/security and code-quality branch audits.",
-      "source": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/thermos/skills/thermos/SKILL.md",
+      "source": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/thermos/skills/thermos/SKILL.md",
       "command": null,
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e4b79e7704362fe6.png",
-      "homepage": "https://github.com/cursor/plugins/blob/fa16d695b35ccf4ea179d976e5aaee0834a25b0b/thermos/skills/thermos/SKILL.md"
+      "homepage": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/thermos/skills/thermos/SKILL.md"
     },
     {
       "id": "plugin-spottercode",

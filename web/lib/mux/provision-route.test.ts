@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => ({
 	scheduleWebBootstrap: vi.fn(),
 	recommendArm: vi.fn(),
 	after: vi.fn(),
+	loadTenantHealth: vi.fn(),
 }));
 
 vi.mock("@/lib/user-config/identity", () => ({
@@ -72,6 +73,12 @@ vi.mock("@/lib/learning/recommend", () => ({
 }));
 
 vi.mock("next/server", () => ({ after: mocks.after }));
+
+// The gate is faked here (lib/mux/health.test.ts drives the real breaker) so a
+// route test can decide the verdict without a database. What is under test on
+// this side is that the route builds it for the RIGHT tenant, hands it to the
+// walk, and never claims a lane failed when health merely demoted it.
+vi.mock("@/lib/mux/health", () => ({ loadTenantHealth: mocks.loadTenantHealth }));
 
 import { POST } from "@/app/api/dashboard/admin/provision-machine/route";
 
@@ -140,11 +147,39 @@ const BASE_BODY: Body = {
 	startBootstrap: false,
 };
 
+/**
+ * A health gate with spied feedback. `demote` is the lane the breaker has
+ * evidence against; everything else is healthy and keeps its configured place.
+ */
+function fakeGate(demote?: ProviderKind) {
+	const notes: Array<[string, ProviderKind, string | null]> = [];
+	return {
+		notes,
+		gate: {
+			order: (route: readonly ProviderKind[]) =>
+				demote === undefined
+					? [...route]
+					: [...route.filter((lane) => lane !== demote), ...route.filter((lane) => lane === demote)],
+			stateOf: (substrate: ProviderKind) => (substrate === demote ? "open" : "healthy"),
+			noteOk: async (substrate: ProviderKind) => {
+				notes.push(["ok", substrate, null]);
+			},
+			noteFailure: async (substrate: ProviderKind, kind: string) => {
+				notes.push(["failed", substrate, kind]);
+			},
+			loaded: true,
+		},
+	};
+}
+
 beforeEach(() => {
 	for (const mock of Object.values(mocks)) mock.mockReset();
 	mocks.getEffectiveUserId.mockResolvedValue("user-1");
 	mocks.getUserConfig.mockResolvedValue(configWith());
 	mocks.setUserConfig.mockResolvedValue(configWith());
+	// Default: a loaded breaker with nothing against any lane, so every test
+	// that is not about health sees the configured order.
+	mocks.loadTenantHealth.mockImplementation(async () => fakeGate().gate);
 	// VERCEL_OIDC_TOKEN in the ambient environment would silently add a lane.
 	delete process.env.VERCEL_OIDC_TOKEN;
 });
@@ -410,5 +445,150 @@ describe("provision-machine -- preserved behavior", () => {
 			message: "clerk unavailable",
 		});
 		expect(mocks.createMachineForConfig).not.toHaveBeenCalled();
+	});
+});
+
+describe("provision-machine -- health ordering", () => {
+	it("builds the breaker for the CALLING tenant, once", async () => {
+		mocks.createMachineForConfig.mockResolvedValue({
+			machineId: "e2b-1",
+			phase: "running",
+			state: "ready",
+		});
+		await POST(req(BASE_BODY));
+		expect(mocks.loadTenantHealth).toHaveBeenCalledTimes(1);
+		// The effective user id, the same scope key every other hosted table uses.
+		// A shared or missing tenant here is how one user's failing key would open
+		// another user's circuit.
+		expect(mocks.loadTenantHealth).toHaveBeenCalledWith({ tenantId: "user-1" });
+	});
+
+	it("places on a healthy backup ahead of a requested lane whose circuit is open", async () => {
+		const { gate, notes } = fakeGate("e2b");
+		mocks.loadTenantHealth.mockResolvedValue(gate);
+		mocks.createMachineForConfig.mockResolvedValue({
+			machineId: "sp-1",
+			phase: "running",
+			state: "ready",
+		});
+
+		const body = (await (await POST(req(BASE_BODY))).json()) as ProvisionResponse;
+
+		expect(body.providerKind).toBe("sprites");
+		// e2b was never attempted: that skipped attempt is the entire saving, and
+		// on a cold lane it is 17-31s (docs/MUX-RESULTS.md).
+		expect(
+			mocks.createMachineForConfig.mock.calls.map(
+				(call) => (call[1] as { providerKind: ProviderKind }).providerKind,
+			),
+		).toEqual(["sprites"]);
+		expect(notes).toEqual([["ok", "sprites", null]]);
+	});
+
+	it("does not claim the requested lane failed when health merely demoted it", async () => {
+		mocks.loadTenantHealth.mockResolvedValue(fakeGate("e2b").gate);
+		mocks.createMachineForConfig.mockResolvedValue({
+			machineId: "sp-1",
+			phase: "running",
+			state: "ready",
+		});
+
+		const body = (await (await POST(req(BASE_BODY))).json()) as ProvisionResponse;
+
+		// The pre-health message was hard-coded to "after e2b failed", which would
+		// be a plain untruth about a lane that was never touched.
+		expect(body.message).not.toContain("after e2b failed");
+		expect(body.message).toContain("ahead of e2b");
+		expect(body.message).toContain("circuit open");
+	});
+
+	it("still says 'after X failed' when the lane really was tried and failed", async () => {
+		mocks.createMachineForConfig.mockImplementation(
+			async (_config: UserConfig, opts: { providerKind: ProviderKind }) => {
+				if (opts.providerKind === "e2b") {
+					throw new MachineProviderError("e2b", "transient", "e2b 503");
+				}
+				return { machineId: "sp-1", phase: "running", state: "ready" };
+			},
+		);
+
+		const body = (await (await POST(req(BASE_BODY))).json()) as ProvisionResponse;
+		expect(body.message).toContain("Placed on sprites after e2b failed");
+	});
+
+	it("feeds every lane's outcome back into the tenant's breaker", async () => {
+		const { gate, notes } = fakeGate();
+		mocks.loadTenantHealth.mockResolvedValue(gate);
+		mocks.createMachineForConfig.mockImplementation(
+			async (_config: UserConfig, opts: { providerKind: ProviderKind }) => {
+				if (opts.providerKind === "e2b") {
+					throw new MachineProviderError("e2b", "rate_limited", "429 slow down");
+				}
+				return { machineId: "sp-1", phase: "running", state: "ready" };
+			},
+		);
+
+		const body = (await (await POST(req(BASE_BODY))).json()) as ProvisionResponse;
+
+		expect(notes).toEqual([
+			["failed", "e2b", "rate_limited"],
+			["ok", "sprites", null],
+		]);
+		// And the verdict rides the attempt record, so the route stays explainable
+		// without a second query.
+		const attempts = body.attempts ?? [];
+		expect(attempts.find((a) => a.substrate === "e2b")?.health).toBe("healthy");
+		expect(attempts.find((a) => a.substrate === "sprites")?.health).toBe("healthy");
+	});
+
+	it("provisions normally when the breaker could not be loaded at all", async () => {
+		// loadTenantHealth never rejects, but its gate may report no history. A
+		// health signal that cannot be read must cost ordering, never a machine.
+		mocks.loadTenantHealth.mockImplementation(async () => ({
+			order: (route: readonly ProviderKind[]) => [...route],
+			stateOf: () => "healthy" as const,
+			noteOk: async () => {},
+			noteFailure: async () => {},
+			loaded: false,
+		}));
+		mocks.createMachineForConfig.mockResolvedValue({
+			machineId: "e2b-1",
+			phase: "running",
+			state: "ready",
+		});
+
+		const res = await POST(req(BASE_BODY));
+		expect(res.status).toBe(200);
+		const body = (await res.json()) as ProvisionResponse;
+		expect(body.providerKind).toBe("e2b");
+	});
+});
+
+describe("provision-machine -- a broken breaker never costs a machine", () => {
+	it("still answers 200 when the gate throws while the message is composed", async () => {
+		// The machine EXISTS and is recorded by the time the confirmation message
+		// is built, so nothing in that composition may throw: a 500 here would
+		// leave the caller believing the provision failed while it is billing.
+		mocks.loadTenantHealth.mockResolvedValue({
+			order: (route: readonly ProviderKind[]) => [...route].reverse(),
+			stateOf: () => {
+				throw new Error("breaker exploded");
+			},
+			noteOk: async () => {},
+			noteFailure: async () => {},
+			loaded: true,
+		});
+		mocks.createMachineForConfig.mockResolvedValue({
+			machineId: "sp-1",
+			phase: "running",
+			state: "ready",
+		});
+
+		const res = await POST(req(BASE_BODY));
+		expect(res.status).toBe(200);
+		const body = (await res.json()) as ProvisionResponse;
+		expect(body.providerKind).toBe("sprites");
+		expect(body.message).toContain("ahead of e2b");
+		expect(body.message).toContain("demoted by health");
 	});
 });

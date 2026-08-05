@@ -1,6 +1,6 @@
 {
   "description": "Session attach packages for Add ___ composer chips — one per Cursor Marketplace plugin.",
-  "syncedAt": "2026-08-04T19:29:19.426Z",
+  "syncedAt": "2026-08-05T17:35:40.070Z",
   "packages": [
     {
       "id": "1inch",
@@ -2729,6 +2729,7 @@
         "datarobot-agent-assist",
         "datarobot-app-framework-cicd",
         "datarobot-data-preparation",
+        "datarobot-discover",
         "datarobot-external-agent-monitoring",
         "datarobot-feature-engineering",
         "datarobot-model-deployment",
@@ -2743,6 +2744,7 @@
         "datarobot-agent-assist",
         "datarobot-app-framework-cicd",
         "datarobot-data-preparation",
+        "datarobot-discover",
         "datarobot-external-agent-monitoring",
         "datarobot-feature-engineering",
         "datarobot-model-deployment",
@@ -2759,6 +2761,7 @@
         "skill-datarobot-agent-assist",
         "skill-datarobot-app-framework-cicd",
         "skill-datarobot-data-preparation",
+        "skill-datarobot-discover",
         "skill-datarobot-external-agent-monitoring",
         "skill-datarobot-feature-engineering",
         "skill-datarobot-model-deployment",
@@ -3314,7 +3317,7 @@
     {
       "id": "forge",
       "name": "Forge",
-      "description": "Forge — Work order management, developer activity tracking, and project context for AI-assisted development workflows.",
+      "description": "Forge — Work orders, journey progress, artifacts, ForgeScore, dev activity, and project context for AI-assisted development workflows.",
       "brand": null,
       "homepage": "https://opsera.ai/",
       "docsUrl": "https://github.com/securefactory/forge-cursor-plugin",
@@ -3323,19 +3326,28 @@
       "triggers": [
         "forge",
         "opsera",
+        "artifact-collaboration",
         "dev-activity",
+        "forge-score",
+        "journey",
         "project-context",
         "work-orders"
       ],
       "skillIds": [
+        "artifact-collaboration",
         "dev-activity",
+        "forge-score",
+        "journey",
         "project-context",
         "work-orders"
       ],
       "mcpServerIds": [],
       "registryItemIds": [
         "plugin-forge",
+        "skill-artifact-collaboration",
         "skill-dev-activity",
+        "skill-forge-score",
+        "skill-journey",
         "skill-project-context",
         "skill-work-orders"
       ]
@@ -3511,7 +3523,7 @@
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
       "marketplaceUrl": "https://cursor.com/marketplace/gmail",
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/c710946a3d12d95e.png",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/0df2f63c7ffbd16f.png",
       "triggers": [
         "gmail",
         "cursor"
@@ -3526,6 +3538,28 @@
       ]
     },
     {
+      "id": "gong",
+      "name": "Gong",
+      "description": "Gong MCP integration for revenue intelligence — account summaries, deal insights, and call briefs.",
+      "brand": null,
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/gong",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/62ec1e243a37a940.png",
+      "triggers": [
+        "gong",
+        "cursor"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "gong"
+      ],
+      "registryItemIds": [
+        "plugin-gong",
+        "mcp-gong"
+      ]
+    },
+    {
       "id": "google-calendar",
       "name": "Google Calendar",
       "description": "Connect Cursor to Google Calendar via Google's remote MCP server — list calendars, search events, and create or update meetings.",
@@ -3533,7 +3567,7 @@
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
       "marketplaceUrl": "https://cursor.com/marketplace/google-calendar",
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/67220e240fb84c37.png",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/2d862de92d6b7b39.png",
       "triggers": [
         "google-calendar",
         "google calendar",
@@ -3556,7 +3590,7 @@
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
       "marketplaceUrl": "https://cursor.com/marketplace/google-drive",
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/ab2ccc6f8def26df.png",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/b09928369fe4bc8a.png",
       "triggers": [
         "google-drive",
         "google drive",
@@ -4357,7 +4391,7 @@
     {
       "id": "magic-patterns",
       "name": "Magic Patterns",
-      "description": "Use Magic Patterns (magicpatterns.com) from your coding agent: prototype ideas, generate UI inspiration, upload local UI, and integrate Magic Patterns designs into your codebase.",
+      "description": "Use Magic Patterns (magicpatterns.com) from Cursor: prototype ideas, generate UI inspiration, upload local UI, and integrate Magic Patterns designs into your codebase.",
       "brand": null,
       "homepage": "https://www.magicpatterns.com/",
       "docsUrl": "https://github.com/magicpatterns/agent-plugins",
@@ -4778,7 +4812,7 @@
         "modern-web-guidance",
         "modern web guidance",
         "google-chrome",
-        "chrome modern web guidance",
+        "google chrome devtools",
         "chrome-extensions"
       ],
       "skillIds": [
@@ -6821,6 +6855,28 @@
       ]
     },
     {
+      "id": "salesforce",
+      "name": "Salesforce",
+      "description": "Connect Cursor to Salesforce via Salesforce Hosted MCP — query, search, create, update, and traverse records in your org.",
+      "brand": null,
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/salesforce",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/b8b0c3be68ad69d3.png",
+      "triggers": [
+        "salesforce",
+        "cursor"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "salesforce"
+      ],
+      "registryItemIds": [
+        "plugin-salesforce",
+        "mcp-salesforce"
+      ]
+    },
+    {
       "id": "sanity",
       "name": "Sanity",
       "description": "Sanity plugin for Cursor with MCP server, agent skills, agent rules, and commands.",
@@ -7588,58 +7644,56 @@
       ]
     },
     {
-      "id": "subtext",
+      "id": "subtext-verify",
       "name": "Subtext",
-      "description": "Review Subtext session recordings and manage privacy rules",
+      "description": "Drive a hosted browser, capture before/after proof, and leave reviewer-facing evidence against your running app",
       "brand": null,
       "homepage": "https://subtext.fullstory.com/",
       "docsUrl": "https://github.com/fullstorydev/subtext",
-      "marketplaceUrl": "https://cursor.com/marketplace/subtext",
-      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/971dd04f930cd8d8.png",
+      "marketplaceUrl": "https://cursor.com/marketplace/subtext-verify",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/609889383eced9aa.png",
       "triggers": [
+        "subtext-verify",
         "subtext",
-        "sightmap-authoring",
-        "sightmap-browser",
-        "subtext-privacy",
-        "subtext-review",
-        "subtext-session",
-        "subtext-setup-plugin",
-        "subtext-shared",
-        "subtext-sightmap",
-        "subtext-telemetry",
-        "subtext-using-subtext",
-        "subtext-eu1"
+        "subtext-comments",
+        "subtext-docs",
+        "subtext-first-session",
+        "subtext-live",
+        "subtext-onboard",
+        "subtext-proof",
+        "subtext-recipe-sightmap-setup",
+        "subtext-tunnel",
+        "subtext-verify-shared",
+        "subtext-verify-using"
       ],
       "skillIds": [
-        "sightmap-authoring",
-        "sightmap-browser",
-        "subtext-privacy",
-        "subtext-review",
-        "subtext-session",
-        "subtext-setup-plugin",
-        "subtext-shared",
-        "subtext-sightmap",
-        "subtext-telemetry",
-        "subtext-using-subtext"
+        "subtext-comments",
+        "subtext-docs",
+        "subtext-first-session",
+        "subtext-live",
+        "subtext-onboard",
+        "subtext-proof",
+        "subtext-recipe-sightmap-setup",
+        "subtext-tunnel",
+        "subtext-verify-shared",
+        "subtext-verify-using"
       ],
       "mcpServerIds": [
-        "subtext",
-        "subtext-eu1"
+        "subtext-tunnel"
       ],
       "registryItemIds": [
-        "plugin-subtext",
-        "skill-sightmap-authoring",
-        "skill-sightmap-browser",
-        "skill-subtext-privacy",
-        "skill-subtext-review",
-        "skill-subtext-session",
-        "skill-subtext-setup-plugin",
-        "skill-subtext-shared",
-        "skill-subtext-sightmap",
-        "skill-subtext-telemetry",
-        "skill-subtext-using-subtext",
-        "mcp-subtext",
-        "mcp-subtext-eu1"
+        "plugin-subtext-verify",
+        "skill-subtext-comments",
+        "skill-subtext-docs",
+        "skill-subtext-first-session",
+        "skill-subtext-live",
+        "skill-subtext-onboard",
+        "skill-subtext-proof",
+        "skill-subtext-recipe-sightmap-setup",
+        "skill-subtext-tunnel",
+        "skill-subtext-verify-shared",
+        "skill-subtext-verify-using",
+        "mcp-subtext-tunnel"
       ]
     },
     {
