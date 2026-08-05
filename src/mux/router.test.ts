@@ -297,8 +297,16 @@ class FakeSandboxHandle implements SandboxHandle {
 		this.substrate = substrate;
 	}
 
+	/**
+	 * Thrown instead of answering. A substrate that REFUSES to run a command
+	 * is a real state (see the machine_not_found case below), and a handle
+	 * that can only script exit codes cannot express it.
+	 */
+	execError: unknown = null;
+
 	async exec(command: string, _options?: ExecOptions): Promise<ExecResult> {
 		this.execCalls.push(command);
+		if (this.execError !== null) throw this.execError;
 		// The detached-install flow polls `cat <done>` and tails the log;
 		// answer those from simulated state instead of the exec script so
 		// scripts stay readable.
@@ -384,7 +392,15 @@ class FakeSandboxHandle implements SandboxHandle {
 
 	async wake(): Promise<void> {}
 
+	/**
+	 * Thrown by destroy(). Vendors really do fail a teardown they completed
+	 * (dedalus answers 500 from its own metering ledger AFTER the machine is
+	 * gone), and a handle that always destroys cleanly cannot express it.
+	 */
+	destroyError: unknown = null;
+
 	async destroy(): Promise<void> {
+		if (this.destroyError !== null) throw this.destroyError;
 		this.destroyed = true;
 	}
 }
@@ -799,6 +815,62 @@ test("ensureInstalled probes, installs on a miss, and fails closed", async (t) =
 		machineD.ensureInstalled({ pollMs: 1, timeoutMs: 40 }),
 		(error: unknown) => error instanceof MuxError && error.kind === "transient",
 	);
+});
+
+test("a REFUSED install probe is a substrate fault, never a missing harness", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	const { module: harnesses, error: harnessError } = await loadHarnesses();
+	if (!harnesses) {
+		t.skip(`harnesses/index.js not importable yet (${harnessError ?? "unknown"})`);
+		return;
+	}
+	const harness = harnesses.getHarness("claude-code");
+	const config = resolveMuxConfig({ keys: { anthropic: "test-anthropic-key" } });
+
+	// The exact error providers/dedalus.ts now raises, from the live capture of
+	// 2026-08-05: 4 of 9 create-then-exec sequences (44%) were refused with
+	// error_code machine_not_found on a machine whose own machines API
+	// reported phase=running. The probe's exit code used to be read as a
+	// BOOLEAN, so this was silently misread as "the harness is not installed"
+	// -- and the install then ran against a machine the substrate had just
+	// refused to schedule work on, spending the whole 900s install budget and
+	// blaming the harness for a substrate fault.
+	const refused = new FakeSandboxHandle("dedalus-refused", "dedalus");
+	refused.execError = new MuxError(
+		"transient",
+		`dedalus refused to run the execution on machine dm-019fd311-71d0-7572-b001-293525eee808: machine_not_found: machine no longer exists (status failed, command: ${harness.isInstalledCommand()})`,
+		{ substrate: "dedalus" },
+	);
+	const machine = new router.MuxMachine({ sandbox: refused, harness, config });
+	await assert.rejects(
+		machine.ensureInstalled({ pollMs: 1, timeoutMs: 5_000 }),
+		(thrown: unknown) => {
+			assert.ok(thrown instanceof MuxError, `threw ${String(thrown)}`);
+			// The provider's kind survives, so failover still routes it.
+			assert.equal(thrown.kind, "transient");
+			assert.match(
+				thrown.message,
+				/cannot tell whether claude-code is installed on dedalus/,
+			);
+			// The vendor's words reach the operator.
+			assert.match(thrown.message, /machine_not_found: machine no longer exists/);
+			// ...and the harness is not blamed for it.
+			assert.ok(
+				!/install failed|did not finish within/.test(thrown.message),
+				`a substrate refusal was reported as an install problem: ${thrown.message}`,
+			);
+			return true;
+		},
+	);
+	// Nothing was installed: no script written, nothing detached, and the only
+	// command attempted was the probe itself.
+	assert.deepEqual(refused.execCalls, [harness.isInstalledCommand()]);
+	assert.deepEqual(refused.backgroundCalls, []);
+	assert.equal(refused.files.size, 0, "an install script was written anyway");
 });
 
 test("named create remembers the machine and connect() reads it back", async (t) => {
@@ -1636,6 +1708,67 @@ test("describe() reads status without connecting", async (t) => {
 		connectsBefore,
 		"reading status must not connect -- connect resumes on e2b and vercel",
 	);
+});
+
+/**
+ * The vendor 500, verbatim from DELETE /v1/machines/<id> on 2026-08-05 -- the
+ * error dedalus raises from its OWN metering ledger after the machine is gone.
+ */
+const DEDALUS_DESTROY_500 =
+	'dedalus destroy 500: {"title":"Internal Server Error","status":500,"detail":"failed to close storage usage before deleting machine spec","errors":[{"message":"query latest storage bucket: usage ledger query returned 400: column org_metering_buckets.stripe_submitted_at does not exist"}]}';
+
+test("a failed-lane teardown that the substrate says worked is not reported as an orphan", async (t) => {
+	const { module: router, error } = await loadRouter();
+	if (!router) {
+		t.skip(`router.js not importable yet (${error ?? "unknown"})`);
+		return;
+	}
+	// MEASURED on dedalus 2026-08-05, in this exact path: a create() whose
+	// install probe was refused tore the sandbox down, got the vendor's 500,
+	// and reported "orphaned sandbox dm-019fd33b-d8ec-7c34-88b5-6059b34db5fd:
+	// teardown failed" -- for a machine that had already left the account
+	// entirely (the follow-up list held only two pre-existing machines).
+	for (const confirmed of [true, false]) {
+		const provider = new FakeProvider("dedalus");
+		const handle = new FakeSandboxHandle("dedalus-doomed", "dedalus");
+		handle.destroyError = new MuxError("transient", DEDALUS_DESTROY_500, {
+			substrate: "dedalus",
+		});
+		// The lane fails AFTER provisioning, which is what reaches the teardown.
+		handle.execError = new MuxError("transient", "machine_not_found: machine no longer exists", {
+			substrate: "dedalus",
+		});
+		provider.handleFactory = () => handle;
+		if (confirmed) {
+			(provider as unknown as { describe: (id: string) => Promise<unknown> }).describe =
+				async () => ({ state: "destroyed", rawPhase: "destroyed" });
+		}
+		const mux = makeMux(router, {
+			keys: { anthropic: "k" },
+			sandboxes: { primary: "dedalus", backups: [] },
+		});
+		mux.registerProvider("dedalus", provider);
+
+		const thrown = await mux.create({ agent: "claude-code" }).then(
+			() => null,
+			(caught: unknown) => caught,
+		);
+		assert.ok(thrown instanceof MuxError, "the lane failure still propagates");
+		const teardown = thrown.message;
+		if (confirmed) {
+			assert.ok(
+				!/orphaned sandbox/.test(teardown),
+				`a destroyed sandbox was reported as an orphan: ${teardown}`,
+			);
+			assert.match(teardown, /teardown errored but the substrate reports it destroyed/);
+			// The vendor's error is still there -- confirmed does not mean hidden.
+			assert.match(teardown, /stripe_submitted_at does not exist/);
+		} else {
+			// No no-wake read to confirm with: the warning stands, and says why.
+			assert.match(teardown, /orphaned sandbox dedalus-doomed/);
+			assert.match(teardown, /cannot report a sandbox's state without resuming it/);
+		}
+	}
 });
 
 test("describe() refuses rather than resuming when a substrate cannot read no-wake", async (t) => {

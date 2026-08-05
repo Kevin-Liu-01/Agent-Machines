@@ -116,6 +116,37 @@ test("setup creates the session with the requested geometry and log wiring", asy
 	assert.ok(!setup.includes("\n"), "setup must stay a single shell line");
 });
 
+test("the install fallback covers every declared-tmux lane's package manager", async () => {
+	const target = recorder();
+	await openTmuxPty(target, { session: "install" });
+	const setup = target.execCalls[0];
+	// dnf/yum are what make `pty: "tmux"` true on vercel: measured 2026-08-05
+	// its node24 runtime is Amazon Linux 2023 with no tmux, no apt-get and no
+	// apk, so the apt-only chain could install nothing and openPty died at
+	// `tmux has-session` -- a declared capability that could not be delivered.
+	for (const manager of [
+		"apt-get install -y tmux",
+		"dnf install -y tmux",
+		"yum install -y tmux",
+		"apk add tmux",
+	]) {
+		assert.ok(
+			setup.includes(manager),
+			`the ensure line must try ${manager} (a declared-tmux lane may boot on it)`,
+		);
+	}
+	// Every sudo attempt is -n: with no tty and a password-protected sudo, a
+	// prompting sudo burns the whole 75s budget instead of falling through to
+	// the next manager.
+	for (const sudoCall of setup.match(/sudo[^|]*/g) ?? []) {
+		assert.match(sudoCall, /^sudo -n /, `sudo must never prompt: ${sudoCall}`);
+	}
+	assert.ok(setup.includes("command -v tmux"), "the install must be conditional");
+	// The install is inside the || branch of the tmux check, so an image that
+	// ships tmux pays nothing.
+	assert.match(setup, /command -v tmux[^|]*\|\| \(/);
+});
+
 test("setup failure surfaces the exit code and output", async () => {
 	const target = recorder();
 	target.exec = async () => ({

@@ -1,10 +1,11 @@
 /**
  * tmux-over-exec PTY fallback.
  *
- * Substrates without a native PTY primitive (Vercel Sandbox has no
- * stdin; Dedalus is batch REST) still get interactive terminals by
- * hosting the session in tmux ON the sandbox and driving it purely
- * through `exec`:
+ * Substrates with no PTY a client can actually drive (Vercel Sandbox
+ * exposes an interactive WebSocket that never answers -- see the
+ * openPty note in ../providers/vercel.ts; Dedalus is batch REST) still
+ * get interactive terminals by hosting the session in tmux ON the
+ * sandbox and driving it purely through `exec`:
  *
  *   input  -> tmux send-keys -H <hex bytes>
  *   output -> pipe-pane to a log file, tailed via streaming exec
@@ -89,8 +90,21 @@ export async function openTmuxPty(
 	// second call). Without -o, tmux replaces the pipe, which is what a
 	// reattach wants.
 	const marker = "__AM_SNAPSHOT__";
+	// Installing tmux must cover EVERY package manager a declared-tmux lane can
+	// boot on. dnf/yum are not decoration: measured 2026-08-05, the vercel
+	// node24 runtime is Amazon Linux 2023.11 with no tmux preinstalled and no
+	// apt-get and no apk, so the apt-only chain that shipped before could not
+	// install anything and openPty failed at `tmux has-session` -- a capability
+	// the adapter DECLARED (pty: "tmux") and could not deliver. `sudo dnf
+	// install -y tmux` there takes 13.5s including the first repo-metadata
+	// fetch, well inside the 75s budget below, and the installed binary
+	// survives park/wake because the snapshot covers the whole rootfs.
+	// `sudo -n` never waits for a password: sudo with no tty and a password
+	// prompt would otherwise burn the whole timeout instead of falling through
+	// to the next manager (vercel's sandbox user is passwordless-sudo, measured
+	// the same day).
 	const ensure = [
-		`command -v tmux >/dev/null 2>&1 || (sudo apt-get install -y tmux >/dev/null 2>&1 || apt-get install -y tmux >/dev/null 2>&1 || apk add tmux >/dev/null 2>&1)`,
+		`command -v tmux >/dev/null 2>&1 || (sudo -n apt-get install -y tmux >/dev/null 2>&1 || apt-get install -y tmux >/dev/null 2>&1 || sudo -n dnf install -y tmux >/dev/null 2>&1 || dnf install -y tmux >/dev/null 2>&1 || sudo -n yum install -y tmux >/dev/null 2>&1 || yum install -y tmux >/dev/null 2>&1 || apk add tmux >/dev/null 2>&1)`,
 		`tmux has-session -t ${shq(session)} 2>/dev/null || tmux new-session -d -s ${shq(session)} -x ${cols} -y ${rows} ${shellCommand ? shq(shellCommand) : ""}`,
 		`tmux set-option -t ${shq(session)} history-limit 10000 >/dev/null 2>&1 || true`,
 		`tmux pipe-pane -t ${shq(session)} ${shq(`cat >> ${log}`)}`,

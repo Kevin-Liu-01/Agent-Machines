@@ -18,6 +18,9 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { machineHomeForProvider } from "@/lib/bootstrap/bootstrap-log";
+import { homeFor } from "@/lib/storage/machine-paths";
+
 import { clearHandleCache } from "./mux-facade";
 import { MachineProviderError, type ProvisionInput } from "./types";
 
@@ -334,6 +337,25 @@ describe("vercel binding", () => {
 				timeoutMs: 3_600_000,
 				env: expect.objectContaining({ HOME: "/vercel/sandbox" }),
 				resources: { vcpu: 2, memoryMib: 4096 },
+			}),
+		);
+	});
+
+	// The pin is an OVERRIDE of the sandbox's real home (measured 2026-08-05:
+	// HOME=/home/vercel-sandbox, cwd=/vercel/sandbox), so its whole value is
+	// agreeing with the path the rest of the hosted plane hardcodes. Pinning one
+	// place and reading another would put the bootstrap tree where repair and
+	// the log reader do not look.
+	it("pins HOME to the machine home the rest of the plane reads", async () => {
+		const provider = fakeMuxProvider("vercel");
+		mocks.createVercelProvider.mockReturnValue(provider);
+		await new VercelProvider({ token: "t", teamId: "tm", projectId: "p" }).provision(SPEC);
+		// Both readers of the machine home must agree with each other and with
+		// the pin, so a change to any one of the three fails here.
+		expect(machineHomeForProvider("vercel")).toBe(homeFor("vercel"));
+		expect(provider.create).toHaveBeenCalledWith(
+			expect.objectContaining({
+				env: expect.objectContaining({ HOME: machineHomeForProvider("vercel") }),
 			}),
 		);
 	});

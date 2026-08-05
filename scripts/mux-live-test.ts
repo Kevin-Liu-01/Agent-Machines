@@ -7,12 +7,28 @@
  * Reads keys from .env at the repo root (gitignored). Substrates without
  * credentials are reported as skipped -- that path is itself part of the
  * contract (fail closed, never error into an uncredentialed provider).
+ *
+ * This script SPENDS MONEY, so teardown is part of its verdict, not a
+ * courtesy at the end: every cell reports what happened to its sandbox, a
+ * teardown failure turns the cell red and the run non-zero, and after the
+ * matrix each lane that ran is asked what it still has (the sweep). The
+ * verdicts, the table and the exit code are in ./live-matrix-report.ts, where
+ * they are unit-tested; this file only measures.
  */
 
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createMux } from "../src/mux/index.js";
-import type { HarnessKind, SubstrateKind } from "../src/mux/index.js";
+import type { HarnessKind, MuxMachine, SubstrateKind } from "../src/mux/index.js";
+import {
+	type MatrixRow,
+	type SweepLane,
+	classifySweep,
+	exitCodeFor,
+	matrixLines,
+	sweepLines,
+	verdictLine,
+} from "./live-matrix-report.js";
 
 const ROOT = resolve(import.meta.dirname, "..");
 // Both files, because they carry different credentials: .env holds the
@@ -68,18 +84,8 @@ const upstream = (listArg("--upstream") ?? [])[0] as
 const PROMPT =
 	"Reply with exactly the text MUX-OK and nothing else. Do not use any tools.";
 
-type Row = {
-	agent: HarnessKind;
-	sandbox: SubstrateKind;
-	outcome: "ok" | "skipped" | "failed";
-	createMs?: number;
-	installMs?: number;
-	runMs?: number;
-	firstEventMs?: number;
-	events?: number;
-	text?: string;
-	error?: string;
-};
+// Row shape, verdict rules, table rendering and the exit code all live in
+// ./live-matrix-report.ts so they can be tested without provisioning anything.
 
 const mux = createMux(
 	upstream
@@ -97,7 +103,7 @@ const mux = createMux(
 		: undefined,
 );
 if (upstream) console.log(`upstream forced: ${upstream}`);
-const rows: Row[] = [];
+const rows: MatrixRow[] = [];
 
 for (const sandbox of sandboxes) {
 	const readiness = mux.provider(sandbox).ready();
@@ -106,7 +112,8 @@ for (const sandbox of sandboxes) {
 			rows.push({
 				agent,
 				sandbox,
-				outcome: "skipped",
+				verdict: "skipped",
+				teardown: "none",
 				error: `missing credentials: ${readiness.missing.join(", ")}`,
 			});
 		}
@@ -116,18 +123,32 @@ for (const sandbox of sandboxes) {
 
 	for (const agent of agents) {
 		const label = `${agent} @ ${sandbox}`;
-		const row: Row = { agent, sandbox, outcome: "failed" };
+		const row: MatrixRow = {
+			agent,
+			sandbox,
+			verdict: "failed",
+			teardown: "noMachine",
+		};
 		rows.push(row);
 		const name = `mux-live-${agent}-${sandbox}`;
+		// Hoisted out of the try so the teardown block below can see it. It used
+		// to be a `const` inside, which is why the old catch tore down by
+		// reconnecting to the NAME -- and why a destroy failure was
+		// indistinguishable from a run failure.
+		let machine: MuxMachine | undefined;
 		try {
 			console.log(`\n=== ${label} ===`);
 			let t = performance.now();
-			const machine = await mux.create({
+			machine = await mux.create({
 				agent,
 				sandbox,
 				name,
 				install: false,
 			});
+			// Recorded before anything can fail, because the final sweep looks
+			// for THIS id: a cell that dies after create must still be
+			// sweepable.
+			row.sandboxId = machine.sandbox.id;
 			row.createMs = Math.round(performance.now() - t);
 			console.log(`  create: ${row.createMs}ms (attempts: ${machine.attempts.map((a) => `${a.substrate}=${a.outcome}`).join(",")})`);
 
@@ -162,7 +183,7 @@ for (const sandbox of sandboxes) {
 			// shifts case does not read as a red lane.
 			const sentinelSeen = result.text.toUpperCase().includes("MUX-OK");
 			const exitOk = result.exitCode === 0;
-			row.outcome = exitOk && sentinelSeen ? "ok" : "failed";
+			row.verdict = exitOk && sentinelSeen ? "ok" : "failed";
 			if (!exitOk) {
 				row.error = `exit ${result.exitCode}`;
 			} else if (!sentinelSeen) {
@@ -179,45 +200,89 @@ for (const sandbox of sandboxes) {
 			);
 			console.log(`  text: ${JSON.stringify(row.text)}`);
 			if (row.error) console.log(`  FAILED: ${row.error}`);
-			if (!keep) {
-				await machine.destroy();
-				console.log("  destroyed");
-			}
 		} catch (error) {
 			row.error = error instanceof Error ? error.message.slice(0, 300) : String(error);
 			console.log(`  FAILED: ${row.error}`);
-			if (!keep) {
-				try {
-					const remembered = mux;
-					void remembered;
-					await (await mux.connect(name)).destroy();
-				} catch {
-					// best effort teardown
-				}
+		}
+
+		// Teardown is OUTSIDE the try on purpose. Until 2026-08-05 `destroy()`
+		// was the last statement inside it, so a destroy that threw was caught
+		// by the run's own catch: that set row.error but never touched the
+		// outcome a passing run had already written, so the cell printed `ok`,
+		// the exit code stayed 0, and the sandbox kept billing. A separate block
+		// with its own verdict is what makes a leak un-hideable.
+		if (keep) {
+			row.teardown = "kept";
+		} else if (machine === undefined) {
+			// create() itself threw. create() already tears down a sandbox it
+			// provisioned before a later failure in the same call, so usually
+			// there is nothing here -- but a placement may have been remembered,
+			// so try by name. Failure here stays quiet BECAUSE it is expected
+			// (nothing of that name exists); the lane sweep below is the check
+			// that does not depend on this guess.
+			try {
+				const remembered = await mux.connect(name);
+				row.sandboxId ??= remembered.sandbox.id;
+				await remembered.destroy();
+				row.teardown = "ok";
+				console.log("  destroyed (reconnected by name)");
+			} catch {
+				console.log("  no machine to destroy (create failed); see the sweep");
+			}
+		} else {
+			try {
+				await machine.destroy();
+				row.teardown = "ok";
+				console.log("  destroyed");
+			} catch (error) {
+				row.teardown = "failed";
+				row.teardownError =
+					error instanceof Error ? error.message.slice(0, 300) : String(error);
+				console.log(`  TEARDOWN FAILED: ${row.teardownError}`);
 			}
 		}
 	}
 }
 
-console.log("\n\n=== MATRIX ===");
-console.log(
-	"agent        sandbox   outcome  create  install  first-ev  run      text",
-);
-for (const row of rows) {
-	console.log(
-		[
-			row.agent.padEnd(12),
-			row.sandbox.padEnd(9),
-			row.outcome.padEnd(8),
-			String(row.createMs ?? "-").padEnd(7),
-			String(row.installMs ?? "-").padEnd(8),
-			String(row.firstEventMs ?? "-").padEnd(9),
-			String(row.runMs ?? "-").padEnd(8),
-			// On a failed row the error names which gate failed (exit vs
-			// sentinel) -- the text alone would make the reader re-derive it.
-			(row.outcome === "failed" ? row.error ?? row.text : row.text ?? row.error) ?? "",
-		].join(" "),
-	);
+/**
+ * Independent check that the run left nothing behind: ask each lane that
+ * actually ran what it still has, and compare against the ids this run created.
+ * A per-cell `destroy()` that resolves is the vendor's word; this is the
+ * vendor's own inventory, which is the only thing that catches a destroy that
+ * resolved without destroying.
+ */
+const lanes: SweepLane[] = [];
+for (const substrate of [...new Set(rows.map((row) => row.sandbox))]) {
+	const cells = rows.filter((row) => row.sandbox === substrate);
+	if (cells.every((row) => row.verdict === "skipped")) continue;
+	const created = cells
+		.map((row) => row.sandboxId)
+		.filter((id): id is string => id !== undefined);
+	// A cell whose create() threw has no id to look for, so the sweep must say
+	// it cannot speak for that cell rather than reporting the lane clean.
+	const unidentified = cells.filter(
+		(row) => row.verdict !== "skipped" && row.sandboxId === undefined,
+	).length;
+	try {
+		const listed = await mux.provider(substrate).list();
+		lanes.push(classifySweep({ substrate, created, unidentified, listed, keep }));
+	} catch (error) {
+		lanes.push(
+			classifySweep({
+				substrate,
+				created,
+				unidentified,
+				listError:
+					error instanceof Error ? error.message.slice(0, 300) : String(error),
+				keep,
+			}),
+		);
+	}
 }
-const failed = rows.filter((row) => row.outcome === "failed");
-process.exit(failed.length > 0 ? 1 : 0);
+
+console.log("\n\n=== MATRIX ===");
+for (const line of matrixLines(rows)) console.log(line);
+console.log("\n=== SWEEP (what each lane still has) ===");
+for (const line of sweepLines(lanes)) console.log(line);
+console.log(`\n${verdictLine(rows, lanes)}`);
+process.exit(exitCodeFor(rows, lanes));

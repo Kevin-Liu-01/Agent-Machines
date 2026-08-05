@@ -9,22 +9,56 @@
  *                  web/lib/providers/e2b.ts).
  *   execStream  -> detached runCommand + Command.logs() async iterator,
  *                  then wait() for the exit code (native streaming).
- *   openPty     -> tmux-over-exec fallback; Vercel Sandbox has NO native
- *                  PTY and NO stdin after a command starts (hard vendor
- *                  limitation), so interactive sessions live in tmux on
- *                  the sandbox and are driven purely through exec.
+ *   openPty     -> tmux-over-exec, because the vendor's own interactive
+ *                  channel does not answer (measured below).
  *   sleep       -> sandbox.stop() (filesystem snapshot; memory is lost).
  *   wake        -> Sandbox.get({ resume: true }) resumes from snapshot.
  *   destroy     -> sandbox.delete() (terminal; the name is freed).
  *
- * `Sandbox.get` DEFAULTS to resume: true (SDK dist/sandbox.d.ts
- * GetSandboxParams, @vercel/sandbox 2.9), so every read path here passes
- * resume: false explicitly. Omitting the flag is what wakes and bills a
- * parked sandbox for being looked at.
+ * THE PTY, measured live 2026-08-05 (@vercel/sandbox 2.9.2). The SDK DOES
+ * expose `Sandbox.openInteractive()`, which returns
+ * wss://sb-<id>.vercel.run/ws/interactive plus a 43-char opaque token, so
+ * "this vendor has no PTY API" would be false. It is unusable from here
+ * anyway. Eleven connection attempts: five carrying the token as a
+ * subprotocol, as an `Authorization: Bearer` header, or not at all were
+ * refused at the handshake (close 1006); the six that authenticated with
+ * `?token=` opened, and then the channel emitted NOTHING -- no prompt on
+ * connect, and no output for "\n", "\r", JSON {type: stdin|input|data},
+ * or binary frames with and without a leading channel byte, waited out to
+ * 12s each. The one that sent JSON {type: "start"} was closed with 1006.
+ * There is no published framing for this endpoint, so the honest capability
+ * is the one we can drive: tmux over exec. That is deliverable here -- same
+ * date, on the node24 runtime (Amazon Linux 2023.11, no preinstalled tmux,
+ * no apt-get, no apk) `sudo dnf install -y tmux` installs tmux 3.6a in
+ * 13.5s, and new-session / list-sessions / send-keys all work. End to end
+ * through openPty: 18.5s to first attach including that install, then a
+ * 280ms keystroke round trip, and the installed binary survives park/wake
+ * because the snapshot covers the rootfs (the tmux SERVER does not -- memory
+ * is lost, which is what `persistence: "filesystem-snapshot"` means). See
+ * the package-manager chain in ../pty/tmux.ts, which is what makes
+ * `pty: "tmux"` true instead of aspirational.
+ *
+ * WHAT WAKES A PARKED SANDBOX, measured the same day, because this is the
+ * file's central safety rule and the SDK's jsdoc is not what happens on the
+ * wire. `Sandbox.get` does NOT resume by itself: with the flag omitted the
+ * SDK sends no resume query param at all (dist/api-client/api-client.js:
+ * `if (params.resume !== void 0) query.resume = String(params.resume)`), and
+ * the API answered `resumed: false` with the session still `stopped`. What
+ * resumes is (a) `resume: true`, and (b) EVERY instance method wrapped in
+ * `withResume` -- runCommand, writeFiles, readFile, openInteractive -- which
+ * resume a stopped session before doing their work. Every read path here
+ * still passes `resume: false` explicitly, because GetSandboxParams
+ * documents the default as `true` (dist/sandbox.d.ts) and a server-side
+ * default that contradicts the vendor's own contract is not something to
+ * depend on: the explicit flag is what keeps a describe() from billing a
+ * parked sandbox if the API ever starts honoring its documentation.
  *
  * Auth is either VERCEL_OIDC_TOKEN or the token + teamId + projectId
  * triple. A `vck_`-prefixed key is a Vercel AI Gateway key and is NOT
  * Sandbox auth; ready() fails closed with a pointer to the right vars.
+ * Under OIDC the SDK derives token/teamId/projectId from the JWT itself and
+ * REJECTS a partial triple, which is why nothing here passes projectId on
+ * its own -- see list().
  *
  * State mapping (mirrors web/lib/providers/vercel.ts):
  *   running -> ready; stopped -> sleeping;
@@ -68,22 +102,35 @@ const RUNTIME = "node24";
 /** Session auto-terminate window; persistence survives it via snapshots. */
 const DEFAULT_SESSION_TIMEOUT_MS = 3_600_000;
 /**
- * Vercel requires ports to be declared at create time (max 4). The
- * contract has no port knob, so expose the gateway ports the harnesses
- * use (hermes 8642, openclaw 18789) plus a common dev-server port.
+ * Vercel requires ports to be declared at create time. The contract has no
+ * port knob, so expose the gateway ports the harnesses use (hermes 8642,
+ * openclaw 18789) plus a common dev-server port.
+ *
+ * The SDK's own jsdoc says "Sandboxes can expose up to 4 ports"
+ * (dist/sandbox.d.ts CreateSandboxParams.ports, 2.9.2) and that is wrong:
+ * measured 2026-08-05, creates with 5, 6, 8, 9, 10, 12, 13 and 14 declared
+ * ports all succeeded (260-1567ms). 15 -- the "Maximum open ports" the
+ * pricing page publishes for every plan -- failed with an opaque HTTP 500
+ * after ~15s on four attempts across three different port sets, so the
+ * refusal is about the COUNT and not about one unlucky port. 14 is therefore
+ * the largest number proven to work and 15 is proven not to; nothing here
+ * needs more than 3.
  */
 const DEFAULT_PORTS = [3000, 8642, 18789] as const;
 const LIST_MAX_ENTRIES = 200;
 
 /**
- * Declared capabilities.
+ * Declared capabilities, for a credential whose plan is NOT known.
  *
- * DECLARED FROM DOCUMENTATION, NOT VERIFIED LIVE. We hold no Vercel Sandbox
- * auth, so this lane has never run a cell in the mux matrix
- * (docs/MUX-RESULTS.md) -- every value below is what Vercel publishes, with
- * the page and read date cited, and none of it is a measurement of ours.
- * Plan-tiered figures use HOBBY, the lowest published tier, because the plan
- * behind a token cannot be proven at routing time.
+ * Sources are mixed and each value says which it is: a Vercel page with its
+ * read date, the SDK source, or a live measurement of ours (this lane ran the
+ * full 4x4 matrix on 2026-08-01, docs/MUX-RESULTS.md, and a substrate probe on
+ * 2026-08-05 -- both under OIDC auth).
+ *
+ * Plan-tiered figures here are HOBBY, the lowest published tier. They are the
+ * fallback, not the answer: `capabilitiesFor` below raises them when the
+ * credential PROVES a higher tier, and an unprovable tier must lose the lane
+ * rather than be hoped for.
  */
 const CAPABILITIES: SandboxCapabilities = {
 	pty: "tmux",
@@ -116,53 +163,147 @@ const CAPABILITIES: SandboxCapabilities = {
 	// (CLI)." The vendor can fork; the mux contract exposes no fork operation,
 	// so exposed stays false and the reason names us as the blocker.
 	fork: { vendor: true, exposed: false },
-	// https://vercel.com/docs/sandbox/pricing (read 2026-08-01), Resource
-	// limits table: "Maximum open ports" is 15 on every plan, and ports must be
-	// declared when the sandbox is created. This adapter declares DEFAULT_PORTS
-	// (3 of them) and has no port knob in CreateSandboxOptions, so 3 is what a
-	// run can actually get -- publicUrl() returns null for anything else.
+	// Ports must be declared when the sandbox is created. vendorMax is the
+	// MEASURED ceiling, not the published one: https://vercel.com/docs/sandbox/
+	// pricing (read 2026-08-01) says "Maximum open ports" 15 on every plan, and
+	// 15 reproducibly fails (see DEFAULT_PORTS above) while 14 works. Declaring
+	// the published 15 would offer a port count the API refuses. This adapter
+	// declares DEFAULT_PORTS (3 of them) and has no port knob in
+	// CreateSandboxOptions, so 3 is what a run can actually get -- publicUrl()
+	// returns null for anything else, verified live for port 8090 on a sandbox
+	// that declared five other ports (2026-08-05).
 	publicPorts: {
 		model: "declared-at-create",
-		vendorMax: 15,
+		vendorMax: 14,
 		muxMax: DEFAULT_PORTS.length,
 		fixed: [...DEFAULT_PORTS],
 	},
 	limits: {
-		// https://vercel.com/docs/sandbox/pricing (read 2026-08-01): "The
-		// default is 2 vCPUs" and "Each vCPU includes 2 GB of memory", so a
-		// default sandbox is 2 vCPU / 4 GB. GB here is decimal and converted
-		// down: 4 GB is 3,814 MiB (4e9 / 1048576), not 4,096. Rounding a
-		// baseline up is exactly how a memory floor gets satisfied by a machine
-		// that cannot hold it.
+		// MEASURED 2026-08-05: a create with `resources: { vcpus: 2 }` (the
+		// documented default -- https://vercel.com/docs/sandbox/pricing, read
+		// 2026-08-01, "The default is 2 vCPUs") reported vcpus 2 and memory
+		// 4096, and the guest saw nproc 2 with MemTotal 4,386,564 kB = 4,283
+		// MiB. So the vendor's memory number is MiB per MIB_PER_VCPU below --
+		// not the decimal 3,814 MiB this line used to carry, which understated
+		// the machine by 282 MiB and was derived from a "GB" the vendor does not
+		// mean.
 		baseVcpu: 2,
-		baseMemoryMib: 3814,
-		// Same page, Resource limits table, Hobby row: "Maximum vCPUs" 4 and
-		// "Maximum memory" 8GB (Pro 8 / 16GB, Enterprise 32 / 64GB). 8 GB is
-		// 7,629 MiB by the same conversion.
+		baseMemoryMib: 4096,
+		// Hobby fallback, from the same page's Resource limits table ("Maximum
+		// vCPUs" 4, "Maximum memory" 8GB). Memory is 4 x MIB_PER_VCPU, the
+		// relation measured at both 2 and 8 vCPU. capabilitiesFor() raises both
+		// when the credential proves a higher tier.
 		maxVcpu: 4,
-		maxMemoryMib: 7629,
+		maxMemoryMib: 8192,
 		// Same table: "Each sandbox is automatically provisioned 32 GB of
 		// ephemeral NVMe storage", 32 GB on every plan. 32 GB is 29.8 GiB,
 		// floored to 29. No disk request exists, so base equals ceiling.
+		// Consistent with the guest: `df -h /` reports a 32G root on the same
+		// probe.
 		baseDiskGib: 29,
 		maxDiskGib: 29,
 		// Same page, Runtime limits: Hobby "45 minutes", Pro/Enterprise "24
-		// hours". Hobby here. NOTE this is BELOW the adapter's own
-		// DEFAULT_SESSION_TIMEOUT_MS of one hour; that mismatch cannot be
-		// resolved without a credentialed run, so it is recorded rather than
-		// silently changed.
+		// hours". Hobby fallback here, and it is BELOW this adapter's own
+		// DEFAULT_SESSION_TIMEOUT_MS of one hour. That mismatch is real only for
+		// a hobby credential, which we have never held: the live runs (900_000
+		// and 3_600_000 timeouts, 2026-08-05) were on a pro token where 1h is
+		// far inside the ceiling. Recorded rather than silently changed, because
+		// what the API does with an over-plan timeout on hobby is unmeasured.
 		maxRuntimeMs: 2_700_000,
 		// Same page, Concurrency limits: Hobby "10", Pro "2,000".
 		maxConcurrentSandboxes: 10,
-		// create() below now forwards options.resources as a vCPU count (2 GB
-		// of memory rides on each vCPU per the pricing page). "unknown" rather
-		// than "honored" because no credentialed run has ever confirmed the
-		// machine comes up at the requested size on this substrate -- the
-		// request is sent, the effect is unverified, and a constraint that
-		// depends on growing the machine must still fail closed.
-		resourceRequest: "unknown",
+		// MEASURED HONORED 2026-08-05, end to end and through this adapter. A
+		// vendor create at 2 vCPUs came up with nproc 2 / MemTotal 4,283 MiB and
+		// one at 8 with nproc 8 / MemTotal 16,643 MiB, so the count is real and
+		// not just accepted. Then through create() itself: `resources: {
+		// memoryMib: 16_384 }` -- no vcpu axis at all -- produced a sandbox
+		// reporting vcpus 8 / memory 16384 whose guest saw nproc 8, which is the
+		// requestedVcpus derivation landing on the machine it promised.
+		resourceRequest: "honored",
 	},
 };
+
+/**
+ * Memory per vCPU, as the vendor reports it and as the guest actually has it.
+ *
+ * The SDK says "2048 MB of memory per vCPU" (dist/sandbox.d.ts
+ * CreateSandboxParams.resources) and the pricing page says "2 GB"; neither
+ * states whether the wire number is decimal MB or MiB, which is why describe()
+ * used to omit memory entirely. Measured 2026-08-05 it is MiB, exactly:
+ * `Sandbox.memory` was 4096 at 2 vCPU and 16384 at 8 vCPU, and in both cases
+ * the guest's MemTotal was HIGHER than that many MiB (4,283 and 16,643 MiB).
+ * Reading the number as MiB therefore never claims memory the machine does not
+ * have, which is the only property a floor check needs.
+ */
+const MIB_PER_VCPU = 2048;
+
+/** The plan tiers Vercel publishes limits for. */
+type VercelPlan = "hobby" | "pro" | "enterprise";
+
+/**
+ * Per-plan ceilings, selected by the `plan` claim in the OIDC JWT.
+ *
+ * The plan IS knowable at routing time: measured 2026-08-05, the token minted
+ * by `vercel env pull` carries `plan` beside `owner_id` and `project_id`
+ * (claims: aud, client_id, environment, exp, iat, iss, nbf, owner, owner_id,
+ * plan, project, project_id, scope, sub, user_id). This token says "pro", and
+ * the tier is real, not cosmetic: a create asking for 8 vCPUs -- twice the
+ * published HOBBY maximum -- succeeded, and the machine came up with 8 vCPU and
+ * 16,384 MiB.
+ *
+ * vCPU/runtime/concurrency figures are the pricing page's Resource, Runtime and
+ * Concurrency limit tables (read 2026-08-01); memory is vCPU x MIB_PER_VCPU,
+ * the relation measured above. Enterprise concurrency stays "unknown" because
+ * that table quotes only Hobby (10) and Pro (2,000) -- an unknown loses a
+ * concurrency constraint, which is the correct outcome for a figure nobody
+ * published.
+ *
+ * A credential that does NOT prove a tier (the token triple carries no plan
+ * claim, an OIDC token could omit it, an unrecognized plan name) keeps the
+ * HOBBY figures in CAPABILITIES. Over-declaring a ceiling is what admits a
+ * placement the substrate then refuses.
+ */
+const PLAN_LIMITS: Record<
+	VercelPlan,
+	{
+		maxVcpu: number;
+		maxRuntimeMs: number;
+		maxConcurrentSandboxes: number | "unknown";
+	}
+> = {
+	hobby: { maxVcpu: 4, maxRuntimeMs: 2_700_000, maxConcurrentSandboxes: 10 },
+	pro: { maxVcpu: 8, maxRuntimeMs: 86_400_000, maxConcurrentSandboxes: 2_000 },
+	enterprise: {
+		maxVcpu: 32,
+		maxRuntimeMs: 86_400_000,
+		maxConcurrentSandboxes: "unknown",
+	},
+};
+
+function isVercelPlan(value: unknown): value is VercelPlan {
+	return value === "hobby" || value === "pro" || value === "enterprise";
+}
+
+/**
+ * CAPABILITIES with the ceilings the credential can prove.
+ *
+ * Only the plan-tiered axes move; everything else is a property of the
+ * substrate, not of the account.
+ */
+function capabilitiesFor(plan: VercelPlan | undefined): SandboxCapabilities {
+	if (plan === undefined || plan === "hobby") return CAPABILITIES;
+	const tier = PLAN_LIMITS[plan];
+	return {
+		...CAPABILITIES,
+		limits: {
+			...CAPABILITIES.limits!,
+			maxVcpu: tier.maxVcpu,
+			maxMemoryMib: tier.maxVcpu * MIB_PER_VCPU,
+			maxRuntimeMs: tier.maxRuntimeMs,
+			maxConcurrentSandboxes: tier.maxConcurrentSandboxes,
+		},
+	};
+}
 
 let sandboxClassPromise: Promise<SandboxClass> | null = null;
 
@@ -311,17 +452,20 @@ function isGatewayKey(value: string | undefined): boolean {
 }
 
 /**
- * Best-effort local decode of a Vercel OIDC JWT payload. The SDK derives
- * projectId/teamId from these claims; Sandbox.list() requires projectId
- * as an explicit parameter, so we mirror the derivation here.
+ * The plan tier a Vercel OIDC JWT proves, or undefined.
+ *
+ * The signature is NOT verified and does not need to be: the claim only picks
+ * which published ceilings to declare, so the worst a wrong claim can do is
+ * admit a create the API then refuses. It grants no access, and the token is
+ * never logged -- only the plan name leaves this function.
+ *
+ * The SDK derives projectId/teamId from the same payload
+ * (dist/utils/get-credentials.js), which is why nothing else here needs to.
  */
-function decodeOidcClaims(oidcToken: string | undefined): {
-	projectId?: string;
-	teamId?: string;
-} {
-	if (!oidcToken) return {};
+function planOf(oidcToken: string | undefined): VercelPlan | undefined {
+	if (!oidcToken) return undefined;
 	const parts = oidcToken.split(".");
-	if (parts.length < 2 || !parts[1]) return {};
+	if (parts.length < 2 || !parts[1]) return undefined;
 	try {
 		const payload = JSON.parse(
 			Buffer.from(
@@ -329,49 +473,41 @@ function decodeOidcClaims(oidcToken: string | undefined): {
 				"base64",
 			).toString("utf8"),
 		) as Record<string, unknown>;
-		return {
-			projectId:
-				typeof payload["project_id"] === "string"
-					? payload["project_id"]
-					: undefined,
-			teamId:
-				typeof payload["owner_id"] === "string"
-					? payload["owner_id"]
-					: undefined,
-		};
+		const plan = payload["plan"];
+		return isVercelPlan(plan) ? plan : undefined;
 	} catch {
-		return {};
+		return undefined;
 	}
 }
 
 /**
  * vCPUs to ask for, from either axis of a resource request.
  *
- * https://vercel.com/docs/sandbox/pricing (read 2026-08-01): "The default is
- * 2 vCPUs" and "Each vCPU includes 2 GB of memory", with a Hobby ceiling of 4.
- * Memory therefore cannot be requested independently -- a caller asking for
- * 8 GiB is asking for 4 vCPUs -- and the larger of the two derived counts
- * wins so neither axis is silently ignored. Undefined means "say nothing and
- * take the default", which is not the same as asking for the default.
+ * Memory cannot be requested independently -- the vendor takes a vCPU count and
+ * hangs MIB_PER_VCPU on each one -- so a caller asking for 16 GiB is asking for
+ * 8 vCPUs, and the larger of the two derived counts wins so neither axis is
+ * silently ignored. Measured honored end to end 2026-08-05 (see
+ * limits.resourceRequest). Undefined means "say nothing and take the default",
+ * which is not the same as asking for the default.
+ *
+ * `ceiling` is the requesting credential's proven plan maximum, not a constant:
+ * clamping a pro credential's legitimate 8-vCPU request down to the hobby 4
+ * would hand the harness half the machine it asked for and report success.
  */
 function requestedVcpus(
 	resources: { vcpu?: number; memoryMib?: number } | undefined,
+	ceiling: number,
 ): number | undefined {
 	if (!resources) return undefined;
 	const fromVcpu = resources.vcpu;
-	// 2 GB per vCPU, read as 2048 MiB: the conservative direction, since
-	// rounding up asks for more capacity rather than starving the harness.
 	const fromMemory =
 		resources.memoryMib === undefined
 			? undefined
-			: Math.ceil(resources.memoryMib / 2048);
+			: Math.ceil(resources.memoryMib / MIB_PER_VCPU);
 	const wanted = Math.max(fromVcpu ?? 0, fromMemory ?? 0);
 	if (wanted <= 0) return undefined;
-	return Math.min(Math.max(1, Math.ceil(wanted)), VERCEL_MAX_VCPUS);
+	return Math.min(Math.max(1, Math.ceil(wanted)), ceiling);
 }
-
-/** Documented Hobby ceiling; the plan is unknowable at routing time. */
-const VERCEL_MAX_VCPUS = 4;
 
 /**
  * Test seam: createVercelProvider takes a Sandbox-class override so a suite
@@ -390,6 +526,12 @@ export function createVercelProvider(
 
 	const tripleOk = Boolean(token && teamId && projectId && !isGatewayKey(token));
 	const oidcOk = Boolean(oidcToken && !isGatewayKey(oidcToken));
+
+	// Ceilings this credential can prove. A gateway key is not Sandbox auth at
+	// all, so its claims (it has none) never raise anything.
+	const capabilities = capabilitiesFor(oidcOk ? planOf(oidcToken) : undefined);
+	const maxVcpu = capabilities.limits?.maxVcpu;
+	const vcpuCeiling = typeof maxVcpu === "number" ? maxVcpu : PLAN_LIMITS.hobby.maxVcpu;
 
 	/** Injected only by tests; production pays the lazy vendor import. */
 	const sandboxClass = (): Promise<SandboxClass> =>
@@ -456,7 +598,7 @@ export function createVercelProvider(
 		const handle: SandboxHandle = {
 			id: name,
 			substrate: "vercel",
-			capabilities: CAPABILITIES,
+			capabilities,
 
 			async exec(
 				command: string,
@@ -552,8 +694,11 @@ export function createVercelProvider(
 			},
 
 			async openPty(options: PtyOptions = {}): Promise<PtyHandle> {
-				// Vercel Sandbox has no native PTY and no stdin after start;
-				// interactive sessions are hosted in tmux on the sandbox.
+				// The vendor's interactive WebSocket opens and then says
+				// nothing (header, measured 2026-08-05), so interactive
+				// sessions are hosted in tmux on the sandbox. tmux is not
+				// preinstalled on this runtime and is installed on first use
+				// by the dnf branch in ../pty/tmux.ts.
 				return openTmuxPty(handle, options);
 			},
 
@@ -628,7 +773,7 @@ export function createVercelProvider(
 
 	return {
 		kind: "vercel",
-		capabilities: CAPABILITIES,
+		capabilities,
 
 		ready,
 
@@ -643,10 +788,11 @@ export function createVercelProvider(
 				// live sandbox, recreates when the snapshot is gone).
 				// A dropped size request is worse than a refused one: the sandbox
 				// comes up small and the harness starves at run time with no hint
-				// that the request was ignored. Vercel meters 2 GB per vCPU, so
-				// memory is expressed by asking for the vCPUs that carry it, and
-				// the count is clamped to the documented Hobby ceiling.
-				const vcpus = requestedVcpus(options.resources);
+				// that the request was ignored. Vercel hangs MIB_PER_VCPU on each
+				// vCPU, so memory is expressed by asking for the vCPUs that carry
+				// it, and the count is clamped to the ceiling this credential's
+				// plan proves.
+				const vcpus = requestedVcpus(options.resources, vcpuCeiling);
 				const sandbox = await Sandbox.getOrCreate({
 					...authParams(),
 					name,
@@ -703,14 +849,24 @@ export function createVercelProvider(
 				};
 				const createdAt = isoOf(sandbox.createdAt);
 				if (createdAt) description.createdAt = createdAt;
-				// vCPU only. `Sandbox.memory` is documented as "Memory allocated in
-				// MB" (SDK dist/sandbox.d.ts, read 2026-08-01) while the pricing
-				// page speaks in GB per vCPU, and nothing states whether the wire
-				// number is decimal MB or MiB -- so the MiB axis stays absent
-				// instead of carrying a figure whose unit we cannot prove. vCPU is
-				// unit-free and is the only size Vercel accepts at create time.
+				// Both axes the vendor reports. `Sandbox.memory` is documented as
+				// "Memory allocated in MB" (SDK dist/sandbox.d.ts) with no statement
+				// of decimal-vs-binary, which is why this used to omit it; measured
+				// 2026-08-05 the number is MiB and the guest always has at least
+				// that much (see MIB_PER_VCPU), so reporting it can only understate
+				// the machine. It was reported on every sandbox read that day, at
+				// both 2 and 8 vCPU. diskGib stays absent: the vendor publishes
+				// 32 GB of ephemeral storage per sandbox but the SDK exposes no
+				// per-sandbox disk figure, and an axis nothing reported must stay
+				// absent rather than be filled from the plan table.
 				if (typeof sandbox.vcpus === "number") {
 					description.resources = { vcpu: sandbox.vcpus };
+				}
+				if (typeof sandbox.memory === "number") {
+					description.resources = {
+						...description.resources,
+						memoryMib: sandbox.memory,
+					};
 				}
 				return description;
 			} catch (error) {
@@ -771,24 +927,28 @@ export function createVercelProvider(
 			}
 		},
 
+		/**
+		 * Every sandbox in the project, newest first.
+		 *
+		 * Pass NO credential fields of our own beyond authParams(): they are
+		 * all-or-none. The SDK's getCredentials rejects a partial triple
+		 * (dist/utils/get-credentials.js: "Missing credentials parameters to
+		 * access the Vercel API: token, teamId" when 1 or 2 of the three are
+		 * present), and this method used to add a projectId derived from the JWT
+		 * on top of the empty OIDC params -- which made exactly that partial
+		 * triple and threw on every call. Measured 2026-08-05: with the derived
+		 * projectId, list() throws under OIDC auth; with nothing passed, it
+		 * returns the project's sandboxes, because getCredentials pulls token,
+		 * teamId AND projectId out of the JWT itself. An operator on OIDC-only
+		 * auth could not enumerate this lane at all before that, so "prove
+		 * nothing is left billing" had no answer here.
+		 */
 		async list(): Promise<SandboxInfo[]> {
 			assertReady();
 			const Sandbox = await sandboxClass();
-			// Sandbox.list requires an explicit projectId even under OIDC
-			// auth, where it only exists inside the JWT claims.
-			const listProjectId =
-				projectId ?? decodeOidcClaims(oidcToken).projectId;
-			if (!listProjectId) {
-				throw new MuxError(
-					"missing_credentials",
-					"vercel list requires VERCEL_PROJECT_ID (could not derive project_id from the OIDC token)",
-					{ substrate: "vercel" },
-				);
-			}
 			try {
 				const paginator = await Sandbox.list({
 					...authParams(),
-					projectId: listProjectId,
 					sortBy: "createdAt",
 					sortOrder: "desc",
 					limit: 50,

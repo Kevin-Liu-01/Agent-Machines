@@ -729,7 +729,8 @@ class FakeVercelSandbox {
 
 	get status(): string {
 		// The instance proxies the CURRENT SESSION's status; a parked sandbox has
-		// a stopped one, and `Sandbox.get` defaults to resuming it.
+		// a stopped one, which every `withResume`-wrapped instance method (
+		// runCommand, writeFiles, readFile) resumes before doing its work.
 		return this.spy.parked ? "stopped" : "running";
 	}
 
@@ -797,8 +798,13 @@ class FakeVercelStatics {
 
 	async get(params: { name: string; resume?: boolean }): Promise<FakeVercelSandbox> {
 		this.spy.touch(`Sandbox.get:resume=${String(params.resume)}`);
-		// resume defaults to true upstream, so anything but an explicit false is
-		// a resume -- including an omitted flag.
+		// An omitted flag counts as a resume here ON PURPOSE, and it is stricter
+		// than the live API: measured 2026-08-05, `Sandbox.get` with no resume
+		// param sends none (the SDK only sets the query when the flag is defined)
+		// and the API answered `resumed: false` on a stopped sandbox. But
+		// GetSandboxParams documents the default as `true`, so the adapter may
+		// never rely on that server behavior -- this fake fails any read path
+		// that stops passing `resume: false` explicitly.
 		if (params.resume !== false) this.spy.markResumed();
 		this.fail();
 		return new FakeVercelSandbox(this.spy, params.name);
@@ -831,8 +837,9 @@ const vercelLane: Lane = {
 			/VERCEL_OIDC_TOKEN/,
 		],
 		sampleId: "box-conf",
-		// No native pty and no stdin after a command starts, so every pty is
-		// tmux-over-exec, named or not.
+		// The vendor's interactive WebSocket opens and never answers (measured
+		// 2026-08-05, see providers/vercel.ts), so every pty is tmux-over-exec,
+		// named or not.
 		pty: "tmux",
 		namedPtyUsesTmux: true,
 		streamingExec: true,

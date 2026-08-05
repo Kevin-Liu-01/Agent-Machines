@@ -115,8 +115,21 @@ function vercelBinding(creds: VercelCreds | null): MuxSubstrateBinding {
 			name: input.name,
 			timeoutMs: DEFAULT_SESSION_TIMEOUT_MS,
 			// HOME is pinned because the bootstrap runner writes its whole tree
-			// under $HOME; this is the Vercel Sandbox default home, kept explicit
-			// so a runtime change cannot silently relocate the bootstrap.
+			// under $HOME, and this is NOT the vendor's default home -- the claim
+			// that it was is wrong. Measured on a live sandbox 2026-08-05: the
+			// node24 runtime runs as `vercel-sandbox` (uid 1000) with
+			// HOME=/home/vercel-sandbox (mode 700) and cwd=/vercel/sandbox (755);
+			// both are writable and both survive a park/wake snapshot.
+			//
+			// The pin OVERRIDES that default on purpose: machineHomeForProvider
+			// ("vercel") is /vercel/sandbox in lib/storage/machine-paths.ts, and
+			// lib/bootstrap/{runner,bootstrap-repair,bootstrap-log,
+			// gateway-lifecycle}.ts each hardcode the same path. If $HOME were the
+			// vendor default while those stayed put, the runner would write its
+			// tree to /home/vercel-sandbox while repair and the log reader looked
+			// in /vercel/sandbox and found an empty directory. bindings.test.ts
+			// asserts the pin and machineHomeForProvider agree, so they cannot
+			// drift apart in either direction.
 			env: {
 				HOME: "/vercel/sandbox",
 				AGENT_KIND: input.agentKind ?? "hermes",

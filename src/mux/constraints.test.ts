@@ -36,19 +36,37 @@ import type {
 const ROUTE: readonly SubstrateKind[] = ["e2b", "sprites", "vercel", "dedalus"];
 
 /**
+ * Config with NO substrate credentials, whatever the shell holds.
+ *
+ * resolveMuxConfig falls back to process.env for every credential, and vercel's
+ * ceilings are credential-dependent: the OIDC JWT carries a `plan` claim
+ * (measured 2026-08-05) and the adapter raises maxVcpu/maxMemoryMib/
+ * maxRuntimeMs/maxConcurrentSandboxes when it proves a tier above hobby. An
+ * empty string beats the env fallback (`expand("") ?? fromEnv(...)` keeps ""),
+ * so this pins the suite to the uncredentialed declaration. Without it, running
+ * `npm run test:mux` in a shell that happens to export VERCEL_OIDC_TOKEN would
+ * change what these tests assert.
+ */
+function uncredentialedConfig(): ReturnType<typeof resolveMuxConfig> {
+	return resolveMuxConfig({
+		providers: { vercel: { token: "", teamId: "", projectId: "", oidcToken: "" } },
+	});
+}
+
+/**
  * Capabilities come from the providers themselves rather than a copy in the
  * test, so a provider that changes what it declares changes these outcomes
  * instead of silently disagreeing with them.
  */
 function realProfiles(): SubstrateProfile[] {
-	const config = resolveMuxConfig({});
+	const config = uncredentialedConfig();
 	return ROUTE.map((kind) =>
 		profileFor(kind, getProvider(kind, config).capabilities),
 	);
 }
 
 function declared(kind: SubstrateKind): SandboxCapabilities {
-	return getProvider(kind, resolveMuxConfig({})).capabilities;
+	return getProvider(kind, uncredentialedConfig()).capabilities;
 }
 
 /**
@@ -189,22 +207,29 @@ test("provider capabilities are exactly what the routing model was written again
 			fork: { vendor: true, exposed: false },
 			publicPorts: {
 				model: "declared-at-create",
-				vendorMax: 15,
+				// 14 is measured, not published: 15 (the published maximum) fails
+				// with a 500 on every attempt, 14 creates fine.
+				vendorMax: 14,
 				muxMax: 3,
 				fixed: [3000, 8642, 18789],
 			},
 			limits: {
 				baseVcpu: 2,
-				// 4 GB, converted down. NOT 4096: rounding a baseline up is how
-				// a memory floor gets satisfied by a machine that cannot hold it.
-				baseMemoryMib: 3814,
+				// Measured 2026-08-05: the vendor reports memory 4096 for the
+				// default 2 vCPU and the guest has 4,283 MiB, so 4096 MiB is a
+				// floor the machine holds. The old 3814 came from reading the
+				// pricing page's "4 GB" as decimal, which the measurement refutes.
+				baseMemoryMib: 4096,
 				baseDiskGib: 29,
+				// Hobby ceilings: this is the declaration for a credential that
+				// proves no plan. A pro OIDC token raises these (see the
+				// plan-claim tests in providers/vercel-claims.test.ts).
 				maxVcpu: 4,
-				maxMemoryMib: 7629,
+				maxMemoryMib: 8192,
 				maxDiskGib: 29,
 				maxRuntimeMs: 2_700_000,
 				maxConcurrentSandboxes: 10,
-				resourceRequest: "unknown",
+				resourceRequest: "honored",
 			},
 		},
 		dedalus: {
@@ -492,15 +517,21 @@ test("minVcpu passes on the baseline and rejects with baseline and request state
 	// e2b's measured baseline is 2 vCPU, so a floor of 2 needs no request.
 	assert.deepEqual(accepted({ minVcpu: 2 }), ["e2b", "vercel"]);
 
+	// 4 is ABOVE vercel's 2-vCPU baseline and vercel still passes, because its
+	// resource request is measured honored (2026-08-05: a request for 8 vCPU
+	// came up as 8) and 4 is inside the uncredentialed ceiling. e2b forwards no
+	// size request, so the same floor loses it.
 	const result = filterCandidates(realProfiles(), { minVcpu: 4 });
-	assert.deepEqual(result.accepted, []);
+	assert.deepEqual(result.accepted, ["vercel"]);
 	assert.equal(
 		reasonFor(result, "e2b"),
 		"minVcpu: requires at least 4 vCPU, e2b baseline is 2 vCPU and CreateSandboxOptions.resources is unknown on this substrate, so a larger size cannot be guaranteed",
 	);
+	// Past the ceiling the honored request stops helping, and the reason says
+	// which number ran out.
 	assert.equal(
-		reasonFor(result, "vercel"),
-		"minVcpu: requires at least 4 vCPU, vercel baseline is 2 vCPU and CreateSandboxOptions.resources is unknown on this substrate, so a larger size cannot be guaranteed",
+		reasonFor(filterCandidates(realProfiles(), { minVcpu: 5 }), "vercel"),
+		"minVcpu: requires at least 5 vCPU, vercel baseline is 2 vCPU and its ceiling is 4 vCPU",
 	);
 	// An unpublished baseline fails closed even for a floor of 1.
 	assert.equal(
@@ -548,15 +579,18 @@ test("a honored resource request satisfies a floor up to the ceiling", () => {
 });
 
 test("minMemoryMib compares against the substrate's real baseline in MiB", () => {
-	// Vercel's documented default is 2 vCPU with 2 GB each = 4 GB = 3814 MiB.
-	assert.deepEqual(accepted({ minMemoryMib: 3814 }), ["vercel"]);
-	// The decimal-GB reading is load-bearing: a caller asking for 4096 MiB does
-	// NOT fit in Vercel's documented 4 GB, so the lane has to be rejected.
-	const strict = filterCandidates(realProfiles(), { minMemoryMib: 4096 });
+	// Vercel's default 2 vCPU carries 4096 MiB: measured 2026-08-05, the vendor
+	// reported memory 4096 and the guest's MemTotal was 4,386,564 kB (4,283
+	// MiB), so 4096 MiB is a floor the machine really holds.
+	assert.deepEqual(accepted({ minMemoryMib: 4096 }), ["vercel"]);
+	// Above the baseline the honored size request carries it to the ceiling
+	// (4 vCPU x 2048 MiB on the uncredentialed declaration), and no further.
+	assert.deepEqual(accepted({ minMemoryMib: 8192 }), ["vercel"]);
+	const strict = filterCandidates(realProfiles(), { minMemoryMib: 8193 });
 	assert.deepEqual(strict.accepted, []);
 	assert.equal(
 		reasonFor(strict, "vercel"),
-		"minMemoryMib: requires at least 4096 MiB, vercel baseline is 3814 MiB and CreateSandboxOptions.resources is unknown on this substrate, so a larger size cannot be guaranteed",
+		"minMemoryMib: requires at least 8193 MiB, vercel baseline is 4096 MiB and its ceiling is 8192 MiB",
 	);
 
 	const result = filterCandidates(realProfiles(), { minMemoryMib: 512 });

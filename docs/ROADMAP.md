@@ -657,11 +657,21 @@ becomes true is named.
    network policy, or snapshot constraints. Five capability axes exist
    (`src/mux/types.ts:43-52`) and none of them influence routing.
 
-8. **"Four agents on four sandboxes, verified."** Only two substrates have
-   ever been measured, 8 of 16 cells were attempted, and 5 are confirmed.
-   Say: "four harnesses and four substrate adapters; five cells verified
-   live on E2B and Sprites, hermes needs a pre-baked image, openclaw on
-   Sprites is unconfirmed, Vercel and Dedalus are uncredentialed."
+8. **"Four agents on four sandboxes, verified"** without the date and the
+   count. Rewritten 2026-08-05, because the original entry ("only two
+   substrates have ever been measured, 5 cells confirmed, Vercel and Dedalus
+   uncredentialed") had itself gone stale and was understating the evidence.
+   All four substrates have now run all four harnesses live, and the last full
+   run asserted the sentinel rather than the exit code -- but it was **12 of
+   16**. Two dedalus cells fell to an intermittent vendor defect
+   (`machine_not_found` on a machine its own API reports as running, 4 of 9
+   sequences), and two more passed the run but FAILED TO TEAR DOWN, which the
+   harness printed as `ok` until the same change fixed the accounting. Say:
+   "12 of 16 cells passed on 2026-08-05, all four harnesses on E2B, Sprites and
+   Vercel, none of four on Dedalus," and cite docs/MUX-RESULTS.md. What stays
+   unsayable: a bare "verified", any count without its date, 16 of 16 as a
+   current number, and 14 of 16 -- which was published for part of 2026-08-05
+   and is the pre-fix number that counted a failed teardown as a pass.
 
 9. **"39 MCP servers"** in any file that still says 35, and vice versa.
    The registry is authoritative at 39 (`web/data/mcps-catalog.json` via

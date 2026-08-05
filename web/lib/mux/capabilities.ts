@@ -172,16 +172,21 @@ export const SUBSTRATE_CAPABILITIES: readonly SubstrateCapability[] = [
 			muxMax: 3,
 			fixed: [3000, 8642, 18789],
 		},
+		// Measured 2026-08-05 (see src/mux/providers/vercel.ts for the citations):
+		// the default 2 vCPU carries 4096 MiB, sizing requests are honored, and
+		// the ceilings below are the HOBBY tier -- the adapter raises them when
+		// the OIDC token's `plan` claim proves a higher one, which this static
+		// table cannot know.
 		limits: {
 			baseVcpu: 2,
-			baseMemoryMib: 3814,
+			baseMemoryMib: 4096,
 			baseDiskGib: 29,
 			maxVcpu: 4,
-			maxMemoryMib: 7629,
+			maxMemoryMib: 8192,
 			maxDiskGib: 29,
 			maxRuntimeMs: 2700000,
 			maxConcurrentSandboxes: 10,
-			resourceRequest: "unknown",
+			resourceRequest: "honored",
 		},
 		credentials: ["VERCEL_TOKEN", "VERCEL_TEAM_ID", "VERCEL_PROJECT_ID"],
 		measured: { createMs: null, execMs: 290 },

@@ -54,6 +54,7 @@ import {
 	type HarnessAdapter,
 	type HarnessKind,
 	type HarnessRunOptions,
+	type ExecResult,
 	type PtyHandle,
 	type PtyOptions,
 	type SandboxDescription,
@@ -249,8 +250,15 @@ export type MigrateReport = {
 	};
 	/** `error` names an orphaned sandbox, never silently. A post-commit
 	 * source failure does NOT fail the migration: the load is already safe
-	 * on the new sandbox. */
-	source: { action: "destroyed" | "parked" | "kept"; resumed?: boolean; error?: string };
+	 * on the new sandbox. `note` is the other half of that honesty: a
+	 * teardown that ERRORED and is nevertheless confirmed complete reports
+	 * the vendor's text here, where nothing reads it as an orphan. */
+	source: {
+		action: "destroyed" | "parked" | "kept";
+		resumed?: boolean;
+		error?: string;
+		note?: string;
+	};
 	/** The pinned-lane record, same shape create() produces. */
 	attempts: RouteAttempt[];
 };
@@ -389,9 +397,29 @@ export class MuxMachine {
 	async ensureInstalled(
 		options: { timeoutMs?: number; pollMs?: number } = {},
 	): Promise<{ installed: boolean }> {
-		const probe = await this.sandbox.exec(this.harness.isInstalledCommand(), {
-			timeoutMs: 30_000,
-		});
+		const probeCommand = this.harness.isInstalledCommand();
+		let probe: ExecResult;
+		try {
+			probe = await this.sandbox.exec(probeCommand, { timeoutMs: 30_000 });
+		} catch (error) {
+			// "The substrate would not RUN the probe" is not "the harness is
+			// absent", and this code read the probe's exit status as a BOOLEAN.
+			// MEASURED on dedalus 2026-08-05: 4 of 9 create-then-exec sequences
+			// (44%) were refused with error_code machine_not_found /
+			// machine_not_routable while the machines API reported the same
+			// machine phase=running (./providers/dedalus.ts, execRejection).
+			// Treated as "not installed" that spends the whole 900s install
+			// budget against a machine the substrate just refused to schedule
+			// work on, and then blames the HARNESS for a substrate fault. The
+			// provider's kind is preserved so failover still routes it.
+			throw new MuxError(
+				error instanceof MuxError ? error.kind : "transient",
+				`cannot tell whether ${this.harness.kind} is installed on ${this.substrate}: the substrate refused to run the probe (${probeCommand}): ${
+					error instanceof Error ? error.message : String(error)
+				}`,
+				{ substrate: this.substrate, harness: this.harness.kind },
+			);
+		}
 		if (probe.exitCode === 0) return { installed: false };
 
 		const budgetMs =
@@ -1081,17 +1109,12 @@ export class Mux {
 				if (provisioned) {
 					// Best effort: a teardown failure must not mask the real
 					// error, but it is recorded so a leak is not silent.
-					await provisioned.destroy().catch((teardownError: unknown) => {
-						attempts.push({
-							substrate: kind,
-							outcome: "failed",
-							reason: `orphaned sandbox ${provisioned?.id ?? "?"}: teardown failed: ${
-								teardownError instanceof Error
-									? teardownError.message
-									: String(teardownError)
-							}`,
-						});
-					});
+					const orphan = provisioned;
+					try {
+						await orphan.destroy();
+					} catch (teardownError) {
+						attempts.push(await this.teardownAttempt(kind, orphan.id, teardownError));
+					}
 				}
 				// A credential or capability failure says nothing about the
 				// substrate's health, so it must not open a circuit -- only
@@ -1583,15 +1606,11 @@ export class Mux {
 				// machine billing, and the ORIGINAL placement is untouched and
 				// addressable. A teardown failure is recorded, never allowed
 				// to mask the real error.
-				await target.sandbox.destroy().catch((teardownError: unknown) => {
-					attempts.push({
-						substrate: options.to,
-						outcome: "failed",
-						reason: `orphaned sandbox ${newId}: teardown failed: ${
-							teardownError instanceof Error ? teardownError.message : String(teardownError)
-						}`,
-					});
-				});
+				try {
+					await target.sandbox.destroy();
+				} catch (teardownError) {
+					attempts.push(await this.teardownAttempt(options.to, newId, teardownError));
+				}
 				throw error;
 			}
 
@@ -1635,8 +1654,10 @@ export class Mux {
 	 * because the name now points at the NEW sandbox and removing it by name
 	 * would destroy the machine the migration just produced. A confirmed
 	 * not-found counts as destroyed (the remove() rule: the requested end
-	 * state already holds); any other failure reports the orphan's id and
-	 * substrate instead of failing a migration whose load is already safe.
+	 * state already holds); a failure the substrate then confirms took effect
+	 * counts as destroyed too (see confirmTornDown); anything left reports the
+	 * orphan's id and substrate instead of failing a migration whose load is
+	 * already safe.
 	 */
 	private async disposeSource(
 		remembered: { substrate: SubstrateKind; sandboxId: string },
@@ -1668,6 +1689,9 @@ export class Mux {
 				};
 			}
 		}
+		// Tracked across the catch: only the connect() fallback resumes, and
+		// only once it has actually returned a handle.
+		let resumed = false;
 		try {
 			if (provider.remove) {
 				// The no-wake path; the source may have re-parked since export.
@@ -1675,19 +1699,121 @@ export class Mux {
 				return { action: "destroyed", resumed: false };
 			}
 			const handle = await provider.connect(remembered.sandboxId);
+			resumed = true;
 			await handle.destroy();
 			return { action: "destroyed", resumed: true };
 		} catch (error) {
+			const vendor = error instanceof Error ? error.message : String(error);
 			if (
 				error instanceof MuxError &&
 				error.kind === "fatal" &&
 				/not found/i.test(error.message)
 			) {
-				return { action: "destroyed", resumed: false };
+				return { action: "destroyed", resumed };
+			}
+			// ASK THE SUBSTRATE before accusing it of leaking a machine.
+			// MEASURED on dedalus 2026-08-05: DELETE /v1/machines/<id> answered
+			// 500 "failed to close storage usage before deleting machine spec:
+			// ... column org_metering_buckets.stripe_submitted_at does not
+			// exist" -- a fault in the VENDOR's metering ledger, raised AFTER
+			// the machine was gone -- and this report then said `action:
+			// "kept"` with "destroy failed, orphaning dedalus:dm-..." for four
+			// machines that every follow-up read showed phase=destroyed. The
+			// report is the product's honesty contract: sending an operator to
+			// hunt a sandbox that does not exist is worse than saying nothing,
+			// because it teaches them the report lies.
+			const confirmed = await this.confirmTornDown(provider, remembered.sandboxId);
+			if (confirmed.gone) {
+				return {
+					action: "destroyed",
+					resumed,
+					note: `${remembered.substrate} errored tearing down ${remembered.sandboxId} but now reports it ${confirmed.detail}, so nothing was orphaned; the vendor's error was: ${vendor}`,
+				};
 			}
 			return {
 				action: "kept",
-				error: `destroy failed, orphaning ${remembered.substrate}:${remembered.sandboxId}: ${
+				error: `destroy failed, orphaning ${remembered.substrate}:${remembered.sandboxId} (${confirmed.detail}): ${vendor}`,
+			};
+		}
+	}
+
+	/**
+	 * The attempt record for a sandbox whose best-effort teardown threw.
+	 *
+	 * Shared by create()'s failed-lane cleanup and migrate()'s pre-commit
+	 * cleanup, because both tear a sandbox down through the same vendor call
+	 * and both used to accuse it of leaking on the strength of the error alone.
+	 * MEASURED on dedalus 2026-08-05, in create()'s path, while verifying the
+	 * migrate fix: the route reported "orphaned sandbox
+	 * dm-019fd33b-d8ec-7c34-88b5-6059b34db5fd: teardown failed: dedalus destroy
+	 * 500 ... stripe_submitted_at does not exist" for a machine that had
+	 * already left the account entirely -- the follow-up list held only the two
+	 * pre-existing machines from May and June. Confirm, then accuse.
+	 */
+	private async teardownAttempt(
+		kind: SubstrateKind,
+		sandboxId: string,
+		teardownError: unknown,
+	): Promise<RouteAttempt> {
+		const vendor =
+			teardownError instanceof Error ? teardownError.message : String(teardownError);
+		const confirmed = await this.confirmTornDown(this.provider(kind), sandboxId);
+		return {
+			substrate: kind,
+			outcome: "failed",
+			reason: confirmed.gone
+				? `sandbox ${sandboxId} teardown errored but the substrate reports it ${confirmed.detail}, so nothing leaked: ${vendor}`
+				: `orphaned sandbox ${sandboxId} (${confirmed.detail}): teardown failed: ${vendor}`,
+		};
+	}
+
+	/**
+	 * Did a failed teardown nevertheless take effect?
+	 *
+	 * Asked with the provider's NO-WAKE `describe()` (status() has the same
+	 * rule): a confirming read must not resume and bill the machine it is
+	 * asking about, and on dedalus a resume IS an execution submission.
+	 *
+	 * Fail closed in BOTH directions, which is the whole point:
+	 *   - only a substrate that says `destroyed` clears the orphan warning;
+	 *   - a substrate with no no-wake status read, a describe() that throws,
+	 *     and any other state -- including `destroying`, which no measurement
+	 *     covers -- keep the warning and name what was actually observed, so
+	 *     the operator judges the phase instead of trusting our guess. An
+	 *     unverified maybe-alive machine costs money.
+	 */
+	private async confirmTornDown(
+		provider: SandboxProvider,
+		sandboxId: string,
+	): Promise<{ gone: boolean; detail: string }> {
+		if (!provider.describe) {
+			return {
+				gone: false,
+				detail: `${provider.kind} cannot report a sandbox's state without resuming it, so the teardown is unconfirmed`,
+			};
+		}
+		try {
+			const description = await provider.describe(sandboxId);
+			const phase = description.rawPhase ? ` (vendor phase ${description.rawPhase})` : "";
+			if (description.state === "destroyed") {
+				return { gone: true, detail: `destroyed${phase}` };
+			}
+			if (description.state === "destroying") {
+				// Still a warning, because "in flight" is not "finished" -- but a
+				// warning that says which it is. MEASURED on dedalus 2026-08-05:
+				// two machines read as `destroying` immediately after this same
+				// failed teardown had left the account entirely minutes later, so
+				// this is probably not a leak. Probably is not confirmation.
+				return {
+					gone: false,
+					detail: `the substrate accepted the teardown and reports it still in flight${phase}, so completion is unconfirmed`,
+				};
+			}
+			return { gone: false, detail: `the substrate still reports ${description.state}${phase}` };
+		} catch (error) {
+			return {
+				gone: false,
+				detail: `the confirming describe() also failed: ${
 					error instanceof Error ? error.message : String(error)
 				}`,
 			};

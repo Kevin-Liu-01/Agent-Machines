@@ -584,21 +584,39 @@ Full detail, including every finding that changed the implementation, is in
 [MUX-RESULTS.md](./MUX-RESULTS.md). Headline, measured against real provider
 APIs with real model keys:
 
-**16 of 16 cells pass** live: every one of the 4 harnesses on every one of the
-4 substrates -- e2b, sprites, dedalus and vercel -- each exiting 0 with text
-flowing back through the normalized event stream. Since 2026-08-03 the live
-script asserts BOTH the exit code and the `MUX-OK` sentinel in the text; the
-recorded 16/16 numbers predate that and were gated on the exit code alone --
-MUX-RESULTS.md says what each vintage does and does not prove. The last four
-cells opened on 2026-08-02 with a `VERCEL_OIDC_TOKEN` and no code change,
-which is what "blocked on a credential" meant.
+**12 of 16 cells pass** live as of 2026-08-05 under the corrected teardown
+accounting: all 4 harnesses on e2b, sprites and vercel, and 0 of 4 on dedalus --
+two dedalus cells failed the run and two more passed the run but failed to tear
+down, which now counts as red (MUX-RESULTS.md explains why the run's own table
+said 14). Every cell that ran was required to exit 0
+AND to carry the `MUX-OK` sentinel in its normalized text, so nothing here
+passed on an exit code alone -- this is the first matrix in the file taken
+under that gate (it landed 2026-08-03; the 16-of-16 run recorded on
+2026-08-01 predates it and was gated on the exit code only). The two red
+cells are the same dedalus vendor defect twice: it rejects an execution with
+`machine_not_found` on a machine its own API reports as `phase: "running"`,
+intermittently -- 4 of 9 create-then-exec sequences that day. Nothing on our
+side routes around it, and MUX-RESULTS.md records the measurement rather than
+a fix.
+
+The live script's own accounting was fixed the same day, because it mattered
+more than the cells: a sandbox that refused to be destroyed used to print
+`ok` and exit 0. Teardown is now a per-cell verdict that turns the cell red,
+and after the matrix every lane that ran is asked what it still has. A lane
+whose `list()` cannot answer is reported as NOT SWEPT, never as clean --
+which is what the vercel lane returned while that matrix ran, and why
+MUX-RESULTS.md says its four sandboxes were unproven at the time rather than
+implying a clean sweep.
+
+Per-substrate numbers below are from the 2026-08-05 run, so they are the
+same 14-of-16 matrix as the headline rather than a mix of vintages:
 
 | Substrate | create | first event (claude-code) | Notes |
 | --- | --- | --- | --- |
-| e2b | 134-425ms | 993ms | installs 5.1-25.7s depending on harness |
-| sprites | 401ms warm, 17-31s cold | 2097ms | exec 296ms cold / 87ms warm (`execFileHTTP` fast path) |
-| vercel | 380-961ms | 826ms | fastest to first output measured (826ms against E2B's 993ms), and the lane with no native PTY |
-| dedalus | ~3s | 4947ms | slowest create: batch REST, so every exec is submit-then-poll |
+| e2b | 120-553ms | 1035ms | installs 5.6-27.2s depending on harness |
+| sprites | 639-2137ms warm, 17-31s cold (2026-08-01) | 1561ms | exec 296ms cold / 87ms warm (`execFileHTTP` fast path) |
+| vercel | 414-2394ms | 855ms | fastest to first output measured (855ms against E2B's 1035ms), and the lane with no *usable* native PTY (`openInteractive` exists; its socket opens and never answers, measured 2026-08-05) |
+| dedalus | 3.4-13.4s | 7359ms | slowest create by an order of magnitude: batch REST, so every exec is submit-then-poll |
 
 Provisioning speed and interactive fidelity are independent axes, which the
 vercel row is the cleanest evidence for: fastest to first event, and terminals
@@ -609,11 +627,12 @@ sprites; named PTY reattach replaying the pane with the background process still
 running on both; and the CLI streaming a real answer
 (`claude-code on e2b: 3615ms, $0.0107`).
 
-Two cells that used to be red are worth knowing about, because both failures
-were ours: Hermes' vendor curl installer exhausted E2B's 478 MB base sandbox
-until it was replaced with the published wheel under `uv` (5.1s), and OpenClaw
-on Sprites never finished until detached work was understood (see
-[Detached work](#detached-work)).
+Two OTHER cells -- not the two dedalus ones above -- were red earlier and are
+worth knowing about, because those failures were ours rather than a vendor's:
+Hermes' vendor curl installer exhausted E2B's 478 MB base sandbox until it was
+replaced with the published wheel under `uv` (5.1s), and OpenClaw on Sprites
+never finished until detached work was understood (see
+[Detached work](#detached-work)). Both are green in the current matrix.
 
 ## Which surface has what
 

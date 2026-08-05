@@ -1,9 +1,13 @@
 # Mux live matrix -- measured results
 
 Every number below came from `npx tsx scripts/mux-live-test.ts` against
-real provider APIs with real model keys on 2026-07-31. No synthetic or
-demo values. Re-run it to refresh; the script exits non-zero if any
-credentialed cell fails.
+real provider APIs with real model keys. No synthetic or demo values.
+Each section carries the date it was measured; the newest full matrix is
+[2026-08-05](#the-4x4-matrix-measured-2026-08-05-current) and every
+section above it is history that is kept, not refreshed. Re-run to
+refresh; the script exits non-zero if any credentialed cell fails, if a
+sandbox refuses to be destroyed, or if the post-matrix sweep finds a
+sandbox the run created still alive.
 
 Prompt for every cell: `Reply with exactly the text MUX-OK and nothing
 else. Do not use any tools.` A cell is `ok` only when BOTH hold: the
@@ -17,10 +21,263 @@ was fail-open: an empty text, or a vendor banner reported as agent text
 Matrix numbers recorded before that date were gated on the exit code
 only; "returned the sentinel" for those rows is an operator observation.
 
-## The 4x4 matrix, measured 2026-08-01
+## The 4x4 matrix, measured 2026-08-05 (current)
+
+Full run of `npx tsx scripts/mux-live-test.ts`, script exit 1. This is the
+first table in this file taken under the sentinel-asserting gate, so unlike
+every dated section below it, "returned the sentinel" here is an assertion
+rather than an operator's reading: every one of the 14 green cells was
+required to carry `MUX-OK` in its normalized text, and no cell passed on
+its exit code alone.
+
+| Agent | Sandbox | Result | create | install | first event | run |
+| --- | --- | --- | --- | --- | --- | --- |
+| claude-code | e2b | ok | 553 | 7953 | 1035 | 3913 |
+| codex | e2b | ok | 120 | 10293 | 696 | 3972 |
+| openclaw | e2b | ok | 383 | 27218 | 16317 | 16939 |
+| hermes | e2b | ok | 525 | 5599 | 2716 | 14307 |
+| claude-code | sprites | ok | 2137 | 293 | 1561 | 4395 |
+| codex | sprites | ok | 669 | 293 | 2660 | 4962 |
+| openclaw | sprites | ok | 639 | 17541 | 12465 | 12880 |
+| hermes | sprites | ok | 752 | 5233 | 3770 | 18169 |
+| claude-code | vercel | ok | 2394 | 5641 | 855 | 3978 |
+| codex | vercel | ok | 414 | 6035 | 394 | 7666 |
+| openclaw | vercel | ok | 643 | 17524 | 8756 | 9324 |
+| hermes | vercel | ok | 592 | 5084 | 3492 | 13834 |
+| claude-code | dedalus | failed | 13365 | 20778 | 7359 | 7431 |
+| codex | dedalus | failed | 4228 | -- | -- | -- |
+| openclaw | dedalus | failed | 3367 | -- | -- | -- |
+| hermes | dedalus | failed | 10884 | 16074 | 15671 | 15674 |
+
+Two of those four dedalus rows are red for a DIFFERENT reason than the other
+two, and the distinction matters. `codex` and `openclaw` failed the RUN. But
+`claude-code` and `hermes` ran green -- they exited 0 and returned the sentinel,
+which is why their timings are real -- and then failed to DESTROY their sandbox
+with the same vendor 500. The verdict column carries the script's own
+vocabulary (`ok` / `failed` / `skipped`, with teardown as its own column), and
+under the rule this change installed (`scripts/live-matrix-report.ts`:
+`teardown === "failed"` demotes the cell) a leaked sandbox is a red cell --
+because a harness that reports one as a pass leaks money silently.
+
+**12 of 16 cells pass under the corrected accounting**, and getting that number
+right is the point of the section below. The run's own table printed `ok` for 14
+because the harness hid teardown failures -- and two of those fourteen,
+`claude-code @ dedalus` and `hermes @ dedalus`, ended with a FAILED destroy
+after a passing run (the same dedalus 500 quoted below). The teardown fix landed
+in the SAME change that recorded this run, so the honest reading of these rows
+is 12 green, 2 red on the run, 2 red on teardown, and dedalus 0 of 4 rather than
+2 of 4. The published number was 14 for part of 2026-08-05; an adversarial pass
+caught it against this changeset's own corrected rule.
+
+The two cells that failed THE RUN are on dedalus, and they are the
+same vendor defect twice, not two problems: dedalus rejects an execution
+with `machine_not_found` on a machine its own machines API reports as
+`phase: "running"`, `reason: "DesiredStateReached"`. It is intermittent --
+**4 of 9** create-then-exec sequences hit it on 2026-08-05 (44%), and the
+same machine answered a plain `echo` probe in 685ms before failing a write
+seconds later. Both red cells died in the install write, and what the
+matrix printed was:
+
+```
+dedalus writeFile failed for /tmp/am-install-codex-msgdqt1y.sh (exit 1):
+```
+
+The empty tail is ours, not the vendor's: this adapter discards the vendor's
+execution payload, so the operator gets a truncated diagnosis of somebody
+else's split brain. A separate change is in flight for that half; nothing
+here claims it is fixed, and the number above is what the vendor did, not
+what we did about it.
+
+### Teardown is part of the verdict now (2026-08-05)
+
+The same run exposed a defect in the harness itself. `machine.destroy()` was
+the last statement inside each cell's `try`, so a destroy that threw was
+caught by the run's own catch: it set `row.error` and never touched the
+outcome the passing run had already written. Measured against the script as
+it stood at commit `ab920c2`, with a stub whose `destroy()` throws the real
+dedalus 500 below: the cell printed `ok`, the sweep did not exist, and
+`process.exit` saw zero failures. **A live-test harness that hides teardown
+failures leaks money silently**, because a green run is never re-read.
+
+Now: teardown has its own column and its own verdict, a teardown failure
+demotes the cell to `failed` and exits 1, and after the matrix each lane
+that ran is asked what it still has. The row names the sandbox id and the
+vendor's message, so the follow-up is a copy-paste and not an
+investigation.
+
+Both halves are load-bearing, and the reason is a real 2026-08-05
+observation rather than symmetry: dedalus answered a teardown with
+
+```
+dedalus destroy 500: {"title":"Internal Server Error","status":500,
+  "detail":"failed to close storage usage before deleting machine spec",
+  "errors":[{"message":"query latest storage bucket: usage ledger query
+  returned 400: column org_metering_buckets.stripe_submitted_at does not
+  exist"}]}
+```
+
+and the machine was **gone anyway**. Twice, on two different machines: the
+one in the diagnostic run had its record read back as `phase: "destroyed",
+reason: "DesiredStateReached"` immediately after the failing remove, and the
+one in migration b5 was absent from `list()` afterwards
+(`sourceId=dm-019fd311-71d0-7572-b001-293525eee808 listed=false`). So a
+destroy that throws is not proof of a leak, and a destroy that resolves is
+not proof of teardown either. The row reports what the call did; the sweep
+reports what the vendor still has; neither is asked to stand in for the
+other.
+
+The matrix itself predates the sweep code, so the lanes were swept by a
+separate read-only probe at 18:28Z the same day -- `list()` per credentialed
+lane, creating and destroying nothing:
+
+| Lane | `list()` | What it still had |
+| --- | --- | --- |
+| e2b | ok, 384ms | 2 sandboxes, from 2026-06-14 and 2026-05-30, both sleeping -- neither created by this run |
+| sprites | ok, 140ms | nothing (0 entries under the `am-mux-` prefix) |
+| dedalus | ok, 1224ms | 2 machines, from 2026-06-15 and 2026-05-25 -- neither created by this run |
+| vercel | **failed** | unavailable at the time, so nothing on this lane was proven gone |
+
+**At sweep time, the four vercel sandboxes of this run could not be
+independently proven gone.** `list()` on that lane answered
+
+```
+vercel list failed: Missing credentials parameters to access the Vercel API: token, teamId
+```
+
+under OIDC-only auth. Each of the four cells' own `destroy()` had resolved,
+`describe()` afterwards returned `{"state":"destroyed","rawPhase":null}` for
+the lane's ad-hoc machine, and Vercel's published Hobby runtime ceiling of 45
+minutes (vercel.com/docs/sandbox/pricing, read 2026-08-01) bounds the
+exposure -- but none of that is a vendor-side inventory, so the honest report
+was NOT SWEPT.
+
+That gap was closed later the same day, and the correction is worth recording
+because the cause was ours: `list()` derived a `projectId` from the OIDC JWT
+and passed it alongside otherwise-empty credentials, which the SDK reads as a
+partial triple and refuses. Passing nothing makes it read all three from the
+JWT. Measured 18:47Z on 2026-08-05, after that change, `list()` answered in
+4307ms with 3 sandboxes: one from 2026-05-28 and two created at 18:30Z and
+18:35Z by unrelated probes. **None of the matrix's four are there**, and the
+listing spans both sides of the matrix window (17:44-17:48Z), so this is not
+a truncated page. A vendor list cannot tell "destroyed" from "never existed",
+so what it settles is the only question that costs money -- nothing that run
+created is still alive.
+
+A lane the sweep cannot read is reported `NOT SWEPT` and deliberately does
+**not** fail the run: every cell's `destroy()` had already resolved, so the
+lane is unconfirmed rather than known-leaking, and a script that exits 1
+forever while a vendor's `list()` is broken is a script whose exit code
+stops being read -- which would cost the money signal above. The accounting
+rules are unit-tested in `src/lib/live-matrix-report.test.ts` against these
+captured strings, and each rule was mutation-checked.
+
+## The vercel lifecycle, live for the first time (2026-08-05)
+
+The four vercel matrix cells have run live since 2026-08-02. Everything else
+this adapter declares had not: `park()`, no-wake `describe()`/`remove()`,
+resume-on-`connect()`, the public-URL gate and the idempotent remove were
+written against the SDK's types and unit tests, which is a reading of the
+vendor and not a measurement of it. On 2026-08-05 that lane ran end to end
+against the live API, on one sandbox (`am-vercel-live`), and every step
+held.
+
+| Step | Measured | What it proves |
+| --- | --- | --- |
+| `create` | 1239ms | `attempts: vercel=ok`, OIDC-only auth (the token triple was absent) |
+| `ensureInstalled` (claude-code) | 7786ms | `installed: true` on a lane declared `detachedWork: "reliable"` |
+| `run` #1 | 3767ms, first event 1061ms, 4 events, exit 0, `$0.0016045` | `text: "MUX-OK"` -- both gates, asserted |
+| `publicUrl(3000)` / `publicUrl(9999)` | URL / `null` | a port declared at create is reachable; an undeclared one is refused, not invented |
+| `describe()` while running | 214ms | `state: "ready"`, `rawPhase: "running"`, `resources: {vcpu: 2}` |
+| `park()` | 6458ms | `rawPhase` went `running` -> `stopped`; a second `park()` while parked resolved in 164ms without a vendor stop |
+| `connect()` (resume) | 379ms | back to `ready`, and `command -v claude` still exits 0 -- filesystem-snapshot persistence carried the install |
+| `run` #2 | 4401ms, first event 1424ms, exit 0 | `text: "MUX-OK"` on the resumed sandbox |
+| `remove()` | 349ms | `{removed: true, resumed: false}`, then `describe()` reads `destroyed`; a second `remove()` on the gone id resolved in 138ms |
+
+The no-wake trio is proven by construction rather than by inference: a spy
+wrapped the vendor SDK and recorded the `resume` flag of all 21 calls the
+run made. Of the 13 `Sandbox.get` calls issued by `describe`, `park` and
+`remove`, **every one passed `resume: false`**; the single `resume: true`
+call in the whole trace is call #13, the `connect()` that deliberately
+resumes because a reconnect is a write. `park()` on an id the vendor no
+longer knows THREW (`Status code 404 is not ok`), which is what the
+contract says it must do -- an unknown id is an error the caller should
+see, not a satisfied request -- while `remove()` on the same gone id
+resolved.
+
+Two vendor facts worth keeping from the raw getters: the sandbox reported
+`region: "iad1"`, `runtime: "node24"`, `vcpus: 2`, `memory: 4096` with a
+1-hour `timeout` and an `expiresAt` exactly one hour after creation, and
+while parked it reported `totalActiveCpuDurationMs: 10416` against
+`totalDurationMs: 17020` -- the gap between the two is why the modeled
+$0.0503 for a 10-minute run is described in
+[MUX.md](./MUX.md#price) as an upper bound rather than a price.
+
+## Substrate migration: 5 live runs, 4 directed pairs (2026-08-05)
+
+Before this, exactly one directed pair had ever moved live: e2b -> sprites.
+Five runs now have, covering four directed pairs -- three of them new -- and
+each wrote a 4096-byte random marker into `~/.agent-machines/state/` on the
+source and compared sha256 on both ends:
+
+| Run | Move | Options | Result |
+| --- | --- | --- | --- |
+| b1 | sprites -> e2b | defaults | 10/10 checks, migrate 11528ms, 8447 bytes |
+| b2 | e2b -> dedalus | defaults | died inside `migrate`'s own `create()` on the dedalus defect above; re-run passed 10/10, migrate 22193ms, 4567 bytes |
+| b3 | e2b -> sprites | `source: "keep"` | 10/10 checks, migrate 2768ms, 4569 bytes |
+| b4 | sprites -> e2b | `moveState: false` | 11/11 checks, migrate 8020ms, 0 bytes |
+| b5 | dedalus -> e2b | defaults | migrate 20293ms, 4584 bytes, 9/10 -- see below |
+
+What that buys, beyond a count:
+
+- **The marker arrived byte-identical on every pair that moved state**
+  (sha256 compared local, source and target), the agent answered `MUX-OK`
+  on the new sandbox (3606-7717ms), and the placement moved while keeping
+  its harness -- `migrate` never switches an agent.
+- **`moveState: false` really ships nothing.** b4's target had no marker at
+  all (`shasum: ... No such file or directory`), `verified.marker` came
+  back `"skipped"` rather than `true`, `state.moved` was empty, `bytes` was
+  0, and the report enumerated the **whole 19-entry allowlist** under
+  `lost`. That contract had only unit coverage before.
+- **`source: "keep"` really leaves the source running.** b3's source was
+  still listed by its provider afterwards (`listed=true`), where b1's and
+  b4's destroyed sources were not (`listed=false`). `lostState()` is
+  genuinely source-dependent: b1 (from sprites) listed 4 losses, b2 and b3
+  (from e2b) listed 5 -- the extra one is e2b's RAM state, which no file
+  copy captures.
+- **b5's one failed check is the honest one.** `source.action` came back
+  `"kept"` with `destroy failed, orphaning dedalus:dm-019fd311-...`, the
+  same metering 500 quoted above -- and the sweep then found that machine
+  absent from dedalus's own list. The report was right to refuse to call it
+  destroyed, and the sweep was right that nothing leaked. Two signals, one
+  event, neither redundant.
+
+## Anomaly: sprites dropped 2 of 15 exec stdout lines (2026-08-05)
+
+Recorded because it is unexplained, not because it is understood.
+
+b1's migration report skipped 2 of the 15 allowlist paths with
+`"presence probe returned no verdict for this path"`
+(`.agent-machines/artifacts` and `.agent-machines/mcps`). The presence probe
+prints one `AM_MOVE` line per path in a single exec; sprites' exec stdout
+came back missing two of those 15 lines. Nothing was lost -- both paths were
+genuinely absent on a fresh sprite, so the correct verdict and the missing
+verdict agreed -- but the mechanism is unknown, and **the same exec stdout
+channel carries the tar export**. Twelve subsequent identical probes on two
+fresh sprites (six each) returned all 15 verdicts every time, so it does not
+reproduce on demand.
+
+This is why `exportTar`'s sha256 check is load-bearing rather than
+belt-and-braces: on the one substrate where exec stdout has been observed to
+arrive incomplete, a byte-level comparison on both ends is the only thing
+standing between a truncated stream and a migration that reports success.
+
+## The 4x4 matrix, measured 2026-08-01 (superseded)
 
 Full run of `npx tsx scripts/mux-live-test.ts`, plus a re-run of the two
-sprites install cells after the detached-work fix below.
+sprites install cells after the detached-work fix below. Superseded by the
+[2026-08-05 matrix](#the-4x4-matrix-measured-2026-08-05-current); kept for
+the two cells whose character changed, and because its numbers are the ones
+the findings below were measured against.
 
 | Agent | Sandbox | Result | create | install | first event | run |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -41,12 +298,14 @@ sprites install cells after the detached-work fix below.
 | openclaw | vercel | ok | 425 | 16047 | 8580 | 9266 |
 | hermes | vercel | ok | 380 | 4086 | 2826 | 12809 |
 
-**16 of 16 cells pass.** Every harness on every substrate: 16 runs, all exit 0. These
-rows predate 2026-08-03, when the script still gated on the exit code alone -- the
-per-cell text was printed and read while the matrix ran, but not asserted, so for THESE
-recorded numbers "returned the sentinel" is an operator observation. Runs after
-2026-08-03 assert the sentinel too (see the pass criterion above), so a future matrix
-table backs that claim by construction.
+**16 of these 16 cells passed on 2026-08-01.** Every harness on every substrate:
+16 runs, all exit 0. These rows predate 2026-08-03, when the script still gated on
+the exit code alone -- the per-cell text was printed and read while the matrix ran,
+but not asserted, so for THESE recorded numbers "returned the sentinel" is an
+operator observation. The [2026-08-05 run](#the-4x4-matrix-measured-2026-08-05-current)
+asserts the sentinel and is the current state of the matrix at 12 of 16 under
+the corrected teardown accounting (14 by the run's own printed table); this
+section is not the headline and a reader should not take it as one.
 
 Two cells changed character completely:
 

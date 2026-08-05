@@ -14,6 +14,9 @@
     "verbatimModuleSyntax": false,
     "lib": ["ES2022"]
   },
-  "include": ["src/**/*.ts"],
+  // scripts/ is in here because scripts/mux-live-test.ts provisions real,
+  // billable sandboxes: `npm run typecheck` skipped it until 2026-08-05, so the
+  // one file whose bugs cost money was the one file nobody type-checked.
+  "include": ["src/**/*.ts", "scripts/**/*.ts"],
   "exclude": ["node_modules", "web", "dist"]
 }

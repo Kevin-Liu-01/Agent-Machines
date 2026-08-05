@@ -336,10 +336,45 @@ test("MUX.md documents every MuxError kind the contract defines", () => {
 
 type Cell = { harness: string; substrate: SubstrateKind; result: string };
 
-/** The measured 4x4 matrix, read out of docs/MUX-RESULTS.md. */
+/**
+ * The CURRENT matrix section of docs/MUX-RESULTS.md, found by date.
+ *
+ * This used to scan every table in the file, which worked only while the file
+ * held exactly one matrix. It now holds two (2026-08-01 and 2026-08-05), and a
+ * whole-file scan summed them into 30 cells -- so the guard would have demanded
+ * MUX.md claim a number no run ever produced. Keeping the history in the file is
+ * the point of the file, so the fix is to make "which table is current" a
+ * machine-read fact: the section whose heading carries the LATEST
+ * `matrix, measured YYYY-MM-DD` wins, and its slice ends at the next heading of
+ * the same level. Still derived -- no date and no count is written here.
+ */
+function currentMatrixSection(): string {
+	const lines = readText(RESULTS_DOC).split("\n");
+	const headings = lines
+		.map((line, index) => ({
+			index,
+			match: /^(#{2,3})\s.*matrix, measured (\d{4}-\d{2}-\d{2})/.exec(line),
+		}))
+		.filter((entry) => entry.match !== null);
+	assert.ok(
+		headings.length > 0,
+		`${RESULTS_DOC} has no "## ... matrix, measured YYYY-MM-DD" heading -- this scanner reads that heading`,
+	);
+	const latest = headings.reduce((best, entry) =>
+		(entry.match as RegExpExecArray)[2] > (best.match as RegExpExecArray)[2] ? entry : best,
+	);
+	const level = (latest.match as RegExpExecArray)[1];
+	const end = lines.findIndex(
+		(line, index) =>
+			index > latest.index && new RegExp(`^#{1,${level.length}}\\s`).test(line),
+	);
+	return lines.slice(latest.index, end === -1 ? undefined : end).join("\n");
+}
+
+/** The cells of the current measured matrix. */
 function measuredCells(): Cell[] {
 	const cells: Cell[] = [];
-	for (const table of tablesIn(readText(RESULTS_DOC))) {
+	for (const table of tablesIn(currentMatrixSection())) {
 		for (const row of table.rows) {
 			const [harness, substrate, result] = row;
 			if (substrate === undefined || result === undefined) continue;
@@ -366,15 +401,24 @@ test("the live-matrix claim in MUX.md equals what MUX-RESULTS.md measured", () =
 	// The headline count, derived from the rows rather than trusted. Phrased as
 	// MUX-RESULTS.md phrases it, so the two documents cannot disagree about the
 	// same sentence.
-	const claim = `${passing.length} of ${passing.length} cells pass`;
+	//
+	// It used to read "N of N", which silently assumed every cell that ran also
+	// passed. On 2026-08-05 that stopped being true (14 of 16, two cells lost to
+	// one dedalus vendor defect) and the assumption became the bug: the guard
+	// would have demanded MUX.md claim "14 of 14", turning this test into the
+	// reason for an overclaim. Both halves are derived now -- passing cells over
+	// cells that RAN -- so a red cell has to appear in the headline.
+	const ran = cells.filter((cell) => cell.result !== "skipped");
+	const claim = `${passing.length} of ${ran.length} cells pass`;
 	assert.ok(
 		doc.includes(claim),
-		`${MUX_DOC} must state "${claim}" -- ${RESULTS_DOC} records ${passing.length} passing cells`,
+		`${MUX_DOC} must state "${claim}" -- ${RESULTS_DOC} records ${passing.length} passing of ${ran.length} cells that ran`,
 	);
+	const ranSubstrates = [...new Set(ran.map((cell) => cell.substrate))];
 	assert.equal(
-		passing.length,
-		passingSubstrates.length * HARNESS_KINDS.length,
-		`${RESULTS_DOC} does not have a full harness sweep per passing substrate; the "N of N" phrasing in ${MUX_DOC} would be misleading`,
+		ran.length,
+		ranSubstrates.length * HARNESS_KINDS.length,
+		`${RESULTS_DOC} does not have a full harness sweep per substrate that ran; the "N of M cells" phrasing in ${MUX_DOC} would be misleading`,
 	);
 	// Checked per paragraph rather than per line: prose wraps, and a claim and
 	// the lanes it covers routinely land on two different lines.
@@ -384,6 +428,24 @@ test("the live-matrix claim in MUX.md equals what MUX-RESULTS.md measured", () =
 		assert.ok(
 			claimParagraph.includes(kind),
 			`${MUX_DOC} must name ${kind} where it claims "${claim}" -- ${RESULTS_DOC} has passing cells for it`,
+		);
+	}
+	// A substrate with a RED cell has to be named in the same paragraph as the
+	// count. "14 of 16" alone is a number a reader rounds up to "basically
+	// green"; which lane is red, and that it is a lane rather than a harness, is
+	// the part that changes what they do next. Added 2026-08-05, when this file
+	// first had a red cell to disclose.
+	const failedSubstrates = [
+		...new Set(
+			cells
+				.filter((cell) => cell.result.startsWith("fail"))
+				.map((cell) => cell.substrate),
+		),
+	];
+	for (const kind of failedSubstrates) {
+		assert.ok(
+			claimParagraph.includes(kind),
+			`${MUX_DOC} must name ${kind} where it claims "${claim}" -- ${RESULTS_DOC} records a FAILED cell on it`,
 		);
 	}
 	// A lane that never ran must be described as such where it is named, so a

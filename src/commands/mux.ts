@@ -1398,6 +1398,11 @@ export async function mux(args: string[]): Promise<void> {
 		} else {
 			console.log(`source: kept${src.error ? ` -- ${src.error}` : ""}`);
 		}
+		// Printed for every action, because `note` exists exactly where the old
+		// code was silent: a teardown that errored and is confirmed complete
+		// reports `destroyed` plus the vendor's text, and the destroyed branch
+		// above would otherwise drop the only record of the vendor error.
+		if (src.note) console.log(`  note: ${src.note}`);
 		return;
 	}
 

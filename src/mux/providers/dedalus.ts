@@ -183,6 +183,14 @@ type ExecRaw = {
 	execution_id: string;
 	status: "queued" | "running" | "succeeded" | "failed" | "expired" | "cancelled";
 	exit_code?: number | null;
+	/**
+	 * The vendor's own account of a REJECTED execution, sent INSTEAD of
+	 * exit_code. Captured live 2026-08-05 (see execRejection below); typed
+	 * here because throwing this text away is what made two red cells in the
+	 * live matrix unexplainable from our own output.
+	 */
+	error_code?: string | null;
+	error_message?: string | null;
 };
 
 type ExecOutputRaw = {
@@ -315,6 +323,74 @@ function delay(ms: number, signal?: AbortSignal): Promise<void> {
 
 function abortError(): MuxError {
 	return new MuxError("transient", "dedalus exec aborted by caller signal", SCOPE);
+}
+
+/**
+ * What Dedalus said, instead of an exit code we made up.
+ *
+ * MEASURED 2026-08-05, 9 create-then-exec sequences against fresh machines
+ * (4 rejected, 44%): a rejected execution comes back with `error_code` and
+ * `error_message` and NO `exit_code`, while GET /v1/machines/<id> reports
+ * `phase: "running"` for the same machine at the same moment. Verbatim
+ * terminal documents:
+ *
+ *   {"status":"failed","error_code":"machine_not_found",
+ *    "error_message":"machine no longer exists"}
+ *   {"status":"failed","error_code":"machine_not_routable",
+ *    "error_message":"machine is not routable for execution"}
+ *   {"status":"failed","error_code":"host_agent_execute_failed",
+ *    "error_message":"host-agent execute command dm-... : read stream:
+ *     failed_precondition: exec_init_rejected: guest exec init rejected at ..."}
+ *   {"status":"expired","error_code":"execution_timed_out",
+ *    "error_message":"execution exceeded timeout_ms"}
+ *
+ * `exit_code` is the discriminator, not `status`: a command that REALLY RAN
+ * always carries one and never carries an error_code (measured the same day:
+ * `exit 7` -> {"status":"failed","exit_code":7}, `command -v <missing>` ->
+ * {"status":"failed","exit_code":1}). So a legitimate nonzero exit still
+ * returns an ExecResult and only a substrate refusal throws.
+ *
+ * This path used to collapse to `exitCode: 1`, which cost the live matrix two
+ * red cells nobody could explain from our own output, and made
+ * `ensureInstalled` read a substrate refusal of the `command -v` probe as
+ * "the harness is not installed" -- then install onto a machine the substrate
+ * had just refused to schedule work on (../router.ts, ensureInstalled).
+ *
+ * Kind is `transient` for every code: all four are substrate-side faults
+ * (scheduler placement, host agent, vendor timeout) that say nothing about
+ * the caller's command, 5 of the same 9 sequences succeeded unchanged, and
+ * `transient` is both what this file already gives a vendor 5xx and what
+ * keeps the error routable so the router can fail over to another lane.
+ *
+ * What `machine_not_found` means, measured again 2026-08-05 on a second run
+ * (2 refusals in 4 sequences, 50%): the machine record read `destroying`
+ * seconds after the refusal, both times. So the refusal is the truth and the
+ * `phase: "running"` read alongside it is stale -- the machine really is going
+ * away, a retry against the SAME id is pointless, and a fresh machine (or
+ * another lane) is the recovery. That is what `transient` buys, and it is why
+ * this is not `fatal`.
+ */
+function execRejection(machineId: string, command: string, raw: ExecRaw): MuxError {
+	const code = raw.error_code?.trim();
+	const message = raw.error_message?.trim();
+	const excerpt = command.trim().slice(0, 80);
+	if (code || message) {
+		return new MuxError(
+			"transient",
+			`dedalus refused to run the execution on machine ${machineId}: ${
+				code ?? "no error_code"
+			}: ${message ?? "no error_message"} (status ${raw.status}, command: ${excerpt})`,
+			SCOPE,
+		);
+	}
+	// Never observed: every terminal document captured 2026-08-05 carried
+	// either an exit_code or an error_code. Reporting the ambiguity beats
+	// inventing exit 1 -- inventing it is the defect this function removes.
+	return new MuxError(
+		"transient",
+		`dedalus execution ended '${raw.status}' with neither an exit code nor an error_code on machine ${machineId} (command: ${excerpt})`,
+		SCOPE,
+	);
 }
 
 /** Thin REST client; every response maps onto the MuxError taxonomy. */
@@ -504,13 +580,18 @@ class DedalusRest {
 			current = (await poll.json()) as ExecRaw;
 		}
 
+		// Before the output fetch: a rejected execution produced no output to
+		// fetch (measured 2026-08-05, its output document is exactly
+		// {"execution_id":"wexec-..."}), so the round-trip would buy nothing.
+		const exitCode = current.exit_code ?? (current.status === "succeeded" ? 0 : null);
+		if (exitCode === null) throw execRejection(machineId, command, current);
+
 		const out = await this.request(
 			`/v1/machines/${machineId}/executions/${created.execution_id}/output`,
 		);
 		const output: ExecOutputRaw = out.ok
 			? ((await out.json().catch(() => ({}))) as ExecOutputRaw)
 			: {};
-		const exitCode = current.exit_code ?? (current.status === "succeeded" ? 0 : 1);
 		return {
 			stdout: output.stdout ?? "",
 			stderr: output.stderr ?? "",

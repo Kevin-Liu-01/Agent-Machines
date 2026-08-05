@@ -359,7 +359,11 @@ type ProviderOptions = {
 	detachedWork?: "reliable" | "throttled";
 	/** State describe() reports; omit the member entirely with `noDescribe`. */
 	describeState?: string;
+	/** Vendor phase word describe() reports alongside the state. */
+	describeRawPhase?: string;
 	noDescribe?: boolean;
+	/** describe() throws this instead of answering. */
+	describeError?: MuxError;
 	hasPark?: boolean;
 	/** remove() throws this instead of removing. */
 	removeError?: MuxError;
@@ -402,7 +406,14 @@ function stubProvider(kind: SubstrateKind, world: World, options: ProviderOption
 		list: async () => [],
 		describe: options.noDescribe
 			? undefined
-			: async () => ({ state: options.describeState ?? "ready", rawPhase: "stub" }),
+			: async () => {
+					world.ops.push(`describe:${kind}`);
+					if (options.describeError) throw options.describeError;
+					return {
+						state: options.describeState ?? "ready",
+						rawPhase: options.describeRawPhase ?? "stub",
+					};
+				},
 		remove: async (id: string) => {
 			world.ops.push(`remove:${id}`);
 			if (options.removeError) throw options.removeError;
@@ -769,8 +780,114 @@ test("migrate post-commit source-destroy failure still succeeds, naming the orph
 	const report = await mux.migrate("alpha", { to: "sprites" });
 	assert.equal(report.source.action, "kept");
 	assert.match(report.source.error ?? "", /orphaning e2b:e2b-old-1/);
+	// ...and the orphan warning says WHY it is still a warning: the substrate
+	// was asked and answered that the sandbox is still there.
+	assert.match(report.source.error ?? "", /the substrate still reports ready/);
+	assert.equal(report.source.note, undefined);
 	// The load is safe: the placement points at the new sandbox regardless.
 	assert.equal(store.machines.alpha.sandboxId, "sprites-new-1");
+});
+
+// ---------------------------------------------------------------------------
+// The teardown that errors and works anyway (dedalus, measured 2026-08-05)
+// ---------------------------------------------------------------------------
+
+/**
+ * The vendor 500, verbatim from DELETE /v1/machines/<id> on 2026-08-05. It is
+ * raised by Dedalus's OWN metering ledger AFTER the machine is gone: every one
+ * of the four machines torn down that day answered this 500 and then reported
+ * phase=destroyed on the very next read.
+ */
+const DEDALUS_DESTROY_500 =
+	'dedalus destroy 500: {"title":"Internal Server Error","status":500,"detail":"failed to close storage usage before deleting machine spec","errors":[{"message":"query latest storage bucket: usage ledger query returned 400: column org_metering_buckets.stripe_submitted_at does not exist"}]}';
+
+test("a destroy error the substrate says took effect is DESTROYED, not an orphan", async () => {
+	// The honesty-contract violation this fixes: the report said `action:
+	// "kept"` with "destroy failed, orphaning dedalus:dm-019fd311-71d0-7572-
+	// b001-293525eee808" for a machine that was in fact destroyed, sending an
+	// operator to hunt a sandbox that does not exist. A report that lies once
+	// is a report nobody trusts twice.
+	const { mux, world } = setup({
+		source: {
+			removeError: new MuxError("transient", DEDALUS_DESTROY_500),
+			describeState: "destroyed",
+			describeRawPhase: "destroyed",
+		},
+	});
+	const report = await mux.migrate("alpha", { to: "sprites" });
+	assert.equal(report.source.action, "destroyed");
+	assert.equal(report.source.resumed, false);
+	assert.equal(report.source.error, undefined, "a destroyed sandbox is not an orphan");
+	// The vendor's error is not swallowed either -- it lands where nothing
+	// reads it as an orphan.
+	assert.match(report.source.note ?? "", /errored tearing down e2b-old-1/);
+	assert.match(report.source.note ?? "", /destroyed \(vendor phase destroyed\)/);
+	assert.match(report.source.note ?? "", /org_metering_buckets\.stripe_submitted_at does not exist/);
+	// The confirmation is the NO-WAKE read, never a connect(): asking must not
+	// resume and bill the machine it is asking about.
+	assert.ok(world.ops.includes("describe:e2b"), "the substrate was never asked");
+	// The source IS connected earlier (the export reads its files), so the
+	// proof is positional: nothing connects AFTER the failed teardown.
+	const afterTeardown = world.ops.slice(world.ops.indexOf("remove:e2b-old-1") + 1);
+	assert.deepEqual(
+		afterTeardown.filter((op) => op.startsWith("connect:")),
+		[],
+		`the confirming read resumed the source: ${afterTeardown.join(" ")}`,
+	);
+});
+
+test("a destroy error stays an orphan when no no-wake read can confirm it", async () => {
+	// Fail closed the other way: an unverified maybe-alive machine costs money,
+	// so a substrate with no no-wake status read keeps the warning -- and says
+	// that THAT is why it is still warning.
+	const { mux } = setup({
+		source: {
+			removeError: new MuxError("transient", DEDALUS_DESTROY_500),
+			noDescribe: true,
+		},
+	});
+	const report = await mux.migrate("alpha", { to: "sprites" });
+	assert.equal(report.source.action, "kept");
+	assert.match(report.source.error ?? "", /orphaning e2b:e2b-old-1/);
+	assert.match(report.source.error ?? "", /cannot report a sandbox's state without resuming it/);
+	assert.equal(report.source.note, undefined);
+});
+
+test("a destroy error stays an orphan when the confirming read itself fails", async () => {
+	const { mux } = setup({
+		source: {
+			removeError: new MuxError("transient", DEDALUS_DESTROY_500),
+			describeError: new MuxError("transient", "dedalus get machine 503: upstream unavailable"),
+		},
+	});
+	const report = await mux.migrate("alpha", { to: "sprites" });
+	assert.equal(report.source.action, "kept");
+	assert.match(report.source.error ?? "", /orphaning e2b:e2b-old-1/);
+	assert.match(report.source.error ?? "", /the confirming describe\(\) also failed: dedalus get machine 503/);
+	// Both errors reach the operator: the teardown's and the confirmation's.
+	assert.match(report.source.error ?? "", /stripe_submitted_at does not exist/);
+});
+
+test("a mid-teardown state is still a warning, but one that says it is in flight", async () => {
+	// "destroying" is deliberately NOT treated as gone -- in flight is not
+	// finished -- while the text tells the operator which it is. Measured on
+	// dedalus 2026-08-05: machines read as `destroying` right after this same
+	// failed teardown had left the account minutes later. Probably-gone is not
+	// confirmed-gone, and an unverified maybe-alive machine costs money.
+	const { mux } = setup({
+		source: {
+			removeError: new MuxError("transient", DEDALUS_DESTROY_500),
+			describeState: "destroying",
+			describeRawPhase: "destroying",
+		},
+	});
+	const report = await mux.migrate("alpha", { to: "sprites" });
+	assert.equal(report.source.action, "kept");
+	assert.match(report.source.error ?? "", /orphaning e2b:e2b-old-1/);
+	assert.match(
+		report.source.error ?? "",
+		/accepted the teardown and reports it still in flight \(vendor phase destroying\), so completion is unconfirmed/,
+	);
 });
 
 test("migrate treats a confirmed not-found source as destroyed (the remove() rule)", async () => {
