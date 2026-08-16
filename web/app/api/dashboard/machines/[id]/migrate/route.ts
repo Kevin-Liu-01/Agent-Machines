@@ -22,13 +22,13 @@ import { getEffectiveUserId } from "@/lib/user-config/identity";
 // VALUES via the compiled package; see lib/dashboard/migrate.ts header.
 import { MOVE_ALLOWLIST, MOVE_NOTES, REDERIVED, lostState } from "agent-machines/mux";
 
-import { runMachineMigration, type MigrationSourceOption } from "@/lib/dashboard/migrate";
+import { submitMachineIntent } from "@/lib/control-plane/adopt-machine";
+import type { MigrationSourceOption } from "@/lib/dashboard/migrate";
 import { resolveRoute } from "@/lib/mux/route";
 import { getProvider } from "@/lib/providers";
-import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
+import { getUserConfig } from "@/lib/user-config/clerk";
 import {
 	PROVIDER_KINDS,
-	type MigrationState,
 	type ProviderKind,
 } from "@/lib/user-config/schema";
 
@@ -42,6 +42,7 @@ type PostBody = {
 	to?: ProviderKind;
 	moveState?: boolean;
 	source?: MigrationSourceOption;
+	mode?: "copy" | "live";
 };
 
 function isProvider(value: unknown): value is ProviderKind {
@@ -89,6 +90,7 @@ export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
 			moves: MOVE_ALLOWLIST(machine.agentKind).include,
 			rederived: REDERIVED(machine.agentKind),
 			lost: lostState(machine.providerKind),
+			liveLost: lostState(machine.providerKind, "live"),
 			notes: MOVE_NOTES(machine.agentKind),
 		},
 	});
@@ -113,6 +115,19 @@ export async function POST(request: Request, ctx: Ctx): Promise<Response> {
 	}
 	const to = body.to;
 	const moveState = body.moveState !== false;
+	const mode = body.mode ?? "copy";
+	if (mode !== "copy" && mode !== "live") {
+		return Response.json(
+			{ error: "invalid_mode", message: "mode must be copy or live" },
+			{ status: 400 },
+		);
+	}
+	if (mode === "live" && !moveState) {
+		return Response.json(
+			{ error: "invalid_mode", message: "live migration requires moveState:true" },
+			{ status: 400 },
+		);
+	}
 	const source: MigrationSourceOption =
 		body.source !== undefined && SOURCE_OPTIONS.includes(body.source)
 			? body.source
@@ -173,23 +188,29 @@ export async function POST(request: Request, ctx: Ctx): Promise<Response> {
 	// adversarial review 2026-08-03). The migrate machinery's verify step is
 	// the real guard: if a target genuinely cannot hold the state, the marker
 	// check fails, the new box is torn down, and the original stays intact.
-	const migrationState: MigrationState = {
-		phase: "running",
-		step: "validate",
-		startedAt: new Date().toISOString(),
-		finishedAt: null,
-		lastError: null,
-		targetSubstrate: to,
-		newMachineId: null,
-		report: null,
-	};
-	await setUserConfig({ patchMachine: { id, patch: { migrationState } } });
+	const submitted = await submitMachineIntent(userId, id, {
+		desiredState: "running",
+		idempotencyKey:
+			request.headers?.get?.("idempotency-key") ??
+			`migrate:${id}:${to}:${crypto.randomUUID()}`,
+		spec: {
+			sandbox: to,
+			migrationPolicy: mode,
+			migrationOptions: { moveState, source },
+		},
+	});
+	after(async () => {
+		await submitted.controlPlane.reconcileNext(submitted.accepted.worker.id);
+	});
 
-	// userId is captured HERE, from this request, and carried into the background
-	// task: the placement re-point after commit is a tenant-scoped write, and
-	// re-resolving identity inside `after()` is how such a write lands under the
-	// wrong tenant.
-	after(() => runMachineMigration({ machineId: id, to, moveState, source, userId }));
-
-	return Response.json({ ok: true, machineId: id, migration: "scheduled" }, { status: 202 });
+	return Response.json(
+		{
+			ok: true,
+			machineId: id,
+			migration: "scheduled",
+			operation: submitted.accepted.operation,
+			statusUrl: `/api/dashboard/control-plane/operations/${submitted.accepted.operation.id}`,
+		},
+		{ status: 202 },
+	);
 }

@@ -21,9 +21,9 @@ import {
 const mocks = vi.hoisted(() => ({
 	getEffectiveUserId: vi.fn(),
 	getUserConfig: vi.fn(),
-	setUserConfig: vi.fn(),
 	getProvider: vi.fn(),
-	runMachineMigration: vi.fn(),
+	submitMachineIntent: vi.fn(),
+	reconcileNext: vi.fn(),
 	after: vi.fn((fn: () => unknown) => fn()),
 }));
 
@@ -32,7 +32,6 @@ vi.mock("@/lib/user-config/identity", () => ({
 }));
 vi.mock("@/lib/user-config/clerk", () => ({
 	getUserConfig: mocks.getUserConfig,
-	setUserConfig: mocks.setUserConfig,
 }));
 vi.mock("@/lib/providers", async () => {
 	const actual = await vi.importActual<typeof import("@/lib/providers/types")>(
@@ -43,8 +42,8 @@ vi.mock("@/lib/providers", async () => {
 		MachineProviderError: actual.MachineProviderError,
 	};
 });
-vi.mock("@/lib/dashboard/migrate", () => ({
-	runMachineMigration: mocks.runMachineMigration,
+vi.mock("@/lib/control-plane/adopt-machine", () => ({
+	submitMachineIntent: mocks.submitMachineIntent,
 }));
 vi.mock("next/server", () => ({ after: mocks.after }));
 
@@ -94,8 +93,15 @@ beforeEach(() => {
 	mocks.after.mockImplementation((fn: () => unknown) => fn());
 	mocks.getEffectiveUserId.mockResolvedValue("user-1");
 	mocks.getUserConfig.mockResolvedValue(config());
-	mocks.setUserConfig.mockResolvedValue(config());
 	mocks.getProvider.mockReturnValue({ kind: "e2b", capabilities: { canSleep: true } });
+	mocks.reconcileNext.mockResolvedValue(null);
+	mocks.submitMachineIntent.mockResolvedValue({
+		accepted: {
+			worker: { id: "worker-1" },
+			operation: { id: "op-1", status: "queued" },
+		},
+		controlPlane: { reconcileNext: mocks.reconcileNext },
+	});
 	// Make sure VERCEL_OIDC_TOKEN in the test environment cannot credential
 	// the vercel lane behind our back (route.ts treats it as an alternative).
 	delete process.env.VERCEL_OIDC_TOKEN;
@@ -109,7 +115,7 @@ describe("GET /api/dashboard/machines/[id]/migrate", () => {
 			current: string;
 			lanes: Array<{ substrate: string }>;
 			skipped: Array<{ substrate: string; missing: string[] }>;
-			contract: { moves: string[]; rederived: string[]; lost: string[] };
+			contract: { moves: string[]; rederived: string[]; lost: string[]; liveLost: string[] };
 		};
 		expect(body.current).toBe("e2b");
 		expect(body.lanes.map((l) => l.substrate)).toEqual(["sprites"]);
@@ -119,6 +125,7 @@ describe("GET /api/dashboard/machines/[id]/migrate", () => {
 		expect(body.contract.moves).toContain(".agent-machines/MEMORY.md");
 		expect(body.contract.moves).toContain(".agent-machines/config.yaml");
 		expect(body.contract.lost.join(" ")).toMatch(/tmux/);
+		expect(body.contract.liveLost.join(" ")).toMatch(/managed/);
 	});
 });
 
@@ -126,7 +133,15 @@ describe("POST /api/dashboard/machines/[id]/migrate", () => {
 	it("400s an unknown substrate", async () => {
 		const res = await POST(req({ to: "aws" }), ctx("m-1"));
 		expect(res.status).toBe(400);
-		expect(mocks.runMachineMigration).not.toHaveBeenCalled();
+		expect(mocks.submitMachineIntent).not.toHaveBeenCalled();
+	});
+
+	it("400s an invalid mode or live mode without state transfer", async () => {
+		expect((await POST(req({ to: "sprites", mode: "warp" }), ctx("m-1"))).status).toBe(400);
+		expect(
+			(await POST(req({ to: "sprites", mode: "live", moveState: false }), ctx("m-1"))).status,
+		).toBe(400);
+		expect(mocks.submitMachineIntent).not.toHaveBeenCalled();
 	});
 
 	it("400s a same-lane migrate (a no-op reported as a migration would lie)", async () => {
@@ -134,7 +149,7 @@ describe("POST /api/dashboard/machines/[id]/migrate", () => {
 		expect(res.status).toBe(400);
 		const body = (await res.json()) as { error: string };
 		expect(body.error).toBe("same_substrate");
-		expect(mocks.runMachineMigration).not.toHaveBeenCalled();
+		expect(mocks.submitMachineIntent).not.toHaveBeenCalled();
 	});
 
 	it("404s an unknown machine", async () => {
@@ -148,8 +163,7 @@ describe("POST /api/dashboard/machines/[id]/migrate", () => {
 		const body = (await res.json()) as { missing: string[]; message: string };
 		expect(body.missing).toContain("DEDALUS_API_KEY");
 		expect(body.message).toContain("DEDALUS_API_KEY");
-		expect(mocks.setUserConfig).not.toHaveBeenCalled();
-		expect(mocks.runMachineMigration).not.toHaveBeenCalled();
+		expect(mocks.submitMachineIntent).not.toHaveBeenCalled();
 	});
 
 	it("409s while a bootstrap is running", async () => {
@@ -158,7 +172,7 @@ describe("POST /api/dashboard/machines/[id]/migrate", () => {
 		mocks.getUserConfig.mockResolvedValue(cfg);
 		const res = await POST(req({ to: "sprites" }), ctx("m-1"));
 		expect(res.status).toBe(409);
-		expect(mocks.runMachineMigration).not.toHaveBeenCalled();
+		expect(mocks.submitMachineIntent).not.toHaveBeenCalled();
 	});
 
 	it("409s while another migration is in flight", async () => {
@@ -177,7 +191,7 @@ describe("POST /api/dashboard/machines/[id]/migrate", () => {
 		mocks.getUserConfig.mockResolvedValue(cfg);
 		const res = await POST(req({ to: "sprites" }), ctx("m-1"));
 		expect(res.status).toBe(409);
-		expect(mocks.runMachineMigration).not.toHaveBeenCalled();
+		expect(mocks.submitMachineIntent).not.toHaveBeenCalled();
 	});
 
 	it("does NOT special-case vercel: moveState there is accepted like any credentialed lane", async () => {
@@ -196,36 +210,46 @@ describe("POST /api/dashboard/machines/[id]/migrate", () => {
 
 		const withState = await POST(req({ to: "vercel" }), ctx("m-1"));
 		expect(withState.status).toBe(202);
-		expect(mocks.runMachineMigration).toHaveBeenCalledWith({
-			machineId: "m-1",
-			to: "vercel",
-			moveState: true,
-			source: "destroy",
-			// The signed-in user, carried into the background task: the post-commit
-			// placement mirror is a tenant-scoped write, and re-resolving identity
-			// inside after() is how such a write lands under the wrong tenant.
-			userId: "user-1",
-		});
+		expect(mocks.submitMachineIntent).toHaveBeenLastCalledWith(
+			"user-1",
+			"m-1",
+			expect.objectContaining({
+				spec: expect.objectContaining({
+					sandbox: "vercel",
+					migrationPolicy: "copy",
+					migrationOptions: { moveState: true, source: "destroy" },
+				}),
+			}),
+		);
 
 		const withoutState = await POST(req({ to: "vercel", moveState: false }), ctx("m-1"));
 		expect(withoutState.status).toBe(202);
-		expect(mocks.runMachineMigration).toHaveBeenCalledWith({
-			machineId: "m-1",
-			to: "vercel",
-			moveState: false,
-			source: "destroy",
-			userId: "user-1",
-		});
+		expect(mocks.submitMachineIntent).toHaveBeenLastCalledWith(
+			"user-1",
+			"m-1",
+			expect.objectContaining({
+				spec: expect.objectContaining({
+					migrationOptions: { moveState: false, source: "destroy" },
+				}),
+			}),
+		);
 	});
 
-	it("202: persists migrationState running BEFORE scheduling, then schedules the run", async () => {
+	it("202: journals migration intent before scheduling reconciliation", async () => {
 		const order: string[] = [];
-		mocks.setUserConfig.mockImplementation(async () => {
-			order.push("persist");
-			return config();
+		mocks.submitMachineIntent.mockImplementation(async () => {
+			order.push("journal");
+			return {
+				accepted: {
+					worker: { id: "worker-1" },
+					operation: { id: "op-1", status: "queued" },
+				},
+				controlPlane: { reconcileNext: mocks.reconcileNext },
+			};
 		});
-		mocks.runMachineMigration.mockImplementation(async () => {
-			order.push("run");
+		mocks.reconcileNext.mockImplementation(async () => {
+			order.push("reconcile");
+			return null;
 		});
 
 		const res = await POST(req({ to: "sprites", source: "keep" }), ctx("m-1"));
@@ -233,20 +257,32 @@ describe("POST /api/dashboard/machines/[id]/migrate", () => {
 		const body = (await res.json()) as { ok: boolean; migration: string };
 		expect(body).toMatchObject({ ok: true, migration: "scheduled" });
 
-		expect(order).toEqual(["persist", "run"]);
-		const persisted = mocks.setUserConfig.mock.calls[0][0] as {
-			patchMachine: { id: string; patch: { migrationState: MigrationState } };
-		};
-		expect(persisted.patchMachine.id).toBe("m-1");
-		expect(persisted.patchMachine.patch.migrationState.phase).toBe("running");
-		expect(persisted.patchMachine.patch.migrationState.targetSubstrate).toBe("sprites");
-		expect(mocks.runMachineMigration).toHaveBeenCalledWith({
-			machineId: "m-1",
-			to: "sprites",
-			moveState: true,
-			source: "keep",
-			userId: "user-1",
-		});
+		expect(order).toEqual(["journal", "reconcile"]);
+		expect(mocks.submitMachineIntent).toHaveBeenCalledWith(
+			"user-1",
+			"m-1",
+			expect.objectContaining({
+				spec: expect.objectContaining({
+					sandbox: "sprites",
+					migrationOptions: { moveState: true, source: "keep" },
+				}),
+			}),
+		);
+	});
+
+	it("schedules live mode explicitly", async () => {
+		const res = await POST(req({ to: "sprites", mode: "live" }), ctx("m-1"));
+		expect(res.status).toBe(202);
+		expect(mocks.submitMachineIntent).toHaveBeenCalledWith(
+			"user-1",
+			"m-1",
+			expect.objectContaining({
+				spec: expect.objectContaining({
+					migrationPolicy: "live",
+					migrationOptions: expect.objectContaining({ moveState: true }),
+				}),
+			}),
+		);
 	});
 
 	it("hands the migration the SIGNED-IN user, not a constant", async () => {
@@ -255,8 +291,10 @@ describe("POST /api/dashboard/machines/[id]/migrate", () => {
 		mocks.getEffectiveUserId.mockResolvedValue("user-beta");
 		const res = await POST(req({ to: "sprites" }), ctx("m-1"));
 		expect(res.status).toBe(202);
-		expect(mocks.runMachineMigration).toHaveBeenCalledWith(
-			expect.objectContaining({ userId: "user-beta" }),
+		expect(mocks.submitMachineIntent).toHaveBeenCalledWith(
+			"user-beta",
+			"m-1",
+			expect.any(Object),
 		);
 	});
 });

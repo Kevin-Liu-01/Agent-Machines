@@ -129,7 +129,7 @@ const STEPS: ReadonlyArray<Step> = [
 		bullets: [
 			["", "E2B", " — sandbox with pause/resume"],
 			["", "Sprites", " — persistent microVM on Sprites.dev"],
-			["", "Dedalus Machines", " — strong default on boot and sleep/wake"],
+			["", "Dedalus Machines", " — adapter-complete; current health disclosed"],
 			["", "Vercel Sandbox", " — persistent microVMs with auto-snapshots"],
 		],
 		metrics: [

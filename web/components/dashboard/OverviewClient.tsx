@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { Logo } from "@/components/Logo";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
@@ -49,10 +48,15 @@ export function OverviewClient({
 	model,
 	activeMachineId,
 }: Props) {
+	const [mounted, setMounted] = useState(false);
 	const machine = useMachineControl(activeMachineId);
 	const [gateway, setGateway] = useState<GatewaySummary | null>(null);
 	const [fleetRunning, setFleetRunning] = useState<number | null>(null);
 	const [probeStamp, setProbeStamp] = useState<number | null>(null);
+
+	useEffect(() => {
+		setMounted(true);
+	}, []);
 
 	useEffect(() => {
 		if (machine.notProvisioned) return;
@@ -113,20 +117,33 @@ export function OverviewClient({
 				? "warn"
 				: "error";
 
+	// This stack contains browser-local charts, clocks, and polling state. Keep
+	// its server and first client render identical; the action-first launchpad
+	// and capability map above remain available in the initial HTML.
+	if (!mounted) {
+		return (
+			<DashboardPageBody>
+				<ReticleFrame className="flex min-h-28 items-center justify-center p-5">
+					<BrailleSpinner
+						name="orbit"
+						label="loading live fleet telemetry"
+						className="text-[11px] text-[var(--ret-text-muted)]"
+					/>
+				</ReticleFrame>
+			</DashboardPageBody>
+		);
+	}
+
 	if (machine.notProvisioned) {
 		return (
 			<DashboardPageBody>
 				<FleetMonitor />
 				<ReticleFrame className="p-6">
-					<div className="flex flex-col items-center gap-4 py-8 text-center">
-						<Logo mark="am" size={28} />
-						<h2 className="ret-display text-lg">No active machine</h2>
+					<div className="flex flex-col items-center gap-3 py-6 text-center">
+						<h2 className="ret-display text-lg">The fleet is empty</h2>
 						<p className="max-w-[48ch] text-[13px] text-[var(--ret-text-dim)]">
-							Provision a machine to start building activity on the heatmap.
+							Choose a runtime and sandbox above. The control plane will open the Worker here as soon as the provider accepts it.
 						</p>
-						<ReticleButton as="a" href="/dashboard/setup" variant="primary" size="sm">
-							Open setup wizard
-						</ReticleButton>
 					</div>
 				</ReticleFrame>
 			</DashboardPageBody>

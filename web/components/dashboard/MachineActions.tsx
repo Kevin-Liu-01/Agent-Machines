@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
+import { waitForControlPlaneOperation } from "@/lib/control-plane/client";
 import type { ProviderCapabilities } from "@/lib/providers";
 
 /**
@@ -99,6 +100,14 @@ export function MachineActions({
 					throw new Error(
 						body.message ?? body.error ?? `HTTP ${response.status}`,
 					);
+				}
+				if (action === "wake" || action === "sleep" || action === "destroy") {
+					const body = (await response.json().catch(() => ({}))) as {
+						operation?: { id?: string };
+					};
+					if (body.operation?.id) {
+						await waitForControlPlaneOperation(body.operation.id);
+					}
 				}
 				await onChange?.();
 			} catch (err) {

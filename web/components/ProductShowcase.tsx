@@ -1,4 +1,5 @@
 import Image from "next/image";
+import type { ReactNode } from "react";
 
 import { Logo } from "@/components/Logo";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
@@ -24,32 +25,74 @@ export function ProductShowcase() {
 		<section className="relative overflow-hidden">
 			<header className="grid gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[minmax(300px,0.42fr)_minmax(0,0.58fr)]">
 				<div className="bg-[var(--ret-bg)] px-5 py-8 md:px-8 md:py-10">
-					<ReticleLabel>THE PRODUCT</ReticleLabel>
+					<ReticleLabel>PRODUCT EVIDENCE</ReticleLabel>
 					<h2 className="ret-display mt-3 max-w-[15ch] text-3xl md:text-5xl">
-						The real CLI. In your browser.
+						Configure it, run it, and inspect the result.
 					</h2>
 				</div>
 				<div className="grid grid-cols-3 gap-px bg-[var(--ret-border)]">
-					<Fact label="session" value="persistent" />
+					<Fact label="identity" value="worker-owned" />
 					<Fact label="transport" value="live PTY" />
-					<Fact label="substrates" value="4 lanes" />
+					<Fact label="machinery" value="replaceable" />
 				</div>
 			</header>
 
-			<div className="grid gap-px bg-[var(--ret-border)] lg:grid-cols-2">
-				<ProductScreen
-					src="/screenshots/console-hermes.png"
-					width={1024}
-					height={692}
-					label="Hermes · live console"
-					alt="Hermes Agent running in the Agent Machines browser console"
+			<div className="grid gap-px bg-[var(--ret-border)] xl:grid-cols-12">
+				<EvidenceScreen
+					src="/screenshots/dashboard-conversation-claude.png"
+					label="Claude Code on Sprites"
+					caption="The live PTY, the agent reply, runtime detection, usage, and logs in one machine-scoped view."
+					alt="Claude Code answering a question inside a live Agent Machines worker console"
+					className="xl:col-span-8"
+					imageClassName="aspect-[4/3] object-cover object-top md:aspect-[16/9]"
 				/>
-				<ProductScreen
+				<EvidenceScreen
+					src="/screenshots/dashboard-worker-configure.png"
+					label="Worker configuration"
+					caption="Choose a recipe, runtime, and name before any infrastructure is created."
+					alt="Worker configuration dialog in the Agent Machines dashboard"
+					className="xl:col-span-4"
+					imageClassName="aspect-[4/3] object-cover object-top md:aspect-[16/9]"
+				/>
+				<EvidenceScreen
+					src="/screenshots/dashboard-conversation-openclaw.png"
+					label="OpenClaw on E2B"
+					caption="A real OpenClaw run on E2B, with the selected model and durable Worker state visible in the session."
+					alt="OpenClaw answering a question inside a live E2B Worker console"
+					className="xl:col-span-7"
+					imageClassName="aspect-[4/3] object-cover object-top md:aspect-[16/9]"
+				/>
+				<EvidenceScreen
+					src="/screenshots/dashboard-live-fleet.png"
+					label="Live fleet"
+					caption="Provider, runtime, model, health, loadout, and migration controls are visible on each machine."
+					alt="Agent Machines fleet with Codex and Claude Code workers"
+					className="xl:col-span-5"
+					imageClassName="aspect-[4/3] object-cover object-top md:aspect-[16/9]"
+				/>
+				<EvidenceScreen
+					src="/screenshots/dashboard-provider-routing.png"
+					label="Provider routing"
+					caption="The setup flow shows the primary lane, backups, capabilities, and measured command latency."
+					alt="Sandbox provider routing and setup status in Agent Machines"
+					className="xl:col-span-12"
+					imageClassName="aspect-[4/3] object-cover object-top md:aspect-[16/9]"
+				/>
+				<EvidenceScreen
+					src="/screenshots/console-hermes.png"
+					label="Hermes console"
+					caption="A persistent generalist with memory, tools, and scheduled work."
+					alt="Hermes running in the Agent Machines browser console"
+					className="xl:col-span-6"
+					imageClassName="aspect-[4/3] object-cover object-top md:aspect-[16/9]"
+				/>
+				<EvidenceScreen
 					src="/screenshots/console-codex.png"
-					width={1024}
-					height={688}
-					label="Codex CLI · live console"
+					label="Codex CLI console"
+					caption="A coding runtime attached to the same durable Worker control surface."
 					alt="Codex CLI running in the Agent Machines browser console"
+					className="xl:col-span-6"
+					imageClassName="aspect-[4/3] object-cover object-top md:aspect-[16/9]"
 				/>
 			</div>
 
@@ -57,19 +100,19 @@ export function ProductShowcase() {
 				<div className="bg-[var(--ret-bg)] p-4 md:p-7">
 					<div className="mb-5 flex items-end justify-between gap-4">
 						<div>
-							<ReticleLabel>DUAL ROUTING</ReticleLabel>
+							<ReticleLabel>DURABLE CORE · MODULAR STACK</ReticleLabel>
 							<h3 className="mt-2 text-xl font-semibold tracking-tight text-[var(--ret-text)] md:text-2xl">
-								Pick the brain. Pick the machine.
+								Keep the Worker. Swap the machinery.
 							</h3>
 						</div>
-						<ReticleBadge>one recipe</ReticleBadge>
+						<ReticleBadge>one durable identity</ReticleBadge>
 					</div>
 					<DualRouteDiagram />
 				</div>
 				<div className="bg-[var(--ret-bg)] p-4 md:p-7">
-					<ReticleLabel>CONTROL LOOP</ReticleLabel>
+					<ReticleLabel>RESPONSIBILITY LOOP</ReticleLabel>
 					<h3 className="mt-2 text-xl font-semibold tracking-tight text-[var(--ret-text)] md:text-2xl">
-						Deploy to prompt.
+						Intent to supervised work.
 					</h3>
 					<LifecycleDiagram />
 				</div>
@@ -91,22 +134,24 @@ function Fact({ label, value }: { label: string; value: string }) {
 	);
 }
 
-function ProductScreen({
+function EvidenceScreen({
 	src,
-	width,
-	height,
 	label,
+	caption,
 	alt,
+	className = "",
+	imageClassName = "",
 }: {
 	src: string;
-	width: number;
-	height: number;
 	label: string;
+	caption: string;
 	alt: string;
+	className?: string;
+	imageClassName?: string;
 }) {
 	return (
-		<figure className="group min-w-0 bg-[var(--ret-bg)] p-3 md:p-5">
-			<div className="overflow-hidden border border-[var(--ret-border-hover)] bg-[#08090b] shadow-[0_20px_70px_rgba(0,0,0,0.28)]">
+		<figure className={`group min-w-0 bg-[var(--ret-bg)] p-3 md:p-5 ${className}`}>
+			<div className="overflow-hidden border border-[var(--ret-border-hover)] bg-[#08090b] shadow-[0_20px_70px_rgba(0,0,0,0.22)]">
 				<div className="flex h-9 items-center justify-between border-b border-white/10 px-3">
 					<div className="flex gap-1.5" aria-hidden="true">
 						<span className="h-1.5 w-1.5 bg-white/25" />
@@ -117,14 +162,20 @@ function ProductScreen({
 						{label}
 					</figcaption>
 				</div>
-				<Image
-					src={src}
-					width={width}
-					height={height}
-					alt={alt}
-					className="h-auto w-full transition-transform duration-500 [transition-timing-function:var(--ret-ease-out)] group-hover:scale-[1.015]"
-					sizes="(min-width: 1024px) 50vw, 100vw"
-				/>
+				<div className="relative overflow-hidden">
+					<Image
+						src={src}
+						width={1440}
+						height={1000}
+						alt={alt}
+						className={`h-auto w-full transition-transform duration-500 [transition-timing-function:var(--ret-ease-out)] group-hover:scale-[1.01] ${imageClassName}`}
+						sizes="(min-width: 1280px) 60vw, 100vw"
+					/>
+					<div className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-20 bg-gradient-to-t from-black/75 to-transparent md:block" />
+					<p className="border-t border-white/10 bg-[#08090b] p-3 text-[10px] leading-relaxed text-white/70 md:absolute md:inset-x-0 md:bottom-0 md:border-t-0 md:bg-transparent md:p-4">
+						{caption}
+					</p>
+				</div>
 			</div>
 		</figure>
 	);
@@ -141,7 +192,7 @@ function DualRouteDiagram() {
 			>
 				<title id="dual-route-title">Agent Machines dual routing diagram</title>
 				<desc id="dual-route-desc">
-					Four agent runtimes and four machine substrates converge into one worker recipe, producing a persistent worker.
+					A durable Worker intent keeps its identity and responsibility while four agent runtimes and four machine substrates remain replaceable implementations.
 				</desc>
 				<g
 					fill="none"
@@ -182,10 +233,10 @@ function DualRouteDiagram() {
 					{SUBSTRATES.map((substrate, index) => (
 						<text key={substrate.label} x={135 + index * 200} y="357">{substrate.label}</text>
 					))}
-					<text x="845" y="207">Worker recipe</text>
-					<text x="845" y="230" fill="var(--ret-text-muted)" fontSize="13" fontWeight="400">runtime + machine</text>
-					<text x="1085" y="207">Persistent</text>
-					<text x="1085" y="230">worker</text>
+					<text x="845" y="207">Worker intent</text>
+					<text x="845" y="230" fill="var(--ret-text-muted)" fontSize="13" fontWeight="400">identity + responsibility</text>
+					<text x="1085" y="207">Running</text>
+					<text x="1085" y="230">Worker</text>
 				</g>
 				<g fill="var(--ret-purple)">
 					<rect x="753" y="178" width="8" height="8" transform="rotate(45 757 182)" />
@@ -204,8 +255,8 @@ function DualRouteDiagram() {
 				</MobileBank>
 				<FlowConnector />
 				<div className="border border-[var(--ret-purple)] bg-[var(--ret-bg)] px-3 py-3 text-center">
-					<strong className="text-xs text-[var(--ret-text)]">Worker recipe</strong>
-					<p className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--ret-text-muted)]">runtime + machine</p>
+					<strong className="text-xs text-[var(--ret-text)]">Worker intent</strong>
+					<p className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--ret-text-muted)]">identity + responsibility</p>
 				</div>
 				<FlowConnector />
 				<MobileBank label="substrate">
@@ -218,17 +269,17 @@ function DualRouteDiagram() {
 				</MobileBank>
 				<FlowConnector />
 				<div className="border border-[var(--ret-border-hover)] bg-[var(--ret-bg)] px-3 py-3 text-center text-xs font-semibold text-[var(--ret-text)]">
-					Persistent worker
+					Running Worker
 				</div>
 			</div>
 		</div>
 	);
 }
 
-function MobileBank({ label, children }: { label: string; children: React.ReactNode }) {
+function MobileBank({ label, children }: { label: string; children: ReactNode }) {
 	return (
 		<div>
-			<div className="mb-1.5 font-mono text-[8px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">{label}</div>
+			<div className="mb-1.5 font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">{label}</div>
 			<div className="grid grid-cols-2 gap-1">{children}</div>
 		</div>
 	);
@@ -239,7 +290,7 @@ function FlowConnector() {
 }
 
 function LifecycleDiagram() {
-	const steps = ["configure", "provision", "bootstrap", "attach", "run"];
+	const steps = ["describe", "compose", "provision", "run", "supervise"];
 	return (
 		<div className="mt-5 border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-4">
 			<ol className="relative grid gap-3">

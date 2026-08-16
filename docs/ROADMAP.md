@@ -1,5 +1,43 @@
 # Agent Machines -- the end state
 
+## 2026-08-15 Worker-system overlay
+
+The canonical product invariant is now: **the Worker is durable; everything
+underneath it is replaceable**. The Worker owns identity, responsibility,
+memory, instructions, schedules, files, permissions, abilities, history, and
+evidence. The router, runtime, model, sandbox, tools, transport, storage, and
+scheduler are machinery beneath that object.
+
+The infrastructure router remains the technical wedge. The larger product is
+a creation and supervision system for long-running digital labor: take a
+specialist off the shelf, assemble one from primitives, or eventually describe
+the responsibility and let the system propose the Worker. See
+[WHITEPAPER.md](./WHITEPAPER.md) for the category thesis and
+[CONTROL-PLANE-V2.md](./CONTROL-PLANE-V2.md) for current shipped boundaries.
+
+The detailed promise-vs-reality table below is a point-in-time 2026-08-01 audit,
+not a current status ledger. It is retained for historical traceability; newer
+dated overlays and linked validation documents supersede its counts and gaps.
+
+## 2026-08-13 v2 cutover overlay
+
+The rebuild now has a new architectural boundary: `src/control-plane` owns a
+declarative Worker resource, durable operations, idempotency, expiring leases,
+cold-start-before-run, scheduled dispatch dedupe, and lifecycle
+reconciliation. `MuxWorkerRuntimeDriver` carries those decisions through the
+existing mux, including application-level live provider migration. The
+dashboard's primary Workers surface submits one runtime + sandbox launch
+intent and opens the console while bootstrap runs.
+
+This does **not** make the historical promise-vs-reality table below fully
+green. The journal has memory, atomic JSON, and transactional Supabase
+adapters; every hosted lifecycle mutation submits intent through it, and the
+scheduler reclaims expired work. Hosted environments still need migration 009,
+and Clerk `UserConfig` / `MachineRef` remains the compatibility projection for
+older read surfaces. The exact shipped/pending boundary lives in
+[CONTROL-PLANE-V2.md](./CONTROL-PLANE-V2.md) and supersedes older wording that
+calls the lifecycle kernel or hosted journal "not started."
+
 > Scope document. What Agent Machines is when it is finished, what exists in
 > code today, and the precise distance between the two. Every "exists" claim
 > below cites a file. Every gap is stated as a defect, not a feature idea.
@@ -13,7 +51,7 @@
 
 ## 1. The end state
 
-OpenRouter made model APIs interchangeable: one key, one request shape, and
+This section describes the routing wedge. OpenRouter made model APIs interchangeable: one key, one request shape, and
 the gateway picks a provider, fails over when one is down, and sends one
 invoice. Agent Machines is that for the computers agents work on. Finished,
 it looks like this.

@@ -8,6 +8,8 @@
 
 import { randomUUID } from "node:crypto";
 
+import { guardedRunCommand } from "agent-machines/mux";
+
 import { getProvider } from "@/lib/providers";
 import type { ExecStreamEvent, MachineProvider } from "@/lib/providers/types";
 import { getUserConfig } from "@/lib/user-config/clerk";
@@ -139,8 +141,9 @@ export async function* execStreamOnMachine(
 		);
 	}
 	const provider = getProvider(machine.providerKind, config.providers);
-	yield* streamFromProvider(provider, machine.id, command, {
-		timeoutMs: options.timeoutMs,
+	const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+	yield* streamFromProvider(provider, machine.id, guardedRunCommand(command, { timeoutMs }), {
+		timeoutMs,
 		pollMs: options.pollMs,
 	});
 }

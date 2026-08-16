@@ -1,0 +1,30 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { getOwnerDefaults } from "./clerk";
+import { toPublicConfig } from "./schema";
+
+afterEach(() => vi.unstubAllEnvs());
+
+describe("owner environment credentials", () => {
+	it("makes every supported local provider and native coding runtime available", () => {
+		vi.stubEnv("E2B_API_KEY", "e2b-secret");
+		vi.stubEnv("SPRITES_TOKEN", "sprites-secret");
+		vi.stubEnv("ANTHROPIC_API_KEY", "anthropic-secret");
+		vi.stubEnv("OPENAI_API_KEY", "openai-secret");
+		vi.stubEnv("VERCEL_OIDC_TOKEN", "oidc-secret");
+
+		const config = getOwnerDefaults();
+		expect(config.providers.e2b?.apiKey).toBe("e2b-secret");
+		expect(config.providers.sprites?.apiKey).toBe("sprites-secret");
+		expect(config.aiProviderKeys.anthropic).toBe("anthropic-secret");
+		expect(config.aiProviderKeys.openai).toBe("openai-secret");
+
+		const publicConfig = toPublicConfig(config);
+		expect(publicConfig.providers.e2b.configured).toBe(true);
+		expect(publicConfig.providers.sprites.configured).toBe(true);
+		expect(publicConfig.providers.vercel.configured).toBe(true);
+		expect(publicConfig.aiProviders.anthropic.configured).toBe(true);
+		expect(publicConfig.aiProviders.openai.configured).toBe(true);
+		expect(JSON.stringify(publicConfig)).not.toContain("secret");
+	});
+});

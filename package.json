@@ -1,7 +1,7 @@
 {
   "name": "agent-machines",
   "version": "0.2.0",
-  "description": "OpenRouter for agents and containers — control plane for persistent agent workers. Route runtime + substrate, provision specialist presets, supervise the fleet. 161 skills · 39 MCP servers.",
+  "description": "The durable Worker system for persistent digital labor. Keep identity, memory, schedules, files, and evidence while swapping the machinery. 161 skills · 39 MCP servers.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -23,6 +23,11 @@
       "types": "./dist/mux/*.d.ts",
       "module-sync": "./dist/mux/*.js",
       "import": "./dist/mux/*.js"
+    },
+    "./control-plane": {
+      "types": "./dist/control-plane/index.d.ts",
+      "module-sync": "./dist/control-plane/index.js",
+      "import": "./dist/control-plane/index.js"
     },
     "./package.json": "./package.json"
   },
@@ -47,6 +52,7 @@
     "sync-manifest": "node scripts/sync-knowledge-manifest.mjs",
     "sync-wiki": "node scripts/sync-from-wiki.mjs",
     "test:mux": "tsx --test \"src/mux/**/*.test.ts\"",
+    "test:control-plane": "tsx --test \"src/control-plane/**/*.test.ts\"",
     "test:sdk": "tsx --test \"src/lib/**/*.test.ts\"",
     "typecheck": "tsc --noEmit",
     "wake": "tsx src/cli.ts wake",

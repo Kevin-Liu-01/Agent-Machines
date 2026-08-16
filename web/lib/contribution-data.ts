@@ -459,11 +459,13 @@ export function generateContributionGrid(
 ): ContributionDay[][] {
 	const rng = makePrng(SEED);
 	const today = new Date(endsAt);
-	today.setHours(0, 0, 0, 0);
+	// This synthetic public grid must render identically on Vercel (UTC) and
+	// in the operator's browser. Calendar math is therefore UTC throughout.
+	today.setUTCHours(0, 0, 0, 0);
 
 	const rawStart = new Date(today);
-	rawStart.setDate(rawStart.getDate() - totalDays + 1);
-	rawStart.setDate(rawStart.getDate() - rawStart.getDay());
+	rawStart.setUTCDate(rawStart.getUTCDate() - totalDays + 1);
+	rawStart.setUTCDate(rawStart.getUTCDate() - rawStart.getUTCDay());
 
 	const calendarDays =
 		Math.floor((today.getTime() - rawStart.getTime()) / 86_400_000) + 1;
@@ -471,10 +473,10 @@ export function generateContributionGrid(
 	const days: ContributionDay[] = [];
 	for (let i = 0; i < calendarDays; i++) {
 		const date = new Date(rawStart);
-		date.setDate(rawStart.getDate() + i);
-		const day = date.getDay();
+		date.setUTCDate(rawStart.getUTCDate() + i);
+		const day = date.getUTCDay();
 		const isWeekend = day === 0 || day === 6;
-		const isToday = date.toDateString() === today.toDateString();
+		const isToday = date.getTime() === today.getTime();
 
 		const partner = pickPartner(rng);
 		const intensity = intensityFor(rng, isWeekend, isToday);

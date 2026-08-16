@@ -223,6 +223,7 @@ function bad(exitCode: number, stderr: string): ExecResult {
 class StubHandle {
 	readonly writes: Array<{ path: string; content: string }> = [];
 	readonly backgrounds: string[] = [];
+	readonly commands: string[] = [];
 	readonly capabilities: {
 		persistence: string;
 		pty: string;
@@ -249,7 +250,14 @@ class StubHandle {
 	}
 
 	async exec(command: string, _options?: ExecOptions): Promise<ExecResult> {
+		this.commands.push(command);
 		const { world } = this;
+		if (command.includes("AM_LIVE_BASELINE_READY")) return ok("AM_LIVE_BASELINE_READY\n");
+		if (command.includes("AM_MIGRATION_DRAINED")) return ok("AM_MIGRATION_DRAINED 0\n");
+		if (command.includes("| sha256sum")) return ok(`${"a".repeat(64)}  -\n`);
+		if (command.includes("AM_LIVE_DELTA_READY")) return ok("AM_LIVE_DELTA_READY\n");
+		if (command.includes("AM_LIVE_DELTA_APPLIED")) return ok("AM_LIVE_DELTA_APPLIED\n");
+		if (command.includes("am_migration_gate=\"$am_migration_root/gate\"")) return ok();
 		// Harness installs (package markers are checked before `command -v`,
 		// because an install command legitimately contains probes of its own).
 		if (
@@ -716,6 +724,51 @@ test("migrate runs provision -> install -> export -> restore -> verify -> rememb
 	assert.equal(targetHandle.writes[0].content, world.tar.toString("base64"));
 	assert.deepEqual(world.destroyed, [], "nothing was handle-destroyed on the success path");
 	assertStoreSerial(store, "migrate()");
+});
+
+test("live migrate drains managed runs, applies a stable final delta, then commits", async () => {
+	const { mux, world, target } = setup();
+	const steps: string[] = [];
+	const report = await mux.migrate("alpha", {
+		to: "sprites",
+		mode: "live",
+		onProgress: (step) => steps.push(step.step),
+	});
+
+	assert.deepEqual(steps, [
+		"gate",
+		"provision",
+		"install",
+		"export",
+		"restore",
+		"drain",
+		"delta",
+		"verify",
+		"commit",
+		"source",
+	]);
+	assert.equal(report.continuity.mode, "live");
+	assert.equal(report.continuity.managedRuns, "drained");
+	assert.equal(report.continuity.process, "restarted");
+	assert.equal(report.continuity.activeRuns, 0);
+	assert.equal(report.continuity.baselineBytes, world.tar.length);
+	assert.equal(report.continuity.deltaBytes, world.tar.length);
+	assert.equal(report.continuity.stabilityAttempts, 1);
+	assert.equal(report.continuity.gateReleased, true);
+	assert.equal(report.state.bytes, world.tar.length * 2);
+	assert.ok(report.state.lost.some((line) => line.includes("managed runs drain")));
+	assert.equal(target.handles[0].writes.length, 2, "baseline and final delta both landed");
+	assert.ok(
+		target.handles[0].commands.some((command) => command.includes("am_migration_gate")),
+		"the copied source drain gate is cleared on the target before commit",
+	);
+	assertOrder(world.ops, [
+		"restore",
+		"probe:sprites-new-1",
+		"store:remembered:alpha:sprites:sprites-new-1:claude-code",
+		"remove:e2b-old-1",
+	]);
+	assertStoreSerial(store, "live migrate()");
 });
 
 test("every pre-commit failure leaves the ORIGINAL placement and tears down only the NEW sandbox", async () => {

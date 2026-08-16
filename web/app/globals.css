@@ -41,8 +41,8 @@
 
 	--ret-text: rgba(0, 0, 0, 0.9);
 	--ret-text-secondary: #52525b;
-	--ret-text-dim: rgba(0, 0, 0, 0.55);
-	--ret-text-muted: rgba(0, 0, 0, 0.35);
+	--ret-text-dim: rgba(0, 0, 0, 0.68);
+	--ret-text-muted: rgba(0, 0, 0, 0.58);
 
 	--ret-border: rgba(0, 0, 0, 0.22);
 	--ret-border-hover: rgba(0, 0, 0, 0.36);
@@ -128,8 +128,8 @@
 
 	--ret-text: rgba(255, 255, 255, 0.9);
 	--ret-text-secondary: #a1a1aa;
-	--ret-text-dim: rgba(255, 255, 255, 0.5);
-	--ret-text-muted: rgba(255, 255, 255, 0.3);
+	--ret-text-dim: rgba(255, 255, 255, 0.68);
+	--ret-text-muted: rgba(255, 255, 255, 0.58);
 
 	--ret-border: rgba(255, 255, 255, 0.16);
 	--ret-border-hover: rgba(255, 255, 255, 0.26);
@@ -164,8 +164,8 @@
 
 		--ret-text: rgba(255, 255, 255, 0.9);
 		--ret-text-secondary: #a1a1aa;
-		--ret-text-dim: rgba(255, 255, 255, 0.5);
-		--ret-text-muted: rgba(255, 255, 255, 0.3);
+		--ret-text-dim: rgba(255, 255, 255, 0.68);
+		--ret-text-muted: rgba(255, 255, 255, 0.58);
 
 		--ret-border: rgba(255, 255, 255, 0.16);
 		--ret-border-hover: rgba(255, 255, 255, 0.26);
@@ -476,41 +476,7 @@ li {
 }
 
 .ret-page-enter {
-	animation: ret-stagger-enter var(--ret-duration-page) var(--ret-ease-out)
-		both;
-	animation-delay: calc(var(--item-index, 0) * 70ms);
-}
-
-/*
- * GSAP + Lenis motion layer: smooth scroll, the top progress bar, and
- * scroll-triggered section reveals. The route curtain and the route-enter
- * blur were removed 2026-08-03 (they could strand a page mid-transition --
- * see components/motion/MotionProvider.tsx for the account).
- */
-.am-route-shell {
-	min-height: 100dvh;
-}
-
-.am-motion-ready .ret-page-enter {
 	animation: none;
-}
-
-.am-scroll-progress {
-	position: fixed;
-	top: 0;
-	right: 0;
-	left: 0;
-	z-index: 80;
-	height: 2px;
-	pointer-events: none;
-	background: var(--ret-text);
-	transform: scaleX(0);
-	transform-origin: left center;
-	will-change: transform;
-}
-
-[data-motion-section] {
-	will-change: transform, opacity;
 }
 
 .ret-popover-panel {
@@ -593,13 +559,6 @@ details[open] .ret-details-chevron {
 		transform: none;
 	}
 
-	.am-scroll-progress {
-		display: none;
-	}
-
-	[data-motion-section] {
-		will-change: auto;
-	}
 }
 
 /*

@@ -13,9 +13,10 @@
  */
 
 import presetsData from "@/data/presets.json";
+import { AGENT_TEMPLATES, type MarketingStep } from "@/lib/marketing/public-site";
 import type { AgentKind } from "@/lib/user-config/schema";
 
-export type Preset = {
+type PresetData = {
 	id: string;
 	name: string;
 	description: string;
@@ -30,15 +31,34 @@ export type Preset = {
 	mcpServerIds: string[];
 };
 
-const PRESETS: ReadonlyArray<Preset> = (presetsData as Preset[]) ?? [];
+export type Preset = PresetData & {
+	category: string;
+	longDescription: string;
+	loadout: string[];
+	workflow: MarketingStep[];
+	bestFor: string;
+	output: string;
+};
+
+const PRESETS: ReadonlyArray<PresetData> = (presetsData as PresetData[]) ?? [];
+const TEMPLATE_BY_SLUG = new Map(AGENT_TEMPLATES.map((template) => [template.slug, template]));
 
 /** Fresh, fully-owned copy so callers can never mutate the shared registry. */
-function clone(preset: Preset): Preset {
+function clone(preset: PresetData): Preset {
+	const template = TEMPLATE_BY_SLUG.get(preset.id);
+	const metric = (label: string) =>
+		template?.metrics.find((item) => item.label.toLowerCase() === label)?.value ?? "configured";
 	return {
 		...preset,
 		skillIds: [...preset.skillIds],
 		toolIds: [...preset.toolIds],
 		mcpServerIds: [...preset.mcpServerIds],
+		category: template?.category ?? "General",
+		longDescription: template?.longDescription ?? preset.description,
+		loadout: [...(template?.loadout ?? [])],
+		workflow: (template?.workflow ?? []).map((step) => ({ ...step })),
+		bestFor: metric("best for"),
+		output: metric("output"),
 	};
 }
 

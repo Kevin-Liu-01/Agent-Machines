@@ -1,21 +1,21 @@
 # Agent Machines Web
 
-Next.js public site + Clerk-gated **control plane**. **OpenRouter for agents and containers** — route runtime + substrate, provision specialist presets, supervise the fleet.
+Next.js public site + Clerk-gated **Worker system**. The Worker is durable; runtime, model, sandbox, tools, transport, persistence, and placement are replaceable machinery beneath it. Users can take a specialist off the shelf or assemble one from modular primitives, then supervise its state and evidence from one control plane.
 
 Five jobs:
 
-1. **Marketing**: landing (dual-gear hero: runtime × substrate), capabilities, fleet demo, FAQ, architecture.
-2. **Control plane**: setup, fleet, workers, memory bundles, registry, loadout, settings, usage, benchmarks.
+1. **Marketing**: durable-Worker thesis, route/compose/access layers, specialist catalog, capabilities, fleet demo, FAQ, architecture.
+2. **Control plane**: off-the-shelf Workers, modular launch, setup, fleet, memory bundles, registry, loadout, settings, usage, benchmarks.
 3. **Browser Agent Console**: live PTY to agent CLIs over tmux-over-exec + SSE (see below).
 4. **Gateway proxy**: optional HTTP chat via API routes; console is primary; bearers never `NEXT_PUBLIC_*`.
 5. **Observation + scheduler**: Supabase metrics/usage, user crons, Vercel Cron tick every 5 minutes.
 
 ## Current status
 
-- **Four substrates:** E2B, Sprites.dev, Dedalus Machines, Vercel Sandbox (`lib/providers/*`). Dedalus benchmarks best on boot/sleep; all four are first-class.
+- **Four substrate adapters:** E2B, Sprites.dev, Dedalus Machines, Vercel Sandbox (`lib/providers/*`). The latest strict proof is live-green on E2B, Sprites, and Vercel; Dedalus is adapter-complete and currently blocked by a disclosed upstream vendor incident.
 - **Four runtimes:** Hermes, OpenClaw, Claude Code, Codex CLI (`lib/agents.ts`).
 - **Model routers:** Vercel AI Gateway first, OpenRouter second, then native Anthropic/OpenAI or other supported OpenAI-compatible gateways — credential gate before provision.
-- **Registry:** 1,400+ installable items (MCP registry cache, skills.sh, npm, bundled loadout, Cursor plugins).
+- **Registry:** 2,595 installable items in the 2026-08-14 production audit (MCP registry cache, skills.sh, npm, bundled loadout, Cursor plugins).
 - **Workers + Memory:** presets and portable persona bundles; deploy onto any machine/substrate.
 - **Metrics + crons:** Supabase persistence; `/api/internal/cron/tick` (see `vercel.json`) runs scheduled jobs and metrics collection.
 - Harness counts are **registry-derived** — `lib/platform/harness.ts` (run `sync-skills` before release builds).
@@ -109,16 +109,16 @@ Sidebar groups: **Fleet** (overview, machines, workers, usage, benchmarks) · **
 
 Operate the real agent CLI (Codex, Claude Code, Hermes, OpenClaw) from a browser tab, on a remote worker, with no local terminal and no tunnel.
 
-A serverless control plane cannot host a long-lived WebSocket PTY server (Vercel functions time out and have no sticky sessions), so the session is inverted onto the worker:
+A bounded WebSocket Function cannot own durable shell state, so the session is inverted onto the worker and the data plane is tiered:
 
 - **Session on the box:** a persistent `tmux` session (`amconsole`) with `pipe-pane` to `/tmp/am-console.log`.
-- **Stateless control plane:** HTTP for input, SSE for output. No WebSocket, no tunnel on the console path.
-- **Input:** `POST /api/dashboard/terminal/input` runs `tmux send-keys -H <hex>`.
-- **Output:** `GET /api/dashboard/terminal/stream` streams an unbuffered `tail -f` of the pane log from a byte offset.
+- **Direct fast path:** `POST /api/dashboard/terminal/direct` launches an origin-locked, ephemeral worker WebSocket attached to `amconsole`; the browser keeps one primary and five failover lanes open, and input IDs make the 12ms retry exactly-once at tmux.
+- **Native fallback:** `GET /api/dashboard/terminal/socket` pins an authenticated Vercel WebSocket Function to one provider PTY when direct ingress is unavailable.
+- **Portable fallback:** `POST /api/dashboard/terminal/input` runs `tmux send-keys -H <hex>` and `GET /api/dashboard/terminal/stream` tails the pane log over SSE.
 - **Attach:** `POST /api/dashboard/terminal/session` ensures tmux, returns a `capture-pane` snapshot + byte offset for instant first paint.
 - **Resize:** `POST /api/dashboard/terminal/resize` runs `tmux resize-window`.
 
-`exec` is the only substrate requirement, so the same UI works on E2B, Sprites, Vercel Sandbox, and Dedalus. Full write-up: [`docs/sandbox-terminal-gateway.md`](docs/sandbox-terminal-gateway.md) and [`../knowledge/BROWSER-AGENT-CONSOLE.md`](../knowledge/BROWSER-AGENT-CONSOLE.md).
+`exec` remains the only portability requirement, so the same UI works on E2B, Sprites, Vercel Sandbox, and Dedalus. Production proof (2026-08-14): E2B delivered a 41ms latest acknowledgement and 89ms p95 across 20 human inputs. A location-aware Sprite Service measured 10.8ms p50 across 100 paced inputs, but provider-proxy outliers raised p95 to 75.6ms. The 50ms badge is a target and breach detector, not a false hard guarantee. Full write-up: [`docs/sandbox-terminal-gateway.md`](docs/sandbox-terminal-gateway.md) and [`../knowledge/BROWSER-AGENT-CONSOLE.md`](../knowledge/BROWSER-AGENT-CONSOLE.md).
 
 ## Data boundaries
 

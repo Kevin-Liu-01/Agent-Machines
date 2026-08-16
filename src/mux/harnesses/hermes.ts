@@ -558,10 +558,21 @@ function upstreamEnv(keys: UpstreamKeys): Record<string, string> {
  * refuses --provider without --model (hermes_cli/oneshot.py), which is
  * why this adapter drives `chat -q` instead.
  */
-function providerFlag(keys: UpstreamKeys): string {
+function providerFlag(keys: UpstreamKeys, model?: string): string {
+	if (model?.startsWith("openai/") && keys.openai) return " --provider openai-api";
+	if (model?.startsWith("anthropic/") && keys.anthropic) return " --provider anthropic";
 	if (keys.anthropic) return " --provider anthropic";
 	if (keys.openai) return " --provider openai-api";
 	return "";
+}
+
+function hermesModel(model: string): string {
+	// Hermes takes the provider separately. It accepts a provider-prefixed
+	// model, but then prints a two-line normalization warning to stdout. Since
+	// the one-shot protocol has no envelope separating diagnostics from answer
+	// text, pass the native model id after providerFlag() has selected the
+	// credential lane. This keeps a successful RunResult.text exact.
+	return model.replace(/^(?:anthropic|openai)\//, "");
 }
 
 export const hermesHarness: HarnessAdapter = {
@@ -637,12 +648,10 @@ export const hermesHarness: HarnessAdapter = {
 		// alphabet ([A-Za-z0-9+/=]); none of those characters are special
 		// inside double quotes (only $, backtick, backslash and " are),
 		// so arbitrary prompt bytes round-trip without quoting bugs.
-		// `hermes chat` does accept -m/--model and --resume SESSION_ID
-		// (verified against the installed 0.19.0 CLI, 2026-08-01), but they
-		// are deliberately not wired: hermes model ids are provider-prefixed
-		// ("anthropic/claude-sonnet-4.6") while HarnessRunOptions.model is a
-		// bare per-harness id, so mapping it blind would turn a working
-		// default into a failing run. Pass either flag via extraArgs.
+		// A provider-prefixed model selects the matching injected credential lane.
+		// The prefix is then removed from `-m` because Hermes already has an
+		// explicit --provider and otherwise leaks a normalization warning into its
+		// unframed stdout response.
 		// extraArgs go last so a caller can override any flag chosen here
 		// (argparse keeps the last occurrence).
 		//
@@ -681,7 +690,10 @@ export const hermesHarness: HarnessAdapter = {
 		// the sandbox). Those console results were not retained as artifacts, so
 		// treat the endpoint detail as reported-and-unarchived rather than
 		// reproducible from this repo.
-		let command = `${PATH_PREFIX} hermes chat${providerFlag(keys)} --quiet -q "$(echo ${b64} | base64 -d)"`;
+		const modelFlag = options.model
+			? ` -m ${shq(hermesModel(options.model))}`
+			: "";
+		let command = `${PATH_PREFIX} hermes chat${providerFlag(keys, options.model)}${modelFlag} --quiet -q "$(echo ${b64} | base64 -d)"`;
 		if (options.extraArgs && options.extraArgs.length > 0) {
 			command += ` ${options.extraArgs.join(" ")}`;
 		}

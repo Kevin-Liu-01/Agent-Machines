@@ -68,6 +68,7 @@ export class FakeProvider implements MachineProvider {
 		this.spec = { vcpu: 2, memoryMib: 4096, storageGib: 10 };
 		this.capabilities = {
 			runtime: "persistent-machine",
+			pty: "native",
 			canProvision: true,
 			canWake: true,
 			canSleep: true,

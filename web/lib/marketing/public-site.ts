@@ -6,6 +6,7 @@ export type PublicIconName =
 	| "boxes"
 	| "braces"
 	| "code"
+	| "clock"
 	| "cpu"
 	| "database"
 	| "file"
@@ -88,7 +89,7 @@ export const PRODUCT_FEATURES: ReadonlyArray<ProductFeature> = [
 		description:
 			"Dedicated worker records keep runtime state, files, logs, cron, and artifacts together.",
 		longDescription:
-			"Agent Machines treats the worker as the product object. The selected runtime, provider lane, model path, environment profile, and loadout are stored together, then replayed when the machine starts again.",
+			"Agent Machines treats the Worker as a declarative product object. Runtime, sandbox intent, model path, environment, schedules, memory, and loadout are stored together; the reconciler restores that intent across cold starts and provider migration.",
 		icon: "server",
 		badges: ["runtime root", "logs", "cron", "artifacts"],
 		metrics: [
@@ -97,8 +98,8 @@ export const PRODUCT_FEATURES: ReadonlyArray<ProductFeature> = [
 			{ label: "Surfaces", value: "7", detail: "chat, terminal, logs, usage, cron, loadout, files" },
 		],
 		steps: [
-			{ label: "Declare", body: "Pick runtime, provider, model path, spec, and loadout." },
-			{ label: "Provision", body: "Create the provider machine and store a scoped machine record." },
+			{ label: "Declare", body: "Pick runtime, sandbox, model path, spec, schedules, and loadout." },
+			{ label: "Reconcile", body: "Provision, bootstrap, wake, or migrate until observed state matches." },
 			{ label: "Resume", body: "Read disk-backed runtime state instead of starting from an empty chat." },
 		],
 		terminal: [
@@ -122,7 +123,7 @@ export const PRODUCT_FEATURES: ReadonlyArray<ProductFeature> = [
 		icon: "boxes",
 		badges: ["BYOK", "OpenAI-compatible", "router profiles"],
 		metrics: [
-			{ label: "Profile types", value: "5", detail: "router, native, gateway, custom, local" },
+			{ label: "Model paths", value: "4", detail: "gateway, router, native, custom" },
 			{ label: "Credential path", value: "server", detail: "private metadata" },
 			{ label: "Runtime support", value: "4", detail: "Hermes, OpenClaw, Claude, Codex" },
 		],
@@ -175,7 +176,7 @@ export const PRODUCT_FEATURES: ReadonlyArray<ProductFeature> = [
 		navTitle: "Lifecycle controls",
 		eyebrow: "Operations",
 		description:
-			"Provision, wake, pause, stream, inspect, and delete workers through one provider-facing shape.",
+			"Reconcile provision, cold start, pause, stream, live migration, repair, and delete through one Worker shape.",
 		longDescription:
 			"Each provider supports a different set of lifecycle operations. Agent Machines normalizes the dashboard shape while still showing the exact controls available for the selected lane.",
 		icon: "zap",
@@ -186,9 +187,9 @@ export const PRODUCT_FEATURES: ReadonlyArray<ProductFeature> = [
 			{ label: "Fallbacks", value: "visible", detail: "only supported controls render" },
 		],
 		steps: [
-			{ label: "Create", body: "Provision the worker with a selected spec and runtime." },
+			{ label: "Apply", body: "Persist desired runtime, sandbox, spec, and lifecycle state." },
 			{ label: "Drive", body: "Use lane-specific wake, pause, stream, and command controls." },
-			{ label: "Recover", body: "Open logs and artifacts when a step fails." },
+			{ label: "Recover", body: "Reclaim expired operations and retry idempotent lifecycle work." },
 		],
 		terminal: [
 			"machine.lifecycle",
@@ -201,28 +202,28 @@ export const PRODUCT_FEATURES: ReadonlyArray<ProductFeature> = [
 	{
 		slug: "snapshots-volumes",
 		href: "/product/snapshots-volumes",
-		title: "Snapshots and volumes",
-		navTitle: "Snapshots and volumes",
+		title: "Persistent state and checkpoints",
+		navTitle: "Persistent state",
 		eyebrow: "State",
 		description:
-			"Keep disk-backed runtime state and surface snapshots or forks when the selected provider supports them.",
+			"Keep disk-backed runtime state across sleep and wake, using the checkpoint behavior of the selected provider.",
 		longDescription:
-			"Persistent state is the baseline. Snapshot, fork, and public URL behavior depends on the provider lane, so the UI calls out support instead of pretending every substrate behaves the same.",
+			"Persistent state is the baseline. E2B and Vercel checkpoint differently from Sprites and Dedalus, so Agent Machines reports the selected lane's persistence behavior and never presents manual fork controls that the control plane does not expose.",
 		icon: "git-branch",
 		badges: ["disk-backed", "provider-specific", "artifacts"],
 		metrics: [
 			{ label: "Baseline", value: "volume", detail: "runtime state persists" },
-			{ label: "Forking", value: "lane-based", detail: "shown when supported" },
+			{ label: "Checkpointing", value: "lane-based", detail: "automatic where supported" },
 			{ label: "Artifacts", value: "tracked", detail: "files, outputs, reports" },
 		],
 		steps: [
 			{ label: "Persist", body: "Store runtime and app output in the worker root." },
-			{ label: "Surface", body: "Show snapshot and fork affordances only when available." },
+			{ label: "Checkpoint", body: "Use the provider's automatic pause, resume, or snapshot behavior." },
 			{ label: "Inspect", body: "Expose artifacts beside logs and usage." },
 		],
 		terminal: [
 			"state volume mounted",
-			"snapshot support detected",
+			"persistence mode detected",
 			"artifact index updated",
 			"resume source disk",
 		],
@@ -580,16 +581,16 @@ export const RESOURCE_PAGES: ReadonlyArray<ResourcePage> = [
 	{
 		slug: "docs",
 		href: "/docs",
-		title: "Documentation",
+		title: "The durable Worker system",
 		navTitle: "Documentation",
 		eyebrow: "Docs",
 		description:
-			"Guides for machine setup, provider credentials, runtime choices, loadouts, and dashboard operations.",
+			"The system thesis and operating guides for durable Workers, replaceable primitives, trusted templates, lifecycle, migration, loadouts, and supervision.",
 		icon: "book",
 		sections: [
-			{ label: "Start", body: "Create an account, add provider credentials, and provision a first machine." },
-			{ label: "Configure", body: "Choose runtime, provider lane, model path, machine spec, and loadout." },
-			{ label: "Operate", body: "Use chat, terminal, logs, usage, cron, artifacts, and lifecycle controls." },
+			{ label: "Choose", body: "Take a useful specialist off the shelf or describe the responsibility you want a Worker to own." },
+			{ label: "Compose", body: "Connect its role, memory, permissions, schedule, output contract, runtime, model, abilities, and sandbox." },
+			{ label: "Supervise", body: "Watch, approve, inspect evidence, and change the machinery without rebuilding the Worker." },
 		],
 	},
 	{
@@ -599,10 +600,10 @@ export const RESOURCE_PAGES: ReadonlyArray<ResourcePage> = [
 		navTitle: "API reference",
 		eyebrow: "API",
 		description:
-			"Reference notes for dashboard APIs, gateway calls, machine records, logs, metrics, and future SDK shapes.",
+			"Reference notes for Worker intents, control-plane operations, SDK calls, machine records, logs, and metrics.",
 		icon: "braces",
 		sections: [
-			{ label: "Machines", body: "List, inspect, provision, and update machine records." },
+			{ label: "Workers", body: "Apply desired Worker state and inspect its lifecycle operation." },
 			{ label: "Gateway", body: "Send chat or task traffic through the selected runtime lane." },
 			{ label: "Telemetry", body: "Read logs, daily usage rollups, artifacts, and cron state." },
 		],

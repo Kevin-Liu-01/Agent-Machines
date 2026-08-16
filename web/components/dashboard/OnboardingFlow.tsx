@@ -19,6 +19,7 @@ import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
+import { waitForControlPlaneOperation } from "@/lib/control-plane/client";
 import {
 	agentCredentialRequirements,
 	canBootstrapAgent,
@@ -319,14 +320,38 @@ export function OnboardingFlow({ initialConfig, defaults, presets }: Props) {
 				throw new Error(body.message ?? `setup failed (HTTP ${setupResp.status})`);
 			}
 
-			// Provision machine via the selected provider.
+			// Build the Memory + Worker before launch so the one journaled bootstrap
+			// installs the selected loadout on its first pass.
+			const applyResp = await fetch("/api/dashboard/admin/apply-preset", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					presetId: presetId === NO_PRESET ? null : presetId,
+					agentKind: agent,
+					gatewayProfileId:
+						agentUsesRouter(agent) && routerId ? routerId : DEFAULT_ROUTER_ID,
+					machineId: null,
+				}),
+			});
+			const applyBody = (await applyResp.json().catch(() => ({}))) as {
+				workerId?: string;
+				message?: string;
+				error?: string;
+			};
+			if (!applyResp.ok || !applyBody.workerId) {
+				throw new Error(
+					applyBody.message ?? applyBody.error ?? `preset apply failed (HTTP ${applyResp.status})`,
+				);
+			}
+
+			// Submit one asynchronous desired-state operation. Provision, memory
+			// install, runtime verification, and Worker linking settle together.
 			const provResp = await fetch("/api/dashboard/admin/provision-machine", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					providerKind: provider,
-					agentKind: agent,
-					startBootstrap: false,
+					workerId: applyBody.workerId,
 					...(agentUsesRouter(agent) && routerId ? { gatewayProfileId: routerId } : {}),
 				}),
 			});
@@ -337,62 +362,23 @@ export function OnboardingFlow({ initialConfig, defaults, presets }: Props) {
 			const provBody = (await provResp.json().catch(() => ({}))) as {
 				ok?: boolean;
 				machineId?: string;
+				operation?: { id?: string };
 				phase?: string;
 				message?: string;
 				error?: string;
 			};
-			if (!provResp.ok || !provBody.machineId) {
+			if (!provResp.ok || !provBody.operation?.id) {
 				throw new Error(
 					provBody.message ??
 						provBody.error ??
 						`provision failed (HTTP ${provResp.status})`,
 				);
 			}
-			setBootMachineId(provBody.machineId);
-			setBootPhase(provBody.phase ?? "accepted");
-
-			// Apply the chosen preset: import its abilities into the pool, create
-			// the Memory + Worker, and link the Worker to the new machine. Runs
-			// after provision (needs the machine id) and before bootstrap (which
-			// reads the Worker -> Memory to write settings.json + install docs).
-			const applyResp = await fetch("/api/dashboard/admin/apply-preset", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					presetId: presetId === NO_PRESET ? null : presetId,
-					agentKind: agent,
-					gatewayProfileId:
-						agentUsesRouter(agent) && routerId ? routerId : DEFAULT_ROUTER_ID,
-					machineId: provBody.machineId,
-				}),
-			});
-			if (!applyResp.ok) {
-				const body = (await applyResp.json().catch(() => ({}))) as {
-					message?: string;
-					error?: string;
-				};
-				throw new Error(
-					body.message ?? body.error ?? `preset apply failed (HTTP ${applyResp.status})`,
-				);
-			}
-
-			const bootResp = await fetch("/api/dashboard/admin/bootstrap", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ machineId: provBody.machineId }),
-			});
-			const bootBody = (await bootResp.json().catch(() => ({}))) as {
-				message?: string;
-				error?: string;
-			};
-			if (!bootResp.ok) {
-				throw new Error(
-					bootBody.message ??
-						bootBody.error ??
-						`bootstrap failed (HTTP ${bootResp.status})`,
-				);
-			}
-			setBootPhase("bootstrapped");
+			setBootPhase("provisioning");
+			const completed = await waitForControlPlaneOperation(provBody.operation.id);
+			if (!completed.machineId) throw new Error("launch completed without a machine id");
+			setBootMachineId(completed.machineId);
+			setBootPhase("ready");
 			setBootDone(true);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "provision failed");
@@ -943,8 +929,8 @@ function ProviderPickStep({
 				</h1>
 				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
 					The infrastructure provider hosting your agent&rsquo;s VM.
-					Dedalus is the default and fully wired. E2B Sandbox, Sprites,
-					and Vercel Sandbox are available as alternative hosts.
+					Choose any configured lane; the Worker remains the same. Current
+					health and provider-specific lifecycle support stay visible.
 				</p>
 			</div>
 			<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

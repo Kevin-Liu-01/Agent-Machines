@@ -861,7 +861,17 @@ test("migrate refuses auto, unknown substrates and bad dispositions with the fix
 			/--source wants one of/,
 		);
 		await assert.rejects(() => mux(["migrate", "--name", "m", "--to"]), /--to requires a value/);
+		await assert.rejects(
+			() => mux(["migrate", "--name", "m", "--to", "sprites", "--live", "--no-move-state"]),
+			/--live requires state transfer/,
+		);
 	});
+});
+
+test("mux help advertises live drain and final-delta semantics", async () => {
+	const lines = await capture(() => mux([]));
+	assert.ok(has(lines, "[--live]"));
+	assert.ok(has(lines, "stable final delta before atomic cutover"));
 });
 
 // ---------------------------------------------------------------------------

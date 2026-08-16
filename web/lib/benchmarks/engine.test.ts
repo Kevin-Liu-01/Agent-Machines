@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { DEMO_PROFILES, FakeProvider } from "./fake-provider";
 import { metricValue, runBenchmarkSuite, runProviderBenchmark } from "./engine";
@@ -85,5 +85,22 @@ describe("runBenchmarkSuite", () => {
 		expect(run.providers.some((p) => p.score === 100)).toBe(true);
 		expect(run.runId).toBeTruthy();
 		expect(run.region).toBe("test");
+	});
+
+	it("does not let one failed provider erase scores for successful lanes", async () => {
+		const failed = new FakeProvider("dedalus", DEMO_PROFILES.dedalus);
+		vi.spyOn(failed, "provision").mockRejectedValue(new Error("provider unavailable"));
+		const fast = new FakeProvider("e2b", DEMO_PROFILES.e2b);
+		const slow = new FakeProvider("sprites", DEMO_PROFILES.sprites);
+		const run = await runBenchmarkSuite([failed, fast, slow], {
+			execIterations: 2,
+			includeCpu: false,
+			includeDisk: false,
+			includeWake: false,
+		});
+
+		expect(run.providers.find((entry) => entry.provider === "dedalus")?.score).toBeNull();
+		expect(run.providers.find((entry) => entry.provider === "e2b")?.score).not.toBeNull();
+		expect(run.providers.find((entry) => entry.provider === "sprites")?.score).not.toBeNull();
 	});
 });

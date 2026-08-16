@@ -3,12 +3,12 @@ import Link from "next/link";
 import { McpServerCard } from "@/components/dashboard/McpServerCard";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { importedMcps } from "@/lib/dashboard/pool";
-import { getUserConfig } from "@/lib/user-config/clerk";
+import { getUserConfigForRequest } from "@/lib/user-config/clerk";
 
 export const dynamic = "force-dynamic";
 
 export default async function McpsPage() {
-	const config = await getUserConfig();
+	const config = await getUserConfigForRequest();
 	const servers = importedMcps(config);
 	const totalTools = servers.reduce((acc, s) => acc + s.tools.length, 0);
 

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { MachineProvider } from "@/components/dashboard/MachineProvider";
-import { getUserConfig } from "@/lib/user-config/clerk";
+import { getUserConfigForRequest } from "@/lib/user-config/clerk";
 import { DEFAULT_USER_CONFIG, toPublicConfig, type PublicMachineRef } from "@/lib/user-config/schema";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,7 @@ export default async function MachineLayout({ children, params }: Props) {
 
 	let config;
 	try {
-		config = toPublicConfig(await getUserConfig());
+		config = toPublicConfig(await getUserConfigForRequest());
 	} catch {
 		config = toPublicConfig({ ...DEFAULT_USER_CONFIG });
 	}

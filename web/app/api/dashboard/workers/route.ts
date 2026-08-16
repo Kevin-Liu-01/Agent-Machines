@@ -11,7 +11,7 @@ import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 import { findPreset } from "@/lib/dashboard/presets";
 import { listBundles } from "@/lib/memory/bundle";
 import { applyPreset } from "@/lib/onboarding/apply-preset";
-import { DEFAULT_ROUTER_ID } from "@/lib/agents/upstreams";
+import { DEFAULT_ROUTER_ID, isRemovedDedalusRouter } from "@/lib/agents/upstreams";
 import { newWorker } from "@/lib/workers/resolve";
 import {
 	AGENT_KINDS,
@@ -50,6 +50,15 @@ export async function POST(request: Request): Promise<Response> {
 	if (!name) return Response.json({ error: "name_required" }, { status: 400 });
 	if (!isAgent(body.agentKind)) {
 		return Response.json({ error: "invalid_agent_kind" }, { status: 400 });
+	}
+	if (isRemovedDedalusRouter(body.gatewayProfileId)) {
+		return Response.json(
+			{
+				error: "unsupported_gateway",
+				message: "Dedalus is supported only as a sandbox substrate, not as a model gateway.",
+			},
+			{ status: 400 },
+		);
 	}
 
 	const config = await getUserConfig();

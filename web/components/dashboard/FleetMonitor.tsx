@@ -30,6 +30,7 @@ import {
 	agentUsesRouter,
 } from "@/lib/agents/upstreams";
 import { cn } from "@/lib/cn";
+import { waitForControlPlaneOperation } from "@/lib/control-plane/client";
 import type { ProviderCapabilities } from "@/lib/providers";
 import { MigrationPhaseBadge } from "@/components/dashboard/MigrationPhaseBadge";
 import { compactSpec } from "@/lib/fleet/view-model";
@@ -218,26 +219,23 @@ export function FleetMonitor() {
 				const body = (await response.json().catch(() => ({}))) as {
 					ok?: boolean;
 					machineId?: string;
+					operation?: { id?: string };
 					message?: string;
 					error?: string;
 				};
-				if (!response.ok || !body.machineId) {
+				if (!response.ok || !body.operation?.id) {
 					throw new Error(
 						body.message ?? body.error ?? `HTTP ${response.status}`,
 					);
 				}
+				const completed = await waitForControlPlaneOperation(body.operation.id);
+				if (!completed.machineId) throw new Error("provision completed without a machine id");
 				setSpawn({
 					phase: "ok",
-					machineId: body.machineId,
-					message: body.message ?? "Provisioned. Bootstrapping...",
+					machineId: completed.machineId,
+					message: "Worker is ready.",
 				});
 				await refresh();
-				// Trigger bootstrap in background after provision
-				fetch("/api/dashboard/admin/bootstrap", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ machineId: body.machineId }),
-				}).then(() => refresh()).catch(() => {});
 				// Stay on the form briefly so the success message is
 				// visible, then collapse it.
 				window.setTimeout(() => {

@@ -12,8 +12,8 @@
  * - task success -- available. `run_traces.success` (exit code 0).
  * - time to first output -- NOT captured. The authoritative source is the
  *   on-box cron log `~/.agent-machines/cron/runs.jsonl`, written by
- *   `buildCronCommand` (web/lib/crons/service.ts), which records only
- *   startedAt/finishedAt/exitCode. No first-output timestamp exists to read,
+ *   `HostedWorkerRuntimeDriver`, which records only startedAt/finishedAt/
+ *   exitCode plus the selected arm. No first-output timestamp exists to read,
  *   so every row reports `not_captured_by_source` rather than 0.
  * - cost to a successful result -- HALF available, and deliberately not summed.
  *   The sandbox-compute half is an estimate (`estimateCost` on the machine
@@ -22,8 +22,9 @@
  *   unavailable until the model half lands.
  * - resume/truncation -- HALF available. Truncation is derivable from the
  *   recorded exit code (128+signal, or 124 from timeout(1)) on every row
- *   including historical ones. Resume is not: nothing in the hosted control
- *   plane retries or replays a run, so there is no outcome to report.
+ *   including historical ones. Failed journal entries can be retried, but the
+ *   run log does not yet link attempts into a resume outcome, so resume stays
+ *   unavailable rather than guessed.
  *
  * The split cost fields ride in `run_traces.extra.outcome` (jsonb), so no
  * Supabase migration is required for this to work. Promoting them to typed
@@ -61,7 +62,7 @@ export type TraceOutcome = {
 	modelCostMillicents: number | null;
 	/** Always null: runs.jsonl records no first-output timestamp. */
 	timeToFirstOutputMs: number | null;
-	/** Always null: no hosted run is resumed or replayed. */
+	/** Always null: the run log does not link retry attempts into a resume outcome. */
 	resumed: boolean | null;
 };
 

@@ -449,16 +449,19 @@ function WorkspaceHeatmap({
 }) {
 	const flat = heatmap.flat();
 	const max = Math.max(...flat, 1);
-	const tz =
-		typeof Intl !== "undefined"
-			? Intl.DateTimeFormat().resolvedOptions().timeZone
-			: "Local";
+	// The Vercel renderer and the operator's browser can have different time
+	// zones. Keep the hydration text deterministic, then reveal the browser's
+	// zone after mount.
+	const [timeZone, setTimeZone] = useState("Local");
+	useEffect(() => {
+		setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone || "Local");
+	}, []);
 	return (
 		<div className="bg-[var(--ret-bg)] px-4 py-4">
 			<div className="flex items-baseline justify-between">
 				<p className="flex items-baseline gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					workspace activity (7d)
-					<span className="normal-case text-[var(--ret-text-dim)]">{tz}</span>
+					<span className="normal-case text-[var(--ret-text-dim)]">{timeZone}</span>
 				</p>
 				<div className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					<span>low</span>

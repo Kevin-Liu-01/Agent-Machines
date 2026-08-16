@@ -27,7 +27,7 @@ const STATIONS: StationDef[] = [
 	{ agent: "hermes", mark: "nous", tone: "native", theta: 0, phi: 0, hue: "#7c8cf8", label: "Hermes", href: "https://github.com/NousResearch/hermes-agent" },
 	{ agent: "openclaw", mark: "openclaw", tone: "native", theta: (Math.PI * 2) / 5, phi: 0, hue: "#e5443b", label: "OpenClaw", href: "https://github.com/openclaw/openclaw" },
 	{ agent: "claude-code", mark: "claudecode", tone: "native", theta: (Math.PI * 4) / 5, phi: 0, hue: "#d4a574", label: "Claude Code", href: "https://www.anthropic.com/claude-code" },
-	{ agent: "codex", mark: "codex", tone: "native", theta: (Math.PI * 6) / 5, phi: 0, hue: "#a1a1aa", label: "Codex CLI", href: "https://github.com/openai/codex" },
+	{ agent: "codex", mark: "codex", tone: "currentColor", theta: (Math.PI * 6) / 5, phi: 0, hue: "#a1a1aa", label: "Codex CLI", href: "https://github.com/openai/codex" },
 	{ agent: null, mark: "cursor", tone: "currentColor", theta: (Math.PI * 8) / 5, phi: 0, hue: "#d2beff", label: "Cursor", href: "https://cursor.com" },
 ];
 

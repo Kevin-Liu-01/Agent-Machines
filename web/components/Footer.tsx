@@ -139,6 +139,7 @@ export function Footer() {
 					<div
 						className="relative z-10 flex justify-center overflow-visible"
 						aria-label="Agent Machines"
+						role="img"
 					>
 						<span
 							className="ret-footer-glass-word select-none whitespace-nowrap text-center text-[clamp(48px,12.2vw,178px)] font-semibold leading-[0.96] tracking-normal"

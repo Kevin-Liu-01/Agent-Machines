@@ -147,25 +147,6 @@ const CODE_LINES: ReadonlyArray<{
 	{ no: "13", parts: [{ text: "}", tone: "punctuation" }] },
 ];
 
-/**
- * Everything the router multiplexes, with real marks. Agents install
- * into whichever sandbox the route lands on; both rows stay in sync
- * with the registries in src/mux (four harnesses, four substrates).
- */
-const AGENT_MARKS: ReadonlyArray<{ mark: Mark; label: string }> = [
-	{ mark: "claudecode", label: "Claude Code" },
-	{ mark: "codex", label: "Codex CLI" },
-	{ mark: "openclaw", label: "OpenClaw" },
-	{ mark: "nous", label: "Hermes" },
-];
-
-const SANDBOX_MARKS: ReadonlyArray<{ mark: Mark; label: string }> = [
-	{ mark: "e2b", label: "E2B" },
-	{ mark: "sprites", label: "Sprites" },
-	{ mark: "vercel", label: "Vercel Sandbox" },
-	{ mark: "dedalus", label: "Dedalus" },
-];
-
 const PIPELINE: ReadonlyArray<{
 	icon?: ToolCategory;
 	mark?: Mark;
@@ -262,22 +243,21 @@ export function StatsRow() {
 				</div>
 			</div>
 
-			<div className="grid grid-cols-1 gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[minmax(0,1fr)_minmax(320px,0.42fr)]">
-				<div className="bg-[var(--ret-bg)] px-5 py-6 md:px-8">
+			<div className="border-b border-[var(--ret-border)] bg-[var(--ret-bg)] px-5 py-6 md:px-8 md:py-8">
+				<div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
 					<span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
-						two planes, one route
+						Two planes. One route.
 					</span>
-					<MuxDiagram className="mt-4" />
+					<span className="font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--ret-text-muted)]">
+						4 runtimes × 4 providers · 1 durable Worker
+					</span>
 				</div>
-				<div className="flex flex-col gap-6 bg-[var(--ret-bg)] px-5 py-6 md:px-8">
-					<MarkStrip label="agents" entries={AGENT_MARKS} />
-					<MarkStrip label="sandboxes" entries={SANDBOX_MARKS} />
-					<p className="text-[12.5px] leading-relaxed text-[var(--ret-text-dim)]">
-						Every agent installs through the substrate&apos;s own exec and PTY
-						primitives, so a new sandbox inherits all four agents and a new
-						agent inherits all four sandboxes.
-					</p>
-				</div>
+				<MuxDiagram className="mt-4" />
+				<p className="mt-4 max-w-[90ch] text-[12.5px] leading-relaxed text-[var(--ret-text-dim)]">
+					Every runtime installs through the provider&apos;s own execution and PTY
+					primitives. Add a sandbox and it inherits every runtime; add a runtime
+					and it can route across every compatible sandbox.
+				</p>
 			</div>
 
 			<div className="grid grid-cols-1 gap-px bg-[var(--ret-border)] md:grid-cols-2 xl:grid-cols-4">
@@ -306,33 +286,6 @@ function RouteFacet({
 			<div className="mt-1 flex items-center gap-1.5 text-[13px] font-semibold text-[var(--ret-text)]">
 				{mark ? <Logo mark={mark} size={13} /> : null}
 				<span>{value}</span>
-			</div>
-		</div>
-	);
-}
-
-function MarkStrip({
-	label,
-	entries,
-}: {
-	label: string;
-	entries: ReadonlyArray<{ mark: Mark; label: string }>;
-}) {
-	return (
-		<div className="flex flex-col gap-4 bg-[var(--ret-bg)] px-5 py-5 md:px-7">
-			<span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
-				{label}
-			</span>
-			<div className="flex flex-wrap items-center gap-x-7 gap-y-3">
-				{entries.map((entry) => (
-					<span
-						key={entry.mark}
-						className="flex items-center gap-2 text-[12px] font-medium text-[var(--ret-text-dim)] transition-colors hover:text-[var(--ret-text)]"
-					>
-						<Logo mark={entry.mark} size={15} />
-						{entry.label}
-					</span>
-				))}
 			</div>
 		</div>
 	);

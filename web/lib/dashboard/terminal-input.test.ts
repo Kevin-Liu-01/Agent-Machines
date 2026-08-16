@@ -2,9 +2,39 @@ import { describe, expect, it } from "vitest";
 
 import {
 	isPrintableInput,
+	isTerminalDeviceResponse,
 	stripSuppressedEcho,
 	stripTerminalDeviceResponses,
 } from "./terminal-input";
+
+describe("isTerminalDeviceResponse", () => {
+	it("recognizes xterm's DA2 reply that must retain PTY affinity", () => {
+		expect(isTerminalDeviceResponse("\x1b[>0;276;0c")).toBe(true);
+	});
+
+	it("recognizes the terminal reports xterm emits through onData", () => {
+		for (const response of [
+			"\x1b[?1;2c",
+			"\x1b[0n",
+			"\x1b[12;40R",
+			"\x1b[?12;40R",
+			"\x1b[?2004;1$y",
+			"\x1b[8;32;120t",
+			"\x1b[I",
+			"\x1b[O",
+			"\x1b]11;rgb:0a0a/0a0a/0e0e\x1b\\",
+			"\x1bP1$r0m\x1b\\",
+		]) {
+			expect(isTerminalDeviceResponse(response)).toBe(true);
+		}
+	});
+
+	it("does not confuse keyboard input with terminal replies", () => {
+		for (const input of ["echo ok", "\x1b[A", "\x1b[D", "\r", ">0;276;0c"]) {
+			expect(isTerminalDeviceResponse(input)).toBe(false);
+		}
+	});
+});
 
 describe("stripTerminalDeviceResponses", () => {
 	it("drops xterm OSC color responses before they reach tmux input", () => {

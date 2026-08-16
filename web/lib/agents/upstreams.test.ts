@@ -6,6 +6,8 @@ import {
 	ROUTER_PRESETS,
 	agentUpstreamReadiness,
 	agentUsesRouter,
+	isRemovedDedalusRouter,
+	normalizeRouterId,
 	requiredNativeUpstream,
 	routerPresetById,
 } from "./upstreams";
@@ -52,6 +54,21 @@ describe("ROUTER_PRESETS", () => {
 		expect(routerPresetById("openrouter-router")?.source).toBe("openrouter");
 		expect(routerPresetById("custom-router")?.baseUrl).toBeNull();
 		expect(routerPresetById("nope")).toBeNull();
+	});
+});
+
+describe("removed Dedalus model gateway", () => {
+	it("cuts legacy ids and endpoints over to Vercel AI Gateway", () => {
+		expect(normalizeRouterId("dedalus-default")).toBe(DEFAULT_ROUTER_ID);
+		expect(normalizeRouterId("openrouter-router")).toBe("openrouter-router");
+		expect(normalizeRouterId(null)).toBeNull();
+		expect(
+			isRemovedDedalusRouter({
+				id: "custom",
+				kind: "openai-compatible",
+				baseUrl: "https://api.dedaluslabs.ai/v1",
+			}),
+		).toBe(true);
 	});
 });
 

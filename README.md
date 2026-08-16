@@ -1,18 +1,18 @@
 <p align="center">
-  <a href="https://www.agent-machines.dev">
-    <img src="web/public/brand/agent-machines-readme.svg" alt="Agent Machines — OpenRouter for agents and containers" width="100%" />
+  <a href="https://www.agent-machines.com">
+    <img src="web/public/brand/agent-machines-readme.svg" alt="Agent Machines: persistent Workers with replaceable machinery" width="100%" />
   </a>
 </p>
 
 # agent-machines
 
-> **OpenRouter for agents and containers.**
+> **Persistent Workers. Replaceable machinery.**
 
-Agent Machines is the **product layer** above sandboxes: a control plane that deploys a **persistent agent worker** as one unit (runtime, skills, MCP, integrations, cron, observation, and fleet management) on any substrate you route to.
+Agent Machines is the **Worker system for persistent digital labor**. Describe a responsibility or choose a trusted specialist, then keep its identity, memory, instructions, schedules, files, permissions, abilities, history, and evidence while runtimes, models, tools, and sandboxes change underneath it.
 
-People don't want a bare sandbox. They want a worker that audits code, runs on a schedule, and gets smarter over time. This repo is the **control plane**, not the agent runtime package.
+The routing wedge is “OpenRouter for agents and containers.” The larger product is a creation environment for long-running Workers: Lovable/Bolt/v0-shaped composition with ChatGPT-simple access to the first useful result. People do not want a bare sandbox or another disposable chat. They want a Worker that owns a job, remains inspectable, and is still there tomorrow.
 
-Live site: <https://www.agent-machines.dev>
+Live site: <https://www.agent-machines.com>
 Source: <https://github.com/Kevin-Liu-01/agent-machines>
 
 ---
@@ -20,7 +20,9 @@ Source: <https://github.com/Kevin-Liu-01/agent-machines>
 ## Table of contents
 
 - [What it is](#what-it-is)
+- [The product invariant](#the-product-invariant)
 - [The core idea: dual routing](#the-core-idea-dual-routing)
+- [Control plane v2](#control-plane-v2-declarative-workers)
 - [Browser Agent Console](#browser-agent-console-live-cli-in-the-browser)
 - [Deploy → Bootstrap → Attach → Talk](#deploy--bootstrap--attach--talk)
 - [The streaming gateway](#the-streaming-gateway-capability-tiered)
@@ -39,19 +41,32 @@ Source: <https://github.com/Kevin-Liu-01/agent-machines>
 
 ## What it is
 
-One account to route **which agent runtime** and **which substrate**, then receive a full persistent worker instead of an empty box.
+One account to **route the machinery**, **compose the Worker**, and **access the result**:
 
 | Analogy | Meaning |
 |---------|---------|
-| **OpenRouter for agents and containers** | One account routes which runtime and which substrate, the way OpenRouter routes models |
-| **Vercel on AWS** | We are the product layer; substrates are interchangeable infrastructure underneath |
+| **OpenRouter for agents and machines** | Route runtime, model, substrate, and abilities without binding the Worker to one vendor |
+| **Lovable / Bolt / v0 for Workers** | Describe a responsibility and assemble a long-running Worker, or start from a trusted template |
+| **ChatGPT-simple access** | Sign in, connect the services it may use, and reach the first useful result before infrastructure enters the conversation |
 
-Building sandboxes is hard. We **route** across existing ones instead of rebuilding infra, and keep the value in the harness, the control plane, and observation.
+The intended interaction is four steps: **describe or choose → connect → assign → supervise**. Models, runtimes, sandboxes, terminal transports, scheduling, recovery, and migration disappear beneath that experience.
 
 **Two audiences:**
 
-1. **Humans** operate the dashboard: route runtime + substrate, provision presets, supervise the fleet.
-2. **Other agents** (endgame) drive an MCP + CLI surface so a head agent can provision, route, observe, and tear down workers.
+1. **Humans** choose useful specialists or compose them from primitives, then watch, approve, inspect, and move the fleet.
+2. **Other agents** drive the same API/CLI surface so a head Worker can provision, route, observe, and tear down subordinate Workers.
+
+## The product invariant
+
+**The Worker is durable. Everything underneath is replaceable.**
+
+| Keep with the Worker | Replace beneath it |
+|---|---|
+| Identity, responsibility, memory, instructions, schedules | Agent runtime, model path, sandbox provider |
+| Files, permissions, abilities, history, evidence | Skills/MCP/CLI wiring, terminal transport, persistence mode |
+| Desired state, approval boundaries, output contract | Scheduler, placement policy, cost/health route |
+
+Replaceable does not mean identical. Every provider and runtime declares what it can actually do; the control plane exposes only supported operations. The stable Worker abstraction preserves the user relationship while necessary infrastructure differences remain visible.
 
 ---
 
@@ -67,7 +82,56 @@ Most products lock you into one runtime *or* one cloud. Agent Machines routes bo
 
 A **credential gate** blocks provisioning when the chosen runtime has no usable model upstream or the substrate has no key, so spin-up never fails silently downstream.
 
-> **Two implementations today, converging.** The hosted control plane routes through `MachineProvider` (`web/lib/providers/*`); the direct-to-substrate multiplexer routes through `SandboxProvider` (`src/mux/providers/*`). The same four vendors are adapted twice, and the two surfaces do not yet share a router: create-time failover, health ordering, constraint filtering, learned lane ordering, and per-run traces exist only on the mux side. Convergence is item 0 of [docs/ROADMAP.md](docs/ROADMAP.md).
+> **v2 lifecycle cutover.** Hosted `MachineProvider` is now a compatibility
+> facade over the mux provider adapters, so vendor SDK code has one home. The
+> new control-plane kernel consumes those adapters through public and hosted
+> runtime drivers. Every hosted lifecycle mutation now submits a durable
+> operation before provider work. `UserConfig` / `MachineRef` remains as the
+> dashboard's compatibility projection, while the operation journal uses
+> atomic JSON locally or transactional Supabase in hosted deployments. The
+> latter requires migration `009_control_plane_v2.sql`. The exact ledger is
+> [docs/CONTROL-PLANE-V2.md](docs/CONTROL-PLANE-V2.md).
+
+## Control plane v2: declarative Workers
+
+`src/control-plane` is the new lifecycle kernel. Callers submit desired Worker
+state; a leased, idempotent reconciler owns provision, bootstrap, cold-start,
+sleep, live provider migration, scheduled dispatch, repair, and teardown.
+Requests and cron ticks may disappear without owning the Worker: unfinished
+operations remain in the journal and expired leases can be reclaimed.
+
+```ts
+import {
+  AgentMachinesControlPlane,
+  JsonFileControlPlaneStore,
+  MuxWorkerRuntimeDriver,
+  createMux,
+} from "agent-machines";
+
+const plane = new AgentMachinesControlPlane(
+  new JsonFileControlPlaneStore(".agent-machines/control-plane.json"),
+  new MuxWorkerRuntimeDriver(createMux()),
+);
+
+await plane.apply({
+  id: "repo-coder",
+  spec: {
+    name: "Repo coder",
+    runtime: "claude-code",
+    sandbox: "e2b",
+    migrationPolicy: "live",
+    schedules: [],
+  },
+});
+
+await plane.drain(); // a request, queue consumer, or cron reconciler can do this
+```
+
+The local package ships in-memory and atomic JSON journal adapters; the hosted
+app adds a tenant-scoped Supabase adapter with fenced leases and atomic RPCs.
+Worker detail exposes operation history and retry, and the internal cron tick
+is also the recovery consumer. See
+[`docs/CONTROL-PLANE-V2.md`](docs/CONTROL-PLANE-V2.md) for the exact boundary.
 
 ---
 
@@ -83,7 +147,7 @@ The headline capability and the hardest engineering problem in the repo: **you o
 
 ### The problem
 
-The most capable agent tools ship as **terminal programs (CLIs), not chat widgets**. A live browser terminal normally requires a **long-lived WebSocket PTY server** in the middle, relaying every keystroke. A serverless control plane (Next.js on Vercel) **cannot be that**: functions time out (~110s), cold-start, and have no sticky sessions. So teams usually pick a worse option:
+The most capable agent tools ship as **terminal programs (CLIs), not chat widgets**. A live browser terminal normally requires a **long-lived WebSocket PTY server** in the middle, relaying every keystroke. Vercel added WebSocket Functions in June 2026, but a socket invocation is still bounded and cannot own durable terminal state. The session therefore stays on the worker while a pinned Function accelerates the live data plane.
 
 - assume a local terminal (`claude` / `codex` on your laptop), excluding non-terminal users, or
 - wrap the agent in a chat UI and lose the full TUI/CLI experience, or
@@ -95,28 +159,28 @@ The most capable agent tools ship as **terminal programs (CLIs), not chat widget
 Stop hosting the session in the API. **Put the session on the worker; keep the control plane stateless.**
 
 - **Session lives on the box.** A persistent `tmux` session (`amconsole`) holds the PTY, the agent process, and scrollback. It survives serverless cold starts and function timeouts.
-- **Control plane is stateless HTTP + SSE.** No WebSocket server on Vercel; no tunnel on the console path.
-- **Input** is `tmux send-keys -H <hex>` (one quick exec per coalesced keystroke batch).
-- **Output** is an unbuffered `tail -f` on the pane log, streamed back over SSE from a byte offset.
-- **Resize** is a single `tmux resize-window` exec.
+- **Fast path (native-PTY substrates).** One authenticated Vercel WebSocket Function pins one provider PTY and attaches it to `amconsole`; input, output, and resize stay on that connection.
+- **Portable fallback.** HTTP `tmux send-keys` input plus offset-aware SSE `tail -f` output remains available anywhere `exec` exists.
+- **Session durability is unchanged.** Socket reconnects reattach to worker-owned tmux; the Function never owns the shell or its scrollback.
 
 `exec` is the only primitive each substrate must provide, so **the same UI works across Dedalus, E2B, Sprites, and Vercel**.
 
 ```txt
 Browser (xterm.js)
-  | keystrokes  --POST-->  /api/dashboard/terminal/input    (tmux send-keys -H)
-  | output      <--SSE---  /api/dashboard/terminal/stream   (unbuffered tail -f)
+  | input/output/resize <--> /api/dashboard/terminal/socket (pinned WebSocket)
+  | fallback keystrokes --> /api/dashboard/terminal/input   (tmux send-keys -H)
+  | fallback output    <--  /api/dashboard/terminal/stream  (SSE tail -f)
   v
-Next.js control plane (Clerk auth, resolve machine + provider creds)  -- stateless, no PTY here
+Next.js control plane (Clerk auth, resolve machine + provider creds)
   v
-provider.exec / provider.streamExec
+provider.openPty (native fast path) or provider.exec / streamExec (fallback)
   v
 Remote VM: tmux "amconsole" + pipe-pane --> /tmp/am-console.log
   v
 Agent CLI running inside the pane (codex | claude | hermes | openclaw)
 ```
 
-The closest predecessor is **AWS CloudShell**, a real browser terminal, but it is locked to the AWS ecosystem. This is CloudShell-shaped, substrate-agnostic, wired to agent CLIs, on a stack that structurally cannot host a PTY server. The tmux-over-exec + SSE pattern is independent of agents and could stand alone as a serverless browser-terminal primitive.
+The closest predecessor is **AWS CloudShell**, a real browser terminal, but it is locked to the AWS ecosystem. This is CloudShell-shaped, substrate-agnostic, and wired to agent CLIs. Worker-owned tmux makes both the native-PTY WebSocket lane and the HTTP/SSE fallback reconnectable instead of tying session lifetime to an API process.
 
 ### Performance notes
 
@@ -125,12 +189,15 @@ The interactive console is tuned to feel close to local:
 - parallel xterm bundle load and `tmux` session attach,
 - snapshot paint on connect (`capture-pane`), so the screen is never blank,
 - `requestAnimationFrame`-batched writes to xterm,
-- immediate flush for control keys (Enter, arrows, Ctrl, Tab) and an 8ms coalesce window for printable text,
-- one ordered input POST at a time, coalescing anything typed in-flight into the next batch,
-- accepted-background input execution (no status/output polling per keystroke batch),
+- immediate flush for control keys and a zero-delay coalesce for raw printable input,
+- a direct browser-to-worker WebSocket with one primary lane plus five preconnected failover lanes and deduplicated 12ms retry,
+- correlated browser-to-PTY acknowledgements with a rolling 20-sample p95 SLO badge,
+- an HTTP/SSE fallback with ordered input coalescing for non-native lanes,
 - per-user `getUserConfig` cache (10s) and machine-state cache (3s),
 - E2B sandbox connect reuse (45s) within a warm serverless instance,
 - `tmux` pre-installed during bootstrap so the first attach never triggers a package install.
+
+Production proof on 2026-08-14: the authenticated E2B dashboard reported a **41ms latest acknowledgement and 89ms p95 across 20 human inputs**. A location-aware Sprite managed Service reached **10.8ms p50 across 100 paced inputs**, with 87/100 below the 50ms target; periodic provider-proxy stalls produced 75.6ms p95 and 80.8ms max. The worker PTY write itself remained sub-millisecond. The UI therefore treats 50ms as a strict target and visibly reports breaches instead of claiming a hard internet latency guarantee.
 
 Full write-up: [`knowledge/BROWSER-AGENT-CONSOLE.md`](knowledge/BROWSER-AGENT-CONSOLE.md). Engineering spec: [`web/docs/sandbox-terminal-gateway.md`](web/docs/sandbox-terminal-gateway.md).
 
@@ -138,10 +205,12 @@ Full write-up: [`knowledge/BROWSER-AGENT-CONSOLE.md`](knowledge/BROWSER-AGENT-CO
 
 ## Deploy → Bootstrap → Attach → Talk
 
-The one-click flow (`DeployAndTalk`) chains four stages:
+The primary dashboard flow is now runtime → sandbox → live console. The
+sandbox click submits one `POST /api/dashboard/control-plane/workers` intent;
+the hosted compatibility adapter owns these stages:
 
-1. **Provision.** `POST /api/dashboard/admin/provision-machine` creates the machine through the selected `MachineProvider` and records a `MachineRef` (provider, runtime, spec, model, router) in the user's config. The credential gate runs first.
-2. **Bootstrap.** `POST /api/dashboard/admin/bootstrap` runs phase-aligned shell recipes (`web/lib/bootstrap/runner.ts`): system deps, runtime install, agent configuration, gateway launch, then best-effort post-gateway phases. Each phase wraps its command, tees to `bootstrap.log` on the VM, and persists `bootstrapState` after every step so progress survives failures.
+1. **Declare.** Create the durable Worker recipe: runtime, sandbox intent, model route, memory, and live-migration policy.
+2. **Provision + bootstrap.** The adapter creates the provider machine, records its `MachineRef`, and schedules phase-aligned bootstrap (`web/lib/bootstrap/runner.ts`). Each phase tees to `bootstrap.log` and persists `bootstrapState`.
 3. **Attach.** The browser opens the terminal page with `?launch=1`, attaches the `tmux` console, and paints the pane snapshot.
 4. **Talk.** The agent CLI auto-launches inside the pane and you interact line by line, including full-screen TUIs.
 
@@ -173,13 +242,13 @@ A worker is a runtime **plus** a composable harness. The app derives every count
 | **Service routes** | loadout registry | MCP → CLI → skill preference per vendor |
 | **CLIs** | bootstrap install | agent-browser, Playwright, gh, curl, jq, sqlite3, and more |
 | **Agent-native tools** | per runtime | vary by runtime; Hermes is richest (terminal, fs, browser, vision, cron, memory, delegate) |
-| **Registry (install)** | `web/lib/dashboard/registry/*` | **1,400+** searchable items — official MCP registry (paginated cache), skills.sh, npm CLIs, bundled loadout catalog, Cursor plugin scan, GitHub/URL manifests |
-| **Workers** | preset + Memory bundle | deployable specialist templates (runtime, router, persona) — distinct from raw machine provisioning |
-| **Memory bundles** | portable harness slice | persona, rules, abilities — install into any runtime or export as a prompt |
+| **Registry (install)** | `web/lib/dashboard/registry/*` | **2,595** searchable items in the 2026-08-14 production audit: official MCP registry (paginated cache), skills.sh, npm CLIs, bundled loadout catalog, Cursor plugin scan, GitHub/URL manifests |
+| **Workers** | preset + Memory bundle | deployable specialist templates (runtime, router, persona), distinct from raw machine provisioning |
+| **Memory bundles** | portable harness slice | persona, rules, abilities; install into any runtime or export as a prompt |
 
 Skills follow the **SKILL.md protocol**: procedures saved to the machine compound over time and cannot be exported out of a stateless chat product.
 
-**Loadout vs registry:** **Loadout** is what is already active on a machine (skills, MCPs, service routes). **Registry** is the install catalog — search, add to loadout, sync on deploy/reload.
+**Loadout vs registry:** **Loadout** is what is already active on a machine (skills, MCPs, service routes). **Registry** is the install catalog: search, add to loadout, sync on deploy/reload.
 
 ---
 
@@ -189,8 +258,11 @@ Skills follow the **SKILL.md protocol**: procedures saved to the machine compoun
 you
   | browser / CLI / API
   v
-Next.js control plane  ----------------  CLI: deploy / chat / reload
-  | Clerk-backed UserConfig (keys, machines, routers)
+Declarative Worker API  ---------------  dashboard / SDK / CLI
+  | operation journal + lifecycle reconciler
+  v
+WorkerRuntimeDriver  ------------------  MuxWorkerRuntimeDriver
+  | hosted bridge: Clerk UserConfig + MachineRef during cutover
   v
 MachineProvider  ----------------  E2B | Sprites | Vercel Sandbox | Dedalus
   | provision / state / wake / sleep / destroy / exec / streamExec
@@ -310,6 +382,11 @@ for await (const event of machine.run("review this repo", { runKey: "review-42" 
 
 const pty = await machine.pty();   // real terminal, native PTY where available
 console.log(machine.attempts);     // why it landed where it landed
+
+// Application-level live handoff: warm target, drain managed runs, final
+// stable state delta, verify, then atomically repoint the name. Processes
+// restart from durable state; this is not a cross-provider RAM transplant.
+await mux.migrate("coder", { to: "sprites", mode: "live" });
 ```
 
 `sandbox: "auto"` walks `primary -> backups` through five stages, in this order:
@@ -375,6 +452,7 @@ npm run mux -- run --agent claude-code "review my repo"  # streamed one-shot
 npm run mux -- term --agent codex --name coder           # interactive agent PTY
 npm run mux -- shell --name coder                        # raw PTY on the sandbox
 npm run mux -- ls                                        # named machines
+npm run mux -- migrate --name coder --to sprites --live  # drain + final delta + cutover
 npm run mux -- rm --name coder                           # destroy a named machine
 ```
 
@@ -427,18 +505,18 @@ CLERK_SECRET_KEY=...
 
 | Route | Purpose |
 |-------|---------|
-| `/` | landing — dual-gear hero (runtime × substrate), capabilities, loadout, architecture |
+| `/` | landing: dual-gear hero (runtime × substrate), capabilities, loadout, architecture |
 | `/dashboard` | fleet overview, activity, gateway health, usage summary |
 | `/dashboard/setup` | route runtime + substrate, credentials, provision |
 | `/dashboard/machines` | fleet supervision, stats/heatmaps, per-machine focus (`?focus=`) |
-| `/dashboard/machines/[id]` | machine detail — usage charts, gateway, bootstrap, quick actions |
+| `/dashboard/machines/[id]` | machine detail: usage charts, gateway, bootstrap, quick actions |
 | `/dashboard/machines/[id]/terminal` | **Browser Agent Console** (interactive + one-shot) |
 | `/dashboard/machines/[id]/chat` | gateway chat for a machine |
 | `/dashboard/machines/[id]/agents` | per-machine agent/runtime context |
 | `/dashboard/workers` | deployable presets (runtime + router + Memory bundle) |
 | `/dashboard/memory` | owned Memory bundles (persona, rules, abilities) |
-| `/dashboard/registry` | browse/install tools, skills, MCPs, CLIs (1,400+ catalog) |
-| `/dashboard/loadout` | active stack on a machine — skills, MCPs, service/task routes |
+| `/dashboard/registry` | browse/install tools, skills, MCPs, CLIs (2,595 items in the 2026-08-14 production audit) |
+| `/dashboard/loadout` | active stack on a machine: skills, MCPs, service/task routes |
 | `/dashboard/skills` `/mcps` `/cron` | harness libraries + scheduled jobs |
 | `/dashboard/usage` | cost and utilization rollups (Supabase-backed) |
 | `/dashboard/benchmarks` | cross-substrate boot/exec matrix |
@@ -456,15 +534,15 @@ Beyond provision-and-chat, the control plane is a **fleet operations desk**:
 | Surface | What it does |
 |---------|----------------|
 | **Machines** | Live state, bootstrap phase, gateway probe, split-view chat (`?focus=`), deploy-and-talk entry |
-| **Workers** | Curated presets — pick runtime, model/router, and a Memory bundle, then deploy to any substrate |
+| **Workers** | Two-click runtime → sandbox launch plus reusable recipes with model route and Memory |
 | **Memory** | Portable persona + rules + abilities; import/export; referenced by Workers |
-| **Registry** | Unified search over MCP registry, skills.sh, npm, bundled catalog, Cursor plugins — add to loadout |
+| **Registry** | Unified search over MCP registry, skills.sh, npm, bundled catalog, and Cursor plugins; add to loadout |
 | **Loadout** | Ranked service routes (MCP → CLI → skill), task routes, trusted add-ons already on the machine |
 | **Cron** | User-defined schedules stored in config; **`/api/internal/cron/tick`** (Vercel Cron every 5 min) evaluates and execs on machines |
 | **Usage / metrics** | Supabase-backed utilization, activity timeline, per-machine charts; collector runs on cron tick + on-demand |
 | **Benchmarks** | Compare E2B, Sprites, Dedalus, Vercel on boot, exec, streaming tier |
 
-**Supabase** is required for durable metrics, usage, and activity — without it the app falls back to Clerk metadata only. See `web/.env.local.example`.
+**Supabase** is required for durable metrics, usage, and activity. Without it, the app falls back to Clerk metadata only. See `web/.env.local.example`.
 
 ---
 
@@ -472,7 +550,8 @@ Beyond provision-and-chat, the control plane is a **fleet operations desk**:
 
 ```txt
 agent-machines/
-  src/           CLI + bootstrap (tsx)
+  src/           SDK + CLI + mux + declarative control plane
+    control-plane/*                    intent, operations, stores, reconciler, mux driver
   web/           Next.js control plane (site + dashboard + provider adapters)
     app/api/dashboard/terminal/*     Browser Agent Console
     app/api/dashboard/registry/*     unified install catalog search
@@ -506,11 +585,11 @@ agent-machines/
 
 | Doc | What it covers |
 |-----|----------------|
-| [`docs/MUX.md`](docs/MUX.md) | the multiplexer architecture — the five routing stages, capabilities, price, health, learned selection, traces, idempotency |
+| [`docs/MUX.md`](docs/MUX.md) | the multiplexer architecture: five routing stages, capabilities, price, health, learned selection, traces, idempotency |
 | [`docs/MUX-RESULTS.md`](docs/MUX-RESULTS.md) | every measured number, and the findings that changed the implementation |
 | [`docs/ROADMAP.md`](docs/ROADMAP.md) | what exists vs what is promised, per pillar, with the file that proves each claim |
 | [`docs/UPSTREAMS.md`](docs/UPSTREAMS.md) | which model key drives which harness, verified against the live APIs |
-| [`docs/WHITEPAPER.md`](docs/WHITEPAPER.md) | technical whitepaper — primitives, patterns, architecture |
+| [`docs/WHITEPAPER.md`](docs/WHITEPAPER.md) | technical whitepaper: primitives, patterns, architecture |
 | [`knowledge/VISION.md`](knowledge/VISION.md) | product vision and defensibility |
 | [`knowledge/BROWSER-AGENT-CONSOLE.md`](knowledge/BROWSER-AGENT-CONSOLE.md) | full Browser Agent Console architecture + positioning |
 | [`knowledge/BROWSER-AGENT-CONSOLE-EXPLAINER.md`](knowledge/BROWSER-AGENT-CONSOLE-EXPLAINER.md) | four-paragraph plain-language explainer |

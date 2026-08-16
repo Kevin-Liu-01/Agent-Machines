@@ -1,10 +1,10 @@
 /**
  * Interactive terminal (PTY) session over the provider `exec` primitive.
  *
- * Why tmux-over-exec instead of a raw WebSocket PTY: Vercel serverless
- * functions cannot host a long-lived WebSocket server, so a naive WS PTY
- * route only works on localhost. Instead we keep a persistent `tmux`
- * session ON the sandbox and drive it with three cheap, stateless calls:
+ * Portable fallback behind the native-PTY WebSocket route. The durable
+ * session still belongs on the sandbox because a WebSocket Function is
+ * bounded and reconnectable; tmux-over-exec keeps the same console available
+ * when a substrate has no usable native PTY:
  *
  *   - input  : `tmux send-keys -H <hex>`         (one quick exec per keystroke batch)
  *   - output : `tail -f` the tmux pipe-pane log  (native streamExec, poll fallback)
@@ -173,7 +173,7 @@ case "$kind" in
 		hermes chat
 		;;
 	openclaw)
-		export PATH="$HOME/.npm-global/bin:$PATH"
+		export PATH="$HOME/.agent-machines/node/bin:$HOME/.agent-machines/pkgs/node_modules/.bin:$HOME/.npm-global/bin:$PATH"
 		export OPENCLAW_STATE_DIR="$HOME/.openclaw"
 		export OPENCLAW_NO_RESPAWN=1
 		openclaw chat

@@ -108,6 +108,10 @@ export const MIGRATION_STEPS = [
 	"verify",
 	"commit",
 	"source-teardown",
+	// Appended for application-level live migration. Stable persisted keys:
+	// never insert these into the historical sequence above.
+	"drain",
+	"delta",
 ] as const;
 
 export type MigrationStepId = (typeof MIGRATION_STEPS)[number];
@@ -135,6 +139,22 @@ export type MigrationReport = {
 	newMachineId: string;
 	notes: string[];
 	/**
+	 * Application-level continuity. "live" drains Agent Machines-managed
+	 * work and applies a stable final filesystem delta; it does not transfer a
+	 * process memory image. Optional for reports persisted before live mode.
+	 */
+	continuity?: {
+		mode: "copy" | "live";
+		managedRuns: "not-gated" | "drained";
+		process: "restarted";
+		activeRuns: number;
+		drainWaitMs: number;
+		baselineBytes: number;
+		deltaBytes: number;
+		stabilityAttempts: number;
+		gateReleased: boolean;
+	};
+	/**
 	 * Whether the mux ROUTER's placement for this name was re-pointed at the new
 	 * sandbox (lib/mux/placements.ts). Post-commit and best-effort, so `false`
 	 * with a reason is a normal outcome, not a failed migration -- but it must be
@@ -143,6 +163,13 @@ export type MigrationReport = {
 	 * Optional: reports persisted before this field existed must still parse.
 	 */
 	placement?: { recorded: boolean; name?: string; reason?: string };
+	/**
+	 * Durable managed-Worker placement reconciliation. Unlike the optional mux
+	 * name mirror above, this is a completion gate: a direct dashboard migration
+	 * cannot report success or destroy its source until all matching Worker
+	 * resources have advanced to the verified target.
+	 */
+	controlPlane?: { recorded: boolean; matched: number; reason?: string };
 };
 
 /**
@@ -712,7 +739,9 @@ export function toPublicConfig(config: UserConfig): PublicUserConfig {
 			configured: Boolean(config.providers.sprites?.apiKey),
 		},
 		vercel: {
-			configured: Boolean(config.providers.vercel?.token),
+			configured: Boolean(
+				config.providers.vercel?.token || process.env.VERCEL_OIDC_TOKEN?.trim(),
+			),
 			scopeHint: config.providers.vercel?.teamId
 				? `team ${config.providers.vercel.teamId.slice(0, 8)}…`
 				: undefined,

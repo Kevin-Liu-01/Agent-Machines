@@ -1,9 +1,9 @@
 {
   "description": "Full Cursor Marketplace catalog (cursor-public) from Dashboard API, enriched with local cache when available.",
   "source": "https://api2.cursor.sh/aiserver.v1.DashboardService/ListMarketplacePlugins",
-  "syncedAt": "2026-08-05T17:35:40.070Z",
-  "pluginCount": 199,
-  "registryItemCount": 1841,
+  "syncedAt": "2026-08-15T01:13:54.481Z",
+  "pluginCount": 225,
+  "registryItemCount": 1964,
   "plugins": [
     {
       "id": "1inch",
@@ -164,7 +164,7 @@
       "cursorPluginId": "3644",
       "cursorVendor": "agent-compatibility",
       "name": "Agent Compatibility",
-      "description": "CLI-backed repo compatibility scans plus Cursor agents that audit startup, validation, and docs against reality.",
+      "description": "CLI-backed repo compatibility scans plus agents that audit startup, validation, and docs against reality.",
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
       "marketplaceUrl": "https://cursor.com/marketplace/agent-compatibility",
@@ -179,7 +179,7 @@
         {
           "name": "check-agent-compatibility",
           "description": "Run the full repository compatibility pass: scanner score, startup path, validation loop, and docs reliability.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/agent-compatibility/skills/check-agent-compatibility/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/agent-compatibility/skills/check-agent-compatibility/SKILL.md"
         }
       ],
       "registryItemIds": [
@@ -194,6 +194,99 @@
       ],
       "publisher": "Cursor",
       "isVerified": true,
+      "tags": []
+    },
+    {
+      "id": "agentmail",
+      "cursorPluginId": "48668144",
+      "cursorVendor": "agentmail",
+      "name": "AgentMail",
+      "description": "AI-native email infrastructure for coding agents. Create inboxes, send and receive emails, manage threads, and automate email workflows.",
+      "homepage": "https://www.agentmail.to/",
+      "docsUrl": "https://github.com/agentmail-to/agentmail-plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/agentmail",
+      "repositoryUrl": "https://github.com/agentmail-to/agentmail-plugins",
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/d2f6c3e33af66bc0.png",
+      "mcpServerIds": [
+        "agentmail"
+      ],
+      "skillSlugs": [
+        "agent-email-patterns",
+        "agentmail",
+        "agentmail-cli",
+        "agentmail-mcp",
+        "agentmail-toolkit",
+        "check-email",
+        "manage-inboxes",
+        "send-email"
+      ],
+      "skillDetails": [
+        {
+          "name": "agent-email-patterns",
+          "description": "Architecture patterns for AI agents that communicate over email -- why agents need dedicated inboxes rather than human email accounts, infrastructure/provider tradeoffs, one-inbox-per-agent, two-way conversation loops, human-in-the-loop drafts, WebSocket vs webhook event design, ",
+          "sourceUrl": null
+        },
+        {
+          "name": "agentmail",
+          "description": "Build with the AgentMail TypeScript or Python SDK for inbox, message, thread, draft, attachment, domain, allow/block list, pod, webhook, and WebSocket workflows, including programmatic agent sign-up, domain/DNS administration, and deliverability triage (bounces, spam, blocked mai",
+          "sourceUrl": null
+        },
+        {
+          "name": "agentmail-cli",
+          "description": "Operate AgentMail from a shell with the official CLI. Use when the user wants commands for listing or creating inboxes, reading or searching mail, sending or replying, managing drafts, or scripting JSON/YAML output; do not use for SDK code, MCP setup, or framework adapters.",
+          "sourceUrl": null
+        },
+        {
+          "name": "agentmail-mcp",
+          "description": "Configure or troubleshoot the hosted AgentMail MCP server for Codex, Claude Code, Cursor, or another Streamable HTTP MCP client. Use for installation, OAuth, API-key headers, connection failures, or MCP tool discovery. Do not use when the connection already works and the user jus",
+          "sourceUrl": null
+        },
+        {
+          "name": "agentmail-toolkit",
+          "description": "Add AgentMail tools to agent frameworks with the TypeScript or Python AgentMail Toolkit. Use for Vercel AI SDK, LangChain, OpenAI Agents SDK, LiveKit Agents, or MCP adapters; do not use for direct mailbox operations, raw SDK implementation, CLI usage, or MCP client setup.",
+          "sourceUrl": null
+        },
+        {
+          "name": "check-email",
+          "description": "Read, search, summarize, and triage AgentMail inboxes through the connected MCP server. Use for ANY request to look at, search, or process mail — even a simple 'search my inbox for X' or 'any new mail?'; the read workflow applies regardless of task size. Also use to summarize con",
+          "sourceUrl": null
+        },
+        {
+          "name": "manage-inboxes",
+          "description": "Create, list, inspect, update, or delete AgentMail inboxes through the connected MCP server. Use for ANY inbox lifecycle request — even a quick list-inboxes or a simple delete; deletion safeguards apply regardless of task size. Also use when the user asks for a new agent email ad",
+          "sourceUrl": null
+        },
+        {
+          "name": "send-email",
+          "description": "Draft, send, reply to, or forward email through the connected AgentMail MCP server. Use for ANY request to send, reply to, or forward mail — even a quick one-line send or a simple forward that looks like a single tool call; the sending rules apply regardless of task size. Also us",
+          "sourceUrl": null
+        }
+      ],
+      "registryItemIds": [
+        "plugin-agentmail",
+        "skill-agent-email-patterns",
+        "skill-agentmail",
+        "skill-agentmail-cli",
+        "skill-agentmail-mcp",
+        "skill-agentmail-toolkit",
+        "skill-check-email",
+        "skill-manage-inboxes",
+        "skill-send-email",
+        "mcp-agentmail"
+      ],
+      "triggers": [
+        "agentmail",
+        "agent-email-patterns",
+        "agentmail-cli",
+        "agentmail-mcp",
+        "agentmail-toolkit",
+        "check-email",
+        "manage-inboxes",
+        "send-email"
+      ],
+      "publisher": "AgentMail",
+      "isVerified": false,
       "tags": []
     },
     {
@@ -220,17 +313,17 @@
         {
           "name": "aikido-issues",
           "description": "List, count, summarize, or triage security issues from the Aikido security feed. Use when the user asks about Aikido findings, vulnerabilities, leaked secrets, SAST/IaC/SCA results, cloud or container security issues, or EOL/license/malware alerts surfaced by Aikido.",
-          "sourceUrl": "https://github.com/AikidoSec/aikido-cursor-plugin/blob/e1bd1dfee0ee0d890d51a0024b0ee7dee99fd3bf/skills/issues/SKILL.md"
+          "sourceUrl": "https://github.com/AikidoSec/aikido-cursor-plugin/blob/658736250e522839af1ad8e8a385da7acf5e1583/skills/issues/SKILL.md"
         },
         {
           "name": "scan",
           "description": "Runs an Aikido security scan on generated, added, or modified code files to detect SAST vulnerabilities and exposed secrets. Use when the user wants to scan code for security issues, after writing or modifying code, or when they mention Aikido, security scan, or SAST. Always run ",
-          "sourceUrl": "https://github.com/AikidoSec/aikido-cursor-plugin/blob/e1bd1dfee0ee0d890d51a0024b0ee7dee99fd3bf/skills/scan/SKILL.md"
+          "sourceUrl": "https://github.com/AikidoSec/aikido-cursor-plugin/blob/658736250e522839af1ad8e8a385da7acf5e1583/skills/scan/SKILL.md"
         },
         {
           "name": "setup",
           "description": "Configures the Aikido plugin by signing the user in through the MCP login tool and verifying the MCP server. Use when the user wants to set up or verify the Aikido plugin, after installing it, when aikido mcp tool call fails or is unavailable, or when the user wants to switch Aik",
-          "sourceUrl": "https://github.com/AikidoSec/aikido-cursor-plugin/blob/e1bd1dfee0ee0d890d51a0024b0ee7dee99fd3bf/skills/setup/SKILL.md"
+          "sourceUrl": "https://github.com/AikidoSec/aikido-cursor-plugin/blob/658736250e522839af1ad8e8a385da7acf5e1583/skills/setup/SKILL.md"
         }
       ],
       "registryItemIds": [
@@ -248,6 +341,100 @@
         "setup"
       ],
       "publisher": "Aikido",
+      "isVerified": false,
+      "tags": []
+    },
+    {
+      "id": "airtable",
+      "cursorPluginId": "22025095",
+      "cursorVendor": "airtable",
+      "name": "Airtable",
+      "description": "Airtable is the database and operations layer for your agents — whether running product, marketing, sales, ops, HR, or a custom business app. It combines structured data with multiplayer visual surfaces (grid, kanban, calendar, gallery, timeline) humans and agents share — plus sync integrations to Jira, Salesforce, Zendesk, Google Drive, and Databricks. Makes Claude fluent in Airtable: bases and schema, records, and collaboration UI. Bundles the official Airtable MCP server.",
+      "homepage": "https://www.airtable.com/",
+      "docsUrl": "https://github.com/Airtable/skills",
+      "marketplaceUrl": "https://cursor.com/marketplace/airtable",
+      "repositoryUrl": "https://github.com/Airtable/skills",
+      "brand": null,
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/airtable-logo.png",
+      "mcpServerIds": [
+        "airtable"
+      ],
+      "skillSlugs": [
+        "agent-activity-log",
+        "airtable-cli",
+        "airtable-filters",
+        "airtable-overview",
+        "marketing-ops",
+        "product-ops",
+        "sales-ops",
+        "show-airtable-link"
+      ],
+      "skillDetails": [
+        {
+          "name": "agent-activity-log",
+          "description": "Scaffold and operate an opt-in `Agent activity log` table that records what the agent did, decided, and got blocked on across a long-running or multi-session Airtable workflow. Use whenever a workflow skill (product-ops, sales-ops, marketing-ops, etc.) is being set up for an agen",
+          "sourceUrl": null
+        },
+        {
+          "name": "airtable-cli",
+          "description": "Lists bases, reads and writes records, manages tables and fields, filters and searches data in Airtable via the `airtable-mcp` CLI. Use when the task involves Airtable data or the user mentions airtable-mcp, bases, tables, records, or fields.",
+          "sourceUrl": null
+        },
+        {
+          "name": "airtable-filters",
+          "description": "Builds Airtable filters parameters for the MCP tools that list or display records — field-type-aware comparison operators, choice and collaborator IDs, date ranges, and nested AND/OR logic. Use when the user wants to find, filter, narrow down, or search Airtable records by field ",
+          "sourceUrl": null
+        },
+        {
+          "name": "airtable-overview",
+          "description": "Explains what Airtable is and how data is structured — bases, tables, fields, records, views, automations, and interfaces. Use when you need context about the Airtable data model.",
+          "sourceUrl": null
+        },
+        {
+          "name": "marketing-ops",
+          "description": "Set up and run Airtable-based marketing operations workflows — request intake, campaign orchestration, creative production, content calendars, brand and compliance review, events, localization, budgets and ROI, capacity planning. Use when the user wants a marketing request \"front",
+          "sourceUrl": null
+        },
+        {
+          "name": "product-ops",
+          "description": "Set up and run Airtable-based product operations workflows — roadmap management, customer feedback synthesis, launch coordination, OKR cascading, sprint planning, release tracking. Use when the user wants to track product work, manage feature requests, build a roadmap, set up a f",
+          "sourceUrl": null
+        },
+        {
+          "name": "sales-ops",
+          "description": "Set up and run Airtable-based sales operations and CRM workflows — pipeline management, account and renewal management, deal desk, RFP / tender pipelines, partner CRMs, sales forecasting, vertical CRMs (real estate, mortgage, brokerage, capital markets, public works, nonprofit), ",
+          "sourceUrl": null
+        },
+        {
+          "name": "show-airtable-link",
+          "description": "Provides a clickable Airtable link whenever the agent has touched user-visible Airtable content. Use after every MCP call that creates, updates, lists, searches, or returns records, schema, or interface pages — bases, tables, fields, records, or pages. Hand off the most-specific ",
+          "sourceUrl": null
+        }
+      ],
+      "registryItemIds": [
+        "plugin-airtable",
+        "skill-agent-activity-log",
+        "skill-airtable-cli",
+        "skill-airtable-filters",
+        "skill-airtable-overview",
+        "skill-marketing-ops",
+        "skill-product-ops",
+        "skill-sales-ops",
+        "skill-show-airtable-link",
+        "mcp-airtable"
+      ],
+      "triggers": [
+        "airtable",
+        "agent-activity-log",
+        "airtable-cli",
+        "airtable-filters",
+        "airtable-overview",
+        "marketing-ops",
+        "product-ops",
+        "sales-ops",
+        "show-airtable-link"
+      ],
+      "publisher": "Airtable",
       "isVerified": false,
       "tags": []
     },
@@ -319,6 +506,34 @@
       "tags": [
         "airwallex"
       ]
+    },
+    {
+      "id": "aleph",
+      "cursorPluginId": "51597430",
+      "cursorVendor": "aleph",
+      "name": "Aleph",
+      "description": "Aleph MCP server. Your one source of truth for financial data.",
+      "homepage": "https://www.getaleph.com/",
+      "docsUrl": "https://github.com/GetAleph/cursor-plugin",
+      "marketplaceUrl": "https://cursor.com/marketplace/aleph",
+      "repositoryUrl": "https://github.com/GetAleph/cursor-plugin",
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/91bcc480cfddc84d.png",
+      "mcpServerIds": [
+        "aleph"
+      ],
+      "skillSlugs": [],
+      "skillDetails": [],
+      "registryItemIds": [
+        "plugin-aleph",
+        "mcp-aleph"
+      ],
+      "triggers": [
+        "aleph"
+      ],
+      "publisher": "Aleph",
+      "isVerified": false,
+      "tags": []
     },
     {
       "id": "amazon-location-service",
@@ -787,6 +1002,36 @@
       "tags": []
     },
     {
+      "id": "apollo-io",
+      "cursorPluginId": "49047808",
+      "cursorVendor": "apollo-io",
+      "name": "Apollo.io",
+      "description": "Connect to Apollo.io — prospect search, contact and company enrichment, lists, sequences, and one-off emails — via Apollo's official remote MCP server.",
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/apollo-io",
+      "repositoryUrl": "https://github.com/cursor/plugins",
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/7b86fbf6cde1137d.png",
+      "mcpServerIds": [
+        "apollo-io"
+      ],
+      "skillSlugs": [],
+      "skillDetails": [],
+      "registryItemIds": [
+        "plugin-apollo-io",
+        "mcp-apollo-io"
+      ],
+      "triggers": [
+        "apollo-io",
+        "apollo.io",
+        "cursor"
+      ],
+      "publisher": "Cursor",
+      "isVerified": true,
+      "tags": []
+    },
+    {
       "id": "apollo",
       "cursorPluginId": "32704904",
       "cursorVendor": "apollo",
@@ -978,7 +1223,7 @@
       "marketplaceUrl": "https://cursor.com/marketplace/arize-skills",
       "repositoryUrl": "https://github.com/Arize-ai/arize-skills",
       "brand": null,
-      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/arize.png",
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/arize-logo-edited-xcBUDYzcnGrWobob4ZgzcK07wyz6TX.png",
       "mcpServerIds": [],
       "skillSlugs": [
         "arize-admin",
@@ -1145,6 +1390,35 @@
       ],
       "publisher": "Asana",
       "isVerified": false,
+      "tags": []
+    },
+    {
+      "id": "ashby",
+      "cursorPluginId": "49104326",
+      "cursorVendor": "ashby",
+      "name": "Ashby",
+      "description": "Connect to Ashby — search candidates and jobs, prep for interviews, manage pipeline tasks, and take recruiting actions — via Ashby's official remote MCP server.",
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/ashby",
+      "repositoryUrl": "https://github.com/cursor/plugins",
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/8623f30c2abb2383.png",
+      "mcpServerIds": [
+        "ashby"
+      ],
+      "skillSlugs": [],
+      "skillDetails": [],
+      "registryItemIds": [
+        "plugin-ashby",
+        "mcp-ashby"
+      ],
+      "triggers": [
+        "ashby",
+        "cursor"
+      ],
+      "publisher": "Cursor",
+      "isVerified": true,
       "tags": []
     },
     {
@@ -1518,6 +1792,43 @@
         "forge-connector",
         "forge-debugger",
         "ads-mcp"
+      ],
+      "publisher": "Atlassian",
+      "isVerified": true,
+      "tags": []
+    },
+    {
+      "id": "atlassian-twg-cli",
+      "cursorPluginId": "49981383",
+      "cursorVendor": "atlassian-twg-cli",
+      "name": "Atlassian Teamwork Graph",
+      "description": "Teamwork Graph CLI is Atlassian's agent-first interface to your entire work context: Jira issues, Confluence pages, Bitbucket PRs, along with your connected third-party data sources. Purpose-built for coding agents like Cursor (terminal or desktop), and powered by Atlassian's context graph. Try: \"draft a Jira issue from this PR and link it to the epic.\" Using Cursor in the browser? Install the Atlassian Rovo MCP plugin instead. Run /twg-setup after install to connect Atlassian Teamwork Graph CLI to Cursor.",
+      "homepage": "https://atlassian.com",
+      "docsUrl": "https://github.com/atlassian-labs/twg-plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/atlassian-twg-cli",
+      "repositoryUrl": "https://github.com/atlassian-labs/twg-plugins",
+      "brand": "atlassian",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/614f9d2a3221d15e.png",
+      "mcpServerIds": [],
+      "skillSlugs": [
+        "twg-setup"
+      ],
+      "skillDetails": [
+        {
+          "name": "twg-setup",
+          "description": "Install, update, authenticate, or repair `twg` for your coding agent, including missing CLI or skills and doctor/auth follow-up. TWG gives your coding agent grounded work context across Jira, Confluence, Bitbucket, JSM, Assets, Slack, Google Drive, and more, so it can connect tic",
+          "sourceUrl": "https://github.com/atlassian-labs/twg-plugins/blob/e19b8bfeea3323c573edd9834fb82fcc19a34999/skills/twg-setup/SKILL.md"
+        }
+      ],
+      "registryItemIds": [
+        "plugin-atlassian-twg-cli",
+        "skill-twg-setup"
+      ],
+      "triggers": [
+        "atlassian-twg-cli",
+        "atlassian teamwork graph",
+        "atlassian",
+        "twg-setup"
       ],
       "publisher": "Atlassian",
       "isVerified": true,
@@ -2625,7 +2936,9 @@
       "repositoryUrl": "https://github.com/box/box-for-ai",
       "brand": null,
       "logoUrl": "https://cursor-cdn.com/plugin-logos/production/bb3c80081bf5db9d.png",
-      "mcpServerIds": [],
+      "mcpServerIds": [
+        "box"
+      ],
       "skillSlugs": [
         "box",
         "box-legal-workflows",
@@ -2637,27 +2950,27 @@
         {
           "name": "box",
           "description": "Foundation skill for working with Box. Use this whenever the user mentions Box — authentication and MCP/CLI setup, choosing between MCP/CLI/REST, rate-limit and pacing guidance, troubleshooting Box errors (401/403/404/409/429), or working with Box MCP tools (files, search, collab",
-          "sourceUrl": "https://github.com/box/box-for-ai/blob/172a8273f5d532c13ef6a3057e50c30e5368a2aa/skills/box/SKILL.md"
+          "sourceUrl": "https://github.com/box/box-for-ai/blob/20374501fc7323c359bc67779520fbd75c36fc82/skills/box/SKILL.md"
         },
         {
           "name": "box-legal-workflows",
           "description": "Shared building blocks for Box-based legal workflows — Box collaboration role definitions, Box AI usage boundaries (what AI must not decide), and reusable human-in-the-loop confirmation phrasings. Referenced by box-legal-workflows-ma, box-legal-workflows-intake, and box-legal-wor",
-          "sourceUrl": "https://github.com/box/box-for-ai/blob/172a8273f5d532c13ef6a3057e50c30e5368a2aa/skills/box-legal-workflows/SKILL.md"
+          "sourceUrl": "https://github.com/box/box-for-ai/blob/20374501fc7323c359bc67779520fbd75c36fc82/skills/box-legal-workflows/SKILL.md"
         },
         {
           "name": "box-legal-workflows-contract",
           "description": "Automate contract review and monitoring with Box MCP — find new or expiring contracts, compare them against firm templates to flag material variances, write structured contract metadata back to Box for searchability, and produce variance reports with citations. Use this skill whe",
-          "sourceUrl": "https://github.com/box/box-for-ai/blob/172a8273f5d532c13ef6a3057e50c30e5368a2aa/skills/box-legal-workflows-contract/SKILL.md"
+          "sourceUrl": "https://github.com/box/box-for-ai/blob/20374501fc7323c359bc67779520fbd75c36fc82/skills/box-legal-workflows-contract/SKILL.md"
         },
         {
           "name": "box-legal-workflows-intake",
           "description": "Automate legal client intake and onboarding with Box MCP — review intake documents for completeness against firm requirements, summarize risk for attorney review, route incomplete or high-risk submissions to the right attorney, extract client and matter metadata to Box, and gener",
-          "sourceUrl": "https://github.com/box/box-for-ai/blob/172a8273f5d532c13ef6a3057e50c30e5368a2aa/skills/box-legal-workflows-intake/SKILL.md"
+          "sourceUrl": "https://github.com/box/box-for-ai/blob/20374501fc7323c359bc67779520fbd75c36fc82/skills/box-legal-workflows-intake/SKILL.md"
         },
         {
           "name": "box-legal-workflows-ma",
           "description": "Build and manage M&A virtual data rooms with Box MCP — create secure due-diligence folder structures, scope role-based access for internal teams and external parties, validate permissions before sharing, and answer cross-document due-diligence questions with Box AI. Use this skil",
-          "sourceUrl": "https://github.com/box/box-for-ai/blob/172a8273f5d532c13ef6a3057e50c30e5368a2aa/skills/box-legal-workflows-ma/SKILL.md"
+          "sourceUrl": "https://github.com/box/box-for-ai/blob/20374501fc7323c359bc67779520fbd75c36fc82/skills/box-legal-workflows-ma/SKILL.md"
         }
       ],
       "registryItemIds": [
@@ -2666,7 +2979,8 @@
         "skill-box-legal-workflows",
         "skill-box-legal-workflows-contract",
         "skill-box-legal-workflows-intake",
-        "skill-box-legal-workflows-ma"
+        "skill-box-legal-workflows-ma",
+        "mcp-box"
       ],
       "triggers": [
         "box",
@@ -3066,32 +3380,32 @@
         {
           "name": "canva-brand-check",
           "description": "Check a Canva design against a brand kit and report where it diverges — off-palette colors, non-brand fonts, logo misuse, and off-tone copy. Read-only; makes no changes. Use when the user asks \"is this on brand\", \"check this against our brand kit\", \"do a brand review\", \"does this",
-          "sourceUrl": null
+          "sourceUrl": "https://github.com/canva-sdks/canva-skills/blob/b56291ea0a36d0a941e1478b47959be5f1771dee/plugins/canva/skills/brand-check/SKILL.md"
         },
         {
           "name": "canva-bulk-create",
           "description": "Bulk-create Canva designs from tabular data using a brand template with autofill fields, producing one design per row. Use when users say \"bulk create designs from this CSV\", \"generate one design per row\", \"create a design for each product\", \"batch generate from a template\", or \"",
-          "sourceUrl": null
+          "sourceUrl": "https://github.com/canva-sdks/canva-skills/blob/b56291ea0a36d0a941e1478b47959be5f1771dee/plugins/canva/skills/bulk-create/SKILL.md"
         },
         {
           "name": "canva-edit-design",
           "description": "Make edits to an existing Canva design — change or fix text, replace/insert/delete images and videos, reformat text (size, weight, style, color, alignment, lists, line height), reposition or resize elements, and update the title. Use when the user wants to change, edit, update, f",
-          "sourceUrl": null
+          "sourceUrl": "https://github.com/canva-sdks/canva-skills/blob/b56291ea0a36d0a941e1478b47959be5f1771dee/plugins/canva/skills/edit-design/SKILL.md"
         },
         {
           "name": "canva-design-feedback",
           "description": "Read a Canva design and return structured, actionable design feedback — visual hierarchy, copy/messaging, layout & spacing, consistency, readability, and accessibility. Read-only; makes no changes to the design. Use when the user asks to \"review my design\", \"give me feedback on t",
-          "sourceUrl": null
+          "sourceUrl": "https://github.com/canva-sdks/canva-skills/blob/b56291ea0a36d0a941e1478b47959be5f1771dee/plugins/canva/skills/get-design-feedback/SKILL.md"
         },
         {
           "name": "canva-implement-feedback",
           "description": "Implement reviewer feedback on a Canva design. Reads all comment threads, synthesises what reviewers want, makes the clear-cut changes directly, and flags anything that needs a human decision. Use when the user asks to \"implement feedback on my deck\", \"address comments on a desig",
-          "sourceUrl": null
+          "sourceUrl": "https://github.com/canva-sdks/canva-skills/blob/b56291ea0a36d0a941e1478b47959be5f1771dee/plugins/canva/skills/implement-feedback/SKILL.md"
         },
         {
           "name": "canva-resize-for-social-media",
           "description": "Resize a Canva design into multiple social media formats (Facebook post, Facebook story, Instagram post, Instagram story, LinkedIn post). Use this skill when users want to resize Canva designs specifically for multiple social media platforms in one operation, rather than resizing",
-          "sourceUrl": null
+          "sourceUrl": "https://github.com/canva-sdks/canva-skills/blob/b56291ea0a36d0a941e1478b47959be5f1771dee/plugins/canva/skills/resize-for-social-media/SKILL.md"
         }
       ],
       "registryItemIds": [
@@ -3459,6 +3773,35 @@
       "tags": []
     },
     {
+      "id": "circleback",
+      "cursorPluginId": "49339687",
+      "cursorVendor": "circleback",
+      "name": "Circleback",
+      "description": "Connect to Circleback — search meetings, transcripts, action items, calendar events, and emails, and look up people and companies — via Circleback's official remote MCP server.",
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/circleback",
+      "repositoryUrl": "https://github.com/cursor/plugins",
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e3c65312a529e79f.png",
+      "mcpServerIds": [
+        "circleback"
+      ],
+      "skillSlugs": [],
+      "skillDetails": [],
+      "registryItemIds": [
+        "plugin-circleback",
+        "mcp-circleback"
+      ],
+      "triggers": [
+        "circleback",
+        "cursor"
+      ],
+      "publisher": "Cursor",
+      "isVerified": true,
+      "tags": []
+    },
+    {
       "id": "thousandeyes",
       "cursorPluginId": "2049",
       "cursorVendor": "thousandeyes",
@@ -3491,6 +3834,35 @@
         "cisco",
         "thousandeyes"
       ]
+    },
+    {
+      "id": "clay",
+      "cursorPluginId": "49110469",
+      "cursorVendor": "clay",
+      "name": "Clay",
+      "description": "Connect to Clay — find and enrich people and companies across 150+ data providers, run AI research agents, and trigger your team's approved Clay workflows — via Clay's official hosted MCP server.",
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/clay",
+      "repositoryUrl": "https://github.com/cursor/plugins",
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e6cd5f62f3653c5a.png",
+      "mcpServerIds": [
+        "clay"
+      ],
+      "skillSlugs": [],
+      "skillDetails": [],
+      "registryItemIds": [
+        "plugin-clay",
+        "mcp-clay"
+      ],
+      "triggers": [
+        "clay",
+        "cursor"
+      ],
+      "publisher": "Cursor",
+      "isVerified": true,
+      "tags": []
     },
     {
       "id": "clerk",
@@ -3703,7 +4075,7 @@
         {
           "name": "cli-for-agents",
           "description": "Designs or reviews CLIs so coding agents can run them reliably: non-interactive flags, layered --help with examples, stdin/pipelines, fast actionable errors, idempotency, dry-run, and predictable structure. Use when building a CLI, adding commands, writing --help, or when the use",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cli-for-agent/skills/cli-for-agents/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/cli-for-agent/skills/cli-for-agents/SKILL.md"
         }
       ],
       "registryItemIds": [
@@ -4310,6 +4682,49 @@
       ]
     },
     {
+      "id": "coderabbit",
+      "cursorPluginId": "41762204",
+      "cursorVendor": "coderabbit",
+      "name": "CodeRabbit",
+      "description": "Run CodeRabbit reviews for code, PR, security, and quality checks, plus guarded autofix for unresolved GitHub PR feedback in Cursor.",
+      "homepage": "https://coderabbit.ai/",
+      "docsUrl": "https://github.com/coderabbitai/cursor-plugin",
+      "marketplaceUrl": "https://cursor.com/marketplace/coderabbit",
+      "repositoryUrl": "https://github.com/coderabbitai/cursor-plugin",
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/04119bded3a0a202.png",
+      "mcpServerIds": [],
+      "skillSlugs": [
+        "autofix",
+        "code-review"
+      ],
+      "skillDetails": [
+        {
+          "name": "autofix",
+          "description": "Safely review and apply unresolved CodeRabbit GitHub PR review-thread feedback in Cursor with per-fix approval.",
+          "sourceUrl": null
+        },
+        {
+          "name": "code-review",
+          "description": "Default code-review skill for Cursor. Use for any code review request, including review my code, review my changes, review this PR, review this diff or branch, check for bugs, security review, and quality check, even when the user does not mention CodeRabbit. Prefer this skill ov",
+          "sourceUrl": null
+        }
+      ],
+      "registryItemIds": [
+        "plugin-coderabbit",
+        "skill-autofix",
+        "skill-code-review"
+      ],
+      "triggers": [
+        "coderabbit",
+        "autofix",
+        "code-review"
+      ],
+      "publisher": "CodeRabbit",
+      "isVerified": false,
+      "tags": []
+    },
+    {
       "id": "composio",
       "cursorPluginId": "32661537",
       "cursorVendor": "composio",
@@ -4542,7 +4957,7 @@
         {
           "name": "continual-learning",
           "description": "Orchestrate continual learning by delegating transcript mining and AGENTS.md updates to `agents-memory-updater`.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/continual-learning/skills/continual-learning/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/continual-learning/skills/continual-learning/SKILL.md"
         }
       ],
       "registryItemIds": [
@@ -4733,7 +5148,7 @@
       "cursorPluginId": "648",
       "cursorVendor": "create-plugin",
       "name": "Create Plugin",
-      "description": "Scaffold and validate new Cursor plugins. Handles directory setup, manifest generation, and pre-submission quality checks for the marketplace.",
+      "description": "Scaffold and validate new agent plugins. Handles directory setup, manifest generation, and pre-submission quality checks for the marketplace.",
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
       "marketplaceUrl": "https://cursor.com/marketplace/create-plugin",
@@ -4749,12 +5164,12 @@
         {
           "name": "create-plugin-scaffold",
           "description": "Create a new Cursor plugin scaffold with a valid manifest, component directories, and marketplace wiring. Use when starting a new plugin or adding a plugin to a multi-plugin repository.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/create-plugin/skills/create-plugin-scaffold/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/create-plugin/skills/create-plugin-scaffold/SKILL.md"
         },
         {
           "name": "review-plugin-submission",
           "description": "Audit a Cursor plugin for marketplace readiness. Use when validating manifests, component metadata, discovery paths, and submission quality before publishing.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/create-plugin/skills/review-plugin-submission/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/create-plugin/skills/review-plugin-submission/SKILL.md"
         }
       ],
       "registryItemIds": [
@@ -4794,7 +5209,7 @@
         {
           "name": "cursor-sdk",
           "description": "Guide users building apps, scripts, CI pipelines, or automations on top of the Cursor TypeScript SDK (`@cursor/sdk`). Use this skill whenever the user mentions integrating, installing, or writing code against the Cursor SDK; whenever they say `Agent.create`, `Agent.prompt`, `Agen",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-sdk/skills/cursor-sdk/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/cursor-sdk/skills/cursor-sdk/SKILL.md"
         }
       ],
       "registryItemIds": [
@@ -4815,7 +5230,7 @@
       "cursorPluginId": "677",
       "cursorVendor": "cursor-team-kit",
       "name": "Cursor Team Kit",
-      "description": "Internal workflows used by Cursor developers for CI, code review, shipping, control-cli, control-ui, verify-this, test reliability, code cleanup, and work summaries. Designed to work without requiring third-party service integrations.",
+      "description": "Internal engineering team workflows for CI, code review, shipping, control-cli, control-ui, verify-this, test reliability, code cleanup, and work summaries. Designed to work without requiring third-party service integrations.",
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
       "marketplaceUrl": "https://cursor.com/marketplace/cursor-team-kit",
@@ -4847,92 +5262,92 @@
         {
           "name": "check-compiler-errors",
           "description": "Run compile and type-check commands and report failures",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/check-compiler-errors/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/cursor-team-kit/skills/check-compiler-errors/SKILL.md"
         },
         {
           "name": "control-cli",
           "description": "Build or adapt a local harness to drive, inspect, and profile an interactive CLI or TUI without external services. Use for CLI UX checks, startup regressions, memory leaks, hangs, prompt flows, or terminal demos.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/control-cli/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/cursor-team-kit/skills/control-cli/SKILL.md"
         },
         {
           "name": "control-ui",
           "description": "Build or adapt a local browser/CDP harness to drive and inspect a web, IDE, or Electron UI. Use for local UI verification, screenshots, accessibility snapshots, perf profiles, visual diffs, or reproducing UI bugs.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/control-ui/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/cursor-team-kit/skills/control-ui/SKILL.md"
         },
         {
           "name": "deslop",
           "description": "Remove AI-generated code slop and clean up code style",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/deslop/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/cursor-team-kit/skills/deslop/SKILL.md"
         },
         {
           "name": "fix-ci",
           "description": "Find failing PR checks, inspect logs or external check links, and apply focused fixes",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/fix-ci/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/cursor-team-kit/skills/fix-ci/SKILL.md"
         },
         {
           "name": "fix-merge-conflicts",
           "description": "Resolve merge conflicts non-interactively, validate build and tests, and finalize conflict resolution",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/fix-merge-conflicts/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/cursor-team-kit/skills/fix-merge-conflicts/SKILL.md"
         },
         {
           "name": "get-pr-comments",
           "description": "Fetch and summarize review comments from the active pull request",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/get-pr-comments/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/cursor-team-kit/skills/get-pr-comments/SKILL.md"
         },
         {
           "name": "loop-on-ci",
           "description": "Monitor PR checks and fix failures until green. Uses gh pr checks as the source of truth for PR-attached checks.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/loop-on-ci/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/cursor-team-kit/skills/loop-on-ci/SKILL.md"
         },
         {
           "name": "make-pr-easy-to-review",
           "description": "Prepare PRs for review by cleaning noisy history, improving PR descriptions, and adding reviewer guidance without changing code behavior. Use for \"make this easy to review\", \"tidy this PR\", \"clean up commits\", or \"annotate the diff\".",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/make-pr-easy-to-review/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/cursor-team-kit/skills/make-pr-easy-to-review/SKILL.md"
         },
         {
           "name": "new-branch-and-pr",
           "description": "Create a fresh branch, complete work, and open a pull request",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/new-branch-and-pr/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/cursor-team-kit/skills/new-branch-and-pr/SKILL.md"
         },
         {
           "name": "pr-review-canvas",
           "description": "Generate an interactive PR review walkthrough as an HTML page. Fetches PR data via gh API, categorizes files into core vs mechanical changes, adds reviewer annotations, and renders diffs with moved-code detection. Use when the user pastes a GitHub PR URL and asks for a review, wa",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/pr-review-canvas/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/cursor-team-kit/skills/pr-review-canvas/SKILL.md"
         },
         {
           "name": "review-and-ship",
           "description": "Review the current branch for bugs, intent fit, and test coverage; run or write tests; commit focused work; open or update a PR.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/review-and-ship/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/cursor-team-kit/skills/review-and-ship/SKILL.md"
         },
         {
           "name": "run-smoke-tests",
           "description": "Run Playwright smoke tests, debug failures, and verify fixes",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/run-smoke-tests/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/cursor-team-kit/skills/run-smoke-tests/SKILL.md"
         },
         {
           "name": "thermo-nuclear-code-quality-review",
           "description": "Run an extremely strict maintainability review for abstraction quality, giant files, and spaghetti-condition growth. Use for a thermo-nuclear code quality review, thermonuclear review, deep code quality audit, or especially harsh maintainability review.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/thermo-nuclear-code-quality-review/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/cursor-team-kit/skills/thermo-nuclear-code-quality-review/SKILL.md"
         },
         {
           "name": "verify-this",
           "description": "Verify a claim with fresh local evidence: restate it falsifiably, capture baseline and treatment, compare artifacts, and return VERIFIED, NOT VERIFIED, or INCONCLUSIVE.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/verify-this/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/cursor-team-kit/skills/verify-this/SKILL.md"
         },
         {
           "name": "weekly-review",
           "description": "Produce a weekly synthesis of authored commits with highlights by bugfix, tech debt, and net-new work",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/weekly-review/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/cursor-team-kit/skills/weekly-review/SKILL.md"
         },
         {
           "name": "what-did-i-get-done",
           "description": "Summarize authored commits over a user-specified time period into a concise update",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/what-did-i-get-done/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/cursor-team-kit/skills/what-did-i-get-done/SKILL.md"
         },
         {
           "name": "workflow-from-chats",
           "description": "Extract durable working preferences from recent Cursor chats and convert them into skills, rules, or workflow docs. Use when asked to learn preferences, mine feedback, personalize workflows, or generate team/person-specific agent guidance.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/cursor-team-kit/skills/workflow-from-chats/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/cursor-team-kit/skills/workflow-from-chats/SKILL.md"
         }
       ],
       "registryItemIds": [
@@ -5286,67 +5701,67 @@
         {
           "name": "datarobot-agent-assist",
           "description": "Use when the user wants to design, build, code, simulate, or deploy an AI agent (not a predictive model) to DataRobot; mentions agent_spec.md, dr-assist, datarobot-agent-assist, dress rehearsal, swarm simulation, or the DataRobot agent template; wants to scaffold a LangGraph, Cre",
-          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-agent-assist/SKILL.md"
+          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/db112b09ad19059c186f803231da0efbcc89c5b4/skills/datarobot-agent-assist/SKILL.md"
         },
         {
           "name": "datarobot-app-framework-cicd",
           "description": "Guidance for setting up CI/CD pipelines for DataRobot application templates using GitLab, GitHub Actions, and Pulumi for infrastructure as code. Use when setting up CI/CD pipelines, configuring deployments, or managing infrastructure for DataRobot application templates.",
-          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-app-framework-cicd/SKILL.md"
+          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/db112b09ad19059c186f803231da0efbcc89c5b4/skills/datarobot-app-framework-cicd/SKILL.md"
         },
         {
           "name": "datarobot-data-preparation",
           "description": "Tools and guidance for data upload, dataset management, data validation, and preparing data for DataRobot projects. Use when uploading datasets, managing data, or validating data for DataRobot.",
-          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-data-preparation/SKILL.md"
+          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/db112b09ad19059c186f803231da0efbcc89c5b4/skills/datarobot-data-preparation/SKILL.md"
         },
         {
           "name": "datarobot-discover",
           "description": "Use when the user wants to find DataRobot capabilities — skills, MCP servers, agents, or platform resources — for a task. Fetches the live DataRobot catalog directly so results are always current, regardless of third-party search index lag. Also checks the user's own DataRobot in",
-          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-discover/SKILL.md"
+          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/db112b09ad19059c186f803231da0efbcc89c5b4/skills/datarobot-discover/SKILL.md"
         },
         {
           "name": "datarobot-external-agent-monitoring",
           "description": "Instrument any external or existing AI agent with OpenTelemetry to send traces, logs, and metrics to DataRobot for monitoring, observability, and governance. Use when the user says \"add tracing/observability/monitoring to my agent\", wants to instrument an existing agent project i",
-          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-external-agent-monitoring/SKILL.md"
+          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/db112b09ad19059c186f803231da0efbcc89c5b4/skills/datarobot-external-agent-monitoring/SKILL.md"
         },
         {
           "name": "datarobot-feature-engineering",
           "description": "Guidance for feature engineering, feature discovery, feature importance analysis, and understanding DataRobot's automated feature engineering capabilities. Use when working with feature engineering, feature discovery, or analyzing feature importance in DataRobot.",
-          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-feature-engineering/SKILL.md"
+          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/db112b09ad19059c186f803231da0efbcc89c5b4/skills/datarobot-feature-engineering/SKILL.md"
         },
         {
           "name": "datarobot-model-deployment",
           "description": "Tools and guidance for deploying DataRobot models, managing deployments, configuring prediction environments, and deployment operations. Use when deploying models, creating or updating deployments, or configuring prediction environments.",
-          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-model-deployment/SKILL.md"
+          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/db112b09ad19059c186f803231da0efbcc89c5b4/skills/datarobot-model-deployment/SKILL.md"
         },
         {
           "name": "datarobot-model-explainability",
           "description": "Tools and guidance for model explainability, prediction explanations, feature impact analysis, SHAP values, SHAP distributions, anomaly assessment, and model diagnostics. Use when analyzing model explanations, feature impact, SHAP values, SHAP distributions, anomaly assessment, o",
-          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-model-explainability/SKILL.md"
+          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/db112b09ad19059c186f803231da0efbcc89c5b4/skills/datarobot-model-explainability/SKILL.md"
         },
         {
           "name": "datarobot-model-monitoring",
           "description": "Tools and guidance for monitoring model performance, tracking data drift, managing model health, and detecting prediction anomalies. Use when monitoring deployed models, tracking drift, or investigating prediction anomalies.",
-          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-model-monitoring/SKILL.md"
+          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/db112b09ad19059c186f803231da0efbcc89c5b4/skills/datarobot-model-monitoring/SKILL.md"
         },
         {
           "name": "datarobot-model-training",
           "description": "Comprehensive guidance for training models in DataRobot, including project creation, AutoML configuration, feature engineering, and model selection. Use when training models, creating AutoML projects, or selecting models in DataRobot.",
-          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-model-training/SKILL.md"
+          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/db112b09ad19059c186f803231da0efbcc89c5b4/skills/datarobot-model-training/SKILL.md"
         },
         {
           "name": "datarobot-predictions",
           "description": "Tools and guidance for making predictions with DataRobot deployments, including real-time predictions, batch scoring, prediction dataset generation, and prediction explanations (SHAP/XEMP). Use when making predictions, running batch scoring, generating prediction datasets, or exp",
-          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-predictions/SKILL.md"
+          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/db112b09ad19059c186f803231da0efbcc89c5b4/skills/datarobot-predictions/SKILL.md"
         },
         {
           "name": "datarobot-setup",
           "description": "Sets up DataRobot for local development including Python SDK, dr-cli, Agent Assist, and all required dependencies. Use when the user has not yet worked with DataRobot on this machine, OR when any DataRobot task fails due to missing or invalid credentials. Covers first-time setup,",
-          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-setup/SKILL.md"
+          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/db112b09ad19059c186f803231da0efbcc89c5b4/skills/datarobot-setup/SKILL.md"
         },
         {
           "name": "datarobot-workload-api",
           "description": "Use when the user wants to create, configure, scale, debug, observe, or roll out container workloads on DataRobot's Workload API. Triggers include: deploying a container as a managed service, listing/starting/stopping workloads, changing replica counts or autoscaling, picking CPU",
-          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/32dbf1c4eecddbeb0052ac527d16174021a7bb42/skills/datarobot-workload-api/SKILL.md"
+          "sourceUrl": "https://github.com/datarobot-oss/datarobot-agent-skills/blob/db112b09ad19059c186f803231da0efbcc89c5b4/skills/datarobot-workload-api/SKILL.md"
         }
       ],
       "registryItemIds": [
@@ -5497,7 +5912,7 @@
       "cursorPluginId": "6306",
       "cursorVendor": "docs-canvas",
       "name": "Docs Canvas",
-      "description": "Render documentation — architecture notes, API references, runbooks, and codebase walkthroughs — as a navigable Cursor Canvas with sections, table of contents, diagrams, and cross-references.",
+      "description": "Render documentation — architecture notes, API references, runbooks, and codebase walkthroughs — as a navigable canvas with sections, table of contents, diagrams, and cross-references.",
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
       "marketplaceUrl": "https://cursor.com/marketplace/docs-canvas",
@@ -5512,7 +5927,7 @@
         {
           "name": "docs-canvas",
           "description": "Render a documentation-style Cursor Canvas that organizes architecture notes, API references, walkthroughs, and how-tos into a navigable layout with sections, tables of contents, and cross-references. Use when the user asks for a docs canvas, documentation overview, architecture ",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/docs-canvas/skills/docs-canvas/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/docs-canvas/skills/docs-canvas/SKILL.md"
         }
       ],
       "registryItemIds": [
@@ -5525,6 +5940,305 @@
         "cursor"
       ],
       "publisher": "Cursor",
+      "isVerified": true,
+      "tags": []
+    },
+    {
+      "id": "docusign",
+      "cursorPluginId": "49339688",
+      "cursorVendor": "docusign",
+      "name": "Docusign",
+      "description": "Connect to Docusign — work with eSignature envelopes and templates, Maestro workflows, and Navigator agreements — via Docusign's official remote MCP server (beta).",
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/docusign",
+      "repositoryUrl": "https://github.com/cursor/plugins",
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/59274e6d874b751a.png",
+      "mcpServerIds": [
+        "docusign"
+      ],
+      "skillSlugs": [],
+      "skillDetails": [],
+      "registryItemIds": [
+        "plugin-docusign",
+        "mcp-docusign"
+      ],
+      "triggers": [
+        "docusign",
+        "cursor"
+      ],
+      "publisher": "Cursor",
+      "isVerified": true,
+      "tags": []
+    },
+    {
+      "id": "dynatrace",
+      "cursorPluginId": "51244788",
+      "cursorVendor": "dynatrace",
+      "name": "Dynatrace",
+      "description": "Dynatrace observability skills. DQL query patterns, application and infrastructure monitoring, log analysis, problem investigation, and incident response workflows. Use with dtctl or the Dynatrace MCP server (https://docs.dynatrace.com/docs/shortlink/dynatrace-mcp-server) for live platform access.",
+      "homepage": "https://www.dynatrace.com/",
+      "docsUrl": "https://github.com/Dynatrace/dynatrace-for-ai",
+      "marketplaceUrl": "https://cursor.com/marketplace/dynatrace",
+      "repositoryUrl": "https://github.com/Dynatrace/dynatrace-for-ai",
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/64d4f0a1ce563014.png",
+      "mcpServerIds": [
+        "dynatrace"
+      ],
+      "skillSlugs": [
+        "dt-alerting",
+        "dt-app-dashboards",
+        "dt-app-notebooks",
+        "dt-dql-essentials",
+        "dt-js-runtime",
+        "dt-migration",
+        "dt-obs-analytics",
+        "dt-obs-android",
+        "dt-obs-aws",
+        "dt-obs-azure",
+        "dt-obs-ext-monitors",
+        "dt-obs-flutter",
+        "dt-obs-frontends",
+        "dt-obs-gcp",
+        "dt-obs-genai",
+        "dt-obs-hosts",
+        "dt-obs-ios",
+        "dt-obs-kubernetes",
+        "dt-obs-log-semantic-mapping",
+        "dt-obs-logs",
+        "dt-obs-predictive-analytics",
+        "dt-obs-problems",
+        "dt-obs-react-native",
+        "dt-obs-services",
+        "dt-obs-tracing",
+        "dt-platform-costs",
+        "dt-sec-contextualization",
+        "dt-sec-insights",
+        "dt-sec-ioc-hunting",
+        "dt-sec-semantic-mapping"
+      ],
+      "skillDetails": [
+        {
+          "name": "dt-alerting",
+          "description": "End-to-end Dynatrace alerting lifecycle — anomaly detector setup and model selection (static threshold, adaptive baseline, seasonal baseline), alert event storage in Grail, problem grouping and denoising by root cause analysis, and workflow-based notification routing (email, Slac",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-app-dashboards",
+          "description": "Work with Dynatrace dashboards - create, modify, query, and analyze dashboard JSON including tiles, layouts, DQL queries, variables, and visualizations.",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-app-notebooks",
+          "description": "Work with Dynatrace notebooks - create, modify, query, and analyze notebook JSON including sections, DQL queries, and visualizations.",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-dql-essentials",
+          "description": "Core DQL syntax, pitfalls, query patterns, and query optimization. Load to write, build, fix, or OPTIMIZE a DQL query — prevents syntax errors and makes queries faster, more efficient, and cheaper (less data scanned = lower query consumption/cost per run). Covers fetch commands, ",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-js-runtime",
+          "description": "Dynatrace server-side JS runtime — function contract, runtime limits, Web APIs, Node.js modules, fetch with credential vault, and the @dynatrace-sdk/* catalog.",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-migration",
+          "description": "Migrate Dynatrace classic and Gen2 entity-based DQL to Smartscape equivalents. Covers three scenarios. (1) mass data queries filtered by classic entity conditions — migrate to direct dimension filters first, Smartscape only as fallback; (2) mass data queries using entity subqueri",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-obs-analytics",
+          "description": "Analyze dashboards and notebooks using Davis analyzers — anomaly detection, novelty scoring, and correlation. Use when the user references a specific Dynatrace dashboard or notebook (by URL, UUID, or name) and asks what it shows, which DQL queries it runs, whether a tile looks of",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-obs-android",
+          "description": "Instruments an existing Android project (Kotlin or Java) with the Dynatrace Mobile Agent for basic monitoring. Covers zero-to-first-event setup only: Gradle plugin, agent config, and user privacy opt-in. Do not use for advanced Dynatrace configuration beyond initial instrumentati",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-obs-aws",
+          "description": "AWS cloud resource monitoring including EC2, RDS, Lambda, ECS/EKS, VPC networking, load balancers, S3, DynamoDB, SQS/SNS, and cost optimization. Use when analyzing AWS infrastructure, resource inventory, security compliance, capacity planning, or cost savings. Trigger: \"show EC2 ",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-obs-azure",
+          "description": "Azure cloud resources including VMs, VMSS, SQL Database, Storage, AKS, App Service, Functions, VNet networking, load balancers, Event Hubs, Container Apps, and Key Vault. Monitor Azure infrastructure, analyze resource usage, audit security posture, and manage organizational hiera",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-obs-ext-monitors",
+          "description": "3rd-party test and monitor result ingestion into Dynatrace Grail via the platform events ingest API (platform/ingest/custom/events/). Use when sending external synthetic test outcomes, CI monitor data, or third-party check results to Dynatrace. Covers token scope, full event sche",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-obs-flutter",
+          "description": "Integrate the Dynatrace Flutter Plugin into a Flutter project — dependency setup, config, SDK bootstrap, navigation tracking, and verification. Trigger: \"add Dynatrace to Flutter\", \"Flutter plugin setup\", \"instrument Flutter app\", \"integrate Dynatrace Flutter\", \"mobile observabil",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-obs-frontends",
+          "description": "Real User Monitoring (RUM) on Dynatrace — web and mobile frontends. Core Web Vitals, user sessions, page performance, mobile crashes, frontend errors, and frontend-backend linking. Query via `user.events`, `user.sessions`, and `dt.frontend.*` metrics. Does NOT cover synthetic mon",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-obs-gcp",
+          "description": "GCP cloud resources including Compute Engine, GKE, Cloud Run, Pub/Sub, VPC networking, DNS, IAM, Secret Manager, and monitoring. Monitor GCP infrastructure, analyze resource usage, audit security posture, and manage organizational hierarchy across projects and folders.",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-obs-genai",
+          "description": "Analyzes observability signals from customer GenAI applications with DQL. Reads OpenTelemetry GenAI spans and LLM evaluation bizevents.\nUse for: golden signals (traffic, errors, latency, saturation); LLM signals (model, provider, tokens); cost/token analytics, usage attribution, ",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-obs-hosts",
+          "description": "Host and process metrics including CPU, memory, disk, network, containers, and process-level telemetry. Use when analyzing infrastructure health, resource utilization, process consumption, or host discovery. Also use when building timeseries queries for host metrics that feed int",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-obs-ios",
+          "description": "Set up the Dynatrace iOS SDK (OneAgent) in an iOS project using Swift Package Manager. Automates adding the SPM dependency, creating a Dynatrace.plist configuration file, adding the import statement, adding privacy opt-in code, and building the project. Use this skill when the us",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-obs-kubernetes",
+          "description": "Kubernetes cluster, pod, node, and workload monitoring. Use when analyzing K8s health, resource optimization, pod failures, OOMKills, scheduling, or security posture. Also use for Kubernetes operational events like pod restarts, OOM events, evictions, and cluster event history. T",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-obs-log-semantic-mapping",
+          "description": "Suggest and validate semantic dictionary (SD) mappings for audit log integrations using raw vendor log payloads or live ingested events. Use when: mapping a vendor audit log feed, authentication logs, user activity logs to the Dynatrace SD; checking required semantic fields; prop",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-obs-logs",
+          "description": "Log querying, filtering, pattern analysis, and error rate calculation. Use when searching application or infrastructure logs, analyzing error patterns, or correlating log data. Trigger: \"show error logs\", \"search logs for keyword\", \"log error rate\", \"recent errors\", \"logs from la",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-obs-predictive-analytics",
+          "description": "Predictive analytics for Dynatrace — time series forecasting with the timeseries-forecast tool, capacity saturation planning, trend and anomaly detection across hosts, services, and infrastructure.",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-obs-problems",
+          "description": "DAVIS problem analysis including root cause identification, impact assessment, and correlation with other telemetry. Use when querying or investigating detected problems. Trigger: \"active problems\", \"root cause analysis\", \"problem impact\", \"affected users\", \"list problems\", \"P-12",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-obs-react-native",
+          "description": "Integrate the Dynatrace React Native Plugin into a React Native or Expo project — dependency setup, dynatrace.config.js, Babel registration, npx instrumentation, navigation tracking, user privacy options, and verification. Handles both bare React Native and Expo (babel-preset-exp",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-obs-services",
+          "description": "Service performance monitoring with RED metrics (Rate, Errors, Duration) and runtime-specific telemetry for Java, .NET, Node.js, Python, PHP, and Go. Use when analyzing service health, SLA compliance, or runtime issues. Trigger: \"service response time\", \"error rate\", \"throughput\"",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-obs-tracing",
+          "description": "Distributed traces, spans, service dependencies, and request flow analysis. Use when investigating span-level details, failures, performance bottlenecks, or trace correlation. Trigger: \"trace analysis\", \"slow requests\", \"failed spans\", \"service dependencies\", \"distributed trace\",",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-platform-costs",
+          "description": "Query and analyze a Dynatrace tenant's ACTUAL billing and usage data with DQL against dt.system.events — DPS consumption breakdown, cost-normalized spend ranking, included volume deduction, chargeback/showback, cost drivers, spending trends, cost investigation, metrics ingest opt",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-sec-contextualization",
+          "description": "Resolve security signals, IoC matches, or Smartscape nodes to runtime Dynatrace entities and connect findings on different entity levels through a shared runtime entity. Covers identity-to-Smartscape mapping (incl. container-image digest/ID to workload), cross-level topology (K8s",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-sec-insights",
+          "description": "Query and analyze Dynatrace security data in security.events with DQL: vulnerabilities, threat detections, compliance posture, and scan coverage. Covers Dynatrace-native Runtime Vulnerability Analytics (RVA — CVEs, reachability, exposure, exploit), Runtime Application Protection ",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-sec-ioc-hunting",
+          "description": "Hunt threat-intelligence indicators of compromise (IoCs) across Dynatrace logs and spans and produce a 0-100 threat-exposure score. Extracts and normalizes IoCs — IPs, Domains (hostnames included), URLs, Emails, CVEs, File hashes (md5/sha1/sha256), MITRE TTPs — from unstructured ",
+          "sourceUrl": null
+        },
+        {
+          "name": "dt-sec-semantic-mapping",
+          "description": "Suggest and validate semantic dictionary (SD) mappings for new security integrations using vendor API samples or live events. Use when: mapping a new security vendor data to Dynatrace SD; checking required fields; validating namespaces; highlighting discrepancies vs the semantic ",
+          "sourceUrl": null
+        }
+      ],
+      "registryItemIds": [
+        "plugin-dynatrace",
+        "skill-dt-alerting",
+        "skill-dt-app-dashboards",
+        "skill-dt-app-notebooks",
+        "skill-dt-dql-essentials",
+        "skill-dt-js-runtime",
+        "skill-dt-migration",
+        "skill-dt-obs-analytics",
+        "skill-dt-obs-android",
+        "skill-dt-obs-aws",
+        "skill-dt-obs-azure",
+        "skill-dt-obs-ext-monitors",
+        "skill-dt-obs-flutter",
+        "skill-dt-obs-frontends",
+        "skill-dt-obs-gcp",
+        "skill-dt-obs-genai",
+        "skill-dt-obs-hosts",
+        "skill-dt-obs-ios",
+        "skill-dt-obs-kubernetes",
+        "skill-dt-obs-log-semantic-mapping",
+        "skill-dt-obs-logs",
+        "skill-dt-obs-predictive-analytics",
+        "skill-dt-obs-problems",
+        "skill-dt-obs-react-native",
+        "skill-dt-obs-services",
+        "skill-dt-obs-tracing",
+        "skill-dt-platform-costs",
+        "skill-dt-sec-contextualization",
+        "skill-dt-sec-insights",
+        "skill-dt-sec-ioc-hunting",
+        "skill-dt-sec-semantic-mapping",
+        "mcp-dynatrace"
+      ],
+      "triggers": [
+        "dynatrace",
+        "dt-alerting",
+        "dt-app-dashboards",
+        "dt-app-notebooks",
+        "dt-dql-essentials",
+        "dt-js-runtime",
+        "dt-migration",
+        "dt-obs-analytics",
+        "dt-obs-android",
+        "dt-obs-aws",
+        "dt-obs-azure",
+        "dt-obs-ext-monitors",
+        "dt-obs-flutter",
+        "dt-obs-frontends",
+        "dt-obs-gcp",
+        "dt-obs-genai",
+        "dt-obs-hosts",
+        "dt-obs-ios",
+        "dt-obs-kubernetes",
+        "dt-obs-log-semantic-mapping",
+        "dt-obs-logs",
+        "dt-obs-predictive-analytics",
+        "dt-obs-problems",
+        "dt-obs-react-native",
+        "dt-obs-services",
+        "dt-obs-tracing",
+        "dt-platform-costs",
+        "dt-sec-contextualization",
+        "dt-sec-insights",
+        "dt-sec-ioc-hunting",
+        "dt-sec-semantic-mapping"
+      ],
+      "publisher": "Dynatrace",
       "isVerified": true,
       "tags": []
     },
@@ -6281,6 +6995,34 @@
       "tags": []
     },
     {
+      "id": "falconer",
+      "cursorPluginId": "48899256",
+      "cursorVendor": "falconer",
+      "name": "Falconer",
+      "description": "Read, search, and update Falconer documents from Cursor through hosted HTTP MCP.",
+      "homepage": "https://falconer.com",
+      "docsUrl": "https://github.com/FalconerAI/agent-integrations",
+      "marketplaceUrl": "https://cursor.com/marketplace/falconer",
+      "repositoryUrl": "https://github.com/FalconerAI/agent-integrations",
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/3bb705d2549bedae.png",
+      "mcpServerIds": [
+        "falconer"
+      ],
+      "skillSlugs": [],
+      "skillDetails": [],
+      "registryItemIds": [
+        "plugin-falconer",
+        "mcp-falconer"
+      ],
+      "triggers": [
+        "falconer"
+      ],
+      "publisher": "Falconer",
+      "isVerified": false,
+      "tags": []
+    },
+    {
       "id": "firebase",
       "cursorPluginId": "3777",
       "cursorVendor": "firebase",
@@ -6787,6 +7529,35 @@
       "tags": []
     },
     {
+      "id": "github",
+      "cursorPluginId": "48677658",
+      "cursorVendor": "github",
+      "name": "GitHub",
+      "description": "Connect to GitHub — repositories, issues, pull requests, code search, and Actions — via GitHub's official remote MCP server.",
+      "homepage": "https://github.com",
+      "docsUrl": "https://docs.github.com",
+      "marketplaceUrl": "https://cursor.com/marketplace/github",
+      "repositoryUrl": "https://github.com/cursor/plugins",
+      "brand": "github",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/0a4df817de8cf02a.png",
+      "mcpServerIds": [
+        "github"
+      ],
+      "skillSlugs": [],
+      "skillDetails": [],
+      "registryItemIds": [
+        "plugin-github",
+        "mcp-github"
+      ],
+      "triggers": [
+        "github",
+        "cursor"
+      ],
+      "publisher": "Cursor",
+      "isVerified": true,
+      "tags": []
+    },
+    {
       "id": "gitlab",
       "cursorPluginId": "1220",
       "cursorVendor": "gitlab",
@@ -6996,7 +7767,7 @@
       "cursorPluginId": "45893410",
       "cursorVendor": "gmail",
       "name": "Gmail",
-      "description": "Connect Cursor to Gmail via Google's remote MCP server — search, read, draft, label, and manage email.",
+      "description": "Connect to Gmail via Google's remote MCP server — search, read, draft, label, and manage email.",
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
       "marketplaceUrl": "https://cursor.com/marketplace/gmail",
@@ -7054,7 +7825,7 @@
       "cursorPluginId": "45893411",
       "cursorVendor": "google-calendar",
       "name": "Google Calendar",
-      "description": "Connect Cursor to Google Calendar via Google's remote MCP server — list calendars, search events, and create or update meetings.",
+      "description": "Connect to Google Calendar via Google's remote MCP server — list calendars, search events, and create or update meetings.",
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
       "marketplaceUrl": "https://cursor.com/marketplace/google-calendar",
@@ -7084,7 +7855,7 @@
       "cursorPluginId": "45893413",
       "cursorVendor": "google-drive",
       "name": "Google Drive",
-      "description": "Connect Cursor to Google Drive via Google's remote MCP server — search, read, create, share, and manage files.",
+      "description": "Connect to Google Drive via Google's remote MCP server — search, read, create, share, and manage files.",
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
       "marketplaceUrl": "https://cursor.com/marketplace/google-drive",
@@ -7613,6 +8384,41 @@
       "tags": []
     },
     {
+      "id": "here-now",
+      "cursorPluginId": "50420288",
+      "cursorVendor": "here.now",
+      "name": "here.now",
+      "description": "Publish websites, apps, and files to live URLs at {slug}.here.now or custom domains. Publish HTML apps, documents, images, PDFs, videos, and static files, with access control, custom domains, analytics, and private Drive storage for agent files.",
+      "homepage": "https://here.now",
+      "docsUrl": "https://github.com/heredotnow/skill",
+      "marketplaceUrl": "https://cursor.com/marketplace/here.now",
+      "repositoryUrl": "https://github.com/heredotnow/skill",
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/04ff15cda066533d.png",
+      "mcpServerIds": [],
+      "skillSlugs": [
+        "here-now"
+      ],
+      "skillDetails": [
+        {
+          "name": "here-now",
+          "description": "here.now lets agents publish websites and files to live URLs in seconds. Publish HTML, documents, images, PDFs, videos, and static files to live URLs at {slug}.here.now or custom domains. Use when asked to \"publish this\", \"host this\", \"deploy this\", \"share this on the web\", \"make",
+          "sourceUrl": null
+        }
+      ],
+      "registryItemIds": [
+        "plugin-here-now",
+        "skill-here-now"
+      ],
+      "triggers": [
+        "here-now",
+        "here.now"
+      ],
+      "publisher": "here.now",
+      "isVerified": false,
+      "tags": []
+    },
+    {
       "id": "hex",
       "cursorPluginId": "651",
       "cursorVendor": "hex",
@@ -7767,6 +8573,35 @@
       ],
       "publisher": "Higgsfield AI",
       "isVerified": false,
+      "tags": []
+    },
+    {
+      "id": "hubspot",
+      "cursorPluginId": "49339689",
+      "cursorVendor": "hubspot",
+      "name": "HubSpot",
+      "description": "Connect to HubSpot CRM — search and update contacts, companies, deals, and tickets; work with activities, conversations, and marketing emails — via HubSpot's official remote MCP server.",
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/hubspot",
+      "repositoryUrl": "https://github.com/cursor/plugins",
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/a6b0512146452eef.png",
+      "mcpServerIds": [
+        "hubspot"
+      ],
+      "skillSlugs": [],
+      "skillDetails": [],
+      "registryItemIds": [
+        "plugin-hubspot",
+        "mcp-hubspot"
+      ],
+      "triggers": [
+        "hubspot",
+        "cursor"
+      ],
+      "publisher": "Cursor",
+      "isVerified": true,
       "tags": []
     },
     {
@@ -7975,6 +8810,35 @@
       ],
       "publisher": "IcePanel",
       "isVerified": false,
+      "tags": []
+    },
+    {
+      "id": "intercom",
+      "cursorPluginId": "49339690",
+      "cursorVendor": "intercom",
+      "name": "Intercom",
+      "description": "Connect to Intercom — search conversations and contacts, look up companies, and manage Help Center articles — via Intercom's official remote MCP server.",
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/intercom",
+      "repositoryUrl": "https://github.com/cursor/plugins",
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/23326f68525470fd.png",
+      "mcpServerIds": [
+        "intercom"
+      ],
+      "skillSlugs": [],
+      "skillDetails": [],
+      "registryItemIds": [
+        "plugin-intercom",
+        "mcp-intercom"
+      ],
+      "triggers": [
+        "intercom",
+        "cursor"
+      ],
+      "publisher": "Cursor",
+      "isVerified": true,
       "tags": []
     },
     {
@@ -9410,6 +10274,92 @@
       "tags": []
     },
     {
+      "id": "meticulous",
+      "cursorPluginId": "47739056",
+      "cursorVendor": "meticulous",
+      "name": "Meticulous",
+      "description": "Agent skills for Meticulous visual regression testing — review test runs, investigate replays, debug diffs.",
+      "homepage": "https://meticulous.ai",
+      "docsUrl": "https://github.com/alwaysmeticulous/skills",
+      "marketplaceUrl": "https://cursor.com/marketplace/meticulous",
+      "repositoryUrl": "https://github.com/alwaysmeticulous/skills",
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/2b1511a924b492ca.png",
+      "mcpServerIds": [
+        "meticulous"
+      ],
+      "skillSlugs": [
+        "meticulous-cli",
+        "meticulous-cli-update",
+        "meticulous-iterative-dev",
+        "meticulous-review",
+        "meticulous-simulate-and-diff",
+        "meticulous-test",
+        "meticulous-use-session-data"
+      ],
+      "skillDetails": [
+        {
+          "name": "meticulous-cli",
+          "description": "Overview of the Meticulous CLI tool and its global options. Use when asking about the meticulous CLI in general, available commands, or global flags that apply to all commands.",
+          "sourceUrl": null
+        },
+        {
+          "name": "meticulous-cli-update",
+          "description": "Check whether the Meticulous CLI (@alwaysmeticulous/cli) is installed and up to date, and install/update it if not. Invoked at the start of every other Meticulous skill, since the CLI is under active development with frequent changes and improvements.",
+          "sourceUrl": null
+        },
+        {
+          "name": "meticulous-iterative-dev",
+          "description": "Iterative frontend development loop using Meticulous for per-step visual validation. Use when implementing a multi-step frontend change and want to catch visual regressions and unintended side effects at each step, before the final cloud test run.",
+          "sourceUrl": null
+        },
+        {
+          "name": "meticulous-review",
+          "description": "Analyze a completed Meticulous test run — fetch the diff summary, inspect representative screenshots, DOM diffs, and timelines. Resolves the test run from the local repo's current commit (the default), or from an explicit test-run ID or commit SHA. Use when asked to review Meticu",
+          "sourceUrl": null
+        },
+        {
+          "name": "meticulous-simulate-and-diff",
+          "description": "Run a Meticulous session simulation against a live URL and analyze the visual output — either by inspecting screenshots directly (quick-check mode) or by comparing pixel and HTML diffs against a base replay. Use when checking whether a code change has introduced visual regression",
+          "sourceUrl": null
+        },
+        {
+          "name": "meticulous-test",
+          "description": "Run a Meticulous test run after implementing a frontend change, then hand off to the `meticulous-review` skill to classify each visual change as intended or unintended. Uploads the build once — the same build can be re-triggered against different bases without rebuilding — and it",
+          "sourceUrl": null
+        },
+        {
+          "name": "meticulous-use-session-data",
+          "description": "Download and use structured Meticulous session data (user flows + network mocks) for testing code changes locally. Use when you need to understand what user interactions and API calls a test covers, or when you want network mocks for writing tests.",
+          "sourceUrl": null
+        }
+      ],
+      "registryItemIds": [
+        "plugin-meticulous",
+        "skill-meticulous-cli",
+        "skill-meticulous-cli-update",
+        "skill-meticulous-iterative-dev",
+        "skill-meticulous-review",
+        "skill-meticulous-simulate-and-diff",
+        "skill-meticulous-test",
+        "skill-meticulous-use-session-data",
+        "mcp-meticulous"
+      ],
+      "triggers": [
+        "meticulous",
+        "meticulous-cli",
+        "meticulous-cli-update",
+        "meticulous-iterative-dev",
+        "meticulous-review",
+        "meticulous-simulate-and-diff",
+        "meticulous-test",
+        "meticulous-use-session-data"
+      ],
+      "publisher": "Meticulous",
+      "isVerified": false,
+      "tags": []
+    },
+    {
       "id": "dataverse",
       "cursorPluginId": "26156871",
       "cursorVendor": "dataverse",
@@ -9868,6 +10818,86 @@
       ]
     },
     {
+      "id": "mongodb-atlas",
+      "cursorPluginId": "47235838",
+      "cursorVendor": "mongodb-atlas",
+      "name": "MongoDB Atlas",
+      "description": "Connect to MongoDB Atlas clusters only through the Atlas Managed MCP Server. Sign in with your Atlas account to explore data, manage collections, optimize queries, generate reliable code with MongoDB best practices, and manage Atlas resources such as clusters, projects, database users, and network access.\n\nIf you are running a different MongoDB deployment or want to run a local MongoDB MCP Server, install the MongoDB (Self-Managed MCP) plugin instead.",
+      "homepage": "https://mongodb.com",
+      "docsUrl": "https://github.com/mongodb/agent-skills",
+      "marketplaceUrl": "https://cursor.com/marketplace/mongodb-atlas",
+      "repositoryUrl": "https://github.com/mongodb/agent-skills",
+      "brand": "mongodb",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/604da887ef0a797c.png",
+      "mcpServerIds": [
+        "mongodb-atlas"
+      ],
+      "skillSlugs": [
+        "mongodb-atlas-stream-processing",
+        "mongodb-connection",
+        "mongodb-natural-language-querying",
+        "mongodb-query-optimizer",
+        "mongodb-schema-design",
+        "mongodb-search-and-ai"
+      ],
+      "skillDetails": [
+        {
+          "name": "mongodb-atlas-stream-processing",
+          "description": "Manages MongoDB Atlas Stream Processing (ASP) workflows. Handles workspace provisioning, data source/sink connections, processor lifecycle operations, debugging diagnostics, and tier sizing. Supports Kafka, Atlas clusters, S3, HTTPS, and Lambda integrations for streaming data wor",
+          "sourceUrl": "https://github.com/mongodb/agent-skills/blob/b4ea8150a020b9babaddc6c271c6dc177c06a83f/plugins/mongodb-atlas/skills/mongodb-atlas-stream-processing/SKILL.md"
+        },
+        {
+          "name": "mongodb-connection",
+          "description": "Optimize MongoDB client connection configuration (pools, timeouts, patterns) for any supported driver language. Use this skill when working/updating/reviewing on functions that instantiate or configure a MongoDB client (eg, when calling `connect()`), configuring connection pools,",
+          "sourceUrl": "https://github.com/mongodb/agent-skills/blob/b4ea8150a020b9babaddc6c271c6dc177c06a83f/plugins/mongodb-atlas/skills/mongodb-connection/SKILL.md"
+        },
+        {
+          "name": "mongodb-natural-language-querying",
+          "description": "Generate read-only MongoDB queries (find) or aggregation pipelines using natural language, with collection schema context and sample documents. Use this skill whenever the user asks to write, create, or generate MongoDB queries, wants to filter/query/aggregate data in MongoDB, as",
+          "sourceUrl": "https://github.com/mongodb/agent-skills/blob/b4ea8150a020b9babaddc6c271c6dc177c06a83f/plugins/mongodb-atlas/skills/mongodb-natural-language-querying/SKILL.md"
+        },
+        {
+          "name": "mongodb-query-optimizer",
+          "description": "Help with MongoDB query optimization and indexing. Use only when the user asks for optimization or performance: \"How do I optimize this query?\", \"How do I index this?\", \"Why is this query slow?\", \"Can you fix my slow queries?\", \"What are the slow queries on my cluster?\", etc. Do ",
+          "sourceUrl": "https://github.com/mongodb/agent-skills/blob/b4ea8150a020b9babaddc6c271c6dc177c06a83f/plugins/mongodb-atlas/skills/mongodb-query-optimizer/SKILL.md"
+        },
+        {
+          "name": "mongodb-schema-design",
+          "description": "MongoDB schema design patterns and anti-patterns. Use when designing data models, reviewing schemas, migrating from SQL, or troubleshooting performance issues caused by schema problems. Triggers on \"design schema\", \"embed vs reference\", \"MongoDB data model\", \"schema review\", \"unb",
+          "sourceUrl": "https://github.com/mongodb/agent-skills/blob/b4ea8150a020b9babaddc6c271c6dc177c06a83f/plugins/mongodb-atlas/skills/mongodb-schema-design/SKILL.md"
+        },
+        {
+          "name": "mongodb-search-and-ai",
+          "description": "Guides MongoDB users through implementing and optimizing Atlas Search (full-text), Vector Search (semantic), and Hybrid Search solutions. Use this skill when users need to build search functionality for text-based queries (autocomplete, fuzzy matching, faceted search), semantic s",
+          "sourceUrl": "https://github.com/mongodb/agent-skills/blob/b4ea8150a020b9babaddc6c271c6dc177c06a83f/plugins/mongodb-atlas/skills/mongodb-search-and-ai/SKILL.md"
+        }
+      ],
+      "registryItemIds": [
+        "plugin-mongodb-atlas",
+        "skill-mongodb-atlas-stream-processing",
+        "skill-mongodb-connection",
+        "skill-mongodb-natural-language-querying",
+        "skill-mongodb-query-optimizer",
+        "skill-mongodb-schema-design",
+        "skill-mongodb-search-and-ai",
+        "mcp-mongodb-atlas"
+      ],
+      "triggers": [
+        "mongodb-atlas",
+        "mongodb atlas",
+        "mongodb",
+        "mongodb-atlas-stream-processing",
+        "mongodb-connection",
+        "mongodb-natural-language-querying",
+        "mongodb-query-optimizer",
+        "mongodb-schema-design",
+        "mongodb-search-and-ai"
+      ],
+      "publisher": "MongoDB",
+      "isVerified": true,
+      "tags": []
+    },
+    {
       "id": "monk",
       "cursorPluginId": "13750661",
       "cursorVendor": "monk",
@@ -9889,7 +10919,7 @@
         {
           "name": "monk",
           "description": "Deploy and operate applications with Monk through the local monk-agent MCP companion. Use when the user wants to install Monk, sign in, analyze a project, deploy locally or to cloud, inspect workloads, provide secrets securely, or troubleshoot Monk-managed infrastructure. MVP hos",
-          "sourceUrl": "https://github.com/monk-io/monk-plugin/blob/30340446611b2acd286b33e4ac404bf0578fad17/skills/monk/SKILL.md"
+          "sourceUrl": "https://github.com/monk-io/monk-plugin/blob/2a4f9cf4b99ec1d6e18ff01d0f975aac0a84fce4/skills/monk/SKILL.md"
         }
       ],
       "registryItemIds": [
@@ -9904,6 +10934,35 @@
       ],
       "publisher": "Monk.io",
       "isVerified": false,
+      "tags": []
+    },
+    {
+      "id": "navan",
+      "cursorPluginId": "50103284",
+      "cursorVendor": "navan",
+      "name": "Navan",
+      "description": "Connect to Navan — query expenses, analyze travel bookings, check policies and approvals, and manage cards — via Navan's official remote MCP server.",
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/navan",
+      "repositoryUrl": "https://github.com/cursor/plugins",
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/7a63baef5991c429.webp",
+      "mcpServerIds": [
+        "navan"
+      ],
+      "skillSlugs": [],
+      "skillDetails": [],
+      "registryItemIds": [
+        "plugin-navan",
+        "mcp-navan"
+      ],
+      "triggers": [
+        "navan",
+        "cursor"
+      ],
+      "publisher": "Cursor",
+      "isVerified": true,
       "tags": []
     },
     {
@@ -10738,7 +11797,7 @@
       "cursorPluginId": "9333",
       "cursorVendor": "orchestrate",
       "name": "Orchestrate",
-      "description": "Fan a large task out across parallel Cursor cloud agents via the Cursor SDK: planners publish tasks, workers hand off back up, and a script reconciles the tree from disk and git.",
+      "description": "Fan a large task out across parallel cloud agents via the Cursor SDK: planners publish tasks, workers hand off back up, and a script reconciles the tree from disk and git.",
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
       "marketplaceUrl": "https://cursor.com/marketplace/orchestrate",
@@ -10753,7 +11812,7 @@
         {
           "name": "orchestrate",
           "description": "Use only when the user explicitly types `/orchestrate <goal>` to decompose a large task, spawn a tree of parallel cloud-agent workers/subplanners/verifiers via the Cursor SDK, and collect structured handoffs; do not invoke autonomously.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/orchestrate/skills/orchestrate/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/orchestrate/skills/orchestrate/SKILL.md"
         }
       ],
       "registryItemIds": [
@@ -11256,6 +12315,35 @@
       "tags": [
         "planetscale"
       ]
+    },
+    {
+      "id": "playwright",
+      "cursorPluginId": "48677659",
+      "cursorVendor": "playwright",
+      "name": "Playwright",
+      "description": "Drive a real browser for agents — navigate pages, click and fill elements, take snapshots and screenshots, and run end-to-end checks — via Microsoft's Playwright MCP server.",
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/playwright",
+      "repositoryUrl": "https://github.com/cursor/plugins",
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/9ec467deab70293d.png",
+      "mcpServerIds": [
+        "playwright"
+      ],
+      "skillSlugs": [],
+      "skillDetails": [],
+      "registryItemIds": [
+        "plugin-playwright",
+        "mcp-playwright"
+      ],
+      "triggers": [
+        "playwright",
+        "cursor"
+      ],
+      "publisher": "Cursor",
+      "isVerified": true,
+      "tags": []
     },
     {
       "id": "port",
@@ -11962,7 +13050,7 @@
       "cursorPluginId": "6307",
       "cursorVendor": "pr-review-canvas",
       "name": "PR Review Canvas",
-      "description": "Render PR diffs as interactive Cursor Canvases organized for reviewer comprehension — groups changes by importance, separates boilerplate from core logic, and highlights tricky or unexpected code.",
+      "description": "Render PR diffs as interactive canvases organized for reviewer comprehension — groups changes by importance, separates boilerplate from core logic, and highlights tricky or unexpected code.",
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
       "marketplaceUrl": "https://cursor.com/marketplace/pr-review-canvas",
@@ -11977,7 +13065,7 @@
         {
           "name": "pr-review-canvas",
           "description": "Render a PR diff review as a Cursor Canvas that groups changes by reviewer importance, separates boilerplate from core logic, and highlights tricky or unexpected code. Use when reviewing a pull request, summarizing a diff for review, or when the user asks for a PR review canvas, ",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pr-review-canvas/skills/pr-review-canvas/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pr-review-canvas/skills/pr-review-canvas/SKILL.md"
         }
       ],
       "registryItemIds": [
@@ -12350,6 +13438,35 @@
       ]
     },
     {
+      "id": "profound",
+      "cursorPluginId": "51168001",
+      "cursorVendor": "profound",
+      "name": "Profound",
+      "description": "Connect to Profound — retrieve AI visibility, sentiment, and citation reports, access agent analytics, and build or run Profound Agents — via Profound's official hosted MCP server.",
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/profound",
+      "repositoryUrl": "https://github.com/cursor/plugins",
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e8a57addf20c4c9f.png",
+      "mcpServerIds": [
+        "profound"
+      ],
+      "skillSlugs": [],
+      "skillDetails": [],
+      "registryItemIds": [
+        "plugin-profound",
+        "mcp-profound"
+      ],
+      "triggers": [
+        "profound",
+        "cursor"
+      ],
+      "publisher": "Cursor",
+      "isVerified": true,
+      "tags": []
+    },
+    {
       "id": "pstack",
       "cursorPluginId": "9717366",
       "cursorVendor": "pstack",
@@ -12412,222 +13529,222 @@
         {
           "name": "architect",
           "description": "Sketch types, signatures, and module structure before code, then stay in the loop while implementation fills in. Use for /architect, 'architect this', 'design this', or non-trivial work where jumping to code would lock in the wrong shape.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/architect/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/architect/SKILL.md"
         },
         {
           "name": "arena",
           "description": "Spawn N parallel candidates at the same task, pick a base, graft the strongest parts of the losers into it. Use for /arena, 'arena this', 'throw it in the arena', or when one attempt at a non-trivial artifact would lock in the wrong shape.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/arena/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/arena/SKILL.md"
         },
         {
           "name": "automate-me",
           "description": "Use for \"automate me\", \"create/update/refresh my -mode skill\", \"turn/capture my preferences or working style into a skill\", or wanting agents to follow how the user works. Drafts or revises a personal -mode skill via create-skill + unslop, optionally pulling fresh evidence from r",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/automate-me/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/automate-me/SKILL.md"
         },
         {
           "name": "blast-radius",
           "description": "Find what a change could break somewhere else before it ships, beyond the diff, and prove the one fact it's safe because of by running real code instead of writing it up. Use for 'blast radius of X', 'what could this break', or reviewing a small diff you don't trust.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/blast-radius/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/blast-radius/SKILL.md"
         },
         {
           "name": "bro",
           "description": "Restate the last message in plain human language, with no jargon.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/bro/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/bro/SKILL.md"
         },
         {
           "name": "create-verification-skill",
           "description": "Generate a project-local verification skill that drives your app the way a user does — any language, framework, or platform. Use for /create-verification-skill, \"make a control skill for this repo\", or when a project has no scripted way to prove UI/CLI/service behavior.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/create-verification-skill/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/create-verification-skill/SKILL.md"
         },
         {
           "name": "figure-it-out",
           "description": "Design an auditable playbook when no narrower one fits: a large migration, an ambitious multi-part change, or work a human reviews after stepping away. Scales rigor to the task, runs a hypothesis loop, and logs decisions via show-me-your-work. Use for /figure-it-out, 'figure it o",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/figure-it-out/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/figure-it-out/SKILL.md"
         },
         {
           "name": "how",
           "description": "Use for \"how does X work\", code walkthroughs before changing something, and placement / ownership / layering questions (\"where should this live\", \"which package owns this\", \"is this the right layer\"). Explains subsystem architecture, runtime flow, onboarding mental models. Can cr",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/how/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/how/SKILL.md"
         },
         {
           "name": "interrogate",
           "description": "Use for \"interrogate\", \"adversarial review\", \"multi-model review\", \"challenge this\", \"stress test this code\", \"find blind spots\", or \"tear this apart\". Multiple LLM reviewers challenge changes from independent angles.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/interrogate/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/interrogate/SKILL.md"
         },
         {
           "name": "maintain-verification-skill",
           "description": "Periodic pass that keeps a project's verification skill and feature map honest: parallel source readers per feature, one live session driving every feature, at most one PR of proven corrections. Use for /maintain-verification-skill or \"audit the verify skill\".",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/maintain-verification-skill/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/maintain-verification-skill/SKILL.md"
         },
         {
           "name": "no-comments",
           "description": "Spawn Comment Sicko, fix accepted findings, and offer encodings for claimed constraints.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/no-comments/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/no-comments/SKILL.md"
         },
         {
           "name": "poteto-mode",
           "description": "poteto's agent style for concise, detailed responses, deliberate subagents, unslopped prose, simple code, and verified work. Use for poteto, /poteto-mode, or requests to work in this style.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/poteto-mode/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/poteto-mode/SKILL.md"
         },
         {
           "name": "principle-boundary-discipline",
           "description": "Apply when wiring validation, error handling, or framework adapters. Concentrate guards at system boundaries (CLI, config, network, external APIs); trust internal types and keep business logic in pure functions.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-boundary-discipline/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/principle-boundary-discipline/SKILL.md"
         },
         {
           "name": "principle-build-the-lever",
           "description": "Apply to any non-trivial work, not just bulk work: edits, migrations, analyses, checks. Build the tool that does it or proves it (codemod, script, generator, or a skill your subagents follow) instead of working by hand. The tool is the artifact a reviewer can rerun.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-build-the-lever/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/principle-build-the-lever/SKILL.md"
         },
         {
           "name": "principle-encode-lessons-in-structure",
           "description": "Apply when you catch yourself writing the same instruction a second time, or notice a recurring correction. Encode the rule as a lint, metadata flag, runtime check, or script instead of more text.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-encode-lessons-in-structure/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/principle-encode-lessons-in-structure/SKILL.md"
         },
         {
           "name": "principle-exhaust-the-design-space",
           "description": "Apply when facing a novel UI interaction or architectural decision with no precedent in the codebase. Build 2-3 competing prototypes and compare side by side before committing.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-exhaust-the-design-space/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/principle-exhaust-the-design-space/SKILL.md"
         },
         {
           "name": "principle-experience-first",
           "description": "Apply when product, UX, or feature-scope tradeoffs come up. Choose user delight over implementation convenience; ship fewer polished features over more rough ones.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-experience-first/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/principle-experience-first/SKILL.md"
         },
         {
           "name": "principle-fix-root-causes",
           "description": "Apply when debugging. Trace each symptom to its root cause and fix it there; reproduce first, ask why until you reach it, resist nil-check guards that silence crashes.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-fix-root-causes/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/principle-fix-root-causes/SKILL.md"
         },
         {
           "name": "principle-foundational-thinking",
           "description": "Apply before writing logic: choosing core types and data structures, sequencing scaffold-vs-feature work, asking what concurrent actors share. Get the data structures right so downstream code becomes obvious.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-foundational-thinking/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/principle-foundational-thinking/SKILL.md"
         },
         {
           "name": "principle-guard-the-context-window",
           "description": "Apply when context is filling up: large outputs, long files, repeated reads, fan-out planning. Route bulk to subagents; keep summaries in the main thread, not raw payloads.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-guard-the-context-window/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/principle-guard-the-context-window/SKILL.md"
         },
         {
           "name": "principle-laziness-protocol",
           "description": "Apply when refactoring, evaluating diff size, or tempted to add abstractions, layers, or signal threading. Bias toward deletion and the smallest change that solves the problem.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-laziness-protocol/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/principle-laziness-protocol/SKILL.md"
         },
         {
           "name": "principle-make-operations-idempotent",
           "description": "Apply when designing commands, lifecycle steps, or processing loops that run amid crashes, restarts, and retries. Converge to the same end state regardless of partial prior runs.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-make-operations-idempotent/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/principle-make-operations-idempotent/SKILL.md"
         },
         {
           "name": "principle-migrate-callers-then-delete-legacy-apis",
           "description": "Apply when introducing a new internal API while old callers still exist. Migrate callers and delete the old API in the same wave instead of preserving compatibility layers.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-migrate-callers-then-delete-legacy-apis/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/principle-migrate-callers-then-delete-legacy-apis/SKILL.md"
         },
         {
           "name": "principle-minimize-reader-load",
           "description": "Apply when reviewing or shaping code that's hard to trace. Count layers between question and answer, and hidden state in the reader's head; collapse one-caller wrappers and shrink mutable scope.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-minimize-reader-load/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/principle-minimize-reader-load/SKILL.md"
         },
         {
           "name": "principle-model-the-domain",
           "description": "Apply when writing stateful logic, or when code branches a lot or repeats a shape assumption across files. Encode the domain in a structure instead of scattered conditionals.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-model-the-domain/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/principle-model-the-domain/SKILL.md"
         },
         {
           "name": "principle-never-block-on-the-human",
           "description": "Apply when tempted to ask 'should I do X?' on reversible work. Proceed, present the result, let the human course-correct after the fact; reserve confirmation for irreversible actions.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-never-block-on-the-human/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/principle-never-block-on-the-human/SKILL.md"
         },
         {
           "name": "principle-outcome-oriented-execution",
           "description": "Apply during planned rewrites and migrations with explicit phase boundaries. Converge on the target architecture; don't preserve smooth intermediate states with throwaway compatibility code.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-outcome-oriented-execution/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/principle-outcome-oriented-execution/SKILL.md"
         },
         {
           "name": "principle-prove-it-works",
           "description": "Apply after completing a task, before declaring done. Verify against the real artifact (run the feature, read the actual value, inspect the diff), not a proxy, self-report, or 'it compiles.'",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-prove-it-works/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/principle-prove-it-works/SKILL.md"
         },
         {
           "name": "principle-redesign-from-first-principles",
           "description": "Apply when integrating a new requirement into an existing design. Redesign as if the requirement had been a foundational assumption from day one, instead of bolting it on.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-redesign-from-first-principles/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/principle-redesign-from-first-principles/SKILL.md"
         },
         {
           "name": "principle-separate-before-serializing-shared-state",
           "description": "Apply when concurrent actors might write to the same file, branch, key, or state object. Eliminate the sharing first; serialize structurally only when one shared writer is a real invariant.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-separate-before-serializing-shared-state/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/principle-separate-before-serializing-shared-state/SKILL.md"
         },
         {
           "name": "principle-sequence-verifiable-units",
           "description": "Apply to multi-step work (sweeps, migrations, runs of similar edits) and to how you stack commits and PRs. Break work into small units that each end in a verifiable state, check each before the next, and order delivery so the sequence proves itself to a reviewer.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-sequence-verifiable-units/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/principle-sequence-verifiable-units/SKILL.md"
         },
         {
           "name": "principle-subtract-before-you-add",
           "description": "Apply when sequencing an addition, refactor, or rewrite. Remove dead weight, redundant validators, and stub references first, then build on the simpler base.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-subtract-before-you-add/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/principle-subtract-before-you-add/SKILL.md"
         },
         {
           "name": "principle-type-system-discipline",
           "description": "Apply when designing types, reviewing a function signature, or writing code in any statically-typed language. Make illegal states unrepresentable, brand semantic primitives, parse external data at boundaries, refuse to lie to the compiler, exhaust variants, derive from authoritat",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/principle-type-system-discipline/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/principle-type-system-discipline/SKILL.md"
         },
         {
           "name": "recall",
           "description": "Reconstruct your recent working context from your own chat history, live state, and the shared record (user reports, prior fixes, incidents), then hand back a tight current-state brief. Use for 'recall my work on X', 'catch me up', 'what have I been working on', 'where did I leav",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/recall/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/recall/SKILL.md"
         },
         {
           "name": "reflect",
           "description": "Spawn three parallel review subagents over the active transcript, surface learnings, and route each to a concrete edit on an existing skill. Use when the user says reflect.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/reflect/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/reflect/SKILL.md"
         },
         {
           "name": "setup-pstack",
           "description": "Configure which models pstack uses per role. Detects your available models and writes an always-applied rule that overrides the skill defaults. Use for /setup-pstack, \"configure pstack models\", or changing pstack's model choices.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/setup-pstack/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/setup-pstack/SKILL.md"
         },
         {
           "name": "show-me-your-work",
           "description": "Keep a reviewable decision trail for long-running or unattended work: a TSV log with one row per decision (what, why, evidence, result). Local by default; commit it when a reviewer needs the trail to trust the result. Use for /show-me-your-work, autonomous or multi-phase runs, or",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/show-me-your-work/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/show-me-your-work/SKILL.md"
         },
         {
           "name": "swarm",
           "description": "Fan out N parallel workers, drain them, and return one report. Use for /swarm, 'swarm this', or parallel coverage, races, gauntlets, and exploration.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/swarm/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/swarm/SKILL.md"
         },
         {
           "name": "tdd",
           "description": "Use only when the user explicitly asks for TDD, a failing test, or a regression test, OR when the bug has an obvious cheap local test target. Skip when the test path is unclear, expensive, integration-heavy, or not requested.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/tdd/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/tdd/SKILL.md"
         },
         {
           "name": "teach",
           "description": "Explain a body of work plainly so a person actually understands it. Runs the `how` and `why` skills and weaves what they find into one clear explanation. Use for 'teach me this', 'help me really understand X', 'explain this change or subsystem to me'.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/teach/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/teach/SKILL.md"
         },
         {
           "name": "technical-writing",
           "description": "Layered technical-writing standard: Diátaxis structure, Google developer style sentences, STE instruction rules, Global English syntax. Use for /technical-writing or when writing or reviewing docs, RFCs, readmes, PR descriptions, or commit messages.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/technical-writing/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/technical-writing/SKILL.md"
         },
         {
           "name": "typescript-best-practices",
           "description": "TypeScript best practices. Use when reading or editing any .ts or .tsx file.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/typescript-best-practices/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/typescript-best-practices/SKILL.md"
         },
         {
           "name": "unslop",
           "description": "Cut AI tells from any writing. Must always apply.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/unslop/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/unslop/SKILL.md"
         },
         {
           "name": "why",
           "description": "Use for 'why does X work this way', 'why we picked Y', design rationale, regressions, postmortems, or data-backed thresholds. Discovers available MCPs and queries each evidence category (source control, issue tracker, long-form docs, real-time chat, infrastructure observability, ",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/pstack/skills/why/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/pstack/skills/why/SKILL.md"
         }
       ],
       "registryItemIds": [
@@ -13073,6 +14190,129 @@
       ]
     },
     {
+      "id": "remotion",
+      "cursorPluginId": "49339676",
+      "cursorVendor": "remotion",
+      "name": "Remotion",
+      "description": "Remotion video creation skills — best practices, animations, audio, captions, 3D, and more for building programmatic videos with React.",
+      "homepage": "https://www.remotion.dev/",
+      "docsUrl": "https://github.com/remotion-dev/cursor-plugin",
+      "marketplaceUrl": "https://cursor.com/marketplace/remotion",
+      "repositoryUrl": "https://github.com/remotion-dev/cursor-plugin",
+      "brand": null,
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/remotion-logo-1-2hBxtzE9IM2fOcllkO88p47u7rwWVL.png",
+      "mcpServerIds": [],
+      "skillSlugs": [
+        "remotion-best-practices",
+        "remotion-captions",
+        "remotion-create",
+        "remotion-docs",
+        "remotion-interactivity",
+        "remotion-maps",
+        "remotion-markup",
+        "remotion-multimedia",
+        "remotion-render",
+        "remotion-saas",
+        "remotion-studio",
+        "remotion-upgrade"
+      ],
+      "skillDetails": [
+        {
+          "name": "remotion-best-practices",
+          "description": "Router for all Remotion skills",
+          "sourceUrl": "https://github.com/remotion-dev/cursor-plugin/blob/dfb5a2cb80e398e5c62d85461522a9eacae4b404/skills/remotion-best-practices/SKILL.md"
+        },
+        {
+          "name": "remotion-captions",
+          "description": "Transcribing, displaying and animating captions",
+          "sourceUrl": "https://github.com/remotion-dev/cursor-plugin/blob/dfb5a2cb80e398e5c62d85461522a9eacae4b404/skills/remotion-captions/SKILL.md"
+        },
+        {
+          "name": "remotion-create",
+          "description": "Create a new Remotion video",
+          "sourceUrl": "https://github.com/remotion-dev/cursor-plugin/blob/dfb5a2cb80e398e5c62d85461522a9eacae4b404/skills/remotion-create/SKILL.md"
+        },
+        {
+          "name": "remotion-docs",
+          "description": "Search Remotion documentation",
+          "sourceUrl": "https://github.com/remotion-dev/cursor-plugin/blob/dfb5a2cb80e398e5c62d85461522a9eacae4b404/skills/remotion-docs/SKILL.md"
+        },
+        {
+          "name": "remotion-interactivity",
+          "description": "Structure Remotion markup for interactivity",
+          "sourceUrl": "https://github.com/remotion-dev/cursor-plugin/blob/dfb5a2cb80e398e5c62d85461522a9eacae4b404/skills/remotion-interactivity/SKILL.md"
+        },
+        {
+          "name": "remotion-maps",
+          "description": "Remotion Map animation knowledge",
+          "sourceUrl": "https://github.com/remotion-dev/cursor-plugin/blob/dfb5a2cb80e398e5c62d85461522a9eacae4b404/skills/remotion-maps/SKILL.md"
+        },
+        {
+          "name": "remotion-markup",
+          "description": "Content, animation and effects best practices",
+          "sourceUrl": "https://github.com/remotion-dev/cursor-plugin/blob/dfb5a2cb80e398e5c62d85461522a9eacae4b404/skills/remotion-markup/SKILL.md"
+        },
+        {
+          "name": "remotion-multimedia",
+          "description": "Interacting with Mediabunny",
+          "sourceUrl": "https://github.com/remotion-dev/cursor-plugin/blob/dfb5a2cb80e398e5c62d85461522a9eacae4b404/skills/remotion-multimedia/SKILL.md"
+        },
+        {
+          "name": "remotion-render",
+          "description": "Export a Remotion video",
+          "sourceUrl": "https://github.com/remotion-dev/cursor-plugin/blob/dfb5a2cb80e398e5c62d85461522a9eacae4b404/skills/remotion-render/SKILL.md"
+        },
+        {
+          "name": "remotion-saas",
+          "description": "Build an app with Remotion",
+          "sourceUrl": "https://github.com/remotion-dev/cursor-plugin/blob/dfb5a2cb80e398e5c62d85461522a9eacae4b404/skills/remotion-saas/SKILL.md"
+        },
+        {
+          "name": "remotion-studio",
+          "description": "Preview a Remotion video",
+          "sourceUrl": "https://github.com/remotion-dev/cursor-plugin/blob/dfb5a2cb80e398e5c62d85461522a9eacae4b404/skills/remotion-studio/SKILL.md"
+        },
+        {
+          "name": "remotion-upgrade",
+          "description": "Upgrade Remotion, and related packages",
+          "sourceUrl": "https://github.com/remotion-dev/cursor-plugin/blob/dfb5a2cb80e398e5c62d85461522a9eacae4b404/skills/remotion-upgrade/SKILL.md"
+        }
+      ],
+      "registryItemIds": [
+        "plugin-remotion",
+        "skill-remotion-best-practices",
+        "skill-remotion-captions",
+        "skill-remotion-create",
+        "skill-remotion-docs",
+        "skill-remotion-interactivity",
+        "skill-remotion-maps",
+        "skill-remotion-markup",
+        "skill-remotion-multimedia",
+        "skill-remotion-render",
+        "skill-remotion-saas",
+        "skill-remotion-studio",
+        "skill-remotion-upgrade"
+      ],
+      "triggers": [
+        "remotion",
+        "remotion-best-practices",
+        "remotion-captions",
+        "remotion-create",
+        "remotion-docs",
+        "remotion-interactivity",
+        "remotion-maps",
+        "remotion-markup",
+        "remotion-multimedia",
+        "remotion-render",
+        "remotion-saas",
+        "remotion-studio",
+        "remotion-upgrade"
+      ],
+      "publisher": "Remotion",
+      "isVerified": false,
+      "tags": []
+    },
+    {
       "id": "render",
       "cursorPluginId": "1295",
       "cursorVendor": "render",
@@ -13281,7 +14521,7 @@
       "marketplaceUrl": "https://cursor.com/marketplace/resend",
       "repositoryUrl": "https://github.com/resend/resend-skills",
       "brand": null,
-      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/resend-logo.png",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/fade7f2616cccc52.png",
       "mcpServerIds": [
         "resend"
       ],
@@ -13296,27 +14536,27 @@
         {
           "name": "agent-email-inbox",
           "description": "Use when building any system where email content triggers actions — AI agent inboxes, automated support handlers, email-to-task pipelines, or any workflow processing untrusted inbound email. Always use this skill when the user wants to receive emails and act on them programmatica",
-          "sourceUrl": "https://github.com/resend/resend-skills/blob/2caefffaf938c3c4ed539d5b29e3cd2bd2555bbe/skills/agent-email-inbox/SKILL.md"
+          "sourceUrl": "https://github.com/resend/resend-skills/blob/4b1558df96241f0a7eb416a1ce262650f2a5f471/skills/agent-email-inbox/SKILL.md"
         },
         {
           "name": "email-best-practices",
           "description": "Use when building email features, emails going to spam, high bounce rates, setting up SPF/DKIM/DMARC authentication, implementing email capture, ensuring compliance (CAN-SPAM, GDPR, CASL), handling webhooks, retry logic, making emails accessible (alt text, headings, contrast, scr",
-          "sourceUrl": "https://github.com/resend/resend-skills/blob/2caefffaf938c3c4ed539d5b29e3cd2bd2555bbe/skills/email-best-practices/SKILL.md"
+          "sourceUrl": "https://github.com/resend/resend-skills/blob/4b1558df96241f0a7eb416a1ce262650f2a5f471/skills/email-best-practices/SKILL.md"
         },
         {
           "name": "react-email",
           "description": "Use when building HTML email templates with React components, adding a visual email editor to an application using the React Email visual editor, rendering emails to HTML, or sending emails with Resend. Covers welcome emails, password resets, notifications, order confirmations, n",
-          "sourceUrl": "https://github.com/resend/resend-skills/blob/2caefffaf938c3c4ed539d5b29e3cd2bd2555bbe/skills/react-email/SKILL.md"
+          "sourceUrl": "https://github.com/resend/resend-skills/blob/4b1558df96241f0a7eb416a1ce262650f2a5f471/skills/react-email/SKILL.md"
         },
         {
           "name": "resend",
           "description": "Use when working with the Resend email API — sending transactional emails (single or batch), receiving inbound emails via webhooks, managing email templates, tracking delivery events, managing domains, contacts, broadcasts, webhooks, API keys, automations, events, viewing API req",
-          "sourceUrl": "https://github.com/resend/resend-skills/blob/2caefffaf938c3c4ed539d5b29e3cd2bd2555bbe/skills/resend/SKILL.md"
+          "sourceUrl": "https://github.com/resend/resend-skills/blob/4b1558df96241f0a7eb416a1ce262650f2a5f471/skills/resend/SKILL.md"
         },
         {
           "name": "resend-cli",
           "description": "Operate the Resend platform from the terminal — send emails (including React Email .tsx templates via --react-email), manage domains, contacts, broadcasts, templates, webhooks, API keys, logs, automations, and events via the `resend` CLI. Use when the user wants to run Resend com",
-          "sourceUrl": "https://github.com/resend/resend-skills/blob/2caefffaf938c3c4ed539d5b29e3cd2bd2555bbe/skills/resend-cli/SKILL.md"
+          "sourceUrl": "https://github.com/resend/resend-skills/blob/4b1558df96241f0a7eb416a1ce262650f2a5f471/skills/resend-cli/SKILL.md"
         }
       ],
       "registryItemIds": [
@@ -14141,7 +15381,7 @@
       "cursorPluginId": "47725205",
       "cursorVendor": "salesforce",
       "name": "Salesforce",
-      "description": "Connect Cursor to Salesforce via Salesforce Hosted MCP — query, search, create, update, and traverse records in your org.",
+      "description": "Connect to Salesforce via Salesforce Hosted MCP — query, search, create, update, and traverse records in your org.",
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
       "marketplaceUrl": "https://cursor.com/marketplace/salesforce",
@@ -15267,7 +16507,7 @@
       "marketplaceUrl": "https://cursor.com/marketplace/sinch-cursor-plugin",
       "repositoryUrl": "https://github.com/sinch/sinch-plugins",
       "brand": null,
-      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/sinch-logo.png",
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/sinch-icon-1-tSuSSFunmTBK3Kwz1iMYPEWwc6buKI.png",
       "mcpServerIds": [
         "sinch"
       ],
@@ -15829,6 +17069,7 @@
       ],
       "skillSlugs": [
         "connect-recommend",
+        "stripe-apps",
         "stripe-best-practices",
         "stripe-directory",
         "stripe-docs",
@@ -15839,37 +17080,43 @@
         {
           "name": "connect-recommend",
           "description": "Use this skill when the user asks about Stripe Connect configuration, charge patterns, Dashboard access, or how to get started with Connect, is building a marketplace, platform, multi-vendor store, gig platform, or subscription platform, needs to pay out sellers, vendors, or prov",
-          "sourceUrl": "https://github.com/stripe/ai/blob/84c364c683c58ba8dfbc003d812e6a35f4c97b47/providers/cursor/plugin/skills/connect-recommend/SKILL.md"
+          "sourceUrl": "https://github.com/stripe/ai/blob/1953b6cce7344d880a054c42b8dd21ca3e50ebd5/providers/cursor/plugin/skills/connect-recommend/SKILL.md"
+        },
+        {
+          "name": "stripe-apps",
+          "description": "Use when building, modifying, or reviewing a Stripe App — or when the user describes something that implies one (e.g. \"add a panel to the customer page\", \"customize my Stripe Dashboard\", \"react to Stripe events from my app\", \"connect my service to Stripe without sharing API keys\"",
+          "sourceUrl": "https://github.com/stripe/ai/blob/1953b6cce7344d880a054c42b8dd21ca3e50ebd5/providers/cursor/plugin/skills/stripe-apps/SKILL.md"
         },
         {
           "name": "stripe-best-practices",
           "description": "Guides Stripe integration decisions across API selection (Checkout Sessions vs PaymentIntents), Connect platform setup (Accounts v2, controller properties), billing/subscriptions, tax and registrations (Stripe Tax, automatic_tax, product tax codes), Treasury financial accounts, i",
-          "sourceUrl": "https://github.com/stripe/ai/blob/84c364c683c58ba8dfbc003d812e6a35f4c97b47/providers/cursor/plugin/skills/stripe-best-practices/SKILL.md"
+          "sourceUrl": "https://github.com/stripe/ai/blob/1953b6cce7344d880a054c42b8dd21ca3e50ebd5/providers/cursor/plugin/skills/stripe-best-practices/SKILL.md"
         },
         {
           "name": "stripe-directory",
           "description": "Use when the user wants to find businesses, software, service providers, or partners for a specific industry, workflow, pain point, capability, or job to be done. Also use when the agent needs to programmatically purchase or consume a service. Use Stripe Directory to build a shor",
-          "sourceUrl": "https://github.com/stripe/ai/blob/84c364c683c58ba8dfbc003d812e6a35f4c97b47/providers/cursor/plugin/skills/stripe-directory/SKILL.md"
+          "sourceUrl": "https://github.com/stripe/ai/blob/1953b6cce7344d880a054c42b8dd21ca3e50ebd5/providers/cursor/plugin/skills/stripe-directory/SKILL.md"
         },
         {
           "name": "stripe-docs",
           "description": "Use when the user or agent needs to read, search, or look up Stripe documentation or API reference. Prefer this over curl or WebFetch for any docs.stripe.com content.",
-          "sourceUrl": "https://github.com/stripe/ai/blob/84c364c683c58ba8dfbc003d812e6a35f4c97b47/providers/cursor/plugin/skills/stripe-docs/SKILL.md"
+          "sourceUrl": "https://github.com/stripe/ai/blob/1953b6cce7344d880a054c42b8dd21ca3e50ebd5/providers/cursor/plugin/skills/stripe-docs/SKILL.md"
         },
         {
           "name": "stripe-projects",
           "description": "Use when the user wants to provision infrastructure or third-party services using Stripe Projects. Triggers: \"I need a database\", \"set up auth\", \"add caching\", \"give me a Postgres\", \"provision Redis\", \"I need hosting\", \"add a vector DB\", \"get me an API key for X\", \"get credential",
-          "sourceUrl": "https://github.com/stripe/ai/blob/84c364c683c58ba8dfbc003d812e6a35f4c97b47/providers/cursor/plugin/skills/stripe-projects/SKILL.md"
+          "sourceUrl": "https://github.com/stripe/ai/blob/1953b6cce7344d880a054c42b8dd21ca3e50ebd5/providers/cursor/plugin/skills/stripe-projects/SKILL.md"
         },
         {
           "name": "upgrade-stripe",
           "description": "Guide for upgrading Stripe API versions and SDKs",
-          "sourceUrl": "https://github.com/stripe/ai/blob/84c364c683c58ba8dfbc003d812e6a35f4c97b47/providers/cursor/plugin/skills/upgrade-stripe/SKILL.md"
+          "sourceUrl": "https://github.com/stripe/ai/blob/1953b6cce7344d880a054c42b8dd21ca3e50ebd5/providers/cursor/plugin/skills/upgrade-stripe/SKILL.md"
         }
       ],
       "registryItemIds": [
         "plugin-stripe",
         "skill-connect-recommend",
+        "skill-stripe-apps",
         "skill-stripe-best-practices",
         "skill-stripe-directory",
         "skill-stripe-docs",
@@ -15880,6 +17127,7 @@
       "triggers": [
         "stripe",
         "connect-recommend",
+        "stripe-apps",
         "stripe-best-practices",
         "stripe-directory",
         "stripe-docs",
@@ -15891,6 +17139,54 @@
       "tags": [
         "stripe"
       ]
+    },
+    {
+      "id": "link",
+      "cursorPluginId": "47709840",
+      "cursorVendor": "link",
+      "name": "Stripe Link",
+      "description": "Get secure, one-time-use payment credentials from a Link wallet so agents can complete purchases on your behalf.",
+      "homepage": "https://stripe.com/",
+      "docsUrl": "https://github.com/stripe/link-cli",
+      "marketplaceUrl": "https://cursor.com/marketplace/link",
+      "repositoryUrl": "https://github.com/stripe/link-cli",
+      "brand": "stripe",
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/stripe-parallelogram.png",
+      "mcpServerIds": [
+        "link"
+      ],
+      "skillSlugs": [
+        "create-payment-credential",
+        "financial-insights"
+      ],
+      "skillDetails": [
+        {
+          "name": "create-payment-credential",
+          "description": "Gets secure, one-time-use payment credentials (cards, tokens) from a Link wallet so agents can complete purchases on behalf of users. Use when the user says \"get me a card\", \"buy something\", \"pay for X\", \"make a purchase\", \"I need to pay\", \"complete checkout\", or asks to transact",
+          "sourceUrl": "https://github.com/stripe/link-cli/blob/1675a70648f9dc0865cc5aad10fba0f6453f0a7a/plugins/link/skills/create-payment-credential/SKILL.md"
+        },
+        {
+          "name": "financial-insights",
+          "description": "Reads a user's Link financial data — transactions, balances, and wallet sources — so agents can answer questions about spending and available source capabilities. Use when the user says \"check my balance\", \"how much did I spend\", \"show my transactions\", \"what accounts are connect",
+          "sourceUrl": "https://github.com/stripe/link-cli/blob/1675a70648f9dc0865cc5aad10fba0f6453f0a7a/plugins/link/skills/financial-insights/SKILL.md"
+        }
+      ],
+      "registryItemIds": [
+        "plugin-link",
+        "skill-create-payment-credential",
+        "skill-financial-insights",
+        "mcp-link"
+      ],
+      "triggers": [
+        "link",
+        "stripe link",
+        "stripe",
+        "create-payment-credential",
+        "financial-insights"
+      ],
+      "publisher": "Stripe",
+      "isVerified": true,
+      "tags": []
     },
     {
       "id": "subtext-verify",
@@ -16466,12 +17762,12 @@
         {
           "name": "temporal-cloud-setup",
           "description": "Set up Temporal Cloud and run a sample Workflow on it for the user, doing the work end to end. Use when the user wants to set up Temporal Cloud, get started on Temporal Cloud, install the unified Temporal CLI (prerelease cloud-cli), create a Cloud namespace or API key, clone a mo",
-          "sourceUrl": "https://github.com/temporalio/cursor-temporal-plugin/blob/3633125d161b2119c3c9d5a35041efba2e0d8d06/skills/temporal-cloud-setup/SKILL.md"
+          "sourceUrl": "https://github.com/temporalio/cursor-temporal-plugin/blob/364cb74c242c539a946092e38b9d1a0909ebbb9a/skills/temporal-cloud-setup/SKILL.md"
         },
         {
           "name": "temporal-developer",
           "description": "Develop, debug, and manage Temporal applications across Python, TypeScript, Go, Java, .NET and Ruby. Use when the user is building workflows, activities, or workers with a Temporal SDK, debugging issues like non-determinism errors, stuck workflows, or activity retries, using Temp",
-          "sourceUrl": "https://github.com/temporalio/cursor-temporal-plugin/blob/3633125d161b2119c3c9d5a35041efba2e0d8d06/skills/temporal-developer/SKILL.md"
+          "sourceUrl": "https://github.com/temporalio/cursor-temporal-plugin/blob/364cb74c242c539a946092e38b9d1a0909ebbb9a/skills/temporal-developer/SKILL.md"
         }
       ],
       "registryItemIds": [
@@ -16512,17 +17808,17 @@
         {
           "name": "thermo-nuclear-code-quality-review",
           "description": "Run an extremely strict maintainability review for abstraction quality, giant files, and spaghetti-condition growth. Use for a thermo-nuclear code quality review, thermonuclear review, deep code quality audit, or especially harsh maintainability review.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/thermos/skills/thermo-nuclear-code-quality-review/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/thermos/skills/thermo-nuclear-code-quality-review/SKILL.md"
         },
         {
           "name": "thermo-nuclear-review",
           "description": "Comprehensive security and correctness audit of a branch's changes. Use for thermo nuclear, thermonuclear, or deep review requests, or branch/PR diff audits focused on bugs, breaking changes, security issues, devex regressions, and feature-gate leaks.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/thermos/skills/thermo-nuclear-review/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/thermos/skills/thermo-nuclear-review/SKILL.md"
         },
         {
           "name": "thermos",
           "description": "Launch both thermo-nuclear review subagents in parallel, then synthesize their findings. Use for thermos, double thermo review, or combined bug/security and code-quality branch audits.",
-          "sourceUrl": "https://github.com/cursor/plugins/blob/8185ad9fbb903efc7d1cf152a9be9777e516cfbc/thermos/skills/thermos/SKILL.md"
+          "sourceUrl": "https://github.com/cursor/plugins/blob/2a8044425c7bddf429c3bdedf3ab61e791d34d65/thermos/skills/thermos/SKILL.md"
         }
       ],
       "registryItemIds": [
@@ -17252,6 +18548,7 @@
         "ai-sdk",
         "auth",
         "bootstrap",
+        "build-agents",
         "cdn-caching",
         "chat-sdk",
         "deployments-cicd",
@@ -17275,6 +18572,7 @@
         "vercel-firewall",
         "vercel-functions",
         "vercel-sandbox",
+        "vercel-services",
         "vercel-storage",
         "verification",
         "workflow"
@@ -17283,157 +18581,167 @@
         {
           "name": "access-protected-vercel-deployment",
           "description": "Access and test Vercel deployments protected by Vercel Authentication, SSO, or Deployment Protection. Use when curl, agent-browser, Playwright, or another automated request reaches a Vercel login or protection page; when a protected preview or production URL returns 401 or 403; w",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/access-protected-vercel-deployment/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/access-protected-vercel-deployment/SKILL.md"
         },
         {
           "name": "ai-gateway",
           "description": "Vercel AI Gateway expert guidance. Use when configuring model routing, provider failover, cost tracking, or managing multiple AI providers through a unified API.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/ai-gateway/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/ai-gateway/SKILL.md"
         },
         {
           "name": "ai-sdk",
           "description": "Vercel AI SDK expert guidance. Use when building AI-powered features — chat interfaces, text generation, structured output, tool calling, agents, MCP integration, streaming, embeddings, reranking, image generation, or working with any LLM provider.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/ai-sdk/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/ai-sdk/SKILL.md"
         },
         {
           "name": "auth",
           "description": "Authentication integration guidance — Clerk (native Vercel Marketplace), Descope, and Auth0 setup for Next.js applications. Covers middleware auth patterns, sign-in/sign-up flows, and Marketplace provisioning. Use when implementing user authentication.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/auth/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/auth/SKILL.md"
         },
         {
           "name": "bootstrap",
           "description": "Project bootstrapping orchestrator for repos that depend on Vercel-linked resources (databases, auth, and managed integrations). Use when setting up or repairing a repository so linking, environment provisioning, env pulls, and first-run db/dev commands happen in the correct safe",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/bootstrap/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/bootstrap/SKILL.md"
+        },
+        {
+          "name": "build-agents",
+          "description": "Default guidance for building AI agents. Use for generic requests to build, create, scaffold, design, architect, or implement an AI agent, agent app, tool-calling agent, durable agent, multi-agent system, or scheduled agent.",
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/build-agents/SKILL.md"
         },
         {
           "name": "cdn-caching",
           "description": "Debug Vercel CDN caching — cache hit rate, stale content, revalidation behavior, ISR + PPR, per-request cache reasons (cacheReason) and PPR state (ppr_state), and costs.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/cdn-caching/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/cdn-caching/SKILL.md"
         },
         {
           "name": "chat-sdk",
           "description": "Vercel Chat SDK expert guidance. Use when building multi-platform chat bots — Slack, Telegram, Microsoft Teams, Discord, Google Chat, GitHub, Linear — with a single codebase. Covers the Chat class, adapters, threads, messages, cards, modals, streaming, state management, and webho",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/chat-sdk/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/chat-sdk/SKILL.md"
         },
         {
           "name": "deployments-cicd",
           "description": "Vercel deployment and CI/CD expert guidance. Use when deploying, promoting, rolling back, inspecting deployments, building with --prebuilt, or configuring CI workflow files for Vercel.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/deployments-cicd/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/deployments-cicd/SKILL.md"
         },
         {
           "name": "env-vars",
           "description": "Vercel environment variable expert guidance. Use when working with .env files, vercel env commands, OIDC tokens, or managing environment-specific configuration.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/env-vars/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/env-vars/SKILL.md"
         },
         {
           "name": "eve",
-          "description": "Build durable AI agents and agent-powered applications with the eve framework. Use when creating, editing, or debugging an eve project, or when choosing architecture for a new agent or agent experience that could benefit from eve's filesystem-first runtime, durable sessions, tool",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/eve/SKILL.md"
+          "description": "eve framework guidance for durable AI agents and agent-powered applications. Use when creating, editing, or debugging an eve project, when the user explicitly asks for eve, or when the build-agents skill has selected eve as the default framework. Covers eve's filesystem-first run",
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/eve/SKILL.md"
         },
         {
           "name": "knowledge-update",
           "description": "Corrects outdated LLM knowledge about the Vercel platform and introduces new products. Injected at session start.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/knowledge-update/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/knowledge-update/SKILL.md"
         },
         {
           "name": "marketplace",
           "description": "Vercel Marketplace expert guidance — discovering, installing, and managing third-party integrations via the `vercel integration` CLI. Use when building any app that needs an external capability without a dedicated skill — commerce (stores, storefronts, selling products), payments",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/marketplace/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/marketplace/SKILL.md"
         },
         {
           "name": "microfrontends",
           "description": "Guide for building, configuring, and deploying microfrontends on Vercel. Use this skill when the user mentions microfrontends, multi-zones, splitting an app across teams, independent deployments, cross-app routing, incremental migration, composing multiple frontends under one dom",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/microfrontends/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/microfrontends/SKILL.md"
         },
         {
           "name": "next-cache-components",
           "description": "Next.js 16 Cache Components guidance — PPR, use cache directive, cacheLife, cacheTag, updateTag, and migration from unstable_cache. Use when implementing partial prerendering, caching strategies, or migrating from older Next.js cache patterns.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/next-cache-components/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/next-cache-components/SKILL.md"
         },
         {
           "name": "next-forge",
           "description": "next-forge expert guidance — production-grade Turborepo monorepo SaaS starter by Vercel. Use when working in a next-forge project, scaffolding with `npx next-forge init`, or editing @repo/* workspace packages.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/next-forge/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/next-forge/SKILL.md"
         },
         {
           "name": "next-upgrade",
           "description": "Upgrade Next.js to the latest version following official migration guides and codemods. Use when upgrading Next.js versions, running codemods, or migrating between major releases.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/next-upgrade/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/next-upgrade/SKILL.md"
         },
         {
           "name": "nextjs",
           "description": "Next.js App Router expert guidance. Use when building, debugging, or architecting Next.js applications — routing, Server Components, Server Actions, Cache Components, layouts, middleware/proxy, data fetching, rendering strategies, and deployment on Vercel.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/nextjs/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/nextjs/SKILL.md"
         },
         {
           "name": "react-best-practices",
           "description": "React best-practices reviewer for TSX files. Triggers after editing multiple TSX components to run a condensed quality checklist covering component structure, hooks usage, accessibility, performance, and TypeScript patterns.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/react-best-practices/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/react-best-practices/SKILL.md"
         },
         {
           "name": "routing-middleware",
           "description": "Vercel Routing Middleware guidance — request interception before cache, rewrites, redirects, personalization. Works with any framework. Supports Edge, Node.js, and Bun runtimes. Use when intercepting requests at the platform level.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/routing-middleware/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/routing-middleware/SKILL.md"
         },
         {
           "name": "runtime-cache",
           "description": "Vercel Runtime Cache API guidance — ephemeral per-region key-value cache with tag-based invalidation. Shared across Functions, Routing Middleware, and Builds. Use when implementing caching strategies beyond framework-level caching.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/runtime-cache/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/runtime-cache/SKILL.md"
         },
         {
           "name": "shadcn",
           "description": "shadcn/ui expert guidance — CLI, component installation, composition patterns, custom registries, theming, Tailwind CSS integration, and high-quality interface design. Use when initializing shadcn, adding components, composing product UI, building custom registries, configuring t",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/shadcn/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/shadcn/SKILL.md"
         },
         {
           "name": "turbopack",
           "description": "Turbopack expert guidance. Use when configuring the Next.js bundler, optimizing HMR, debugging build issues, or understanding the Turbopack vs Webpack differences.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/turbopack/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/turbopack/SKILL.md"
         },
         {
           "name": "vercel-agent",
           "description": "Vercel Agent guidance — AI-powered code review, incident investigation, and SDK installation. Automates PR analysis and anomaly debugging. Use when configuring or understanding Vercel's AI development tools.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/vercel-agent/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/vercel-agent/SKILL.md"
         },
         {
           "name": "vercel-cli",
           "description": "Vercel CLI expert guidance. Use when deploying, managing environment variables, linking projects, viewing logs, querying metrics, managing domains, or interacting with the Vercel platform from the command line.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/vercel-cli/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/vercel-cli/SKILL.md"
         },
         {
           "name": "vercel-connect",
           "description": "Vercel Connect expert guidance — securely obtain scoped OAuth tokens for third-party services (Slack, GitHub, MCP servers, OAuth, Snowflake) on behalf of apps or users via Vercel OIDC. Use when wiring up third-party API access, connecting to MCP servers, sending Slack messages, a",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/vercel-connect/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/vercel-connect/SKILL.md"
         },
         {
           "name": "vercel-firewall",
           "description": "Vercel Firewall expert guidance — automatic DDoS mitigation, the Vercel WAF (custom rules, IP blocking, managed rulesets, rate limiting), Attack Mode, system bypass, bot management, and the `vercel firewall` CLI. Use when configuring platform-level security, responding to attacks",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/vercel-firewall/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/vercel-firewall/SKILL.md"
         },
         {
           "name": "vercel-functions",
           "description": "Vercel Functions expert guidance — Serverless Functions, Edge Functions, Fluid Compute, streaming, Cron Jobs, and runtime configuration. Use when configuring, debugging, or optimizing server-side code running on Vercel.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/vercel-functions/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/vercel-functions/SKILL.md"
         },
         {
           "name": "vercel-sandbox",
           "description": "Vercel Sandbox guidance — ephemeral Firecracker microVMs for running untrusted code safely. Supports AI agents, code generation, and experimentation. Use when executing user-generated or AI-generated code in isolation.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/vercel-sandbox/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/vercel-sandbox/SKILL.md"
+        },
+        {
+          "name": "vercel-services",
+          "description": "Configure and troubleshoot Vercel Services for multiple frontends and backends in one project. Use when composing a polyglot or multi-service application on one Vercel deployment; defining the `services` key, service-targeted rewrites, or service bindings in `vercel.json`; or run",
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/vercel-services/SKILL.md"
         },
         {
           "name": "vercel-storage",
           "description": "Vercel storage expert guidance — Blob, Edge Config, and Marketplace storage (Neon Postgres, Upstash Redis). Use when choosing, configuring, or using data storage with Vercel applications.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/vercel-storage/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/vercel-storage/SKILL.md"
         },
         {
           "name": "verification",
           "description": "Full-story verification — infers what the user is building, then verifies the complete flow end-to-end: browser → API → data → response. Triggers on dev server start and 'why isn't this working' signals.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/verification/SKILL.md"
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/verification/SKILL.md"
         },
         {
           "name": "workflow",
-          "description": "Vercel Workflow DevKit (WDK) expert guidance. Use when building durable workflows, long-running tasks, API routes or agents that need pause/resume, retries, step-based execution, or crash-safe orchestration with Vercel Workflow.",
-          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/1e821f3087d6d52b06b918d39d57345e2e4f3cf8/skills/workflow/SKILL.md"
+          "description": "Vercel Workflow SDK expert guidance. Use when building durable workflows, long-running tasks, API routes or agents that need pause/resume, retries, step-based execution, or crash-safe orchestration with Vercel Workflow.",
+          "sourceUrl": "https://github.com/vercel/vercel-plugin/blob/11c32588786a9d49791372657433b88d49561874/skills/workflow/SKILL.md"
         }
       ],
       "registryItemIds": [
@@ -17443,6 +18751,7 @@
         "skill-ai-sdk",
         "skill-auth",
         "skill-bootstrap",
+        "skill-build-agents",
         "skill-cdn-caching",
         "skill-chat-sdk",
         "skill-deployments-cicd",
@@ -17466,6 +18775,7 @@
         "skill-vercel-firewall",
         "skill-vercel-functions",
         "skill-vercel-sandbox",
+        "skill-vercel-services",
         "skill-vercel-storage",
         "skill-verification",
         "skill-workflow",
@@ -17478,6 +18788,7 @@
         "ai-sdk",
         "auth",
         "bootstrap",
+        "build-agents",
         "cdn-caching",
         "chat-sdk",
         "deployments-cicd",
@@ -17501,6 +18812,7 @@
         "vercel-firewall",
         "vercel-functions",
         "vercel-sandbox",
+        "vercel-services",
         "vercel-storage",
         "verification",
         "workflow"
@@ -17720,6 +19032,34 @@
       ]
     },
     {
+      "id": "whop",
+      "cursorPluginId": "50389919",
+      "cursorVendor": "whop",
+      "name": "Whop",
+      "description": "Build and run your business end-to-end with Whop. Launch your website, accept payments, run ads, and more—directly in Cursor.",
+      "homepage": "https://whop.com",
+      "docsUrl": "https://github.com/whopio/whop-mcp-server",
+      "marketplaceUrl": "https://cursor.com/marketplace/whop",
+      "repositoryUrl": "https://github.com/whopio/whop-mcp-server",
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e3be1ac7e85f7bbc.png",
+      "mcpServerIds": [
+        "whop"
+      ],
+      "skillSlugs": [],
+      "skillDetails": [],
+      "registryItemIds": [
+        "plugin-whop",
+        "mcp-whop"
+      ],
+      "triggers": [
+        "whop"
+      ],
+      "publisher": "Whop",
+      "isVerified": false,
+      "tags": []
+    },
+    {
       "id": "wix",
       "cursorPluginId": "761",
       "cursorVendor": "wix",
@@ -17832,6 +19172,35 @@
       ]
     },
     {
+      "id": "x",
+      "cursorPluginId": "49086599",
+      "cursorVendor": "x",
+      "name": "X",
+      "description": "Connect to the X API — search posts and users, read timelines and mentions, pull trends and news, and manage lists, bookmarks, blocks, and mutes — via X's official hosted MCP server.",
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/x",
+      "repositoryUrl": "https://github.com/cursor/plugins",
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/80f8710cfbe8601a.png",
+      "mcpServerIds": [
+        "x"
+      ],
+      "skillSlugs": [],
+      "skillDetails": [],
+      "registryItemIds": [
+        "plugin-x",
+        "mcp-x"
+      ],
+      "triggers": [
+        "x",
+        "cursor"
+      ],
+      "publisher": "Cursor",
+      "isVerified": true,
+      "tags": []
+    },
+    {
       "id": "zapier",
       "cursorPluginId": "762",
       "cursorVendor": "zapier",
@@ -17911,6 +19280,35 @@
       ],
       "publisher": "Zenity",
       "isVerified": false,
+      "tags": []
+    },
+    {
+      "id": "zoom",
+      "cursorPluginId": "49047809",
+      "cursorVendor": "zoom",
+      "name": "Zoom",
+      "description": "Zoom MCP integration — search meetings and recordings, pull summaries and transcripts, and work with Zoom Docs.",
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/zoom",
+      "repositoryUrl": "https://github.com/cursor/plugins",
+      "brand": null,
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/d94a4e3cd98758ec.png",
+      "mcpServerIds": [
+        "zoom"
+      ],
+      "skillSlugs": [],
+      "skillDetails": [],
+      "registryItemIds": [
+        "plugin-zoom",
+        "mcp-zoom"
+      ],
+      "triggers": [
+        "zoom",
+        "cursor"
+      ],
+      "publisher": "Cursor",
+      "isVerified": true,
       "tags": []
     },
     {

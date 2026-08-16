@@ -1,6 +1,6 @@
 {
   "description": "Session attach packages for Add ___ composer chips — one per Cursor Marketplace plugin.",
-  "syncedAt": "2026-08-05T17:35:40.070Z",
+  "syncedAt": "2026-08-14T18:22:23.343Z",
   "packages": [
     {
       "id": "1inch",
@@ -95,7 +95,7 @@
     {
       "id": "agent-compatibility",
       "name": "Agent Compatibility",
-      "description": "CLI-backed repo compatibility scans plus Cursor agents that audit startup, validation, and docs against reality.",
+      "description": "CLI-backed repo compatibility scans plus agents that audit startup, validation, and docs against reality.",
       "brand": null,
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
@@ -114,6 +114,51 @@
       "registryItemIds": [
         "plugin-agent-compatibility",
         "skill-check-agent-compatibility"
+      ]
+    },
+    {
+      "id": "agentmail",
+      "name": "AgentMail",
+      "description": "AI-native email infrastructure for coding agents. Create inboxes, send and receive emails, manage threads, and automate email workflows.",
+      "brand": null,
+      "homepage": "https://www.agentmail.to/",
+      "docsUrl": "https://github.com/agentmail-to/agentmail-plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/agentmail",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/d2f6c3e33af66bc0.png",
+      "triggers": [
+        "agentmail",
+        "agent-email-patterns",
+        "agentmail-cli",
+        "agentmail-mcp",
+        "agentmail-toolkit",
+        "check-email",
+        "manage-inboxes",
+        "send-email"
+      ],
+      "skillIds": [
+        "agent-email-patterns",
+        "agentmail",
+        "agentmail-cli",
+        "agentmail-mcp",
+        "agentmail-toolkit",
+        "check-email",
+        "manage-inboxes",
+        "send-email"
+      ],
+      "mcpServerIds": [
+        "agentmail"
+      ],
+      "registryItemIds": [
+        "plugin-agentmail",
+        "skill-agent-email-patterns",
+        "skill-agentmail",
+        "skill-agentmail-cli",
+        "skill-agentmail-mcp",
+        "skill-agentmail-toolkit",
+        "skill-check-email",
+        "skill-manage-inboxes",
+        "skill-send-email",
+        "mcp-agentmail"
       ]
     },
     {
@@ -149,6 +194,52 @@
       ]
     },
     {
+      "id": "airtable",
+      "name": "Airtable",
+      "description": "Airtable is the database and operations layer for your agents — whether running product, marketing, sales, ops, HR, or a custom business app. It combines structured data with multiplayer visual surfaces (grid, kanban, calendar, gallery, timeline) humans and agents share — plus sync integrations to Jira, Salesforce, Zendesk, Google Drive, and Databricks. Makes Claude fluent in Airtable: bases and schema, records, and collaboration UI. Bundles the official Airtable MCP server.",
+      "brand": null,
+      "homepage": "https://www.airtable.com/",
+      "docsUrl": "https://github.com/Airtable/skills",
+      "marketplaceUrl": "https://cursor.com/marketplace/airtable",
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/airtable-logo.png",
+      "triggers": [
+        "airtable",
+        "agent-activity-log",
+        "airtable-cli",
+        "airtable-filters",
+        "airtable-overview",
+        "marketing-ops",
+        "product-ops",
+        "sales-ops",
+        "show-airtable-link"
+      ],
+      "skillIds": [
+        "agent-activity-log",
+        "airtable-cli",
+        "airtable-filters",
+        "airtable-overview",
+        "marketing-ops",
+        "product-ops",
+        "sales-ops",
+        "show-airtable-link"
+      ],
+      "mcpServerIds": [
+        "airtable"
+      ],
+      "registryItemIds": [
+        "plugin-airtable",
+        "skill-agent-activity-log",
+        "skill-airtable-cli",
+        "skill-airtable-filters",
+        "skill-airtable-overview",
+        "skill-marketing-ops",
+        "skill-product-ops",
+        "skill-sales-ops",
+        "skill-show-airtable-link",
+        "mcp-airtable"
+      ]
+    },
+    {
       "id": "airwallex",
       "name": "Airwallex",
       "description": "Airwallex CLI plugin for Cursor",
@@ -180,6 +271,27 @@
         "skill-card-provisioning",
         "skill-contract-to-billing",
         "skill-manage-cashflow"
+      ]
+    },
+    {
+      "id": "aleph",
+      "name": "Aleph",
+      "description": "Aleph MCP server. Your one source of truth for financial data.",
+      "brand": null,
+      "homepage": "https://www.getaleph.com/",
+      "docsUrl": "https://github.com/GetAleph/cursor-plugin",
+      "marketplaceUrl": "https://cursor.com/marketplace/aleph",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/91bcc480cfddc84d.png",
+      "triggers": [
+        "aleph"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "aleph"
+      ],
+      "registryItemIds": [
+        "plugin-aleph",
+        "mcp-aleph"
       ]
     },
     {
@@ -407,6 +519,29 @@
       ]
     },
     {
+      "id": "apollo-io",
+      "name": "Apollo.io",
+      "description": "Connect to Apollo.io — prospect search, contact and company enrichment, lists, sequences, and one-off emails — via Apollo's official remote MCP server.",
+      "brand": null,
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/apollo-io",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/7b86fbf6cde1137d.png",
+      "triggers": [
+        "apollo-io",
+        "apollo.io",
+        "cursor"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "apollo-io"
+      ],
+      "registryItemIds": [
+        "plugin-apollo-io",
+        "mcp-apollo-io"
+      ]
+    },
+    {
       "id": "apollo",
       "name": "Apollo.io",
       "description": "Prospect, enrich leads, load outreach sequences, and query sales analytics with Apollo.io — one-click MCP server integration.",
@@ -507,7 +642,7 @@
       "homepage": "https://arize.com/",
       "docsUrl": "https://github.com/Arize-ai/arize-skills",
       "marketplaceUrl": "https://cursor.com/marketplace/arize-skills",
-      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/arize.png",
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/arize-logo-edited-xcBUDYzcnGrWobob4ZgzcK07wyz6TX.png",
       "triggers": [
         "arize",
         "arize-skills",
@@ -586,6 +721,28 @@
         "skill-asana-setup",
         "skill-asana-usage",
         "mcp-asana"
+      ]
+    },
+    {
+      "id": "ashby",
+      "name": "Ashby",
+      "description": "Connect to Ashby — search candidates and jobs, prep for interviews, manage pipeline tasks, and take recruiting actions — via Ashby's official remote MCP server.",
+      "brand": null,
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/ashby",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/8623f30c2abb2383.png",
+      "triggers": [
+        "ashby",
+        "cursor"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "ashby"
+      ],
+      "registryItemIds": [
+        "plugin-ashby",
+        "mcp-ashby"
       ]
     },
     {
@@ -772,6 +929,30 @@
         "skill-forge-debugger",
         "mcp-forge",
         "mcp-ads-mcp"
+      ]
+    },
+    {
+      "id": "atlassian-twg-cli",
+      "name": "Atlassian Teamwork Graph",
+      "description": "Teamwork Graph CLI is Atlassian's agent-first interface to your entire work context: Jira issues, Confluence pages, Bitbucket PRs, along with your connected third-party data sources. Purpose-built for coding agents like Cursor (terminal or desktop), and powered by Atlassian's context graph. Try: \"draft a Jira issue from this PR and link it to the epic.\" Using Cursor in the browser? Install the Atlassian Rovo MCP plugin instead. Run /twg-setup after install to connect Atlassian Teamwork Graph CLI to Cursor.",
+      "brand": "atlassian",
+      "homepage": "https://atlassian.com",
+      "docsUrl": "https://github.com/atlassian-labs/twg-plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/atlassian-twg-cli",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/614f9d2a3221d15e.png",
+      "triggers": [
+        "atlassian-twg-cli",
+        "atlassian teamwork graph",
+        "atlassian",
+        "twg-setup"
+      ],
+      "skillIds": [
+        "twg-setup"
+      ],
+      "mcpServerIds": [],
+      "registryItemIds": [
+        "plugin-atlassian-twg-cli",
+        "skill-twg-setup"
       ]
     },
     {
@@ -1349,14 +1530,17 @@
         "box-legal-workflows-intake",
         "box-legal-workflows-ma"
       ],
-      "mcpServerIds": [],
+      "mcpServerIds": [
+        "box"
+      ],
       "registryItemIds": [
         "plugin-box",
         "skill-box",
         "skill-box-legal-workflows",
         "skill-box-legal-workflows-contract",
         "skill-box-legal-workflows-intake",
-        "skill-box-legal-workflows-ma"
+        "skill-box-legal-workflows-ma",
+        "mcp-box"
       ]
     },
     {
@@ -1794,6 +1978,28 @@
       ]
     },
     {
+      "id": "circleback",
+      "name": "Circleback",
+      "description": "Connect to Circleback — search meetings, transcripts, action items, calendar events, and emails, and look up people and companies — via Circleback's official remote MCP server.",
+      "brand": null,
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/circleback",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e3c65312a529e79f.png",
+      "triggers": [
+        "circleback",
+        "cursor"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "circleback"
+      ],
+      "registryItemIds": [
+        "plugin-circleback",
+        "mcp-circleback"
+      ]
+    },
+    {
       "id": "thousandeyes",
       "name": "Cisco ThousandEyes",
       "description": "Connect Cursor to ThousandEyes MCP endpoints for network intelligence workflows.",
@@ -1815,6 +2021,28 @@
       "registryItemIds": [
         "plugin-thousandeyes",
         "mcp-thousandeyes"
+      ]
+    },
+    {
+      "id": "clay",
+      "name": "Clay",
+      "description": "Connect to Clay — find and enrich people and companies across 150+ data providers, run AI research agents, and trigger your team's approved Clay workflows — via Clay's official hosted MCP server.",
+      "brand": null,
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/clay",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e6cd5f62f3653c5a.png",
+      "triggers": [
+        "clay",
+        "cursor"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "clay"
+      ],
+      "registryItemIds": [
+        "plugin-clay",
+        "mcp-clay"
       ]
     },
     {
@@ -2200,6 +2428,31 @@
       ]
     },
     {
+      "id": "coderabbit",
+      "name": "CodeRabbit",
+      "description": "Run CodeRabbit reviews for code, PR, security, and quality checks, plus guarded autofix for unresolved GitHub PR feedback in Cursor.",
+      "brand": null,
+      "homepage": "https://coderabbit.ai/",
+      "docsUrl": "https://github.com/coderabbitai/cursor-plugin",
+      "marketplaceUrl": "https://cursor.com/marketplace/coderabbit",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/04119bded3a0a202.png",
+      "triggers": [
+        "coderabbit",
+        "autofix",
+        "code-review"
+      ],
+      "skillIds": [
+        "autofix",
+        "code-review"
+      ],
+      "mcpServerIds": [],
+      "registryItemIds": [
+        "plugin-coderabbit",
+        "skill-autofix",
+        "skill-code-review"
+      ]
+    },
+    {
       "id": "composio",
       "name": "Composio",
       "description": "Connect and operate 1000+ external apps from Cursor via the Composio MCP server. Managed OAuth, intelligent tool routing, and a remote sandbox for bulk data processing.",
@@ -2435,7 +2688,7 @@
     {
       "id": "create",
       "name": "Create Plugin",
-      "description": "Scaffold and validate new Cursor plugins. Handles directory setup, manifest generation, and pre-submission quality checks for the marketplace.",
+      "description": "Scaffold and validate new agent plugins. Handles directory setup, manifest generation, and pre-submission quality checks for the marketplace.",
       "brand": null,
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
@@ -2486,7 +2739,7 @@
     {
       "id": "cursor-team-kit",
       "name": "Cursor Team Kit",
-      "description": "Internal workflows used by Cursor developers for CI, code review, shipping, control-cli, control-ui, verify-this, test reliability, code cleanup, and work summaries. Designed to work without requiring third-party service integrations.",
+      "description": "Internal engineering team workflows for CI, code review, shipping, control-cli, control-ui, verify-this, test reliability, code cleanup, and work summaries. Designed to work without requiring third-party service integrations.",
       "brand": null,
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
@@ -2824,7 +3077,7 @@
     {
       "id": "docs-canvas",
       "name": "Docs Canvas",
-      "description": "Render documentation — architecture notes, API references, runbooks, and codebase walkthroughs — as a navigable Cursor Canvas with sections, table of contents, diagrams, and cross-references.",
+      "description": "Render documentation — architecture notes, API references, runbooks, and codebase walkthroughs — as a navigable canvas with sections, table of contents, diagrams, and cross-references.",
       "brand": null,
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
@@ -2842,6 +3095,133 @@
       "registryItemIds": [
         "plugin-docs-canvas",
         "skill-docs-canvas"
+      ]
+    },
+    {
+      "id": "docusign",
+      "name": "Docusign",
+      "description": "Connect to Docusign — work with eSignature envelopes and templates, Maestro workflows, and Navigator agreements — via Docusign's official remote MCP server (beta).",
+      "brand": null,
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/docusign",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/59274e6d874b751a.png",
+      "triggers": [
+        "docusign",
+        "cursor"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "docusign"
+      ],
+      "registryItemIds": [
+        "plugin-docusign",
+        "mcp-docusign"
+      ]
+    },
+    {
+      "id": "dynatrace",
+      "name": "Dynatrace",
+      "description": "Dynatrace observability skills. DQL query patterns, application and infrastructure monitoring, log analysis, problem investigation, and incident response workflows. Use with dtctl or the Dynatrace MCP server (https://docs.dynatrace.com/docs/shortlink/dynatrace-mcp-server) for live platform access.",
+      "brand": null,
+      "homepage": "https://www.dynatrace.com/",
+      "docsUrl": "https://github.com/Dynatrace/dynatrace-for-ai",
+      "marketplaceUrl": "https://cursor.com/marketplace/dynatrace",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/64d4f0a1ce563014.png",
+      "triggers": [
+        "dynatrace",
+        "dt-alerting",
+        "dt-app-dashboards",
+        "dt-app-notebooks",
+        "dt-dql-essentials",
+        "dt-js-runtime",
+        "dt-migration",
+        "dt-obs-analytics",
+        "dt-obs-android",
+        "dt-obs-aws",
+        "dt-obs-azure",
+        "dt-obs-ext-monitors",
+        "dt-obs-flutter",
+        "dt-obs-frontends",
+        "dt-obs-gcp",
+        "dt-obs-genai",
+        "dt-obs-hosts",
+        "dt-obs-ios",
+        "dt-obs-kubernetes",
+        "dt-obs-log-semantic-mapping",
+        "dt-obs-logs",
+        "dt-obs-predictive-analytics",
+        "dt-obs-problems",
+        "dt-obs-react-native"
+      ],
+      "skillIds": [
+        "dt-alerting",
+        "dt-app-dashboards",
+        "dt-app-notebooks",
+        "dt-dql-essentials",
+        "dt-js-runtime",
+        "dt-migration",
+        "dt-obs-analytics",
+        "dt-obs-android",
+        "dt-obs-aws",
+        "dt-obs-azure",
+        "dt-obs-ext-monitors",
+        "dt-obs-flutter",
+        "dt-obs-frontends",
+        "dt-obs-gcp",
+        "dt-obs-genai",
+        "dt-obs-hosts",
+        "dt-obs-ios",
+        "dt-obs-kubernetes",
+        "dt-obs-log-semantic-mapping",
+        "dt-obs-logs",
+        "dt-obs-predictive-analytics",
+        "dt-obs-problems",
+        "dt-obs-react-native",
+        "dt-obs-services",
+        "dt-obs-tracing",
+        "dt-platform-costs",
+        "dt-sec-contextualization",
+        "dt-sec-insights",
+        "dt-sec-ioc-hunting",
+        "dt-sec-semantic-mapping"
+      ],
+      "mcpServerIds": [
+        "dynatrace"
+      ],
+      "registryItemIds": [
+        "plugin-dynatrace",
+        "skill-dt-alerting",
+        "skill-dt-app-dashboards",
+        "skill-dt-app-notebooks",
+        "skill-dt-dql-essentials",
+        "skill-dt-js-runtime",
+        "skill-dt-migration",
+        "skill-dt-obs-analytics",
+        "skill-dt-obs-android",
+        "skill-dt-obs-aws",
+        "skill-dt-obs-azure",
+        "skill-dt-obs-ext-monitors",
+        "skill-dt-obs-flutter",
+        "skill-dt-obs-frontends",
+        "skill-dt-obs-gcp",
+        "skill-dt-obs-genai",
+        "skill-dt-obs-hosts",
+        "skill-dt-obs-ios",
+        "skill-dt-obs-kubernetes",
+        "skill-dt-obs-log-semantic-mapping",
+        "skill-dt-obs-logs",
+        "skill-dt-obs-predictive-analytics",
+        "skill-dt-obs-problems",
+        "skill-dt-obs-react-native",
+        "skill-dt-obs-services",
+        "skill-dt-obs-tracing",
+        "skill-dt-platform-costs",
+        "skill-dt-sec-contextualization",
+        "skill-dt-sec-insights",
+        "skill-dt-sec-ioc-hunting",
+        "skill-dt-sec-semantic-mapping",
+        "mcp-dynatrace"
       ]
     },
     {
@@ -3172,6 +3552,27 @@
       ]
     },
     {
+      "id": "falconer",
+      "name": "Falconer",
+      "description": "Read, search, and update Falconer documents from Cursor through hosted HTTP MCP.",
+      "brand": null,
+      "homepage": "https://falconer.com",
+      "docsUrl": "https://github.com/FalconerAI/agent-integrations",
+      "marketplaceUrl": "https://cursor.com/marketplace/falconer",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/3bb705d2549bedae.png",
+      "triggers": [
+        "falconer"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "falconer"
+      ],
+      "registryItemIds": [
+        "plugin-falconer",
+        "mcp-falconer"
+      ]
+    },
+    {
       "id": "firebase",
       "name": "Firebase",
       "description": "The official Firebase Cursor plugin. Prototype, build, and run modern apps with Firebase's backend and AI infrastructure.",
@@ -3421,6 +3822,28 @@
       ]
     },
     {
+      "id": "github",
+      "name": "GitHub",
+      "description": "Connect to GitHub — repositories, issues, pull requests, code search, and Actions — via GitHub's official remote MCP server.",
+      "brand": "github",
+      "homepage": "https://github.com",
+      "docsUrl": "https://docs.github.com",
+      "marketplaceUrl": "https://cursor.com/marketplace/github",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/0a4df817de8cf02a.png",
+      "triggers": [
+        "github",
+        "cursor"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "github"
+      ],
+      "registryItemIds": [
+        "plugin-github",
+        "mcp-github"
+      ]
+    },
+    {
       "id": "gitlab",
       "name": "GitLab",
       "description": "Connect Cursor to GitLab with the GitLab MCP server. Plan, track, and manage issues, merge requests, and pipelines from your editor.",
@@ -3518,7 +3941,7 @@
     {
       "id": "gmail",
       "name": "Gmail",
-      "description": "Connect Cursor to Gmail via Google's remote MCP server — search, read, draft, label, and manage email.",
+      "description": "Connect to Gmail via Google's remote MCP server — search, read, draft, label, and manage email.",
       "brand": null,
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
@@ -3562,7 +3985,7 @@
     {
       "id": "google-calendar",
       "name": "Google Calendar",
-      "description": "Connect Cursor to Google Calendar via Google's remote MCP server — list calendars, search events, and create or update meetings.",
+      "description": "Connect to Google Calendar via Google's remote MCP server — list calendars, search events, and create or update meetings.",
       "brand": null,
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
@@ -3585,7 +4008,7 @@
     {
       "id": "google-drive",
       "name": "Google Drive",
-      "description": "Connect Cursor to Google Drive via Google's remote MCP server — search, read, create, share, and manage files.",
+      "description": "Connect to Google Drive via Google's remote MCP server — search, read, create, share, and manage files.",
       "brand": null,
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
@@ -3841,6 +4264,28 @@
       ]
     },
     {
+      "id": "here-now",
+      "name": "here.now",
+      "description": "Publish websites, apps, and files to live URLs at {slug}.here.now or custom domains. Publish HTML apps, documents, images, PDFs, videos, and static files, with access control, custom domains, analytics, and private Drive storage for agent files.",
+      "brand": null,
+      "homepage": "https://here.now",
+      "docsUrl": "https://github.com/heredotnow/skill",
+      "marketplaceUrl": "https://cursor.com/marketplace/here.now",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/04ff15cda066533d.png",
+      "triggers": [
+        "here-now",
+        "here.now"
+      ],
+      "skillIds": [
+        "here-now"
+      ],
+      "mcpServerIds": [],
+      "registryItemIds": [
+        "plugin-here-now",
+        "skill-here-now"
+      ]
+    },
+    {
       "id": "hex",
       "name": "Hex",
       "description": "AI analytics and data collaboration - connect Cursor to your Hex workspace with MCP",
@@ -3929,6 +4374,28 @@
         "skill-generate-image",
         "skill-generate-video",
         "mcp-higgsfield"
+      ]
+    },
+    {
+      "id": "hubspot",
+      "name": "HubSpot",
+      "description": "Connect to HubSpot CRM — search and update contacts, companies, deals, and tickets; work with activities, conversations, and marketing emails — via HubSpot's official remote MCP server.",
+      "brand": null,
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/hubspot",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/a6b0512146452eef.png",
+      "triggers": [
+        "hubspot",
+        "cursor"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "hubspot"
+      ],
+      "registryItemIds": [
+        "plugin-hubspot",
+        "mcp-hubspot"
       ]
     },
     {
@@ -4029,6 +4496,28 @@
       "registryItemIds": [
         "plugin-icepanel",
         "mcp-icepanel"
+      ]
+    },
+    {
+      "id": "intercom",
+      "name": "Intercom",
+      "description": "Connect to Intercom — search conversations and contacts, look up companies, and manage Help Center articles — via Intercom's official remote MCP server.",
+      "brand": null,
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/intercom",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/23326f68525470fd.png",
+      "triggers": [
+        "intercom",
+        "cursor"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "intercom"
+      ],
+      "registryItemIds": [
+        "plugin-intercom",
+        "mcp-intercom"
       ]
     },
     {
@@ -4667,6 +5156,49 @@
       ]
     },
     {
+      "id": "meticulous",
+      "name": "Meticulous",
+      "description": "Agent skills for Meticulous visual regression testing — review test runs, investigate replays, debug diffs.",
+      "brand": null,
+      "homepage": "https://meticulous.ai",
+      "docsUrl": "https://github.com/alwaysmeticulous/skills",
+      "marketplaceUrl": "https://cursor.com/marketplace/meticulous",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/2b1511a924b492ca.png",
+      "triggers": [
+        "meticulous",
+        "meticulous-cli",
+        "meticulous-cli-update",
+        "meticulous-iterative-dev",
+        "meticulous-review",
+        "meticulous-simulate-and-diff",
+        "meticulous-test",
+        "meticulous-use-session-data"
+      ],
+      "skillIds": [
+        "meticulous-cli",
+        "meticulous-cli-update",
+        "meticulous-iterative-dev",
+        "meticulous-review",
+        "meticulous-simulate-and-diff",
+        "meticulous-test",
+        "meticulous-use-session-data"
+      ],
+      "mcpServerIds": [
+        "meticulous"
+      ],
+      "registryItemIds": [
+        "plugin-meticulous",
+        "skill-meticulous-cli",
+        "skill-meticulous-cli-update",
+        "skill-meticulous-iterative-dev",
+        "skill-meticulous-review",
+        "skill-meticulous-simulate-and-diff",
+        "skill-meticulous-test",
+        "skill-meticulous-use-session-data",
+        "mcp-meticulous"
+      ]
+    },
+    {
       "id": "dataverse",
       "name": "Microsoft Dataverse",
       "description": "Microsoft Dataverse plugin for coding agents — powering CRUD, bulk data operations, advanced queries, schema lifecycle, and environment management through intelligent skills that unify MCP, CLI, and SDK workflows.",
@@ -4915,6 +5447,48 @@
       ]
     },
     {
+      "id": "mongodb-atlas",
+      "name": "MongoDB Atlas",
+      "description": "Connect to MongoDB Atlas clusters only through the Atlas Managed MCP Server. Sign in with your Atlas account to explore data, manage collections, optimize queries, generate reliable code with MongoDB best practices, and manage Atlas resources such as clusters, projects, database users, and network access.\n\nIf you are running a different MongoDB deployment or want to run a local MongoDB MCP Server, install the MongoDB (Self-Managed MCP) plugin instead.",
+      "brand": "mongodb",
+      "homepage": "https://mongodb.com",
+      "docsUrl": "https://github.com/mongodb/agent-skills",
+      "marketplaceUrl": "https://cursor.com/marketplace/mongodb-atlas",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/604da887ef0a797c.png",
+      "triggers": [
+        "mongodb-atlas",
+        "mongodb atlas",
+        "mongodb",
+        "mongodb-atlas-stream-processing",
+        "mongodb-connection",
+        "mongodb-natural-language-querying",
+        "mongodb-query-optimizer",
+        "mongodb-schema-design",
+        "mongodb-search-and-ai"
+      ],
+      "skillIds": [
+        "mongodb-atlas-stream-processing",
+        "mongodb-connection",
+        "mongodb-natural-language-querying",
+        "mongodb-query-optimizer",
+        "mongodb-schema-design",
+        "mongodb-search-and-ai"
+      ],
+      "mcpServerIds": [
+        "mongodb-atlas"
+      ],
+      "registryItemIds": [
+        "plugin-mongodb-atlas",
+        "skill-mongodb-atlas-stream-processing",
+        "skill-mongodb-connection",
+        "skill-mongodb-natural-language-querying",
+        "skill-mongodb-query-optimizer",
+        "skill-mongodb-schema-design",
+        "skill-mongodb-search-and-ai",
+        "mcp-mongodb-atlas"
+      ]
+    },
+    {
       "id": "monk",
       "name": "Monk.io",
       "description": "Deploy and operate full applications with Monk — cloud infra, SaaS integrations, and containerized workloads — from one chat.",
@@ -4938,6 +5512,28 @@
         "plugin-monk",
         "skill-monk",
         "mcp-monk"
+      ]
+    },
+    {
+      "id": "navan",
+      "name": "Navan",
+      "description": "Connect to Navan — query expenses, analyze travel bookings, check policies and approvals, and manage cards — via Navan's official remote MCP server.",
+      "brand": null,
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/navan",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/7a63baef5991c429.webp",
+      "triggers": [
+        "navan",
+        "cursor"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "navan"
+      ],
+      "registryItemIds": [
+        "plugin-navan",
+        "mcp-navan"
       ]
     },
     {
@@ -5353,7 +5949,7 @@
     {
       "id": "orchestrate",
       "name": "Orchestrate",
-      "description": "Fan a large task out across parallel Cursor cloud agents via the Cursor SDK: planners publish tasks, workers hand off back up, and a script reconciles the tree from disk and git.",
+      "description": "Fan a large task out across parallel cloud agents via the Cursor SDK: planners publish tasks, workers hand off back up, and a script reconciles the tree from disk and git.",
       "brand": null,
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
@@ -5642,6 +6238,28 @@
       ]
     },
     {
+      "id": "playwright",
+      "name": "Playwright",
+      "description": "Drive a real browser for agents — navigate pages, click and fill elements, take snapshots and screenshots, and run end-to-end checks — via Microsoft's Playwright MCP server.",
+      "brand": null,
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/playwright",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/9ec467deab70293d.png",
+      "triggers": [
+        "playwright",
+        "cursor"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "playwright"
+      ],
+      "registryItemIds": [
+        "plugin-playwright",
+        "mcp-playwright"
+      ]
+    },
+    {
       "id": "port",
       "name": "Port",
       "description": "Port MCP Server Gives Cursor's AI agent full engineering context. Port is your system of record for every service, team, dependency, and standard - connect it to Cursor so the agent understands not just your code, but who owns it, what depends on it, and what actions are available to take.",
@@ -5887,7 +6505,7 @@
     {
       "id": "pr-review-canvas",
       "name": "PR Review Canvas",
-      "description": "Render PR diffs as interactive Cursor Canvases organized for reviewer comprehension — groups changes by importance, separates boilerplate from core logic, and highlights tricky or unexpected code.",
+      "description": "Render PR diffs as interactive canvases organized for reviewer comprehension — groups changes by importance, separates boilerplate from core logic, and highlights tricky or unexpected code.",
       "brand": null,
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
@@ -6032,6 +6650,28 @@
         "skill-prisma-upgrade-v7-schema-changes",
         "mcp-prisma-local",
         "mcp-prisma-remote"
+      ]
+    },
+    {
+      "id": "profound",
+      "name": "Profound",
+      "description": "Connect to Profound — retrieve AI visibility, sentiment, and citation reports, access agent analytics, and build or run Profound Agents — via Profound's official hosted MCP server.",
+      "brand": null,
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/profound",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e8a57addf20c4c9f.png",
+      "triggers": [
+        "profound",
+        "cursor"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "profound"
+      ],
+      "registryItemIds": [
+        "plugin-profound",
+        "mcp-profound"
       ]
     },
     {
@@ -6353,6 +6993,61 @@
       ]
     },
     {
+      "id": "remotion",
+      "name": "Remotion",
+      "description": "Remotion video creation skills — best practices, animations, audio, captions, 3D, and more for building programmatic videos with React.",
+      "brand": null,
+      "homepage": "https://www.remotion.dev/",
+      "docsUrl": "https://github.com/remotion-dev/cursor-plugin",
+      "marketplaceUrl": "https://cursor.com/marketplace/remotion",
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/remotion-logo-1-2hBxtzE9IM2fOcllkO88p47u7rwWVL.png",
+      "triggers": [
+        "remotion",
+        "remotion-best-practices",
+        "remotion-captions",
+        "remotion-create",
+        "remotion-docs",
+        "remotion-interactivity",
+        "remotion-maps",
+        "remotion-markup",
+        "remotion-multimedia",
+        "remotion-render",
+        "remotion-saas",
+        "remotion-studio",
+        "remotion-upgrade"
+      ],
+      "skillIds": [
+        "remotion-best-practices",
+        "remotion-captions",
+        "remotion-create",
+        "remotion-docs",
+        "remotion-interactivity",
+        "remotion-maps",
+        "remotion-markup",
+        "remotion-multimedia",
+        "remotion-render",
+        "remotion-saas",
+        "remotion-studio",
+        "remotion-upgrade"
+      ],
+      "mcpServerIds": [],
+      "registryItemIds": [
+        "plugin-remotion",
+        "skill-remotion-best-practices",
+        "skill-remotion-captions",
+        "skill-remotion-create",
+        "skill-remotion-docs",
+        "skill-remotion-interactivity",
+        "skill-remotion-maps",
+        "skill-remotion-markup",
+        "skill-remotion-multimedia",
+        "skill-remotion-render",
+        "skill-remotion-saas",
+        "skill-remotion-studio",
+        "skill-remotion-upgrade"
+      ]
+    },
+    {
       "id": "render",
       "name": "Render",
       "description": "Deploy, debug, and monitor applications on Render. Includes skills, rules, commands, an agent, MCP config, and hooks for the full Render workflow.",
@@ -6445,7 +7140,7 @@
       "homepage": "https://resend.com/",
       "docsUrl": "https://github.com/resend/resend-skills",
       "marketplaceUrl": "https://cursor.com/marketplace/resend",
-      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/resend-logo.png",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/fade7f2616cccc52.png",
       "triggers": [
         "resend",
         "agent-email-inbox",
@@ -6857,7 +7552,7 @@
     {
       "id": "salesforce",
       "name": "Salesforce",
-      "description": "Connect Cursor to Salesforce via Salesforce Hosted MCP — query, search, create, update, and traverse records in your org.",
+      "description": "Connect to Salesforce via Salesforce Hosted MCP — query, search, create, update, and traverse records in your org.",
       "brand": null,
       "homepage": "https://cursor.com/",
       "docsUrl": "https://github.com/cursor/plugins",
@@ -7311,7 +8006,7 @@
       "homepage": "https://sinch.com/",
       "docsUrl": "https://github.com/sinch/sinch-plugins",
       "marketplaceUrl": "https://cursor.com/marketplace/sinch-cursor-plugin",
-      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/sinch-logo.png",
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/sinch-icon-1-tSuSSFunmTBK3Kwz1iMYPEWwc6buKI.png",
       "triggers": [
         "sinch",
         "sinch-cursor-plugin",
@@ -7615,6 +8310,7 @@
       "triggers": [
         "stripe",
         "connect-recommend",
+        "stripe-apps",
         "stripe-best-practices",
         "stripe-directory",
         "stripe-docs",
@@ -7623,6 +8319,7 @@
       ],
       "skillIds": [
         "connect-recommend",
+        "stripe-apps",
         "stripe-best-practices",
         "stripe-directory",
         "stripe-docs",
@@ -7635,12 +8332,43 @@
       "registryItemIds": [
         "plugin-stripe",
         "skill-connect-recommend",
+        "skill-stripe-apps",
         "skill-stripe-best-practices",
         "skill-stripe-directory",
         "skill-stripe-docs",
         "skill-stripe-projects",
         "skill-upgrade-stripe",
         "mcp-stripe"
+      ]
+    },
+    {
+      "id": "link",
+      "name": "Stripe Link",
+      "description": "Get secure, one-time-use payment credentials from a Link wallet so agents can complete purchases on your behalf.",
+      "brand": "stripe",
+      "homepage": "https://stripe.com/",
+      "docsUrl": "https://github.com/stripe/link-cli",
+      "marketplaceUrl": "https://cursor.com/marketplace/link",
+      "logoUrl": "https://ptht05hbb1ssoooe.public.blob.vercel-storage.com/assets/uploads/stripe-parallelogram.png",
+      "triggers": [
+        "link",
+        "stripe link",
+        "stripe",
+        "create-payment-credential",
+        "financial-insights"
+      ],
+      "skillIds": [
+        "create-payment-credential",
+        "financial-insights"
+      ],
+      "mcpServerIds": [
+        "link"
+      ],
+      "registryItemIds": [
+        "plugin-link",
+        "skill-create-payment-credential",
+        "skill-financial-insights",
+        "mcp-link"
       ]
     },
     {
@@ -8277,6 +9005,7 @@
         "ai-sdk",
         "auth",
         "bootstrap",
+        "build-agents",
         "cdn-caching",
         "chat-sdk",
         "deployments-cicd",
@@ -8293,8 +9022,7 @@
         "routing-middleware",
         "runtime-cache",
         "shadcn",
-        "turbopack",
-        "vercel-agent"
+        "turbopack"
       ],
       "skillIds": [
         "access-protected-vercel-deployment",
@@ -8302,6 +9030,7 @@
         "ai-sdk",
         "auth",
         "bootstrap",
+        "build-agents",
         "cdn-caching",
         "chat-sdk",
         "deployments-cicd",
@@ -8325,6 +9054,7 @@
         "vercel-firewall",
         "vercel-functions",
         "vercel-sandbox",
+        "vercel-services",
         "vercel-storage",
         "verification",
         "workflow"
@@ -8339,6 +9069,7 @@
         "skill-ai-sdk",
         "skill-auth",
         "skill-bootstrap",
+        "skill-build-agents",
         "skill-cdn-caching",
         "skill-chat-sdk",
         "skill-deployments-cicd",
@@ -8362,6 +9093,7 @@
         "skill-vercel-firewall",
         "skill-vercel-functions",
         "skill-vercel-sandbox",
+        "skill-vercel-services",
         "skill-vercel-storage",
         "skill-verification",
         "skill-workflow",
@@ -8457,6 +9189,27 @@
       ]
     },
     {
+      "id": "whop",
+      "name": "Whop",
+      "description": "Build and run your business end-to-end with Whop. Launch your website, accept payments, run ads, and more—directly in Cursor.",
+      "brand": null,
+      "homepage": "https://whop.com",
+      "docsUrl": "https://github.com/whopio/whop-mcp-server",
+      "marketplaceUrl": "https://cursor.com/marketplace/whop",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/e3be1ac7e85f7bbc.png",
+      "triggers": [
+        "whop"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "whop"
+      ],
+      "registryItemIds": [
+        "plugin-whop",
+        "mcp-whop"
+      ]
+    },
+    {
       "id": "wix",
       "name": "Wix",
       "description": "Build, manage, and deploy Wix sites and apps directly from Cursor. Includes CLI development skills for creating dashboard extensions, backend APIs, site widgets, and service plugins. Connects to the Wix MCP server for site management.",
@@ -8519,6 +9272,28 @@
       ]
     },
     {
+      "id": "x",
+      "name": "X",
+      "description": "Connect to the X API — search posts and users, read timelines and mentions, pull trends and news, and manage lists, bookmarks, blocks, and mutes — via X's official hosted MCP server.",
+      "brand": null,
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/x",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/80f8710cfbe8601a.png",
+      "triggers": [
+        "x",
+        "cursor"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "x"
+      ],
+      "registryItemIds": [
+        "plugin-x",
+        "mcp-x"
+      ]
+    },
+    {
       "id": "zapier",
       "name": "Zapier",
       "description": "Connect 9,000+ apps to your AI workflow. Discover, enable, and execute Zapier actions directly from your client.",
@@ -8566,6 +9341,28 @@
       "mcpServerIds": [],
       "registryItemIds": [
         "plugin-zenity-inventory"
+      ]
+    },
+    {
+      "id": "zoom",
+      "name": "Zoom",
+      "description": "Zoom MCP integration — search meetings and recordings, pull summaries and transcripts, and work with Zoom Docs.",
+      "brand": null,
+      "homepage": "https://cursor.com/",
+      "docsUrl": "https://github.com/cursor/plugins",
+      "marketplaceUrl": "https://cursor.com/marketplace/zoom",
+      "logoUrl": "https://cursor-cdn.com/plugin-logos/production/d94a4e3cd98758ec.png",
+      "triggers": [
+        "zoom",
+        "cursor"
+      ],
+      "skillIds": [],
+      "mcpServerIds": [
+        "zoom"
+      ],
+      "registryItemIds": [
+        "plugin-zoom",
+        "mcp-zoom"
       ]
     },
     {

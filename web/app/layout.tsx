@@ -4,12 +4,10 @@ import localFont from "next/font/local";
 import { Instrument_Serif } from "next/font/google";
 import type { ReactNode } from "react";
 
-import { MotionProvider } from "@/components/motion/MotionProvider";
 import { SITE, TITLE_SEPARATOR } from "@/lib/seo/config";
 import { buildRootJsonLd } from "@/lib/seo/json-ld";
 import { DEFAULT_OG_IMAGE, DEFAULT_TWITTER_IMAGE } from "@/lib/seo/metadata";
 
-import "lenis/dist/lenis.css";
 import "./globals.css";
 
 /**
@@ -156,7 +154,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 				/>
 			</head>
 			<body>
-				<MotionProvider>{children}</MotionProvider>
+				{children}
 				<div className="ret-grain" aria-hidden="true" />
 				<Analytics />
 			</body>

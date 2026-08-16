@@ -8,16 +8,19 @@
  * defaulting to the user's wizard drafts.
  */
 
-import { MachineProviderError } from "@/lib/providers";
-import { createMachineForConfig } from "@/lib/dashboard/provision";
+import { after } from "next/server";
+
+import { validateAgentCredentials } from "@/lib/agents/credentials";
+import { runtimeModel } from "@/lib/agents/runtime-model";
+import { createHostedControlPlane } from "@/lib/control-plane/service";
+import { resolveRoute, toSubstrateKind } from "@/lib/mux/route";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
-import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
+import { getUserConfig } from "@/lib/user-config/clerk";
 import {
 	DEFAULT_MACHINE_SPEC,
 	PROVIDER_KINDS,
 	type MachineSpec,
 	type ProviderKind,
-	type Worker,
 } from "@/lib/user-config/schema";
 
 export const runtime = "nodejs";
@@ -57,53 +60,58 @@ export async function POST(request: Request, ctx: Ctx): Promise<Response> {
 		? body.providerKind
 		: config.draftProviderKind;
 	const spec = asSpec(body.spec, config.draftSpec ?? DEFAULT_MACHINE_SPEC);
+	const agentCredentials = validateAgentCredentials(worker.agentKind, config);
+	if (!agentCredentials.ok) {
+		return Response.json(
+			{ error: "missing_ai_credentials", message: agentCredentials.message },
+			{ status: 400 },
+		);
+	}
 
-	if (!config.providers[providerKind]) {
+	const primaryMissing = resolveRoute(config, {
+		primary: toSubstrateKind(providerKind),
+		order: [toSubstrateKind(providerKind)],
+	}).skipped[0];
+	if (primaryMissing) {
 		return Response.json(
 			{
 				error: "missing_provider_credentials",
-				message: `No ${providerKind} credentials on file. Add them in /dashboard/setup.`,
+				message: `No ${providerKind} credentials on file. Add them in /dashboard/setup. Missing: ${primaryMissing.missing.join(", ")}`,
 			},
 			{ status: 400 },
 		);
 	}
 
-	const name = `${worker.name}-${new Date().toISOString().slice(0, 10)}`.slice(0, 80);
-
-	try {
-		const created = await createMachineForConfig(config, {
-			providerKind,
-			agentKind: worker.agentKind,
-			spec,
-			model: worker.model,
-			name,
+	const controlPlane = createHostedControlPlane(userId);
+	const accepted = await controlPlane.apply({
+		id: worker.id,
+		desiredState: "running",
+		spec: {
+			name: worker.name,
+			runtime: worker.agentKind,
+			sandbox: providerKind,
+			model: runtimeModel(worker.agentKind, worker.model),
+			memoryBundleId: worker.memoryBundleId,
+			rolePrompt: worker.rolePrompt,
 			gatewayProfileId: worker.gatewayProfileId,
-		});
-
-		// Record the deployment on the worker so its detail page links the machine.
-		const next: Worker[] = (config.workers ?? []).map((w) =>
-			w.id === id ? { ...w, lastMachineId: created.machineId, updatedAt: new Date().toISOString() } : w,
-		);
-		await setUserConfig({ workers: next });
-
-		return Response.json({
+			resources: {
+				vcpu: spec.vcpu,
+				memoryMib: spec.memoryMib,
+				diskGib: spec.storageGib,
+			},
+			migrationPolicy: "live",
+		},
+	});
+	after(async () => {
+		await controlPlane.reconcileNext(worker.id);
+	});
+	return Response.json(
+		{
 			ok: true,
-			machineId: created.machineId,
-			phase: created.phase,
-			state: created.state,
-			message:
-				"Machine provisioned. Run bootstrap from the machine to install the worker's runtime + memory bundle.",
-		});
-	} catch (err) {
-		const message =
-			err instanceof MachineProviderError
-				? err.message
-				: err instanceof Error
-					? err.message
-					: "deploy failed";
-		const status =
-			err instanceof MachineProviderError && err.kind === "not_supported" ? 501 : 502;
-		console.error(`[workers/deploy] ${worker.agentKind} deploy failed (${status}):`, message);
-		return Response.json({ error: "deploy_failed", message }, { status });
-	}
+			operation: accepted.operation,
+			statusUrl: `/api/dashboard/control-plane/operations/${accepted.operation.id}`,
+			message: "Worker intent accepted. Provisioning and bootstrap are journaled.",
+		},
+		{ status: 202 },
+	);
 }

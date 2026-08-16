@@ -426,6 +426,24 @@ test("the provider is pinned to the key that is actually injected", () => {
 	);
 });
 
+test("a provider-prefixed model keeps the model and credential lane aligned", () => {
+	const openai = hermesHarness.runCommand("hi", KEYS, {
+		model: "openai/gpt-5.6-sol",
+	});
+	assert.match(
+		openai.command,
+		/hermes chat --provider openai-api -m 'gpt-5\.6-sol' --quiet/,
+	);
+	const anthropic = hermesHarness.runCommand("hi", KEYS, {
+		model: "anthropic/claude-opus-4-8",
+	});
+	assert.match(anthropic.command, /--provider anthropic -m 'claude-opus-4-8'/);
+	assert.ok(
+		!anthropic.command.includes("-m 'anthropic/"),
+		"the redundant prefix makes Hermes print an unframed normalization warning",
+	);
+});
+
 test("interactiveCommand starts the TUI with the same PATH, provider and env", () => {
 	const { command, env } = hermesHarness.interactiveCommand(KEYS);
 	assert.match(command, /^PATH="[^"]+" hermes --provider anthropic$/);

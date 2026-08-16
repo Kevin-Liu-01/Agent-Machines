@@ -38,11 +38,13 @@ type MigrateInfo = {
 		moves: string[];
 		rederived: string[];
 		lost: string[];
+		liveLost: string[];
 		notes: string[];
 	};
 };
 
 type SourceOption = "destroy" | "park" | "keep";
+type MigrationMode = "live" | "copy";
 
 export function SubstrateMoveMenu({
 	machineId,
@@ -60,7 +62,7 @@ export function SubstrateMoveMenu({
 	const [info, setInfo] = useState<MigrateInfo | null>(null);
 	const [target, setTarget] = useState<ProviderKind | null>(null);
 	const [source, setSource] = useState<SourceOption>("destroy");
-	const [moveState, setMoveState] = useState(true);
+	const [mode, setMode] = useState<MigrationMode>("live");
 	const [pending, setPending] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const ref = useRef<HTMLDivElement | null>(null);
@@ -107,7 +109,8 @@ export function SubstrateMoveMenu({
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({
 						to: target,
-						moveState: target === "vercel" ? false : moveState,
+						moveState: true,
+						mode,
 						source,
 					}),
 				},
@@ -165,7 +168,6 @@ export function SubstrateMoveMenu({
 										type="button"
 										onClick={() => {
 											setTarget(lane.substrate);
-											if (lane.substrate === "vercel") setMoveState(false);
 										}}
 										className="flex w-full items-baseline justify-between gap-2 border-b border-[var(--ret-border)] px-3 py-2 text-left text-[12px] text-[var(--ret-text)] transition-colors hover:bg-[var(--ret-surface)]"
 									>
@@ -202,27 +204,39 @@ export function SubstrateMoveMenu({
 							<div className="mt-2 max-h-44 space-y-2 overflow-y-auto border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-2">
 								<ContractList
 									label="moves"
-									items={
-										target === "vercel" || !moveState
-											? ["nothing -- moveState:false ships no files"]
-											: info.contract.moves
-									}
+									items={info.contract.moves}
 								/>
 								<ContractList label="re-derived" items={info.contract.rederived} />
 								<ContractList
 									label="lost"
-									items={
-										!moveState || target === "vercel"
-											? [
-													...info.contract.lost,
-													"everything file-shaped stays on the source (moveState:false)",
-												]
-											: info.contract.lost
-									}
+									items={mode === "live" ? info.contract.liveLost : info.contract.lost}
 								/>
 								{info.contract.notes.length > 0 ? (
 									<ContractList label="notes" items={info.contract.notes} />
 								) : null}
+							</div>
+							<div className="mt-2 space-y-1">
+								<p className="font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
+									continuity
+								</p>
+								<label className="flex items-start gap-2 font-mono text-[10px] text-[var(--ret-text)]">
+									<input
+										type="radio"
+										name="am-migrate-mode"
+										checked={mode === "live"}
+										onChange={() => setMode("live")}
+									/>
+									<span>live (recommended) — drain managed runs, then ship a stable final delta</span>
+								</label>
+								<label className="flex items-start gap-2 font-mono text-[10px] text-[var(--ret-text)]">
+									<input
+										type="radio"
+										name="am-migrate-mode"
+										checked={mode === "copy"}
+										onChange={() => setMode("copy")}
+									/>
+									<span>copy — one online snapshot without a run drain</span>
+								</label>
 							</div>
 							<div className="mt-2 space-y-1">
 								<p className="font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">

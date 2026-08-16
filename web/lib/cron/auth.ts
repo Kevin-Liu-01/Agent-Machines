@@ -1,18 +1,17 @@
 /**
  * Authorization for internal scheduler/cron endpoints.
  *
- * Vercel injects an `x-vercel-cron` header and an
- * `Authorization: Bearer $CRON_SECRET` on scheduled invocations; the local dev
- * bypass also passes. Anything else is rejected so these routes can't be
- * triggered by the public.
+ * Vercel injects `Authorization: Bearer $CRON_SECRET` on scheduled
+ * invocations; the local dev bypass also passes. The `x-vercel-cron` header is
+ * useful telemetry, but it is not authentication because a direct caller can
+ * supply arbitrary request headers.
  */
 
 import { isDevBypassEnabled } from "@/lib/user-config/identity";
 
 export function authorizedInternalRequest(req: Request): boolean {
 	if (isDevBypassEnabled()) return true;
-	if (req.headers.get("x-vercel-cron") != null) return true;
-	const secret = process.env.CRON_SECRET;
+	const secret = process.env.CRON_SECRET?.trim();
 	if (secret && req.headers.get("authorization") === `Bearer ${secret}`) {
 		return true;
 	}

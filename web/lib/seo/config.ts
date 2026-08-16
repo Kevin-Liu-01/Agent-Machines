@@ -11,23 +11,23 @@ import { HARNESS_SUMMARY, HARNESS_TOOLS_ANSWER, PRODUCT } from "@/lib/platform/h
  * resolve relative paths.
  */
 
-/** Em dash separator for `<title>` and OG alt text — not `--`. */
-export const TITLE_SEPARATOR = " — ";
+/** Compact separator for document titles and social metadata. */
+export const TITLE_SEPARATOR = " | ";
 
 export const SITE = {
 	name: "Agent Machines",
 	wordmark: "agent-machines",
-	url: "https://www.agent-machines.dev",
+	url: "https://www.agent-machines.com",
 	description:
-		"Agent Machines runs persistent agent workers across runtimes and sandboxes with model routing, skills, MCPs, cron, logs, usage, and an SDK.",
+		"Create persistent, long-running Workers from a description or a trusted template. Keep their memory, files, schedules, abilities, and evidence while models, runtimes, and sandboxes change underneath them.",
 	longDescription:
 		`${PRODUCT.summary} Choose Hermes, OpenClaw, Claude Code, or Codex, then choose E2B, Sprites.dev, Dedalus Machines, or Vercel Sandbox. Route model paths through Vercel AI Gateway, OpenRouter, native keys, or any supported OpenAI-compatible endpoint. ${HARNESS_SUMMARY}.`,
 	tagline: PRODUCT.tagline,
 	ogImage: "/opengraph-image?v=4",
 	ogImageAlt:
-		"Agent Machines routes an agent runtime, sandbox, and model path into one persistent worker",
+		"Agent Machines keeps the Worker durable while runtimes, models, tools, and sandboxes remain replaceable",
 	aiSummary:
-		"Agent Machines is a harness-agnostic and sandbox-agnostic control plane for persistent AI agent workers. It pairs an agent runtime, sandbox provider, model path, loadout, memory, cron, logs, usage, artifacts, and SDK control into one worker.",
+		"Agent Machines is the Worker system for persistent digital labor. A Worker owns its identity, responsibility, memory, instructions, schedules, files, permissions, abilities, history, and evidence; the control plane reconciles replaceable runtimes, model paths, sandbox providers, tools, terminal transports, persistence modes, and placement beneath it.",
 	twitterHandle: "@kevin_liu_01",
 	authorName: "Kevin Liu",
 	authorUrl: "https://github.com/Kevin-Liu-01",
@@ -58,6 +58,10 @@ export const SITE = {
 		"sandbox agnostic agent",
 		"agent SDK",
 		"persistent worker",
+		"digital worker",
+		"digital labor operating system",
+		"long-running agent",
+		"agent template marketplace",
 		"agent worker",
 		"agent observability",
 		"agent loadout",
@@ -76,6 +80,8 @@ export const SITE = {
 		"Sandbox-agnostic provider switchboard",
 		"Model path and gateway profile routing",
 		"Persistent worker provisioning",
+		"Declarative lifecycle reconciliation and operation journal",
+		"Application-level live migration between sandbox providers",
 		"Browser terminal and command surface",
 		"Loadout registry for skills, MCP servers, CLIs, plugins, and services",
 		"Memory bundles and worker presets",
@@ -106,7 +112,7 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	},
 	{
 		question: "What is Agent Machines?",
-		answer: `${PRODUCT.summary} Pick Hermes, OpenClaw, Claude Code, or Codex, then pick E2B, Sprites.dev, Dedalus Machines, or Vercel Sandbox. ${PRODUCT.fleet} The dashboard supervises the fleet. The long-term control surface is dashboard for humans, MCP/CLI for agent-to-agent orchestration.`,
+		answer: `${PRODUCT.summary} Start from an off-the-shelf specialist or assemble one from modular primitives. The dashboard lets people watch, approve, inspect, and move the Worker; the SDK and API expose the same lifecycle programmatically.`,
 	},
 	{
 		question: "How is this different from a regular chatbot?",
@@ -121,7 +127,7 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "Which providers can host the machine?",
 		answer:
-			"E2B Sandbox, Sprites.dev, Dedalus Machines, and Vercel Sandbox are live provider implementations. Each plugs into the same MachineProvider abstraction for provision, state, lifecycle, command streaming where available, and public URLs where supported.",
+			"Agent Machines has provider adapters for E2B Sandbox, Sprites.dev, Dedalus Machines, and Vercel Sandbox. The latest strict live proof is green on E2B, Sprites, and Vercel. Dedalus remains adapter-complete but degraded by a disclosed upstream vendor incident. Each lane declares its actual lifecycle and streaming capabilities instead of receiving fake parity.",
 	},
 	{
 		question: "How is this different from a sandbox like E2B or Daytona?",
@@ -131,7 +137,7 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "How do I get my own machine today?",
 		answer:
-			"Sign in with Clerk, add provider credentials in /dashboard/setup, pick the agent, provider, spec, and model, then provision the machine record. The browser flow creates the provider machine and stores it in your fleet; the reliable agent bootstrap path is still the matching root CLI deploy command until browser-driven bootstrap lands.",
+			"Sign in, add provider and model credentials in Settings, open Workers, click a runtime such as Claude Code, then click a configured sandbox such as E2B. That sandbox click creates the Worker, provisions its machine, starts browser-driven bootstrap, and opens the live console.",
 	},
 	{
 		question: "What tools and skills come pre-installed?",

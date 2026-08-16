@@ -4,6 +4,12 @@
 > and **substrates** (which sandbox). Pick both per run, explain every
 > placement, stream everything.
 
+The multiplexer is the routing wedge, not the whole product boundary. Agent
+Machines keeps the **Worker** durable, including its identity, responsibility, memory,
+files, schedules, permissions, history, and evidence, while this module chooses
+replaceable runtime and sandbox machinery underneath it. A route can change
+without changing who the Worker is or what it owns.
+
 Read this first if you are new to the repo. It describes the direct-to-substrate
 library in `src/mux/` -- what it decides, what it measures, and what it
 deliberately does not do. Numbers here are derived from the code and from
@@ -490,14 +496,26 @@ harness ANSWERS with its version probe before the placement flips. An install
 that exits 0 but does not answer never persists. The old harness is never
 uninstalled, so rollback is `switchAgent` back: seconds, no install.
 
-`migrate` orders its steps so that every failure before the commit leaves the
+`migrate` has two continuity modes. The default, `mode: "copy"`, takes one
+online allowlisted snapshot. `mode: "live"` performs an application-level
+live handoff: it warms the target with a baseline, atomically blocks new Agent
+Machines-managed runs, waits for existing run leases to drain, creates and
+restores a stable final delta (including allowlisted deletions), verifies a
+fresh marker on the target, and only then atomically changes placement. The CLI
+spelling is `am mux migrate --name X --to sprites --live`; the dashboard offers
+live as its recommended mode.
+
+Both modes order their steps so that every failure before the commit leaves the
 ORIGINAL placement intact and addressable: gate (an uncredentialed target
 names its missing keys before the source is even woken), provision on the
-pinned lane, install, export, restore, verify, and only then the placement
-write, after which the source is destroyed (or parked/kept via `source:`).
-State is copied, never moved destructively; checksums are verified on both
-ends, and a marker written on the source must read back byte-identical on the
-target before anything commits.
+pinned lane, install, export, restore, optional drain + delta, verify, and only
+then the placement write, after which the source is destroyed (or parked/kept
+via `source:`). State is copied, never moved destructively; checksums are
+verified on both ends, and a marker written on the source must read back
+byte-identical on the target before anything commits. A failed live handoff
+re-opens the source gate before tearing down the disposable target. The gate
+also carries a worker-enforced expiry, so an orchestrator killed after drain
+cannot strand the source permanently closed.
 
 What moves is an explicit allowlist, not the disk: the `~/.agent-machines`
 persona and state tree (SOUL/AGENTS/MEMORY/USER docs, skills, loadout, state,
@@ -506,11 +524,14 @@ state (`~/.claude` + `~/.claude.json`, `~/.codex`, `~/.openclaw`, hermes's
 config and state db). Toolchains are re-derived by the idempotent installers
 rather than copied (an x64 binary shipped to an arm64 box is a broken machine),
 and credentials are re-injected from config, never round-tripped. Losses are
-DECLARED in the report, not implied: running processes and tmux scrollback,
+DECLARED in the report, not implied: process memory and tmux scrollback,
 `/tmp`, ad-hoc system packages, create-time env vars, and e2b RAM state (its
-persistence is a memory snapshot no file copy captures). `moveState: false`
-ships nothing and says so -- the report's `lost` list then names the whole
-file contract.
+persistence is a memory snapshot no cross-provider file copy captures). Live
+mode drains managed one-shot, streamed, and gateway runs, but existing direct
+SSH/provider commands and interactive tmux processes are unmanaged; processes
+restart from durable state on the target rather than continuing from RAM.
+`moveState: false` ships nothing and says so -- the report's `lost` list then
+names the whole file contract, and it cannot be combined with live mode.
 
 The report is the API response: moved, re-derived, lost, skipped, bytes, both
 sandbox ids, the verify evidence, and what happened to the source -- including
@@ -640,14 +661,14 @@ never finished until detached work was understood (see
 | --- | --- | --- |
 | Provider contract | `SandboxProvider` | `MachineProvider`, since 2026-08-03 a facade over the same four mux providers -- the vendor code exists once |
 | Create-time failover | yes, with every attempt recorded | yes, attempts recorded, ordered by credentials then health -- no constraint filter, no price, no learned order (`web/lib/mux/failover.ts`) |
-| Agent switch / substrate migrate | yes -- `switchAgent()` verifies then flips the placement; `migrate()` copies $HOME file state and commits last | yes, same ordering via its own endpoints (`machines/[id]/agent`, `machines/[id]/migrate`), progress in `migrationState` only -- no MigrateStep stream |
+| Agent switch / substrate migrate | yes -- `switchAgent()` verifies then flips the placement; `migrate()` supports online copy or managed-run drain + stable final delta, then commits last | yes, same copy/live contract via its own endpoints (`machines/[id]/agent`, `machines/[id]/migrate`), progress in `migrationState` only -- no MigrateStep stream |
 | Health ordering | yes, persisted circuit breaker | yes at provisioning only -- the same breaker, per tenant in `mux_placements` (`web/lib/mux/health.ts`); migrate, wake and run do not consult it |
 | Constraint filtering | yes, naming the failed dimension | none |
 | Learned ordering | yes, from local run traces | advisory recommendation only, from cron probes |
 | Run traces | one per run | cron ingest only |
 | Price as a routing input | yes, published rates with provenance | display data only |
 | Metering or billing | none | none -- the product is BYOK |
-| Browser console | PTY contract, single consumer | tmux-over-exec plus SSE, shipped |
+| Browser console | PTY contract, single consumer | pinned WebSocket + native PTY on e2b/sprites; tmux-over-exec + SSE fallback, shipped |
 | Placement store | local JSON file on one host | Clerk `UserConfig` plus Supabase |
 
 `web/` value-imports `src/mux` at runtime through the compiled package
@@ -687,6 +708,7 @@ Neither changes the data plane: whichever renderer is used, it consumes the same
 - **Not a fifth sandbox.** Route, don't rebuild.
 - **Not multi-host.** `mux.connect(name)` reads a local file, so it works from
   the host that created the machine and nowhere else.
-- **Not live migration.** `migrate()` moves files, not processes: running tmux
-  sessions, in-flight agent runs and RAM state do not survive the move, and the
-  report says so rather than implying otherwise.
+- **Not VM live migration.** Live mode drains Agent Machines-managed work and
+  cuts over a stable durable-state delta. It does not transplant RAM or a
+  running process: interactive tmux sessions and unmanaged direct provider
+  commands restart or remain on the source, and the report says so.

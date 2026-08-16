@@ -11,6 +11,7 @@ import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { RouterSelect } from "@/components/dashboard/RouterSelect";
 import { DEFAULT_ROUTER_ID, agentUpstreamReadiness, agentUsesRouter } from "@/lib/agents/upstreams";
 import { cn } from "@/lib/cn";
+import { waitForControlPlaneOperation } from "@/lib/control-plane/client";
 import type { ProviderKind, PublicUserConfig } from "@/lib/user-config/schema";
 
 type Phase = "idle" | "provisioning" | "ready" | "error";
@@ -150,15 +151,19 @@ export function DeployAndTalk() {
 			const provJson = (await prov.json()) as {
 				ok?: boolean;
 				machineId?: string;
+				operation?: { id?: string };
 				message?: string;
 				error?: string;
 			};
-			if (!prov.ok || !provJson.machineId) {
+			if (!prov.ok || !provJson.operation?.id) {
 				setPhase("error");
 				setDetail(provJson.message ?? provJson.error ?? "provision failed");
 				return;
 			}
-			const machineId = provJson.machineId;
+			setDetail("provisioning sandbox and installing runtime...");
+			const completed = await waitForControlPlaneOperation(provJson.operation.id);
+			const machineId = completed.machineId;
+			if (!machineId) throw new Error("provision completed without a machine id");
 
 			setPhase("ready");
 			setDetail("machine ready -- opening live view...");

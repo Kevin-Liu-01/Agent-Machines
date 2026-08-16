@@ -16,3 +16,4 @@ export {
 export { normalizeModel, resolveAgentRoute } from "./lib/routing.js";
 
 export * from "./mux/index.js";
+export * from "./control-plane/index.js";

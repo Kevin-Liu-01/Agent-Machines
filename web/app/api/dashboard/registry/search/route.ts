@@ -32,6 +32,7 @@ import type {
 } from "@/lib/dashboard/registry";
 import type { TrustedAddOnKind } from "@/lib/dashboard/loadout";
 import { isMachineRunning, execOnMachine } from "@/lib/dashboard/exec";
+import { registrySearchPlan } from "@/lib/dashboard/registry/search-plan";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -73,12 +74,12 @@ export async function GET(request: Request): Promise<Response> {
 			? "all"
 			: (kindParam.split(",").filter(Boolean) as TrustedAddOnKind[]);
 
-	const adaptersToRun =
-		requestedSources === "all"
-			? ALL_ADAPTERS
-			: ALL_ADAPTERS.filter((a) => requestedSources.includes(a.id));
+	const plan = registrySearchPlan(query, requestedSources);
+	const adaptersToRun = plan.sourceIds
+		.map((sourceId) => ADAPTER_MAP.get(sourceId))
+		.filter((adapter): adapter is RegistryAdapter => Boolean(adapter));
 
-	if (adaptersToRun.some((a) => a.id === "cursor-plugins")) {
+	if (plan.scanLiveCursorPlugins) {
 		try {
 			if (await isMachineRunning()) {
 				const result = await execOnMachine(

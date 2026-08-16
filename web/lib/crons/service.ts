@@ -3,28 +3,22 @@
  *
  * Crons are stored per-user in config (`config.crons`). The scheduler tick
  * (`/api/internal/cron/tick`) and the "run now" route both run a cron by
- * exec-ing the agent one-shot on the bound machine, via the provider
- * primitive directly so it works without a request session.
+ * enqueueing an idempotent Worker run. The control plane wakes cold machines,
+ * executes the configured harness, and persists terminal operation state.
  *
- * The executed command also appends a JSON line to
+ * The hosted runtime driver also appends a JSON line to
  * `~/.agent-machines/cron/runs.jsonl` on the box, so the machine keeps an
  * authoritative run log independent of the dashboard.
  */
 
-import { getProvider } from "@/lib/providers";
+import { submitMachineIntent } from "@/lib/control-plane/adopt-machine";
 import { resolveMachine } from "@/lib/dashboard/exec";
-import { agentOneShotInvocation } from "@/lib/dashboard/agent-launch";
 import type {
 	CronEntry,
 	CronStatus,
-	MachineRef,
 	UserConfig,
 } from "@/lib/user-config/schema";
 import { cronIsDueSince } from "@/lib/cron/expr";
-
-const RUN_DIR = "$HOME/.agent-machines/cron";
-const RUN_LOG = `${RUN_DIR}/runs.jsonl`;
-const RUN_TIMEOUT_MS = 120_000;
 
 /** The "armed from" baseline: last successful run, else creation time. */
 export function cronBaselineMs(cron: CronEntry): number | null {
@@ -44,46 +38,13 @@ export function listDueCrons(config: UserConfig, nowMs: number): CronEntry[] {
 	});
 }
 
-/**
- * Build the shell command that runs one cron: decode the prompt, invoke the
- * agent headlessly, capture output to a per-cron log, and append a run
- * record to runs.jsonl. Echoes `AM_CRON_EXIT:<code>` so a waiting caller can
- * read the outcome.
- */
-export function buildCronCommand(cron: CronEntry, machine: MachineRef): string {
-	const promptB64 = Buffer.from(cron.prompt ?? "", "utf8").toString("base64");
-	const armB64 = Buffer.from(
-		JSON.stringify({
-			runtime: machine.agentKind,
-			substrate: machine.providerKind,
-			model: machine.model,
-			router: machine.gatewayProfileId ?? null,
-		}),
-		"utf8",
-	).toString("base64");
-	const invocation =
-		agentOneShotInvocation(machine.agentKind) ??
-		'echo "no one-shot runner for this agent; prompt:"; echo "$AM_CRON_PROMPT"';
-	const logFile = `${RUN_DIR}/${cron.id}.last.log`;
-	return [
-		`mkdir -p "${RUN_DIR}"`,
-		`export AM_CRON_PROMPT="$(printf %s '${promptB64}' | base64 -d 2>/dev/null)"`,
-		`__am_arm="$(printf %s '${armB64}' | base64 -d 2>/dev/null || echo '{}')"`,
-		`__am_start=$(date -u +%Y-%m-%dT%H:%M:%SZ)`,
-		`( ${invocation} ) > "${logFile}" 2>&1`,
-		`__am_code=$?`,
-		`__am_end=$(date -u +%Y-%m-%dT%H:%M:%SZ)`,
-		`printf '{"id":"%s","startedAt":"%s","finishedAt":"%s","exitCode":%s,"arm":%s}\\n' '${cron.id}' "$__am_start" "$__am_end" "$__am_code" "$__am_arm" >> "${RUN_LOG}"`,
-		`echo "AM_CRON_EXIT:$__am_code"`,
-	].join("\n");
-}
-
 export type CronRunResult = {
 	ok: boolean;
 	status: CronStatus;
 	exitCode?: number;
 	output?: string;
 	message?: string;
+	operationId?: string;
 };
 
 /**
@@ -95,55 +56,56 @@ export type CronRunResult = {
 export async function runCronOnMachine(
 	config: UserConfig,
 	cron: CronEntry,
-	opts: { wait?: boolean } = {},
+	opts: { wait?: boolean; userId?: string; scheduledFor?: Date } = {},
 ): Promise<CronRunResult> {
 	const machine = resolveMachine(config, cron.machineId);
 	if (!machine) {
 		return { ok: false, status: "failed", message: "machine_not_found" };
 	}
-	const provider = getProvider(machine.providerKind, config.providers);
-	const command = buildCronCommand(cron, machine);
+	if (!opts.userId) {
+		return { ok: false, status: "failed", message: "user_id_required" };
+	}
+	try {
+		const managed = await submitMachineIntent(opts.userId, machine.id, {
+			desiredState: "running",
+		});
+		const operation = await managed.controlPlane.dispatchSchedule(
+			managed.accepted.worker.id,
+			cron.id,
+			opts.scheduledFor ?? new Date(),
+		);
+		if (!opts.wait) {
+			return { ok: true, status: "running", operationId: operation.id };
+		}
 
-	if (opts.wait) {
-		try {
-			const res = await provider.exec(machine.id, command, {
-				timeoutMs: RUN_TIMEOUT_MS,
-			});
-			const m = res.stdout.match(/AM_CRON_EXIT:(\d+)/);
-			const code = m ? Number.parseInt(m[1], 10) : res.exitCode ?? 1;
+		let terminal = operation;
+		for (let step = 0; step < 8; step += 1) {
+			if (terminal.status === "succeeded" || terminal.status === "failed") break;
+			await managed.controlPlane.reconcileNext(managed.accepted.worker.id);
+			terminal =
+				(await managed.controlPlane.store.getOperation(operation.id)) ?? terminal;
+		}
+		if (terminal.status === "succeeded") {
+			const result = (terminal.result ?? {}) as { text?: string; exitCode?: number };
 			return {
 				ok: true,
-				status: code === 0 ? "success" : "failed",
-				exitCode: code,
-				output: res.stdout,
-			};
-		} catch (err) {
-			return {
-				ok: false,
-				status: "failed",
-				message: err instanceof Error ? err.message : "exec_failed",
+				status: "success",
+				exitCode: result.exitCode ?? 0,
+				output: result.text ?? "",
+				operationId: operation.id,
 			};
 		}
-	}
-
-	// Fire-and-forget: prefer a real background exec; otherwise kick it off
-	// without awaiting so the scheduler tick returns promptly. Offline
-	// machines surface here as a thrown exec -- report failed rather than
-	// letting it bubble and abort a multi-cron tick.
-	try {
-		if (typeof provider.execBackground === "function") {
-			await provider.execBackground(machine.id, command);
-		} else {
-			void provider
-				.exec(machine.id, command, { timeoutMs: RUN_TIMEOUT_MS })
-				.catch(() => {});
-		}
-		return { ok: true, status: "running" };
-	} catch (err) {
+		return {
+			ok: false,
+			status: terminal.status === "failed" ? "failed" : "running",
+			message: terminal.error ?? "operation_pending",
+			operationId: operation.id,
+		};
+	} catch (error) {
 		return {
 			ok: false,
 			status: "failed",
-			message: err instanceof Error ? err.message : "dispatch_failed",
+			message: error instanceof Error ? error.message : "dispatch_failed",
 		};
 	}
 }

@@ -8,7 +8,7 @@ import {
 	agentUsesRouter,
 	requiredNativeUpstream,
 } from "@/lib/agents/upstreams";
-import { getUserConfig } from "@/lib/user-config/clerk";
+import { getUserConfigForRequest } from "@/lib/user-config/clerk";
 import { AGENT_KINDS, AGENT_LABEL, toPublicConfig } from "@/lib/user-config/schema";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ type Params = { params: Promise<{ machineId: string }> };
 
 export default async function MachineAgentsPage({ params }: Params) {
 	const { machineId } = await params;
-	const config = await getUserConfig();
+	const config = await getUserConfigForRequest();
 	const machine = config.machines.find((m) => m.id === machineId);
 	if (!machine) notFound();
 

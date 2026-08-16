@@ -93,6 +93,7 @@ export type MuxSandbox = Pick<
 	| "exec"
 	| "execStream"
 	| "execBackground"
+	| "openPty"
 	| "publicUrl"
 	| "state"
 	| "sleep"
@@ -390,6 +391,7 @@ export function toProviderCapabilities(
 			capabilities.persistence === "none"
 				? "ephemeral-session"
 				: "persistent-machine",
+		pty: capabilities.pty,
 		canProvision: true,
 		canWake: true,
 		canSleep: true,
@@ -634,6 +636,8 @@ export function createMuxBackedProvider(
 			try {
 				const result = await sandbox.exec(command, {
 					timeoutMs: options?.timeoutMs ?? execTimeoutMs,
+					env: options?.env,
+					cwd: options?.cwd,
 				});
 				// A non-zero exit is a result, not an error: the bootstrap runner
 				// inspects exitCode/stderr to decide whether a phase can retry.
@@ -653,6 +657,15 @@ export function createMuxBackedProvider(
 				await sandbox.execBackground(command);
 			} catch (error) {
 				throw fail("execBackground", machineId, error);
+			}
+		},
+
+		async openPty(machineId, options) {
+			const sandbox = await attach(machineId, "openPty");
+			try {
+				return await sandbox.openPty(options);
+			} catch (error) {
+				throw fail("openPty", machineId, error);
 			}
 		},
 
@@ -678,6 +691,8 @@ export function createMuxBackedProvider(
 			const stream = sandbox.execStream(command, {
 				timeoutMs: options?.timeoutMs ?? streamTimeoutMs,
 				signal: options?.signal,
+				env: options?.env,
+				cwd: options?.cwd,
 			});
 			for await (const event of stream) {
 				// Same three frames on both sides; mapped explicitly so a new

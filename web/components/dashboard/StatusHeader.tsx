@@ -1,6 +1,5 @@
 "use client";
 
-import { UserButton } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -18,6 +17,7 @@ import type {
 import type { PublicMachineRef } from "@/lib/user-config/schema";
 
 import { CommandPalette } from "./CommandPalette";
+import { DeferredClerkUserButton } from "./DeferredClerkUserButton";
 import { FleetStatusStrip } from "./FleetStatusStrip";
 import { GatewayStrip } from "./GatewayStrip";
 import { StatusPill } from "./StatusPill";
@@ -170,13 +170,7 @@ export function StatusHeader({ machines = [] }: Props) {
 				<span className={headerDivider} aria-hidden />
 				<ThemeToggle />
 				{CLERK_READY ? (
-					<UserButton
-						appearance={{
-							elements: {
-								avatarBox: "h-7 w-7",
-							},
-						}}
-					/>
+					<DeferredClerkUserButton />
 				) : null}
 			</div>
 		</header>

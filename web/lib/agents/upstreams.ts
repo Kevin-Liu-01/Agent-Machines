@@ -68,6 +68,23 @@ export function routerPresetById(id: string | null | undefined): RouterPreset | 
 
 export const DEFAULT_ROUTER_ID = "vercel-ai-gateway";
 
+/** Dedalus is a sandbox substrate only; its historical model-router ids are retired. */
+export function isRemovedDedalusRouter(value: unknown): boolean {
+	if (typeof value === "string") return value.trim().toLowerCase().includes("dedalus");
+	if (!value || typeof value !== "object") return false;
+	const profile = value as { id?: unknown; kind?: unknown; baseUrl?: unknown };
+	return [profile.id, profile.kind, profile.baseUrl].some(
+		(entry) =>
+			typeof entry === "string" && entry.trim().toLowerCase().includes("dedalus"),
+	);
+}
+
+/** Read-time cutover for stale persisted ids such as `dedalus-default`. */
+export function normalizeRouterId(value: string | null | undefined): string | null {
+	if (!value) return null;
+	return isRemovedDedalusRouter(value) ? DEFAULT_ROUTER_ID : value;
+}
+
 /** Native (non-router) provider an agent is locked to, if any. */
 export function requiredNativeUpstream(
 	agentKind: AgentKind,

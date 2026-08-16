@@ -40,6 +40,23 @@ export {
 	type StateMovePlan,
 } from "./statemove.js";
 export {
+	MIGRATION_DRAIN_EXIT_CODE,
+	acquireExternalRunLease,
+	beginMigrationDrain,
+	cancelMigrationDrain,
+	cleanupLiveMigration,
+	exportStableLiveDelta,
+	guardedRunCommand,
+	prepareLiveBaseline,
+	releaseRunLease,
+	restoreStableLiveDelta,
+	waitForMigrationDrain,
+	type DrainStarted,
+	type LiveBaseline,
+	type MigrationMode,
+	type StableLiveDelta,
+} from "./live-migration.js";
+export {
 	loadMuxConfig,
 	resolveMuxConfig,
 	HARNESS_KINDS,

@@ -16,6 +16,7 @@ next-env.d.ts
 # Local dev store -- file-backed UserConfig for `ALLOW_DEV_AUTH=1`.
 # Holds provider keys and machine refs for the synthetic dev-user.
 .dev-user-config.json
+.control-plane/
 
 # This is a pnpm project (see `packageManager` in package.json). Never commit an
 # npm lockfile: a stale package-lock.json alongside pnpm-lock.yaml caused a

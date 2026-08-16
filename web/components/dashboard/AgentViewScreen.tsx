@@ -57,6 +57,7 @@ import {
 	normalizeMachineUsagePayload,
 	type NormalizedMachineUsage,
 } from "@/lib/dashboard/usage-metrics";
+import { waitForControlPlaneOperation } from "@/lib/control-plane/client";
 import {
 	AGENT_KINDS,
 	AGENT_LABEL,
@@ -80,6 +81,7 @@ type WakeRouteResponse = {
 	ok?: boolean;
 	needsBootstrap?: boolean;
 	summary?: { phase?: string; state?: string; rawPhase?: string };
+	operation?: { id?: string };
 	error?: string;
 	message?: string;
 };
@@ -470,6 +472,9 @@ export function AgentViewScreen() {
 					`/api/dashboard/machines/${encodeURIComponent(machineId)}/wake`,
 					{ method: "POST" },
 				);
+				if (wake.operation?.id) {
+					await waitForControlPlaneOperation(wake.operation.id);
+				}
 				markLaunchStep("wake", {
 					status: "done",
 					detail:

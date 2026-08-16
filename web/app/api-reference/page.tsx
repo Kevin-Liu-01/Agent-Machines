@@ -17,6 +17,7 @@ export default function ApiReferencePage() {
 		<ResourcePageContent
 			page={page}
 			terminalLines={[
+				"POST /api/dashboard/control-plane/workers",
 				"GET /api/dashboard/machines",
 				"POST /api/dashboard/gateway",
 				"GET /api/dashboard/logs",

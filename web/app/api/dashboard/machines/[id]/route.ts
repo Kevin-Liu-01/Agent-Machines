@@ -17,12 +17,19 @@
  * strand it.
  */
 
+import { after } from "next/server";
+
+import { isRemovedDedalusRouter } from "@/lib/agents/upstreams";
+import { submitMachineIntent } from "@/lib/control-plane/adopt-machine";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import { forgetHostedPlacement } from "@/lib/mux/placements";
 import { MachineProviderError, getProvider } from "@/lib/providers";
-import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
-import type { MachineRef } from "@/lib/user-config/schema";
+import {
+	getUserConfigById,
+	setOperationalUserConfigById,
+} from "@/lib/user-config/clerk";
+import type { MachineRef, UserConfig } from "@/lib/user-config/schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,18 +49,22 @@ type PatchBody = {
 	environmentProfileId?: string | null;
 };
 
-async function find(id: string): Promise<MachineRef | null> {
-	const config = await getUserConfig();
-	return config.machines.find((m) => m.id === id) ?? null;
+async function find(
+	userId: string,
+	id: string,
+): Promise<{ config: UserConfig; machine: MachineRef } | null> {
+	const config = await getUserConfigById(userId);
+	const machine = config.machines.find((candidate) => candidate.id === id);
+	return machine ? { config, machine } : null;
 }
 
 export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
 	const userId = await getEffectiveUserId();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 	const { id } = await ctx.params;
-	const machine = await find(id);
-	if (!machine) return Response.json({ error: "not_found" }, { status: 404 });
-	const config = await getUserConfig();
+	const found = await find(userId, id);
+	if (!found) return Response.json({ error: "not_found" }, { status: 404 });
+	const { config, machine } = found;
 	let live: unknown = null;
 	try {
 		const provider = getProvider(machine.providerKind, config.providers);
@@ -75,8 +86,9 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
 	const userId = await getEffectiveUserId();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 	const { id } = await ctx.params;
-	const machine = await find(id);
-	if (!machine) return Response.json({ error: "not_found" }, { status: 404 });
+	const found = await find(userId, id);
+	if (!found) return Response.json({ error: "not_found" }, { status: 404 });
+	const { config } = found;
 
 	let body: PatchBody;
 	try {
@@ -119,6 +131,16 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
 				: null;
 	}
 	if (body.gatewayProfileId !== undefined) {
+		if (isRemovedDedalusRouter(body.gatewayProfileId)) {
+			return Response.json(
+				{
+					error: "unsupported_gateway",
+					message:
+						"Dedalus is a sandbox provider only; choose Vercel AI Gateway or OpenRouter.",
+				},
+				{ status: 400 },
+			);
+		}
 		patch.gatewayProfileId =
 			typeof body.gatewayProfileId === "string" && body.gatewayProfileId.trim().length > 0
 				? body.gatewayProfileId.trim()
@@ -135,7 +157,7 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
 		return Response.json({ error: "no_changes" }, { status: 422 });
 	}
 
-	const next = await setUserConfig({
+	const next = await setOperationalUserConfigById(userId, config, {
 		...(setActive ? { activeMachineId: id } : {}),
 		...(Object.keys(patch).length > 0 ? { patchMachine: { id, patch } } : {}),
 	});
@@ -160,12 +182,13 @@ export async function DELETE(request: Request, ctx: Ctx): Promise<Response> {
 	const userId = await getEffectiveUserId();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 	const { id } = await ctx.params;
-	const machine = await find(id);
-	if (!machine) return Response.json({ error: "not_found" }, { status: 404 });
+	const found = await find(userId, id);
+	if (!found) return Response.json({ error: "not_found" }, { status: 404 });
+	const { config, machine } = found;
 	const url = new URL(request.url);
 
 	if (url.searchParams.get("unarchive") === "1") {
-		await setUserConfig({ unarchiveMachine: id });
+		await setOperationalUserConfigById(userId, config, { unarchiveMachine: id });
 		return Response.json({ ok: true, action: "unarchived" });
 	}
 
@@ -176,16 +199,31 @@ export async function DELETE(request: Request, ctx: Ctx): Promise<Response> {
 		// would be an unprunable entry pointing at a sandbox no dashboard row
 		// explains. Guarded by sandbox id inside, and best-effort -- see below.
 		const placement = await forgetHostedPlacement({ userId, machine });
-		await setUserConfig({ removeMachine: id });
+		await setOperationalUserConfigById(userId, config, { removeMachine: id });
 		return Response.json({ ok: true, action: "removed", placement });
 	}
 
 	const hardDestroy = url.searchParams.get("destroy") === "1";
 	if (hardDestroy) {
-		const config = await getUserConfig();
 		try {
-			const provider = getProvider(machine.providerKind, config.providers);
-			await provider.destroy(machine.id);
+			const submitted = await submitMachineIntent(userId, machine.id, {
+				desiredState: "deleted",
+				idempotencyKey:
+					request.headers?.get?.("idempotency-key") ??
+					`destroy:${machine.id}:${crypto.randomUUID()}`,
+			});
+			after(async () => {
+				await submitted.controlPlane.reconcileNext(submitted.accepted.worker.id);
+			});
+			return Response.json(
+				{
+					ok: true,
+					action: "destroy_scheduled",
+					operation: submitted.accepted.operation,
+					statusUrl: `/api/dashboard/control-plane/operations/${submitted.accepted.operation.id}`,
+				},
+				{ status: 202 },
+			);
 		} catch (err) {
 			const message = err instanceof Error ? err.message : "destroy failed";
 			return Response.json(
@@ -193,17 +231,8 @@ export async function DELETE(request: Request, ctx: Ctx): Promise<Response> {
 				{ status: 502 },
 			);
 		}
-		// The substrate has confirmed the sandbox is gone, which is the ONLY
-		// authority src/mux/state.ts accepts for pruning a placement. Runs after
-		// the destroy and before the record write, and never throws (the
-		// function returns a reason instead), so a placement-store hiccup cannot
-		// turn a successful destroy into a 502 -- a stale placement is a
-		// bookkeeping problem, a leaked sandbox is a billing one.
-		const placement = await forgetHostedPlacement({ userId, machine });
-		await setUserConfig({ removeMachine: id });
-		return Response.json({ ok: true, action: "destroyed", placement });
 	}
 
-	await setUserConfig({ archiveMachine: id });
+	await setOperationalUserConfigById(userId, config, { archiveMachine: id });
 	return Response.json({ ok: true, action: "archived" });
 }

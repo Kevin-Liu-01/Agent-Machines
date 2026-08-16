@@ -199,6 +199,18 @@ describe("e2b binding", () => {
 		expect(provider.remove).toHaveBeenCalledWith("sbx-1");
 		expect(provider.connect).not.toHaveBeenCalled();
 	});
+
+	it("keeps native openPty on the hosted class surface", async () => {
+		const provider = fakeMuxProvider("e2b");
+		mocks.createE2bProvider.mockReturnValue(provider);
+		await new E2BProvider({ apiKey: "k" }).openPty("sbx-1", {
+			command: "tmux attach-session -t amconsole",
+		});
+		expect(provider.connect).toHaveBeenCalledWith("sbx-1");
+		expect(provider.handleFor("sbx-1").openPty).toHaveBeenCalledWith({
+			command: "tmux attach-session -t amconsole",
+		});
+	});
 });
 
 describe("sprites binding", () => {

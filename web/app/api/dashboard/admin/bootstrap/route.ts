@@ -1,21 +1,16 @@
 /**
- * POST /api/dashboard/admin/bootstrap
- *
- * Browser-driven agent bootstrap. This route runs the selected machine
- * through the same named phases the onboarding UI already displays and
- * persists `bootstrapState` after every phase so dashboards can stream
- * meaningful progress while the provider execs long-running commands.
+ * Compatibility bootstrap endpoint. V2 records repair/reconfigure requests in
+ * the same operation journal as launches and runtime switches; the request no
+ * longer owns a long provider exec that can disappear with a serverless host.
  */
 
-import { getProvider } from "@/lib/providers";
-import { validateAgentCredentials } from "@/lib/agents/credentials";
-import { runWebBootstrap } from "@/lib/bootstrap/runner";
-import { scheduleWebBootstrap } from "@/lib/bootstrap/schedule-bootstrap";
-import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
-import { getEffectiveUserId } from "@/lib/user-config/identity";
-import { INITIAL_BOOTSTRAP_STATE, type MachineRef } from "@/lib/user-config/schema";
-import crypto from "node:crypto";
 import { after } from "next/server";
+
+import { validateAgentCredentials } from "@/lib/agents/credentials";
+import { submitMachineIntent } from "@/lib/control-plane/adopt-machine";
+import { getProvider } from "@/lib/providers";
+import { getUserConfig } from "@/lib/user-config/clerk";
+import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,155 +24,87 @@ type Body = {
 
 export async function POST(request: Request): Promise<Response> {
 	const userId = await getEffectiveUserId();
-	if (!userId) {
-		return Response.json({ error: "unauthorized" }, { status: 401 });
-	}
-
+	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 	const body = (await request.json().catch(() => ({}))) as Body;
 
 	let config: Awaited<ReturnType<typeof getUserConfig>>;
 	try {
 		config = await getUserConfig();
-	} catch (err) {
-		const message = err instanceof Error ? err.message : "config read failed";
+	} catch (error) {
 		return Response.json(
-			{ error: "config_read_failed", message },
+			{
+				error: "config_read_failed",
+				message: error instanceof Error ? error.message : "config read failed",
+			},
 			{ status: 500 },
 		);
 	}
-	const machine = resolveMachine(config.machines, body.machineId ?? config.activeMachineId);
+	const machineId = body.machineId ?? config.activeMachineId;
+	const machine = config.machines.find(
+		(candidate) => candidate.id === machineId && !candidate.archived,
+	);
 	if (!machine) {
 		return Response.json(
-			{ error: "not_found", message: "No machine found. Provision one first via /dashboard/setup." },
+			{
+				error: "not_found",
+				message: "No machine found. Provision one first via /dashboard/setup.",
+			},
 			{ status: 404 },
 		);
 	}
 
-	let provider: ReturnType<typeof getProvider>;
 	try {
-		provider = getProvider(machine.providerKind, config.providers);
-	} catch (err) {
+		getProvider(machine.providerKind, config.providers);
+	} catch (error) {
 		return Response.json(
 			{
 				error: "missing_credentials",
-				message: err instanceof Error ? err.message : "Provider credentials missing.",
+				message:
+					error instanceof Error ? error.message : "Provider credentials missing.",
 			},
 			{ status: 400 },
 		);
 	}
-
-	const credCheck = validateAgentCredentials(machine.agentKind, config);
-	if (!credCheck.ok) {
+	const credentialState = validateAgentCredentials(machine.agentKind, config);
+	if (!credentialState.ok) {
 		return Response.json(
-			{ error: "missing_agent_credentials", message: credCheck.message },
+			{
+				error: "missing_agent_credentials",
+				message: credentialState.message,
+			},
 			{ status: 400 },
 		);
-	}
-
-	if (body.background === true && body.force !== true) {
-		if (machine.bootstrapState.phase === "running") {
-			return Response.json({
-				ok: true,
-				machineId: machine.id,
-				background: true,
-				alreadyRunning: true,
-			});
-		}
-		if (machine.bootstrapState.phase === "succeeded") {
-			return Response.json({
-				ok: true,
-				machineId: machine.id,
-				background: true,
-				alreadySucceeded: true,
-			});
-		}
-	}
-
-	await setUserConfig({
-		patchMachine: {
-			id: machine.id,
-			patch: {
-				...(machine.apiKey || (machine.bootstrapState.completed ?? []).includes("configure-hermes")
-					? {}
-					: { apiKey: crypto.randomUUID() }),
-				bootstrapState: {
-					...machine.bootstrapState,
-					phase: "running",
-					current: null,
-					finishedAt: null,
-					lastError: null,
-					startedAt: machine.bootstrapState.startedAt ?? new Date().toISOString(),
-				},
-			},
-		},
-	});
-
-	const latestConfig = await getUserConfig();
-	const machineForBootstrap =
-		latestConfig.machines.find((m) => m.id === machine.id) ?? machine;
-
-	if (body.background === true) {
-		after(() => scheduleWebBootstrap(machineForBootstrap, provider, latestConfig, {
-			force: body.force === true,
-		}));
-		return Response.json({
-			ok: true,
-			machineId: machine.id,
-			background: true,
-		});
 	}
 
 	try {
-		const result = await runWebBootstrap({
-			machine: machineForBootstrap,
-			provider,
-			config,
-			force: body.force === true,
-			onState: async (bootstrapState) => {
-				await setUserConfig({
-					patchMachine: { id: machine.id, patch: { bootstrapState } },
-				});
-			},
+		const submitted = await submitMachineIntent(userId, machine.id, {
+			desiredState: "running",
+			forceBootstrap: body.force === true,
+			idempotencyKey:
+				request.headers?.get?.("idempotency-key") ??
+				(body.force ? `bootstrap:${machine.id}:${crypto.randomUUID()}` : undefined),
 		});
-		await setUserConfig({
-			patchMachine: {
-				id: machine.id,
-				patch: {
-					apiUrl: result.apiUrl,
-					apiKey: result.apiKey,
-				},
-			},
+		after(async () => {
+			await submitted.controlPlane.reconcileNext(submitted.accepted.worker.id);
 		});
-		return Response.json({ ok: true, machineId: machine.id });
-	} catch (err) {
-		const message = err instanceof Error ? err.message : "bootstrap failed";
-		const latest = await getUserConfig().catch(() => null);
-		const latestMachine = latest?.machines.find((m) => m.id === machine.id) ?? machine;
-		await setUserConfig({
-			patchMachine: {
-				id: machine.id,
-				patch: {
-					bootstrapState: {
-						...latestMachine.bootstrapState,
-						phase: "failed",
-						current: null,
-						finishedAt: new Date().toISOString(),
-						lastError: message,
-					},
-				},
-			},
-		}).catch(() => {});
 		return Response.json(
-			{ ok: false, error: "bootstrap_failed", message },
+			{
+				ok: true,
+				machineId: machine.id,
+				background: true,
+				operation: submitted.accepted.operation,
+				statusUrl: `/api/dashboard/control-plane/operations/${submitted.accepted.operation.id}`,
+			},
+			{ status: 202 },
+		);
+	} catch (error) {
+		return Response.json(
+			{
+				ok: false,
+				error: "bootstrap_submit_failed",
+				message: error instanceof Error ? error.message : "bootstrap submit failed",
+			},
 			{ status: 502 },
 		);
 	}
-}
-
-function resolveMachine(
-	machines: MachineRef[],
-	machineId: string | null,
-): MachineRef | null {
-	if (!machineId) return null;
-	return machines.find((m) => m.id === machineId) ?? null;
 }

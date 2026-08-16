@@ -78,6 +78,19 @@ import {
 	DEFAULT_TAR_TIMEOUT_MS,
 	type MigrationMarker,
 } from "./statemove.js";
+import {
+	beginMigrationDrain,
+	cancelMigrationDrain,
+	cleanupLiveMigration,
+	exportStableLiveDelta,
+	guardedRunCommand,
+	prepareLiveBaseline,
+	restoreStableLiveDelta,
+	waitForMigrationDrain,
+	type DrainStarted,
+	type LiveBaseline,
+	type MigrationMode,
+} from "./live-migration.js";
 
 export type MuxCreateOptions = {
 	agent?: HarnessKind;
@@ -200,12 +213,27 @@ export type SwitchReport = {
 };
 
 export type MigrateStep = {
-	step: "gate" | "provision" | "install" | "export" | "restore" | "verify" | "commit" | "source";
+	step:
+		| "gate"
+		| "provision"
+		| "install"
+		| "export"
+		| "restore"
+		| "drain"
+		| "delta"
+		| "verify"
+		| "commit"
+		| "source";
 	detail?: string;
 };
 
 export type MigrateOptions = {
 	to: SubstrateKind;
+	/** `copy` is the original online copy. `live` additionally blocks new
+	 * Agent Machines-managed work, drains active turns, and applies a stable
+	 * final delta before the same atomic placement commit. Default `copy` for
+	 * backward compatibility. Neither mode claims to transfer RAM/processes. */
+	mode?: MigrationMode;
 	/** Ship the $HOME-relative file state (default). `false` = fresh box,
 	 * same agent, same name, and the report's `lost` list says everything
 	 * file-shaped was left behind. */
@@ -219,6 +247,8 @@ export type MigrateOptions = {
 	env?: Record<string, string>;
 	resources?: { vcpu?: number; memoryMib?: number; diskGib?: number };
 	template?: string;
+	/** Maximum time live mode waits for managed runs to finish. */
+	drainTimeoutMs?: number;
 	onProgress?: (step: MigrateStep) => void;
 };
 
@@ -247,6 +277,17 @@ export type MigrateReport = {
 		probe: string;
 		/** "skipped" only when moveState: false. */
 		marker: boolean | "skipped";
+	};
+	continuity: {
+		mode: MigrationMode;
+		managedRuns: "not-gated" | "drained";
+		process: "restarted";
+		activeRuns: number;
+		drainWaitMs: number;
+		baselineBytes: number;
+		deltaBytes: number;
+		stabilityAttempts: number;
+		gateReleased: boolean;
 	};
 	/** `error` names an orphaned sandbox, never silently. A post-commit
 	 * source failure does NOT fail the migration: the load is already safe
@@ -554,12 +595,18 @@ export class MuxMachine {
 				return replayStream(options.runKey, outcome, options.onEvent);
 			}
 		}
-		const { command, env } = this.harness.runCommand(prompt, this.config.keys, {
+		const { command: harnessCommand, env } = this.harness.runCommand(prompt, this.config.keys, {
 			model: options.model ?? this.model ?? this.config.defaults.model,
 			cwd: options.cwd,
 			extraArgs: options.extraArgs,
 			sessionId: options.sessionId,
 		});
+		const command = this.name
+			? guardedRunCommand(harnessCommand, {
+					leaseId: `run-${randomUUID()}`,
+					timeoutMs: options.timeoutMs ?? this.config.defaults.timeoutMs,
+				})
+			: harnessCommand;
 		const harness = this.harness;
 		const sandbox = this.sandbox;
 		const timeoutMs = options.timeoutMs ?? this.config.defaults.timeoutMs;
@@ -1427,9 +1474,11 @@ export class Mux {
 	 * The name and the agent survive; the sandboxId changes. What moves is
 	 * the $HOME-relative FILE state (src/mux/statemove.ts is the one source
 	 * of truth for the list); toolchains and credentials are re-derived, and
-	 * running processes are declared lost in the report. This is never
-	 * marketed as full-disk or live migration: fork is unexposed on every
-	 * substrate and e2b's RAM snapshot cannot leave the vendor.
+	 * running processes are declared restarted/lost in the report. `mode:live`
+	 * is application-level live migration: managed turns drain and a stable
+	 * final filesystem delta lands before cutover. It is never marketed as a
+	 * VM memory-image transplant: fork is unexposed on every substrate and
+	 * e2b's RAM snapshot cannot leave the vendor.
 	 *
 	 * POINT OF NO RETURN = the rememberMachineAsync at the commit step. The
 	 * state is COPIED, never destructively moved, so every failure before
@@ -1444,6 +1493,14 @@ export class Mux {
 		// migrate never changes the agent; switchAgent is the other verb, and
 		// composing both in one call would create two points of no return.
 		const agent = remembered.agent;
+		const mode = options.mode ?? "copy";
+		const moveState = options.moveState !== false;
+		if (mode === "live" && !moveState) {
+			throw new MuxError(
+				"fatal",
+				`live migration requires moveState:true; a fresh target has no durable state to resume`,
+			);
+		}
 		if (options.to === remembered.substrate) {
 			throw new MuxError(
 				"fatal",
@@ -1478,7 +1535,6 @@ export class Mux {
 			);
 		}
 		try {
-			const moveState = options.moveState !== false;
 			const plan = MOVE_ALLOWLIST(agent);
 
 			// Credential + upstream gate AND target provisioning in one step,
@@ -1504,7 +1560,7 @@ export class Mux {
 			const newId = target.sandbox.id;
 			const attempts: ScoredRouteAttempt[] = [...target.attempts];
 
-			const marker: MigrationMarker = {
+			let marker: MigrationMarker = {
 				name,
 				fromSubstrate: remembered.substrate,
 				fromSandboxId: remembered.sandboxId,
@@ -1516,6 +1572,17 @@ export class Mux {
 			let bytes = 0;
 			let markerVerified: boolean | "skipped" = "skipped";
 			let probeCommand = "";
+			let sourceHandle: SandboxHandle | null = null;
+			let liveBaseline: LiveBaseline | null = null;
+			let drainStarted: DrainStarted | null = null;
+			let drainAttempted = false;
+			let activeRuns = 0;
+			let drainWaitMs = 0;
+			let baselineBytes = 0;
+			let deltaBytes = 0;
+			let stabilityAttempts = 0;
+			let gateReleased = mode === "copy";
+			let gateReleaseError: string | null = null;
 
 			try {
 				if (moveState) {
@@ -1525,30 +1592,36 @@ export class Mux {
 					});
 					// Connecting WAKES a parked source; a migration is a write
 					// and cannot read a stopped filesystem.
-					const source = await this.provider(remembered.substrate).connect(
+					sourceHandle = await this.provider(remembered.substrate).connect(
 						remembered.sandboxId,
 					);
-					if (source.keepAlive) {
+					if (sourceHandle.keepAlive) {
 						try {
 							// The export must outlive the source's idle budget;
 							// failure to extend surfaces later as a transient
 							// export error, which is retryable.
-							await source.keepAlive(DEFAULT_TAR_TIMEOUT_MS + 120_000);
+							await sourceHandle.keepAlive(DEFAULT_TAR_TIMEOUT_MS + 120_000);
 						} catch {
 							// Best effort.
 						}
 					}
-					const oldHome = await readHome(source);
+					const oldHome = await readHome(sourceHandle);
 					// The ONLY source mutation before commit: additive and
 					// harmless. Written before the tar so it rides it.
-					await writeMarker(source, marker);
-					const presence = await probeIncludes(source, plan.include);
+					await writeMarker(sourceHandle, marker);
+					const presence = await probeIncludes(sourceHandle, plan.include);
 					// The marker is the verification vehicle, not user load;
 					// reporting it under `moved` would pad the list.
 					moved = presence.present.filter((path) => path !== MIGRATION_MARKER_PATH);
 					skipped = presence.skipped;
+					if (mode === "live") {
+						liveBaseline = await prepareLiveBaseline(sourceHandle, marker.nonce, {
+							include: presence.present,
+							exclude: plan.exclude,
+						});
+					}
 					const tarPath = `/tmp/am-migrate-${marker.nonce}.tgz`;
-					const build = await source.exec(
+					const build = await sourceHandle.exec(
 						buildExportCommand({ include: presence.present, exclude: plan.exclude }, tarPath),
 						{ timeoutMs: DEFAULT_TAR_TIMEOUT_MS },
 					);
@@ -1561,11 +1634,12 @@ export class Mux {
 							{ substrate: remembered.substrate, harness: agent },
 						);
 					}
-					const exported = await exportTar(source, tarPath, { include: presence.present });
-					bytes = exported.bytes.length;
+					const exported = await exportTar(sourceHandle, tarPath, { include: presence.present });
+					baselineBytes = exported.bytes.length;
+					bytes = baselineBytes;
 					// Best-effort tidy; the tar under /tmp is already declared
 					// lost state and costs nothing if it stays.
-					await source.exec(`rm -f '${tarPath}'`, { timeoutMs: 30_000 }).catch(() => {});
+					await sourceHandle.exec(`rm -f '${tarPath}'`, { timeoutMs: 30_000 }).catch(() => {});
 
 					progress({ step: "restore", detail: `${bytes} bytes onto ${options.to}:${newId}` });
 					await restoreTar(target.sandbox, exported.bytes, {
@@ -1573,6 +1647,43 @@ export class Mux {
 						agent,
 						...(oldHome ? { oldHome } : {}),
 					});
+
+					if (mode === "live" && liveBaseline) {
+						progress({ step: "drain", detail: `blocking new managed work on ${remembered.substrate}:${remembered.sandboxId}` });
+						drainAttempted = true;
+						drainStarted = await beginMigrationDrain(sourceHandle, marker.nonce);
+						const drained = await waitForMigrationDrain(sourceHandle, drainStarted, {
+							timeoutMs: options.drainTimeoutMs,
+						});
+						activeRuns = drained.activeRuns;
+						drainWaitMs = drained.waitedMs;
+
+						// A fresh marker proves the final delta, rather than merely proving
+						// that the earlier baseline landed on the target.
+						marker = {
+							...marker,
+							nonce: randomUUID(),
+							at: new Date().toISOString(),
+						};
+						await writeMarker(sourceHandle, marker);
+						progress({ step: "delta", detail: `stable final delta onto ${options.to}:${newId}` });
+						const delta = await exportStableLiveDelta(sourceHandle, liveBaseline);
+						await restoreStableLiveDelta(target.sandbox, delta, {
+							sha256: delta.exported.sha256,
+							agent,
+							include: liveBaseline.include,
+							exclude: liveBaseline.exclude,
+							...(oldHome ? { oldHome } : {}),
+						});
+						// The managed state tree carries the source's closed drain
+						// gate in the final delta. Clear that copied gate before the
+						// target is verified and committed, or new runs on the new
+						// placement are rejected until the gate TTL expires.
+						await cancelMigrationDrain(target.sandbox, drainStarted.migrationId);
+						deltaBytes = delta.bytes;
+						stabilityAttempts = delta.stabilityAttempts;
+						bytes += deltaBytes;
+					}
 				}
 
 				progress({ step: "verify" });
@@ -1601,6 +1712,17 @@ export class Mux {
 					agent,
 				});
 			} catch (error) {
+				let gateRecoveryError: string | null = null;
+				if (sourceHandle && liveBaseline && drainAttempted) {
+					try {
+						await cancelMigrationDrain(sourceHandle, liveBaseline.migrationId);
+					} catch (recoveryError) {
+						gateRecoveryError = recoveryError instanceof Error ? recoveryError.message : String(recoveryError);
+					}
+				}
+				if (sourceHandle && liveBaseline) {
+					await cleanupLiveMigration(sourceHandle, liveBaseline);
+				}
 				// Any pre-commit failure: the new sandbox is torn down
 				// best-effort so a failed migration does not leave a second
 				// machine billing, and the ORIGINAL placement is untouched and
@@ -1611,14 +1733,55 @@ export class Mux {
 				} catch (teardownError) {
 					attempts.push(await this.teardownAttempt(options.to, newId, teardownError));
 				}
+				if (gateRecoveryError) {
+					throw new MuxError(
+						"transient",
+						`${error instanceof Error ? error.message : String(error)}; source gate recovery failed and its worker-side expiry must recover it: ${gateRecoveryError}`,
+					);
+				}
 				throw error;
+			}
+
+			const sourceAction = options.source ?? "destroy";
+			if (sourceHandle && drainStarted && sourceAction !== "destroy") {
+				try {
+					await cancelMigrationDrain(sourceHandle, drainStarted.migrationId);
+					gateReleased = true;
+				} catch (error) {
+					gateReleased = false;
+					gateReleaseError = error instanceof Error ? error.message : String(error);
+				}
+			}
+			if (sourceHandle && liveBaseline) {
+				await cleanupLiveMigration(sourceHandle, liveBaseline);
 			}
 
 			// Post-commit source disposition: best-effort, reported, never
 			// silent -- and never a failure of the migration itself, because
 			// the load is already safe on the new sandbox.
-			progress({ step: "source", detail: options.source ?? "destroy" });
-			const source = await this.disposeSource(remembered, options.source ?? "destroy");
+			progress({ step: "source", detail: sourceAction });
+			const source = await this.disposeSource(remembered, sourceAction);
+			if (sourceHandle && drainStarted && sourceAction === "destroy") {
+				if (source.action === "destroyed") {
+					gateReleased = true;
+				} else {
+					try {
+						await cancelMigrationDrain(sourceHandle, drainStarted.migrationId);
+						gateReleased = true;
+					} catch (error) {
+						gateReleased = false;
+						gateReleaseError = error instanceof Error ? error.message : String(error);
+					}
+				}
+			}
+			if (drainStarted && !gateReleased && source.action !== "destroyed") {
+				source.error = [
+					source.error,
+					`live-migration gate could not be re-opened; its worker-side expiry will recover the source${gateReleaseError ? `: ${gateReleaseError}` : ""}`,
+				]
+					.filter(Boolean)
+					.join("; ");
+			}
 
 			return {
 				name,
@@ -1632,13 +1795,24 @@ export class Mux {
 					// same name" outcome: the ENTIRE file-state contract is
 					// enumerated under lost, not implied.
 					lost: moveState
-						? lostState(remembered.substrate)
-						: [...plan.include, ...lostState(remembered.substrate)],
+						? lostState(remembered.substrate, mode)
+						: [...plan.include, ...lostState(remembered.substrate, mode)],
 					skipped,
 					bytes,
 					notes: MOVE_NOTES(agent),
 				},
 				verified: { probe: probeCommand, marker: markerVerified },
+				continuity: {
+					mode,
+					managedRuns: mode === "live" ? "drained" : "not-gated",
+					process: "restarted",
+					activeRuns,
+					drainWaitMs,
+					baselineBytes,
+					deltaBytes,
+					stabilityAttempts,
+					gateReleased,
+				},
 				source,
 				attempts,
 			};

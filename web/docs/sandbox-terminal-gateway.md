@@ -4,7 +4,7 @@ Agent Machines exposes **three bridges** from the Next.js control plane to remot
 
 | Bridge | Route | Purpose |
 |--------|-------|---------|
-| **Interactive console** | `POST /terminal/session`, `POST /terminal/input`, `GET /terminal/stream` | **Live PTY** — talk to agent CLIs in the browser (tmux-over-exec) |
+| **Interactive console** | `GET /terminal/socket` plus HTTP/SSE fallback routes | **Live PTY** — pinned native PTY on E2B/Sprites, tmux-over-exec everywhere |
 | **Machine exec** | `POST /api/dashboard/exec/stream` | Run shell on the VM; stream stdout while the command runs (one-shot) |
 | **Bootstrap stream** | `GET /api/dashboard/bootstrap/stream?machineId=` | Phase checklist + live `bootstrap.log` during agent setup |
 | **Agent gateway** | `POST /api/chat` | Hermes/OpenClaw HTTP API (LLM tokens — optional; console is primary) |
@@ -18,13 +18,14 @@ Agent Machines exposes **three bridges** from the Next.js control plane to remot
 ```
 InteractiveConsole (xterm.js)
   → POST /api/dashboard/terminal/session     ensure tmux + snapshot + byte offset
-  → GET  /api/dashboard/terminal/stream      SSE tail of pane log (from offset)
-  → POST /api/dashboard/terminal/input       tmux send-keys -H (hex keystrokes)
-  → POST /api/dashboard/terminal/resize      tmux resize-window
+  ↔ GET  /api/dashboard/terminal/socket      pinned WebSocket → native provider PTY
+  → POST /api/dashboard/terminal/input       fallback: tmux send-keys -H
+  → GET  /api/dashboard/terminal/stream      fallback: SSE tail from byte offset
+  → POST /api/dashboard/terminal/resize      fallback: tmux resize-window
 
 Server (Clerk auth → resolve MachineRef + provider creds)
-  → lib/dashboard/terminal-session.ts
-       ensureSessionCommand / sendKeysCommand / streamConsoleOutput
+  → provider.openPty (native fast path)
+  → lib/dashboard/terminal-session.ts (portable fallback)
   → provider.exec or provider.streamExec
        native: stdbuf -o0 tail -c +N -f /tmp/am-console.log
        fallback (Dedalus): poll log via exec-stream tailFileStreamOnMachine
@@ -34,9 +35,9 @@ Remote VM
   Agent CLI (codex / claude / hermes / openclaw) running inside the pane
 ```
 
-**Why tmux-over-exec:** Vercel serverless cannot host a long-lived WebSocket PTY. Session state lives on the sandbox; the control plane is stateless HTTP + SSE. Works on all four substrates with only `exec` (streaming where supported).
+**Why tmux still owns the session:** the direct worker relay is ephemeral and the native Vercel WebSocket fallback is bounded to one invocation. The sandbox-owned `amconsole` session survives either courier reconnecting, provider wake cycles, and Function replacement. Direct E2B/Sprites lanes attach local PTYs to tmux; non-direct lanes keep the native-function or HTTP/SSE courier.
 
-**Performance notes (May 2026):** Parallel xterm + session attach; paint snapshot on connect; rAF-batched writes; instant flush for control keys; 2.5s config cache + 3s machine-state cache; E2B sandbox connect reuse (45s); tmux pre-installed in bootstrap `system-deps`.
+**Performance proof (2026-08-14):** the authenticated production E2B dashboard reported a 41ms latest browser-to-PTY acknowledgement and 89ms p95 across 20 human inputs. A location-aware Sprite managed Service, held active with an expiring Tasks API lease, measured 10.8ms p50 across 100 inputs paced at 100ms; 87/100 were below the 50ms target, with 75.6ms p95 and 80.8ms max from the provider proxy. Kernel PTY writes stayed sub-millisecond. The UI reports the rolling human-input p95 and warns on a breach; 50ms is deliberately not documented as a hard internet guarantee.
 
 ---
 
@@ -88,16 +89,16 @@ OnboardingFlow / SetupWizard / DeployAndTalk
 |---------|--------|
 | **Interactive console** | Built for *agent CLIs* (Codex, Claude Code, Hermes, OpenClaw). Full TUIs supported. Not optimized as a general-purpose vim/htop replacement. |
 | **One-shot exec** | Output-only while command runs; no stdin. |
-| **Input latency** | Keystroke → HTTP → exec → tmux. ~100–300ms on warm Vercel + E2B; not local-terminal instant. |
-| **Stream reconnect** | SSE stream bounded by serverless duration (~110s); client reconnects with byte offset. |
+| **Input latency** | Native lane: browser → pinned WebSocket → provider PTY → tmux, with measured rolling p95. Fallback lane still pays HTTP → exec → tmux. |
+| **Stream reconnect** | Native socket reconnects and reattaches to tmux; SSE fallback reconnects from a byte offset. |
 | **Dedalus streaming** | Poll fallback only (~300–450ms chunks). |
 
 ---
 
-## Future tiers (not shipped)
+## Provider tiers
 
-- **Native WebSocket PTY data plane** — feasible on E2B/Sprites with a small always-on relay (control plane stays on Vercel). Would reduce input latency further.
-- **Persistent Sprites WS session** — `createSession`/`attachSession` instead of per-command WS connect (~5s adapter overhead today).
+- **Native WebSocket PTY — shipped:** E2B and Sprites use one `provider.openPty` handle per browser socket.
+- **Exec/SSE fallback — shipped:** Vercel Sandbox and Dedalus retain the portable tmux courier rather than pretending a non-native PTY can meet the native latency SLO.
 
 ---
 
@@ -109,7 +110,8 @@ OnboardingFlow / SetupWizard / DeployAndTalk
 - `web/components/dashboard/TerminalWorkspace.tsx` — interactive vs one-shot tabs
 - `web/components/dashboard/DeployAndTalk.tsx` — provision → bootstrap → `?launch=1`
 - `web/lib/dashboard/terminal-session.ts` — tmux session commands + streamConsoleOutput
-- `web/app/api/dashboard/terminal/{session,input,resize,stream}/route.ts`
+- `web/app/api/dashboard/terminal/socket/route.ts` — authenticated pinned WebSocket/native PTY
+- `web/app/api/dashboard/terminal/{session,input,resize,stream}/route.ts` — portable fallback
 
 **One-shot exec + bootstrap**
 

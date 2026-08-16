@@ -29,7 +29,7 @@ export function credentialsFromEnv(
 	if (env.E2B_API_KEY) {
 		creds.e2b = { apiKey: env.E2B_API_KEY };
 	}
-	const spritesKey = env.SPRITES_API_KEY ?? env.SPRITE_TOKEN;
+	const spritesKey = env.SPRITES_API_KEY ?? env.SPRITES_TOKEN ?? env.SPRITE_TOKEN;
 	if (spritesKey) {
 		creds.sprites = { apiKey: spritesKey };
 	}

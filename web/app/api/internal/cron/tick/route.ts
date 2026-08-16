@@ -5,13 +5,13 @@
  * crons that became due, and dispatches each on its machine in the
  * background, recording lastRunAt/lastStatus on the cron entry.
  *
- * Auth: Vercel attaches `Authorization: Bearer $CRON_SECRET` (and an
- * `x-vercel-cron` header) to scheduled invocations. We accept either, plus
- * the local dev bypass. Anything else is rejected so the endpoint can't be
- * triggered by the public.
+ * Auth: Vercel attaches `Authorization: Bearer $CRON_SECRET` to scheduled
+ * invocations. We require it in hosted environments; the local dev bypass
+ * remains available for local tests.
  */
 
 import { clerkClient } from "@clerk/nextjs/server";
+import { after } from "next/server";
 
 import {
 	getUserConfigById,
@@ -20,6 +20,7 @@ import {
 import { authorizedInternalRequest } from "@/lib/cron/auth";
 import { isCadenceDue } from "@/lib/cron/cadence";
 import { listDueCrons, runCronOnMachine } from "@/lib/crons/service";
+import { createHostedControlPlane } from "@/lib/control-plane/service";
 import { ingestRunTracesForUser } from "@/lib/learning/ingest";
 import { collectMetricsForUser } from "@/lib/metrics/collector";
 import { DEV_USER_ID, isDevBypassEnabled } from "@/lib/user-config/identity";
@@ -27,7 +28,7 @@ import type { CronEntry } from "@/lib/user-config/schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 60;
+export const maxDuration = 300;
 
 const USER_PAGE_LIMIT = 500;
 // Seconds this tick represents -- must match the vercel.json cron schedule
@@ -101,7 +102,13 @@ async function tickUser(
 
 	const dueIds = new Set(due.map((c) => c.id));
 	const results = await Promise.all(
-		due.map((cron) => runCronOnMachine(config, cron, { wait: false })),
+		due.map((cron) =>
+			runCronOnMachine(config, cron, {
+				wait: false,
+				userId,
+				scheduledFor: new Date(now),
+			}),
+		),
 	);
 	const statusById = new Map<string, (typeof results)[number]>();
 	due.forEach((cron, i) => statusById.set(cron.id, results[i]));
@@ -170,6 +177,18 @@ async function handle(req: Request): Promise<Response> {
 		}
 	}
 
+	// The scheduler is also the recovery consumer. Requests only append intent;
+	// this durable sweep resumes queued work and claims operations whose lease
+	// expired after an interrupted serverless invocation.
+	after(async () => {
+		for (let offset = 0; offset < users.length; offset += USER_CONCURRENCY) {
+			const batch = users.slice(offset, offset + USER_CONCURRENCY);
+			await Promise.allSettled(
+				batch.map((userId) => createHostedControlPlane(userId).drain(4)),
+			);
+		}
+	});
+
 	return Response.json({
 		ok: true,
 		users: scanned,
@@ -183,6 +202,7 @@ async function handle(req: Request): Promise<Response> {
 			traceIngestDue,
 			observabilitySeconds: OBSERVABILITY_INTERVAL_SECONDS,
 		},
+		recoveryScheduled: users.length,
 		at: new Date().toISOString(),
 	});
 }

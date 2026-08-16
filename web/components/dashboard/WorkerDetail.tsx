@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronLeft, Brain, Rocket, Server } from "lucide-react";
+import { Brain, ChevronLeft, RefreshCcw, Rocket, Server, Trash2 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { ReticleButton } from "@/components/reticle/ReticleButton";
@@ -22,6 +23,23 @@ import {
 } from "@/lib/user-config/schema";
 
 type BundleOpt = { id: string; name: string };
+type ManagedWorkerView = {
+	status: {
+		phase: string;
+		observedGeneration: number;
+		lastError: string | null;
+	};
+	generation: number;
+};
+type OperationView = {
+	id: string;
+	payload: { type: "reconcile" | "run" };
+	status: "queued" | "running" | "succeeded" | "failed";
+	attempts: number;
+	error: string | null;
+	createdAt: string;
+	finishedAt: string | null;
+};
 
 const fieldCls = cn(
 	"w-full border border-[var(--ret-border)] bg-[var(--ret-bg)] px-2.5 py-1.5",
@@ -30,10 +48,18 @@ const fieldCls = cn(
 );
 
 export function WorkerDetail({ workerId }: { workerId: string }) {
+	const router = useRouter();
+	const searchParams = useSearchParams();
+	const launchOperationId = searchParams.get("launch");
 	const [worker, setWorker] = useState<Worker | null>(null);
 	const [bundles, setBundles] = useState<BundleOpt[]>([]);
+	const [managedWorker, setManagedWorker] = useState<ManagedWorkerView | null>(null);
+	const [operations, setOperations] = useState<OperationView[]>([]);
 	const [error, setError] = useState<string | null>(null);
 	const [saving, setSaving] = useState(false);
+	const [saveMsg, setSaveMsg] = useState<string | null>(null);
+	const [retrying, setRetrying] = useState<string | null>(null);
+	const [deleting, setDeleting] = useState(false);
 	const [provider, setProvider] = useState<ProviderKind>("dedalus");
 	const [deploying, setDeploying] = useState(false);
 	const [deployMsg, setDeployMsg] = useState<string | null>(null);
@@ -47,21 +73,106 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 			]);
 			if (!w?.ok || !w.worker) throw new Error(w?.error ?? "not_found");
 			setWorker(w.worker as Worker);
+			setManagedWorker((w.managedWorker as ManagedWorkerView | null) ?? null);
+			setOperations(
+				((w.operations as OperationView[] | undefined) ?? []).sort((a, b) =>
+					b.createdAt.localeCompare(a.createdAt),
+				),
+			);
 			setBundles(((m?.bundles as BundleOpt[]) ?? []).map((b) => ({ id: b.id, name: b.name })));
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "load_failed");
 		}
 	}, [workerId]);
 
+	const waitForOperation = useCallback(async (operationId: string) => {
+		for (let attempt = 0; attempt < 600; attempt += 1) {
+			const response = await fetch(
+				`/api/dashboard/control-plane/operations/${encodeURIComponent(operationId)}`,
+				{ cache: "no-store" },
+			);
+			const body = (await response.json()) as {
+				operation?: OperationView;
+				worker?: ManagedWorkerView | null;
+				message?: string;
+				error?: string;
+			};
+			if (!response.ok || !body.operation) {
+				throw new Error(body.message ?? body.error ?? "Operation status unavailable.");
+			}
+			setManagedWorker(body.worker ?? null);
+			setOperations((current) => [
+				body.operation as OperationView,
+				...current.filter((entry) => entry.id !== operationId),
+			]);
+			if (body.operation.status === "succeeded") return body.operation;
+			if (body.operation.status === "failed") {
+				throw new Error(body.operation.error ?? "Operation failed.");
+			}
+			await new Promise((resolve) => setTimeout(resolve, 800));
+		}
+		throw new Error("Operation is still running. It remains safe to close this page.");
+	}, []);
+
 	useEffect(() => {
 		void load();
 	}, [load]);
 
+	useEffect(() => {
+		if (!launchOperationId) return;
+		let cancelled = false;
+		let timer: ReturnType<typeof setTimeout> | null = null;
+		setDeploying(true);
+		setDeployMsg("Intent accepted · provisioning sandbox");
+
+		const poll = async () => {
+			try {
+				const response = await fetch(
+					`/api/dashboard/control-plane/operations/${encodeURIComponent(launchOperationId)}`,
+					{ cache: "no-store" },
+				);
+				const body = (await response.json()) as {
+					operation?: { status?: string; error?: string | null };
+					worker?: { status?: { phase?: string; lastError?: string | null } };
+					machineId?: string | null;
+				};
+				if (!response.ok || !body.operation) throw new Error("Could not read launch operation.");
+				if (cancelled) return;
+				if (body.operation.status === "succeeded" && body.machineId) {
+					router.replace(
+						`/dashboard/machines/${encodeURIComponent(body.machineId)}/view?launch=1`,
+					);
+					return;
+				}
+				if (body.operation.status === "failed") {
+					setDeploying(false);
+					setDeployMsg(
+						body.operation.error ?? body.worker?.status?.lastError ?? "Worker launch failed.",
+					);
+					return;
+				}
+				const phase = body.worker?.status?.phase ?? body.operation.status ?? "queued";
+				setDeployMsg(`Intent accepted · ${phase}`);
+				timer = setTimeout(poll, 700);
+			} catch (cause) {
+				if (cancelled) return;
+				setDeploying(false);
+				setDeployMsg(cause instanceof Error ? cause.message : "Launch status unavailable.");
+			}
+		};
+		void poll();
+		return () => {
+			cancelled = true;
+			if (timer) clearTimeout(timer);
+		};
+	}, [launchOperationId, router]);
+
 	const save = useCallback(async () => {
 		if (!worker) return;
 		setSaving(true);
+		setSaveMsg(null);
 		try {
-			await fetch(`/api/dashboard/workers/${encodeURIComponent(workerId)}`, {
+			const response = await fetch(`/api/dashboard/workers/${encodeURIComponent(workerId)}`, {
 				method: "PATCH",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
@@ -73,10 +184,84 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 					rolePrompt: worker.rolePrompt,
 				}),
 			});
+			const body = (await response.json()) as {
+				ok?: boolean;
+				worker?: Worker;
+				operation?: OperationView;
+				message?: string;
+				error?: string;
+			};
+			if (!response.ok || !body.ok) {
+				throw new Error(body.message ?? body.error ?? "Worker update failed.");
+			}
+			if (body.worker) setWorker(body.worker);
+			if (body.operation) {
+				setSaveMsg("Update accepted · reconciling sandbox");
+				await waitForOperation(body.operation.id);
+				setSaveMsg("Saved · sandbox reconciled");
+			} else {
+				setSaveMsg("Draft saved");
+			}
+			await load();
+		} catch (cause) {
+			setSaveMsg(cause instanceof Error ? cause.message : "Worker update failed.");
 		} finally {
 			setSaving(false);
 		}
-	}, [worker, workerId]);
+	}, [load, waitForOperation, worker, workerId]);
+
+	const retry = useCallback(async (operationId: string) => {
+		setRetrying(operationId);
+		setSaveMsg(null);
+		try {
+			const response = await fetch(
+				`/api/dashboard/control-plane/operations/${encodeURIComponent(operationId)}`,
+				{ method: "POST" },
+			);
+			const body = (await response.json()) as {
+				operation?: OperationView;
+				message?: string;
+				error?: string;
+			};
+			if (!response.ok || !body.operation) {
+				throw new Error(body.message ?? body.error ?? "Retry was rejected.");
+			}
+			setSaveMsg("Retry accepted · recovery consumer active");
+			await waitForOperation(body.operation.id);
+			setSaveMsg("Recovery succeeded");
+			await load();
+		} catch (cause) {
+			setSaveMsg(cause instanceof Error ? cause.message : "Retry failed.");
+		} finally {
+			setRetrying(null);
+		}
+	}, [load, waitForOperation]);
+
+	const remove = useCallback(async () => {
+		if (!window.confirm(`Delete ${worker?.name ?? "this Worker"} and its deployed sandbox?`)) return;
+		setDeleting(true);
+		setSaveMsg(null);
+		try {
+			const response = await fetch(`/api/dashboard/workers/${encodeURIComponent(workerId)}`, {
+				method: "DELETE",
+			});
+			const body = (await response.json()) as {
+				ok?: boolean;
+				operation?: OperationView;
+				message?: string;
+				error?: string;
+			};
+			if (!response.ok || !body.ok) {
+				throw new Error(body.message ?? body.error ?? "Worker deletion failed.");
+			}
+			if (body.operation) await waitForOperation(body.operation.id);
+			router.push("/dashboard/workers");
+			router.refresh();
+		} catch (cause) {
+			setSaveMsg(cause instanceof Error ? cause.message : "Worker deletion failed.");
+			setDeleting(false);
+		}
+	}, [router, waitForOperation, worker?.name, workerId]);
 
 	const deploy = useCallback(async () => {
 		setDeploying(true);
@@ -87,15 +272,25 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ providerKind: provider }),
 			});
-			const body = (await r.json()) as { ok?: boolean; message?: string; error?: string };
+			const body = (await r.json()) as {
+				ok?: boolean;
+				message?: string;
+				error?: string;
+				operation?: { id?: string };
+			};
 			setDeployMsg(body.ok ? body.message ?? "Deployed." : body.message ?? body.error ?? "deploy_failed");
+			if (body.ok && body.operation?.id) {
+				router.replace(
+					`/dashboard/workers/${encodeURIComponent(workerId)}?launch=${encodeURIComponent(body.operation.id)}`,
+				);
+			}
 			await load();
 		} catch (err) {
 			setDeployMsg(err instanceof Error ? err.message : "deploy_failed");
 		} finally {
 			setDeploying(false);
 		}
-	}, [workerId, provider, load]);
+	}, [workerId, provider, load, router]);
 
 	if (error) {
 		return (
@@ -132,10 +327,20 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 						{worker.lastMachineId ? "deployed" : "draft"}
 					</ReticleBadge>
 				</div>
-				<ReticleButton variant="primary" size="sm" onClick={() => void save()} disabled={saving}>
-					{saving ? "saving…" : "Save"}
-				</ReticleButton>
+				<div className="flex items-center gap-2">
+					<ReticleButton variant="ghost" size="sm" onClick={() => void remove()} disabled={deleting || saving}>
+						<Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} /> {deleting ? "deleting…" : "Delete"}
+					</ReticleButton>
+					<ReticleButton variant="primary" size="sm" onClick={() => void save()} disabled={saving || deleting}>
+						{saving ? "reconciling…" : "Save"}
+					</ReticleButton>
+				</div>
 			</div>
+			{saveMsg ? (
+				<div className="border-b border-[var(--ret-border)] px-5 py-2 font-mono text-[10px] text-[var(--ret-text-dim)]">
+					{saveMsg}
+				</div>
+			) : null}
 
 			<div className="space-y-5 px-5 py-5">
 				{/* Config */}
@@ -222,9 +427,62 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 						<p className="font-mono text-[11px] text-[var(--ret-text-dim)]">{deployMsg}</p>
 					) : null}
 				</section>
+
+				{/* Durable operation journal */}
+				<section className="space-y-3">
+					<SectionLabel label="Operations" hint="durable lifecycle journal · safe retry" />
+					<ReticleFrame className="overflow-hidden">
+						<div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--ret-border)] px-3 py-2.5">
+							<div className="font-mono text-[10px] text-[var(--ret-text-dim)]">
+								{managedWorker
+									? `${managedWorker.status.phase} · generation ${managedWorker.status.observedGeneration}/${managedWorker.generation}`
+									: "No sandbox lifecycle has been submitted yet."}
+							</div>
+							{managedWorker?.status.lastError ? (
+								<span className="max-w-full truncate font-mono text-[10px] text-[var(--ret-red)]">
+									{managedWorker.status.lastError}
+								</span>
+							) : null}
+						</div>
+						{operations.length === 0 ? (
+							<p className="px-3 py-4 font-mono text-[10px] text-[var(--ret-text-muted)]">No operations yet.</p>
+						) : (
+							<div className="divide-y divide-[var(--ret-border)]">
+								{operations.slice(0, 8).map((operation) => (
+									<div key={operation.id} className="flex flex-wrap items-center gap-2 px-3 py-2.5">
+										<ReticleBadge variant={operationVariant(operation.status)}>{operation.status}</ReticleBadge>
+										<span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--ret-text-dim)]">
+											{operation.payload.type}
+										</span>
+										<span className="min-w-0 flex-1 truncate font-mono text-[9px] text-[var(--ret-text-muted)]">
+											{operation.error ?? `${operation.id.slice(0, 8)} · attempt ${operation.attempts}`}
+										</span>
+										{operation.status === "failed" ? (
+											<ReticleButton
+												variant="ghost"
+												size="sm"
+												disabled={retrying !== null}
+												onClick={() => void retry(operation.id)}
+											>
+												<RefreshCcw className={cn("h-3 w-3", retrying === operation.id && "animate-spin")} /> retry
+											</ReticleButton>
+										) : null}
+									</div>
+								))}
+							</div>
+						)}
+					</ReticleFrame>
+				</section>
 			</div>
 		</div>
 	);
+}
+
+function operationVariant(status: OperationView["status"]): "default" | "accent" | "success" | "warning" {
+	if (status === "succeeded") return "success";
+	if (status === "failed") return "warning";
+	if (status === "running") return "accent";
+	return "default";
 }
 
 function SectionLabel({ label, hint }: { label: string; hint: string }) {

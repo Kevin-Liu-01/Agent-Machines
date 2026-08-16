@@ -57,7 +57,7 @@ function openClawEnv(p: GatewayPaths): string {
 		`export NPM_CONFIG_CACHE=${p.NPM_CACHE}`,
 		`export PLAYWRIGHT_BROWSERS_PATH=${p.PLAYWRIGHT_BROWSERS}`,
 		`export AGENT_BROWSER_DATA_DIR=${p.AGENT_BROWSER_HOME}`,
-		`export PATH=${p.NPM_PREFIX}/bin:${p.HOME}/.npm-global/bin:$PATH`,
+		`export PATH=${p.HOME}/.agent-machines/node/bin:${p.HOME}/.agent-machines/pkgs/node_modules/.bin:${p.NPM_PREFIX}/bin:${p.HOME}/.npm-global/bin:$PATH`,
 		`export OPENCLAW_STATE_DIR=${p.OPENCLAW_HOME}`,
 		`export OPENCLAW_NO_RESPAWN=1`,
 	].join(" && ");

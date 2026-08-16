@@ -2,13 +2,16 @@ import { PageHeader } from "@/components/dashboard/PageHeader";
 import { SandboxRouterPanel } from "@/components/dashboard/SandboxRouterPanel";
 import { SetupWizard } from "@/components/dashboard/SetupWizard";
 import { resolveRoute } from "@/lib/mux/route";
-import { getOwnerDefaults, getUserConfig } from "@/lib/user-config/clerk";
+import {
+	getOwnerDefaults,
+	getUserConfigForRequest,
+} from "@/lib/user-config/clerk";
 import { toPublicConfig } from "@/lib/user-config/schema";
 
 export const dynamic = "force-dynamic";
 
 export default async function SetupPage() {
-	const config = await getUserConfig();
+	const config = await getUserConfigForRequest();
 	const defaults = getOwnerDefaults();
 	const { route, skipped } = resolveRoute(config);
 	return (

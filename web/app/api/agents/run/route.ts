@@ -1,9 +1,7 @@
-import { agentOneShotInvocation } from "@/lib/dashboard/agent-launch";
+import { submitMachineIntent } from "@/lib/control-plane/adopt-machine";
 import { resolveMachine } from "@/lib/dashboard/exec";
-import { getProvider } from "@/lib/providers";
 import { getUserConfig } from "@/lib/user-config/clerk";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
-import type { AgentKind, MachineRef } from "@/lib/user-config/schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,19 +16,14 @@ type Body = {
 	machineId?: string;
 	prompt?: string;
 	messages?: ChatMessage[];
-	timeoutMs?: number;
+	runKey?: string;
 };
 
 const MAX_PROMPT_LENGTH = 100_000;
-const DEFAULT_TIMEOUT_MS = 120_000;
-const MAX_TIMEOUT_MS = 300_000;
 
 export async function POST(request: Request): Promise<Response> {
 	const userId = await getEffectiveUserId();
-	if (!userId) {
-		return Response.json({ error: "unauthorized" }, { status: 401 });
-	}
-
+	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 	const body = (await request.json().catch(() => ({}))) as Body;
 	const prompt = resolvePrompt(body);
 	if (!prompt) {
@@ -41,10 +34,7 @@ export async function POST(request: Request): Promise<Response> {
 	}
 	if (prompt.length > MAX_PROMPT_LENGTH) {
 		return Response.json(
-			{
-				error: "prompt_too_long",
-				message: `Prompt exceeds ${MAX_PROMPT_LENGTH} characters.`,
-			},
+			{ error: "prompt_too_long", message: `Prompt exceeds ${MAX_PROMPT_LENGTH} characters.` },
 			{ status: 400 },
 		);
 	}
@@ -63,67 +53,82 @@ export async function POST(request: Request): Promise<Response> {
 		);
 	}
 
-	if (shouldUseGateway(machine)) {
-		try {
-			const text = await runViaGateway(machine, prompt);
-			return Response.json({
-				ok: true,
-				mode: "gateway",
-				machineId: machine.id,
-				agent: machine.agentKind,
-				model: machine.model,
-				text,
-			});
-		} catch (err) {
+	try {
+		const managed = await submitMachineIntent(userId, machine.id, {
+			desiredState: "running",
+		});
+		if (
+			managed.accepted.operation.status === "queued" ||
+			managed.accepted.operation.status === "running"
+		) {
+			const lifecycle = await managed.controlPlane.reconcileNext(
+				managed.accepted.worker.id,
+			);
+			if (lifecycle?.operation.status === "failed") {
+				throw new Error(lifecycle.operation.error ?? "machine reconciliation failed");
+			}
+		}
+
+		const runKey =
+			body.runKey?.trim() ||
+			request.headers.get("idempotency-key")?.trim() ||
+			crypto.randomUUID();
+		const operation = await managed.controlPlane.run(
+			managed.accepted.worker.id,
+			prompt,
+			runKey,
+		);
+		let terminal = operation;
+		if (operation.status === "queued" || operation.status === "running") {
+			const outcome = await managed.controlPlane.reconcileNext(
+				managed.accepted.worker.id,
+			);
+			terminal =
+				outcome?.operation.id === operation.id
+					? outcome.operation
+					: (await managed.controlPlane.store.getOperation(operation.id)) ?? operation;
+		}
+		if (terminal.status === "failed") {
 			return Response.json(
-				{
-					ok: false,
-					error: "gateway_run_failed",
-					message: err instanceof Error ? err.message : "gateway run failed",
-				},
+				{ ok: false, error: "agent_run_failed", message: terminal.error },
 				{ status: 502 },
 			);
 		}
-	}
-
-	const invocation = agentOneShotInvocation(machine.agentKind);
-	if (!invocation) {
-		return Response.json(
-			{
-				error: "agent_not_runnable",
-				message: `${machine.agentKind} does not expose a one-shot run path yet.`,
-			},
-			{ status: 400 },
-		);
-	}
-
-	try {
-		const provider = getProvider(machine.providerKind, config.providers);
-		const command = `export AM_CRON_PROMPT=${shQuote(prompt)}; ${invocation}`;
-		const result = await provider.exec(machine.id, command, {
-			timeoutMs: clampTimeout(body.timeoutMs),
+		if (terminal.status !== "succeeded") {
+			return Response.json(
+				{
+					ok: true,
+					status: terminal.status,
+					operation: terminal,
+					statusUrl: `/api/dashboard/control-plane/operations/${terminal.id}`,
+				},
+				{ status: 202 },
+			);
+		}
+		const result = (terminal.result ?? {}) as {
+			text?: string;
+			events?: unknown[];
+			exitCode?: number;
+			durationMs?: number;
+		};
+		return Response.json({
+			ok: true,
+			mode: "control-plane",
+			machineId: machine.id,
+			agent: managed.accepted.worker.spec.runtime,
+			model: managed.accepted.worker.spec.model,
+			text: result.text ?? "",
+			events: result.events ?? [],
+			exitCode: result.exitCode ?? 0,
+			durationMs: result.durationMs,
+			operation: terminal,
 		});
-		const text = result.stdout.trim() || result.stderr.trim();
-		return Response.json(
-			{
-				ok: result.exitCode === 0,
-				mode: "exec",
-				machineId: machine.id,
-				agent: machine.agentKind,
-				model: machine.model,
-				text,
-				stdout: result.stdout,
-				stderr: result.stderr,
-				exitCode: result.exitCode,
-			},
-			{ status: result.exitCode === 0 ? 200 : 502 },
-		);
-	} catch (err) {
+	} catch (error) {
 		return Response.json(
 			{
 				ok: false,
 				error: "agent_run_failed",
-				message: err instanceof Error ? err.message : "agent run failed",
+				message: error instanceof Error ? error.message : "agent run failed",
 			},
 			{ status: 502 },
 		);
@@ -131,98 +136,12 @@ export async function POST(request: Request): Promise<Response> {
 }
 
 function resolvePrompt(body: Body): string | null {
-	if (typeof body.prompt === "string" && body.prompt.trim().length > 0) {
-		return body.prompt;
-	}
+	if (typeof body.prompt === "string" && body.prompt.trim()) return body.prompt;
 	if (!Array.isArray(body.messages)) return null;
-	const lastUser = [...body.messages]
-		.reverse()
-		.find((message) => message.role === "user" && message.content.trim());
-	return lastUser?.content ?? null;
-}
-
-function shouldUseGateway(machine: MachineRef): boolean {
-	if (machine.agentKind === "codex" || machine.agentKind === "claude-code") {
-		return false;
-	}
-	return Boolean(machine.apiUrl && machine.apiKey);
-}
-
-async function runViaGateway(
-	machine: MachineRef,
-	prompt: string,
-): Promise<string> {
-	if (!machine.apiUrl || !machine.apiKey) {
-		throw new Error("Machine has no HTTP agent gateway.");
-	}
-	const upstream = await fetch(`${normalizeOpenAiBase(machine.apiUrl)}/chat/completions`, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			Authorization: `Bearer ${machine.apiKey}`,
-		},
-		body: JSON.stringify({
-			model: gatewayModel(machine.agentKind, machine.model),
-			messages: [{ role: "user", content: prompt }],
-			stream: true,
-		}),
-	});
-	if (!upstream.ok || !upstream.body) {
-		const text = await upstream.text().catch(() => "");
-		throw new Error(text || `HTTP ${upstream.status}`);
-	}
-	return readOpenAiStream(upstream.body);
-}
-
-function gatewayModel(agentKind: AgentKind, model: string): string {
-	return agentKind === "openclaw" ? "openclaw" : model;
-}
-
-function normalizeOpenAiBase(value: string): string {
-	const trimmed = value.trim().replace(/\/$/, "");
-	return trimmed.endsWith("/v1") ? trimmed : `${trimmed}/v1`;
-}
-
-async function readOpenAiStream(
-	body: ReadableStream<Uint8Array>,
-): Promise<string> {
-	const reader = body.getReader();
-	const decoder = new TextDecoder();
-	let buffer = "";
-	let text = "";
-
-	while (true) {
-		const { value, done } = await reader.read();
-		if (done) break;
-		buffer += decoder.decode(value, { stream: true });
-		const events = buffer.split("\n\n");
-		buffer = events.pop() ?? "";
-		for (const event of events) {
-			for (const line of event.split("\n")) {
-				if (!line.startsWith("data: ")) continue;
-				const payload = line.slice(6).trim();
-				if (payload === "[DONE]") return text;
-				try {
-					const parsed = JSON.parse(payload) as {
-						choices?: Array<{ delta?: { content?: string } }>;
-					};
-					text += parsed.choices?.[0]?.delta?.content ?? "";
-				} catch {
-					// Ignore progress frames and provider-specific annotations.
-				}
-			}
-		}
-	}
-
-	return text;
-}
-
-function shQuote(value: string): string {
-	return `'${value.replace(/'/g, "'\\''")}'`;
-}
-
-function clampTimeout(raw: unknown): number {
-	const value = Number(raw);
-	if (!Number.isFinite(value) || value <= 0) return DEFAULT_TIMEOUT_MS;
-	return Math.min(MAX_TIMEOUT_MS, Math.max(1_000, Math.floor(value)));
+	return (
+		[...body.messages]
+			.reverse()
+			.find((message) => message.role === "user" && message.content.trim())
+			?.content ?? null
+	);
 }

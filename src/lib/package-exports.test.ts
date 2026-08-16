@@ -144,6 +144,10 @@ test("the mux plane is exported by wildcard; the hosted client's internals are n
 	const subpaths = Object.keys(pkg.exports);
 	assert.ok(subpaths.includes("./mux"), "the mux plane needs a named entry point");
 	assert.ok(subpaths.includes("./mux/*"), "MUX.md documents the mux plane module by module");
+	assert.ok(
+		subpaths.includes("./control-plane"),
+		"the declarative control plane needs a stable named entry point",
+	);
 	// dist/lib holds the hosted client (src/lib/sdk.ts, routing.ts). Nothing
 	// documents those as an API; exporting them by wildcard would promise
 	// forever what was written as an internal.
@@ -158,6 +162,10 @@ test("the mux plane is exported by wildcard; the hosted client's internals are n
 	assert.match(
 		readFileSync(resolve(ROOT, "src/index.ts"), "utf8"),
 		/export \* from "\.\/mux\/index\.js";/,
+	);
+	assert.match(
+		readFileSync(resolve(ROOT, "src/index.ts"), "utf8"),
+		/export \* from "\.\/control-plane\/index\.js";/,
 	);
 });
 

@@ -11,6 +11,7 @@
  * can be reflected back into the UI.
  */
 
+import { isRemovedDedalusRouter } from "@/lib/agents/upstreams";
 import { readTextFile, withActiveMachine } from "@/lib/storage/machine-fs";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
@@ -96,6 +97,16 @@ export async function POST(request: Request): Promise<Response> {
 					{ status: 502 },
 				);
 			}
+		}
+		if (body.gatewayProfiles?.some((profile) => isRemovedDedalusRouter(profile))) {
+			return Response.json(
+				{
+					error: "unsupported_gateway",
+					message:
+						"Dedalus is a sandbox provider, not a model gateway. Use Vercel AI Gateway, OpenRouter, or another supported OpenAI-compatible endpoint.",
+				},
+				{ status: 400 },
+			);
 		}
 
 		const patch: Parameters<typeof setUserConfig>[0] = {};

@@ -53,7 +53,11 @@ type CliOptions = {
 };
 
 function loadEnvFiles(): void {
-	for (const file of [resolve(REPO_ROOT, ".env"), resolve(WEB_ROOT, ".env.local")]) {
+	for (const file of [
+		resolve(REPO_ROOT, ".env"),
+		resolve(REPO_ROOT, ".env.local"),
+		resolve(WEB_ROOT, ".env.local"),
+	]) {
 		if (!existsSync(file)) continue;
 		const text = readFileSync(file, "utf8");
 		for (const line of text.split("\n")) {

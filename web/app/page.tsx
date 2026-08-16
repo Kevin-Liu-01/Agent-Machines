@@ -1,3 +1,4 @@
+import { CapabilityAtlas } from "@/components/CapabilityAtlas";
 import { ContributionGrid } from "@/components/ContributionGrid";
 import { FleetDemo } from "@/components/FleetDemo";
 import { FaqSection } from "@/components/FaqSection";
@@ -10,6 +11,7 @@ import { ReticlePageGrid } from "@/components/reticle/ReticlePageGrid";
 import { ReticleSection } from "@/components/reticle/ReticleSection";
 import { ReticleSpacer } from "@/components/reticle/ReticleSpacer";
 import { StatsRow } from "@/components/StatsRow";
+import { WorkerSystemThesis } from "@/components/WorkerSystemThesis";
 import { SITE } from "@/lib/seo/config";
 
 export default function HomePage() {
@@ -20,9 +22,15 @@ export default function HomePage() {
 				githubLink={<GitHubStarLink repo={SITE.githubRepo} />}
 			/>
 
-			<main id="top" data-motion-route-root>
+			<main id="top">
 				<ReticleSection contentClassName="">
 					<HeroBlock />
+				</ReticleSection>
+
+				<ReticleSpacer />
+
+				<ReticleSection contentClassName="">
+					<WorkerSystemThesis />
 				</ReticleSection>
 
 				<ReticleSpacer />
@@ -35,6 +43,12 @@ export default function HomePage() {
 
 				<ReticleSection id="workflow" className="scroll-mt-[72px]" contentClassName="">
 					<ProductShowcase />
+				</ReticleSection>
+
+				<ReticleSpacer />
+
+				<ReticleSection id="capabilities" className="scroll-mt-[72px]" contentClassName="">
+					<CapabilityAtlas />
 				</ReticleSection>
 
 				<ReticleSpacer />

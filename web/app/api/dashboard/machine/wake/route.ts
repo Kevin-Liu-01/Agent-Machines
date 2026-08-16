@@ -1,43 +1,43 @@
-/**
- * POST /api/dashboard/machine/wake
- *
- * Auth-gated mutation that wakes the configured Dedalus machine.
- *
- * The route is idempotent on every layer of the stack:
- *   - the dashboard fires it on first dashboard mount when the machine
- *     is sleeping; multiple users opening the dashboard simultaneously
- *     don't race because Dedalus rejects duplicate wakes via If-Match.
- *   - the route itself returns the current summary immediately if the
- *     machine is already running or mid-wake.
- *   - the response always carries the machine's current phase so the
- *     caller can drop straight into status polling on /api/dashboard/machine.
- *
- * Resolves the machine from the caller's Clerk metadata; users without
- * a provisioned machine get a typed `not_provisioned` response.
- */
+import { after } from "next/server";
 
+import { submitMachineIntent } from "@/lib/control-plane/adopt-machine";
+import { getUserConfigById } from "@/lib/user-config/clerk";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
-
-import { wakeActiveMachine } from "@/lib/dashboard/active-machine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
-export async function POST(): Promise<Response> {
+export async function POST(request: Request): Promise<Response> {
+	const userId = await getEffectiveUserId();
+	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+	const config = await getUserConfigById(userId);
+	if (!config.activeMachineId) {
+		return Response.json({ error: "not_provisioned", message: "Active machine is not set." }, { status: 404 });
+	}
 	try {
-		const userId = await getEffectiveUserId();
-		if (!userId) {
-			return Response.json({ error: "unauthorized" }, { status: 401 });
-		}
-		const summary = await wakeActiveMachine();
-		return Response.json(summary, {
-			headers: { "Cache-Control": "no-store" },
+		const submitted = await submitMachineIntent(userId, config.activeMachineId, {
+			desiredState: "running",
+			idempotencyKey:
+				request.headers.get("idempotency-key") ??
+				`wake:${config.activeMachineId}:${crypto.randomUUID()}`,
 		});
-	} catch (err) {
-		const message = err instanceof Error ? err.message : "wake failed";
-		const status = /not set/.test(message) ? 404 : 502;
-		const error = status === 404 ? "not_provisioned" : "wake_failed";
-		return Response.json({ error, message }, { status });
+		after(async () => {
+			await submitted.controlPlane.reconcileNext(submitted.accepted.worker.id);
+		});
+		return Response.json(
+			{
+				ok: true,
+				operation: submitted.accepted.operation,
+				statusUrl: `/api/dashboard/control-plane/operations/${submitted.accepted.operation.id}`,
+				phase: "queued",
+			},
+			{ status: 202, headers: { "Cache-Control": "no-store" } },
+		);
+	} catch (error) {
+		return Response.json(
+			{ error: "wake_failed", message: error instanceof Error ? error.message : "wake failed" },
+			{ status: 502 },
+		);
 	}
 }

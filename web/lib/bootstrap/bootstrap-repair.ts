@@ -15,7 +15,7 @@ function homeFor(providerKind: MachineRef["providerKind"]): string {
 }
 
 function pathExports(home: string): string {
-	return `export PATH=${home}/.npm-global/bin:${home}/.local/bin:$PATH`;
+	return `export PATH=${home}/.agent-machines/node/bin:${home}/.agent-machines/pkgs/node_modules/.bin:${home}/.npm-global/bin:${home}/.local/bin:$PATH`;
 }
 
 /** Check agent install artifacts on disk (per runtime). */

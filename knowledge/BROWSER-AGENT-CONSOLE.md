@@ -1,6 +1,6 @@
 # Browser Agent Console — why this is a big deal
 
-> **Status:** Shipped (May 2026). Interactive tier live on `/dashboard/machines/[id]/terminal`.
+> **Status:** Shipped (May 2026); native-PTY WebSocket acceleration shipped August 2026. Interactive tier live on `/dashboard/machines/[id]/terminal`.
 > **One-liner:** We put Claude Code, Codex, Hermes, and OpenClaw in a browser tab — the *real* CLI, on a remote worker, with no local terminal and no tunnel.
 > **Bigger frame:** This isn't just "no browser terminal for agents." It's that **browser terminals in general** don't ship on modern serverless control planes — unless you invert where the session lives.
 
@@ -29,9 +29,9 @@ That's not a terminal feature. That's **CLI-as-a-service for non-terminal users*
 
 ## Why there are almost no browser terminals — and how we built one anyway
 
-It's not just that nobody ships a browser terminal **for deployed agents**. There are almost **no browser terminals in general** on the kind of stack most products actually run today (Next.js on Vercel, serverless API routes, no always-on relay). That's not because xterm.js is hard — it's because the **default design assumes something Vercel cannot be: a long-lived WebSocket PTY server in the middle.**
+It's not just that nobody ships a browser terminal **for deployed agents**. There are almost **no substrate-neutral browser terminals** on the kind of stack most products actually run today. Vercel WebSocket Functions removed one historical blocker in June 2026, but a bounded Function still cannot be the durable owner of a shell. The worker has to own the session; the socket is only an accelerated courier.
 
-### The architecture everyone tries first (and why it breaks)
+### The architecture everyone tries first (and what still breaks)
 
 The mental model is SSH-in-a-tab:
 
@@ -47,9 +47,9 @@ That works on **localhost**. It breaks the moment your product is a **serverless
 
 | Requirement | What Vercel (and most serverless) gives you |
 |-------------|---------------------------------------------|
-| Hold a WebSocket open for the whole session | Function dies at ~110s; no persistent socket server |
-| Stream stdin/stdout with PTY semantics | Request/response or short SSE bursts, not a shell |
-| Keep one process bound to one user's keystrokes | Cold starts, concurrency limits, no sticky sessions |
+| Hold one API process for the whole session | A WebSocket Function is pinned but bounded; reconnects land on replacement invocations |
+| Preserve the shell and scrollback | Function state disappears; the worker must own durable terminal state |
+| Target 50ms input acceptance | A fresh HTTP Function + provider exec per input has too much avoidable tail latency; provider and internet jitter still prevent a hard ceiling |
 
 So teams hit one of **three walls** — you've seen all of them:
 
@@ -66,30 +66,29 @@ Agent runtime vendors ship **local CLIs**. Substrate vendors ship **their shell 
 
 ### The inversion (how we got around an odd engineering problem)
 
-Don't fight serverless. **Stop trying to host the session in the API.**
+Don't fight serverless. **Stop trying to make the API own the session.**
 
 Invert the problem:
 
 1. **Session lives on the box** — `tmux` + `pipe-pane` log on the worker. The PTY, scrollback, and agent process survive cold starts and function timeouts.
-2. **Control plane is stateless HTTP + SSE** — no WebSocket server on Vercel; no tunnel required for the console path.
-3. **Input:** `tmux send-keys -H` (hex bytes, one quick exec per batch).
-4. **Output:** unbuffered `tail -f` on the pane log (streamed back via SSE; native `streamExec` where available).
+2. **Native fast path:** one authenticated Vercel WebSocket Function pins one provider PTY and attaches it to `amconsole` on E2B/Sprites.
+3. **Portable fallback:** `tmux send-keys -H` input plus an unbuffered SSE `tail -f` works anywhere `exec` exists.
+4. **Reconnect is cheap:** a replacement socket reattaches to the same worker-owned tmux session.
 
 **Boom — the same UI works across Dedalus, E2B, Sprites, and Vercel.** Exec is the only substrate primitive you need.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  BROWSER (xterm.js)                                         │
-│    keystrokes ──POST──►  input route                        │
-│    output     ◄──SSE───  stream route                       │
+│    input/output/resize ◄─WebSocket─► native PTY             │
+│    fallback: POST input + SSE output                        │
 └────────────────────────────┬────────────────────────────────┘
-                             │  stateless HTTP + SSE
-                             │  (auth, resolve machine, exec)
+                             │  authenticated, bounded data plane
                              ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  VERCEL CONTROL PLANE  — no long-lived socket, no PTY here  │
+│  VERCEL CONTROL PLANE  — pinned socket, no durable shell     │
 └────────────────────────────┬────────────────────────────────┘
-                             │  provider.exec / streamExec
+                             │  provider.openPty or exec / streamExec
                              ▼
 ┌─────────────────────────────────────────────────────────────┐
 │  SANDBOX (E2B · Sprites · Vercel · Dedalus)                 │
@@ -99,13 +98,12 @@ Invert the problem:
 │        ├── pipe-pane ──► /tmp/am-console.log  (all output)  │
 │        └── pane runs: codex | claude | hermes | openclaw    │
 │                                                             │
-│   input:  tmux send-keys -H <hex bytes>   (one quick exec)  │
-│   output: stdbuf -o0 tail -f log         (streamed back)    │
-│   resize: tmux resize-window               (one quick exec)  │
+│   fast: native provider PTY attached to amconsole           │
+│   fallback: send-keys + unbuffered log tail                 │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-That's the trick: **interactivity without a persistent control-plane socket.** The browser *feels* like a terminal because the *box* holds a real session; the dashboard is a dumb, retryable courier.
+That's the trick: **a fast socket without putting session truth in the socket.** The browser feels local because the wire is persistent; reconnects are safe because the box owns the real session.
 
 The missing primitive wasn't xterm. It was **"stateless courier, stateful worker."**
 
@@ -116,7 +114,7 @@ What Agent Machines ships as one flow is really **two breakthroughs stacked**:
 | Layer | What it is |
 |-------|------------|
 | **Agent control plane** | Deploy → bootstrap → attach → talk to the **real CLI** on **neutral infra**, with router + credential gates upstream |
-| **Serverless browser terminal** | How you get a terminal in the browser when your API can't host WebSocket PTY — tmux-over-exec + SSE |
+| **Serverless browser terminal** | Worker-owned tmux, accelerated by a pinned native PTY socket with a portable exec/SSE fallback |
 
 The second layer **could be a separate product.** Any team building on Vercel with remote workers (CI debug shells, support consoles, internal tools, sandbox SaaS) hits the same wall. We happened to need it because agent CLIs *are* terminals — and almost nobody else solved it without owning relay infra.
 
@@ -124,7 +122,7 @@ The second layer **could be a separate product.** Any team building on Vercel wi
 
 | Old world | After the inversion |
 |-----------|---------------------|
-| Browser terminal = WS PTY server you host | Browser terminal = tmux on worker + HTTP/SSE courier |
+| Browser terminal = API process owns the shell | Browser terminal = tmux owns the shell; socket and HTTP/SSE are replaceable couriers |
 | Agent CLIs = local-only | Agent CLIs = deploy + tab |
 | Serverless dashboard = chat shim or "use iTerm" | Serverless dashboard = live operator console |
 | Terminal = locked to one cloud (CloudShell → AWS) | Terminal = same UI on four substrates |
@@ -149,12 +147,12 @@ Once you see the inversion, **Deploy → Bootstrap → Attach → Talk** isn't a
 
 ```
 Browser (xterm.js)
-  │  keystrokes ──POST──► /api/dashboard/terminal/input  (tmux send-keys -H)
-  │  output ◄──SSE────── /api/dashboard/terminal/stream  (tail -f pane log)
+  │  input/output/resize ◄─WebSocket─► /api/dashboard/terminal/socket
+  │  fallback: POST /terminal/input + SSE /terminal/stream
   ▼
 Next.js control plane (Vercel — Clerk auth, resolve machine + provider creds)
   ▼
-Provider exec (E2B · Sprites · Vercel Sandbox · Dedalus)
+Provider native PTY (E2B/Sprites) or exec/stream (portable fallback)
   ▼
 Remote VM: tmux session "amconsole" + pipe-pane → /tmp/am-console.log
   ▼
@@ -165,7 +163,7 @@ Agent CLI running *inside* the pane (codex / claude / hermes / openclaw)
 
 The full story: [Why there are almost no browser terminals](#why-there-are-almost-no-browser-terminals--and-how-we-built-one-anyway) above.
 
-**One sentence:** Browser terminals don't ship on serverless because everyone assumes a long-lived WebSocket PTY in the API — Vercel can't be that. We inverted it: tmux + pipe-pane on the worker; stateless HTTP + SSE in the control plane; `send-keys -H` in, unbuffered `tail -f` out. Same UI on Dedalus, E2B, Sprites, Vercel.
+**One sentence:** Worker-owned tmux plus an origin-locked direct WebSocket removes the control-plane hot path, while correlated failover lanes and HTTP `send-keys` + SSE preserve exactly-once input and portability.
 
 Agent Machines stacks **agent deploy on neutral infra** (deploy → bootstrap → attach → real CLI, router/credential gates) on top of **a serverless browser terminal pattern that could be its own product.**
 
@@ -207,22 +205,23 @@ Our moat is the **integrated stack**: harness composition + neutral routing + ob
 
 **Technical (for engineers):**
 
-> Serverless-safe PTY emulation: tmux-over-exec with hex send-keys input and unbuffered tail -f output over SSE, tiered native streaming per provider, credential-gated provisioning, exec-first gateway (no mandatory Cloudflare tunnel).
+> Serverless-safe browser PTY: worker-owned tmux, one primary plus five preconnected direct worker lanes with a 12ms deduplicated retry, and a hex send-keys + unbuffered SSE fallback on every exec-capable substrate. Production E2B: 41ms latest / 89ms p95 across 20 human inputs; location-aware Sprite: 10.8ms p50 / 75.6ms p95 across 100 paced inputs.
 
 **The "why it didn't exist" pitch:**
 
-> There are almost no browser terminals on serverless stacks because everyone designs for a long-lived WebSocket PTY in the middle — and Vercel can't be that. Teams assume local iTerm, fake it with chat, or lock you into their sandbox's shell. We inverted it: tmux on the worker, stateless HTTP + SSE in the API. Same terminal UI on four substrates. CloudShell did it for AWS; we did it for neutral agent infra.
+> Browser terminals usually make one server own the socket and shell. We split those lifetimes: tmux owns the durable session on the worker; Vercel's pinned socket accelerates native PTY lanes; HTTP/SSE remains the portable fallback. CloudShell did it for AWS; we did it for neutral agent infra.
 
 **Standalone product angle:**
 
-> The tmux-over-exec + SSE pattern solves "how do you get a terminal in the browser when your control plane is serverless?" — independent of agents. We built it because Codex and Claude Code *are* terminals. Highkey could spin out.
+> The worker-owned tmux + replaceable data-plane pattern solves "how do you get a fast terminal without tying shell lifetime to an API process?" — independent of agents. We built it because Codex and Claude Code *are* terminals.
 
 ---
 
 ## What honest limits remain
 
-- **Latency:** Each keystroke batch is HTTP → exec → tmux. Warm instances ~100–300ms; not local-terminal instant. E2B connect caching + config caching help on Vercel.
-- **Stream reconnect:** Vercel function budget (~110s) forces periodic SSE reconnect; gap is ~100ms.
+- **Direct-lane latency:** Production E2B, 2026-08-14: 41ms latest and 89ms p95 across 20 human inputs. A location-aware Sprite Service reached 10.8ms p50 across 100 paced inputs, but periodic provider-proxy stalls produced 75.6ms p95 and 80.8ms max. The worker PTY write remained sub-millisecond. The rolling UI badge treats 50ms as a target and makes every breach visible.
+- **Socket reconnect:** Vercel bounds an invocation; the client reconnects and the new native PTY reattaches to worker-owned tmux.
+- **Fallback latency:** Vercel Sandbox and Dedalus still use HTTP → exec → tmux; the native latency SLO is not claimed for those lanes.
 - **Dedalus:** Poll fallback for streaming (~300–450ms chunks); no native streamExec.
 - **Not for vim/htop** as primary UX — built for *agent CLIs*, not general sysadmin.
 
@@ -238,6 +237,7 @@ These are product tradeoffs, not failures. The goal is **operate agent runtimes*
 | Terminal page | `web/app/dashboard/machines/[machineId]/terminal/page.tsx` |
 | Deploy & Talk | `web/components/dashboard/DeployAndTalk.tsx` |
 | Session attach | `web/app/api/dashboard/terminal/session/route.ts` |
+| Native PTY socket | `web/app/api/dashboard/terminal/socket/route.ts` |
 | Input (send-keys) | `web/app/api/dashboard/terminal/input/route.ts` |
 | Output (SSE stream) | `web/app/api/dashboard/terminal/stream/route.ts` |
 | tmux session logic | `web/lib/dashboard/terminal-session.ts` |

@@ -3,8 +3,7 @@ import type { ReactNode } from "react";
 import { AutoWake } from "@/components/dashboard/AutoWake";
 import { BetaBanner } from "@/components/dashboard/BetaBanner";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
-import { ClerkAppProvider } from "@/components/ClerkAppProvider";
-import { getUserConfig } from "@/lib/user-config/clerk";
+import { getUserConfigForRequest } from "@/lib/user-config/clerk";
 import {
 	DEFAULT_USER_CONFIG,
 	toPublicConfig,
@@ -33,20 +32,18 @@ export default async function DashboardLayout({
 }) {
 	let publicConfig: PublicUserConfig;
 	try {
-		publicConfig = toPublicConfig(await getUserConfig());
+		publicConfig = toPublicConfig(await getUserConfigForRequest());
 	} catch {
 		publicConfig = toPublicConfig({ ...DEFAULT_USER_CONFIG });
 	}
 	return (
-		<ClerkAppProvider>
-			<DashboardShell config={publicConfig}>
+		<DashboardShell config={publicConfig}>
 				<BetaBanner />
 				<AutoWake
 					machines={publicConfig.machines}
 					activeMachineId={publicConfig.activeMachineId}
 				/>
 				{children}
-			</DashboardShell>
-		</ClerkAppProvider>
+		</DashboardShell>
 	);
 }

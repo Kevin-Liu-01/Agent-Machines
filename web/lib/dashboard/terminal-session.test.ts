@@ -80,6 +80,7 @@ describe("installAgentLauncherCommand", () => {
 		expect(cmd).toContain("write_state exited");
 		expect(cmd).toContain("hermes chat");
 		expect(cmd).toContain("openclaw chat");
+		expect(cmd).toContain(".agent-machines/pkgs/node_modules/.bin");
 		expect(cmd).toContain("claude");
 		expect(cmd).toContain("codex");
 	});

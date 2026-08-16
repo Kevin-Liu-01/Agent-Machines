@@ -48,12 +48,22 @@ const mocks = vi.hoisted(() => {
 		exportTar: vi.fn(),
 		restoreTar: vi.fn(),
 		verifyMarker: vi.fn(),
+		prepareLiveBaseline: vi.fn(),
+		beginMigrationDrain: vi.fn(),
+		waitForMigrationDrain: vi.fn(),
+		exportStableLiveDelta: vi.fn(),
+		restoreStableLiveDelta: vi.fn(),
+		cancelMigrationDrain: vi.fn(),
+		cleanupLiveMigration: vi.fn(),
 		/** Tenants the placement store was constructed for, in order. */
 		placementTenants: [] as string[],
 		/** Placement writes that reached the store. */
 		placementWrites: [] as Array<{ tenantId: string; name: string; placement: unknown }>,
 		/** Set to make the next remember() reject, for the best-effort path. */
 		placementFails: false,
+		controlPlaneMatched: 1,
+		controlPlaneFails: false,
+		syncHostedWorkerPlacement: vi.fn(),
 	};
 });
 
@@ -72,6 +82,9 @@ vi.mock("@/lib/providers", async () => {
 });
 vi.mock("@/lib/dashboard/provision", () => ({
 	createMachineForConfig: mocks.createMachineForConfig,
+}));
+vi.mock("@/lib/control-plane/store", () => ({
+	syncHostedWorkerPlacement: mocks.syncHostedWorkerPlacement,
 }));
 vi.mock("@/lib/bootstrap/runner", () => ({
 	runWebBootstrap: mocks.runWebBootstrap,
@@ -122,13 +135,22 @@ vi.mock("agent-machines/mux", () => ({
 	}),
 	MOVE_NOTES: () => ["a named unknown"],
 	REDERIVED: () => ["harness toolchain: reinstalled"],
-	lostState: (from: string) => [`running processes on ${from}`],
+	lostState: (from: string, mode = "copy") => [
+		mode === "live" ? `processes restart after managed runs drain on ${from}` : `running processes on ${from}`,
+	],
 	buildExportCommand: mocks.buildExportCommand,
 	exportTar: mocks.exportTar,
 	probeIncludes: mocks.probeIncludes,
 	restoreTar: mocks.restoreTar,
 	verifyMarker: mocks.verifyMarker,
 	writeMarker: mocks.writeMarker,
+	prepareLiveBaseline: mocks.prepareLiveBaseline,
+	beginMigrationDrain: mocks.beginMigrationDrain,
+	waitForMigrationDrain: mocks.waitForMigrationDrain,
+	exportStableLiveDelta: mocks.exportStableLiveDelta,
+	restoreStableLiveDelta: mocks.restoreStableLiveDelta,
+	cancelMigrationDrain: mocks.cancelMigrationDrain,
+	cleanupLiveMigration: mocks.cleanupLiveMigration,
 }));
 
 import { runMachineMigration } from "@/lib/dashboard/migrate";
@@ -247,6 +269,8 @@ beforeEach(() => {
 	mocks.placementTenants.length = 0;
 	mocks.placementWrites.length = 0;
 	mocks.placementFails = false;
+	mocks.controlPlaneMatched = 1;
+	mocks.controlPlaneFails = false;
 	delete process.env.VERCEL_OIDC_TOKEN;
 
 	store = {
@@ -276,6 +300,14 @@ beforeEach(() => {
 		return structuredClone(store);
 	});
 	mocks.getProvider.mockImplementation((kind: string) => providers[kind]);
+	mocks.syncHostedWorkerPlacement.mockImplementation(async () => {
+		mocks.trace.push("control-plane:sync");
+		if (mocks.controlPlaneFails) throw new Error("control-plane optimistic write failed");
+		return {
+			matched: mocks.controlPlaneMatched,
+			updatedWorkerIds: mocks.controlPlaneMatched > 0 ? ["worker-1"] : [],
+		};
+	});
 	mocks.createMachineForConfig.mockImplementation(
 		async (_config: UserConfig, opts: { providerKind: string; activate?: boolean }) => {
 			mocks.trace.push(`provision:${opts.providerKind}:activate=${String(opts.activate)}`);
@@ -326,6 +358,42 @@ beforeEach(() => {
 		mocks.trace.push("marker-verify");
 		return { ok: true };
 	});
+	mocks.prepareLiveBaseline.mockImplementation(async () => {
+		mocks.trace.push("live-baseline");
+		return {
+			migrationId: "live-1",
+			markerPath: "/tmp/live.marker",
+			baselineListPath: "/tmp/live.baseline",
+			include: [".agent-machines/MEMORY.md", ".agent-machines/skills"],
+			exclude: [".env"],
+		};
+	});
+	mocks.beginMigrationDrain.mockImplementation(async () => {
+		mocks.trace.push("drain-begin");
+		return { migrationId: "live-1", activeRuns: 2, startedAt: Date.now() - 25 };
+	});
+	mocks.waitForMigrationDrain.mockImplementation(async () => {
+		mocks.trace.push("drain-wait");
+		return { activeRuns: 2, waitedMs: 25 };
+	});
+	mocks.exportStableLiveDelta.mockImplementation(async () => {
+		mocks.trace.push("delta-export");
+		return {
+			exported: { bytes: Buffer.from("delta"), sha256: "delta-sha" },
+			deleteManifest: ".agent-machines/.migration-deletions-live-1",
+			bytes: 5,
+			stabilityAttempts: 1,
+		};
+	});
+	mocks.restoreStableLiveDelta.mockImplementation(async () => {
+		mocks.trace.push("delta-restore");
+	});
+	mocks.cancelMigrationDrain.mockImplementation(async () => {
+		mocks.trace.push("drain-cancel");
+	});
+	mocks.cleanupLiveMigration.mockImplementation(async () => {
+		mocks.trace.push("live-cleanup");
+	});
 });
 
 const run = (overrides: Partial<Parameters<typeof runMachineMigration>[0]> = {}) =>
@@ -333,6 +401,7 @@ const run = (overrides: Partial<Parameters<typeof runMachineMigration>[0]> = {})
 		machineId: "old-1",
 		to: "sprites",
 		moveState: true,
+		mode: "copy",
 		source: "destroy",
 		userId: "user-alpha",
 		...overrides,
@@ -428,6 +497,38 @@ describe("runMachineMigration happy path", () => {
 		expect(report?.state.bytes).toBe(0);
 		expect(report?.state.lost.join(" ")).toContain("moveState:false");
 	});
+
+	it("live mode drains managed runs, restores a final delta, and commits before source teardown", async () => {
+		await run({ mode: "live" });
+		const order = [
+			"live-baseline",
+			"export",
+			"restore",
+			"drain-begin",
+			"drain-wait",
+			"delta-export",
+			"delta-restore",
+			"drain-cancel",
+			"marker-verify",
+			"commit",
+			"destroy:e2b:old-1",
+		];
+		const positions = order.map((entry) => mocks.trace.indexOf(entry));
+		for (const [index, position] of positions.entries()) {
+			expect(position, `${order[index]} missing from ${JSON.stringify(mocks.trace)}`).toBeGreaterThanOrEqual(0);
+			if (index > 0) expect(position).toBeGreaterThan(positions[index - 1]);
+		}
+		const continuity = migrationStateOf("new-1")?.report?.continuity;
+		expect(continuity).toMatchObject({
+			mode: "live",
+			managedRuns: "drained",
+			activeRuns: 2,
+			baselineBytes: 9,
+			deltaBytes: 5,
+			stabilityAttempts: 1,
+			gateReleased: true,
+		});
+	});
 });
 
 /* ------------------------------------------------------------------ */
@@ -458,6 +559,20 @@ describe("source disposition (post-commit, never silent)", () => {
 		expect(providers.e2b.sleep).not.toHaveBeenCalled();
 		expect(refOf("old-1")?.archived).toBeUndefined();
 		expect(migrationStateOf("old-1")?.report?.source.action).toBe("kept");
+	});
+
+	it("a live keep reports a gate-release failure and its self-healing expiry", async () => {
+		// The target's copied gate must open before commit; only the later
+		// best-effort source re-open is allowed to fail without rolling back.
+		mocks.cancelMigrationDrain
+			.mockResolvedValueOnce(undefined)
+			.mockRejectedValueOnce(new Error("source exec timed out"));
+		await run({ mode: "live", source: "keep" });
+		const state = migrationStateOf("new-1");
+		expect(state?.phase).toBe("succeeded");
+		expect(state?.report?.continuity?.gateReleased).toBe(false);
+		expect(state?.report?.source.error).toContain("worker-side expiry");
+		expect(state?.report?.source.error).toContain("source exec timed out");
 	});
 
 	it("a post-commit destroy failure does NOT fail the migration; the orphan is NAMED", async () => {
@@ -559,6 +674,23 @@ describe("commit failure (the store refuses the point of no return)", () => {
 		const state = migrationStateOf("old-1");
 		expect(state?.phase).toBe("failed");
 		expect(state?.step).toBe("commit");
+	});
+});
+
+describe("live drain recovery", () => {
+	it("names a failed gate recovery while preserving the source and tearing down the target", async () => {
+		mocks.exportStableLiveDelta.mockRejectedValue(new Error("delta could not stabilize"));
+		mocks.cancelMigrationDrain.mockRejectedValue(new Error("source exec timed out"));
+		await run({ mode: "live" });
+
+		const state = migrationStateOf("old-1");
+		expect(state?.phase).toBe("failed");
+		expect(state?.step).toBe("delta");
+		expect(state?.lastError).toContain("delta could not stabilize");
+		expect(state?.lastError).toContain("worker-side expiry");
+		expect(refOf("old-1")).toBeDefined();
+		expect(refOf("new-1")).toBeUndefined();
+		expect(providers.e2b.destroy).not.toHaveBeenCalled();
 	});
 });
 
@@ -683,5 +815,45 @@ describe("mux placement mirror", () => {
 		expect(mocks.placementWrites).toEqual([]);
 		expect(mocks.placementTenants).toEqual([]);
 		expect(migrationStateOf("old-1")?.phase).toBe("failed");
+	});
+});
+
+describe("managed Worker placement completion gate", () => {
+	it("advances the tenant-scoped Worker after config commit and before source destruction", async () => {
+		await run({ userId: "user-managed" });
+
+		expect(mocks.syncHostedWorkerPlacement).toHaveBeenCalledWith({
+			userId: "user-managed",
+			fromSandboxId: "old-1",
+			toSandboxId: "new-1",
+			sandbox: "sprites",
+			runtime: "codex",
+		});
+		const commit = mocks.trace.indexOf("commit");
+		const mirror = mocks.trace.indexOf("control-plane:sync");
+		const teardown = mocks.trace.indexOf("destroy:e2b:old-1");
+		expect(mirror).toBeGreaterThan(commit);
+		expect(teardown).toBeGreaterThan(mirror);
+		expect(migrationStateOf("new-1")?.report?.controlPlane).toEqual({
+			recorded: true,
+			matched: 1,
+		});
+	});
+
+	it("fails closed and preserves the source when the Worker journal cannot converge", async () => {
+		mocks.controlPlaneFails = true;
+		const result = await run();
+
+		expect(result.phase).toBe("failed");
+		expect(result.step).toBe("commit");
+		expect(result.newMachineId).toBe("new-1");
+		expect(result.lastError).toContain("managed Worker placement did not converge");
+		expect(result.report?.controlPlane).toEqual({
+			recorded: false,
+			matched: 0,
+			reason: "control-plane optimistic write failed",
+		});
+		expect(result.report?.source.action).toBe("kept");
+		expect(mocks.trace).not.toContain("destroy:e2b:old-1");
 	});
 });

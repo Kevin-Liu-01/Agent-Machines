@@ -1,310 +1,597 @@
-# Agent Machines — Technical Whitepaper
+# Agent Machines: The Durable Worker System
 
-**Version 1.0 · June 2026**  
-**Site:** [agent-machines.dev](https://www.agent-machines.dev) · **Source:** [github.com/Kevin-Liu-01/Agent-Machines](https://github.com/Kevin-Liu-01/Agent-Machines)
+**Technical and product whitepaper · Version 2.0 · August 15, 2026**
+**Site:** [agent-machines.com](https://www.agent-machines.com) · **Source:** [github.com/Kevin-Liu-01/agent-machines](https://github.com/Kevin-Liu-01/agent-machines)
 
 ---
 
 ## Abstract
 
-Agent Machines is a **control plane for persistent agent workers** — the product layer above sandboxes. One account performs **dual routing**: which **agent runtime** (Hermes, OpenClaw, Claude Code, Codex) and which **substrate** (E2B, Sprites.dev, Dedalus Machines, Vercel Sandbox), then deploys a full worker in one unit: runtime, skills, MCP integrations, cron, observation, and fleet supervision.
+Agent Machines is a system for persistent, long-running software Workers. A
+Worker is not a chat session, model, process, runtime, or sandbox. It is the
+durable product object that owns a responsibility over time: identity, memory,
+instructions, schedules, files, permissions, abilities, history, desired
+state, and evidence.
 
-The headline interaction pattern is the **Browser Agent Console**: operate real agent CLIs from a browser tab on a remote machine without hosting a WebSocket PTY on serverless infrastructure. Session state lives on the worker (`tmux` + log tail); the control plane is stateless HTTP and SSE.
+Everything beneath the Worker is replaceable machinery. Agent runtimes, model
+paths, sandbox providers, tools, terminal transports, persistence modes,
+schedulers, and placement policies may change without requiring the user to
+rebuild the Worker or lose its relationship with the work.
 
-**Analogies:** OpenRouter for agents and containers · Vercel on AWS for substrates.
+The current routing wedge is “OpenRouter for agents and machines.” The larger
+product has two additional layers: Lovable/Bolt/v0-shaped composition for
+creating a useful Worker from intent, and ChatGPT/Claude-shaped accessibility
+for reaching the first useful result without understanding infrastructure.
 
----
-
-## 1. Problem
-
-The market ships four incomplete layers:
-
-| Layer | Examples | Gap |
-|-------|----------|-----|
-| **Containers** | E2B, Modal, Sprites, Daytona, Vercel Sandbox | Operators get an empty box, not a worker |
-| **Frameworks** | LangGraph, CrewAI, OpenClaw (as library) | Logic without durable home, deploy, or fleet observe |
-| **Memory SaaS** | Mem0, Letta | Bolt-on state; real procedures want a filesystem |
-| **Expert CLIs** | Claude Code, Codex, Hermes | Single-seat terminals; no substrate-neutral fleet desk |
-
-Most products force a false choice:
-
-- **Chat UI** — loses full TUI/CLI fidelity and durable procedure files
-- **Local terminal only** — excludes non-terminal operators and remote substrates
-- **Vendor-locked sandbox shell** — one cloud, not routed infra
-- **WebSocket PTY relay** — incompatible with serverless control planes (timeouts, no stickiness)
-
-What buyers want is a **persistent agent machine**: agent + home + harness + schedule + observation, ready in one deploy — not a container they still have to wire up.
+The system is implemented as a declarative, recoverable control plane above
+four agent runtimes and four sandbox adapters. It includes persistent harness
+state, application-level provider migration, scheduled execution, a real
+browser agent console, operation journals, provider-aware lifecycle controls,
+templates, memory, skills, MCP connectors, logs, usage, artifacts, and SDK/API
+control.
 
 ---
 
-## 2. Design principles
+## 1. Thesis
 
-1. **Combined primitive** — Ship **agent + machine** together; value is the worker, not the SKU of raw compute ([`knowledge/VISION.md`](../knowledge/VISION.md)).
-2. **Route, don't rebuild** — Sandboxes are hard; four substrates implement one `MachineProvider` interface instead of owning infra.
-3. **Registry-driven truth** — Harness counts and loadout come from live registries (`web/lib/platform/harness.ts`), not static marketing numbers.
-4. **Fail closed** — Credential gate blocks provision when runtime or substrate keys are missing.
-5. **Exec-first console** — Interactive path uses only `exec` / `streamExec`; optional HTTP gateway is not required for primary UX.
-6. **Observation before orchestration** — Activity, sessions, tool traces, usage, and logs in one dashboard before agent-to-agent fleet APIs.
-7. **Procedures on disk** — SKILL.md compounds on the machine; not trapped in chat history.
+> **The Worker is durable. Everything underneath is replaceable.**
+
+The software industry has several strong primitives for agent execution:
+models, terminal-native agent runtimes, sandbox providers, tool protocols,
+memory products, workflow frameworks, and browser automation. The primitives
+are improving quickly, but the user still has to assemble and operate them.
+
+Agent Machines treats their combination as a new product primitive: a Worker
+that owns a responsibility and remains available after the prompt, browser
+session, process, model, or cloud machine that first created it.
+
+The user relationship belongs to the Worker. Infrastructure providers supply
+replaceable implementations beneath it.
+
+### 1.1 What remains durable
+
+- identity and responsibility;
+- role, instructions, and approval boundaries;
+- memory and accumulated working context;
+- schedules and desired lifecycle state;
+- files, artifacts, and output contracts;
+- permissions and connected services;
+- skills, procedures, and other abilities;
+- run history, cost history, and evidence.
+
+### 1.2 What remains replaceable
+
+- agent runtime;
+- model and model upstream;
+- sandbox provider and machine shape;
+- skills, MCP servers, CLIs, and native tool wiring;
+- browser console, PTY, streaming, REST, SDK, and CLI transport;
+- volume, snapshot, checkpoint, or always-on persistence mode;
+- prompt, cron, API, queue, or another Worker as the execution trigger;
+- placement policy based on constraints, outcomes, cost, and health.
+
+Replaceable does not mean identical. Each primitive exposes its actual
+capabilities. The control plane must preserve portability without erasing real
+differences between providers or pretending unsupported operations exist.
 
 ---
 
-## 3. Core primitives
+## 2. Product category
 
-### 3.1 Dual routing
+Agent Machines spans three product layers.
 
-Two independent axes, one account — analogous to OpenRouter's model routing applied to **runtimes** and **containers**:
+| Layer | Analogy | User outcome |
+|---|---|---|
+| **Route** | OpenRouter for agents + machines | Runtime, model, sandbox, and abilities can change without changing the Worker |
+| **Compose** | Lovable / Bolt / v0 for Workers | A responsibility becomes an inspectable Worker specification, or a trusted specialist can be used off the shelf |
+| **Access** | ChatGPT/Claude-simple first use | A user signs in, connects services, and reaches useful work before infrastructure becomes part of the conversation |
 
-| Axis | Options | Implementation |
-|------|---------|----------------|
-| **Runtime** | Hermes, OpenClaw, Claude Code, Codex CLI | Bootstrap recipes + launch commands |
-| **Substrate** | E2B, Sprites.dev, Dedalus Machines, Vercel Sandbox | `MachineProvider` in `web/lib/providers/*` |
-| **Model upstream** | Vercel AI Gateway, OpenRouter, native keys, custom OpenAI-compatible | Per-machine router + credential gate |
+These analogies describe separate jobs. Routing is the infrastructure wedge.
+Composition is the creation environment. Accessible first use is the product
+experience.
 
-The third axis is not free choice for every runtime, and the constraint is a
-wire format rather than a policy. Claude Code speaks Anthropic Messages, Codex
-speaks OpenAI Responses, and a gateway qualifies only when it serves that
-shape. Measured in [`UPSTREAMS.md`](./UPSTREAMS.md): OpenRouter serves **both**
-shapes, so one gateway key can drive either CLI in the multiplexer
-(`src/mux/upstreams.ts`), while the hosted bootstrap still pins Codex to native
-OpenAI and Claude Code to native Anthropic
-(`web/lib/bootstrap/runner.ts`). Model ids are namespaced per upstream -- a
-gateway requires the provider prefix, a native key does not take one -- so an
-unmapped id is a 404 at request time, not a routing error.
+### 2.1 The intended interaction
 
-### 3.2 Persistent worker harness
+1. **Describe or choose.** State the responsibility or select a trusted specialist.
+2. **Connect.** Grant only the services and permissions required for that responsibility.
+3. **Assign.** Set the schedule, output contract, budget, and approval boundary.
+4. **Supervise.** Watch, approve, inspect evidence, and move or reconfigure the Worker.
 
-A deployed worker includes:
+The target experience is intentionally simpler than the underlying system.
+Models, runtimes, sandboxes, terminals, persistence, cron, recovery, and
+migration should disappear beneath the interaction while remaining available
+for inspection when an operator needs them.
 
-| Layer | Source | Role |
-|-------|--------|------|
-| **Skills** | `knowledge/skills/*/SKILL.md` → `~/.agent-machines/skills/` | Versioned procedures (161 today) |
-| **Service routes** | Loadout registry | MCP → CLI → skill per vendor |
-| **MCP servers** | Catalog + user install | 39 servers: 2 core, 32 bundled, 4 IDE, 1 reference; credential-gated SaaS |
-| **CLIs** | Bootstrap | Closed-loop verification (gh, Playwright, agent-browser, …) |
-| **Agent-native tools** | Per runtime | 9–23 tools (Hermes richest) |
-| **Cron** | User config + server tick | Scheduled exec on machines |
-| **Observation** | Supabase + dashboard | Usage, activity, sessions, logs |
+### 2.2 The magic moment
 
-### 3.3 Browser Agent Console
+The magic moment is not one impressive response. A Worker comes online with a
+job, memory, tools, files, permissions, and schedule; performs real work; the
+browser closes; and the Worker is still there tomorrow with its context and
+evidence intact.
 
-**Pattern:** tmux-over-exec + SSE (no control-plane PTY).
+That moment changes the user’s model of software. The natural next question is
+not “what else can this chat answer?” It is “what other responsibilities could
+a Worker own?”
 
+---
+
+## 3. User problem
+
+Operating an agent still resembles assembling a computer for every task:
+
+1. select a model;
+2. find a runtime;
+3. provision a sandbox;
+4. install tools and dependencies;
+5. connect credentials;
+6. reconstruct context;
+7. keep the process alive;
+8. schedule recurring work;
+9. capture files and logs;
+10. recover from provider or process failure.
+
+Consumers do not want those pieces. They want to choose a job and have it
+begin. Technical teams tolerate the assembly because they need the result;
+nontechnical users never reach the result at all.
+
+### 3.1 Incomplete product shapes
+
+| Shape | What it supplies | What remains missing |
+|---|---|---|
+| Sandbox provider | Isolated compute | Role, runtime, tools, state, schedule, evidence, supervision |
+| Agent framework | Logic and orchestration | Durable home, deployment, terminal, provider lifecycle, fleet operations |
+| Model chat | Accessible intelligence | Long-running ownership, inspectable filesystem, cron, provider portability |
+| Memory product | Recall primitive | Complete Worker lifecycle and execution environment |
+| Expert CLI | Powerful agent behavior | Remote durable home, consumer access, scheduling, fleet supervision |
+
+The missing product is the persistent Worker above these layers.
+
+### 3.2 Personal fleets
+
+People do not need one universal chatbot. They can use a small fleet of
+accountable specialists:
+
+- a research Worker producing a sourced industry briefing;
+- a browser Worker completing allowlisted repetitive web operations;
+- a career Worker maintaining application context across months;
+- a household operations Worker preparing renewals and decisions for approval;
+- a coding Worker retaining ownership of a project;
+- a small-business fleet for support, QA, research, and recurring operations.
+
+Persistent memory without supervision is unsafe. Supervision without
+persistent memory produces disposable chat windows. The Worker system requires
+both.
+
+---
+
+## 4. Worker specification
+
+The primary resource is declarative intent:
+
+```ts
+type Worker = {
+  id: string;
+  spec: {
+    name: string;
+    responsibility: string;
+    runtime: "claude-code" | "codex" | "hermes" | "openclaw";
+    sandbox: "e2b" | "sprites" | "vercel" | "dedalus";
+    model?: string;
+    memory?: string;
+    abilities: string[];
+    schedules: Schedule[];
+    migrationPolicy: "live" | "manual";
+  };
+  desiredState: "running" | "sleeping" | "deleted";
+};
 ```
-Browser (xterm.js)
-  → POST …/terminal/input     (tmux send-keys -H)
-  ← GET  …/terminal/stream    (tail -f pane log, byte offset)
-  → Clerk-authenticated control plane (stateless)
-  → provider.exec / streamExec
-  → Worker: tmux "amconsole" + agent CLI in pane
+
+The operator owns intent. The control plane owns the retryable process of
+reaching it: credential validation, placement, provision, bootstrap, runtime
+installation, wake, run, schedule dispatch, migration, repair, and teardown.
+
+### 4.1 Creation modes
+
+Agent Machines supports or targets three entry points:
+
+| Mode | Status | Contract |
+|---|---|---|
+| **Off the shelf** | Live | Twelve specialist templates create a reusable Worker and Memory bundle |
+| **Assemble primitives** | Live | Choose runtime and sandbox, then submit one declarative launch intent |
+| **Describe the outcome** | Product direction | Natural-language intent produces a proposed, inspectable role, abilities, permissions, schedule, evaluation, and placement before approval |
+
+Natural-language composition must not become a hidden system prompt. It should
+compile into a visible Worker specification that the user can edit and approve.
+
+---
+
+## 5. System architecture
+
+```text
+Human operator / head Worker
+        |
+        | describe · choose · apply · run · approve · inspect
+        v
+Durable Worker intent
+  identity · responsibility · memory · schedule · permissions · evidence
+        |
+        v
+AgentMachinesControlPlane
+  operation journal · idempotency · leases · reconciliation · recovery
+        |
+        v
+WorkerRuntimeDriver
+        |
+        +-- runtime: Claude Code | Codex | Hermes | OpenClaw
+        +-- model: native | OpenRouter | Vercel AI Gateway | custom
+        +-- sandbox: E2B | Sprites | Vercel Sandbox | Dedalus
+        +-- abilities: skills | MCP | CLI | native tools
+        +-- trigger: prompt | cron | API | another Worker
+        |
+        v
+Persistent Worker home
+  ~/.agent-machines/
+  memory · skills · crons · sessions · logs · artifacts · evidence
 ```
 
-**Why it matters:** Next.js on Vercel cannot host a long-lived WebSocket PTY. Inverting session ownership to the worker makes the same UI work on all four substrates.
+The control plane is conceptually serverless. No coordinator process must own
+the Worker. A request, queue consumer, scheduled function, or recovery job may
+claim the next operation and call the reconciler.
 
-Full specification: [`sandbox-terminal-gateway.md`](./sandbox-terminal-gateway.md) · narrative: [`knowledge/BROWSER-AGENT-CONSOLE.md`](../knowledge/BROWSER-AGENT-CONSOLE.md).
+### 5.1 Durable operation journal
 
-### 3.4 Memory bundles
+Operations are recorded before remote work begins. The journal provides:
 
-**Owned memory** — portable persona, rules, and abilities stored at the account level, installable into any runtime, exportable as prompts. Not a vendor-hosted memory blob; files the operator controls.
+- stable idempotency keys;
+- expiring claims and renewable fenced leases;
+- optimistic Worker generation checks;
+- retryable, typed terminal states;
+- scheduled-run deduplication;
+- recovery after a request or function disappears.
 
-Workers reference a Memory bundle; machines inherit the stack on deploy.
+The repository includes three store adapters:
 
-### 3.5 Workers (presets)
+1. `InMemoryControlPlaneStore` for deterministic tests and embedded use;
+2. `JsonFileControlPlaneStore` for an atomic local journal;
+3. `SupabaseControlPlaneStore` for tenant-scoped transactional hosted state.
 
-Deployable templates: **runtime + model/router + Memory bundle**. Encodes specialist roles (code, design, ops, news) as one-click units — the same recipe vendors sell as product SKUs (UI + skills + MCPs + prompts), but composable and substrate-neutral.
+The Supabase adapter uses atomic intent commits, optimistic writes,
+`SKIP LOCKED` claims, renewable fenced leases, and terminal commits. Provider
+SDK calls remain behind runtime/provider drivers, not page components.
 
-### 3.6 Registry vs loadout
+### 5.2 Reconciliation semantics
 
-| Concept | Meaning |
-|---------|---------|
-| **Loadout** | What is **active** on a machine — skills, MCPs, service routes, task routes |
-| **Registry** | What can be **installed** — 1,400+ items from MCP registry (paginated cache), skills.sh, npm, bundled catalog, Cursor plugins |
-
-Search → add to loadout → sync on deploy/reload.
-
-### 3.7 SKILL.md protocol
-
-Agent procedures as markdown on disk under `~/.agent-machines/skills/`. Each session can load, refine, and reuse; switching cost grows with accumulated skill library. Deliberately not exportable to stateless chat products.
-
-### 3.8 MachineProvider
-
-Every substrate implements:
-
-`provision` · `state` · `wake` · `sleep` · `destroy` · `exec` · `streamExec`
-
-Streaming tier is capability-based:
-
-| Substrate | `streamExec` | Tier |
-|-----------|--------------|------|
-| E2B | `commands.run` callbacks | Native stream |
-| Sprites | `spawn()` stdout/stderr | Native stream |
-| Vercel Sandbox | `Command.logs()` iterator | Native stream |
-| Dedalus | REST exec (post-hoc output) | Poll fallback on log file |
-
-The SSE contract (`started` · `output` · `idle` · `error` / `done`) is identical across tiers so UI code does not branch on provider.
+| Desired event | Reconciler behavior |
+|---|---|
+| New Worker → running | validate → place → provision → bootstrap → probe → ready |
+| Run on sleeping Worker | inspect without waking → wake → execute once |
+| Run on missing Worker | reprovision → bootstrap → execute once |
+| Runtime changes | install and probe target harness → persist new runtime placement |
+| Sandbox changes | drain → transfer durable state → verify → atomic placement cutover |
+| Desired sleeping | park only when the selected provider supports it |
+| Desired deleted | provider teardown → clear placement → terminal deleted state |
+| Scheduled run | evaluate schedule → deduplicate instant → reconcile running → execute |
 
 ---
 
-## 4. Architecture
+## 6. Replaceable machinery
 
-```txt
-Operator (human or future head agent)
-        │
-        ▼
-┌───────────────────────────────────────┐
-│  Agent Machines control plane         │
-│  Next.js · Clerk · Supabase metrics   │
-│  Dashboard · Registry · Cron tick     │
-└───────────────────────────────────────┘
-        │ MachineProvider API
-        ▼
-┌─────────────┬─────────────┬─────────────┬─────────────┐
-│    E2B      │   Sprites   │   Dedalus   │   Vercel    │
-│   Sandbox   │   .dev      │  Machines   │   Sandbox   │
-└─────────────┴─────────────┴─────────────┴─────────────┘
-        │
-        ▼
-Persistent worker (~/.agent-machines/)
-  ├── tmux console (primary interact)
-  ├── optional gateway :8642 / :18789
-  ├── skills · mcps · crons · sessions · logs
-  └── git checkout for knowledge reload
-        │
-        ▼
-Model upstream (router or native API keys)
+### 6.1 Runtime plane
+
+Four harness adapters normalize installation, authentication, interactive
+launch, headless run, and streamed events:
+
+- Claude Code;
+- Codex CLI;
+- Hermes;
+- OpenClaw.
+
+Each runtime keeps its real behavior and wire format. Normalization creates a
+common lifecycle and event boundary; it does not erase runtime differences.
+
+### 6.2 Sandbox plane
+
+Four provider adapters implement provision, describe, execution, PTY where
+available, persistence, reattachment, public URL where available, sleep/wake,
+and teardown:
+
+- E2B;
+- Sprites.dev;
+- Vercel Sandbox;
+- Dedalus Machines.
+
+Capabilities are explicit. Unknown capability rejects a constraint that
+depends on it. Provider-specific lifecycle controls appear only when supported.
+
+### 6.3 Model plane
+
+Model traffic may use:
+
+- native OpenAI or Anthropic credentials;
+- OpenRouter;
+- Vercel AI Gateway;
+- a compatible custom endpoint.
+
+Runtime wire formats constrain valid model paths. A credential and
+compatibility gate rejects unusable combinations before provisioning.
+Dedalus is a sandbox substrate, not an inference gateway.
+
+### 6.4 Ability plane
+
+A Worker harness may include:
+
+- versioned `SKILL.md` procedures;
+- credential-gated MCP connectors;
+- closed-loop CLIs;
+- runtime-native tools;
+- ranked service routes;
+- portable Memory bundles.
+
+The loadout is what is active on a Worker. The registry is what can be
+installed. The production registry indexed 2,595 items during the August 14,
+2026 audit; the exact count changes as bundled and remote catalogs change.
+
+---
+
+## 7. Live workspace
+
+Terminal-native agent runtimes are powerful because they expose the real tool,
+not a reduced chat wrapper. Agent Machines operates those CLIs from a browser
+without making the API process the durable session owner.
+
+```text
+Browser xterm.js
+   | direct authenticated WebSocket when native PTY exists
+   | HTTP input + SSE output as portable fallback
+   v
+Provider PTY / exec primitive
+   v
+Worker-owned tmux session "amconsole"
+   v
+Claude Code | Codex | Hermes | OpenClaw
 ```
 
-**Deploy → Bootstrap → Attach → Talk**
+The tmux session, process, scrollback, and pane log live on the Worker.
+Reconnects attach to existing state. The fast path pins a provider PTY to one
+authenticated WebSocket connection; the fallback uses `tmux send-keys` and an
+offset-aware log tail.
 
-1. **Provision** — create machine; persist `MachineRef`; run credential gate  
-2. **Bootstrap** — phased shell recipes; core phases block until gateway-ready; post-gateway best-effort  
-3. **Attach** — browser terminal session; `capture-pane` snapshot; byte offset for SSE tail  
-4. **Talk** — agent CLI in pane; full TUIs supported  
+Measured production evidence from August 14, 2026:
 
----
+- authenticated E2B dashboard: 41 ms latest acknowledgement and 89 ms p95 over 20 human inputs;
+- location-aware Sprite service: 10.8 ms p50 across 100 paced inputs;
+- 87/100 Sprite inputs below the 50 ms target;
+- provider-proxy stalls: 75.6 ms p95 and 80.8 ms maximum;
+- Worker-side PTY write: sub-millisecond.
 
-## 5. Control plane patterns
-
-### 5.1 Credential gate
-
-Before provision: validate substrate API keys and runtime-appropriate model upstream. Prevents silent failure deep in bootstrap.
-
-### 5.2 Phased bootstrap
-
-- **Core phases** — system deps, runtime install, gateway; must succeed  
-- **Post-gateway phases** — browser tooling, extras; best-effort so slow installs do not block console  
-
-State persisted after each phase (`bootstrapState`) for resumability.
-
-### 5.3 Scheduler tick
-
-`POST /api/internal/cron/tick` (Vercel Cron every 5 minutes):
-
-- Evaluate user cron definitions → exec on target machines  
-- Collect usage/activity metrics → Supabase  
-
-On-demand: `POST /api/dashboard/metrics/collect`.
-
-### 5.4 Gateway optional path
-
-HTTP chat proxies to Hermes/OpenClaw gateway when a public URL exists. Console path does not require tunnel or `NEXT_PUBLIC_*` machine bearers. Chat API degrades gracefully to terminal when no gateway URL.
-
-### 5.5 Fleet supervision
-
-- URL-scoped machines (`?machineId=`, `?focus=`)  
-- Command palette navigation  
-- Cross-substrate benchmarks for boot/exec/streaming  
+Fifty milliseconds is a strict target, not a false hard guarantee across the
+public internet. The interface reports rolling latency and breaches.
 
 ---
 
-## 6. Two audiences
+## 8. Portability and migration
 
-| Audience | Surface | Today |
-|----------|---------|-------|
-| **Humans** | Dashboard, Browser Agent Console, Workers, Registry | Live |
-| **Head agents** | MCP + CLI provision/observe/teardown | Roadmap (Q4 2026 target) |
+Application-level live provider migration preserves the Worker while changing
+its substrate:
 
-Enterprise control-plane narratives (ServiceNow, Microsoft Foundry, etc.) are UI-heavy and slow. Agent Machines starts developer-down: useful primitive → team fleet → policy layer.
+1. acquire migration ownership;
+2. drain managed work;
+3. provision and bootstrap the target;
+4. copy allowlisted durable state;
+5. capture and apply a stable final delta;
+6. verify transferred files and invariants;
+7. atomically cut over placement;
+8. preserve or destroy the source according to policy.
 
----
+A live E2B-to-Sprites proof transferred approximately 575 KB of durable state,
+kept the source addressable through verification, and committed the target
+placement only after the copy matched.
 
-## 7. Competitive positioning
-
-| Competitor shape | What they optimize | Agent Machines |
-|------------------|-------------------|----------------|
-| Substrate vendor | Raw microVM / sandbox | Substrate is interchangeable; we supply the use case |
-| Memory SaaS | Vector/session store | One directory tree on a real machine |
-| Agent framework | Graph/orchestration logic | Logic **plus** deploy, persist, observe, schedule |
-| Single CLI product | One runtime, one seat | Four runtimes, four substrates, fleet desk |
-
-**Insight:** Distribution wins on **imaginable primitives** — "agent that audits the repo on a cron" beats "512MB microVM."
-
----
-
-## 8. Business model (outline)
-
-Platform economics resemble Vercel-on-AWS:
-
-- **Free** — limited machines / compute for adoption  
-- **Pro** — multiple machines, cron, full harness library  
-- **Team** — fleet, shared skills, audit, SSO  
-- **Enterprise** — self-host, compliance, private registries  
-
-Flywheel: richer skills → more autonomous cron work → more substrate compute hours.
+This is not cross-provider RAM or process transplantation. Processes restart
+from durable state. The Worker identity, files, memory, schedules,
+configuration, and artifacts persist.
 
 ---
 
-## 9. Roadmap
+## 9. Supervision and trust
 
-| Phase | Focus |
-|-------|--------|
-| **Now** | Humans deploy via dashboard; Browser Agent Console; Registry; Workers/Memory |
-| **Q3 2026** | Billing, skill marketplace, substrate expansion |
-| **Q4 2026** | Agent Machines MCP server + fleet CLI (`am provision`, head-agent orchestration) |
-| **2027** | Team fleets, cost-based routing, enterprise compliance, self-host option |
+A persistent Worker can act after the initiating chat has ended. That power
+requires a stronger trust model than a chat transcript.
 
-**Optional acceleration:** Native WebSocket PTY data plane on substrates that support always-on relay — reduces input latency; control plane stays serverless.
+The operator should be able to inspect:
 
----
+- current responsibility and desired state;
+- connected services and permissions;
+- runtime, model, sandbox, and placement rationale;
+- schedules and pending operations;
+- commands, logs, sessions, and lifecycle transitions;
+- files, artifacts, screenshots, and other evidence;
+- resource use, estimated cost, and run outcomes;
+- approvals requested and decisions made.
 
-## 10. Registry snapshot
+Agent Machines therefore treats observation as part of the Worker, not a
+separate enterprise add-on.
 
-The application derives these at runtime from the registries
-(`web/lib/platform/harness.ts` over `web/data/skills.json` and
-`web/data/mcps-catalog.json`). The table below is a snapshot of that
-derivation, not a second source: refresh it with `cd web && npm run sync-data`
-(which runs `sync-skills`, `sync-mcp-catalog`, and the rest) before a release
-build. `src/lib/public-claims.test.ts` fails if a number here or in
-[`README.md`](../README.md) stops matching the registry.
+### 9.1 Credential boundary
 
-| Metric | Value |
-|--------|-------|
-| SKILL.md skills | 161 |
-| MCP catalog servers | 39 |
-| Service routes | 27 |
-| Installable registry items | 1,400+ |
-| Agent runtimes | 4 |
-| Substrates | 4 |
-| Native tools (Hermes) | 23 |
+Provider and model credentials remain server-side. The browser receives
+redacted configuration and scoped machine state. User API keys are shown once
+and stored as hashes. Provisioning fails closed when required credentials or
+model compatibility are absent.
 
-Two of those numbers are counted, not proven: 161 skills are *bundled* and
-nothing tests them in production, and the four substrates are four *adapters*
--- only E2B and Sprites have ever run a live cell ([`MUX-RESULTS.md`](./MUX-RESULTS.md)).
+### 9.2 Authority boundary
+
+Future Worker-to-Worker provisioning must use the same durable operation model
+with explicit scope, budgets, approval rules, and audit history. A head Worker
+should not gain implicit unrestricted authority by possessing a tool name.
 
 ---
 
-## 11. References
+## 10. Routing and evaluation flywheel
+
+The routing problem is larger than provider uptime. A lane is the combination
+of runtime, model, substrate, abilities, Worker specification, and policy.
+
+The direct multiplexer evaluates:
+
+1. credential readiness;
+2. hard workload constraints;
+3. published or measured price when explicitly requested;
+4. learned outcome ranking for automatic placement;
+5. current provider health and circuit-breaker state.
+
+Each run can produce an outcome trace containing the attempted lanes, route
+reasoning, latency, result, estimated cost, and health changes. The long-term
+evaluation record should also include time to first useful output, resume and
+migration reliability, human correction, approval, and satisfaction signals.
+
+The defensible asset is not the adapter. It is the growing evidence about which
+combination completes a responsibility successfully under a user’s constraints.
+
+---
+
+## 11. Distribution and marketplace
+
+The first customer is already building this system internally: AI-native
+startups, forward-deployed engineering teams, agencies, and individual
+developers operating several coding or browser agents. They experience the
+fragmentation directly and can evaluate an early product.
+
+Templates are the bridge to a broader market. A consumer chooses a recognizable
+job rather than a runtime and provider. Agent Machines currently ships twelve
+specialist templates spanning coding, research, data, browser work, support,
+operations, QA, knowledge, security, finance, and growth.
+
+The long-term marketplace object is a complete Worker definition:
+
+- role and responsibility;
+- versioned procedures;
+- tool and service requirements;
+- memory schema;
+- schedules and output contracts;
+- evaluation criteria;
+- permissions and data boundaries;
+- expected cost and deployment constraints.
+
+Consumers install the Worker like an application while retaining ownership of
+its state and the ability to change the implementation beneath it.
+
+---
+
+## 12. Business model
+
+The business can expand in layers:
+
+1. paid control plane for individuals and teams operating persistent Workers;
+2. usage-based orchestration and unified billing across model and sandbox providers;
+3. team permissions, approvals, audit history, budgets, and fleet supervision;
+4. enterprise deployment replacing custom internal agent platforms;
+5. marketplace take rate for paid Worker templates and loadouts.
+
+Providers compete on compute and intelligence. Agent Machines owns the Worker
+relationship, portable state, routing decision, operational history, and
+supervision surface.
+
+---
+
+## 13. Current implementation
+
+The live product includes:
+
+- declarative Worker API and recoverable lifecycle reconciler;
+- in-memory, atomic JSON, and transactional Supabase operation stores;
+- four runtime adapters and four substrate adapters;
+- application-level live migration;
+- cold-start wake and missing-machine reprovision before runs;
+- deduplicated scheduled dispatch;
+- twelve preconfigured specialist Workers;
+- Browser Agent Console and command streaming;
+- Fleet, machine detail, operation history, and provider-aware controls;
+- Memory, loadouts, skills, MCPs, registry, cron, sessions, logs, usage, and artifacts;
+- 161 skills and 39 MCP servers in the bundled registry snapshot;
+- TypeScript SDK, REST APIs, and CLI;
+- nineteen signed-in operational surfaces and twenty-four mapped public capability claims.
+
+### 13.1 Live validation boundary
+
+The latest strict runtime/provider matrix counts exact output and clean
+lifecycle behavior, not exit code alone:
+
+- E2B: four runtime cells green;
+- Sprites: four runtime cells green;
+- Vercel Sandbox: four runtime cells green;
+- Dedalus: adapter complete, but not currently live-green because of a vendor-side API/database incident and inconsistent teardown.
+
+An earlier exit-code-only run reached 16/16. The stricter current result is
+12/16. The lower number is the more honest proof.
+
+---
+
+## 14. Boundaries and non-claims
+
+- There is no unified provider bill yet.
+- Migration preserves durable managed state, not RAM or a running process image.
+- Natural-language intent-to-Worker composition is product direction; templates and modular assembly are live.
+- A bundled skill or MCP catalog entry is not the same as production proof of every item.
+- Provider adapters do not imply identical capability or current vendor health.
+- The hosted dashboard still contains compatibility projections while the Worker journal becomes the only lifecycle read model.
+- Marketplace and paid template economics are not shipped.
+
+---
+
+## 15. Roadmap
+
+### Near term
+
+- five external design partners already spending money on sandboxed agents;
+- finish the hosted Worker read-model cutover;
+- intent-to-Worker proposal and approval flow;
+- fleet-wide operation search;
+- schedule time-zone and calendar policy;
+- dedicated recovery consumer when fleet scale requires it;
+- provider-native migration accelerators behind honest capabilities;
+- unified metering and billing.
+
+### Expansion
+
+- versioned Worker publishing and installation;
+- permission, cost, and evaluation manifests for templates;
+- team approval and budget policies;
+- marketplace for trusted Workers and loadouts;
+- MCP/CLI surface for authority-scoped Worker-to-Worker orchestration;
+- outcome-driven automatic routing across the complete Worker lane.
+
+---
+
+## 16. Design principles
+
+1. **Worker before machinery.** Preserve the responsibility and user relationship.
+2. **Intent before procedure.** The operator states the desired Worker; the control plane owns retries and sequencing.
+3. **Capabilities before uniformity.** Never claim a provider operation that the lane cannot support.
+4. **Evidence before autonomy.** A long-running Worker must produce inspectable work and history.
+5. **Approval before authority.** Connected services and subordinate Workers remain explicitly scoped.
+6. **Route before rebuild.** Use competitive runtimes, models, and substrates rather than owning every lower layer.
+7. **Owned state before closed sessions.** Procedures and context live in portable Worker state.
+8. **Outcomes before infrastructure metrics.** Optimize for successful completed responsibilities.
+9. **Magic without mystery.** First use should feel immediate; the underlying Worker specification remains inspectable.
+
+---
+
+## 17. References
 
 | Document | Contents |
-|----------|----------|
-| [`README.md`](../README.md) | Operator quick start, routes, security boundaries |
-| [`knowledge/VISION.md`](../knowledge/VISION.md) | Product vision and defensibility |
-| [`knowledge/BROWSER-AGENT-CONSOLE.md`](../knowledge/BROWSER-AGENT-CONSOLE.md) | Console architecture and positioning |
-| [`sandbox-terminal-gateway.md`](./sandbox-terminal-gateway.md) | Streaming tiers and API map |
-| [`web/README.md`](../web/README.md) | Dashboard env and file index |
+|---|---|
+| [`README.md`](../README.md) | Product overview, SDK, CLI, dashboard, and quick start |
+| [`knowledge/VISION.md`](../knowledge/VISION.md) | Canonical product thesis and category framing |
+| [`CONTROL-PLANE-V2.md`](./CONTROL-PLANE-V2.md) | Lifecycle kernel and cutover ledger |
+| [`MUX.md`](./MUX.md) | Direct multiplexer, capabilities, routing, and migration |
+| [`knowledge/BROWSER-AGENT-CONSOLE.md`](../knowledge/BROWSER-AGENT-CONSOLE.md) | Browser terminal architecture and measurements |
+| [`sandbox-terminal-gateway.md`](../web/docs/sandbox-terminal-gateway.md) | Terminal transport specification |
 
 ---
 
 ## License
 
-Agent Machines is open source (MIT). Substrate trademarks belong to their respective owners. Agent Machines is an independent project for fair multi-substrate comparison; it is not a product of any single substrate vendor.
+Agent Machines is open source under the MIT License. Provider and product
+trademarks belong to their respective owners. Agent Machines is independent of
+the runtimes, model providers, and sandbox vendors it connects.

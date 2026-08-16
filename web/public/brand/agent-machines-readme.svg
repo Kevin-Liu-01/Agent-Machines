@@ -1,6 +1,6 @@
 <svg width="1600" height="720" viewBox="0 0 1600 720" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title description">
-  <title id="title">Agent Machines — OpenRouter for agents and containers</title>
-  <desc id="description">Agent runtimes, sandboxes, and model routes converge into one persistent worker.</desc>
+  <title id="title">Agent Machines — persistent Workers, replaceable machinery</title>
+  <desc id="description">A durable Worker keeps its identity and responsibility while runtime, sandbox, and model machinery change beneath it.</desc>
   <defs>
     <style>
       @font-face {
@@ -26,8 +26,8 @@
   </g>
   <text x="126" y="78" fill="#18181B" font-size="24" font-weight="600" letter-spacing="-0.25">agent-machines</text>
 
-  <text x="64" y="191" fill="#18181B" font-size="78" font-weight="600" letter-spacing="-3.4">OpenRouter for agents and containers.</text>
-  <text x="68" y="244" fill="#52525B" font-size="26" font-weight="400" letter-spacing="-0.3">Route any runtime, sandbox, and model path into one persistent worker.</text>
+  <text x="64" y="191" fill="#18181B" font-size="66" font-weight="600" letter-spacing="-2.8">Persistent Workers. Replaceable machinery.</text>
+  <text x="68" y="244" fill="#52525B" font-size="26" font-weight="400" letter-spacing="-0.3">Keep identity, memory, schedules, files, and evidence while the stack changes.</text>
 
   <g>
     <path d="M534 394H600L701 495H750M534 495H750M534 596H600L701 495" fill="none" stroke="#71717A" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>

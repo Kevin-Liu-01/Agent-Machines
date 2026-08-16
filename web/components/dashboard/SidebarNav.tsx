@@ -76,17 +76,26 @@ type Props = {
 const FLEET_ITEMS: ReadonlyArray<NavItem> = [
 	{ href: "/dashboard", label: "Overview", icon: LayoutGrid, exact: true },
 	{ href: "/dashboard/machines", label: "Machines", icon: Server },
-	{ href: "/dashboard/workers", label: "Workers", icon: UsersRound, badge: "new" },
+	{ href: "/dashboard/agents", label: "Agent templates", icon: UsersRound, badge: "new" },
 	{ href: "/dashboard/usage", label: "Usage", icon: BarChart3 },
 	{ href: "/dashboard/benchmarks", label: "Benchmarks", icon: Gauge, badge: "new" },
 ];
 
-const LIBRARY_ITEMS: ReadonlyArray<NavItem> = [
+const OPERATE_ITEMS: ReadonlyArray<NavItem> = [
+	{ href: "/dashboard/chat", label: "Console", icon: MessagesSquare },
+	{ href: "/dashboard/terminal", label: "Terminal", icon: SquareTerminal },
+	{ href: "/dashboard/logs", label: "Logs", icon: ScrollText },
+	{ href: "/dashboard/sessions", label: "Sessions", icon: History },
+	{ href: "/dashboard/artifacts", label: "Artifacts", icon: Package },
+];
+
+const EXTEND_ITEMS: ReadonlyArray<NavItem> = [
 	{ href: "/dashboard/memory", label: "Memory", icon: Brain, badge: "new" },
+	{ href: "/dashboard/loadout", label: "Loadouts", icon: Boxes },
 	{ href: "/dashboard/skills", label: "Skills", icon: Sparkles },
 	{ href: "/dashboard/mcps", label: "MCPs", icon: Plug2 },
 	{ href: "/dashboard/cron", label: "Cron", icon: Clock },
-	{ href: "/dashboard/registry", label: "Registry", icon: Store, badge: "new" },
+	{ href: "/dashboard/registry", label: "Registry", icon: Store },
 ];
 
 const ACCOUNT_ITEMS: ReadonlyArray<NavItem> = [
@@ -153,8 +162,9 @@ export function SidebarNav({ setupComplete, machines }: Props) {
 
 	const setupItem: NavItem = { ...SETUP_ITEM, dot: !setupComplete };
 	const sections: NavSection[] = [
-		{ id: "fleet", label: "FLEET", hint: "your fleet", items: FLEET_ITEMS },
-		{ id: "library", label: "LIBRARY", hint: "what's installed", items: LIBRARY_ITEMS },
+		{ id: "fleet", label: "FLEET", hint: "build & route", items: FLEET_ITEMS },
+		{ id: "operate", label: "OPERATE", hint: "active machine", items: OPERATE_ITEMS },
+		{ id: "extend", label: "EXTEND", hint: "memory & abilities", items: EXTEND_ITEMS },
 		{
 			id: "account",
 			label: "ACCOUNT",
@@ -193,7 +203,8 @@ export function MobileDashboardNav({ setupComplete, machines }: Props) {
 			]
 		: [
 				...FLEET_ITEMS,
-				...LIBRARY_ITEMS,
+				...OPERATE_ITEMS,
+				...EXTEND_ITEMS,
 				...ACCOUNT_ITEMS,
 				setupItem,
 			];

@@ -101,6 +101,8 @@ type Flags = {
 	json: boolean;
 	/** `am mux migrate --no-move-state`: fresh box, same agent, same name. */
 	noMoveState: boolean;
+	/** Drain managed runs and ship a stable final delta before cutover. */
+	live: boolean;
 	rest: string[];
 };
 
@@ -121,7 +123,7 @@ function parseAgent(value: string): HarnessKind {
 }
 
 function parseFlags(args: string[]): Flags {
-	const flags: Flags = { json: false, noMoveState: false, rest: [] };
+	const flags: Flags = { json: false, noMoveState: false, live: false, rest: [] };
 	for (let index = 0; index < args.length; index += 1) {
 		const arg = args[index];
 		const next = () => args[(index += 1)];
@@ -147,6 +149,7 @@ function parseFlags(args: string[]): Flags {
 		else if (arg === "--to") flags.to = value();
 		else if (arg === "--source") flags.source = value();
 		else if (arg === "--no-move-state") flags.noMoveState = true;
+		else if (arg === "--live") flags.live = true;
 		else if (arg === "--json") flags.json = true;
 		else flags.rest.push(arg);
 	}
@@ -1351,11 +1354,15 @@ export async function mux(args: string[]): Promise<void> {
 		}
 		const to = parseMigrateTarget(flags.to);
 		const source = parseSourceDisposition(flags.source);
+		if (flags.live && flags.noMoveState) {
+			throw new Error("am mux migrate --live requires state transfer; remove --no-move-state");
+		}
 		const router = createMux(flags.config);
 		const report = await router.migrate(flags.name, {
 			to,
 			source,
 			moveState: !flags.noMoveState,
+			mode: flags.live ? "live" : "copy",
 			// Progress on stderr so --json stdout stays parseable.
 			onProgress: (step) =>
 				process.stderr.write(`[migrate] ${step.step}${step.detail ? `: ${step.detail}` : ""}\n`),
@@ -1372,6 +1379,12 @@ export async function mux(args: string[]): Promise<void> {
 				report.verified.marker === "skipped" ? "skipped (--no-move-state)" : "matched"
 			}`,
 		);
+		if (report.continuity.mode === "live") {
+			console.log(
+				`continuity: drained ${report.continuity.activeRuns} managed run${report.continuity.activeRuns === 1 ? "" : "s"} in ${report.continuity.drainWaitMs}ms; ` +
+					`baseline ${report.continuity.baselineBytes} bytes + final delta ${report.continuity.deltaBytes} bytes; processes restarted`,
+			);
+		}
 		console.log("");
 		console.log(`moved (${report.state.moved.length} entries, ${report.state.bytes} bytes):`);
 		for (const path of report.state.moved) console.log(`  ${path}`);
@@ -1456,7 +1469,9 @@ export async function mux(args: string[]): Promise<void> {
 	console.log("                                                   machine; sandbox and load stay put,");
 	console.log("                                                   old harness stays installed");
 	console.log("  am mux migrate --name <n> --to <s> [--json]      move the machine's $HOME file state");
-	console.log("                 [--no-move-state]                 to another substrate; name survives,");
+	console.log("                 [--live] [--no-move-state]        --live drains managed runs and ships a");
+	console.log("                                                   stable final delta before atomic cutover;");
+	console.log("                                                   otherwise one online copy is used; name survives,");
 	console.log("                 [--source destroy|park|keep]      sandbox id changes, agent unchanged");
 	console.log("  am mux routes [--sandbox <s>] [--needs <json>]   resolved route, and why");
 	console.log("                [--agent <a>] [--pty <p>]          (score is per harness)");

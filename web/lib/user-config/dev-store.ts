@@ -74,10 +74,20 @@ async function readDevStore(): Promise<UserConfig | null> {
 	try {
 		const raw = await fs.readFile(DEV_STORE_PATH, "utf8");
 		const parsed = JSON.parse(raw) as Partial<UserConfig>;
+		const ownerDefaults = getOwnerDefaults();
 		// Coerce missing fields against the default shape so callers
 		// always get a well-formed UserConfig even if the on-disk file
 		// was written by an older code rev with fewer fields.
-		const merged = { ...DEFAULT_USER_CONFIG, ...parsed };
+		const merged = {
+			...DEFAULT_USER_CONFIG,
+			...ownerDefaults,
+			...parsed,
+			providers: { ...ownerDefaults.providers, ...(parsed.providers ?? {}) },
+			aiProviderKeys: {
+				...ownerDefaults.aiProviderKeys,
+				...(parsed.aiProviderKeys ?? {}),
+			},
+		};
 		return {
 			...merged,
 			gatewayProfiles:

@@ -131,7 +131,7 @@ const COMMAND_GROUPS: ReadonlyArray<{
 			},
 			{
 				label: "config",
-				command: "OPENCLAW_STATE_DIR=/home/machine/.openclaw PATH=/home/machine/.npm-global/bin:$PATH openclaw config list 2>/dev/null || echo 'OpenClaw config unavailable'",
+				command: "OPENCLAW_STATE_DIR=$HOME/.openclaw PATH=$HOME/.agent-machines/node/bin:$HOME/.agent-machines/pkgs/node_modules/.bin:$HOME/.npm-global/bin:$PATH openclaw config list 2>/dev/null || echo 'OpenClaw config unavailable'",
 				hint: "runtime config",
 			},
 		],

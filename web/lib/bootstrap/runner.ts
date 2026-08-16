@@ -8,6 +8,8 @@
  * continue to move the heavier CLI installer into reusable pieces.
  */
 
+import { getHarness } from "agent-machines/mux";
+
 import type { MachineProvider } from "@/lib/providers";
 import { validateAgentCredentials } from "@/lib/agents/credentials";
 import { ROUTER_PRESETS } from "@/lib/agents/upstreams";
@@ -131,11 +133,14 @@ export async function runWebBootstrap({
 	try {
 		for (const phase of CORE_BOOTSTRAP_PHASES) {
 			if (skipPhases.has(phase)) {
-				if (phase === "install-hermes" && machine.agentKind === "hermes") {
-					const hermesBin = `${paths.HERMES_HOME}/venv/bin/hermes`;
+				if (
+					phase === "install-hermes" &&
+					(machine.agentKind === "hermes" || machine.agentKind === "openclaw")
+				) {
+					const harness = getHarness(machine.agentKind);
 					const probe = await provider.exec(
 						machine.id,
-						`${hermesBin} --version >/dev/null 2>&1 && echo ok || echo broken`,
+						`export HOME=${paths.HOME}; ${harness.isInstalledCommand()} && echo ok || echo broken`,
 						{ timeoutMs: 20_000 },
 					);
 					if (probe.stdout.trim() !== "ok") {
@@ -319,16 +324,6 @@ async function runPhase(
 	apiKey: string,
 	paths: BootstrapPaths,
 ): Promise<void> {
-	const isSandbox =
-		machine.providerKind === "e2b" ||
-		machine.providerKind === "sprites" ||
-		machine.providerKind === "vercel";
-
-	if (phase === "start-gateway" && isSandbox) {
-		await startGatewaySandbox(machine, provider, paths);
-		return;
-	}
-
 	const command = commandFor(phase, machine, config, apiKey, paths);
 	if (command === null) return;
 	const logPath = bootstrapLogPath(machine.providerKind);
@@ -347,6 +342,13 @@ const ANTHROPIC_BASE = "https://api.anthropic.com/v1";
 const OPENAI_BASE = "https://api.openai.com/v1";
 const OPENROUTER_BASE = "https://openrouter.ai/api/v1";
 const VERCEL_AI_GATEWAY_BASE = "https://ai-gateway.vercel.sh/v1";
+
+export function vercelOpenAiCompatibleBase(baseUrl: string): string {
+	const normalized = baseUrl.trim().replace(/\/+$/, "");
+	return normalized === "https://ai-gateway.vercel.sh"
+		? VERCEL_AI_GATEWAY_BASE
+		: normalized;
+}
 
 /**
  * Resolve the LLM upstream (key + base URL) for a machine's agent.
@@ -403,7 +405,9 @@ function resolveRouterPreset(
 					process.env.VERCEL_OIDC_TOKEN?.trim() ??
 					process.env.AI_GATEWAY_KEY?.trim() ??
 					"",
-				baseUrl: preset.baseUrl ?? VERCEL_AI_GATEWAY_BASE,
+				baseUrl: vercelOpenAiCompatibleBase(
+					preset.baseUrl ?? VERCEL_AI_GATEWAY_BASE,
+				),
 			};
 		case "openai":
 			return { key: ai.openai ?? "", baseUrl: preset.baseUrl ?? OPENAI_BASE };
@@ -436,7 +440,9 @@ function gatewayProfileToUpstream(
 				process.env.VERCEL_OIDC_TOKEN?.trim() ??
 				process.env.AI_GATEWAY_KEY?.trim() ??
 				"",
-			baseUrl: profile.baseUrl ?? VERCEL_AI_GATEWAY_BASE,
+			baseUrl: vercelOpenAiCompatibleBase(
+				profile.baseUrl ?? VERCEL_AI_GATEWAY_BASE,
+			),
 		};
 	}
 	// openai-compatible: explicit profile key, else infer from the base URL.
@@ -543,42 +549,15 @@ function commandFor(
 				? `mkdir -p ${p.HERMES_HOME}/skills ${p.HERMES_HOME}/crons ${p.HERMES_HOME}/logs`
 				: null;
 		case "install-hermes":
-			if (agent !== "hermes") return null;
-			if (isSandbox) {
-				return [
-					"set -e",
-					`export HOME=${p.HOME}`,
-					`export PATH=${p.HOME}/.local/bin:$PATH`,
-					`python3 -m venv ${p.HERMES_HOME}/venv`,
-					`${p.HERMES_HOME}/venv/bin/python -m pip install --upgrade pip`,
-					`${p.HERMES_HOME}/venv/bin/pip install 'hermes-agent[web,mcp] @ git+https://github.com/NousResearch/hermes-agent.git@main' aiohttp`,
-				].join(" && ");
-			}
-			return [
-				"set -e",
-				`export HOME=${p.HOME}`,
-				`export PATH=${p.HOME}/.local/bin:$PATH`,
-				`if ${p.HERMES_HOME}/venv/bin/hermes --version >/dev/null 2>&1; then exit 0; fi`,
-				WAIT_FOR_APT,
-				`${sudo}apt-get update -qq >/dev/null && ${sudo}apt-get install -y -qq python3-venv python3-pip >/dev/null`,
-				`rm -rf ${p.HERMES_HOME}/venv`,
-				`uv venv ${p.HERMES_HOME}/venv --python python3`,
-				`uv pip install --python ${p.HERMES_HOME}/venv/bin/python 'hermes-agent[web,mcp] @ git+https://github.com/NousResearch/hermes-agent.git@main' aiohttp`,
-			].join(" && ");
+			// The phase id is stable legacy vocabulary; it is now the shared
+			// harness-install phase for every non-Claude/Codex runtime.
+			if (agent !== "hermes" && agent !== "openclaw") return null;
+			return idempotentHarnessInstallCommand(agent, p.HOME);
 		case "install-node":
-			if (isSandbox && machine.agentKind === "openclaw") {
-				return [
-					"set -e",
-					`node -e 'process.exit(Number(process.version.slice(1).split(".")[0]) >= 22 ? 0 : 1)' && node --version && exit 0 || true`,
-					`export FNM_DIR="${p.HOME}/.local/share/fnm"`,
-					`export PATH="$FNM_DIR:$PATH"`,
-					`if ! command -v fnm >/dev/null; then curl -fsSL https://fnm.vercel.app/install | bash -s -- --install-dir "$FNM_DIR" --skip-shell; fi`,
-					`eval "$(fnm env)"`,
-					`fnm install 22`,
-					`fnm use 22`,
-					`node --version`,
-				].join(" && ");
-			}
+			// OpenClaw's shared harness install already provisions a pinned Node
+			// satisfying its exact engine range. A second fnm-managed Node made the
+			// install and execution lanes disagree.
+			if (machine.agentKind === "openclaw") return null;
 			if (isSandbox) {
 				return "set -e && node --version";
 			}
@@ -672,12 +651,37 @@ function commandFor(
 		case "seed-cron-jobs":
 			return `mkdir -p ${p.HERMES_HOME}/crons && touch ${p.HERMES_HOME}/crons/.seeded`;
 		case "start-gateway":
-			if (agent === "openclaw") return startOpenClaw(p, machine);
-			if (agent === "claude-code" || agent === "codex") return null;
-			return startHermes(p, machine);
+			// V2 drives harnesses through their verified one-shot protocols. Hermes
+			// gateway is a messaging integration, and OpenClaw's optional HTTP
+			// gateway is not needed for Worker execution.
+			if (
+				agent === "hermes" ||
+				agent === "openclaw" ||
+				agent === "claude-code" ||
+				agent === "codex"
+			) return null;
+			return null;
 		case "install-closed-loop-tools":
 			return installClosedLoopTools(p, isSandbox);
 	}
+}
+
+/**
+ * A forced reconcile must update configuration without reinstalling a working
+ * runtime. Reinstalling OpenClaw while its TUI is live can exceed a small
+ * sandbox's memory limit; probing first also makes model and router changes
+ * complete much faster.
+ */
+export function idempotentHarnessInstallCommand(
+	agent: "hermes" | "openclaw",
+	home: string,
+): string {
+	const harness = getHarness(agent);
+	return [
+		"set -euo pipefail",
+		`export HOME=${home}`,
+		`if ${harness.isInstalledCommand()}; then ${harness.versionCommand()}; else ${harness.installCommand()}; fi`,
+	].join(" && ");
 }
 
 function installClosedLoopTools(p: BootstrapPaths, isSandbox = false): string {
@@ -947,6 +951,23 @@ function openclawProviderFor(rawBaseUrl: string): { id: string; builtin: boolean
 	return { id: "router", builtin: false };
 }
 
+export function openClawModelForEndpoint(model: string, baseUrl: string): string {
+	// Claude's native API/CLI aliases use 4-8, while Vercel AI Gateway's
+	// model catalog uses 4.8. Keep Worker specs portable in native form and
+	// translate only at the gateway boundary (verified against /v1/models).
+	if (!baseUrl.toLowerCase().includes("ai-gateway.vercel.sh")) return model;
+	return model.replace(
+		/^(anthropic\/claude-(?:opus|sonnet)-\d+)-(\d+)(?=$|-)/,
+		"$1.$2",
+	);
+}
+
+export function openClawProviderModelId(model: string, providerId: string): string {
+	return model.startsWith(`${providerId}/`)
+		? model.slice(providerId.length + 1)
+		: model;
+}
+
 function configureOpenClaw(
 	model: string,
 	gatewayKey: string,
@@ -961,14 +982,19 @@ function configureOpenClaw(
 	const stripShell = (value: string) => value.replace(/^'|'$/g, "");
 	const rawKey = stripShell(upstreamApiKey);
 	const rawBase = stripShell(upstreamBaseUrl);
-	const rawModel = stripShell(model);
+	const rawModel = openClawModelForEndpoint(
+		stripShell(model),
+		rawBaseUrl || rawBase,
+	);
 	const { id, builtin } = openclawProviderFor(rawBaseUrl || rawBase);
-	// openclaw splits model refs on the first "/"; routers keep the upstream
-	// provider prefix (e.g. openrouter/openai/gpt-4o-mini). Don't double-prefix.
-	const modelRef = rawModel.startsWith(`${id}/`) ? rawModel : `${id}/${rawModel}`;
-	const shortName = rawModel.includes("/")
-		? rawModel.slice(rawModel.lastIndexOf("/") + 1)
-		: rawModel;
+	// OpenClaw splits model refs on the first "/". The provider registry stores
+	// the remaining id, so openai/gpt-5.2 becomes provider=openai, id=gpt-5.2,
+	// while a router model keeps its upstream prefix (anthropic/claude-...).
+	const providerModelId = openClawProviderModelId(rawModel, id);
+	const modelRef = `${id}/${providerModelId}`;
+	const shortName = providerModelId.includes("/")
+		? providerModelId.slice(providerModelId.lastIndexOf("/") + 1)
+		: providerModelId;
 
 	// Gateway transport config only. openclaw does NOT inject config env.vars
 	// into its own LLM client, so provider creds go through auth profiles /
@@ -983,19 +1009,18 @@ function configureOpenClaw(
 	]);
 	const batchPath = `${p.OPENCLAW_HOME}/bootstrap-config.batch.json`;
 	// Sprites ships nvm; NPM_CONFIG_PREFIX breaks npm/nvm — use --prefix instead.
-	const npmInstall =
-		`if test -x ${p.NPM_PREFIX}/bin/openclaw; then :; else ` +
-		`rm -rf ${p.NPM_PREFIX}/lib/node_modules/openclaw ${p.NPM_PREFIX}/lib/node_modules/.openclaw-* 2>/dev/null || true; ` +
-		`(NPM_CONFIG_CACHE=${p.NPM_CACHE} TMPDIR=${p.HOME}/.tmp npm install -g openclaw@latest --prefix=${p.NPM_PREFIX} --no-audit --no-fund --loglevel=error); fi`;
 	// Built-in providers: paste the API key into an auth profile (key on stdin).
 	// Custom OpenAI-compatible routers: register a models.providers entry.
+	const modelEntry = JSON.stringify([{ id: providerModelId, name: shortName }]);
 	const providerSetup = builtin
-		? `printf '%s\\n' '${rawKey}' | openclaw models auth paste-api-key --provider ${id}`
-		: `openclaw config set models.providers.${id} '${JSON.stringify({ baseUrl: rawBase, apiKey: rawKey, api: "openai-completions", models: [{ id: rawModel, name: shortName }] })}' --strict-json --merge`;
+		? [
+				`printf '%s\\n' '${rawKey}' | openclaw models auth paste-api-key --provider ${id}`,
+				`openclaw config set models.providers.${id}.models '${modelEntry}' --strict-json --merge`,
+			].join(" && ")
+		: `openclaw config set models.providers.${id} '${JSON.stringify({ baseUrl: rawBase, apiKey: rawKey, api: "openai-completions", models: [{ id: providerModelId, name: shortName }] })}' --strict-json --merge`;
 	return [
 		"set -e",
-		`mkdir -p ${p.HOME}/.npm-global ${p.HOME}/.npm-cache ${p.HOME}/.tmp ${p.OPENCLAW_HOME}/logs`,
-		npmInstall,
+		`mkdir -p ${p.HOME}/.npm-cache ${p.HOME}/.tmp ${p.OPENCLAW_HOME}/logs`,
 		openClawEnv(p),
 		writeRemoteFile(batchPath, batch),
 		`openclaw config set --batch-file ${batchPath}`,
@@ -1208,7 +1233,6 @@ function machineSettingsJson(machine: MachineRef, config: UserConfig): string {
 }
 
 function startHermes(p: BootstrapPaths, machine: MachineRef): string {
-	const hermesBin = `${p.HERMES_HOME}/venv/bin/hermes`;
 	const script = [
 		"#!/usr/bin/env bash",
 		"set -euo pipefail",
@@ -1222,7 +1246,7 @@ function startHermes(p: BootstrapPaths, machine: MachineRef): string {
 		`mkdir -p ${p.MACHINE_HOME}/logs/services`,
 		`ln -sfn ${p.HERMES_HOME}/logs/gateway.log ${p.MACHINE_HOME}/logs/services/hermes-gateway.log`,
 		`source ${p.HERMES_HOME}/.env`,
-		`exec ${hermesBin} gateway >> ${p.HERMES_HOME}/logs/gateway.log 2>&1`,
+		`exec hermes gateway >> ${p.HERMES_HOME}/logs/gateway.log 2>&1`,
 	].join("\n");
 	const gatewayPaths = {
 		HOME: p.HOME,
@@ -1317,7 +1341,7 @@ function configureHealthProbe(agent: string, p: BootstrapPaths): string | null {
 		case "codex":
 			return `command -v codex >/dev/null 2>&1 && codex --version >/dev/null 2>&1 && test -s ${p.APP_HOME}/.agent-env && echo ok || echo broken`;
 		case "openclaw":
-			return `test -x ${p.NPM_PREFIX}/bin/openclaw && test -s ${p.OPENCLAW_HOME}/.env && echo ok || echo broken`;
+			return `${openClawEnv(p)} && command -v openclaw >/dev/null 2>&1 && test -s ${p.OPENCLAW_HOME}/.env && echo ok || echo broken`;
 		case "hermes":
 			return `test -s ${p.HERMES_HOME}/.env && echo ok || echo broken`;
 		default:
@@ -1344,11 +1368,9 @@ function openClawEnv(p: BootstrapPaths): string {
 		`[ -f ${p.APP_HOME}/.agent-env ] && . ${p.APP_HOME}/.agent-env || true`,
 		// Do not set NPM_CONFIG_PREFIX — Sprites nvm rejects it and breaks openclaw CLI.
 		`export NPM_CONFIG_CACHE=${p.NPM_CACHE}`,
-		`export FNM_DIR=${p.HOME}/.local/share/fnm`,
-		`if [ -x "$FNM_DIR/fnm" ]; then eval "$($FNM_DIR/fnm env)"; fi`,
 		`export PLAYWRIGHT_BROWSERS_PATH=${p.PLAYWRIGHT_BROWSERS}`,
 		`export AGENT_BROWSER_DATA_DIR=${p.AGENT_BROWSER_HOME}`,
-		`export PATH=${p.NPM_PREFIX}/bin:${p.HOME}/.npm-global/bin:$PATH`,
+		`export PATH=${p.HOME}/.agent-machines/node/bin:${p.HOME}/.agent-machines/pkgs/node_modules/.bin:${p.NPM_PREFIX}/bin:${p.HOME}/.npm-global/bin:$PATH`,
 		`export OPENCLAW_STATE_DIR=${p.OPENCLAW_HOME}`,
 		`export OPENCLAW_NO_RESPAWN=1`,
 	].join(" && ");
@@ -1361,7 +1383,12 @@ async function exposeGateway(
 	p: BootstrapPaths,
 	apiKey: string,
 ): Promise<string | null> {
-	if (machine.agentKind === "claude-code" || machine.agentKind === "codex") {
+	if (
+		machine.agentKind === "hermes" ||
+		machine.agentKind === "openclaw" ||
+		machine.agentKind === "claude-code" ||
+		machine.agentKind === "codex"
+	) {
 		return null;
 	}
 	const port =

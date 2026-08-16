@@ -1,6 +1,25 @@
 const OSC_RGB_RESPONSE =
 	/\x1b?\](?:10|11|12);rgb:[0-9a-fA-F]{1,4}\/[0-9a-fA-F]{1,4}\/[0-9a-fA-F]{1,4}(?:\x07|\x1b\\)?/g;
 
+const CSI_DEVICE_RESPONSE =
+	/^\x1b\[(?:[?>]?[0-9;]*c|\??[0-9;]+;[0-4]\$y|\??[0-9;]*(?:n|R)|[468];[0-9]+;[0-9]+t|[IO])$/;
+const OSC_COLOR_RESPONSE =
+	/^\x1b\](?:(?:4;[0-9]+)|10|11|12);rgb:[0-9a-fA-F]{1,4}\/[0-9a-fA-F]{1,4}\/[0-9a-fA-F]{1,4}(?:\x07|\x1b\\)$/;
+const DCS_STATUS_RESPONSE = /^\x1bP[\s\S]*\x1b\\$/;
+
+/**
+ * xterm emits terminal protocol replies through onData, the same public event
+ * used for keystrokes. These replies must be returned to the PTY that emitted
+ * the query instead of entering the browser's local line editor.
+ */
+export function isTerminalDeviceResponse(data: string): boolean {
+	return (
+		CSI_DEVICE_RESPONSE.test(data) ||
+		OSC_COLOR_RESPONSE.test(data) ||
+		DCS_STATUS_RESPONSE.test(data)
+	);
+}
+
 /**
  * xterm answers OSC color queries (for example OSC 11 background-color
  * requests) through the same onData channel as user keystrokes. Those device

@@ -20,18 +20,17 @@
  * fast; both harnesses stay on disk.
  */
 
-import crypto from "node:crypto";
 import { after } from "next/server";
 
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import { validateAgentCredentials, agentCredentialRequirements } from "@/lib/agents/credentials";
-import { scheduleWebBootstrap } from "@/lib/bootstrap/schedule-bootstrap";
+import { runtimeModel } from "@/lib/agents/runtime-model";
+import { submitMachineIntent } from "@/lib/control-plane/adopt-machine";
 import { getProvider } from "@/lib/providers";
-import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
+import { getUserConfig } from "@/lib/user-config/clerk";
 import {
 	AGENT_KINDS,
-	INITIAL_BOOTSTRAP_STATE,
 	type AgentKind,
 } from "@/lib/user-config/schema";
 
@@ -112,9 +111,8 @@ export async function POST(request: Request, ctx: Ctx): Promise<Response> {
 	// Provider resolution can fail (substrate credentials revoked since
 	// provisioning); check before writing so the record never flips without a
 	// scheduled install behind it.
-	let provider: ReturnType<typeof getProvider>;
 	try {
-		provider = getProvider(machine.providerKind, config.providers);
+		getProvider(machine.providerKind, config.providers);
 	} catch (err) {
 		return Response.json(
 			{
@@ -125,46 +123,29 @@ export async function POST(request: Request, ctx: Ctx): Promise<Response> {
 		);
 	}
 
-	// ONE config write: the new agentKind and a reset bootstrapState land
-	// together, so a poller never sees "openclaw + succeeded" before the
-	// install ran. apiUrl/apiKey are cleared -- both derive from the agent
-	// (gateway port/env-file key differ per harness) and the force bootstrap
-	// re-derives them; a stale hermes URL on an openclaw box is a lie.
-	await setUserConfig({
-		patchMachine: {
-			id,
-			patch: {
-				agentKind,
-				apiUrl: null,
-				apiKey: crypto.randomUUID(),
-				bootstrapState: { ...INITIAL_BOOTSTRAP_STATE },
-			},
+	const submitted = await submitMachineIntent(userId, id, {
+		desiredState: "running",
+		idempotencyKey:
+			request.headers?.get?.("idempotency-key") ??
+			`runtime:${id}:${agentKind}:${crypto.randomUUID()}`,
+		spec: {
+			runtime: agentKind,
+			model: runtimeModel(agentKind, machine.model),
 		},
 	});
-
-	const latestConfig = await getUserConfig();
-	const machineForBootstrap = latestConfig.machines.find((m) => m.id === id);
-	if (!machineForBootstrap) {
-		return Response.json({ error: "not_found" }, { status: 404 });
-	}
-
-	// placementTenantId mirrors the mux placement AFTER the install lands, so
-	// the router's memory of "which harness answers on this sandbox" agrees with
-	// the record -- the SDK's `mux.connect(name)` would otherwise keep handing
-	// back the old harness. Deliberately post-install and best-effort: the
-	// placement must never claim an agent that is not installed (the SDK's
-	// switchAgent writes only after its version probe passes), and a
-	// placement-store failure must not fail a swap that worked. userId is this
-	// request's, resolved above -- never a global.
-	after(() =>
-		scheduleWebBootstrap(machineForBootstrap, provider, latestConfig, {
-			force: true,
-			placementTenantId: userId,
-		}),
-	);
+	after(async () => {
+		await submitted.controlPlane.reconcileNext(submitted.accepted.worker.id);
+	});
 
 	return Response.json(
-		{ ok: true, machineId: id, agentKind, bootstrap: "scheduled" },
+		{
+			ok: true,
+			machineId: id,
+			agentKind,
+			bootstrap: "scheduled",
+			operation: submitted.accepted.operation,
+			statusUrl: `/api/dashboard/control-plane/operations/${submitted.accepted.operation.id}`,
+		},
 		{ status: 202 },
 	);
 }

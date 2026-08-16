@@ -21,8 +21,20 @@ describe("listPresets", () => {
 	it("returns copies so callers cannot mutate the registry", () => {
 		const a = listPresets()[0];
 		a.skillIds.push("__mutation__");
+		a.loadout.push("__mutation__");
 		const b = listPresets()[0];
 		expect(b.skillIds).not.toContain("__mutation__");
+		expect(b.loadout).not.toContain("__mutation__");
+	});
+
+	it("keeps every public agent template backed by a deployable preset", async () => {
+		const { AGENT_TEMPLATES } = await import("@/lib/marketing/public-site");
+		const presetIds = new Set(listPresets().map((preset) => preset.id));
+		expect(AGENT_TEMPLATES.map((template) => template.slug).filter((slug) => !presetIds.has(slug))).toEqual([]);
+		for (const preset of listPresets()) {
+			expect(preset.category.length).toBeGreaterThan(0);
+			expect(preset.loadout.length).toBeGreaterThan(0);
+		}
 	});
 });
 

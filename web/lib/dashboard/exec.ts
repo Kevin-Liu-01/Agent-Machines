@@ -11,6 +11,8 @@
  * machine, never a shared one.
  */
 
+import { guardedRunCommand } from "agent-machines/mux";
+
 import { getProvider } from "@/lib/providers";
 import { getUserConfigCached } from "@/lib/user-config/request-cache";
 import { activeMachine, type UserConfig } from "@/lib/user-config/schema";
@@ -47,8 +49,9 @@ export async function execOnMachine(
 		);
 	}
 	const provider = getProvider(machine.providerKind, config.providers);
-	return provider.exec(machine.id, command, {
-		timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+	const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+	return provider.exec(machine.id, guardedRunCommand(command, { timeoutMs }), {
+		timeoutMs,
 	});
 }
 
@@ -70,12 +73,14 @@ export async function execBackgroundOnMachine(
 		);
 	}
 	const provider = getProvider(machine.providerKind, config.providers);
+	const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+	const guarded = guardedRunCommand(command, { timeoutMs });
 	if (provider.execBackground) {
-		await provider.execBackground(machine.id, command);
+		await provider.execBackground(machine.id, guarded);
 		return;
 	}
-	await provider.exec(machine.id, command, {
-		timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+	await provider.exec(machine.id, guarded, {
+		timeoutMs,
 	});
 }
 

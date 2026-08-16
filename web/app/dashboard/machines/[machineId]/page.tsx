@@ -6,10 +6,17 @@ import {
 	Brain,
 	Cloud,
 	Cpu,
+	FileOutput,
 	Gauge,
 	Hash,
+	History,
+	MessagesSquare,
+	PackageOpen,
+	Route,
+	ScrollText,
 	SquareTerminal,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { DashboardPageBody } from "@/components/dashboard/DashboardPageBody";
@@ -279,20 +286,22 @@ export default function MachineOverviewPage() {
 				</StatCard>
 				</div>
 
-				{/* ── A) SSH Access strip ── */}
-				<ReticleFrame>
-					<div className="px-4 py-3">
-						<p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-							<SquareTerminal size={12} />
-							SSH Access
-						</p>
-						<div className="mt-2 flex items-center gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-4 py-2.5">
-							<span className="text-[var(--ret-text-muted)]">&gt;_</span>
-							<code className="flex-1 font-mono text-[12px] text-[var(--ret-text)]">
-								dedalus machine ssh {machineId}
-							</code>
-							<CopyButton text={`dedalus machine ssh ${machineId}`} />
+				<MachineSurfaceDeck machineId={machineId} />
+
+				<ReticleFrame corners={false}>
+					<div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+						<div>
+							<p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+								<SquareTerminal size={12} />
+								Provider-safe access
+							</p>
+							<p className="mt-1 text-[11px] text-[var(--ret-text-dim)]">
+								Commands run through the Agent Machines control plane for {PROVIDER_LABEL[machine.providerKind]}; no provider-specific gateway URL is required.
+							</p>
 						</div>
+						<Link href={`/dashboard/machines/${machineId}/terminal`} className="inline-flex shrink-0 items-center gap-1 border border-[var(--ret-purple)]/40 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-purple)] hover:bg-[var(--ret-purple)]/10">
+							Open terminal <SquareTerminal size={12} />
+						</Link>
 					</div>
 				</ReticleFrame>
 
@@ -395,6 +404,40 @@ export default function MachineOverviewPage() {
 	);
 }
 
+const MACHINE_SURFACES = [
+	{ slug: "console", label: "Console", detail: "Talk to the runtime", icon: MessagesSquare },
+	{ slug: "terminal", label: "Terminal", detail: "Live PTY and commands", icon: SquareTerminal },
+	{ slug: "logs", label: "Logs", detail: "Runtime and control events", icon: ScrollText },
+	{ slug: "sessions", label: "Sessions", detail: "Persistent conversations", icon: History },
+	{ slug: "artifacts", label: "Artifacts", detail: "Files and outputs", icon: FileOutput },
+	{ slug: "loadout", label: "Loadout", detail: "Skills, MCPs, and tools", icon: PackageOpen },
+] as const;
+
+function MachineSurfaceDeck({ machineId }: { machineId: string }) {
+	return (
+		<section aria-labelledby="machine-surfaces-title">
+			<div className="mb-2 flex items-baseline justify-between gap-3">
+				<h2 id="machine-surfaces-title" className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">Operate this machine</h2>
+				<span className="flex items-center gap-1 font-mono text-[8px] uppercase tracking-[0.14em] text-[var(--ret-purple)]"><Route size={10} /> migration in header</span>
+			</div>
+			<div className="grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-2 lg:grid-cols-3">
+				{MACHINE_SURFACES.map((surface) => {
+					const Icon = surface.icon;
+					return (
+						<Link key={surface.slug} href={`/dashboard/machines/${machineId}/${surface.slug}`} className="group flex min-w-0 items-center gap-3 bg-[var(--ret-bg)] p-3 transition-colors hover:bg-[var(--ret-surface)]">
+							<span className="flex h-8 w-8 shrink-0 items-center justify-center border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] text-[var(--ret-purple)]"><Icon size={14} /></span>
+							<span className="min-w-0">
+								<span className="block text-[12px] text-[var(--ret-text)]">{surface.label}</span>
+								<span className="block truncate text-[9px] text-[var(--ret-text-muted)]">{surface.detail}</span>
+							</span>
+						</Link>
+					);
+				})}
+			</div>
+		</section>
+	);
+}
+
 function StatCard({
 	label,
 	children,
@@ -418,23 +461,6 @@ function StatCard({
 				</dd>
 			</div>
 		</ReticleFrame>
-	);
-}
-
-function CopyButton({ text }: { text: string }) {
-	const [copied, setCopied] = useState(false);
-	return (
-		<button
-			type="button"
-			onClick={async () => {
-				await navigator.clipboard.writeText(text);
-				setCopied(true);
-				setTimeout(() => setCopied(false), 2000);
-			}}
-			className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)] hover:text-[var(--ret-text)]"
-		>
-			{copied ? "copied" : "copy"}
-		</button>
 	);
 }
 

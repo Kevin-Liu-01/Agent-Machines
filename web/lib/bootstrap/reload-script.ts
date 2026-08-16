@@ -84,6 +84,6 @@ export function buildMcpRegisterShell(runtimeHome: string, home: string, hasCurs
 	return [
 		"set -e",
 		`printf '%s' '${pyB64}' | base64 -d > ${runtimeHome}/.register-mcp-servers.py`,
-		`${runtimeHome}/venv/bin/python ${runtimeHome}/.register-mcp-servers.py || python3 ${runtimeHome}/.register-mcp-servers.py`,
+		`if [ -x ${home}/.local/share/uv/tools/hermes-agent/bin/python ]; then ${home}/.local/share/uv/tools/hermes-agent/bin/python ${runtimeHome}/.register-mcp-servers.py; elif [ -x ${runtimeHome}/venv/bin/python ]; then ${runtimeHome}/venv/bin/python ${runtimeHome}/.register-mcp-servers.py; else python3 ${runtimeHome}/.register-mcp-servers.py; fi`,
 	].join(" && ");
 }

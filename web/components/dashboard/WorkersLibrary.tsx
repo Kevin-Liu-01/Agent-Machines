@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bot, Brain, Plug2, Plus, Rocket, Sparkles } from "lucide-react";
+import { ArrowRight, Bot, Brain, Plug2, Plus, Rocket, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { Logo, type Mark } from "@/components/Logo";
@@ -45,15 +45,34 @@ export function WorkersLibrary({ presets }: { presets: Preset[] }) {
 	const [bundles, setBundles] = useState<BundleOpt[]>([]);
 	const [seed, setSeed] = useState<{ name: string; sourceValue: string } | null>(null);
 	const [busy, setBusy] = useState(false);
+	const [loadWarning, setLoadWarning] = useState<string | null>(null);
+	const [createError, setCreateError] = useState<string | null>(null);
 
 	const load = useCallback(async () => {
-		const [w, m] = await Promise.all([
-			fetch("/api/dashboard/workers", { cache: "no-store" }).then((r) => r.json()),
-			fetch("/api/dashboard/memory", { cache: "no-store" }).then((r) => r.json()),
+		setLoadWarning(null);
+		const [workerResult, memoryResult] = await Promise.allSettled([
+			fetch("/api/dashboard/workers", { cache: "no-store" }).then(async (response) => {
+				if (!response.ok) throw new Error(`workers HTTP ${response.status}`);
+				return response.json();
+			}),
+			fetch("/api/dashboard/memory", { cache: "no-store" }).then(async (response) => {
+				if (!response.ok) throw new Error(`memory HTTP ${response.status}`);
+				return response.json();
+			}),
 		]);
-		setWorkers((w?.workers as Worker[]) ?? []);
-		setBundleNames((w?.bundleNames as Record<string, string>) ?? {});
-		setBundles(((m?.bundles as BundleOpt[]) ?? []).map((b) => ({ id: b.id, name: b.name })));
+		const workerPayload = workerResult.status === "fulfilled" ? workerResult.value : null;
+		const memoryPayload = memoryResult.status === "fulfilled" ? memoryResult.value : null;
+		setWorkers((workerPayload?.workers as Worker[]) ?? []);
+		setBundleNames((workerPayload?.bundleNames as Record<string, string>) ?? {});
+		setBundles(
+			((memoryPayload?.bundles as BundleOpt[]) ?? []).map((bundle) => ({
+				id: bundle.id,
+				name: bundle.name,
+			})),
+		);
+		if (!workerPayload || !memoryPayload) {
+			setLoadWarning("Some library data is temporarily unavailable. Presets and retries remain available.");
+		}
 	}, []);
 
 	useEffect(() => {
@@ -63,6 +82,7 @@ export function WorkersLibrary({ presets }: { presets: Preset[] }) {
 	const create = useCallback(
 		async (name: string, agentKind: AgentKind, source: CreateSource) => {
 			setBusy(true);
+			setCreateError(null);
 			try {
 				const r = await fetch("/api/dashboard/workers", {
 					method: "POST",
@@ -75,22 +95,24 @@ export function WorkersLibrary({ presets }: { presets: Preset[] }) {
 							: { memoryBundleId: source.id }),
 					}),
 				});
-				const body = (await r.json()) as { ok?: boolean; worker?: { id: string } };
-				if (body.ok && body.worker) router.push(`/dashboard/workers/${body.worker.id}`);
+				const body = (await r.json().catch(() => ({}))) as {
+					ok?: boolean;
+					worker?: { id: string };
+					message?: string;
+					error?: string;
+				};
+				if (!r.ok || !body.ok || !body.worker) {
+					throw new Error(body.message ?? body.error ?? `Create failed (HTTP ${r.status}).`);
+				}
+				router.push(`/dashboard/workers/${body.worker.id}`);
+			} catch (cause) {
+				setCreateError(cause instanceof Error ? cause.message : "Agent creation failed.");
 			} finally {
 				setBusy(false);
 			}
 		},
 		[router],
 	);
-
-	if (!workers) {
-		return (
-			<div className="py-12">
-				<BrailleSpinner name="orbit" label="loading workers" className="text-[11px] text-[var(--ret-text-muted)]" />
-			</div>
-		);
-	}
 
 	const firstSource = presets[0]
 		? `preset:${presets[0].id}`
@@ -100,21 +122,40 @@ export function WorkersLibrary({ presets }: { presets: Preset[] }) {
 
 	return (
 		<div className="space-y-6">
+			{loadWarning ? (
+				<div className="border border-[var(--ret-amber)]/30 bg-[var(--ret-amber)]/5 px-3 py-2 font-mono text-[10px] text-[var(--ret-amber)]">
+					{loadWarning}
+					<button type="button" className="ml-2 underline underline-offset-2" onClick={() => void load()}>
+						retry
+					</button>
+				</div>
+				) : null}
+			{createError ? (
+				<div role="alert" className="border border-[var(--ret-red)]/35 bg-[var(--ret-red)]/5 px-3 py-2 font-mono text-[10px] text-[var(--ret-red)]">
+					{createError}
+				</div>
+			) : null}
 			{/* Curated presets -- deployable defaults shipped with Agent Machines. */}
 			<section className="space-y-3">
-				<div className="flex items-center justify-between gap-2">
-					<span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
-						presets . {presets.length}
-					</span>
+				<div className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--ret-border)] pb-3">
+					<div>
+						<span className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--ret-purple)]">
+							ready to configure . {presets.length}
+						</span>
+						<h2 className="ret-display mt-1 text-lg">Pick the responsibility, not the infrastructure</h2>
+						<p className="mt-1 max-w-[66ch] text-[11px] text-[var(--ret-text-dim)]">
+							Each template creates a durable Worker with memory, abilities, and an inspectable loadout. Deploy it to any configured sandbox without making the sandbox its identity.
+						</p>
+					</div>
 					<ReticleButton
 						variant="primary"
 						size="sm"
 						onClick={() => setSeed({ name: "", sourceValue: firstSource })}
 					>
-						<Plus className="h-3.5 w-3.5" strokeWidth={1.75} /> New worker
+						<Plus className="h-3.5 w-3.5" strokeWidth={1.75} /> Custom agent
 					</ReticleButton>
 				</div>
-				<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+				<div className="grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] md:grid-cols-2 xl:grid-cols-3">
 					{presets.map((preset) => {
 						const skillCount = preset.skillIds.filter((id) => id !== "*").length;
 						const mcpCount = preset.mcpServerIds.filter((id) => id !== "*").length;
@@ -123,7 +164,7 @@ export function WorkersLibrary({ presets }: { presets: Preset[] }) {
 								key={preset.id}
 								type="button"
 								onClick={() => setSeed({ name: preset.name, sourceValue: `preset:${preset.id}` })}
-								className="flex h-full flex-col border border-[var(--ret-border)] bg-[var(--ret-bg)] p-4 text-left transition-colors hover:border-[var(--ret-purple)]/40"
+								className="group flex min-h-60 h-full flex-col bg-[var(--ret-bg)] p-4 text-left transition-colors hover:bg-[var(--ret-surface)]"
 							>
 								<div className="mb-2 flex items-center justify-between gap-2">
 									<div className="flex min-w-0 items-center gap-2">
@@ -132,11 +173,18 @@ export function WorkersLibrary({ presets }: { presets: Preset[] }) {
 										)}
 										<span className="truncate text-[13px] text-[var(--ret-text)]">{preset.name}</span>
 									</div>
-									<ReticleBadge variant="accent">preset</ReticleBadge>
+									<ReticleBadge variant="default">{preset.category}</ReticleBadge>
 								</div>
-								<p className="line-clamp-2 min-h-[2.4em] text-[11px] leading-relaxed text-[var(--ret-text-dim)]">
-									{preset.description}
+								<p className="line-clamp-3 min-h-[3.9em] text-[11px] leading-relaxed text-[var(--ret-text-dim)]">
+									{preset.longDescription}
 								</p>
+								<div className="mt-3 flex flex-wrap gap-1">
+									{preset.loadout.slice(0, 4).map((item) => (
+										<span key={item} className="border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.12em] text-[var(--ret-text-muted)]">
+											{item}
+										</span>
+									))}
+								</div>
 								<div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] text-[var(--ret-text-muted)]">
 									<span>{AGENT_LABEL[preset.agentKind]}</span>
 									<span className="flex items-center gap-1">
@@ -145,6 +193,10 @@ export function WorkersLibrary({ presets }: { presets: Preset[] }) {
 									<span className="flex items-center gap-1">
 										<Plug2 className="h-3 w-3" strokeWidth={1.75} /> {mcpCount} MCP
 									</span>
+								</div>
+								<div className="mt-auto flex items-center justify-between gap-3 border-t border-[var(--ret-border)] pt-3 font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ret-purple)]">
+									<span>Create agent</span>
+									<ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" strokeWidth={1.75} />
 								</div>
 							</button>
 						);
@@ -155,13 +207,17 @@ export function WorkersLibrary({ presets }: { presets: Preset[] }) {
 			{/* The user's own workers. */}
 			<section className="space-y-3">
 				<span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
-					your workers . {workers.length}
+					your agents . {workers?.length ?? "…"}
 				</span>
-				{workers.length === 0 ? (
+				{workers === null ? (
 					<ReticleFrame className="px-4 py-8 text-center">
-						<p className="text-[13px] text-[var(--ret-text-dim)]">No workers yet.</p>
+						<BrailleSpinner name="orbit" label="loading your agents" className="text-[11px] text-[var(--ret-text-muted)]" />
+					</ReticleFrame>
+				) : workers.length === 0 ? (
+					<ReticleFrame className="px-4 py-8 text-center">
+						<p className="text-[13px] text-[var(--ret-text-dim)]">No saved agents yet.</p>
 						<p className="mt-1 text-[11px] text-[var(--ret-text-muted)]">
-							Start from a preset above (or an existing Memory) to package a runtime
+							Start from a template above (or an existing Memory) to package a runtime
 							+ model + memory you can deploy onto any machine.
 						</p>
 					</ReticleFrame>
@@ -252,9 +308,9 @@ function CreateWorkerModal({
 	return (
 		<div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-[12dvh]">
 			<div className="w-full max-w-[520px] border border-[var(--ret-border)] bg-[var(--ret-bg)] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
-				<p className="mb-3 font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">New worker</p>
+				<p className="mb-3 font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">Create agent</p>
 				<div className="flex flex-col gap-2">
-					<input className={fieldCls} placeholder="worker name (e.g. code-reviewer)" value={name} autoFocus onChange={(e) => setName(e.target.value)} />
+					<input className={fieldCls} placeholder="agent name (e.g. code-reviewer)" value={name} autoFocus onChange={(e) => setName(e.target.value)} />
 					<label className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">Runtime</label>
 					<ReticleSelect
 						ariaLabel="Runtime"
@@ -273,7 +329,7 @@ function CreateWorkerModal({
 				</div>
 				<div className="mt-3 flex items-center gap-2">
 					<ReticleButton variant="primary" size="sm" disabled={!name.trim() || busy} onClick={() => onSubmit(name.trim(), agentKind, parseSource(sourceValue))}>
-						<Rocket className="h-3.5 w-3.5" strokeWidth={1.75} /> {busy ? "creating…" : "Create"}
+						<Rocket className="h-3.5 w-3.5" strokeWidth={1.75} /> {busy ? "creating…" : "Create agent"}
 					</ReticleButton>
 					<button type="button" onClick={onCancel} className="font-mono text-[11px] text-[var(--ret-text-muted)] hover:text-[var(--ret-text)]">
 						cancel

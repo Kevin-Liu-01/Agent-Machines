@@ -185,14 +185,23 @@ export const LOST_ALWAYS = [
 	"create-time env vars: the placement remembers only {substrate, sandboxId, agent}; re-supply them via migrate options.env",
 ] as const;
 
+const LIVE_PROCESS_LOSS =
+	"process memory and tmux scrollback: processes restart on the target; Agent Machines-managed runs drain before cutover, but unmanaged interactive/in-flight process state is not transferred";
+
 /**
  * The loss list for a migration leaving `from`. e2b persists through a
  * memory snapshot, and no file copy captures RAM state -- fork/clone is
  * `exposed: false` on every adapter -- so leaving e2b loses whatever only
  * lived in memory, and the report says so.
  */
-export function lostState(from: SubstrateKind): string[] {
-	const lost: string[] = [...LOST_ALWAYS];
+export function lostState(
+	from: SubstrateKind,
+	mode: "copy" | "live" = "copy",
+): string[] {
+	const lost: string[] =
+		mode === "live"
+			? [LIVE_PROCESS_LOSS, ...LOST_ALWAYS.slice(1)]
+			: [...LOST_ALWAYS];
 	if (from === "e2b") {
 		lost.push(
 			"e2b RAM state: the substrate persists via memory snapshot and no file copy captures it (fork is not exposed through the mux)",

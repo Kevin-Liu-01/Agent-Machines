@@ -1,37 +1,43 @@
-/**
- * POST /api/dashboard/machine/sleep
- *
- * Pauses the running machine to save costs. Sleep preserves disk and
- * process state; the next wake brings everything back including the
- * cloudflared tunnel URL.
- *
- * Idempotent: if the machine is already in any non-running state we
- * return the current summary unchanged. Resolves the machine from the
- * caller's Clerk metadata.
- */
+import { after } from "next/server";
 
+import { submitMachineIntent } from "@/lib/control-plane/adopt-machine";
+import { getUserConfigById } from "@/lib/user-config/clerk";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
-
-import { sleepActiveMachine } from "@/lib/dashboard/active-machine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
-export async function POST(): Promise<Response> {
+export async function POST(request: Request): Promise<Response> {
+	const userId = await getEffectiveUserId();
+	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
+	const config = await getUserConfigById(userId);
+	if (!config.activeMachineId) {
+		return Response.json({ error: "not_provisioned", message: "Active machine is not set." }, { status: 404 });
+	}
 	try {
-		const userId = await getEffectiveUserId();
-		if (!userId) {
-			return Response.json({ error: "unauthorized" }, { status: 401 });
-		}
-		const summary = await sleepActiveMachine();
-		return Response.json(summary, {
-			headers: { "Cache-Control": "no-store" },
+		const submitted = await submitMachineIntent(userId, config.activeMachineId, {
+			desiredState: "sleeping",
+			idempotencyKey:
+				request.headers.get("idempotency-key") ??
+				`sleep:${config.activeMachineId}:${crypto.randomUUID()}`,
 		});
-	} catch (err) {
-		const message = err instanceof Error ? err.message : "sleep failed";
-		const status = /not set/.test(message) ? 404 : 502;
-		const error = status === 404 ? "not_provisioned" : "sleep_failed";
-		return Response.json({ error, message }, { status });
+		after(async () => {
+			await submitted.controlPlane.reconcileNext(submitted.accepted.worker.id);
+		});
+		return Response.json(
+			{
+				ok: true,
+				operation: submitted.accepted.operation,
+				statusUrl: `/api/dashboard/control-plane/operations/${submitted.accepted.operation.id}`,
+				phase: "queued",
+			},
+			{ status: 202, headers: { "Cache-Control": "no-store" } },
+		);
+	} catch (error) {
+		return Response.json(
+			{ error: "sleep_failed", message: error instanceof Error ? error.message : "sleep failed" },
+			{ status: 502 },
+		);
 	}
 }

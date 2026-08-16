@@ -307,7 +307,7 @@ export async function runBenchmarkSuite(
 		string,
 		Partial<Record<BenchmarkMetricId, number>>
 	> = {};
-	for (const r of results) {
+	for (const r of results.filter((result) => result.ok)) {
 		const m: Partial<Record<BenchmarkMetricId, number>> = {};
 		for (const id of Object.keys(r.metrics) as BenchmarkMetricId[]) {
 			const v = metricValue(r, id);

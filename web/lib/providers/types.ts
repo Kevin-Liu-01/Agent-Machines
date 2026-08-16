@@ -15,6 +15,11 @@ import type {
 	MachineSpec,
 	ProviderKind,
 } from "@/lib/user-config/schema";
+import type {
+	PtyHandle,
+	PtyOptions,
+} from "../../../src/mux/types.js";
+export type { PtyHandle, PtyOptions } from "../../../src/mux/types.js";
 
 /**
  * Normalized state across providers. Maps Dedalus phases, Sprites states,
@@ -50,6 +55,7 @@ export type RuntimeKind = "persistent-machine" | "ephemeral-session";
 
 export type ProviderCapabilities = {
 	runtime: RuntimeKind;
+	pty: "native" | "tmux" | "none";
 	canProvision: boolean;
 	canWake: boolean;
 	canSleep: boolean;
@@ -73,6 +79,8 @@ export type ExecResult = {
 
 export type ExecOptions = {
 	timeoutMs?: number;
+	env?: Record<string, string>;
+	cwd?: string;
 };
 
 /**
@@ -87,6 +95,8 @@ export type ExecStreamEvent =
 export type ExecStreamOptions = {
 	timeoutMs?: number;
 	signal?: AbortSignal;
+	env?: Record<string, string>;
+	cwd?: string;
 };
 
 export type ProviderError =
@@ -119,6 +129,13 @@ export type ProvisionInput = {
 	env?: Record<string, string>;
 };
 
+export type PublicServiceInput = {
+	name: string;
+	command: string;
+	args: string[];
+	httpPort: number;
+};
+
 export type MachineProvider = {
 	readonly kind: ProviderKind;
 	readonly hasCredentials: boolean;
@@ -131,6 +148,16 @@ export type MachineProvider = {
 	destroy(machineId: string): Promise<void>;
 	exec(machineId: string, command: string, options?: ExecOptions): Promise<ExecResult>;
 	execBackground?(machineId: string, command: string): Promise<void>;
+	/** Replace one provider-managed public service (currently Sprites only). */
+	replacePublicService?(
+		machineId: string,
+		service: PublicServiceInput,
+	): Promise<void>;
+	/**
+	 * One long-lived PTY connection. The browser terminal uses this over its
+	 * pinned WebSocket so keystrokes do not create a provider exec request.
+	 */
+	openPty?(machineId: string, options?: PtyOptions): Promise<PtyHandle>;
 	/**
 	 * Stream stdout/stderr as a command runs, using the provider's native
 	 * streaming primitive (E2B `onStdout`/`onStderr`, Vercel `Command.logs()`,

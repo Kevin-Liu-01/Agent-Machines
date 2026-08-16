@@ -47,6 +47,8 @@ import {
 	type ExecStreamEvent,
 	type ExecStreamOptions,
 	type MachineProvider,
+	type PtyHandle,
+	type PtyOptions,
 	type ProviderCapabilities,
 	type ProviderMachineSummary,
 	type ProvisionInput,
@@ -192,6 +194,10 @@ export class VercelProvider implements MachineProvider {
 
 	execBackground(machineId: string, command: string): Promise<void> {
 		return this.facade.execBackground!(machineId, command);
+	}
+
+	openPty(machineId: string, options?: PtyOptions): Promise<PtyHandle> {
+		return this.facade.openPty!(machineId, options);
 	}
 
 	streamExec(

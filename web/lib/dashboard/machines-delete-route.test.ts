@@ -26,10 +26,13 @@ import {
 
 const mocks = vi.hoisted(() => ({
 	getEffectiveUserId: vi.fn(),
-	getUserConfig: vi.fn(),
-	setUserConfig: vi.fn(),
+	getUserConfigById: vi.fn(),
+	setOperationalUserConfigById: vi.fn(),
 	getProvider: vi.fn(),
 	destroy: vi.fn(),
+	submitMachineIntent: vi.fn(),
+	reconcileNext: vi.fn(),
+	after: vi.fn((fn: () => unknown) => fn()),
 	/** Tenants the placement store was constructed for, in order. */
 	tenants: [] as string[],
 	/** Names forgotten, in order. */
@@ -43,8 +46,8 @@ vi.mock("@/lib/user-config/identity", () => ({
 	getEffectiveUserId: mocks.getEffectiveUserId,
 }));
 vi.mock("@/lib/user-config/clerk", () => ({
-	getUserConfig: mocks.getUserConfig,
-	setUserConfig: mocks.setUserConfig,
+	getUserConfigById: mocks.getUserConfigById,
+	setOperationalUserConfigById: mocks.setOperationalUserConfigById,
 }));
 vi.mock("@/lib/providers", async () => {
 	const actual = await vi.importActual<typeof import("@/lib/providers/types")>(
@@ -55,6 +58,10 @@ vi.mock("@/lib/providers", async () => {
 		MachineProviderError: actual.MachineProviderError,
 	};
 });
+vi.mock("@/lib/control-plane/adopt-machine", () => ({
+	submitMachineIntent: mocks.submitMachineIntent,
+}));
+vi.mock("next/server", () => ({ after: mocks.after }));
 vi.mock("@/lib/mux/placement-store", () => ({
 	createSupabasePlacementStore: (tenantId: string) => {
 		mocks.tenants.push(tenantId);
@@ -133,49 +140,62 @@ beforeEach(() => {
 	mocks.rememberedSandboxId = "m-1";
 	mocks.storeFails = false;
 	mocks.getEffectiveUserId.mockResolvedValue("user-alpha");
-	mocks.getUserConfig.mockResolvedValue(CONFIG);
-	mocks.setUserConfig.mockResolvedValue(CONFIG);
+	mocks.getUserConfigById.mockResolvedValue(CONFIG);
+	mocks.setOperationalUserConfigById.mockResolvedValue(CONFIG);
 	mocks.destroy.mockResolvedValue(undefined);
 	mocks.getProvider.mockReturnValue({ kind: "e2b", destroy: mocks.destroy });
+	mocks.reconcileNext.mockResolvedValue(null);
+	mocks.submitMachineIntent.mockResolvedValue({
+		accepted: {
+			worker: { id: "worker-1" },
+			operation: { id: "op-1", status: "queued" },
+		},
+		controlPlane: { reconcileNext: mocks.reconcileNext },
+	});
+	mocks.after.mockImplementation((fn: () => unknown) => fn());
 });
 
 describe("DELETE /api/dashboard/machines/[id] placement pruning", () => {
-	it("?destroy=1 destroys the sandbox, then forgets the placement under THIS tenant", async () => {
+	it("?destroy=1 journals deletion and schedules reconciliation", async () => {
 		const res = await DELETE(req("?destroy=1"), ctx("m-1"));
-		expect(res.status).toBe(200);
-		expect(await res.json()).toEqual({
+		expect(res.status).toBe(202);
+		expect(await res.json()).toMatchObject({
 			ok: true,
-			action: "destroyed",
-			placement: { forgotten: true, name: "box" },
+			action: "destroy_scheduled",
+			operation: { id: "op-1", status: "queued" },
 		});
-		expect(mocks.destroy).toHaveBeenCalledWith("m-1");
-		expect(mocks.tenants).toEqual(["user-alpha"]);
-		expect(mocks.forgotten).toEqual(["box"]);
+		expect(mocks.submitMachineIntent).toHaveBeenCalledWith(
+			"user-alpha",
+			"m-1",
+			expect.objectContaining({ desiredState: "deleted" }),
+		);
+		expect(mocks.reconcileNext).toHaveBeenCalledWith("worker-1");
 	});
 
-	it("prunes under the SIGNED-IN user, and a different user moves it", async () => {
+	it("journals under the SIGNED-IN user", async () => {
 		// Mutation guard: a constant tenant would keep answering "user-alpha" and
 		// delete a row belonging to someone else.
 		mocks.getEffectiveUserId.mockResolvedValue("user-beta");
 		await DELETE(req("?destroy=1"), ctx("m-1"));
-		expect(mocks.tenants).toEqual(["user-beta"]);
+		expect(mocks.submitMachineIntent).toHaveBeenCalledWith(
+			"user-beta",
+			"m-1",
+			expect.any(Object),
+		);
 	});
 
-	it("does NOT forget a name that has moved on to another sandbox", async () => {
+	it("does not prune placement before the journaled provider destroy commits", async () => {
 		// The post-migration shape: "box" now names the new sandbox. Forgetting it
 		// while destroying the old record would strand a live, billing sandbox.
 		mocks.rememberedSandboxId = "m-new";
 		const res = await DELETE(req("?destroy=1"), ctx("m-1"));
-		expect(res.status).toBe(200);
-		const body = (await res.json()) as { placement: { forgotten: boolean; reason: string } };
-		expect(body.placement.forgotten).toBe(false);
-		expect(body.placement.reason).toContain("m-new");
+		expect(res.status).toBe(202);
 		expect(mocks.forgotten).toEqual([]);
 	});
 
 	it("?remove=1 prunes BEFORE the record goes, so no unprunable row is left", async () => {
 		const order: string[] = [];
-		mocks.setUserConfig.mockImplementation(async () => {
+		mocks.setOperationalUserConfigById.mockImplementation(async () => {
 			order.push("removeMachine");
 			return CONFIG;
 		});
@@ -204,28 +224,19 @@ describe("DELETE /api/dashboard/machines/[id] placement pruning", () => {
 		expect(mocks.tenants).toEqual([]);
 	});
 
-	it("a failed destroy 502s and does NOT prune: the sandbox may still be alive", async () => {
-		mocks.destroy.mockRejectedValue(new Error("e2b: 500"));
+	it("a failed journal submission 502s and does not prune", async () => {
+		mocks.submitMachineIntent.mockRejectedValue(new Error("journal unavailable"));
 		const res = await DELETE(req("?destroy=1"), ctx("m-1"));
 		expect(res.status).toBe(502);
 		expect(mocks.forgotten).toEqual([]);
-		// The record survives too, so the machine stays visible and destroyable.
-		expect(mocks.setUserConfig).not.toHaveBeenCalled();
+		expect(mocks.setOperationalUserConfigById).not.toHaveBeenCalled();
 	});
 
-	it("a placement-store failure does NOT fail a successful destroy", async () => {
+	it("a placement-store outage cannot block journal acceptance", async () => {
 		mocks.storeFails = true;
 		const res = await DELETE(req("?destroy=1"), ctx("m-1"));
-		expect(res.status).toBe(200);
-		const body = (await res.json()) as {
-			action: string;
-			placement: { forgotten: boolean; reason: string };
-		};
-		expect(body.action).toBe("destroyed");
-		expect(body.placement).toEqual({ forgotten: false, reason: "supabase: 503" });
-		// A stale placement is a bookkeeping problem; a record left pointing at a
-		// destroyed sandbox is a user-visible one, so the removal still happened.
-		expect(mocks.setUserConfig).toHaveBeenCalledWith({ removeMachine: "m-1" });
+		expect(res.status).toBe(202);
+		expect(mocks.tenants).toEqual([]);
 	});
 
 	it("401s before any store is constructed", async () => {

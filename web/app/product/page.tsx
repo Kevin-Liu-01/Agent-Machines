@@ -1,19 +1,19 @@
+import { CapabilityAtlas } from "@/components/CapabilityAtlas";
+import { ProductShowcase } from "@/components/ProductShowcase";
 import {
-	LinkCard,
 	MarketingHero,
 	MarketingShell,
 	ReticleSpacer,
-	SectionBand,
 	TerminalPanel,
 } from "@/components/marketing/MarketingPage";
+import { WorkerSystemThesis } from "@/components/WorkerSystemThesis";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
-import { PRODUCT_FEATURES } from "@/lib/marketing/public-site";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 
 export const metadata = buildPageMetadata({
 	title: "Product",
 	description:
-		"Explore Agent Machines product capabilities: runtime routing, sandbox routing, model paths, loadouts, lifecycle controls, observability, and SDK APIs.",
+		"Explore the durable Worker system: off-the-shelf specialists, modular runtimes and sandboxes, persistent state, lifecycle, supervision, and APIs.",
 	path: "/product",
 	keywords: ["agent product", "runtime router", "sandbox router", "worker observability"],
 });
@@ -24,9 +24,9 @@ export default function ProductPage() {
 			<main id="top">
 				<MarketingHero
 					kicker="./PRODUCT"
-					title="Agent workers with inspectable state."
-					description="Agent Machines combines runtime, provider lane, model path, environment profile, loadout, logs, usage, cron, and artifacts into one worker control plane."
-					badges={["runtimes", "providers", "loadouts", "usage"]}
+					title="Keep the Worker. Swap the machinery."
+					description="Choose a persistent specialist or compose one from modular primitives. Its identity, responsibility, memory, files, schedules, permissions, history, and evidence survive changes to the runtime, model, tools, and sandbox."
+					badges={["durable identity", "persistent work", "supervision", "portability"]}
 					icon="server"
 					actions={
 						<>
@@ -53,19 +53,11 @@ export default function ProductPage() {
 					}
 				/>
 				<ReticleSpacer />
-				<SectionBand label="Capabilities" title="Every public product page is live.">
-					<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-						{PRODUCT_FEATURES.map((feature) => (
-							<LinkCard
-								key={feature.slug}
-								href={feature.href}
-								title={feature.title}
-								description={feature.description}
-								icon={feature.icon}
-							/>
-						))}
-					</div>
-				</SectionBand>
+				<WorkerSystemThesis />
+				<ReticleSpacer />
+				<ProductShowcase />
+				<ReticleSpacer />
+				<CapabilityAtlas />
 				<ReticleSpacer />
 			</main>
 		</MarketingShell>

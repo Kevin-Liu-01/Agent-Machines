@@ -34,16 +34,28 @@ import {
 	MOVE_ALLOWLIST,
 	MOVE_NOTES,
 	REDERIVED,
+	beginMigrationDrain,
 	buildExportCommand,
+	cancelMigrationDrain,
+	cleanupLiveMigration,
+	exportStableLiveDelta,
 	exportTar,
 	lostState,
+	prepareLiveBaseline,
 	probeIncludes,
 	restoreTar,
+	restoreStableLiveDelta,
 	verifyMarker,
+	waitForMigrationDrain,
 	writeMarker,
 } from "agent-machines/mux";
 // Types come from the source tree (erased before the bundler sees them).
 import type { MigrationMarker, MoveSource, MoveTarget } from "../../../src/mux/statemove.js";
+import type {
+	DrainStarted,
+	LiveBaseline,
+	MigrationMode,
+} from "../../../src/mux/live-migration.js";
 
 import { machineHomeForProvider } from "@/lib/bootstrap/bootstrap-log";
 import { agentArtifactsPresent } from "@/lib/bootstrap/bootstrap-repair";
@@ -53,6 +65,7 @@ import {
 } from "@/lib/bootstrap/runner";
 import { gatewayPort, probeGatewayLocal } from "@/lib/bootstrap/gateway-lifecycle";
 import { createMachineForConfig } from "@/lib/dashboard/provision";
+import { syncHostedWorkerPlacement } from "@/lib/control-plane/store";
 import {
 	assertUsableProvisionState,
 	provisionWithFailover,
@@ -75,11 +88,18 @@ import type {
 
 export type MigrationSourceOption = "destroy" | "park" | "keep";
 
+export type MigrationConfigStore = {
+	get(): Promise<UserConfig>;
+	set(patch: Parameters<typeof setUserConfig>[0]): Promise<UserConfig>;
+};
+
 export type RunMigrationArgs = {
 	machineId: string;
 	to: ProviderKind;
 	/** default true */
 	moveState: boolean;
+	/** "live" drains managed work and applies a stable final delta. */
+	mode: MigrationMode;
 	/** default "destroy" -- see sourceDisposition() for the justification. */
 	source: MigrationSourceOption;
 	/**
@@ -91,6 +111,8 @@ export type RunMigrationArgs = {
 	 * catches a call site that forgot it.
 	 */
 	userId: string;
+	/** Stable tenant-aware persistence for queue/cron reconcilers. */
+	configStore?: MigrationConfigStore;
 };
 
 /** The tar rides /tmp on both ends; machine-fs's ~/.agent-machines jail and
@@ -178,8 +200,9 @@ class MigrationError extends Error {
 async function persistMigrationState(
 	machineId: string,
 	state: MigrationState,
+	persist: MigrationConfigStore["set"],
 ): Promise<void> {
-	await setUserConfig({
+	await persist({
 		patchMachine: { id: machineId, patch: { migrationState: state } },
 	});
 }
@@ -195,7 +218,9 @@ function cliVersionCommand(machine: MachineRef): string {
  * it never throws -- every outcome lands in migrationState, because a
  * background rejection nobody awaits is a silent failure.
  */
-export async function runMachineMigration(args: RunMigrationArgs): Promise<void> {
+export async function runMachineMigration(args: RunMigrationArgs): Promise<MigrationState> {
+	const getConfig = args.configStore?.get ?? getUserConfig;
+	const setConfig = args.configStore?.set ?? setUserConfig;
 	const startedAt = new Date().toISOString();
 	const state: MigrationState = {
 		phase: "running",
@@ -210,16 +235,20 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 
 	let newMachineId: string | null = null;
 	let targetProvider: MachineProvider | null = null;
+	let sourceForDrain: MoveSource | null = null;
+	let liveBaseline: LiveBaseline | null = null;
+	let drainStarted: DrainStarted | null = null;
+	let drainAttempted = false;
 
 	const setStep = async (step: MigrationStepId): Promise<void> => {
 		state.step = step;
-		await persistMigrationState(args.machineId, state);
+		await persistMigrationState(args.machineId, state, setConfig);
 	};
 
 	try {
 		// -- validate ---------------------------------------------------------
 		await setStep("validate");
-		const config = await getUserConfig();
+		const config = await getConfig();
 		const machine = config.machines.find((m) => m.id === args.machineId);
 		if (!machine) {
 			throw new MigrationError("validate", `machine ${args.machineId} not found`);
@@ -228,6 +257,12 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 			throw new MigrationError(
 				"validate",
 				`already on ${args.to}; migrate moves between substrates`,
+			);
+		}
+		if (args.mode === "live" && !args.moveState) {
+			throw new MigrationError(
+				"validate",
+				"live migration requires moveState:true so a baseline and final delta can be transferred",
 			);
 		}
 		// The pinned-lane idiom (provision-machine failover:false): the target
@@ -244,6 +279,7 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 			);
 		}
 		const sourceProvider = getProvider(machine.providerKind, config.providers);
+		sourceForDrain = sourceHandle(sourceProvider, machine.id);
 
 		// -- provision (new record visible immediately; activate:false so the
 		// user is never pointed at an unverified target) -----------------------
@@ -263,12 +299,12 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 						gatewayProfileId: machine.gatewayProfileId,
 						environmentProfileId: machine.environmentProfileId,
 						activate: false,
-					}),
+					}, setConfig),
 				accept: (substrate, created) =>
 					assertUsableProvisionState(substrate, created.machineId, created.state),
 				teardown: async (substrate, machineId) => {
 					await getProvider(substrate, config.providers).destroy(machineId);
-					await setUserConfig({ removeMachine: machineId });
+					await setConfig({ removeMachine: machineId });
 				},
 			},
 		});
@@ -282,7 +318,7 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 		// -- bootstrap (foreground inside this background task; progress rides
 		// the NEW ref's bootstrapState so the fleet UI renders it unchanged) ---
 		await setStep("bootstrap");
-		const configAfterProvision = await getUserConfig();
+		const configAfterProvision = await getConfig();
 		const newRef = configAfterProvision.machines.find((m) => m.id === newMachineId);
 		if (!newRef) {
 			throw new MigrationError("bootstrap", `provisioned ${newMachineId} but its record is missing`);
@@ -293,12 +329,12 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 			config: configAfterProvision,
 			force: false,
 			onState: async (bootstrapState) => {
-				await setUserConfig({
+				await setConfig({
 					patchMachine: { id: newRef.id, patch: { bootstrapState } },
 				});
 			},
 		});
-		await setUserConfig({
+		await setConfig({
 			patchMachine: {
 				id: newRef.id,
 				patch: { apiUrl: bootstrapResult.apiUrl, apiKey: bootstrapResult.apiKey },
@@ -319,6 +355,15 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 		let movedSkipped: Array<{ path: string; reason: string }> = [];
 		let bytes = 0;
 		let exported: { bytes: Buffer; sha256: string } | null = null;
+		let activeRuns = 0;
+		let drainWaitMs = 0;
+		let baselineBytes = 0;
+		let deltaBytes = 0;
+		let stabilityAttempts = 0;
+		let gateReleased = args.mode === "copy";
+		let gateReleaseError: string | null = null;
+		let targetApiUrl = bootstrapResult.apiUrl;
+		let targetApiKey = bootstrapResult.apiKey;
 
 		if (args.moveState) {
 			await setStep("export");
@@ -326,11 +371,18 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 			// a stopped filesystem is meaningless. Best-effort -- providers whose
 			// wake is a no-op just return the summary.
 			await sourceProvider.wake(machine.id).catch(() => undefined);
-			const source = sourceHandle(sourceProvider, machine.id);
+			const source = sourceForDrain ?? sourceHandle(sourceProvider, machine.id);
+			sourceForDrain = source;
 			await writeMarker(source, marker);
 			const presence = await probeIncludes(source, plan.include);
 			moved = presence.present;
 			movedSkipped = presence.skipped;
+			if (args.mode === "live") {
+				liveBaseline = await prepareLiveBaseline(source, marker.nonce, {
+					include: presence.present,
+					exclude: plan.exclude,
+				});
+			}
 			const tarPath = `/tmp/am-migrate-${marker.nonce.slice(0, 8)}.tgz`;
 			const tarCmd = buildExportCommand(
 				{ include: presence.present, exclude: plan.exclude },
@@ -344,7 +396,8 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 				);
 			}
 			exported = await exportTar(source, tarPath, { include: presence.present });
-			bytes = exported.bytes.length;
+			baselineBytes = exported.bytes.length;
+			bytes = baselineBytes;
 			await source.exec(`rm -f ${tarPath}`, { timeoutMs: 30_000 }).catch(() => undefined);
 
 			// -- restore ---------------------------------------------------------
@@ -358,6 +411,40 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 				oldHome: machineHomeForProvider(machine.providerKind),
 				timeoutMs: RESTORE_TIMEOUT_MS,
 			});
+
+			if (args.mode === "live" && liveBaseline) {
+				await setStep("drain");
+				drainAttempted = true;
+				drainStarted = await beginMigrationDrain(source, marker.nonce);
+				const drained = await waitForMigrationDrain(source, drainStarted);
+				activeRuns = drained.activeRuns;
+				drainWaitMs = drained.waitedMs;
+
+				// This fresh nonce must arrive in the final delta, proving the
+				// target contains the quiesced state rather than only the baseline.
+				marker.nonce = randomUUID();
+				marker.at = new Date().toISOString();
+				await writeMarker(source, marker);
+				await setStep("delta");
+				const delta = await exportStableLiveDelta(source, liveBaseline);
+				await restoreStableLiveDelta(target, delta, {
+					sha256: delta.exported.sha256,
+					agent: machine.agentKind,
+					include: liveBaseline.include,
+					exclude: liveBaseline.exclude,
+					oldHome: machineHomeForProvider(machine.providerKind),
+					timeoutMs: RESTORE_TIMEOUT_MS,
+				});
+				// The final delta intentionally includes the whole managed state
+				// tree, which also contains the source's closed migration gate.
+				// Re-open the copied gate on the TARGET before verification and
+				// commit; otherwise the first command after a successful cutover
+				// is rejected with AM_MIGRATION_DRAINING until the TTL expires.
+				await cancelMigrationDrain(target, drainStarted.migrationId);
+				deltaBytes = delta.bytes;
+				stabilityAttempts = delta.stabilityAttempts;
+				bytes += deltaBytes;
+			}
 			// The restored canonical docs are now authoritative; regenerate the
 			// combined entry docs from them so claude/codex/openclaw read the
 			// moved memory, not the bootstrap-time bundle.
@@ -372,12 +459,14 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 			// hermes config.yaml / state.db changed under the gateway; restart it.
 			if (machine.agentKind === "hermes" || machine.agentKind === "openclaw") {
 				const refreshed = await finalizeGatewayBootstrap({
-					machine: { ...newRef, apiUrl: bootstrapResult.apiUrl, apiKey: bootstrapResult.apiKey },
+					machine: { ...newRef, apiUrl: targetApiUrl, apiKey: targetApiKey },
 					provider: targetProvider,
 					config: configAfterProvision,
 					onState: async () => {},
 				});
-				await setUserConfig({
+				targetApiUrl = refreshed.apiUrl;
+				targetApiKey = refreshed.apiKey;
+				await setConfig({
 					patchMachine: {
 						id: newRef.id,
 						patch: { apiUrl: refreshed.apiUrl, apiKey: refreshed.apiKey },
@@ -390,8 +479,8 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 		await setStep("verify");
 		const newRefForVerify: MachineRef = {
 			...newRef,
-			apiUrl: bootstrapResult.apiUrl,
-			apiKey: bootstrapResult.apiKey,
+			apiUrl: targetApiUrl,
+			apiKey: targetApiKey,
 		};
 		let probeDescription: string;
 		if (machine.agentKind === "hermes" || machine.agentKind === "openclaw") {
@@ -401,7 +490,7 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 				targetProvider,
 				newMachineId,
 				port,
-				bootstrapResult.apiKey,
+				targetApiKey,
 			);
 			if (!gatewayOk) {
 				throw new MigrationError(
@@ -444,7 +533,7 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 		await setStep("commit");
 		// Fresh read: active machine and crons may have changed while the
 		// bootstrap ran; committing against a stale snapshot would clobber them.
-		const commitConfig = await getUserConfig();
+		const commitConfig = await getConfig();
 		if (!commitConfig.machines.some((m) => m.id === machine.id)) {
 			throw new MigrationError(
 				"commit",
@@ -455,10 +544,15 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 		const repointedCrons = commitConfig.crons.map((cron) =>
 			cron.machineId === machine.id ? { ...cron, machineId: newMachineId as string } : cron,
 		);
+		const repointedWorkers = commitConfig.workers.map((worker) =>
+			worker.lastMachineId === machine.id
+				? { ...worker, lastMachineId: newMachineId, updatedAt: new Date().toISOString() }
+				: worker,
+		);
 		const lost = args.moveState
-			? lostState(machine.providerKind)
+			? lostState(machine.providerKind, args.mode)
 			: [
-					...lostState(machine.providerKind),
+					...lostState(machine.providerKind, args.mode),
 					"the entire file-state contract: moveState:false ships no tar, so every path MOVE_ALLOWLIST names stays on the source",
 				];
 		const report: MigrationReport = {
@@ -478,11 +572,22 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 			source: { action: "kept" },
 			newMachineId,
 			notes: MOVE_NOTES(machine.agentKind),
+			continuity: {
+				mode: args.mode,
+				managedRuns: args.mode === "live" ? "drained" : "not-gated",
+				process: "restarted",
+				activeRuns,
+				drainWaitMs,
+				baselineBytes,
+				deltaBytes,
+				stabilityAttempts,
+				gateReleased,
+			},
 		};
 		state.report = report;
 		const latestNewRef =
 			commitConfig.machines.find((m) => m.id === newMachineId) ?? newRefForVerify;
-		await setUserConfig({
+		await setConfig({
 			// Finalize the new ref, carrying the migration record to the machine
 			// the user lands on next.
 			upsertMachine: { ...latestNewRef, migrationState: { ...state } },
@@ -499,6 +604,7 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 				},
 			},
 			crons: repointedCrons,
+			workers: repointedWorkers,
 			// Active flips ONLY here, and only if the user was on the old box.
 			...(wasActive ? { activeMachineId: newMachineId } : {}),
 		});
@@ -517,7 +623,7 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 		// `source: "keep"` both really do stay live, and declining is then the
 		// correct answer (see the placements.ts header).
 		try {
-			const postCommit = await getUserConfig();
+			const postCommit = await getConfig();
 			const mirror = await recordHostedPlacement({
 				userId: args.userId,
 				config: postCommit,
@@ -540,10 +646,72 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 			};
 		}
 
+		// -- managed Worker placement (post-commit, REQUIRED) -----------------
+		// A machine may also be the substrate placement of a declarative Worker.
+		// The provider source cannot be destroyed and the dashboard cannot report
+		// success until that tenant-scoped journal points at the verified target.
+		// Optimistic conflicts are retried inside the bridge. If it still cannot
+		// converge, preserve both sandboxes and return a recoverable failure --
+		// never a green migration with a Worker pointing at a destroyed source.
+		try {
+			const mirrored = await syncHostedWorkerPlacement({
+				userId: args.userId,
+				fromSandboxId: machine.id,
+				toSandboxId: newMachineId,
+				sandbox: args.to,
+				runtime: machine.agentKind,
+			});
+			report.controlPlane = {
+				recorded: true,
+				matched: mirrored.matched,
+			};
+		} catch (err) {
+			const reason = err instanceof Error ? err.message : "control-plane placement mirror failed";
+			report.controlPlane = { recorded: false, matched: 0, reason };
+			report.source = {
+				action: "kept",
+				error: `source preserved because the managed Worker placement did not commit: ${reason}`,
+			};
+			if (sourceForDrain && drainStarted) {
+				try {
+					await cancelMigrationDrain(sourceForDrain, drainStarted.migrationId);
+					gateReleased = true;
+				} catch (gateErr) {
+					gateReleased = false;
+					gateReleaseError = gateErr instanceof Error ? gateErr.message : String(gateErr);
+				}
+				report.continuity!.gateReleased = gateReleased;
+			}
+			if (sourceForDrain && liveBaseline) {
+				await cleanupLiveMigration(sourceForDrain, liveBaseline);
+			}
+			state.phase = "failed";
+			state.step = "commit";
+			state.finishedAt = new Date().toISOString();
+			state.lastError = `the target is verified and the source was preserved, but managed Worker placement did not converge: ${reason}${gateReleaseError ? `; source gate recovery: ${gateReleaseError}` : ""}`;
+			state.report = report;
+			await persistMigrationState(machine.id, state, setConfig).catch(() => undefined);
+			await persistMigrationState(newMachineId, state, setConfig).catch(() => undefined);
+			return state;
+		}
+
 		// -- source disposition (post-commit, best-effort, reported, never
 		// silent; a failure here does NOT fail the migration -- the load is
 		// safe on the new sandbox) ---------------------------------------------
 		await setStep("source-teardown").catch(() => undefined);
+		if (sourceForDrain && drainStarted && args.source !== "destroy") {
+			try {
+				await cancelMigrationDrain(sourceForDrain, drainStarted.migrationId);
+				gateReleased = true;
+			} catch (err) {
+				gateReleased = false;
+				gateReleaseError = err instanceof Error ? err.message : String(err);
+			}
+			report.continuity!.gateReleased = gateReleased;
+		}
+		if (sourceForDrain && liveBaseline) {
+			await cleanupLiveMigration(sourceForDrain, liveBaseline);
+		}
 		if (args.source === "destroy") {
 			// Default destroy: park does not exist on sprites/dedalus, and an
 			// always-on substrate bills while parked -- a default that silently
@@ -555,6 +723,10 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 				// mux.remove(name) here" rule, hosted spelling).
 				await sourceProvider.destroy(machine.id);
 				report.source = { action: "destroyed" };
+				if (drainStarted) {
+					gateReleased = true;
+					report.continuity!.gateReleased = true;
+				}
 			} catch (err) {
 				report.source = {
 					action: "kept",
@@ -562,6 +734,16 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 						err instanceof Error ? err.message : String(err)
 					}`,
 				};
+				if (sourceForDrain && drainStarted) {
+					try {
+						await cancelMigrationDrain(sourceForDrain, drainStarted.migrationId);
+						gateReleased = true;
+					} catch (gateErr) {
+						gateReleased = false;
+						gateReleaseError = gateErr instanceof Error ? gateErr.message : String(gateErr);
+					}
+					report.continuity!.gateReleased = gateReleased;
+				}
 			}
 		} else if (args.source === "park") {
 			if (sourceProvider.capabilities.canSleep) {
@@ -585,6 +767,14 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 		} else {
 			report.source = { action: "kept" };
 		}
+		if (drainStarted && !gateReleased && report.source.action !== "destroyed") {
+			report.source.error = [
+				report.source.error,
+				`live-migration gate could not be re-opened; its worker-side expiry will recover the source${gateReleaseError ? `: ${gateReleaseError}` : ""}`,
+			]
+				.filter(Boolean)
+				.join("; ");
+		}
 
 		state.phase = "succeeded";
 		state.step = null;
@@ -593,15 +783,27 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 		// Terminal state lands on BOTH records (two writes, post-commit, both
 		// best-effort: the migration already succeeded and must not be reported
 		// failed because a state write hiccupped).
-		await persistMigrationState(machine.id, state).catch((err) =>
+		await persistMigrationState(machine.id, state, setConfig).catch((err) =>
 			console.warn(`[migrate] terminal state write (old ref) failed:`, err),
 		);
-		await persistMigrationState(newMachineId, state).catch((err) =>
+		await persistMigrationState(newMachineId, state, setConfig).catch((err) =>
 			console.warn(`[migrate] terminal state write (new ref) failed:`, err),
 		);
 	} catch (err) {
-		const message = err instanceof Error ? err.message : "migration failed";
+		let message = err instanceof Error ? err.message : "migration failed";
 		const failedStep = err instanceof MigrationError ? err.step : state.step;
+		if (sourceForDrain && liveBaseline && drainAttempted) {
+			try {
+				await cancelMigrationDrain(sourceForDrain, liveBaseline.migrationId);
+			} catch (recoveryErr) {
+				message += `; source gate recovery failed and its worker-side expiry must recover it: ${
+					recoveryErr instanceof Error ? recoveryErr.message : String(recoveryErr)
+				}`;
+			}
+		}
+		if (sourceForDrain && liveBaseline) {
+			await cleanupLiveMigration(sourceForDrain, liveBaseline);
+		}
 
 		// Pre-commit failure: destroy the NEW sandbox best-effort. The copy on
 		// it is disposable -- the source still holds everything. A teardown
@@ -609,7 +811,7 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 		if (newMachineId && targetProvider) {
 			try {
 				await targetProvider.destroy(newMachineId);
-				await setUserConfig({ removeMachine: newMachineId });
+				await setConfig({ removeMachine: newMachineId });
 			} catch (teardownErr) {
 				console.warn(
 					`[migrate] could not tear down ${newMachineId} after a failed migration; the record stays visible:`,
@@ -623,7 +825,8 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<void>
 		state.finishedAt = new Date().toISOString();
 		state.lastError = message;
 		state.newMachineId = null;
-		await persistMigrationState(args.machineId, state).catch(() => {});
+		await persistMigrationState(args.machineId, state, setConfig).catch(() => {});
 		console.warn(`[migrate] migration of ${args.machineId} -> ${args.to} failed:`, message);
 	}
+	return state;
 }

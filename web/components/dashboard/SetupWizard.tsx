@@ -11,6 +11,7 @@ import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { cn } from "@/lib/cn";
+import { waitForControlPlaneOperation } from "@/lib/control-plane/client";
 import {
 	AGENT_KINDS,
 	DEFAULT_MACHINE_SPEC,
@@ -180,6 +181,7 @@ export function SetupWizard({ initialConfig, defaults }: Props) {
 			const body = (await response.json()) as {
 				ok?: boolean;
 				machineId?: string;
+				operation?: { id?: string };
 				phase?: string;
 				message?: string;
 				error?: string;
@@ -188,27 +190,11 @@ export function SetupWizard({ initialConfig, defaults }: Props) {
 				setError(body.message ?? `provision failed (HTTP ${response.status})`);
 				return;
 			}
-			if (!body.machineId) {
-				setError("provision failed: missing machine id");
+			if (!body.operation?.id) {
+				setError("provision failed: missing lifecycle operation");
 				return;
 			}
-			const bootstrap = await fetch("/api/dashboard/admin/bootstrap", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ machineId: body.machineId }),
-			});
-			const bootstrapBody = (await bootstrap.json().catch(() => ({}))) as {
-				message?: string;
-				error?: string;
-			};
-			if (!bootstrap.ok) {
-				setError(
-					bootstrapBody.message ??
-						bootstrapBody.error ??
-						`bootstrap failed (HTTP ${bootstrap.status})`,
-				);
-				return;
-			}
+			await waitForControlPlaneOperation(body.operation.id);
 			setActiveStep("provisioned");
 			// Refresh config to pick up the new machine.
 			const fresh = await fetch("/api/dashboard/admin/setup");
@@ -768,7 +754,7 @@ function ProviderStep({
 	return (
 		<StepShell
 			title="Pick the provider"
-			description="Where the agent's microVM lives. All four providers accept credentials and provision through the same multi-tenant shape. Dedalus is the default with full sleep/wake and persistent disk. E2B Sandbox offers pause/resume with snapshots. Sprites offers persistent sandboxes with auto-sleep and instant wake. Vercel Sandbox offers persistent Firecracker microVMs with auto-snapshots and getOrCreate."
+			description="Choose the replaceable compute beneath this Worker. E2B, Sprites, Vercel Sandbox, and Dedalus each declare their real lifecycle and persistence capabilities; current health is surfaced instead of assuming a universal default."
 		>
 			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 				{PROVIDER_KINDS.map((kind) => {

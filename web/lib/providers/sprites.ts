@@ -53,10 +53,13 @@ import {
 	type ExecStreamEvent,
 	type ExecStreamOptions,
 	type MachineProvider,
+	type PtyHandle,
+	type PtyOptions,
 	type ProviderCapabilities,
 	type ProviderMachineSummary,
 	type ProvisionInput,
 	type ProvisionResult,
+	type PublicServiceInput,
 } from "./types";
 
 export type SpritesCreds = {
@@ -125,6 +128,7 @@ export class SpritesProvider implements MachineProvider {
 	readonly kind = "sprites" as const;
 	readonly capabilities: ProviderCapabilities;
 	private readonly facade: MachineProvider;
+	private readonly apiKey: string;
 
 	constructor(creds: SpritesCreds) {
 		if (!creds.apiKey) {
@@ -134,6 +138,7 @@ export class SpritesProvider implements MachineProvider {
 				"Sprites token is required for the Sprites provider.",
 			);
 		}
+		this.apiKey = creds.apiKey;
 		this.facade = createMuxBackedProvider(spritesBinding(creds));
 		this.capabilities = this.facade.capabilities;
 	}
@@ -168,6 +173,39 @@ export class SpritesProvider implements MachineProvider {
 
 	execBackground(machineId: string, command: string): Promise<void> {
 		return this.facade.execBackground!(machineId, command);
+	}
+
+	async replacePublicService(
+		machineId: string,
+		service: PublicServiceInput,
+	): Promise<void> {
+		const { SpritesClient } = await import("@fly/sprites");
+		const sprite = await new SpritesClient(this.apiKey).getSprite(machineId);
+		try {
+			await sprite.deleteService(service.name);
+		} catch (error) {
+			if (!/not found/i.test(error instanceof Error ? error.message : String(error))) {
+				throw error;
+			}
+		}
+		const stream = await sprite.createService(
+			service.name,
+			{
+				cmd: service.command,
+				args: service.args,
+				httpPort: service.httpPort,
+			},
+			"2s",
+		);
+		await stream.processAll((event) => {
+			if (event.type === "error") {
+				throw new Error(event.data || "Sprite public service failed to start");
+			}
+		});
+	}
+
+	openPty(machineId: string, options?: PtyOptions): Promise<PtyHandle> {
+		return this.facade.openPty!(machineId, options);
 	}
 
 	streamExec(

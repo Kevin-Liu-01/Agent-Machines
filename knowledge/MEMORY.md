@@ -2,7 +2,7 @@
 
 ## Product (read VISION.md)
 
-Agent Machines = **OpenRouter for agents and containers** — control plane for persistent agent workers (runtime + skills + MCP + cron + observation + fleet). Not Hermes. Not a bare sandbox.
+Agent Machines = **the durable Worker system for persistent digital labor**. The routing wedge is OpenRouter for agents and machines; the larger product lets people choose or compose a long-running specialist with ChatGPT-simple access. The Worker owns identity, responsibility, memory, schedules, files, permissions, history, and evidence. Runtimes, models, tools, and sandboxes are replaceable machinery beneath it.
 
 **Browser Agent Console (May 2026):** Deploy → bootstrap → live interactive CLI in the browser (Codex, Claude Code, Hermes, OpenClaw) via tmux-over-exec + SSE — no local terminal, no mandatory tunnel. Full narrative: `knowledge/BROWSER-AGENT-CONSOLE.md`.
 
@@ -16,8 +16,8 @@ Two audiences: humans (dashboard) → agents (MCP/CLI orchestration endgame).
 - **Agent runtimes:** Hermes, OpenClaw, Claude Code, Codex CLI (native tool sets differ per runtime).
 - **Inference:** OpenAI-compatible `/v1`; default priority is Vercel AI Gateway, then OpenRouter, then configured fallbacks such as native keys or custom gateways. Configurable per machine via `model.base_url`.
 - **Gateway:** `:8642` (Hermes) or `:18789` (OpenClaw). Bearer: `API_SERVER_KEY` in `~/.agent-machines/.env`.
-- **Control plane:** agent-machines.dev dashboard + CLI + (future) Agent Machines MCP server.
-- **Dashboard (May 2026):** Workers (presets), Memory bundles, Registry (1,400+ install catalog), Usage/metrics (Supabase), cron tick via `/api/internal/cron/tick` every 5 min on Vercel.
+- **Control plane:** agent-machines.com dashboard + CLI + (future) Agent Machines MCP server.
+- **Dashboard (August 2026):** off-the-shelf Workers, modular launch, Memory bundles, Registry (2,595 items in the 2026-08-14 production audit), Usage/metrics (Supabase), cron tick via `/api/internal/cron/tick` every 5 min on Vercel.
 
 ## Harness (registry-driven — not one static tool count)
 

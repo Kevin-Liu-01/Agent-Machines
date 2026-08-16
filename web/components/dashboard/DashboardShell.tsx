@@ -5,6 +5,7 @@ import { DASHBOARD_SHELL_HEADER_ROW } from "@/lib/dashboard/shell-chrome";
 import { cn } from "@/lib/cn";
 import type { PublicUserConfig } from "@/lib/user-config/schema";
 
+import { DashboardConfigProvider } from "./DashboardConfigProvider";
 import { DashboardReticleProvider } from "./DashboardReticleProvider";
 import { MobileDashboardNav, SidebarNav } from "./SidebarNav";
 import { StatusHeader } from "./StatusHeader";
@@ -18,7 +19,8 @@ export function DashboardShell({ children, config }: Props) {
 	const setupComplete = config.machines.some((m) => !m.archived);
 
 	return (
-		<DashboardReticleProvider>
+		<DashboardConfigProvider config={config}>
+			<DashboardReticleProvider>
 		<div className="relative grid min-h-[100dvh] bg-[var(--ret-bg-soft)] lg:grid-cols-[220px_1fr]">
 			<aside className="sticky top-0 z-30 hidden h-[100dvh] self-start border-r border-[var(--ret-border)] bg-[var(--ret-bg)] lg:flex lg:flex-col">
 				<div
@@ -36,11 +38,12 @@ export function DashboardShell({ children, config }: Props) {
 			<div className="relative z-10 flex min-h-[100dvh] min-w-0 flex-col bg-[var(--ret-bg)]">
 				<StatusHeader machines={config.machines} />
 				<MobileDashboardNav setupComplete={setupComplete} machines={config.machines} />
-				<main className="flex-1" data-motion-route-root>
+				<main className="flex-1">
 					{children}
 				</main>
 			</div>
 		</div>
-		</DashboardReticleProvider>
+			</DashboardReticleProvider>
+		</DashboardConfigProvider>
 	);
 }

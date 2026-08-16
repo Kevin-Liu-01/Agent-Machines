@@ -3,10 +3,10 @@
  *
  * Kept dependency-light (no catalog/Supabase imports) so it is unit-testable
  * without the generated data files. Newer lines carry a nested `arm` object --
- * the routing arm snapshot embedded at dispatch (JSON-stringified + base64'd by
- * buildCronCommand, so model/router values are safely escaped). Legacy/backfill
- * lines have no `arm`, in which case the arm fields are left undefined and ingest
- * falls back to the machine's current config.
+ * the routing arm snapshot appended by HostedWorkerRuntimeDriver using a
+ * base64-encoded JSON record, so model/router values are safely escaped.
+ * Legacy/backfill lines have no `arm`, in which case the arm fields are left
+ * undefined and ingest falls back to the machine's current config.
  */
 
 export type RunLogEntry = {

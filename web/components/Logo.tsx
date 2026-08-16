@@ -1,6 +1,7 @@
 import Image from "next/image";
 
 import { VercelMark } from "@/components/VercelMark";
+import { CODEX_THEME_ASSETS } from "@/lib/brand/logo-assets";
 import { cn } from "@/lib/cn";
 
 export type Mark =
@@ -72,8 +73,8 @@ const NATIVE_SRC: Record<Mark, { light: string; dark: string }> = {
 		dark: "/brand/thesvg/claude-code-color.svg",
 	},
 	codex: {
-		light: "/brand/thesvg/codex-default.svg",
-		dark: "/brand/thesvg/codex-default.svg",
+		light: CODEX_THEME_ASSETS.light,
+		dark: CODEX_THEME_ASSETS.dark,
 	},
 	anthropic: {
 		light: "/brand/services/anthropic.svg",
@@ -129,7 +130,7 @@ const DEFAULT_TONE: Record<Mark, NonNullable<Props["tone"]>> = {
 	cursor: "auto",
 	openclaw: "currentColor",
 	claudecode: "currentColor",
-	codex: "currentColor",
+	codex: "auto",
 	anthropic: "currentColor",
 	openai: "currentColor",
 	e2b: "native",
@@ -272,7 +273,9 @@ export function Logo({ mark, size = 18, className, tone }: Props) {
 		);
 	}
 	const { light, dark } = native;
-	if (resolved === "native" || light === dark) {
+	// Codex's official native mark is monochrome, so "native" still needs the
+	// theme-specific source. Other native marks keep one fixed asset.
+	if ((resolved === "native" && mark !== "codex") || light === dark) {
 		return (
 			<span
 				role="img"

@@ -31,7 +31,7 @@ export async function POST(_req: Request, ctx: Ctx): Promise<Response> {
 		);
 	}
 
-	const result = await runCronOnMachine(config, cron, { wait: true });
+	const result = await runCronOnMachine(config, cron, { wait: true, userId });
 	const ranAt = new Date().toISOString();
 	const summary =
 		result.message ??

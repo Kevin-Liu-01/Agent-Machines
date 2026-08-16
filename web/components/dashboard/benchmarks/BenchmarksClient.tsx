@@ -34,6 +34,12 @@ type RouteRecommendation = {
 	meanSuccess?: number;
 };
 
+type RouteRecommendationResponse = {
+	recommended?: RouteRecommendation | null;
+	samples?: number;
+	meanSuccess?: number;
+};
+
 export function BenchmarksClient() {
 	const [snapshot, setSnapshot] = useState<BenchmarkSnapshot | null>(null);
 	const [view, setView] = useState<BenchmarksView | null>(null);
@@ -73,9 +79,21 @@ export function BenchmarksClient() {
 	useEffect(() => {
 		let stopped = false;
 		fetch("/api/dashboard/admin/route-recommendation", { cache: "no-store" })
-			.then((res) => (res.ok ? (res.json() as Promise<RouteRecommendation>) : null))
+			.then((res) =>
+				res.ok ? (res.json() as Promise<RouteRecommendationResponse>) : null,
+			)
 			.then((payload) => {
-				if (!stopped) setRecommendation(payload);
+				if (stopped) return;
+				const recommended = payload?.recommended;
+				setRecommendation(
+					recommended
+						? {
+							...recommended,
+							samples: payload?.samples,
+							meanSuccess: payload?.meanSuccess,
+						}
+						: null,
+				);
 			})
 			.catch(() => {
 				if (!stopped) setRecommendation(null);

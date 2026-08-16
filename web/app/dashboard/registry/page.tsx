@@ -2,12 +2,12 @@ import { PageHeader } from "@/components/dashboard/PageHeader";
 import { RegistryBrowser } from "@/components/dashboard/RegistryBrowser";
 import { defaultPoolMcpIds, defaultPoolSkillIds } from "@/lib/dashboard/defaults";
 import { slug } from "@/lib/dashboard/loadout";
-import { getUserConfig } from "@/lib/user-config/clerk";
+import { getUserConfigForRequest } from "@/lib/user-config/clerk";
 
 export const dynamic = "force-dynamic";
 
 export default async function RegistryPage() {
-	const config = await getUserConfig();
+	const config = await getUserConfigForRequest();
 	// Installed = the user's imports plus the curated default starter pool
 	// (already loaded on every machine), so defaults read as installed here.
 	const installedIds = [

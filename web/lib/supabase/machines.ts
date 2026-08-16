@@ -4,6 +4,7 @@ import type {
 	BootstrapState,
 	MigrationState,
 } from "@/lib/user-config/schema";
+import { normalizeRouterId } from "@/lib/agents/upstreams";
 
 import { supabaseAdmin } from "./client";
 
@@ -40,7 +41,7 @@ function rowToRef(row: MachineRow): MachineRef {
 		apiUrl: row.api_url,
 		apiKey: row.api_key,
 		agentProfileId: row.agent_profile_id,
-		gatewayProfileId: row.gateway_profile_id,
+		gatewayProfileId: normalizeRouterId(row.gateway_profile_id),
 		environmentProfileId: row.environment_profile_id,
 		bootstrapPresetId: row.bootstrap_preset_id,
 		bootstrapState: row.bootstrap_state,

@@ -254,7 +254,7 @@ export default function OpengraphImage() {
 						lineHeight: 1,
 					}}
 				>
-					OpenRouter for agents and containers.
+					Persistent Workers. Replaceable machinery.
 				</div>
 				<div
 					style={{
@@ -265,7 +265,7 @@ export default function OpengraphImage() {
 						marginTop: 19,
 					}}
 				>
-					Route any runtime, sandbox, and model path into one persistent worker.
+					Describe or choose the work. Keep its memory, tools, schedule, files, and proof.
 				</div>
 			</div>
 

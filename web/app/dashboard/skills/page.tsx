@@ -3,13 +3,13 @@ import { SkillsBrowser } from "@/components/dashboard/SkillsBrowser";
 import { importedSkills } from "@/lib/dashboard/pool";
 import { listSkills } from "@/lib/dashboard/skills";
 import type { SkillSummary } from "@/lib/dashboard/types";
-import { getUserConfig } from "@/lib/user-config/clerk";
+import { getUserConfigForRequest } from "@/lib/user-config/clerk";
 import type { CustomLoadoutEntry } from "@/lib/user-config/schema";
 
 export const dynamic = "force-dynamic";
 
 export default async function SkillsPage() {
-	const config = await getUserConfig();
+	const config = await getUserConfigForRequest();
 
 	// The pool: the curated default starter set + anything imported from the
 	// Registry. Split into catalog-backed skills (have detail pages) and custom

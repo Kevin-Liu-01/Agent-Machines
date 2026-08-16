@@ -14,12 +14,13 @@ describe("agentLaunchCommand", () => {
 		expect(agentLaunchCommand("claude-code")?.endsWith(" claude")).toBe(true);
 	});
 
-	it("launches the interactive chat REPL for gateway agents (venv/npm bin on PATH)", () => {
+	it("launches the interactive chat REPL for gateway agents with their owned runtime on PATH", () => {
 		const hermes = agentLaunchCommand("hermes");
 		expect(hermes).toContain("venv/bin");
 		expect(hermes?.endsWith(" hermes chat")).toBe(true);
 		const openclaw = agentLaunchCommand("openclaw");
-		expect(openclaw).toContain(".npm-global/bin");
+		expect(openclaw).toContain(".agent-machines/node/bin");
+		expect(openclaw).toContain(".agent-machines/pkgs/node_modules/.bin");
 		expect(openclaw?.endsWith(" openclaw chat")).toBe(true);
 	});
 

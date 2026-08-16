@@ -159,7 +159,7 @@ function GatewayDiagram() {
 			<div className="grid grid-cols-2 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)]">
 				<MiniCell label="Hermes" value="memory + cron + MCP" />
 				<MiniCell label="OpenClaw" value="browser + vision" />
-				<MiniCell label="Router" value="200+ models via Dedalus" />
+				<MiniCell label="Models" value="Vercel AI Gateway / OpenRouter" />
 				<MiniCell label="Tunnel" value="Cloudflare / preview URL" />
 			</div>
 			<div className="flex items-center gap-2">

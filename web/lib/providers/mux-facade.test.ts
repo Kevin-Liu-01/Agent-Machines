@@ -99,6 +99,13 @@ function fakeBinding(options: FakeOptions = {}) {
 		execBackground: vi.fn(async (command: string) => {
 			calls.push(`background:${id}:${command}`);
 		}),
+		openPty: vi.fn(async () => ({
+			output: (async function* () {})(),
+			write: vi.fn(async () => {}),
+			resize: vi.fn(async () => {}),
+			exited: Promise.resolve(null),
+			close: vi.fn(async () => {}),
+		})),
 		publicUrl: vi.fn(async (port: number) => {
 			calls.push(`publicUrl:${id}:${port}`);
 			return `https://${id}-${port}.example`;
@@ -593,6 +600,7 @@ describe("capabilities", () => {
 			}),
 		).toEqual({
 			runtime: "persistent-machine",
+			pty: "native",
 			canProvision: true,
 			canWake: true,
 			canSleep: true,

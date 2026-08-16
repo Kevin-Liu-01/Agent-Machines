@@ -19,9 +19,18 @@ import {
 } from "@/lib/dashboard/agent-launch";
 import {
 	isPrintableInput,
+	isTerminalDeviceResponse,
 	stripSuppressedEcho,
 	stripTerminalDeviceResponses,
 } from "@/lib/dashboard/terminal-input";
+import {
+	DIRECT_TERMINAL_LANE_COUNT,
+	DIRECT_TERMINAL_RETRY_MS,
+	TERMINAL_LATENCY_BUDGET_MS,
+	TERMINAL_LATENCY_WINDOW,
+	terminalLatencyP95,
+	type TerminalSocketServerMessage,
+} from "@/lib/dashboard/terminal-socket";
 
 type Status = "connecting" | "ready" | "offline" | "error";
 
@@ -36,6 +45,14 @@ type SessionPayload = {
 	error?: string;
 };
 
+type DirectSocketPayload = {
+	ok?: boolean;
+	url?: string;
+	token?: string;
+	protocol?: string;
+	ackProtocol?: string;
+};
+
 type InteractiveConsoleProps = {
 	autoLaunch?: boolean;
 	heightClassName?: string;
@@ -44,10 +61,12 @@ type InteractiveConsoleProps = {
 
 type SendInputOptions = {
 	rememberAgentKind?: string | null;
+	/** Record the browser-to-native-PTY acknowledgement for human input only. */
+	trackLatency?: boolean;
 };
 
 const RECONNECT_MS = 100;
-const INPUT_FLUSH_MS = 10;
+const INPUT_FLUSH_MS = 0;
 const INPUT_POST_TIMEOUT_MS = 5_000;
 const DEFAULT_COLS = 120;
 const DEFAULT_ROWS = 32;
@@ -78,6 +97,7 @@ export function InteractiveConsole({
 	const agentKind = machineCtx?.machine?.agentKind ?? null;
 	const searchParams = useSearchParams();
 	const autoLaunch = autoLaunchProp || searchParams.get("launch") === "1";
+	const preferDirect = searchParams.get("transport") !== "native";
 	const hostRef = useRef<HTMLDivElement>(null);
 	const [status, setStatus] = useState<Status>("connecting");
 	const [detail, setDetail] = useState<string>("");
@@ -100,7 +120,21 @@ export function InteractiveConsole({
 	const [detailCopy, setDetailCopy] = useState<"idle" | "copied" | "failed">(
 		"idle",
 	);
+	const [transport, setTransport] = useState<
+		"connecting" | "direct" | "socket" | "http"
+	>("connecting");
+	const [latency, setLatency] = useState<{
+		lastMs: number;
+		p95Ms: number;
+		count: number;
+	} | null>(null);
 	const launchedRef = useRef(false);
+	const fastSocketRef = useRef<WebSocket | null>(null);
+	const directDisplaySocketRef = useRef<WebSocket | null>(null);
+	const directSocketsRef = useRef<WebSocket[]>([]);
+	const pendingDirectInputsRef = useRef(new Set<string>());
+	const pendingAcksRef = useRef(new Map<string, number>());
+	const latencySamplesRef = useRef<number[]>([]);
 
 	useEffect(() => {
 		prefetchXterm();
@@ -126,15 +160,72 @@ export function InteractiveConsole({
 		return () => window.clearTimeout(timer);
 	}, [detailCopy]);
 
+	const recordTerminalAck = useCallback((inputId: string) => {
+		pendingDirectInputsRef.current.delete(inputId);
+		const startedAt = pendingAcksRef.current.get(inputId);
+		if (startedAt === undefined) return;
+		pendingAcksRef.current.delete(inputId);
+		const lastMs = performance.now() - startedAt;
+		const samples = [...latencySamplesRef.current, lastMs].slice(
+			-TERMINAL_LATENCY_WINDOW,
+		);
+		latencySamplesRef.current = samples;
+		const p95Ms = terminalLatencyP95(samples);
+		if (p95Ms !== null) setLatency({ lastMs, p95Ms, count: samples.length });
+	}, []);
+
+	const sendTerminalResponse = useCallback(
+		(data: string) => {
+			if (!data || !machineId) return;
+			const inputId = crypto.randomUUID().replace(/-/g, "");
+			const frame = JSON.stringify({ type: "input", inputId, data });
+			const displaySocket = directDisplaySocketRef.current;
+			if (displaySocket) {
+				// The reply belongs to the PTY that emitted the query. Never hedge it
+				// across the independent tmux clients used for accelerated input.
+				if (displaySocket.readyState === WebSocket.OPEN) {
+					try {
+						displaySocket.send(frame);
+					} catch {
+						// Reconnect will cause the terminal to negotiate again.
+					}
+				}
+				return;
+			}
+
+			const nativeSocket = fastSocketRef.current;
+			if (nativeSocket?.readyState === WebSocket.OPEN) {
+				try {
+					nativeSocket.send(frame);
+					return;
+				} catch {
+					// The provider-agnostic tmux route remains available below.
+				}
+			}
+
+			void fetch("/api/dashboard/terminal/input", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ machineId, data }),
+				keepalive: true,
+			}).catch(() => undefined);
+		},
+		[machineId],
+	);
+	const sendTerminalResponseRef = useRef(sendTerminalResponse);
+	sendTerminalResponseRef.current = sendTerminalResponse;
+
 	// Keep only one POST in flight and merge everything typed while it runs into
 	// the next batch. This preserves order without building a fetch-per-10ms
 	// backlog when the provider is briefly slow.
 	const queuedPostRef = useRef({
 		data: "",
 		rememberAgentKind: null as string | null,
+		trackLatency: false,
 	});
 	const postRunningRef = useRef(false);
 	const pendingInputRef = useRef("");
+	const pendingInputTracksLatencyRef = useRef(false);
 	const inputFlushTimerRef = useRef<number | null>(null);
 	const drainInputPosts = useCallback(async () => {
 		if (!machineId || postRunningRef.current) return;
@@ -142,7 +233,82 @@ export function InteractiveConsole({
 		try {
 			while (queuedPostRef.current.data) {
 				const batch = queuedPostRef.current;
-				queuedPostRef.current = { data: "", rememberAgentKind: null };
+				queuedPostRef.current = {
+					data: "",
+					rememberAgentKind: null,
+					trackLatency: false,
+				};
+				const directSockets = directSocketsRef.current.filter(
+					(socket) => socket.readyState === WebSocket.OPEN,
+				);
+				const nativeSocket = fastSocketRef.current;
+				if (!batch.rememberAgentKind && directSockets.length > 0) {
+					const inputId = crypto.randomUUID().replace(/-/g, "");
+					pendingDirectInputsRef.current.add(inputId);
+					if (batch.trackLatency) {
+						pendingAcksRef.current.set(inputId, performance.now());
+					}
+					const frame = JSON.stringify({
+						type: "input",
+						inputId,
+						data: batch.data,
+					});
+					let sent = false;
+					const primarySocket = directSockets[1] ?? directSockets[0];
+					if (primarySocket) {
+						try {
+							primarySocket.send(frame);
+							sent = true;
+						} catch {
+							// The failover lanes below still carry this input id.
+						}
+					}
+					if (!sent) {
+						for (const socket of directSockets) {
+							if (socket === primarySocket) continue;
+							try {
+								socket.send(frame);
+								sent = true;
+							} catch {
+								// Another failover lane may still be open.
+							}
+						}
+					}
+					if (sent) {
+						window.setTimeout(() => {
+							if (!pendingDirectInputsRef.current.has(inputId)) return;
+							for (const socket of directSocketsRef.current) {
+								if (socket === primarySocket) continue;
+								if (socket.readyState !== WebSocket.OPEN) continue;
+								try {
+									socket.send(frame);
+								} catch {
+									// The remaining lanes still carry this deduplicated retry.
+								}
+							}
+						}, DIRECT_TERMINAL_RETRY_MS);
+						continue;
+					}
+					pendingDirectInputsRef.current.delete(inputId);
+					pendingAcksRef.current.delete(inputId);
+				}
+				if (
+					nativeSocket?.readyState === WebSocket.OPEN &&
+					!batch.rememberAgentKind
+				) {
+					const inputId = crypto.randomUUID().replace(/-/g, "");
+					try {
+						if (batch.trackLatency) {
+							pendingAcksRef.current.set(inputId, performance.now());
+						}
+						nativeSocket.send(
+							JSON.stringify({ type: "input", inputId, data: batch.data }),
+						);
+						continue;
+					} catch {
+						pendingAcksRef.current.delete(inputId);
+					}
+				}
 				const controller = new AbortController();
 				const timeout = window.setTimeout(
 					() => controller.abort(),
@@ -176,6 +342,7 @@ export function InteractiveConsole({
 		(data: string, options: SendInputOptions = {}) => {
 			if (!data || !machineId) return;
 			queuedPostRef.current.data += data;
+			queuedPostRef.current.trackLatency ||= options.trackLatency === true;
 			if (options.rememberAgentKind) {
 				queuedPostRef.current.rememberAgentKind = options.rememberAgentKind;
 			}
@@ -190,12 +357,16 @@ export function InteractiveConsole({
 		}
 		const data = pendingInputRef.current;
 		pendingInputRef.current = "";
-		postInput(data, options);
+		const trackLatency =
+			pendingInputTracksLatencyRef.current || options.trackLatency === true;
+		pendingInputTracksLatencyRef.current = false;
+		postInput(data, { ...options, trackLatency });
 	}, [postInput]);
 	const sendInput = useCallback(
 		(data: string, options: SendInputOptions = {}) => {
 			if (!data || !machineId) return;
 			pendingInputRef.current += data;
+			pendingInputTracksLatencyRef.current ||= options.trackLatency === true;
 			if (data.includes("\r") || data.includes("\x03")) {
 				flushInput(options);
 				return;
@@ -215,7 +386,12 @@ export function InteractiveConsole({
 				inputFlushTimerRef.current = null;
 			}
 			pendingInputRef.current = "";
-			queuedPostRef.current = { data: "", rememberAgentKind: null };
+			pendingInputTracksLatencyRef.current = false;
+			queuedPostRef.current = {
+				data: "",
+				rememberAgentKind: null,
+				trackLatency: false,
+			};
 		};
 	}, [machineId]);
 	const sendInputRef = useRef(sendInput);
@@ -248,6 +424,10 @@ export function InteractiveConsole({
 		if (!machineId) return;
 		const scopedMachineId = machineId;
 		setStatus("connecting");
+		setTransport("connecting");
+		setLatency(null);
+		pendingAcksRef.current.clear();
+		latencySamplesRef.current = [];
 		setDetail("");
 		setFailureKind(null);
 
@@ -314,6 +494,7 @@ export function InteractiveConsole({
 		let resizeTimer: number | null = null;
 		let lastResize = { cols: 0, rows: 0 };
 		let streamAbort: AbortController | null = null;
+		let activeSocket: WebSocket | null = null;
 		const offsetRef = { current: 0 };
 		let pendingWrite = "";
 		let writeScheduled = false;
@@ -336,6 +517,12 @@ export function InteractiveConsole({
 			if (writeScheduled) return;
 			writeScheduled = true;
 			requestAnimationFrame(flushPendingWrite);
+		};
+
+		const acceptRemoteOutput = (data: string) => {
+			const stripped = stripSuppressedEcho(data, suppressedEcho);
+			suppressedEcho = stripped.pendingEcho;
+			if (stripped.data) scheduleWrite(stripped.data);
 		};
 
 		async function attachSession(cols: number, rows: number): Promise<SessionPayload | null> {
@@ -409,9 +596,7 @@ export function InteractiveConsole({
 								if (ev === "output" && o.data) {
 									offsetRef.current +=
 										o.bytes ?? new TextEncoder().encode(o.data).length;
-									const stripped = stripSuppressedEcho(o.data, suppressedEcho);
-									suppressedEcho = stripped.pendingEcho;
-									if (stripped.data) scheduleWrite(stripped.data);
+									acceptRemoteOutput(o.data);
 								}
 							} catch {
 								// skip malformed frame
@@ -425,6 +610,216 @@ export function InteractiveConsole({
 				flushPendingWrite();
 				await sleep(RECONNECT_MS);
 			}
+		}
+
+		async function requestDirectSocket(
+			cols: number,
+			rows: number,
+		): Promise<DirectSocketPayload | null> {
+			try {
+				const response = await fetch("/api/dashboard/terminal/direct", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ machineId: scopedMachineId, cols, rows }),
+				});
+				if (!response.ok) return null;
+				const payload = (await response.json()) as DirectSocketPayload;
+				if (
+					payload.ok !== true ||
+					typeof payload.url !== "string" ||
+					!payload.url.startsWith("wss://") ||
+					typeof payload.token !== "string" ||
+					!/^amt_[A-Za-z0-9_-]{32,128}$/.test(payload.token) ||
+					typeof payload.protocol !== "string" ||
+					typeof payload.ackProtocol !== "string"
+				) {
+					return null;
+				}
+				return payload;
+			} catch {
+				return null;
+			}
+		}
+
+		async function connectDirectSocketGroup(
+			direct: DirectSocketPayload,
+		): Promise<"closed" | "failed"> {
+			if (
+				!direct.url ||
+				!direct.protocol ||
+				!direct.ackProtocol ||
+				!direct.token
+			) {
+				return "failed";
+			}
+			const sockets: WebSocket[] = [];
+			let displaySocket: WebSocket | null = null;
+			try {
+				for (let lane = 0; lane < DIRECT_TERMINAL_LANE_COUNT; lane += 1) {
+					let connected: WebSocket | null = null;
+					for (let attempt = 0; alive && attempt < 20; attempt += 1) {
+						try {
+							connected = await new Promise<WebSocket>((resolve, reject) => {
+								const protocols = [direct.protocol!, direct.token!];
+								if (lane > 0) protocols.push(direct.ackProtocol!);
+								const socket = new WebSocket(direct.url!, protocols);
+								if (lane === 0) {
+									displaySocket = socket;
+									directDisplaySocketRef.current = socket;
+								}
+								let ready = false;
+								const failBeforeReady = () => {
+									if (!ready) reject(new Error("direct lane closed before ready"));
+								};
+								socket.addEventListener("message", (event) => {
+									if (typeof event.data !== "string") return;
+									try {
+										const message = JSON.parse(
+											event.data,
+										) as TerminalSocketServerMessage;
+										if (message.type === "ready") {
+											ready = true;
+											resolve(socket);
+											return;
+										}
+										if (message.type === "output" && lane === 0) {
+											acceptRemoteOutput(message.data);
+											return;
+										}
+										if (message.type === "ack") {
+											recordTerminalAck(message.inputId);
+										}
+									} catch {
+										// A malformed hedge frame cannot corrupt the terminal.
+									}
+								});
+								socket.addEventListener("error", failBeforeReady, { once: true });
+								socket.addEventListener("close", failBeforeReady, { once: true });
+							});
+							break;
+						} catch {
+							await sleep(75);
+						}
+					}
+					if (!connected) throw new Error("direct lane unavailable");
+					sockets.push(connected);
+				}
+				if (!alive || sockets.some((socket) => socket.readyState !== WebSocket.OPEN)) {
+					throw new Error("direct lane closed during setup");
+				}
+				directSocketsRef.current = sockets;
+				activeSocket = sockets[0] ?? null;
+				setTransport("direct");
+				await new Promise<void>((resolve) => {
+					for (const socket of sockets) {
+						socket.addEventListener("close", () => resolve(), { once: true });
+					}
+				});
+				return "closed";
+			} catch {
+				return "failed";
+			} finally {
+				for (const socket of sockets) {
+					if (
+						socket.readyState === WebSocket.OPEN ||
+						socket.readyState === WebSocket.CONNECTING
+					) {
+						socket.close(1000, "direct group closed");
+					}
+				}
+				directSocketsRef.current = [];
+				if (directDisplaySocketRef.current === displaySocket) {
+					directDisplaySocketRef.current = null;
+				}
+				pendingDirectInputsRef.current.clear();
+				pendingAcksRef.current.clear();
+				if (activeSocket === sockets[0]) activeSocket = null;
+			}
+		}
+
+		async function connectFastSocket(
+			cols: number,
+			rows: number,
+		): Promise<"closed" | "failed"> {
+			return new Promise((resolve) => {
+				const url = new URL(
+					"/api/dashboard/terminal/socket",
+					window.location.href,
+				);
+				url.protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+				url.searchParams.set("machineId", scopedMachineId);
+				url.searchParams.set("cols", String(cols));
+				url.searchParams.set("rows", String(rows));
+				const socket = new WebSocket(url);
+				activeSocket = socket;
+				let opened = false;
+				let settled = false;
+				const finish = (outcome: "closed" | "failed") => {
+					if (settled) return;
+					settled = true;
+					if (fastSocketRef.current === socket) fastSocketRef.current = null;
+					pendingAcksRef.current.clear();
+					if (activeSocket === socket) activeSocket = null;
+					resolve(outcome);
+				};
+
+				socket.addEventListener("open", () => {
+					if (settled || !alive) {
+						socket.close(1000, "console closed");
+						return;
+					}
+					opened = true;
+					fastSocketRef.current = socket;
+				});
+				socket.addEventListener("message", (event) => {
+					if (typeof event.data !== "string") return;
+					try {
+						const message = JSON.parse(event.data) as TerminalSocketServerMessage;
+						if (message.type === "ready") {
+							setTransport("socket");
+							return;
+						}
+						if (message.type === "output") {
+							acceptRemoteOutput(message.data);
+							return;
+						}
+						if (message.type === "ack") {
+							recordTerminalAck(message.inputId);
+						}
+					} catch {
+						// A malformed optional fast-path frame cannot corrupt the SSE fallback.
+					}
+				});
+				socket.addEventListener("error", () => {
+					if (!opened) finish("failed");
+				});
+				socket.addEventListener("close", () => finish(opened ? "closed" : "failed"));
+			});
+		}
+
+		async function transportLoop(cols: number, rows: number): Promise<void> {
+			const direct = preferDirect
+				? await requestDirectSocket(cols, rows)
+				: null;
+			if (!alive) return;
+			if (direct) {
+				await connectDirectSocketGroup(direct);
+			}
+			if (!alive) return;
+			let rapidClosures = 0;
+			while (alive) {
+				const startedAt = performance.now();
+				const outcome = await connectFastSocket(cols, rows);
+				if (!alive) return;
+				if (outcome === "failed") break;
+				rapidClosures =
+					performance.now() - startedAt < 2_000 ? rapidClosures + 1 : 0;
+				if (rapidClosures >= 3) break;
+				await sleep(RECONNECT_MS);
+			}
+			if (!alive) return;
+			setTransport("http");
+			void streamLoop();
 		}
 
 		async function boot() {
@@ -508,10 +903,17 @@ export function InteractiveConsole({
 				replaceLocalLine("");
 				historyIndex = null;
 			};
+			let nextDataIsHumanInput = false;
+			let currentDataIsHumanInput = false;
+			const sendTerminalInput = (data: string) => {
+				sendInputRef.current(data, {
+					trackLatency: currentDataIsHumanInput,
+				});
+			};
 			const sendLocalLineWithoutEnter = () => {
 				if (!localLine) return;
 				suppressedEcho += localLine;
-				sendInputRef.current(localLine);
+				sendTerminalInput(localLine);
 				localLine = "";
 				localCursor = 0;
 				historyIndex = null;
@@ -525,7 +927,7 @@ export function InteractiveConsole({
 				historyIndex = null;
 				suppressedEcho += `${submitted}\r\n`;
 				term?.write("\r\n");
-				sendInputRef.current(`${submitted}\r`);
+				sendTerminalInput(`${submitted}\r`);
 				localLine = "";
 				localCursor = 0;
 			};
@@ -547,7 +949,7 @@ export function InteractiveConsole({
 			};
 			const sendControl = (data: string) => {
 				sendLocalLineWithoutEnter();
-				sendInputRef.current(data);
+				sendTerminalInput(data);
 			};
 			const handleEscapeSequence = (data: string, index: number): number => {
 				const rest = data.slice(index);
@@ -601,9 +1003,28 @@ export function InteractiveConsole({
 				return data.length;
 			};
 
+			// onKey fires synchronously immediately before onData for real keyboard
+			// input. xterm also emits onData for automatic terminal-device replies;
+			// those must reach the PTY, but they are not human response samples.
+			term.onKey(() => {
+				nextDataIsHumanInput = true;
+			});
+			term.textarea?.addEventListener("paste", () => {
+				nextDataIsHumanInput = true;
+			});
 			term.onData((d) => {
+				currentDataIsHumanInput = nextDataIsHumanInput;
+				nextDataIsHumanInput = false;
+				if (!currentDataIsHumanInput && isTerminalDeviceResponse(d)) {
+					sendTerminalResponseRef.current(d);
+					currentDataIsHumanInput = false;
+					return;
+				}
 				const data = stripTerminalDeviceResponses(d);
-				if (!data) return;
+				if (!data) {
+					currentDataIsHumanInput = false;
+					return;
+				}
 
 				let index = 0;
 				while (index < data.length) {
@@ -622,7 +1043,7 @@ export function InteractiveConsole({
 						deleteBeforeCursor();
 					} else if (char === "\x03") {
 						clearLocalLine();
-						sendInputRef.current(char);
+						sendTerminalInput(char);
 					} else if (char === "\x01") {
 						moveLeft(localCursor);
 						localCursor = 0;
@@ -637,6 +1058,7 @@ export function InteractiveConsole({
 						sendControl(char);
 					}
 				}
+				currentDataIsHumanInput = false;
 			});
 
 			try {
@@ -679,7 +1101,7 @@ export function InteractiveConsole({
 			setStatus("ready");
 			term.focus();
 
-			void streamLoop();
+			void transportLoop(term.cols || DEFAULT_COLS, term.rows || DEFAULT_ROWS);
 
 			if (hostRef.current) {
 				resizeObs = new ResizeObserver(() => {
@@ -691,6 +1113,19 @@ export function InteractiveConsole({
 						lastResize = next;
 						if (resizeTimer) window.clearTimeout(resizeTimer);
 						resizeTimer = window.setTimeout(() => {
+							const directSockets = directSocketsRef.current.filter(
+								(socket) => socket.readyState === WebSocket.OPEN,
+							);
+							if (directSockets.length > 0) {
+								const frame = JSON.stringify({ type: "resize", ...next });
+								for (const socket of directSockets) socket.send(frame);
+								return;
+							}
+							const socket = fastSocketRef.current;
+							if (socket?.readyState === WebSocket.OPEN) {
+								socket.send(JSON.stringify({ type: "resize", ...next }));
+								return;
+							}
 							void fetch("/api/dashboard/terminal/resize", {
 								method: "POST",
 								headers: { "Content-Type": "application/json" },
@@ -709,6 +1144,17 @@ export function InteractiveConsole({
 
 		return () => {
 			alive = false;
+			const directSockets = directSocketsRef.current;
+			for (const socket of directSockets) {
+				socket.close(1000, "console closed");
+			}
+			directSocketsRef.current = [];
+			directDisplaySocketRef.current = null;
+			pendingDirectInputsRef.current.clear();
+			if (activeSocket && !directSockets.includes(activeSocket)) {
+				activeSocket?.close(1000, "console closed");
+			}
+			if (fastSocketRef.current === activeSocket) fastSocketRef.current = null;
 			streamAbort?.abort();
 			resizeObs?.disconnect();
 			if (resizeTimer) window.clearTimeout(resizeTimer);
@@ -717,7 +1163,7 @@ export function InteractiveConsole({
 		};
 		// retryNonce: bumped by the restart button; re-running this effect IS
 		// the restart (fresh session POST, fresh stream, fresh xterm).
-	}, [machineId, agentKind, retryNonce]);
+	}, [machineId, agentKind, retryNonce, recordTerminalAck, preferDirect]);
 
 	return (
 		<div className="flex flex-col gap-2">
@@ -726,8 +1172,26 @@ export function InteractiveConsole({
 					<ReticleBadge variant={status === "ready" ? "accent" : "default"}>
 						{status === "ready" ? "live PTY" : status}
 					</ReticleBadge>
+					{latency ? (
+						<ReticleBadge
+							variant={
+								latency.p95Ms < TERMINAL_LATENCY_BUDGET_MS
+									? "success"
+									: "warning"
+							}
+							className="font-mono text-[9px] uppercase tracking-[0.14em]"
+						>
+							tmux {Math.round(latency.lastMs)}ms · p95 {Math.round(latency.p95Ms)}ms · n={latency.count}
+						</ReticleBadge>
+					) : null}
 					<span className="min-w-0 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-						tmux console · send-keys / pane tail
+						{transport === "direct"
+							? "tmux console · direct websocket / worker pty"
+							: transport === "socket"
+								? "tmux console · pinned websocket / native pty"
+							: transport === "http"
+								? "tmux console · http fallback"
+								: "tmux console · negotiating fast path"}
 					</span>
 				</div>
 				<div className="flex w-full items-center gap-2 sm:w-auto">

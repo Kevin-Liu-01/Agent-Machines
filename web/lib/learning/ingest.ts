@@ -1,11 +1,11 @@
 /**
  * Loop 0 -- out-of-band trace reader.
  *
- * The scheduler tick fires crons with wait:false, so the control plane never
- * sees a cron's real exit code/timing at dispatch -- only the box's
- * ~/.agent-machines/cron/runs.jsonl has them. This reads that authoritative log
- * per cron machine (no box-side code change; the cron command already writes
- * it), normalizes completed runs into keyed traces, and emits them deduped.
+ * Scheduler dispatch returns before a cron reaches terminal state. The
+ * control-plane operation has the result later, while the box's
+ * ~/.agent-machines/cron/runs.jsonl is the durable observation stream used by
+ * learning. This reads that log per cron machine, normalizes completed runs
+ * into keyed traces, and emits them deduped.
  * Best-effort per machine; never throws into the tick.
  *
  * Each trace also carries an `extra.outcome` block (see route-outcomes.ts) that

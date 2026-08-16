@@ -9,7 +9,7 @@ import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { buildPool } from "@/lib/dashboard/pool";
 import { resolveAbilities } from "@/lib/memory/abilities";
 import { defaultMemoryBundle, resolveBundle } from "@/lib/memory/bundle";
-import { getUserConfig } from "@/lib/user-config/clerk";
+import { getUserConfigForRequest } from "@/lib/user-config/clerk";
 import { AGENT_LABEL } from "@/lib/user-config/schema";
 import { resolveMachineWorker } from "@/lib/workers/resolve";
 
@@ -21,7 +21,7 @@ export default async function MachineLoadoutPage({
 	params: Promise<{ machineId: string }>;
 }) {
 	const { machineId } = await params;
-	const config = await getUserConfig();
+	const config = await getUserConfigForRequest();
 	const machine = config.machines.find((m) => m.id === machineId);
 	if (!machine) notFound();
 

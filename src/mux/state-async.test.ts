@@ -204,6 +204,7 @@ test("the asynchronous API round-trips through whatever store is installed", asy
 // ---------------------------------------------------------------------------
 
 const CONFIG = {
+	keys: { anthropic: "test" },
 	sandboxes: {
 		primary: "e2b" as SubstrateKind,
 		backups: [] as SubstrateKind[],

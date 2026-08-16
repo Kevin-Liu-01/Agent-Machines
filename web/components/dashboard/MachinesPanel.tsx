@@ -16,6 +16,7 @@ import { fetchLogTail, headlineFromLogs, isFleetLogsLoaded, shouldFetchFleetLogs
 import { useFleetLoadout } from "@/lib/fleet/use-fleet-loadout";
 import { toFleetStreamCard } from "@/lib/fleet/view-model";
 import { cn } from "@/lib/cn";
+import { waitForControlPlaneOperation } from "@/lib/control-plane/client";
 import type { ProviderCapabilities } from "@/lib/providers";
 import {
 	AGENT_LABEL,
@@ -146,6 +147,12 @@ export function MachinesPanel() {
 	const visible = machines.filter((m) => !m.archived);
 	const archived = machines.filter((m) => m.archived);
 	const activeMachineId = data?.activeMachineId ?? null;
+	const readyCount = visible.filter((machine) => machine.live.ok && machine.live.state === "ready").length;
+	const attentionCount = visible.filter(
+		(machine) => !machine.live.ok || (machine.live.state !== "ready" && machine.live.state !== "sleeping"),
+	).length;
+	const providerCount = new Set(visible.map((machine) => machine.providerKind)).size;
+	const activeName = visible.find((machine) => machine.id === activeMachineId)?.name ?? "none";
 	const focusMachine = focusId
 		? machines.find((m) => m.id === focusId && !m.archived) ?? null
 		: null;
@@ -197,6 +204,16 @@ export function MachinesPanel() {
 						</ReticleFrame>
 					))}
 				</section>
+			) : null}
+
+			{!loading && machines.length > 0 ? (
+				<FleetSummary
+					total={visible.length}
+					ready={readyCount}
+					attention={attentionCount}
+					providers={providerCount}
+					activeName={activeName}
+				/>
 			) : null}
 
 			{/* Quick provision controls */}
@@ -340,6 +357,38 @@ export function MachinesPanel() {
 				</section>
 			) : null}
 		</DashboardPageBody>
+	);
+}
+
+function FleetSummary({
+	total,
+	ready,
+	attention,
+	providers,
+	activeName,
+}: {
+	total: number;
+	ready: number;
+	attention: number;
+	providers: number;
+	activeName: string;
+}) {
+	const cells = [
+		{ label: "machines", value: String(total), tone: "text-[var(--ret-text)]" },
+		{ label: "ready", value: String(ready), tone: "text-[var(--ret-green)]" },
+		{ label: "attention", value: String(attention), tone: attention > 0 ? "text-[var(--ret-amber)]" : "text-[var(--ret-text-muted)]" },
+		{ label: "providers", value: String(providers), tone: "text-[var(--ret-purple)]" },
+		{ label: "active", value: activeName, tone: "text-[var(--ret-text)]" },
+	];
+	return (
+		<ReticleFrame corners={false} className="grid overflow-hidden sm:grid-cols-2 lg:grid-cols-[0.7fr_0.7fr_0.8fr_0.8fr_2fr]">
+			{cells.map((cell) => (
+				<div key={cell.label} className="min-w-0 border-b border-[var(--ret-border)] px-3 py-2.5 last:border-b-0 sm:border-r lg:border-b-0">
+					<p className="font-mono text-[8px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">{cell.label}</p>
+					<p className={cn("mt-1 truncate font-mono text-[13px]", cell.tone)} title={cell.value}>{cell.value}</p>
+				</div>
+			))}
+		</ReticleFrame>
 	);
 }
 
@@ -623,27 +672,15 @@ function QuickProvisionForm({
 			if (!response.ok) {
 				throw new Error((data.message as string) ?? (data.error as string) ?? `HTTP ${response.status}`);
 			}
-			const machineId = data.machineId as string;
+			const operationId = (data.operation as { id?: string } | undefined)?.id;
+			if (!operationId) throw new Error("provision response did not include an operation");
+			setResult("Intent accepted -- provisioning and bootstrapping...");
+			const completed = await waitForControlPlaneOperation(operationId);
+			const machineId = completed.machineId;
+			if (!machineId) throw new Error("provision completed without a machine id");
 			const displayId = machineId;
-			setResult(`Provisioned: ${displayId} -- bootstrapping...`);
-			void onRefresh();
-
-			// Trigger bootstrap automatically after provision
-			try {
-				const bootResp = await fetch("/api/dashboard/admin/bootstrap", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ machineId }),
-				});
-				if (bootResp.ok) {
-					setResult(`Provisioned + bootstrapped: ${displayId}`);
-				} else {
-					const bootData = (await bootResp.json().catch(() => ({}))) as { message?: string };
-					setResult(`Provisioned: ${displayId} (bootstrap: ${bootData.message ?? `HTTP ${bootResp.status}`})`);
-				}
-			} catch {
-				setResult(`Provisioned: ${displayId} (bootstrap pending)`);
-			}
+			setResult(`Ready: ${displayId}`);
+			await onRefresh();
 
 			window.setTimeout(onDone, 1500);
 		} catch (e) {

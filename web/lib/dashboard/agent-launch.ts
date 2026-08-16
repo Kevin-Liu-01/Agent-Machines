@@ -6,7 +6,7 @@
  * All four agents expose an interactive terminal you can "talk to":
  *  - codex / claude-code: the coding-agent CLI (creds in .agent-env).
  *  - hermes:   `hermes chat`   — interactive chat with the agent (venv bin).
- *  - openclaw: `openclaw chat` — local terminal UI (npm-global bin).
+ *  - openclaw: `openclaw chat` — local terminal UI (worker-owned Node tree).
  * hermes/openclaw also run as HTTP gateways when deployed; `chat` is the
  * standalone REPL that talks to the configured model directly.
  */
@@ -25,7 +25,7 @@ export function agentLaunchCommand(
 		case "hermes":
 			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null; export HERMES_HOME="$HOME/.agent-machines"; export PATH="$HOME/.agent-machines/venv/bin:$PATH"; hermes chat`;
 		case "openclaw":
-			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null; export PATH="$HOME/.npm-global/bin:$PATH"; export OPENCLAW_STATE_DIR="$HOME/.openclaw"; export OPENCLAW_NO_RESPAWN=1; openclaw chat`;
+			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null; export PATH="$HOME/.agent-machines/node/bin:$HOME/.agent-machines/pkgs/node_modules/.bin:$HOME/.npm-global/bin:$PATH"; export OPENCLAW_STATE_DIR="$HOME/.openclaw"; export OPENCLAW_NO_RESPAWN=1; openclaw chat`;
 		default:
 			return null;
 	}
@@ -89,7 +89,7 @@ export function agentOneShotInvocation(
 		case "hermes":
 			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null; export HERMES_HOME="$HOME/.agent-machines"; export PATH="$HOME/.agent-machines/venv/bin:$PATH"; hermes chat --query "$AM_CRON_PROMPT" --quiet`;
 		case "openclaw":
-			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null; export PATH="$HOME/.npm-global/bin:$PATH"; export OPENCLAW_STATE_DIR="$HOME/.openclaw"; export OPENCLAW_NO_RESPAWN=1; openclaw infer model run --prompt "$AM_CRON_PROMPT" --json`;
+			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null; export PATH="$HOME/.agent-machines/node/bin:$HOME/.agent-machines/pkgs/node_modules/.bin:$HOME/.npm-global/bin:$PATH"; export OPENCLAW_STATE_DIR="$HOME/.openclaw"; export OPENCLAW_NO_RESPAWN=1; openclaw infer model run --prompt "$AM_CRON_PROMPT" --json`;
 		default:
 			return null;
 	}

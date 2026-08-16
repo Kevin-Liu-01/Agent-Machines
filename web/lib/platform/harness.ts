@@ -1,8 +1,9 @@
 /**
  * Agent Machines harness — registry-derived stats and product framing.
  *
- * OpenRouter for agents and containers: choose runtime + substrate, deploy a
- * persistent agent worker (skills, MCP, cron, observation, fleet management).
+ * Durable Workers with replaceable machinery: describe or choose a specialist,
+ * then route its runtime, model, substrate, and abilities without losing the
+ * Worker's identity, responsibility, state, or evidence.
  *
  * Counts come from live registries (loadout, MCP catalog, skills manifest).
  */
@@ -25,32 +26,34 @@ import type { AgentKind } from "@/lib/types";
 
 export const PRODUCT = {
 	name: "Agent Machines",
-	/** Site title suffix, OG, GitHub — lead with the switchboard analogy. */
-	tagline: "Switchboard for agents and machines.",
+	/** Site title suffix, OG, GitHub — lead with the durable-Worker invariant. */
+	tagline: "Persistent Workers. Replaceable machinery.",
 	oneLiner:
-		"Pick agent runtimes, model paths, and machine providers in one account, then deploy persistent workers with skills, MCP, cron, logs, usage, and fleet controls already wired.",
+		"Describe the work you need or choose a trusted specialist, then keep its memory, files, schedules, abilities, and evidence while runtimes, models, and sandboxes change underneath it.",
 	summary:
-		"Agent Machines is the product layer above sandboxes: a control plane that provisions a persistent agent worker as one unit — runtime, model path, skills, MCP, integrations, cron, observation, and fleet management — on the machine provider you choose.",
+		"Agent Machines is the Worker system for persistent digital labor: create a long-running specialist from intent or a template, supervise its work, and preserve its identity, responsibility, memory, files, schedules, permissions, and evidence across replaceable runtimes, models, tools, and sandbox providers.",
 	analogies: {
-		primary: "A switchboard for agents and containers",
+		primary:
+			"OpenRouter for routing the machinery, Lovable/Bolt/v0 for composing a Worker, and ChatGPT-simple access to the first useful result",
 		substrate:
 			"Vercel on AWS — Agent Machines is the product layer; E2B, Sprites.dev, Dedalus Machines, and Vercel Sandbox are interchangeable infrastructure underneath",
 	},
 	audiences: {
 		humans:
-			"Pick runtime + substrate in clicks. Provision specialist agents from presets (design, news, code, ops). Supervise the fleet from one dashboard.",
+			"Describe a responsibility or choose a specialist, connect the services it may use, then watch, approve, inspect, and move the Worker from one dashboard.",
 		agents:
 			"MCP + CLI surface so a head agent can launch, switch, observe, and tear down worker machines (the endgame).",
 	},
 	fleet:
-		"Provision specialist workers from opinionated presets (Hermes, OpenClaw, Claude Code, Codex). Each preset is runtime + model path + memory bundle + loadout, visible from one fleet dashboard.",
+		"Provision specialist Workers from opinionated templates or modular primitives. Each Worker keeps its identity, responsibility, memory bundle, schedules, files, loadout, history, and evidence while the implementation beneath it changes.",
 	substrateNote:
-		"Dedalus Machines is one of four live providers (with E2B, Sprites.dev, and Vercel Sandbox) and currently benchmarks best on boot latency and sleep/wake — a strong default, not the product. Sandboxed environments are hard; we pick lanes rather than rebuild every host.",
+		"E2B, Sprites.dev, Dedalus Machines, and Vercel Sandbox implement the substrate contract, but each lane exposes only the capabilities it can honestly provide. The provider is replaceable machinery, never the Worker itself.",
 	moat: [
-		"SKILL.md protocol — versioned agent procedures that compound every session",
-		"Combined harness — runtime + skills + services + CLIs + observation in one deploy",
-		"Dual switchboard — agent runtime and container substrate, OpenRouter-style",
-		"Programmatic control plane — dashboard for humans, MCP/CLI for agent-to-agent orchestration",
+		"Durable Worker identity — responsibility, memory, files, schedules, permissions, history, and evidence survive implementation changes",
+		"Worker composer — useful off-the-shelf specialists today, intent-to-Worker assembly as the creation layer",
+		"Outcome router — runtime, model, substrate, abilities, cost, constraints, and health become one evaluated lane",
+		"Owned harness — SKILL.md procedures, MCPs, CLIs, tools, and service routes compound outside a closed chat",
+		"Programmatic control plane — dashboard for humans, MCP/CLI for Worker-to-Worker orchestration",
 	],
 } as const;
 

@@ -22,7 +22,9 @@
  */
 
 import { clerkClient } from "@clerk/nextjs/server";
+import { cache } from "react";
 
+import { isRemovedDedalusRouter, normalizeRouterId } from "@/lib/agents/upstreams";
 import { listMachines, seedMachinesFromClerk, upsertMachine, patchMachine as sbPatchMachine, archiveMachine as sbArchiveMachine, deleteMachine as sbDeleteMachine } from "@/lib/supabase/machines";
 import { ensureUser, getUserConfig as sbGetUserConfig, updateUserConfigColumns, type UserRow } from "@/lib/supabase/users";
 
@@ -38,6 +40,7 @@ import {
 	OPENROUTER_GATEWAY_PROFILE,
 	activeMachine,
 	AGENT_KINDS,
+	PROVIDER_KINDS,
 	VERCEL_AI_GATEWAY_PROFILE,
 	type AgentKind,
 	type BootstrapPreset,
@@ -233,7 +236,7 @@ function asMachineRefShallow(value: unknown): Omit<MachineRef, "apiKey"> | null 
 		spec: asSpec(v.spec),
 		model: asString(v.model) ?? DEFAULT_MODEL,
 		agentProfileId: asString(v.agentProfileId) ?? null,
-		gatewayProfileId: asString(v.gatewayProfileId) ?? null,
+		gatewayProfileId: normalizeRouterId(asString(v.gatewayProfileId)),
 		environmentProfileId: asString(v.environmentProfileId) ?? null,
 		bootstrapPresetId: asString(v.bootstrapPresetId) ?? null,
 		createdAt: asString(v.createdAt) ?? new Date().toISOString(),
@@ -257,6 +260,14 @@ function readEnvProviderCreds(): ProviderCredentials {
 			baseUrl: dedalusBaseUrl,
 		};
 	}
+	const e2bKey = process.env.E2B_API_KEY?.trim();
+	if (e2bKey) out.e2b = { apiKey: e2bKey };
+	const spritesKey = (
+		process.env.SPRITES_TOKEN ??
+		process.env.SPRITES_API_KEY ??
+		process.env.SPRITE_TOKEN
+	)?.trim();
+	if (spritesKey) out.sprites = { apiKey: spritesKey };
 	const vercelToken = process.env.VERCEL_TOKEN?.trim();
 	const vercelTeamId = process.env.VERCEL_TEAM_ID?.trim();
 	const vercelProjectId = process.env.VERCEL_PROJECT_ID?.trim();
@@ -268,6 +279,21 @@ function readEnvProviderCreds(): ProviderCredentials {
 		};
 	}
 	return out;
+}
+
+function readEnvAiProviderKeys(): AiProviderKeys {
+	const anthropic = process.env.ANTHROPIC_API_KEY?.trim();
+	const openai = process.env.OPENAI_API_KEY?.trim();
+	const openrouter = process.env.OPENROUTER_API_KEY?.trim();
+	const vercelAiGateway = (
+		process.env.AI_GATEWAY_API_KEY ?? process.env.AI_GATEWAY_KEY
+	)?.trim();
+	return {
+		...(anthropic ? { anthropic } : {}),
+		...(openai ? { openai } : {}),
+		...(openrouter ? { openrouter } : {}),
+		...(vercelAiGateway ? { vercelAiGateway } : {}),
+	};
 }
 
 function envFallbackMachine(): MachineRef | null {
@@ -453,7 +479,8 @@ function asWorker(value: unknown): Worker | null {
 		source: asString(v.source) === "default" ? "default" : "custom",
 		agentKind: asAgent(v.agentKind),
 		model: asString(v.model) ?? DEFAULT_MODEL,
-		gatewayProfileId: asString(v.gatewayProfileId) ?? VERCEL_AI_GATEWAY_PROFILE.id,
+		gatewayProfileId:
+			normalizeRouterId(asString(v.gatewayProfileId)) ?? VERCEL_AI_GATEWAY_PROFILE.id,
 		memoryBundleId,
 		rolePrompt: asString(v.rolePrompt) ?? null,
 		lastMachineId: asString(v.lastMachineId) ?? null,
@@ -498,11 +525,10 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
 	}
 	// Owner env fallback (project owner who hasn't typed in the wizard).
 	const envCreds = readEnvProviderCreds();
-	if (!providers.dedalus && envCreds.dedalus) {
-		providers.dedalus = envCreds.dedalus;
-	}
-	if (!providers.vercel && envCreds.vercel) {
-		providers.vercel = envCreds.vercel;
+	for (const kind of PROVIDER_KINDS) {
+		if (!providers[kind] && envCreds[kind]) {
+			providers[kind] = envCreds[kind] as never;
+		}
 	}
 	const oidcToken = process.env.VERCEL_OIDC_TOKEN?.trim();
 	if (!providers.vercel && oidcToken) {
@@ -616,7 +642,10 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
 		process.env.CURSOR_API_KEY?.trim() ??
 		null;
 
-	const aiProviderKeys: AiProviderKeys = (privateMeta.aiProviderKeys as AiProviderKeys) ?? {};
+	const aiProviderKeys: AiProviderKeys = {
+		...readEnvAiProviderKeys(),
+		...((privateMeta.aiProviderKeys as AiProviderKeys) ?? {}),
+	};
 
 	const cloudflareTunnelToken =
 		asString(privateMeta.cloudflareTunnelToken) ??
@@ -659,6 +688,7 @@ export function getOwnerDefaults(): UserConfig {
 	return {
 		...DEFAULT_USER_CONFIG,
 		providers: readEnvProviderCreds(),
+		aiProviderKeys: readEnvAiProviderKeys(),
 		machines: (() => {
 			const env = envFallbackMachine();
 			return env ? [env] : [];
@@ -674,6 +704,9 @@ export async function getUserConfig(): Promise<UserConfig> {
 	return getUserConfigById(userId);
 }
 
+/** Deduplicate layout + page config reads within one React server request. */
+export const getUserConfigForRequest = cache(getUserConfig);
+
 /**
  * Build a UserConfig by merging Supabase config columns with Clerk secrets.
  * If the Supabase row has non-empty config arrays we use those; otherwise
@@ -685,6 +718,8 @@ function buildConfigFromSupabase(
 	publicMeta: RawPublic,
 ): UserConfig {
 	const base = buildConfig(publicMeta, privateMeta);
+	const activeMachineId = asString(sbRow.active_machine_id);
+	if (activeMachineId) base.activeMachineId = activeMachineId;
 
 	const gatewayApiKeys =
 		(privateMeta.gatewayApiKeys as Record<string, string> | undefined) ?? {};
@@ -797,7 +832,7 @@ export async function getUserConfigById(userId: string): Promise<UserConfig> {
 /* Mutators                                                           */
 /* ------------------------------------------------------------------ */
 
-type ConfigPatch = {
+export type ConfigPatch = {
 	providers?: ProviderCredentials;
 	aiProviderKeys?: AiProviderKeys;
 	crons?: CronEntry[];
@@ -823,6 +858,17 @@ type ConfigPatch = {
 	unarchiveMachine?: string;
 };
 
+export type OperationalConfigPatch = Pick<
+	ConfigPatch,
+	| "workers"
+	| "activeMachineId"
+	| "upsertMachine"
+	| "patchMachine"
+	| "removeMachine"
+	| "archiveMachine"
+	| "unarchiveMachine"
+>;
+
 function asGatewayProfile(
 	value: unknown,
 	apiKeys: Record<string, string>,
@@ -831,8 +877,7 @@ function asGatewayProfile(
 	const v = value as Record<string, unknown>;
 	const id = asString(v.id);
 	if (!id) return null;
-	if (asString(v.kind) === "dedalus") return null;
-	if (asString(v.baseUrl)?.toLowerCase().includes("dedalus")) return null;
+	if (isRemovedDedalusRouter(v)) return null;
 	const now = new Date().toISOString();
 	return {
 		id,
@@ -1045,6 +1090,10 @@ export async function setUserConfigById(
 			m.id === id ? { ...m, archived: false } : m,
 		);
 	}
+	nextMachines = nextMachines.map((machine) => ({
+		...machine,
+		gatewayProfileId: normalizeRouterId(machine.gatewayProfileId),
+	}));
 
 	let nextActive = current.activeMachineId;
 	if (patch.activeMachineId !== undefined) {
@@ -1062,13 +1111,19 @@ export async function setUserConfigById(
 
 	const nextCrons = patch.crons ?? current.crons ?? [];
 	const nextMemoryBundles = patch.memoryBundles ?? current.memoryBundles ?? [];
-	const nextWorkers = patch.workers ?? current.workers ?? [];
+	const nextWorkers = (patch.workers ?? current.workers ?? []).map((worker) => ({
+		...worker,
+		gatewayProfileId:
+			normalizeRouterId(worker.gatewayProfileId) ?? VERCEL_AI_GATEWAY_PROFILE.id,
+	}));
 
 	const nextCursor =
 		patch.cursorApiKey !== undefined ? patch.cursorApiKey : current.cursorApiKey;
 	const nextTunnelToken =
 		patch.cloudflareTunnelToken !== undefined ? patch.cloudflareTunnelToken : (current.cloudflareTunnelToken ?? null);
-	const nextGatewayProfiles = patch.gatewayProfiles ?? current.gatewayProfiles;
+	const nextGatewayProfiles = (patch.gatewayProfiles ?? current.gatewayProfiles).filter(
+		(profile) => !isRemovedDedalusRouter(profile),
+	);
 	const nextEnvironmentProfiles =
 		patch.environmentProfiles ?? current.environmentProfiles;
 	const nextBootstrapPresets =
@@ -1132,7 +1187,7 @@ export async function setUserConfigById(
 				bootstrap_presets: nextBootstrapPresets as unknown[],
 				custom_loadout: nextCustomLoadout as unknown[],
 				loadout_sources: nextLoadoutSources as unknown[],
-				active_machine_id: nextActive ?? undefined,
+				active_machine_id: nextActive,
 				setup_step: nextStep,
 				draft_agent_kind: nextDraftAgent,
 				draft_provider_kind: nextDraftProvider,
@@ -1153,10 +1208,22 @@ export async function setUserConfigById(
 			}
 
 			if (patch.upsertMachine) {
-				await upsertMachine(userId, patch.upsertMachine);
+				const normalized = nextMachines.find(
+					(machine) => machine.id === patch.upsertMachine?.id,
+				);
+				if (normalized) await upsertMachine(userId, normalized);
 			}
 			if (patch.patchMachine) {
-				await sbPatchMachine(userId, patch.patchMachine.id, patch.patchMachine.patch);
+				await sbPatchMachine(userId, patch.patchMachine.id, {
+					...patch.patchMachine.patch,
+					...(patch.patchMachine.patch.gatewayProfileId !== undefined
+						? {
+								gatewayProfileId: normalizeRouterId(
+									patch.patchMachine.patch.gatewayProfileId,
+								),
+							}
+						: {}),
+				});
 			}
 			if (patch.archiveMachine) {
 				await sbArchiveMachine(userId, patch.archiveMachine);
@@ -1185,6 +1252,124 @@ export async function setUserConfigById(
 		workers: nextWorkers,
 	};
 	return buildConfig(finalPublic, nextPrivate);
+}
+
+/**
+ * Persist control-plane lifecycle state without round-tripping through Clerk.
+ *
+ * Provider/model credentials remain Clerk-owned and arrive in `current` from
+ * the driver's single authenticated read. Workers and machines already have
+ * tenant-scoped Supabase storage, so writing every bootstrap phase back through
+ * Clerk only added a remote read + metadata write per phase and quickly hit its
+ * rate limit. This path is the serverless operational store: one bounded
+ * Supabase mutation per lifecycle transition, with an updated in-memory view
+ * returned to the active reconciler.
+ */
+export async function setOperationalUserConfigById(
+	userId: string,
+	current: UserConfig,
+	patch: OperationalConfigPatch,
+): Promise<UserConfig> {
+	if (isDevUserId(userId)) return setDevUserConfig(patch);
+	if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+		return setUserConfigById(userId, patch);
+	}
+
+	let machines = [...current.machines];
+	if (patch.upsertMachine) {
+		const index = machines.findIndex((machine) => machine.id === patch.upsertMachine?.id);
+		if (index >= 0) machines[index] = patch.upsertMachine;
+		else machines = [patch.upsertMachine, ...machines];
+	}
+	if (patch.patchMachine) {
+		const { id, patch: machinePatch } = patch.patchMachine;
+		machines = machines.map((machine) =>
+			machine.id === id ? { ...machine, ...machinePatch } : machine,
+		);
+	}
+	if (patch.archiveMachine) {
+		machines = machines.map((machine) =>
+			machine.id === patch.archiveMachine ? { ...machine, archived: true } : machine,
+		);
+	}
+	if (patch.unarchiveMachine) {
+		machines = machines.map((machine) =>
+			machine.id === patch.unarchiveMachine ? { ...machine, archived: false } : machine,
+		);
+	}
+	if (patch.removeMachine) {
+		machines = machines.filter((machine) => machine.id !== patch.removeMachine);
+	}
+	machines = machines.map((machine) => ({
+		...machine,
+		gatewayProfileId: normalizeRouterId(machine.gatewayProfileId),
+	}));
+
+	let activeMachineId =
+		patch.activeMachineId !== undefined
+			? patch.activeMachineId
+			: current.activeMachineId;
+	if (
+		activeMachineId &&
+		!machines.some((machine) => machine.id === activeMachineId && !machine.archived)
+	) {
+		activeMachineId = machines.find((machine) => !machine.archived)?.id ?? null;
+	}
+	if (!activeMachineId) {
+		activeMachineId = machines.find((machine) => !machine.archived)?.id ?? null;
+	}
+	const workers = (patch.workers ?? current.workers).map((worker) => ({
+		...worker,
+		gatewayProfileId:
+			normalizeRouterId(worker.gatewayProfileId) ?? VERCEL_AI_GATEWAY_PROFILE.id,
+	}));
+
+	const machineSetChanged =
+		patch.upsertMachine !== undefined ||
+		patch.removeMachine !== undefined ||
+		patch.archiveMachine !== undefined ||
+		patch.unarchiveMachine !== undefined;
+	if (
+		patch.workers !== undefined ||
+		patch.activeMachineId !== undefined ||
+		machineSetChanged
+	) {
+		await updateUserConfigColumns(userId, {
+			...(patch.workers !== undefined ? { workers: workers as unknown[] } : {}),
+			...(patch.activeMachineId !== undefined || machineSetChanged
+				? { active_machine_id: activeMachineId }
+				: {}),
+		});
+	}
+	if (patch.upsertMachine) {
+		const normalized = machines.find((machine) => machine.id === patch.upsertMachine?.id);
+		if (normalized) await upsertMachine(userId, normalized);
+	}
+	if (patch.patchMachine) {
+		await sbPatchMachine(userId, patch.patchMachine.id, {
+			...patch.patchMachine.patch,
+			...(patch.patchMachine.patch.gatewayProfileId !== undefined
+				? {
+						gatewayProfileId: normalizeRouterId(
+							patch.patchMachine.patch.gatewayProfileId,
+						),
+					}
+				: {}),
+		});
+	}
+	if (patch.archiveMachine) await sbArchiveMachine(userId, patch.archiveMachine);
+	if (patch.unarchiveMachine) {
+		await sbPatchMachine(userId, patch.unarchiveMachine, { archived: false });
+	}
+	if (patch.removeMachine) await sbDeleteMachine(userId, patch.removeMachine);
+
+	return {
+		...current,
+		machines,
+		workers,
+		activeMachineId,
+		metricsEnabled: true,
+	};
 }
 
 /* ------------------------------------------------------------------ */

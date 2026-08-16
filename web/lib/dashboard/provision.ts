@@ -39,9 +39,14 @@ export type CreateMachineOpts = {
 
 export type CreatedMachine = { machineId: string; phase: string; state: string };
 
+export type PersistUserConfig = (
+	patch: Parameters<typeof setUserConfig>[0],
+) => Promise<UserConfig>;
+
 export async function createMachineForConfig(
 	config: UserConfig,
 	opts: CreateMachineOpts,
+	persist: PersistUserConfig = setUserConfig,
 ): Promise<CreatedMachine> {
 	const provider = getProvider(opts.providerKind, config.providers);
 	const environmentProfileId =
@@ -89,7 +94,7 @@ export async function createMachineForConfig(
 		apiKey: null,
 		bootstrapState: { ...INITIAL_BOOTSTRAP_STATE },
 	};
-	await setUserConfig({
+	await persist({
 		upsertMachine: ref,
 		...(opts.activate === false
 			? {}

@@ -218,10 +218,10 @@ const RAIL_AGENTS: ReadonlyArray<{
 	id: HeroAgent | null;
 	word: string;
 }> = [
-	{ mark: "nous", label: "Hermes", id: "hermes", word: "Provision" },
-	{ mark: "openclaw", label: "OpenClaw", id: "openclaw", word: "Orchestrate" },
+	{ mark: "nous", label: "Hermes", id: "hermes", word: "Create" },
+	{ mark: "openclaw", label: "OpenClaw", id: "openclaw", word: "Operate" },
 	{ mark: "claudecode", label: "Claude", id: "claude-code", word: "Supervise" },
-	{ mark: "codex", label: "Codex", id: "codex", word: "Persistent" },
+	{ mark: "codex", label: "Codex", id: "codex", word: "Move" },
 	{ mark: "cursor", label: "Cursor", id: null, word: "Automate" },
 ];
 
@@ -273,7 +273,7 @@ type ToolGroup = {
 
 const REGISTRY_GROUPS: ToolGroup[] = [
 	// Model paths — one key, any upstream.
-	{ id: "route", label: "Switch", hue: "#a78bfa", items: [svc("openrouter"), svc("vercel"), dedalus, svc("openai"), svc("anthropic")] },
+	{ id: "route", label: "Switch", hue: "#a78bfa", items: [svc("openrouter"), svc("vercel"), svc("openai"), svc("anthropic")] },
 	{ id: "automate", label: "Automate", hue: "#60a5fa", items: [svc("github"), svc("slack"), svc("linear"), svc("cloudflare")] },
 	{ id: "code", label: "Code", hue: "#22d3ee", items: [svc("typescript"), svc("nextdotjs"), svc("react"), svc("tailwindcss")] },
 	{ id: "data", label: "Data", hue: "#34d399", items: [svc("supabase"), svc("neon"), svc("upstash"), svc("turso"), svc("firebase"), svc("clickhouse")] },
@@ -294,7 +294,7 @@ type Feat = {
 
 const AGENT_FEATURES: Feat[] = [
 	{ Icon: Network, label: "Model paths", value: "BYOK upstreams", logos: ["openrouter", "anthropic", "openai"] },
-	{ Icon: Boxes, label: "Install catalog", value: "1,400+ entries", logos: ["figma", "slack", "react"] },
+	{ Icon: Boxes, label: "Install catalog", value: "2,595 audited", logos: ["figma", "slack", "react"] },
 	{ Icon: Terminal, label: "Browser terminal", value: "live PTY", logos: ["googlechrome", "playwright", "brave"] },
 	{ Icon: Plug, label: "Tools & MCPs", value: "auto-wired", logos: ["linear", "slack", "github"] },
 	{ Icon: Clock, label: "Crons", value: "scheduled", logos: ["cloudflare", "upstash", "datadog"] },
@@ -360,7 +360,7 @@ function FeatureLogoStack({ slugs }: { slugs: ServiceSlug[] }) {
 	return (
 		<div
 			aria-hidden="true"
-			className="pointer-events-none absolute inset-y-0 right-0 flex items-center overflow-hidden pr-2.5"
+			className="pointer-events-none absolute inset-y-0 right-0 hidden items-center overflow-hidden pr-2.5 sm:flex"
 		>
 			<span className="absolute inset-y-0 right-0 w-36 bg-[linear-gradient(to_left,var(--ret-surface),transparent)] opacity-70" />
 			<div className="relative flex items-center -space-x-2.5 opacity-80 transition-opacity duration-[var(--ret-duration-hover)] [mask-image:linear-gradient(to_right,transparent,#000_32%)] [transition-timing-function:var(--ret-ease-out)] group-hover/feat:opacity-100">
@@ -392,7 +392,7 @@ function FeatureCell({ Icon, label, value, logos }: Feat) {
 				<div className="truncate font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--ret-text)]">
 					{label}
 				</div>
-				<div className="truncate text-[11px] text-[var(--ret-text-muted)]">{value}</div>
+				<div className="truncate text-[11px] text-[var(--ret-text-dim)]">{value}</div>
 			</div>
 			<FeatureLogoStack slugs={logos} />
 		</div>
@@ -487,7 +487,7 @@ function Cell({
 const HERO_LINKS: ReadonlyArray<{ href: string; slug: string; label: string }> = [
 	{ href: "/registry", slug: "registry", label: "Registry" },
 	{ href: "/#workflow", slug: "overview", label: "Workflow" },
-	{ href: "/#loadout", slug: "loadout", label: "Loadout" },
+	{ href: "/#capabilities", slug: "loadout", label: "Capabilities" },
 	{ href: "https://github.com/Kevin-Liu-01/agent-machines", slug: "console", label: "Source" },
 ];
 
@@ -679,37 +679,36 @@ export function HeroBlock() {
 							<span className="-mx-6 flex items-center whitespace-nowrap md:-mx-9">
 								<span className="mr-3 h-px w-3 shrink-0 border-t border-dashed border-[var(--ret-border)] md:mr-2 md:w-7" />
 								<span>
-									<AnimatedWord word={activeWord} hue={hue} /> Agents
+									<AnimatedWord word={activeWord} hue={hue} /> Workers
 								</span>
 								<span className="ml-3 h-px flex-1 border-t border-dashed border-[var(--ret-border)] md:ml-4" />
 							</span>
 							<span className="-mx-6 flex items-center whitespace-nowrap md:-mx-9">
 								<span className="mr-3 h-px w-3 shrink-0 border-t border-dashed border-[var(--ret-border)] md:mr-2 md:w-7" />
-								<span className="text-[var(--ret-text-muted)]">on any Substrate.</span>
+								<span className="text-[var(--ret-text-dim)]">that keep their world.</span>
 								<span className="ml-3 h-px flex-1 border-t border-dashed border-[var(--ret-border)] md:ml-4" />
 							</span>
 						</h1>
 						<p className="max-w-[76ch] text-[15px] leading-snug text-[var(--ret-text-dim)]">
-							Pick runtime, provider, and model from one account.{" "}
+							Describe a responsibility or start from a proven specialist.{" "}
 							<strong className="font-medium text-[var(--ret-text)]">
-								Provision persistent workers with loadout, state, console, logs,
-								usage, cron, and artifacts.
+								Agent Machines gives the Worker memory, tools, permissions, files,
+								schedules, and a cloud home. The Worker stays portable as the machinery changes.
 							</strong>
 						</p>
 						<div className="flex flex-wrap items-center gap-2.5">
-							<ReticleButton as="a" href="/sign-in" variant="primary" size="md">
+							<ReticleButton as="a" href="/agents" variant="primary" size="md">
 								<ArrowRight className="h-3.5 w-3.5" strokeWidth={1.75} />
-								Get started
+								Choose a Worker
 							</ReticleButton>
 							<ReticleButton
 								as="a"
-								href="https://github.com/Kevin-Liu-01/agent-machines"
-								target="_blank"
+								href="/sign-in"
 								variant="secondary"
 								size="md"
 							>
-								<ServiceIcon slug="github" size={14} tone="mono" />
-								GitHub
+								<Boxes className="h-3.5 w-3.5" strokeWidth={1.75} />
+								Build your own
 							</ReticleButton>
 						</div>
 					</div>
@@ -723,7 +722,7 @@ export function HeroBlock() {
 				<Cell className="col-span-1 border-b border-r md:col-span-2">
 					<CircuitArt slug="agents" variant="feature" fit="contain" />
 					<div className="relative z-10 flex h-full flex-col gap-3 p-4">
-						<span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
+						<span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-dim)]">
 							Agents
 						</span>
 						<div className="flex flex-1 flex-wrap content-center items-center gap-2">
@@ -759,7 +758,7 @@ export function HeroBlock() {
 				<Cell className="col-span-1 border-r md:col-span-2">
 					<CircuitArt slug="machines" variant="feature" fit="contain" />
 					<div className="relative z-10 flex h-full flex-col gap-3 p-4">
-						<span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
+						<span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-dim)]">
 							Substrates
 						</span>
 						<div className="flex flex-1 flex-wrap content-center items-center gap-2">
@@ -797,7 +796,7 @@ export function HeroBlock() {
 							<span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text)]">
 								Use any tool
 							</span>
-							<span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
+							<span className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-text-dim)]">
 								model routers · registry catalog · MCPs · CLIs
 							</span>
 						</div>
