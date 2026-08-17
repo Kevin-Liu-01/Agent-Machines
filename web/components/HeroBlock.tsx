@@ -685,7 +685,7 @@ export function HeroBlock() {
 							</span>
 							<span className="-mx-6 flex items-center whitespace-nowrap md:-mx-9">
 								<span className="mr-3 h-px w-3 shrink-0 border-t border-dashed border-[var(--ret-border)] md:mr-2 md:w-7" />
-								<span className="text-[var(--ret-text-dim)]">that keep their world.</span>
+								<span className="text-[var(--ret-text-dim)]">that keep going.</span>
 								<span className="ml-3 h-px flex-1 border-t border-dashed border-[var(--ret-border)] md:ml-4" />
 							</span>
 						</h1>
