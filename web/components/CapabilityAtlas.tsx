@@ -285,8 +285,8 @@ const SUMMARY = [
 
 export function CapabilityAtlas() {
 	return (
-		<div id="loadout" className="scroll-mt-[72px] border-y border-[var(--ret-border)]">
-			<header className="grid gap-px bg-[var(--ret-border)] lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.48fr)]">
+		<div id="loadout" className="scroll-mt-[72px] border-y border-[var(--ret-border)]/60">
+			<header className="grid gap-px bg-[var(--ret-border)]/45 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.48fr)]">
 				<div className="bg-[var(--ret-bg)] px-5 py-8 md:px-8 md:py-10">
 					<ReticleLabel>THE WHOLE SYSTEM</ReticleLabel>
 					<h2 className="ret-display mt-3 max-w-[17ch] text-3xl md:text-5xl">
@@ -298,7 +298,7 @@ export function CapabilityAtlas() {
 						dashboard surface.
 					</p>
 				</div>
-				<div className="grid grid-cols-2 gap-px bg-[var(--ret-border)]">
+				<div className="grid grid-cols-2 gap-px bg-[var(--ret-border)]/45">
 					{SUMMARY.map((item) => (
 						<div key={item.label} className="flex min-h-28 flex-col justify-end bg-[var(--ret-bg)] p-5">
 							<strong className="ret-display text-3xl text-[var(--ret-text)]">{item.value}</strong>
@@ -310,36 +310,36 @@ export function CapabilityAtlas() {
 				</div>
 			</header>
 
-			<div className="bg-[var(--ret-border)]">
-				{CAPABILITY_GROUPS.map((group, index) => (
+			<div className="bg-[var(--ret-bg)]">
+				{CAPABILITY_GROUPS.map((group) => (
 					<section
 						key={group.id}
 						aria-labelledby={`capability-${group.id}`}
-						className="grid gap-px border-t border-[var(--ret-border)] bg-[var(--ret-border)] first:border-t-0 xl:grid-cols-12"
+						className="grid border-t border-[var(--ret-border)]/55 first:border-t-0 xl:grid-cols-12"
 					>
-						<div className="relative overflow-hidden bg-[var(--ret-bg-soft)] px-5 py-6 md:px-6 xl:col-span-3">
-							<span className="pointer-events-none absolute -right-4 -top-8 font-mono text-[96px] leading-none text-[var(--ret-border)]" aria-hidden="true">
+						<div className="relative flex min-h-[260px] flex-col overflow-hidden bg-[var(--ret-bg-soft)]/35 px-5 py-7 md:px-6 md:py-8 xl:col-span-3 xl:min-h-0">
+							<span className="pointer-events-none absolute bottom-3 right-5 text-[52px] font-light leading-none tracking-[-0.08em] text-[var(--ret-text-muted)] opacity-[0.16]" aria-hidden="true">
 								{group.number}
 							</span>
-							<div className="relative flex items-baseline justify-between gap-3 xl:block">
-								<span className="font-mono text-[10px] tracking-[0.2em] text-[var(--ret-purple)]">
-									{group.number}
+							<div className="relative z-10">
+								<span className="text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+									Workflow stage
 								</span>
-								<h3 id={`capability-${group.id}`} className="mt-3 text-xl font-semibold tracking-tight text-[var(--ret-text)]">
+								<h3 id={`capability-${group.id}`} className="mt-4 text-xl font-semibold tracking-tight text-[var(--ret-text)] md:text-2xl">
 									{group.title}
 								</h3>
+								<p className="mt-2 max-w-[34ch] text-[12.5px] leading-relaxed text-[var(--ret-text-dim)]">
+									{group.description}
+								</p>
 							</div>
-							<p className="relative mt-2 max-w-[34ch] text-[12.5px] leading-relaxed text-[var(--ret-text-dim)]">
-								{group.description}
-							</p>
-							<p className="relative mt-8 font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
-								Dashboard board {String(index + 1).padStart(2, "0")}
+							<p className="relative z-10 mt-auto max-w-max pt-8 text-[10px] uppercase tracking-[0.15em] text-[var(--ret-text-muted)]">
+								Dashboard surface
 							</p>
 						</div>
 
 						<CapabilityFeature group={group} capability={group.capabilities[0]} />
 
-						<div className="grid gap-px bg-[var(--ret-border)] md:grid-cols-3 xl:col-span-3 xl:grid-cols-1">
+						<div className="grid gap-px bg-[var(--ret-border)]/35 md:grid-cols-3 xl:col-span-3 xl:grid-cols-1 xl:border-l xl:border-[var(--ret-border)]/45">
 							{group.capabilities.slice(1).map((capability) => (
 								<CapabilityCompact key={capability.title} capability={capability} />
 							))}
@@ -361,24 +361,26 @@ function CapabilityFeature({
 	return (
 		<Link
 			href={capability.href}
-			className="group flex min-h-[320px] flex-col bg-[var(--ret-bg)] p-5 transition-colors hover:bg-[var(--ret-surface)] focus-visible:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)] focus-visible:outline-offset-[-2px] md:p-6 xl:col-span-6"
+			className="group flex min-h-[380px] flex-col bg-[var(--ret-bg)] p-5 transition-colors duration-300 [transition-timing-function:var(--ret-ease-out)] hover:bg-[var(--ret-surface)] focus-visible:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)] focus-visible:outline-offset-[-2px] md:p-7 xl:col-span-6 xl:border-l xl:border-[var(--ret-border)]/45"
 		>
-			<div className="flex items-start justify-between gap-3">
-				<span className="flex h-9 w-9 items-center justify-center border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] text-[var(--ret-text-dim)] transition-colors group-hover:border-[var(--ret-border-hover)] group-hover:text-[var(--ret-text)]">
+			<div className="flex items-start gap-4">
+				<span className="flex h-10 w-10 shrink-0 items-center justify-center border border-[var(--ret-border)]/65 bg-[var(--ret-bg-soft)]/45 text-[var(--ret-text-dim)] transition-colors duration-300 [transition-timing-function:var(--ret-ease-out)] group-hover:border-[var(--ret-border-hover)] group-hover:text-[var(--ret-text)]">
 					<PublicIcon name={capability.icon} className="h-4 w-4" />
 				</span>
+				<div className="min-w-0 flex-1">
+					<h4 className="text-xl font-semibold tracking-tight text-[var(--ret-text)]">
+						{capability.title}
+					</h4>
+					<p className="mt-1.5 max-w-[58ch] text-[12.5px] leading-relaxed text-[var(--ret-text-dim)]">
+						{capability.description}
+					</p>
+				</div>
 				<ArrowUpRight className="h-3.5 w-3.5 text-[var(--ret-text-muted)] transition-[color,transform] group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[var(--ret-purple)]" aria-hidden="true" />
 			</div>
-			<h4 className="mt-5 text-xl font-semibold tracking-tight text-[var(--ret-text)]">
-				{capability.title}
-			</h4>
-			<p className="mt-2 max-w-[58ch] text-[12.5px] leading-relaxed text-[var(--ret-text-dim)]">
-				{capability.description}
-			</p>
 			<div className="mt-6 flex-1">
 				<CapabilityIllustration id={group.id} />
 			</div>
-			<div className="mt-5 flex items-center justify-between gap-3 border-t border-[var(--ret-border)] pt-4">
+			<div className="mt-5 flex items-center justify-between gap-3 border-t border-[var(--ret-border)]/55 pt-4">
 				<span className="font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
 					{capability.meta}
 				</span>
@@ -394,18 +396,22 @@ function CapabilityCompact({ capability }: { capability: Capability }) {
 	return (
 		<Link
 			href={capability.href}
-			className="group flex min-h-[142px] flex-col bg-[var(--ret-bg)] p-4 transition-colors hover:bg-[var(--ret-surface)] focus-visible:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)] focus-visible:outline-offset-[-2px]"
+			className="group flex min-h-[126px] flex-col bg-[var(--ret-bg)] p-4 transition-colors duration-300 [transition-timing-function:var(--ret-ease-out)] hover:bg-[var(--ret-surface)] focus-visible:z-10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)] focus-visible:outline-offset-[-2px]"
 		>
-			<div className="flex items-start justify-between gap-3">
-				<PublicIcon name={capability.icon} className="h-4 w-4 text-[var(--ret-purple)]" />
+			<div className="flex items-start gap-3">
+				<span className="flex h-8 w-8 shrink-0 items-center justify-center border border-[var(--ret-border)]/55 bg-[var(--ret-bg-soft)]/35 text-[var(--ret-purple)] transition-colors duration-300 [transition-timing-function:var(--ret-ease-out)] group-hover:border-[var(--ret-border-hover)]">
+					<PublicIcon name={capability.icon} className="h-3.5 w-3.5" />
+				</span>
+				<div className="min-w-0 flex-1">
+					<h4 className="text-[13px] font-semibold tracking-tight text-[var(--ret-text)]">
+						{capability.title}
+					</h4>
+					<p className="mt-1.5 line-clamp-2 text-[10.5px] leading-relaxed text-[var(--ret-text-dim)]">
+						{capability.description}
+					</p>
+				</div>
 				<ArrowUpRight className="h-3.5 w-3.5 text-[var(--ret-text-muted)] transition-[color,transform] group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[var(--ret-purple)]" aria-hidden="true" />
 			</div>
-			<h4 className="mt-4 text-[13px] font-semibold tracking-tight text-[var(--ret-text)]">
-				{capability.title}
-			</h4>
-			<p className="mt-1.5 line-clamp-2 text-[10.5px] leading-relaxed text-[var(--ret-text-dim)]">
-				{capability.description}
-			</p>
 			<span className="mt-auto pt-3 font-mono text-[9px] uppercase tracking-[0.13em] text-[var(--ret-text-muted)]">
 				{capability.meta}
 			</span>
@@ -432,15 +438,16 @@ function CapabilityIllustration({ id }: { id: string }) {
 
 function DiagramFrame({ children }: { children: ReactNode }) {
 	return (
-		<div
-			className="relative h-full min-h-36 overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-4"
-			style={{
-				backgroundImage:
-					"linear-gradient(var(--ret-border) 1px, transparent 1px), linear-gradient(90deg, var(--ret-border) 1px, transparent 1px)",
-				backgroundSize: "28px 28px",
-			}}
-		>
-			{children}
+		<div className="relative h-full min-h-36 overflow-hidden border border-[var(--ret-border)]/50 bg-[var(--ret-bg-soft)]/35 p-4">
+			<div
+				className="pointer-events-none absolute inset-0 opacity-[0.22]"
+				style={{
+					backgroundImage:
+						"linear-gradient(var(--ret-border) 1px, transparent 1px), linear-gradient(90deg, var(--ret-border) 1px, transparent 1px)",
+					backgroundSize: "32px 32px",
+				}}
+			/>
+			<div className="relative h-full">{children}</div>
 		</div>
 	);
 }

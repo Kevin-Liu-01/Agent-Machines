@@ -37,62 +37,50 @@ export function ProductShowcase() {
 				</div>
 			</header>
 
-			<div className="grid gap-px bg-[var(--ret-border)] xl:grid-cols-12">
+			<div className="grid items-stretch gap-px bg-[var(--ret-border)] lg:grid-cols-2">
 				<EvidenceScreen
 					src="/screenshots/dashboard-conversation-claude.png"
 					label="Claude Code on Sprites"
 					caption="The live PTY, the agent reply, runtime detection, usage, and logs in one machine-scoped view."
 					alt="Claude Code answering a question inside a live Agent Machines worker console"
-					className="xl:col-span-8"
-					imageClassName="aspect-[4/3] object-cover object-top md:aspect-[16/9]"
 				/>
 				<EvidenceScreen
 					src="/screenshots/dashboard-worker-configure.png"
 					label="Worker configuration"
 					caption="Choose a recipe, runtime, and name before any infrastructure is created."
 					alt="Worker configuration dialog in the Agent Machines dashboard"
-					className="xl:col-span-4"
-					imageClassName="aspect-[4/3] object-cover object-top md:aspect-[16/9]"
 				/>
 				<EvidenceScreen
 					src="/screenshots/dashboard-conversation-openclaw.png"
 					label="OpenClaw on E2B"
 					caption="A real OpenClaw run on E2B, with the selected model and durable Worker state visible in the session."
 					alt="OpenClaw answering a question inside a live E2B Worker console"
-					className="xl:col-span-7"
-					imageClassName="aspect-[4/3] object-cover object-top md:aspect-[16/9]"
 				/>
 				<EvidenceScreen
 					src="/screenshots/dashboard-live-fleet.png"
 					label="Live fleet"
 					caption="Provider, runtime, model, health, loadout, and migration controls are visible on each machine."
 					alt="Agent Machines fleet with Codex and Claude Code workers"
-					className="xl:col-span-5"
-					imageClassName="aspect-[4/3] object-cover object-top md:aspect-[16/9]"
 				/>
 				<EvidenceScreen
 					src="/screenshots/dashboard-provider-routing.png"
 					label="Provider routing"
 					caption="The setup flow shows the primary lane, backups, capabilities, and measured command latency."
 					alt="Sandbox provider routing and setup status in Agent Machines"
-					className="xl:col-span-12"
-					imageClassName="aspect-[4/3] object-cover object-top md:aspect-[16/9]"
+					className="lg:col-span-2"
+					mediaClassName="lg:aspect-[12/5]"
 				/>
 				<EvidenceScreen
 					src="/screenshots/console-hermes.png"
 					label="Hermes console"
 					caption="A persistent generalist with memory, tools, and scheduled work."
 					alt="Hermes running in the Agent Machines browser console"
-					className="xl:col-span-6"
-					imageClassName="aspect-[4/3] object-cover object-top md:aspect-[16/9]"
 				/>
 				<EvidenceScreen
 					src="/screenshots/console-codex.png"
 					label="Codex CLI console"
 					caption="A coding runtime attached to the same durable Worker control surface."
 					alt="Codex CLI running in the Agent Machines browser console"
-					className="xl:col-span-6"
-					imageClassName="aspect-[4/3] object-cover object-top md:aspect-[16/9]"
 				/>
 			</div>
 
@@ -140,18 +128,18 @@ function EvidenceScreen({
 	caption,
 	alt,
 	className = "",
-	imageClassName = "",
+	mediaClassName = "",
 }: {
 	src: string;
 	label: string;
 	caption: string;
 	alt: string;
 	className?: string;
-	imageClassName?: string;
+	mediaClassName?: string;
 }) {
 	return (
-		<figure className={`group min-w-0 bg-[var(--ret-bg)] p-3 md:p-5 ${className}`}>
-			<div className="overflow-hidden border border-[var(--ret-border-hover)] bg-[#08090b] shadow-[0_20px_70px_rgba(0,0,0,0.22)]">
+		<figure className={`group flex min-w-0 bg-[var(--ret-bg)] p-3 md:p-5 ${className}`}>
+			<div className="flex w-full flex-col overflow-hidden border border-[var(--ret-border-hover)] bg-[#08090b] shadow-[0_20px_70px_rgba(0,0,0,0.22)]">
 				<div className="flex h-9 items-center justify-between border-b border-white/10 px-3">
 					<div className="flex gap-1.5" aria-hidden="true">
 						<span className="h-1.5 w-1.5 bg-white/25" />
@@ -162,17 +150,17 @@ function EvidenceScreen({
 						{label}
 					</figcaption>
 				</div>
-				<div className="relative overflow-hidden">
+				<div className={`relative aspect-[16/10] overflow-hidden ${mediaClassName}`}>
 					<Image
 						src={src}
-						width={1440}
-						height={1000}
+						fill
 						alt={alt}
-						className={`h-auto w-full transition-transform duration-500 [transition-timing-function:var(--ret-ease-out)] group-hover:scale-[1.01] ${imageClassName}`}
-						sizes="(min-width: 1280px) 60vw, 100vw"
+						className="object-cover object-top transition-transform duration-500 [transition-timing-function:var(--ret-ease-out)] group-hover:scale-[1.01]"
+						sizes="(min-width: 1024px) 50vw, 100vw"
 					/>
-					<div className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-20 bg-gradient-to-t from-black/75 to-transparent md:block" />
-					<p className="border-t border-white/10 bg-[#08090b] p-3 text-[10px] leading-relaxed text-white/70 md:absolute md:inset-x-0 md:bottom-0 md:border-t-0 md:bg-transparent md:p-4">
+				</div>
+				<div className="flex min-h-[64px] items-start border-t border-white/10 bg-[#08090b] px-3 py-3 md:min-h-[72px] md:px-4 md:py-4">
+					<p className="max-w-[78ch] text-[10px] leading-relaxed text-white/70">
 						{caption}
 					</p>
 				</div>

@@ -199,15 +199,6 @@ function MachineNode({
 function RouterCore() {
 	return (
 		<section className="relative z-10 flex min-h-[330px] flex-col items-center justify-center overflow-hidden border border-[var(--ret-text-secondary)] bg-[var(--ret-bg)] px-4 py-6 text-center lg:mt-[48px] lg:min-h-0">
-			<div
-				aria-hidden="true"
-				className="absolute left-1/2 top-1/2 size-52 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[var(--ret-border)] opacity-70"
-			/>
-			<div
-				aria-hidden="true"
-				className="absolute left-1/2 top-1/2 size-36 -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-[var(--ret-border-hover)] opacity-70 motion-safe:animate-[spin_32s_linear_infinite]"
-			/>
-
 			<div className="relative grid size-12 place-items-center rounded-full border border-[var(--ret-text-secondary)] bg-[var(--ret-surface)] text-[var(--ret-text)] shadow-[0_0_32px_color-mix(in_srgb,var(--ret-text)_8%,transparent)]">
 				<Route size={20} strokeWidth={1.5} aria-hidden="true" />
 			</div>

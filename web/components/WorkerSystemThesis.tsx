@@ -1,33 +1,58 @@
-import { ArrowRight, Check, Fingerprint, Gauge, History, ShieldCheck } from "lucide-react";
+import {
+	ArrowRight,
+	BookOpenCheck,
+	BrainCircuit,
+	BriefcaseBusiness,
+	Cable,
+	Check,
+	Clock3,
+	Fingerprint,
+	FolderKanban,
+	Gauge,
+	History,
+	KeyRound,
+	PlugZap,
+	Route,
+	Server,
+	ShieldCheck,
+	TerminalSquare,
+	Wrench,
+	type LucideIcon,
+} from "lucide-react";
 import Link from "next/link";
 
+import { Logo, type Mark } from "@/components/Logo";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 
 const MACHINE_PARTS = [
 	{
+		kind: "runtime" as const,
 		label: "Runtime",
-		detail: "Claude · Codex · Hermes · OpenClaw",
+		detail: "4 swappable harnesses",
 		cx: 474,
 		cy: 208,
 		rotation: "normal" as const,
 	},
 	{
+		kind: "sandbox" as const,
 		label: "Sandbox",
-		detail: "E2B · Sprites · Vercel · Dedalus",
+		detail: "4 portable substrates",
 		cx: 474,
 		cy: 532,
 		rotation: "reverse" as const,
 	},
 	{
+		kind: "model" as const,
 		label: "Model path",
-		detail: "Native · Router · Gateway · Custom",
+		detail: "native or routed",
 		cx: 966,
 		cy: 208,
 		rotation: "reverse" as const,
 	},
 	{
+		kind: "abilities" as const,
 		label: "Abilities",
-		detail: "Skills · MCP · CLI · Tools",
+		detail: "skills · MCP · CLI · tools",
 		cx: 966,
 		cy: 532,
 		rotation: "normal" as const,
@@ -66,7 +91,7 @@ export function WorkerSystemThesis() {
 			<footer className="grid gap-px border-t border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[minmax(0,1fr)_auto]">
 				<div className="grid gap-px bg-[var(--ret-border)] sm:grid-cols-3">
 					<MachineReadout index="01" label="Responsibility" value="defines the work" />
-					<MachineReadout index="02" label="Worker" value="retains the world" />
+					<MachineReadout index="02" label="Worker" value="keeps identity + state" />
 					<MachineReadout index="03" label="Machinery" value="routes and changes" />
 				</div>
 				<div className="flex min-w-[310px] items-center gap-2 bg-[var(--ret-bg-soft)] p-4">
@@ -137,26 +162,29 @@ function DesktopWorkerMachine() {
 				</g>
 
 				<g fontFamily="var(--font-mono)">
-					<text x="90" y="340" fill="var(--ret-text-muted)" fontSize="10" letterSpacing="2.4">INPUT 01</text>
-					<text x="90" y="362" fill="var(--ret-text)" fontSize="16" fontWeight="650">RESPONSIBILITY</text>
-					<text x="90" y="394" fill="var(--ret-text-dim)" fontSize="10" letterSpacing="1.5">JOB · BUDGET · PERMISSIONS</text>
 					<text x="720" y="54" fill="var(--ret-text-muted)" fontSize="10" textAnchor="middle" letterSpacing="2.4">DURABLE CONTROL OBJECT</text>
 					<text x="720" y="694" fill="var(--ret-text-muted)" fontSize="10" textAnchor="middle" letterSpacing="2.1">DEFINE → PLACE → RUN → VERIFY → REPEAT</text>
 				</g>
+				<foreignObject x="90" y="316" width="194" height="108">
+					<div className="flex h-full items-center gap-3 text-[var(--ret-text)]">
+						<span className="grid size-10 shrink-0 place-items-center border border-[var(--ret-purple)] bg-[var(--ret-bg-soft)] text-[var(--ret-purple)] shadow-[0_0_24px_var(--ret-purple-glow)]">
+							<BriefcaseBusiness className="size-5" strokeWidth={1.5} aria-hidden="true" />
+						</span>
+						<span className="min-w-0">
+							<span className="block font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">Input 01</span>
+							<strong className="mt-1 block text-[15px] font-semibold uppercase">Responsibility</strong>
+							<span className="mt-1.5 block font-mono text-[8px] uppercase tracking-[0.12em] text-[var(--ret-text-dim)]">Job · budget · permissions</span>
+						</span>
+					</div>
+				</foreignObject>
 
 				<circle cx="720" cy="370" r="236" fill="var(--ret-purple)" opacity="0.09" filter="url(#machine-glow)" />
 				<GearWheel cx={720} cy={370} radius={188} teeth={34} accent className="motion-safe:animate-[spin_80s_linear_infinite]" />
 				<circle cx="720" cy="370" r="131" fill="url(#worker-core)" stroke="var(--ret-purple)" strokeWidth="1.8" />
 				<circle cx="720" cy="370" r="102" fill="var(--ret-bg-soft)" stroke="var(--ret-border-hover)" strokeWidth="1.3" />
-				<circle cx="720" cy="370" r="15" fill="var(--ret-purple)" opacity="0.9" />
-				<circle cx="720" cy="370" r="5" fill="var(--ret-bg)" />
-
-				<g textAnchor="middle">
-					<text x="720" y="328" fill="var(--ret-text-muted)" fontFamily="var(--font-mono)" fontSize="10" letterSpacing="2.5">DURABLE CORE</text>
-					<text x="720" y="360" fill="var(--ret-text)" fontFamily="var(--font-sans)" fontSize="28" fontWeight="700">WORKER</text>
-					<text x="720" y="391" fill="var(--ret-text-dim)" fontFamily="var(--font-mono)" fontSize="9.5" letterSpacing="1.7">IDENTITY · MEMORY · SCHEDULE</text>
-					<text x="720" y="410" fill="var(--ret-text-dim)" fontFamily="var(--font-mono)" fontSize="9.5" letterSpacing="1.7">FILES · HISTORY · EVIDENCE</text>
-				</g>
+				<foreignObject x="616" y="266" width="208" height="208">
+					<WorkerCoreContent />
+				</foreignObject>
 
 				{MACHINE_PARTS.map((part) => (
 					<g key={part.label}>
@@ -171,22 +199,24 @@ function DesktopWorkerMachine() {
 									: "motion-safe:animate-[spin_46s_linear_infinite]"
 							}
 						/>
-						<circle cx={part.cx} cy={part.cy} r="63" fill="var(--ret-bg-soft)" stroke="var(--ret-border-hover)" />
-						<text x={part.cx} y={part.cy - 5} textAnchor="middle" fill="var(--ret-text)" fontFamily="var(--font-sans)" fontSize="15" fontWeight="650">
-							{part.label}
-						</text>
-						<text x={part.cx} y={part.cy + 18} textAnchor="middle" fill="var(--ret-text-muted)" fontFamily="var(--font-mono)" fontSize="7.7" letterSpacing="0.85">
-							{part.detail.toUpperCase()}
-						</text>
+						<circle cx={part.cx} cy={part.cy} r="66" fill="var(--ret-bg-soft)" stroke="var(--ret-border-hover)" />
+						<foreignObject x={part.cx - 70} y={part.cy - 58} width="140" height="116">
+							<MachinePartContent part={part} />
+						</foreignObject>
 					</g>
 				))}
 
-				<GearWheel cx={1244} cy={370} radius={76} teeth={18} accent className="motion-safe:animate-[spin_34s_linear_infinite]" />
-				<circle cx="1244" cy="370" r="47" fill="var(--ret-bg-soft)" stroke="var(--ret-purple)" />
-				<g textAnchor="middle">
-					<text x="1244" y="360" fill="var(--ret-green)" fontFamily="var(--font-mono)" fontSize="9" letterSpacing="1.8">VERIFIED</text>
-					<text x="1244" y="382" fill="var(--ret-text)" fontFamily="var(--font-sans)" fontSize="14" fontWeight="700">WORK</text>
-				</g>
+				<GearWheel cx={1244} cy={370} radius={76} teeth={18} accent accentColor="var(--ret-green)" className="motion-safe:animate-[spin_34s_linear_infinite]" />
+				<circle cx="1244" cy="370" r="49" fill="var(--ret-bg-soft)" stroke="var(--ret-green)" />
+				<foreignObject x="1192" y="318" width="104" height="104">
+					<div className="flex h-full flex-col items-center justify-center text-center text-[var(--ret-text)]">
+						<span className="grid size-8 place-items-center rounded-full border border-[var(--ret-green)] bg-[color-mix(in_srgb,var(--ret-green)_8%,var(--ret-bg))] text-[var(--ret-green)]">
+							<ShieldCheck className="size-4" strokeWidth={1.6} aria-hidden="true" />
+						</span>
+						<span className="mt-2 font-mono text-[8px] uppercase tracking-[0.18em] text-[var(--ret-green)]">Verified</span>
+						<strong className="mt-0.5 text-[13px] font-semibold uppercase">Work</strong>
+					</div>
+				</foreignObject>
 				<g fontFamily="var(--font-mono)" textAnchor="middle">
 					<text x="1244" y="266" fill="var(--ret-text-muted)" fontSize="10" letterSpacing="2">OUTPUT 03</text>
 					<text x="1244" y="480" fill="var(--ret-text)" fontSize="14" fontWeight="650">WORK CONTINUES</text>
@@ -207,12 +237,126 @@ function DesktopWorkerMachine() {
 	);
 }
 
+const RUNTIME_MARKS: ReadonlyArray<{ mark: Mark; label: string }> = [
+	{ mark: "claudecode", label: "Claude Code" },
+	{ mark: "codex", label: "Codex CLI" },
+	{ mark: "nous", label: "Hermes" },
+	{ mark: "openclaw", label: "OpenClaw" },
+];
+
+const SANDBOX_MARKS: ReadonlyArray<{ mark: Mark; label: string }> = [
+	{ mark: "e2b", label: "E2B" },
+	{ mark: "sprites", label: "Sprites" },
+	{ mark: "vercel", label: "Vercel Sandbox" },
+	{ mark: "dedalus", label: "Dedalus" },
+];
+
+const MODEL_PATH_ICONS: ReadonlyArray<{ icon: LucideIcon; label: string }> = [
+	{ icon: KeyRound, label: "Native key" },
+	{ icon: Route, label: "Router" },
+	{ icon: Server, label: "Gateway" },
+	{ icon: Cable, label: "Custom endpoint" },
+];
+
+const ABILITY_ICONS: ReadonlyArray<{ icon: LucideIcon; label: string }> = [
+	{ icon: BookOpenCheck, label: "Skills" },
+	{ icon: PlugZap, label: "MCP" },
+	{ icon: TerminalSquare, label: "CLI" },
+	{ icon: Wrench, label: "Tools" },
+];
+
+const CORE_TRAITS: ReadonlyArray<{ icon: LucideIcon; label: string }> = [
+	{ icon: Fingerprint, label: "Identity" },
+	{ icon: BrainCircuit, label: "Memory" },
+	{ icon: Clock3, label: "Schedule" },
+	{ icon: FolderKanban, label: "Files" },
+	{ icon: History, label: "History" },
+	{ icon: ShieldCheck, label: "Evidence" },
+];
+
+function WorkerCoreContent() {
+	return (
+		<div className="flex h-full flex-col items-center justify-center text-center text-[var(--ret-text)]">
+			<Logo mark="am" size={29} />
+			<span className="mt-2 font-mono text-[8px] uppercase tracking-[0.24em] text-[var(--ret-text-muted)]">
+				Durable core
+			</span>
+			<strong className="mt-0.5 text-[25px] font-bold uppercase leading-none tracking-[-0.03em]">
+				Worker
+			</strong>
+			<div className="mt-4 grid w-[178px] grid-cols-3 gap-px border border-[var(--ret-border-hover)] bg-[var(--ret-border)]">
+				{CORE_TRAITS.map(({ icon: Icon, label }) => (
+					<span
+						key={label}
+						className="flex min-h-9 flex-col items-center justify-center gap-1 bg-[var(--ret-bg-soft)] px-1 text-[var(--ret-text-dim)]"
+					>
+						<Icon className="size-3 text-[var(--ret-purple)]" strokeWidth={1.55} aria-hidden="true" />
+						<span className="font-mono text-[6.5px] uppercase tracking-[0.07em]">{label}</span>
+					</span>
+				))}
+			</div>
+		</div>
+	);
+}
+
+function MachinePartContent({
+	part,
+}: {
+	part: (typeof MACHINE_PARTS)[number];
+}) {
+	return (
+		<div className="flex h-full flex-col items-center justify-center text-center text-[var(--ret-text)]">
+			<span className="text-[14px] font-semibold">{part.label}</span>
+			<div className="mt-2 flex items-center justify-center gap-1.5" aria-hidden="true">
+				{part.kind === "runtime"
+					? RUNTIME_MARKS.map((item) => <MarkChip key={item.mark} {...item} />)
+					: null}
+				{part.kind === "sandbox"
+					? SANDBOX_MARKS.map((item) => <MarkChip key={item.mark} {...item} />)
+					: null}
+				{part.kind === "model"
+					? MODEL_PATH_ICONS.map((item) => <FunctionChip key={item.label} {...item} />)
+					: null}
+				{part.kind === "abilities"
+					? ABILITY_ICONS.map((item) => <FunctionChip key={item.label} {...item} />)
+					: null}
+			</div>
+			<span className="mt-2.5 font-mono text-[7px] uppercase tracking-[0.1em] text-[var(--ret-text-muted)]">
+				{part.detail}
+			</span>
+		</div>
+	);
+}
+
+function MarkChip({ mark, label }: { mark: Mark; label: string }) {
+	return (
+		<span
+			title={label}
+			className="grid size-6 place-items-center border border-[var(--ret-border-hover)] bg-[var(--ret-bg)] text-[var(--ret-text)] shadow-[0_0_12px_color-mix(in_srgb,var(--ret-purple)_7%,transparent)]"
+		>
+			<Logo mark={mark} size={13} />
+		</span>
+	);
+}
+
+function FunctionChip({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
+	return (
+		<span
+			title={label}
+			className="grid size-6 place-items-center border border-[var(--ret-border-hover)] bg-[var(--ret-bg)] text-[var(--ret-purple)]"
+		>
+			<Icon className="size-3" strokeWidth={1.6} aria-hidden="true" />
+		</span>
+	);
+}
+
 function GearWheel({
 	cx,
 	cy,
 	radius,
 	teeth,
 	accent = false,
+	accentColor,
 	className = "",
 }: {
 	cx: number;
@@ -220,10 +364,12 @@ function GearWheel({
 	radius: number;
 	teeth: number;
 	accent?: boolean;
+	accentColor?: string;
 	className?: string;
 }) {
 	const toothWidth = Math.max(7, radius * 0.09);
 	const toothHeight = Math.max(13, radius * 0.14);
+	const activeStroke = accentColor ?? "var(--ret-purple)";
 	return (
 		<g className={`origin-center [transform-box:fill-box] ${className}`}>
 			{Array.from({ length: teeth }, (_, index) => {
@@ -237,7 +383,7 @@ function GearWheel({
 						height={toothHeight}
 						transform={`rotate(${angle} ${cx} ${cy})`}
 						fill="var(--ret-bg-soft)"
-						stroke={accent ? "var(--ret-purple)" : "var(--ret-border-hover)"}
+						stroke={accent ? activeStroke : "var(--ret-border-hover)"}
 						strokeWidth="1.2"
 					/>
 				);
@@ -247,7 +393,7 @@ function GearWheel({
 				cy={cy}
 				r={radius}
 				fill="var(--ret-bg)"
-				stroke={accent ? "var(--ret-purple)" : "var(--ret-border-hover)"}
+				stroke={accent ? activeStroke : "var(--ret-border-hover)"}
 				strokeWidth={accent ? 2 : 1.4}
 			/>
 			<circle cx={cx} cy={cy} r={radius * 0.82} fill="none" stroke="var(--ret-border)" strokeWidth="8" />
@@ -268,12 +414,13 @@ function MobileWorkerMachine() {
 				}}
 			/>
 			<div className="relative z-10">
-				<div className="mx-auto w-fit border border-[var(--ret-border-hover)] bg-[var(--ret-bg-soft)] px-3 py-2 font-mono text-[9px] uppercase tracking-[0.15em] text-[var(--ret-text-dim)]">
-					Responsibility in
+				<div className="mx-auto flex w-fit items-center gap-2 border border-[var(--ret-border-hover)] bg-[var(--ret-bg-soft)] px-3 py-2 text-[var(--ret-text-dim)]">
+					<BriefcaseBusiness className="size-3.5 text-[var(--ret-purple)]" strokeWidth={1.5} aria-hidden="true" />
+					<span className="font-mono text-[9px] uppercase tracking-[0.15em]">Responsibility in</span>
 				</div>
 				<div className="mx-auto h-8 w-px bg-[var(--ret-purple)]" />
 				<div className="grid grid-cols-2 gap-3">
-					{MACHINE_PARTS.slice(0, 2).map((part) => <MobilePart key={part.label} label={part.label} detail={part.detail} />)}
+					{MACHINE_PARTS.slice(0, 2).map((part) => <MobilePart key={part.label} part={part} />)}
 				</div>
 				<div className="relative mx-auto -my-2 flex aspect-square w-[min(76vw,290px)] items-center justify-center">
 					<div
@@ -288,16 +435,21 @@ function MobileWorkerMachine() {
 					/>
 					<div className="absolute inset-[12%] rounded-full border border-[var(--ret-border-hover)] bg-[var(--ret-bg-soft)]" />
 					<div className="absolute inset-[24%] rounded-full border border-[var(--ret-purple)] bg-[var(--ret-bg)] shadow-[0_0_55px_var(--ret-purple-glow)]" />
-					<div className="relative text-center">
+					<div className="relative flex flex-col items-center text-center">
+						<Logo mark="am" size={25} />
 						<p className="font-mono text-[8px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">durable core</p>
 						<strong className="mt-1 block text-2xl text-[var(--ret-text)]">Worker</strong>
-						<p className="mt-2 max-w-36 font-mono text-[8px] uppercase leading-relaxed tracking-[0.1em] text-[var(--ret-text-dim)]">
-							identity · memory · schedule · evidence
-						</p>
+						<div className="mt-2 flex max-w-32 flex-wrap justify-center gap-1 text-[var(--ret-purple)]">
+							{CORE_TRAITS.map(({ icon: Icon, label }) => (
+								<span key={label} title={label} className="grid size-5 place-items-center border border-[var(--ret-border)] bg-[var(--ret-bg-soft)]">
+									<Icon className="size-2.5" strokeWidth={1.5} aria-hidden="true" />
+								</span>
+							))}
+						</div>
 					</div>
 				</div>
 				<div className="grid grid-cols-2 gap-3">
-					{MACHINE_PARTS.slice(2).map((part) => <MobilePart key={part.label} label={part.label} detail={part.detail} />)}
+					{MACHINE_PARTS.slice(2).map((part) => <MobilePart key={part.label} part={part} />)}
 				</div>
 				<div className="mx-auto h-8 w-px bg-[var(--ret-green)]" />
 				<div className="mx-auto flex w-full max-w-xs items-center justify-between border border-[var(--ret-green)] bg-[var(--ret-bg-soft)] px-3 py-3">
@@ -312,13 +464,10 @@ function MobileWorkerMachine() {
 	);
 }
 
-function MobilePart({ label, detail }: { label: string; detail: string }) {
+function MobilePart({ part }: { part: (typeof MACHINE_PARTS)[number] }) {
 	return (
-		<div className="flex aspect-square flex-col items-center justify-center rounded-full border border-[var(--ret-border-hover)] bg-[var(--ret-bg-soft)] p-3 text-center">
-			<strong className="text-[12px] text-[var(--ret-text)]">{label}</strong>
-			<span className="mt-2 max-w-28 font-mono text-[7px] uppercase leading-relaxed tracking-[0.08em] text-[var(--ret-text-muted)]">
-				{detail}
-			</span>
+		<div className="flex min-h-32 flex-col items-center justify-center rounded-full border border-[var(--ret-border-hover)] bg-[var(--ret-bg-soft)] p-2 text-center">
+			<MachinePartContent part={part} />
 		</div>
 	);
 }
