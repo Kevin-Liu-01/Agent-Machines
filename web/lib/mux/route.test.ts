@@ -10,7 +10,7 @@ import type { UserConfig } from "@/lib/user-config/schema";
 type LooseProviders = {
 	e2b?: { apiKey?: string };
 	sprites?: { apiKey?: string };
-	vercel?: { token?: string; teamId?: string; projectId?: string };
+	vercel?: { token?: string; teamId?: string; projectId?: string; allowDeploymentCredentials?: boolean };
 	dedalus?: { apiKey?: string };
 };
 
@@ -81,30 +81,42 @@ describe("resolveRoute", () => {
 	});
 });
 
-describe("vercel accepts either auth shape", () => {
-	it("treats an OIDC token in the environment as credentialed", () => {
+describe("vercel tenant isolation", () => {
+	it("does not route an unconfigured tenant onto deployment OIDC", () => {
 		const saved = process.env.VERCEL_OIDC_TOKEN;
 		process.env.VERCEL_OIDC_TOKEN = "oidc-jwt";
 		try {
 			const { route, skipped } = resolveRoute(configWith({}));
-			expect(route).toEqual(["vercel"]);
-			expect(skipped.some((entry) => entry.substrate === "vercel")).toBe(false);
+			expect(route).toEqual([]);
+			expect(skipped.some((entry) => entry.substrate === "vercel")).toBe(true);
 		} finally {
 			if (saved === undefined) delete process.env.VERCEL_OIDC_TOKEN;
 			else process.env.VERCEL_OIDC_TOKEN = saved;
 		}
 	});
 
-	it("names OIDC as an alternative when the triple is incomplete", () => {
+	it("requires all tenant credential fields when the triple is incomplete", () => {
 		const saved = process.env.VERCEL_OIDC_TOKEN;
 		delete process.env.VERCEL_OIDC_TOKEN;
 		try {
 			const { skipped } = resolveRoute(configWith({ vercel: { token: "tok" } }));
 			const vercel = skipped.find((entry) => entry.substrate === "vercel");
 			expect(vercel?.missing).toContain("VERCEL_TEAM_ID");
-			expect(vercel?.missing.join(" ")).toContain("VERCEL_OIDC_TOKEN");
+			expect(vercel?.missing.join(" ")).not.toContain("VERCEL_OIDC_TOKEN");
 		} finally {
 			if (saved !== undefined) process.env.VERCEL_OIDC_TOKEN = saved;
+		}
+	});
+
+	it("allows owner OIDC only when the server projection explicitly authorizes it", () => {
+		const saved = process.env.VERCEL_OIDC_TOKEN;
+		process.env.VERCEL_OIDC_TOKEN = "owner-oidc";
+		try {
+			const { route } = resolveRoute(configWith({ vercel: { allowDeploymentCredentials: true } }));
+			expect(route).toEqual(["vercel"]);
+		} finally {
+			if (saved === undefined) delete process.env.VERCEL_OIDC_TOKEN;
+			else process.env.VERCEL_OIDC_TOKEN = saved;
 		}
 	});
 });

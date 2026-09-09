@@ -73,7 +73,7 @@ export function getProvider(
 				throw new MachineProviderError(
 					"vercel",
 					"missing_credentials",
-					"No Vercel Sandbox credentials on file. Add token + team ID + project ID via /dashboard/setup, or deploy on Vercel with OIDC.",
+					"No Vercel Sandbox credentials on file. Add your token, team ID, and project ID via /dashboard/setup.",
 				);
 			}
 		}

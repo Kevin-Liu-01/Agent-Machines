@@ -26,10 +26,11 @@ import { cache } from "react";
 
 import { isRemovedDedalusRouter, normalizeRouterId } from "@/lib/agents/upstreams";
 import { listMachines, seedMachinesFromClerk, upsertMachine, patchMachine as sbPatchMachine, archiveMachine as sbArchiveMachine, deleteMachine as sbDeleteMachine } from "@/lib/supabase/machines";
-import { ensureUser, getUserConfig as sbGetUserConfig, updateUserConfigColumns, type UserRow } from "@/lib/supabase/users";
+import { ensureUser, getUserConfig as sbGetUserConfig, updateUserConfigColumns, type UserConfigPatch, type UserRow } from "@/lib/supabase/users";
 
 import { getDevUserConfig, setDevUserConfig } from "./dev-store";
 import { getEffectiveUserId, isDevUserId } from "./identity";
+import { canUseDeploymentCredentials } from "./owner";
 import {
 	BOOTSTRAP_PHASES,
 	MIGRATION_STEPS,
@@ -495,7 +496,7 @@ function asWorkers(value: unknown): Worker[] {
 		: [];
 }
 
-function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig {
+function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate, allowDeploymentDefaults = false): UserConfig {
 	const providers: ProviderCredentials = {};
 	const privateProviders =
 		(privateMeta.providers as ProviderCredentials | undefined) ?? {};
@@ -516,6 +517,7 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
 			token: privateProviders.vercel.token,
 			teamId: privateProviders.vercel.teamId,
 			projectId: privateProviders.vercel.projectId,
+			allowDeploymentCredentials: allowDeploymentDefaults,
 		};
 	}
 	// Legacy single-key field.
@@ -524,19 +526,20 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
 		providers.dedalus = { apiKey: legacyDedalusKey };
 	}
 	// Owner env fallback (project owner who hasn't typed in the wizard).
-	const envCreds = readEnvProviderCreds();
+	const envCreds = allowDeploymentDefaults ? readEnvProviderCreds() : {};
 	for (const kind of PROVIDER_KINDS) {
 		if (!providers[kind] && envCreds[kind]) {
 			providers[kind] = envCreds[kind] as never;
 		}
 	}
-	const oidcToken = process.env.VERCEL_OIDC_TOKEN?.trim();
+	const oidcToken = allowDeploymentDefaults ? process.env.VERCEL_OIDC_TOKEN?.trim() : undefined;
 	if (!providers.vercel && oidcToken) {
-		const teamId = process.env.VERCEL_TEAM_ID?.trim();
-		const projectId = process.env.VERCEL_PROJECT_ID?.trim();
-		if (teamId && projectId) {
-			providers.vercel = { token: oidcToken, teamId, projectId };
-		}
+		providers.vercel = {
+			token: "",
+			teamId: process.env.VERCEL_TEAM_ID?.trim() ?? "",
+			projectId: process.env.VERCEL_PROJECT_ID?.trim() ?? "",
+			allowDeploymentCredentials: true,
+		};
 	}
 
 	const machineApiKeys =
@@ -580,7 +583,7 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
 	}
 
 	// Owner env fallback as a virtual machine if user has none yet.
-	if (machines.length === 0) {
+	if (allowDeploymentDefaults && machines.length === 0 && !Array.isArray(publicMeta.machines)) {
 		const envMachine = envFallbackMachine();
 		if (envMachine) machines.push(envMachine);
 	}
@@ -639,17 +642,17 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
 
 	const cursorApiKey =
 		asString(privateMeta.cursorApiKey) ??
-		process.env.CURSOR_API_KEY?.trim() ??
+		(allowDeploymentDefaults ? process.env.CURSOR_API_KEY?.trim() : undefined) ??
 		null;
 
 	const aiProviderKeys: AiProviderKeys = {
-		...readEnvAiProviderKeys(),
+		...(allowDeploymentDefaults ? readEnvAiProviderKeys() : {}),
 		...((privateMeta.aiProviderKeys as AiProviderKeys) ?? {}),
 	};
 
 	const cloudflareTunnelToken =
 		asString(privateMeta.cloudflareTunnelToken) ??
-		process.env.CLOUDFLARE_TUNNEL_TOKEN?.trim() ??
+		(allowDeploymentDefaults ? process.env.CLOUDFLARE_TUNNEL_TOKEN?.trim() : undefined) ??
 		null;
 
 	return {
@@ -685,9 +688,15 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate): UserConfig
  * doesn't have to retype keys they already wired into Vercel.
  */
 export function getOwnerDefaults(): UserConfig {
+	const providers = readEnvProviderCreds();
+	if (!providers.vercel && process.env.VERCEL_OIDC_TOKEN?.trim()) {
+		providers.vercel = {
+			token: "", teamId: "", projectId: "", allowDeploymentCredentials: true,
+		};
+	}
 	return {
 		...DEFAULT_USER_CONFIG,
-		providers: readEnvProviderCreds(),
+		providers,
 		aiProviderKeys: readEnvAiProviderKeys(),
 		machines: (() => {
 			const env = envFallbackMachine();
@@ -708,18 +717,23 @@ export async function getUserConfig(): Promise<UserConfig> {
 export const getUserConfigForRequest = cache(getUserConfig);
 
 /**
- * Build a UserConfig by merging Supabase config columns with Clerk secrets.
- * If the Supabase row has non-empty config arrays we use those; otherwise
- * we fall back to Clerk publicMetadata (first-read backward compat).
+ * Supabase owns operational config once a users row exists. Each present
+ * column is authoritative, including empty arrays and a null active machine.
+ * Clerk supplies credentials; old public metadata is only a migration source.
  */
 function buildConfigFromSupabase(
 	sbRow: UserRow,
 	privateMeta: RawPrivate,
 	publicMeta: RawPublic,
+	allowDeploymentDefaults = false,
 ): UserConfig {
-	const base = buildConfig(publicMeta, privateMeta);
-	const activeMachineId = asString(sbRow.active_machine_id);
-	if (activeMachineId) base.activeMachineId = activeMachineId;
+	const base = buildConfig(publicMeta, privateMeta, allowDeploymentDefaults);
+	base.activeMachineId = asString(sbRow.active_machine_id) ?? null;
+	if (sbRow.setup_step !== undefined) base.setupStep = asStep(sbRow.setup_step);
+	if (sbRow.draft_agent_kind !== undefined) base.draftAgentKind = asAgent(sbRow.draft_agent_kind);
+	if (sbRow.draft_provider_kind !== undefined) base.draftProviderKind = asProvider(sbRow.draft_provider_kind);
+	if (sbRow.draft_model !== undefined) base.draftModel = asString(sbRow.draft_model) ?? DEFAULT_MODEL;
+	if (sbRow.draft_spec !== undefined) base.draftSpec = asSpec(sbRow.draft_spec);
 
 	const gatewayApiKeys =
 		(privateMeta.gatewayApiKeys as Record<string, string> | undefined) ?? {};
@@ -728,45 +742,27 @@ function buildConfigFromSupabase(
 			| Record<string, Record<string, string>>
 			| undefined) ?? {};
 
-	const hasSupabaseConfig =
-		(Array.isArray(sbRow.gateway_profiles) && sbRow.gateway_profiles.length > 0) ||
-		(Array.isArray(sbRow.custom_loadout) && sbRow.custom_loadout.length > 0) ||
-		(Array.isArray(sbRow.loadout_sources) && sbRow.loadout_sources.length > 0);
-
-	if (hasSupabaseConfig) {
-		const sbGatewayProfiles = Array.isArray(sbRow.gateway_profiles)
-			? sbRow.gateway_profiles
-					.map((entry) => asGatewayProfile(entry, gatewayApiKeys))
-					.filter((entry): entry is GatewayProfile => entry !== null)
-			: [];
-		const sbEnvironmentProfiles = Array.isArray(sbRow.environment_profiles)
-			? sbRow.environment_profiles
-					.map((entry) => asEnvironmentProfile(entry, environmentProfileVars))
-					.filter((entry): entry is EnvironmentProfile => entry !== null)
-			: [];
-		const sbBootstrapPresets = Array.isArray(sbRow.bootstrap_presets)
-			? sbRow.bootstrap_presets
-					.map((entry) => asBootstrapPreset(entry))
-					.filter((entry): entry is BootstrapPreset => entry !== null)
-			: [];
-		const sbCustomLoadout = Array.isArray(sbRow.custom_loadout)
-			? sbRow.custom_loadout
-					.map((entry) => asCustomLoadoutEntry(entry))
-					.filter((entry): entry is CustomLoadoutEntry => entry !== null)
-			: [];
-		const sbLoadoutSources = Array.isArray(sbRow.loadout_sources)
-			? sbRow.loadout_sources
-					.map((entry) => asLoadoutSource(entry))
-					.filter((entry): entry is LoadoutSource => entry !== null)
-			: [];
-
-		if (sbGatewayProfiles.length > 0) {
-			base.gatewayProfiles = ensureDefaultGatewayProfiles(sbGatewayProfiles);
-		}
-		if (sbEnvironmentProfiles.length > 0) base.environmentProfiles = sbEnvironmentProfiles;
-		if (sbBootstrapPresets.length > 0) base.bootstrapPresets = sbBootstrapPresets;
-		if (sbCustomLoadout.length > 0) base.customLoadout = sbCustomLoadout;
-		if (sbLoadoutSources.length > 0) base.loadoutSources = sbLoadoutSources;
+	if (Array.isArray(sbRow.gateway_profiles)) {
+		base.gatewayProfiles = ensureDefaultGatewayProfiles(sbRow.gateway_profiles
+			.map((entry) => asGatewayProfile(entry, gatewayApiKeys))
+			.filter((entry): entry is GatewayProfile => entry !== null));
+	}
+	if (Array.isArray(sbRow.environment_profiles)) {
+		base.environmentProfiles = sbRow.environment_profiles
+			.map((entry) => asEnvironmentProfile(entry, environmentProfileVars))
+			.filter((entry): entry is EnvironmentProfile => entry !== null);
+	}
+	if (Array.isArray(sbRow.bootstrap_presets)) {
+		base.bootstrapPresets = sbRow.bootstrap_presets.map(asBootstrapPreset)
+			.filter((entry): entry is BootstrapPreset => entry !== null);
+	}
+	if (Array.isArray(sbRow.custom_loadout)) {
+		base.customLoadout = sbRow.custom_loadout.map(asCustomLoadoutEntry)
+			.filter((entry): entry is CustomLoadoutEntry => entry !== null);
+	}
+	if (Array.isArray(sbRow.loadout_sources)) {
+		base.loadoutSources = sbRow.loadout_sources.map(asLoadoutSource)
+			.filter((entry): entry is LoadoutSource => entry !== null);
 	}
 
 	// Memory bundles + workers live in their own jsonb columns and aren't
@@ -788,44 +784,38 @@ export async function getUserConfigById(userId: string): Promise<UserConfig> {
 	const user = await client.users.getUser(userId);
 	const publicMeta = (user.publicMetadata ?? {}) as RawPublic;
 	const privateMeta = (user.privateMetadata ?? {}) as RawPrivate;
+	return readStoredConfig(userId, publicMeta, privateMeta, user.emailAddresses?.[0]?.emailAddress);
+}
+
+/** Shared by reads and mutations so a settings write cannot rebuild stale state. */
+async function readStoredConfig(
+	userId: string,
+	publicMeta: RawPublic,
+	privateMeta: RawPrivate,
+	email?: string,
+): Promise<UserConfig> {
+	const allowDeploymentDefaults = canUseDeploymentCredentials(userId);
 
 	if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-		return buildConfig(publicMeta, privateMeta);
+		return buildConfig(publicMeta, privateMeta, allowDeploymentDefaults);
 	}
 
-	try {
-		const sbUser = await ensureUser(userId, user.emailAddresses?.[0]?.emailAddress);
-		const config = buildConfigFromSupabase(sbUser, privateMeta, publicMeta);
-
-		const machineApiKeys =
-			(privateMeta.machineApiKeys as Record<string, string> | undefined) ?? {};
-		const sbMachines = await listMachines(userId);
-
-		if (sbMachines.length > 0) {
-			config.machines = sbMachines.map((m) => ({
-				...m,
-				apiKey: m.apiKey ?? machineApiKeys[m.id] ?? null,
-			}));
-			// Re-validate activeMachineId against the Supabase machines list.
-			// The initial validation in buildConfig used Clerk's stale machines
-			// array which may not include newly provisioned machines.
-			if (config.activeMachineId && !config.machines.some((m) => m.id === config.activeMachineId)) {
-				const live = config.machines.find((m) => !m.archived);
-				config.activeMachineId = live?.id ?? null;
-			}
-			if (!config.activeMachineId) {
-				const live = config.machines.find((m) => !m.archived);
-				config.activeMachineId = live?.id ?? null;
-			}
-		} else if (config.machines.length > 0) {
-			await seedMachinesFromClerk(userId, config.machines);
-		}
-
-		config.metricsEnabled = true;
-		return config;
-	} catch {
-		return buildConfig(publicMeta, privateMeta);
+	let row = await sbGetUserConfig(userId);
+	if (!row) {
+		const legacy = buildConfig(publicMeta, privateMeta, allowDeploymentDefaults);
+		row = await ensureUser(userId, email);
+		const seed = configColumns(legacy);
+		await updateUserConfigColumns(userId, seed);
+		await seedMachinesFromClerk(userId, legacy.machines);
+		row = { ...row, ...seed };
 	}
+	const config = buildConfigFromSupabase(row, privateMeta, publicMeta, allowDeploymentDefaults);
+	config.machines = await listMachines(userId);
+	if (config.activeMachineId && !config.machines.some((machine) => machine.id === config.activeMachineId && !machine.archived)) {
+		config.activeMachineId = config.machines.find((machine) => !machine.archived)?.id ?? null;
+	}
+	config.metricsEnabled = true;
+	return config;
 }
 
 /* ------------------------------------------------------------------ */
@@ -1015,6 +1005,25 @@ function environmentVarsMap(
 	return out;
 }
 
+/** Map only requested columns; omitting a field must never clear stored state. */
+function configColumns(config: UserConfig, patch?: ConfigPatch): UserConfigPatch {
+	return {
+		...(!patch || patch.gatewayProfiles !== undefined ? { gateway_profiles: publicGatewayShape(config.gatewayProfiles) } : {}),
+		...(!patch || patch.environmentProfiles !== undefined ? { environment_profiles: publicEnvironmentShape(config.environmentProfiles) } : {}),
+		...(!patch || patch.bootstrapPresets !== undefined ? { bootstrap_presets: config.bootstrapPresets } : {}),
+		...(!patch || patch.customLoadout !== undefined ? { custom_loadout: config.customLoadout } : {}),
+		...(!patch || patch.loadoutSources !== undefined ? { loadout_sources: config.loadoutSources } : {}),
+		...(!patch || patch.memoryBundles !== undefined ? { memory_bundles: config.memoryBundles } : {}),
+		...(!patch || patch.workers !== undefined ? { workers: config.workers } : {}),
+		...(!patch || patch.activeMachineId !== undefined ? { active_machine_id: config.activeMachineId } : {}),
+		...(!patch || patch.setupStep !== undefined ? { setup_step: config.setupStep } : {}),
+		...(!patch || patch.draftAgentKind !== undefined ? { draft_agent_kind: config.draftAgentKind } : {}),
+		...(!patch || patch.draftProviderKind !== undefined ? { draft_provider_kind: config.draftProviderKind } : {}),
+		...(!patch || patch.draftModel !== undefined ? { draft_model: config.draftModel } : {}),
+		...(!patch || patch.draftSpec !== undefined ? { draft_spec: config.draftSpec as Record<string, unknown> } : {}),
+	};
+}
+
 export async function setUserConfig(patch: ConfigPatch): Promise<UserConfig> {
 	const userId = await getEffectiveUserId();
 	if (!userId) {
@@ -1033,7 +1042,7 @@ export async function setUserConfigById(
 	const existingPublic = { ...(user.publicMetadata ?? {}) } as RawPublic;
 	const existingPrivate = { ...(user.privateMetadata ?? {}) } as RawPrivate;
 
-	const current = buildConfig(existingPublic, existingPrivate);
+	const current = await readStoredConfig(userId, existingPublic, existingPrivate, user.emailAddresses?.[0]?.emailAddress);
 
 	// --- Merge patch into current state ---
 
@@ -1105,7 +1114,7 @@ export async function setUserConfigById(
 	) {
 		nextActive = nextMachines.find((m) => !m.archived)?.id ?? null;
 	}
-	if (!nextActive) {
+	if (!nextActive && patch.activeMachineId !== null && (patch.upsertMachine || patch.unarchiveMachine)) {
 		nextActive = nextMachines.find((m) => !m.archived)?.id ?? null;
 	}
 
@@ -1136,6 +1145,28 @@ export async function setUserConfigById(
 	const nextDraftProvider = patch.draftProviderKind ?? current.draftProviderKind;
 	const nextDraftSpec = patch.draftSpec ?? current.draftSpec;
 	const nextDraftModel = patch.draftModel ?? current.draftModel;
+	const next: UserConfig = {
+		...current,
+		providers: nextProviders,
+		aiProviderKeys: nextAiKeys,
+		machines: nextMachines,
+		activeMachineId: nextActive,
+		crons: nextCrons,
+		memoryBundles: nextMemoryBundles,
+		workers: nextWorkers,
+		cursorApiKey: nextCursor,
+		cloudflareTunnelToken: nextTunnelToken,
+		gatewayProfiles: nextGatewayProfiles,
+		environmentProfiles: nextEnvironmentProfiles,
+		bootstrapPresets: nextBootstrapPresets,
+		customLoadout: nextCustomLoadout,
+		loadoutSources: nextLoadoutSources,
+		setupStep: nextStep,
+		draftAgentKind: nextDraftAgent,
+		draftProviderKind: nextDraftProvider,
+		draftSpec: nextDraftSpec,
+		draftModel: nextDraftModel,
+	};
 
 	// --- Clerk: secrets in privateMetadata, minimal scalars in publicMetadata ---
 
@@ -1146,6 +1177,16 @@ export async function setUserConfigById(
 		draftProviderKind: nextDraftProvider,
 		draftSpec: nextDraftSpec,
 		draftModel: nextDraftModel,
+		...(!process.env.NEXT_PUBLIC_SUPABASE_URL ? {
+			machines: publicShape(nextMachines),
+			gatewayProfiles: publicGatewayShape(nextGatewayProfiles),
+			environmentProfiles: publicEnvironmentShape(nextEnvironmentProfiles),
+			bootstrapPresets: nextBootstrapPresets,
+			customLoadout: nextCustomLoadout,
+			loadoutSources: nextLoadoutSources,
+			memoryBundles: nextMemoryBundles,
+			workers: nextWorkers,
+		} : {}),
 	};
 
 	const nextPrivate: RawPrivate = {
@@ -1170,43 +1211,14 @@ export async function setUserConfigById(
 	delete nextPrivate.dedalusApiKey;
 	delete nextPrivate.apiKey;
 
-	await client.users.updateUserMetadata(userId, {
-		publicMetadata: nextPublic,
-		privateMetadata: nextPrivate,
-	});
-
 	// --- Supabase: config arrays + machines ---
 
 	if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
-		try {
-			await ensureUser(userId, user.emailAddresses?.[0]?.emailAddress);
-
-			await updateUserConfigColumns(userId, {
-				gateway_profiles: publicGatewayShape(nextGatewayProfiles) as unknown[],
-				environment_profiles: publicEnvironmentShape(nextEnvironmentProfiles) as unknown[],
-				bootstrap_presets: nextBootstrapPresets as unknown[],
-				custom_loadout: nextCustomLoadout as unknown[],
-				loadout_sources: nextLoadoutSources as unknown[],
-				active_machine_id: nextActive,
-				setup_step: nextStep,
-				draft_agent_kind: nextDraftAgent,
-				draft_provider_kind: nextDraftProvider,
-				draft_model: nextDraftModel,
-				draft_spec: nextDraftSpec as Record<string, unknown>,
-			});
-
-			// memory_bundles + workers live in columns added by migration 004.
-			// Write them separately so a pre-migration deploy (columns absent)
-			// fails only this write, not the established config columns above.
-			try {
-				await updateUserConfigColumns(userId, {
-					memory_bundles: nextMemoryBundles as unknown[],
-					workers: nextWorkers as unknown[],
-				});
-			} catch {
-				// requires 004_workers_memory.sql; safe to ignore until applied
-			}
-
+		const columns = configColumns(next, {
+			...patch,
+			...(nextActive !== current.activeMachineId ? { activeMachineId: nextActive } : {}),
+		});
+		if (Object.keys(columns).length > 0) await updateUserConfigColumns(userId, columns);
 			if (patch.upsertMachine) {
 				const normalized = nextMachines.find(
 					(machine) => machine.id === patch.upsertMachine?.id,
@@ -1234,24 +1246,12 @@ export async function setUserConfigById(
 			if (patch.unarchiveMachine) {
 				await sbPatchMachine(userId, patch.unarchiveMachine, { archived: false });
 			}
-		} catch {
-			// Supabase write failed -- Clerk metadata already persisted above
-		}
 	}
-
-	// Reconstruct final config from the merged values
-	const finalPublic: RawPublic = {
-		...nextPublic,
-		machines: publicShape(nextMachines),
-		gatewayProfiles: publicGatewayShape(nextGatewayProfiles),
-		environmentProfiles: publicEnvironmentShape(nextEnvironmentProfiles),
-		bootstrapPresets: nextBootstrapPresets,
-		customLoadout: nextCustomLoadout,
-		loadoutSources: nextLoadoutSources,
-		memoryBundles: nextMemoryBundles,
-		workers: nextWorkers,
-	};
-	return buildConfig(finalPublic, nextPrivate);
+	await client.users.updateUserMetadata(userId, {
+		publicMetadata: nextPublic,
+		privateMetadata: nextPrivate,
+	});
+	return next;
 }
 
 /**

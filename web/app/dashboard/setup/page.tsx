@@ -3,7 +3,6 @@ import { SandboxRouterPanel } from "@/components/dashboard/SandboxRouterPanel";
 import { SetupWizard } from "@/components/dashboard/SetupWizard";
 import { resolveRoute } from "@/lib/mux/route";
 import {
-	getOwnerDefaults,
 	getUserConfigForRequest,
 } from "@/lib/user-config/clerk";
 import { toPublicConfig } from "@/lib/user-config/schema";
@@ -12,7 +11,6 @@ export const dynamic = "force-dynamic";
 
 export default async function SetupPage() {
 	const config = await getUserConfigForRequest();
-	const defaults = getOwnerDefaults();
 	const { route, skipped } = resolveRoute(config);
 	return (
 		<div className="flex flex-col">
@@ -27,11 +25,11 @@ export default async function SetupPage() {
 			<SetupWizard
 				initialConfig={toPublicConfig(config)}
 				defaults={{
-					machineSpec: defaults.draftSpec,
-					model: defaults.draftModel,
-					hasOwnerDedalusKey: Boolean(defaults.providers.dedalus?.apiKey),
-					hasOwnerCursorKey: Boolean(defaults.cursorApiKey),
-					hasOwnerMachine: defaults.machines.length > 0,
+					machineSpec: config.draftSpec,
+					model: config.draftModel,
+					hasOwnerDedalusKey: Boolean(config.providers.dedalus?.apiKey),
+					hasOwnerCursorKey: Boolean(config.cursorApiKey),
+					hasOwnerMachine: config.machines.length > 0,
 				}}
 			/>
 		</div>

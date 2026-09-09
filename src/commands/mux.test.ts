@@ -619,9 +619,13 @@ test("routes names the dimension a lane failed when a need is declared", async (
  * unknown price being read as a cheap one.
  */
 function fixtureLearnedSprites(): void {
+	// The router intentionally reads only the last seven days. Keep learned
+	// evidence in that window instead of letting this fixture expire on a date.
+	const startedAt = new Date(Date.now() - 60_000).toISOString();
 	for (let index = 0; index < 8; index += 1) {
 		fixtureTrace({
 			runKey: `learn-${index}`,
+			startedAt,
 			harness: "claude-code",
 			substrate: "sprites",
 			durationMs: 300_000,

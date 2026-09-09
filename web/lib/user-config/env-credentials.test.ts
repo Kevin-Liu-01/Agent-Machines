@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getOwnerDefaults } from "./clerk";
-import { toPublicConfig } from "./schema";
+import { DEFAULT_USER_CONFIG, toPublicConfig } from "./schema";
 
 afterEach(() => vi.unstubAllEnvs());
 
@@ -12,6 +12,9 @@ describe("owner environment credentials", () => {
 		vi.stubEnv("ANTHROPIC_API_KEY", "anthropic-secret");
 		vi.stubEnv("OPENAI_API_KEY", "openai-secret");
 		vi.stubEnv("VERCEL_OIDC_TOKEN", "oidc-secret");
+		vi.stubEnv("VERCEL_TOKEN", "vercel-secret");
+		vi.stubEnv("VERCEL_TEAM_ID", "team-test");
+		vi.stubEnv("VERCEL_PROJECT_ID", "project-test");
 
 		const config = getOwnerDefaults();
 		expect(config.providers.e2b?.apiKey).toBe("e2b-secret");
@@ -26,5 +29,9 @@ describe("owner environment credentials", () => {
 		expect(publicConfig.aiProviders.anthropic.configured).toBe(true);
 		expect(publicConfig.aiProviders.openai.configured).toBe(true);
 		expect(JSON.stringify(publicConfig)).not.toContain("secret");
+	});
+	it("does not advertise deployment OIDC credentials to a tenant without credentials", () => {
+		vi.stubEnv("VERCEL_OIDC_TOKEN", "deployment-secret");
+		expect(toPublicConfig(DEFAULT_USER_CONFIG).providers.vercel.configured).toBe(false);
 	});
 });

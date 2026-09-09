@@ -96,8 +96,8 @@ export class MuxWorkerRuntimeDriver implements WorkerRuntimeDriver {
 		const report = await this.mux.migrate(worker.id, {
 			to,
 			mode: worker.spec.migrationPolicy ?? "live",
-			moveState: true,
-			source: "destroy",
+			moveState: worker.spec.migrationOptions?.moveState ?? true,
+			source: worker.spec.migrationOptions?.source ?? "destroy",
 			env: worker.spec.env,
 			resources: worker.spec.resources,
 		});

@@ -8,10 +8,10 @@
  * touched and that two users' muxes cannot see each other's placements.
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-	createMux: vi.fn(),
+	Mux: vi.fn(),
 	createSupabasePlacementStore: vi.fn((tenantId: string) => ({
 		kind: "supabase-fake",
 		tenantId,
@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("agent-machines/mux", () => ({
-	createMux: mocks.createMux,
+	Mux: mocks.Mux,
 	// Exported by the real module; a test that let this through to the real
 	// singleton would be asserting nothing about scoping.
 	setPlacementStore: mocks.setPlacementStore,
@@ -41,13 +41,14 @@ function config(providers: Partial<UserConfig["providers"]> = {}): UserConfig {
 
 beforeEach(() => {
 	vi.clearAllMocks();
-	mocks.createMux.mockImplementation((_config, options) => ({ options }));
+	mocks.Mux.mockImplementation(function (_config, options) { return { options }; });
 });
+afterEach(() => vi.unstubAllEnvs());
 
 describe("createHostedMux", () => {
 	it("passes a tenant-scoped store per instance and NEVER sets the global", () => {
 		createHostedMux("user-alpha", config({ e2b: { apiKey: "k" } }));
-		const [, options] = mocks.createMux.mock.calls[0];
+		const [, options] = mocks.Mux.mock.calls[0];
 		expect(options.placementStore).toEqual({
 			kind: "supabase-fake",
 			tenantId: "user-alpha",
@@ -60,7 +61,7 @@ describe("createHostedMux", () => {
 	it("gives two users two stores, so concurrent requests cannot cross", () => {
 		createHostedMux("user-alpha", config({ e2b: { apiKey: "k" } }));
 		createHostedMux("user-beta", config({ e2b: { apiKey: "k" } }));
-		const tenants = mocks.createMux.mock.calls.map(
+		const tenants = mocks.Mux.mock.calls.map(
 			([, options]) => options.placementStore.tenantId,
 		);
 		expect(tenants).toEqual(["user-alpha", "user-beta"]);
@@ -71,12 +72,12 @@ describe("createHostedMux", () => {
 		for (const bad of ["", "   "]) {
 			expect(() => createHostedMux(bad, config())).toThrow(/non-empty userId/);
 		}
-		expect(mocks.createMux).not.toHaveBeenCalled();
+		expect(mocks.Mux).not.toHaveBeenCalled();
 	});
 
 	it("persists health, and only ever into the tenant's own store", () => {
 		createHostedMux("user-alpha", config({ e2b: { apiKey: "k" } }));
-		const [, options] = mocks.createMux.mock.calls[0];
+		const [, options] = mocks.Mux.mock.calls[0];
 		// The breaker row is per tenant (migration 006's kind='health' row), so a
 		// sample can only reach the store handed to THIS instance. It used to be
 		// false on the grounds that no hosted breaker table existed; it does.
@@ -138,5 +139,28 @@ describe("muxConfigForUser", () => {
 			teamId: "team",
 			projectId: "proj",
 		});
+	});
+
+	it("does not inherit deployment credentials through the real SDK constructor", async () => {
+		vi.stubEnv("E2B_API_KEY", "host-e2b");
+		vi.stubEnv("ANTHROPIC_API_KEY", "host-anthropic");
+		vi.stubEnv("VERCEL_OIDC_TOKEN", "host-oidc");
+		const { Mux } = await vi.importActual<typeof import("agent-machines/mux")>("agent-machines/mux");
+		const resolved = muxConfigForUser(config());
+		const mux = new Mux(resolved, { persistHealth: false, selection: null });
+		expect(mux.provider("e2b").ready().ok).toBe(false);
+		expect(mux.provider("vercel").ready().ok).toBe(false);
+		expect(resolved.keys.anthropic).toBeUndefined();
+		expect(JSON.stringify(resolved)).not.toContain("host-");
+	});
+
+	it("treats user credential values as literal strings rather than env references", () => {
+		vi.stubEnv("E2B_API_KEY", "host-e2b");
+		const input = muxConfigForUser({
+			...config({ e2b: { apiKey: "env:E2B_API_KEY" } }),
+			aiProviderKeys: { anthropic: "env:ANTHROPIC_API_KEY" },
+		});
+		expect(input.providers.e2b?.apiKey).toBe("env:E2B_API_KEY");
+		expect(input.keys.anthropic).toBe("env:ANTHROPIC_API_KEY");
 	});
 });

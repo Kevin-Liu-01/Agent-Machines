@@ -139,7 +139,7 @@ function fromProfile(
 			null;
 		if (!key) {
 			throw new Error(
-				"Vercel AI Gateway profile has no API key and no VERCEL_OIDC_TOKEN.",
+				"Vercel AI Gateway profile has no API key. Add one in Settings.",
 			);
 		}
 		const base = normalizeOpenAiBase(profile.baseUrl ?? "https://ai-gateway.vercel.sh");
@@ -221,17 +221,11 @@ function keyForRouterSource(
 	const ai = config.aiProviderKeys;
 	switch (source) {
 		case "vercelAiGateway":
-			return (
-				ai.vercelAiGateway ??
-				process.env.AI_GATEWAY_API_KEY?.trim() ??
-				process.env.VERCEL_OIDC_TOKEN?.trim() ??
-				process.env.AI_GATEWAY_KEY?.trim() ??
-				""
-			);
+			return ai.vercelAiGateway ?? "";
 		case "openrouter":
-			return ai.openrouter ?? process.env.OPENROUTER_API_KEY?.trim() ?? "";
+			return ai.openrouter ?? "";
 		case "openai":
-			return ai.openai ?? process.env.OPENAI_API_KEY?.trim() ?? "";
+			return ai.openai ?? "";
 		case "google":
 			return ai.google ?? "";
 		case "custom":

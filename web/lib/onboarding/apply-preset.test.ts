@@ -14,6 +14,22 @@ import { applyPreset } from "./apply-preset";
 const baseConfig: UserConfig = { ...DEFAULT_USER_CONFIG };
 
 describe("applyPreset", () => {
+	it("reuses a saved Worker on retry with the same client identity", () => {
+		const input = {
+			workerId: "cf5dbe1d-f475-4c4e-852a-18c7d816ee97",
+			config: baseConfig,
+			preset: findPreset("coding-agent")!,
+			agentKind: "codex" as const,
+			model: "gpt-test",
+			gatewayProfileId: DEFAULT_ROUTER_ID,
+			machineId: null,
+		};
+		const first = applyPreset(input);
+		const retried = applyPreset({ ...input, config: { ...baseConfig, workers: first.workers } });
+		expect(first.workerId).toBe(input.workerId);
+		expect(retried.workerId).toBe(first.workerId);
+		expect(retried.workers).toBe(first.workers);
+	});
 	it("creates a Worker bound to the preset's synthesized Memory, linked to the machine", () => {
 		const preset = findPreset("deep-research")!;
 		const out = applyPreset({

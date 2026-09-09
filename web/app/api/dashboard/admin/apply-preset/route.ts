@@ -1,12 +1,9 @@
 /**
  * POST /api/dashboard/admin/apply-preset
  *
- * Seed a user's loadout from an onboarding preset choice: import the preset's
- * abilities into the account-global pool (customLoadout), create a Memory
- * shaped by the preset, and create a Worker bound to that Memory and the
- * just-provisioned machine. `presetId: null` means "no preset" (blank start on
- * the default Memory). Call AFTER provision (so the Worker links to the
- * machine) and BEFORE bootstrap (which reads the Worker -> Memory).
+ * Save a Worker bound to a preset's Memory before submitting its launch.
+ * A stable workerId makes retries safe if the client loses the response.
+ * `presetId: null` starts with Barebones memory.
  */
 
 import { findPreset } from "@/lib/dashboard/presets";
@@ -24,6 +21,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 type Body = {
+	workerId?: string;
 	presetId?: string | null;
 	agentKind?: AgentKind;
 	model?: string;
@@ -45,6 +43,15 @@ export async function POST(request: Request): Promise<Response> {
 	} catch {
 		return Response.json({ error: "invalid_json" }, { status: 400 });
 	}
+	if (!body || typeof body !== "object" || Array.isArray(body)) {
+		return Response.json({ error: "invalid_body" }, { status: 400 });
+	}
+	if (body.workerId !== undefined && (
+		typeof body.workerId !== "string" ||
+		!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(body.workerId)
+	)) {
+		return Response.json({ error: "invalid_worker_id" }, { status: 400 });
+	}
 
 	const config = await getUserConfig();
 	const agentKind = isAgent(body.agentKind) ? body.agentKind : config.draftAgentKind;
@@ -54,11 +61,11 @@ export async function POST(request: Request): Promise<Response> {
 	}
 
 	const application = applyPreset({
+		workerId: body.workerId,
 		config,
 		preset,
 		agentKind,
-		model:
-			typeof body.model === "string" && body.model.trim() ? body.model.trim() : config.draftModel,
+		model: typeof body.model === "string" && body.model.trim() ? body.model.trim() : config.draftModel,
 		gatewayProfileId:
 			typeof body.gatewayProfileId === "string" && body.gatewayProfileId.trim()
 				? body.gatewayProfileId.trim()

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { OnboardingFlow } from "@/components/dashboard/OnboardingFlow";
 import { ClerkAppProvider } from "@/components/ClerkAppProvider";
 import { listPresets } from "@/lib/dashboard/presets";
-import { getOwnerDefaults, getUserConfig } from "@/lib/user-config/clerk";
+import { getUserConfig } from "@/lib/user-config/clerk";
 import { toPublicConfig } from "@/lib/user-config/schema";
 
 export const dynamic = "force-dynamic";
@@ -22,17 +22,10 @@ export default async function OnboardingPage({
 		redirect("/dashboard");
 	}
 
-	const defaults = getOwnerDefaults();
-
 	return (
 		<ClerkAppProvider>
 			<OnboardingFlow
 				initialConfig={toPublicConfig(config)}
-				defaults={{
-					machineSpec: defaults.draftSpec,
-					model: defaults.draftModel,
-					hasOwnerDedalusKey: Boolean(defaults.providers.dedalus?.apiKey),
-				}}
 				presets={listPresets()}
 			/>
 		</ClerkAppProvider>

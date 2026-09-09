@@ -82,3 +82,30 @@ test("mux driver reuses remembered provision and completed migration on retry", 
 		"migrate:repo-coder:sprites:live",
 	]);
 });
+
+test("mux driver honors the requested migration state and source retention policy", async () => {
+	const received: unknown[] = [];
+	const mux = {
+		placements: async () => ({}),
+		migrate: async (_name: string, options: unknown) => {
+			received.push(options);
+			return {
+				to: { substrate: "sprites", sandboxId: "target" },
+				agent: "claude-code",
+			};
+		},
+	} as unknown as Mux;
+	const driver = new MuxWorkerRuntimeDriver(mux);
+	const spec = worker();
+	spec.spec.migrationPolicy = "copy";
+	spec.spec.migrationOptions = { moveState: false, source: "keep" };
+	await driver.migrate(
+		{ workerId: spec.id, sandboxId: "source", sandbox: "e2b", runtime: "claude-code" },
+		"sprites",
+		spec,
+	);
+	assert.deepEqual(received, [{
+		to: "sprites", mode: "copy", moveState: false, source: "keep",
+		env: undefined, resources: undefined,
+	}]);
+});

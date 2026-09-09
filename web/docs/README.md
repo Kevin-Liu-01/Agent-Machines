@@ -13,6 +13,7 @@ Engineering specs and product knowledge for the Agent Machines monorepo. Start a
 | Doc | Scope |
 |-----|--------|
 | [sandbox-terminal-gateway.md](./sandbox-terminal-gateway.md) | Browser Agent Console (tmux-over-exec + SSE), one-shot exec streaming, bootstrap tail, capability tiers per provider |
+| [LAUNCH.md](../../docs/LAUNCH.md) | Reproducible release checks and deployed new-account → completed-Worker verification |
 
 **Key implementation paths**
 
@@ -47,5 +48,6 @@ Engineering specs and product knowledge for the Agent Machines monorepo. Start a
 - New primitive or positioning change → `docs/WHITEPAPER.md` + `knowledge/VISION.md`
 - New dashboard route or API surface → root README key routes + this index + `web/README.md`
 - Streaming or console behavior change → `sandbox-terminal-gateway.md` + `knowledge/BROWSER-AGENT-CONSOLE.md`
-- Harness/registry counts change → run `npm run sync-skills` before release; counts auto-derive from JSON in `lib/platform/harness.ts`
+- Harness/registry counts change → run `pnpm --dir web sync-data` from the repository root; counts auto-derive from JSON in `lib/platform/harness.ts`
+- External marketplace refresh → run `pnpm --dir web refresh-catalog`, review, and commit both catalog copies; builds consume the committed snapshot
 - New substrate or runtime → provider matrix in root README, `VISION.md`, `MEMORY.md`, `public/llms.txt`

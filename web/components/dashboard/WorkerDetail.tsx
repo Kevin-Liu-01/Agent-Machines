@@ -10,8 +10,11 @@ import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleSelect } from "@/components/reticle/ReticleSelect";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
+import { useDashboardConfig } from "@/components/dashboard/DashboardConfigProvider";
+import { RouterSelect } from "@/components/dashboard/RouterSelect";
+import { validateAgentCredentials } from "@/lib/agents/credentials";
+import { runtimeModel } from "@/lib/agents/runtime-model";
 import { cn } from "@/lib/cn";
-import { ROUTER_PRESETS } from "@/lib/agents/upstreams";
 import {
 	AGENT_KINDS,
 	AGENT_LABEL,
@@ -49,6 +52,7 @@ const fieldCls = cn(
 
 export function WorkerDetail({ workerId }: { workerId: string }) {
 	const router = useRouter();
+	const config = useDashboardConfig();
 	const searchParams = useSearchParams();
 	const launchOperationId = searchParams.get("launch");
 	const [worker, setWorker] = useState<Worker | null>(null);
@@ -60,9 +64,17 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 	const [saveMsg, setSaveMsg] = useState<string | null>(null);
 	const [retrying, setRetrying] = useState<string | null>(null);
 	const [deleting, setDeleting] = useState(false);
-	const [provider, setProvider] = useState<ProviderKind>("dedalus");
+	const [provider, setProvider] = useState<ProviderKind>(() => {
+		if (config && config.providers[config.draftProviderKind]?.configured) return config.draftProviderKind;
+		return PROVIDER_KINDS.find((kind) => config?.providers[kind]?.configured) ?? "e2b";
+	});
 	const [deploying, setDeploying] = useState(false);
 	const [deployMsg, setDeployMsg] = useState<string | null>(null);
+	const aiConfigured = Object.fromEntries(
+		Object.entries(config?.aiProviders ?? {}).map(([key, value]) => [key, Boolean(value?.configured)]),
+	);
+	const credentialVerdict = worker && config ? validateAgentCredentials(worker.agentKind, config) : null;
+	const providerReady = Boolean(config?.providers[provider]?.configured);
 
 	const load = useCallback(async () => {
 		setError(null);
@@ -168,7 +180,7 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 	}, [launchOperationId, router]);
 
 	const save = useCallback(async () => {
-		if (!worker) return;
+		if (!worker) return false;
 		setSaving(true);
 		setSaveMsg(null);
 		try {
@@ -184,7 +196,7 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 					rolePrompt: worker.rolePrompt,
 				}),
 			});
-			const body = (await response.json()) as {
+			const body = (await response.json().catch(() => ({}))) as {
 				ok?: boolean;
 				worker?: Worker;
 				operation?: OperationView;
@@ -203,8 +215,10 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 				setSaveMsg("Draft saved");
 			}
 			await load();
+			return true;
 		} catch (cause) {
 			setSaveMsg(cause instanceof Error ? cause.message : "Worker update failed.");
+			return false;
 		} finally {
 			setSaving(false);
 		}
@@ -266,31 +280,35 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 	const deploy = useCallback(async () => {
 		setDeploying(true);
 		setDeployMsg(null);
+		let accepted = false;
 		try {
+			// Deploy the configuration visible in this form, including unsaved edits.
+			if (!(await save())) return;
 			const r = await fetch(`/api/dashboard/workers/${encodeURIComponent(workerId)}/deploy`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ providerKind: provider }),
 			});
-			const body = (await r.json()) as {
+			const body = (await r.json().catch(() => ({}))) as {
 				ok?: boolean;
 				message?: string;
 				error?: string;
 				operation?: { id?: string };
 			};
-			setDeployMsg(body.ok ? body.message ?? "Deployed." : body.message ?? body.error ?? "deploy_failed");
-			if (body.ok && body.operation?.id) {
-				router.replace(
-					`/dashboard/workers/${encodeURIComponent(workerId)}?launch=${encodeURIComponent(body.operation.id)}`,
-				);
+			if (!r.ok || !body.ok || !body.operation?.id) {
+				throw new Error(body.message ?? body.error ?? `Deploy failed (HTTP ${r.status}).`);
 			}
-			await load();
+			accepted = true;
+			setDeployMsg(body.message ?? "Launch accepted. Preparing your workspace…");
+			router.replace(
+				`/dashboard/workers/${encodeURIComponent(workerId)}?launch=${encodeURIComponent(body.operation.id)}`,
+			);
 		} catch (err) {
 			setDeployMsg(err instanceof Error ? err.message : "deploy_failed");
 		} finally {
-			setDeploying(false);
+			if (!accepted) setDeploying(false);
 		}
-	}, [workerId, provider, load, router]);
+	}, [workerId, provider, save, router]);
 
 	if (error) {
 		return (
@@ -328,10 +346,10 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 					</ReticleBadge>
 				</div>
 				<div className="flex items-center gap-2">
-					<ReticleButton variant="ghost" size="sm" onClick={() => void remove()} disabled={deleting || saving}>
+					<ReticleButton variant="ghost" size="sm" onClick={() => void remove()} disabled={deleting || saving || deploying}>
 						<Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} /> {deleting ? "deleting…" : "Delete"}
 					</ReticleButton>
-					<ReticleButton variant="primary" size="sm" onClick={() => void save()} disabled={saving || deleting}>
+					<ReticleButton variant="primary" size="sm" onClick={() => void save()} disabled={saving || deleting || deploying}>
 						{saving ? "reconciling…" : "Save"}
 					</ReticleButton>
 				</div>
@@ -351,19 +369,20 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 							<ReticleSelect
 								ariaLabel="Runtime"
 								value={worker.agentKind}
-								onChange={(v) => setWorker({ ...worker, agentKind: v as AgentKind })}
+								onChange={(v) => setWorker({ ...worker, agentKind: v as AgentKind, model: runtimeModel(v as AgentKind, worker.model) })}
 								options={AGENT_KINDS.map((k) => ({ value: k, label: AGENT_LABEL[k] }))}
 							/>
 						</Field>
 						<Field label="Model">
 							<input className={fieldCls} value={worker.model} onChange={(e) => setWorker({ ...worker, model: e.target.value })} />
 						</Field>
-						<Field label="Router">
-							<ReticleSelect
-								ariaLabel="Router"
+						<Field label="Model provider">
+							<RouterSelect
+								agentKind={worker.agentKind}
 								value={worker.gatewayProfileId}
 								onChange={(v) => setWorker({ ...worker, gatewayProfileId: v })}
-								options={ROUTER_PRESETS.map((p) => ({ value: p.id, label: p.label }))}
+								aiConfigured={aiConfigured}
+								label="Router"
 							/>
 						</Field>
 						<Field label="Memory bundle">
@@ -409,10 +428,10 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 							className="w-44"
 							value={provider}
 							onChange={(v) => setProvider(v as ProviderKind)}
-							options={PROVIDER_KINDS.map((p) => ({ value: p, label: PROVIDER_LABEL[p] }))}
+							options={PROVIDER_KINDS.map((p) => ({ value: p, label: `${PROVIDER_LABEL[p]}${config?.providers[p]?.configured ? "" : " — key required"}` }))}
 						/>
-						<ReticleButton variant="primary" size="sm" disabled={deploying} onClick={() => void deploy()}>
-							<Rocket className="h-3.5 w-3.5" strokeWidth={1.75} /> {deploying ? "deploying…" : "Deploy"}
+						<ReticleButton variant="primary" size="sm" disabled={deploying || saving || deleting || !providerReady || !credentialVerdict?.ok} onClick={() => void deploy()}>
+							<Rocket className="h-3.5 w-3.5" strokeWidth={1.75} /> {deploying ? "deploying…" : "Save & deploy"}
 						</ReticleButton>
 						{worker.lastMachineId ? (
 							<Link
@@ -423,6 +442,12 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 							</Link>
 						) : null}
 					</ReticleFrame>
+					{!providerReady || (credentialVerdict && !credentialVerdict.ok) ? (
+						<p className="text-[12px] text-[var(--ret-amber)]">
+							{!providerReady ? `Add ${PROVIDER_LABEL[provider]} credentials to deploy this Worker.` : credentialVerdict && !credentialVerdict.ok ? credentialVerdict.message : ""}{" "}
+							<Link href="/dashboard/settings" className="underline underline-offset-2">Open settings</Link>
+						</p>
+					) : null}
 					{deployMsg ? (
 						<p className="font-mono text-[11px] text-[var(--ret-text-dim)]">{deployMsg}</p>
 					) : null}

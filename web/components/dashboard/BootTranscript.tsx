@@ -97,7 +97,10 @@ export function BootTranscript({
 		let stopped = false;
 		async function tick(): Promise<void> {
 			try {
-				const r = await fetch("/api/dashboard/machine", { cache: "no-store" });
+				const url = machineId
+					? `/api/dashboard/machine?machineId=${encodeURIComponent(machineId)}`
+					: "/api/dashboard/machine";
+				const r = await fetch(url, { cache: "no-store" });
 				if (!r.ok) {
 					if (r.status === 404 || r.status === 401) return; // not provisioned yet
 					throw new Error(`machine HTTP ${r.status}`);
@@ -173,7 +176,7 @@ export function BootTranscript({
 			stopped = true;
 			window.clearInterval(id);
 		};
-	}, [active]);
+	}, [active, machineId]);
 
 	// Live bootstrap SSE — phase markers + sandbox bootstrap.log tail.
 	useEffect(() => {

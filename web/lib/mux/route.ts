@@ -47,22 +47,17 @@ function credentialsFor(
 				? { ok: true, missing: [] }
 				: { ok: false, missing: ["SPRITES_TOKEN"] };
 		case "vercel": {
-			// Two accepted shapes, matching the mux provider: an OIDC token
-			// on its own, or the token+team+project triple. Requiring the
-			// triple unconditionally made the dashboard report vercel as
-			// unavailable on OIDC-authenticated deployments where the router
-			// happily places machines there. OIDC lives in the environment
-			// (the SDK reads VERCEL_OIDC_TOKEN itself), not in user config.
+			// A hosted route must use this account's credentials. The deployment's
+			// OIDC identity belongs to the host, not every person who signs up.
 			const vercel = providers.vercel;
-			if (process.env.VERCEL_OIDC_TOKEN) return { ok: true, missing: [] };
+			if (vercel?.allowDeploymentCredentials === true && process.env.VERCEL_OIDC_TOKEN?.trim()) {
+				return { ok: true, missing: [] };
+			}
 			const missing: string[] = [];
-			if (!vercel?.token) missing.push("VERCEL_TOKEN");
-			if (!vercel?.teamId) missing.push("VERCEL_TEAM_ID");
-			if (!vercel?.projectId) missing.push("VERCEL_PROJECT_ID");
-			// A complete triple is sufficient on its own; only name OIDC as an
-			// alternative when something is actually missing.
+			if (!vercel?.token?.trim()) missing.push("VERCEL_TOKEN");
+			if (!vercel?.teamId?.trim()) missing.push("VERCEL_TEAM_ID");
+			if (!vercel?.projectId?.trim()) missing.push("VERCEL_PROJECT_ID");
 			if (missing.length === 0) return { ok: true, missing: [] };
-			missing.push("VERCEL_OIDC_TOKEN (alternative to the token triple)");
 			return { ok: false, missing };
 		}
 		case "dedalus":

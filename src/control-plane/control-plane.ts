@@ -89,7 +89,9 @@ export class AgentMachinesControlPlane {
 			: 1;
 		const at = this.now().toISOString();
 		const idempotencyKey =
-			options.idempotencyKey ?? await this.defaultApplyKey(workerId, generation);
+			options.idempotencyKey ?? (options.forceBootstrap
+				? `bootstrap:${workerId}:${this.id()}`
+				: await this.defaultApplyKey(workerId, generation));
 
 		const duplicate = await this.store.findOperationByIdempotencyKey(idempotencyKey);
 		if (duplicate) {
@@ -246,7 +248,9 @@ export class AgentMachinesControlPlane {
 		runKey: string,
 		metadata: { scheduleId?: string; scheduledFor?: string } = {},
 	): Promise<ControlPlaneOperation> {
-		if (!(await this.store.getWorker(workerId))) throw new Error(`worker ${workerId} does not exist`);
+		const worker = await this.store.getWorker(workerId);
+		if (!worker) throw new Error(`worker ${workerId} does not exist`);
+		if (worker.desiredState === "deleted") throw new Error(`worker ${workerId} is deleted`);
 		if (!prompt.trim()) throw new Error("run prompt is required");
 		if (!runKey.trim()) throw new Error("run key is required");
 		const at = this.now().toISOString();
@@ -274,6 +278,7 @@ export class AgentMachinesControlPlane {
 	): Promise<ControlPlaneOperation> {
 		const worker = await this.store.getWorker(workerId);
 		if (!worker) throw new Error(`worker ${workerId} does not exist`);
+		if (worker.desiredState === "deleted") throw new Error(`worker ${workerId} is deleted`);
 		const schedule = worker.spec.schedules?.find((entry) => entry.id === scheduleId);
 		if (!schedule || !schedule.enabled) {
 			throw new Error(`schedule ${scheduleId} is not enabled on worker ${workerId}`);
@@ -378,6 +383,9 @@ export class AgentMachinesControlPlane {
 		message: string,
 	): Promise<WorkerResource> {
 		let current = (await this.store.getWorker(operation.workerId)) ?? fallback;
+		// Runs queued before deletion must fail without changing the deletion intent
+		// or turning an already-deleted Worker into a repairable error placement.
+		if (operation.payload.type === "run" && current.desiredState === "deleted") return current;
 		// An older reconcile must never overwrite intent submitted while its
 		// provider call was in flight. The operation still records its failure.
 		if (
@@ -471,6 +479,7 @@ export class AgentMachinesControlPlane {
 		worker: WorkerResource,
 		forceBootstrap = false,
 	): Promise<WorkerResource> {
+		if (worker.desiredState === "deleted") throw new Error(`worker ${worker.id} is deleted`);
 		let current = worker;
 		let placement = current.status.placement;
 		if (placement) {

@@ -6,7 +6,7 @@ Five jobs:
 
 1. **Marketing**: durable-Worker thesis, route/compose/access layers, specialist catalog, capabilities, fleet demo, FAQ, architecture.
 2. **Control plane**: off-the-shelf Workers, modular launch, setup, fleet, memory bundles, registry, loadout, settings, usage, benchmarks.
-3. **Browser Agent Console**: live PTY to agent CLIs over tmux-over-exec + SSE (see below).
+3. **Browser Agent Console**: direct worker WebSocket PTY with native/SSE fallbacks (see below).
 4. **Gateway proxy**: optional HTTP chat via API routes; console is primary; bearers never `NEXT_PUBLIC_*`.
 5. **Observation + scheduler**: Supabase metrics/usage, user crons, Vercel Cron tick every 5 minutes.
 
@@ -24,11 +24,13 @@ Canonical paths: `lib/platform/runtime.ts` ↔ `../src/lib/constants.ts`.
 
 ## Quick start
 
+From the repository root, using Node `^20.19` or `>=22.12` and pnpm 10.30.0:
+
 ```bash
-cd web
-cp .env.local.example .env.local
-npm install
-npm run dev
+corepack enable
+pnpm install --frozen-lockfile
+cp web/.env.local.example web/.env.local
+pnpm web
 ```
 
 Open <http://localhost:3210>.
@@ -40,24 +42,45 @@ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=...
 CLERK_SECRET_KEY=...
 ```
 
-Optional owner fallback env vars (legacy `HERMES_*` names still accepted):
+For a local preview, the example enables `ALLOW_DEV_AUTH=1`, which works only
+under `next dev`. Set it to `0` and configure Clerk when testing actual sign-up.
+Supabase with all [`supabase/migrations`](supabase/migrations) applied is required
+for the hosted operation journal and durable metrics. The local development
+session uses a file-backed configuration store.
+
+Hosted users connect their own model and sandbox credentials in Settings.
+Deployment env credentials are available only to the owner identified by an
+exact `AGENT_MACHINES_OWNER_USER_ID` (legacy alias: `CLERK_OWNER_USER_ID`), plus
+the opt-in local dev session. Leaving that ID unset does not share deployment
+keys with new accounts. Supported owner defaults include:
 
 ```txt
-DEDALUS_API_KEY=...
-AGENT_MACHINE_ID=...
-AGENT_API_URL=...
-AGENT_API_KEY=...
-AGENT_MODEL=anthropic/claude-sonnet-4-6
+AGENT_MACHINES_OWNER_USER_ID=user_...
+E2B_API_KEY=...
+SPRITES_TOKEN=...
+ANTHROPIC_API_KEY=...
+OPENAI_API_KEY=...
 ```
+
+Use the full [.env.local.example](.env.local.example) for Vercel Sandbox,
+router, scheduler, and optional existing-machine settings. Dedalus is a sandbox
+adapter; its model API gateway is no longer supported.
 
 ## Scripts
 
 ```bash
-npm run dev          # sync skills, start Next on :3210
-npm run build        # sync skills, build
-npm run typecheck    # sync skills, tsc --noEmit
-npm run sync-skills  # regenerate data/skills.json from ../knowledge/skills
+pnpm --dir web dev               # compile SDK; prepare catalogs; Next on :3210
+pnpm --dir web build             # compile SDK; prepare local catalogs; Next build
+pnpm --dir web typecheck         # compile SDK; prepare catalogs; tsc --noEmit
+pnpm --dir web test              # compile SDK; dashboard unit and route tests
+pnpm --dir web sync-data         # regenerate committed web/data from knowledge/
+pnpm --dir web refresh-catalog   # explicit remote Cursor marketplace refresh
+pnpm check                      # full repository release check
 ```
+
+Run these from the repository root. Builds and typechecks never fetch marketplace
+data; refresh it explicitly and review the resulting snapshot before committing.
+See the [launch procedure](../docs/LAUNCH.md) for deployment and new-account proof.
 
 ## Public routes
 

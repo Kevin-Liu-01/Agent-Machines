@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { BrandMark } from "@/components/BrandMark";
 import { AgentInfoPanel, MachineInfoPanel } from "@/components/dashboard/AgentMachineInfo";
@@ -20,6 +20,7 @@ import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
 import { waitForControlPlaneOperation } from "@/lib/control-plane/client";
+import { onboardingProviderReady, submitOnboardingLaunch, type OnboardingLaunch } from "@/lib/onboarding/launch";
 import {
 	agentCredentialRequirements,
 	canBootstrapAgent,
@@ -39,17 +40,10 @@ import {
 	type AgentKind,
 	type ProviderKind,
 	type PublicUserConfig,
-	type MachineSpec,
 } from "@/lib/user-config/schema";
 
 const MARK_SET = new Set<string>(["am", "dedalus", "nous", "cursor", "openclaw", "anthropic", "openai"]);
 function isMark(value: string): value is Mark { return MARK_SET.has(value); }
-
-type Defaults = {
-	machineSpec: MachineSpec;
-	model: string;
-	hasOwnerDedalusKey: boolean;
-};
 
 type OnboardingAiKeys = {
 	vercelAiGateway: string;
@@ -62,7 +56,6 @@ type OnboardingAiKeyField = keyof OnboardingAiKeys;
 
 type Props = {
 	initialConfig: PublicUserConfig;
-	defaults: Defaults;
 	presets: Preset[];
 };
 
@@ -107,7 +100,7 @@ const PROVIDERS_META: Record<
 		tagline:
 			"Persistent Linux sandboxes on Sprites.dev. Auto-sleep, instant wake, checkpoints, public URLs. Runs on Fly.io infrastructure.",
 		keyLabel: "Sprites token",
-		keyPlaceholder: "kevin-liu-553/...",
+		keyPlaceholder: "Your Sprites API token",
 		keyHint: "Get one at sprites.dev/account",
 	},
 	e2b: {
@@ -218,9 +211,7 @@ const AGENT_DESC: Record<
 	},
 };
 
-const POLL_MS = 3000;
-
-export function OnboardingFlow({ initialConfig, defaults, presets }: Props) {
+export function OnboardingFlow({ initialConfig, presets }: Props) {
 	const router = useRouter();
 	const [step, setStep] = useState<Step>("agent");
 	const [agent, setAgent] = useState<AgentKind>(
@@ -234,7 +225,6 @@ export function OnboardingFlow({ initialConfig, defaults, presets }: Props) {
 		const ai = (initialConfig.aiProviders ?? {}) as Record<string, { configured?: boolean }>;
 		const conf: Record<string, boolean> = {};
 		for (const k of Object.keys(ai)) conf[k] = Boolean(ai[k]?.configured);
-		conf.dedalus = Boolean(initialConfig.providers?.dedalus?.configured);
 		return conf;
 	}, [initialConfig]);
 	// Default to the first curated preset (the "core starter"); NO_PRESET = blank.
@@ -260,9 +250,10 @@ export function OnboardingFlow({ initialConfig, defaults, presets }: Props) {
 	const [bootMachineId, setBootMachineId] = useState<string | null>(null);
 	const [bootPhase, setBootPhase] = useState<string | null>(null);
 	const [bootDone, setBootDone] = useState(false);
+	const launchRef = useRef<(OnboardingLaunch & { intent: string }) | null>(null);
+	const launchingRef = useRef(false);
 
 	const hasKey = initialConfig.providers[provider].configured;
-	const ownerKey = provider === "dedalus" && defaults.hasOwnerDedalusKey;
 
 	function next() {
 		const order = STEPS.map((s) => s.id);
@@ -276,6 +267,8 @@ export function OnboardingFlow({ initialConfig, defaults, presets }: Props) {
 	}
 
 	const provision = useCallback(async () => {
+		if (launchingRef.current) return;
+		launchingRef.current = true;
 		setBusy(true);
 		setError(null);
 		try {
@@ -308,81 +301,33 @@ export function OnboardingFlow({ initialConfig, defaults, presets }: Props) {
 			if (Object.keys(aiProviderKeys).length > 0) {
 				setupBody.aiProviderKeys = aiProviderKeys;
 			}
-			const setupResp = await fetch("/api/dashboard/admin/setup", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(setupBody),
-			});
-			if (!setupResp.ok) {
-				const body = (await setupResp.json().catch(() => ({}))) as {
-					message?: string;
-				};
-				throw new Error(body.message ?? `setup failed (HTTP ${setupResp.status})`);
+			const intent = JSON.stringify({ agent, presetId, provider, routerId });
+			if (!launchRef.current || launchRef.current.intent !== intent) {
+				launchRef.current = { workerId: crypto.randomUUID(), operationId: null, intent };
+				setBootMachineId(null);
 			}
-
-			// Build the Memory + Worker before launch so the one journaled bootstrap
-			// installs the selected loadout on its first pass.
-			const applyResp = await fetch("/api/dashboard/admin/apply-preset", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					presetId: presetId === NO_PRESET ? null : presetId,
-					agentKind: agent,
-					gatewayProfileId:
-						agentUsesRouter(agent) && routerId ? routerId : DEFAULT_ROUTER_ID,
-					machineId: null,
-				}),
+			setBootPhase("pending");
+			const operationId = await submitOnboardingLaunch(launchRef.current, {
+				setup: setupBody,
+				presetId: presetId === NO_PRESET ? null : presetId,
+				agentKind: agent,
+				providerKind: provider,
+				gatewayProfileId: agentUsesRouter(agent) && routerId ? routerId : DEFAULT_ROUTER_ID,
 			});
-			const applyBody = (await applyResp.json().catch(() => ({}))) as {
-				workerId?: string;
-				message?: string;
-				error?: string;
-			};
-			if (!applyResp.ok || !applyBody.workerId) {
-				throw new Error(
-					applyBody.message ?? applyBody.error ?? `preset apply failed (HTTP ${applyResp.status})`,
-				);
-			}
-
-			// Submit one asynchronous desired-state operation. Provision, memory
-			// install, runtime verification, and Worker linking settle together.
-			const provResp = await fetch("/api/dashboard/admin/provision-machine", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					providerKind: provider,
-					workerId: applyBody.workerId,
-					...(agentUsesRouter(agent) && routerId ? { gatewayProfileId: routerId } : {}),
-				}),
+			const completed = await waitForControlPlaneOperation(operationId, {
+				onUpdate: (view) => {
+					if (view.machineId) setBootMachineId(view.machineId);
+					if (view.worker?.status?.phase) setBootPhase(view.worker.status.phase);
+				},
 			});
-			// Server may return a non-JSON body on 5xx (gateway HTML page,
-			// empty Vercel error). Fall back to an empty object so the
-			// HTTP-status message below is still actionable instead of a
-			// JSON-parse exception that obscures the real failure.
-			const provBody = (await provResp.json().catch(() => ({}))) as {
-				ok?: boolean;
-				machineId?: string;
-				operation?: { id?: string };
-				phase?: string;
-				message?: string;
-				error?: string;
-			};
-			if (!provResp.ok || !provBody.operation?.id) {
-				throw new Error(
-					provBody.message ??
-						provBody.error ??
-						`provision failed (HTTP ${provResp.status})`,
-				);
-			}
-			setBootPhase("provisioning");
-			const completed = await waitForControlPlaneOperation(provBody.operation.id);
 			if (!completed.machineId) throw new Error("launch completed without a machine id");
 			setBootMachineId(completed.machineId);
-			setBootPhase("ready");
+			setBootPhase("running");
 			setBootDone(true);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "provision failed");
 		} finally {
+			launchingRef.current = false;
 			setBusy(false);
 		}
 	}, [agent, aiKeys, presetId, provider, providerKey, providerSecondary, routerId]);
@@ -398,7 +343,7 @@ export function OnboardingFlow({ initialConfig, defaults, presets }: Props) {
 		{ providers: initialConfig.providers, aiProviders: initialConfig.aiProviders },
 		agentCredDraft,
 	);
-	const canProvisionInfra = hasKey || ownerKey || providerKey.trim().length > 0;
+	const canProvisionInfra = onboardingProviderReady(provider, hasKey, providerKey, providerSecondary);
 	const canProvision = canProvisionInfra && agentCredsOk;
 
 	// Live upstream readiness for the info panel — merges on-file keys with what
@@ -415,37 +360,14 @@ export function OnboardingFlow({ initialConfig, defaults, presets }: Props) {
 	};
 	const agentReadiness = agentUpstreamReadiness(agent, routerId, effectiveAiConfigured);
 
-	// Poll machine state once we have an id.
+	// Open the exact machine just launched, even if another tab changed selection.
 	useEffect(() => {
-		if (!bootMachineId) return;
-		let stopped = false;
-		async function tick() {
-			try {
-				const r = await fetch("/api/dashboard/machine", { cache: "no-store" });
-				if (!r.ok) return;
-				const body = (await r.json()) as { phase?: string };
-				if (stopped) return;
-				if (body.phase) setBootPhase(body.phase);
-			} catch {
-				// transient -- next tick will retry
-			}
-		}
-		void tick();
-		const id = window.setInterval(tick, POLL_MS);
-		return () => {
-			stopped = true;
-			window.clearInterval(id);
-		};
-	}, [bootMachineId]);
-
-	// Once boot completes, ride into the dashboard.
-	useEffect(() => {
-		if (!bootDone) return;
+		if (!bootDone || !bootMachineId) return;
 		const id = window.setTimeout(() => {
-			router.push("/dashboard");
+			router.replace(`/dashboard/machines/${encodeURIComponent(bootMachineId)}/view?launch=1`);
 		}, 700);
 		return () => window.clearTimeout(id);
-	}, [bootDone, router]);
+	}, [bootDone, bootMachineId, router]);
 
 	function handleStartBoot() {
 		setStep("boot");
@@ -487,7 +409,7 @@ export function OnboardingFlow({ initialConfig, defaults, presets }: Props) {
 				<section className="bg-[var(--ret-bg)] p-6">
 					<StepRail step={step} />
 
-					{error ? (
+					{error && step !== "boot" ? (
 					<ReticleFrame className="mt-4 border-[var(--ret-red)]/50 bg-[var(--ret-red)]/5 p-3">
 						<p className="text-[11px] text-[var(--ret-red)]">
 							{error}
@@ -529,7 +451,7 @@ export function OnboardingFlow({ initialConfig, defaults, presets }: Props) {
 										agentKind={agent}
 										value={routerId}
 										onChange={setRouterId}
-										aiConfigured={wizardAiConfigured}
+										aiConfigured={effectiveAiConfigured}
 									/>
 								</div>
 							) : null}
@@ -540,7 +462,6 @@ export function OnboardingFlow({ initialConfig, defaults, presets }: Props) {
 								readiness={agentReadiness}
 								substrateReady={canProvisionInfra}
 								hasKey={hasKey}
-								ownerKey={ownerKey}
 								value={providerKey}
 								onChange={setProviderKey}
 								aiKeys={aiKeys}
@@ -568,6 +489,7 @@ export function OnboardingFlow({ initialConfig, defaults, presets }: Props) {
 								done={bootDone}
 								busy={busy}
 								onRetry={() => void provision()}
+								onBack={() => { setError(null); setStep("key"); }}
 								error={error}
 							/>
 						) : null}
@@ -923,7 +845,7 @@ function ProviderPickStep({
 	return (
 		<div className="space-y-5">
 			<div>
-				<ReticleLabel>step 4 . provider</ReticleLabel>
+				<ReticleLabel>step 3 . provider</ReticleLabel>
 				<h1 className="ret-display mt-1 text-2xl">
 					Pick where it runs
 				</h1>
@@ -996,7 +918,6 @@ function KeyStep({
 	readiness,
 	substrateReady,
 	hasKey,
-	ownerKey,
 	value,
 	onChange,
 	aiKeys,
@@ -1015,7 +936,6 @@ function KeyStep({
 	readiness: AgentUpstreamReadiness;
 	substrateReady: boolean;
 	hasKey: boolean;
-	ownerKey: boolean;
 	value: string;
 	onChange: (v: string) => void;
 	aiKeys: OnboardingAiKeys;
@@ -1033,13 +953,13 @@ function KeyStep({
 	return (
 		<div className="space-y-5">
 			<div>
-				<ReticleLabel>step 5 . keys</ReticleLabel>
+				<ReticleLabel>step 4 . keys</ReticleLabel>
 				<h1 className="ret-display mt-1 text-2xl">
 					Bring your keys
 				</h1>
 				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
 					Infrastructure key provisions the {PROVIDER_LABEL[provider]} machine.
-					AI provider keys power {AGENT_LABEL[agent]}. Stored in private metadata.
+					AI provider keys power {AGENT_LABEL[agent]}. Credentials are saved privately to your account.
 				</p>
 			</div>
 			{/* What you're about to boot — same panels as the spin-up form. */}
@@ -1063,13 +983,7 @@ function KeyStep({
 				<span className="text-[10px] text-[var(--ret-text-muted)]">
 					{hasKey
 						? "On file. Leave blank to keep the existing key."
-						: ownerKey
-							? "Owner default exists. Leave blank to inherit."
-							: "Required to provision."}
-					{provider === "dedalus" &&
-					(agent === "hermes" || agent === "openclaw")
-						? " Also powers LLM inference when no separate AI key is set."
-						: ""}
+						: "Required to provision."}
 				</span>
 			</label>
 			{meta.secondaryFields?.map((f) => (
@@ -1090,6 +1004,9 @@ function KeyStep({
 			{agentReqs.length > 0 ? (
 				<>
 					<ReticleLabel>agent inference · {AGENT_LABEL[agent]}</ReticleLabel>
+					{agentUsesRouter(agent) ? (
+						<p className="text-[11px] text-[var(--ret-text-dim)]">Add at least one AI provider key below. You do not need all four.</p>
+					) : null}
 					{agentReqs.map((req) => {
 						const field = req.field as OnboardingAiKeyField;
 						const onFile = config.aiProviders[field]?.configured ?? false;
@@ -1143,6 +1060,9 @@ function KeyStep({
 					Add the required AI provider key(s) above before booting {AGENT_LABEL[agent]}.
 				</p>
 			) : null}
+			{provider === "vercel" && value.trim() && !substrateReady ? (
+				<p className="text-[11px] text-[var(--ret-amber)]">A Vercel access token needs both a Team ID and a Project ID before launch.</p>
+			) : null}
 			<div className="flex items-center justify-between gap-2">
 				<ReticleButton variant="ghost" size="md" onClick={onBack} disabled={busy}>
 					← Back
@@ -1156,7 +1076,7 @@ function KeyStep({
 					{busy ? (
 						<BrailleSpinner name="braille" label="Saving..." className="text-sm" />
 					) : (
-						<>Boot rig →</>
+						<>Launch Worker →</>
 					)}
 				</ReticleButton>
 			</div>
@@ -1173,6 +1093,7 @@ function BootStep({
 	busy,
 	error,
 	onRetry,
+	onBack,
 }: {
 	agent: AgentKind;
 	provider: ProviderKind;
@@ -1182,25 +1103,26 @@ function BootStep({
 	busy: boolean;
 	error: string | null;
 	onRetry: () => void;
+	onBack: () => void;
 }) {
 	const isCliAgent = agent === "claude-code" || agent === "codex";
+	const machineReady = Boolean(machineId) || phase === "bootstrapping" || phase === "running" || done;
 	const steps = [
-		{ id: "create", label: "Submit machine create", isDone: !!machineId },
-		{ id: "schedule", label: `${PROVIDER_LABEL[provider]} schedules`, isDone: phase === "running" || phase === "starting" || phase === "wake_pending" },
-		{ id: "boot", label: "VM boots", isDone: phase === "running" },
-		{ id: "record", label: "Save fleet record + selected loadout", isDone: !!machineId },
-		{ id: "agent", label: `Bootstrap ${AGENT_LABEL[agent]} ${isCliAgent ? "environment" : "gateway"}`, isDone: done },
+		{ id: "create", label: "Save Worker and queue launch", isDone: (phase !== null && phase !== "pending") || machineReady },
+		{ id: "machine", label: `Provision ${PROVIDER_LABEL[provider]} workspace`, isDone: machineReady },
+		{ id: "agent", label: `Install loadout and start ${AGENT_LABEL[agent]}`, isDone: done },
+		{ id: "ready", label: "Verify runtime and open workspace", isDone: done },
 	];
 	return (
 		<div className="space-y-5">
 			<div>
-				<ReticleLabel>step 6 . boot</ReticleLabel>
+				<ReticleLabel>step 5 . launch</ReticleLabel>
 				<h1 className="ret-display mt-1 text-2xl">
-					{done ? (isCliAgent ? "Agent environment ready" : "Agent gateway ready") : "Creating your machine"}
+					{done ? "Your Worker is ready" : "Launching your Worker"}
 				</h1>
 				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
 					{done
-						? "Riding into the dashboard..."
+						? "Opening your live workspace…"
 						: isCliAgent
 							? `This creates a ${PROVIDER_LABEL[provider]} machine, saves your selected loadout, and bootstraps the ${AGENT_LABEL[agent]} environment.`
 							: `This creates a ${PROVIDER_LABEL[provider]} machine, saves your selected loadout, bootstraps ${AGENT_LABEL[agent]}, and wires the gateway back into your account.`}
@@ -1210,9 +1132,12 @@ function BootStep({
 			{error ? (
 				<ReticleFrame className="border-[var(--ret-red)]/50 bg-[var(--ret-red)]/5 p-3">
 					<p className="text-[11px] text-[var(--ret-red)]">{error}</p>
-					<div className="mt-2">
+					<div className="mt-2 flex gap-2">
 						<ReticleButton variant="secondary" size="sm" onClick={onRetry} disabled={busy}>
 							Retry
+						</ReticleButton>
+						<ReticleButton variant="ghost" size="sm" onClick={onBack} disabled={busy}>
+							Edit setup
 						</ReticleButton>
 					</div>
 				</ReticleFrame>
@@ -1280,7 +1205,7 @@ function BootStep({
 			  operator can see exactly which step the machine is
 			  blocked on (and which Dedalus error code if it's failing).
 			*/}
-			<BootTranscript active={!done} machineId={machineId} maxHeight={280} />
+			{machineId ? <BootTranscript active={busy && !done} machineId={machineId} maxHeight={280} /> : null}
 		</div>
 	);
 }

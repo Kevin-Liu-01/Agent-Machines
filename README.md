@@ -32,6 +32,7 @@ Source: <https://github.com/Kevin-Liu-01/agent-machines>
 - [Quick start](#quick-start)
 - [CLI](#cli)
 - [Web app](#web-app)
+- [Development and release checks](#development-and-release-checks)
 - [Dashboard surfaces](#dashboard-surfaces)
 - [Repository layout](#repository-layout)
 - [Data boundaries and security](#data-boundaries-and-security)
@@ -292,7 +293,20 @@ Every substrate implements `MachineProvider`; streaming tier depends on the SDK.
 
 Native tiers relay output frame by frame with no extra `exec` calls. The poll fallback launches a detached command, tees combined output to a temp log, and polls new bytes until an exit-marker file appears.
 
-**Which lanes are proven, and on which surface.** The multiplexer's own adapters (`src/mux/providers/*`) have run every agent on every substrate live. Latest full run, 2026-08-05: **12 of 16 cells pass** -- all four harnesses on E2B, Sprites and Vercel Sandbox, none of four on Dedalus, every green cell asserted to return the exact sentinel text through the normalized event stream. Two Dedalus cells lost the run to one intermittent vendor defect (`machine_not_found` on a machine its own API reports as running) and two more passed the run but failed to tear down, which now counts as red. An earlier run on 2026-08-01 was 16 of 16 but gated on the exit code alone; [docs/MUX-RESULTS.md](docs/MUX-RESULTS.md) says what each vintage proves. That run exercised the mux, not the table above: the hosted control plane's `MachineProvider` adapters are a second implementation of the same four vendors and are not covered by it. Convergence is item 0 of [docs/ROADMAP.md](docs/ROADMAP.md).
+**Which lanes are proven, and on which surface.** The multiplexer's adapters
+(`src/mux/providers/*`) have run every agent on every substrate live. The archived
+strict matrix from 2026-08-05 passed **12 of 16 cells**: all four harnesses on E2B,
+Sprites, and Vercel Sandbox. Dedalus failed because of intermittent provider
+lookup and teardown errors. An earlier 16-of-16 run checked exit codes alone;
+[docs/MUX-RESULTS.md](docs/MUX-RESULTS.md) distinguishes that weaker proof from
+the strict sentinel and teardown checks.
+
+The hosted `MachineProvider` bindings now reuse those mux adapters through
+`web/lib/providers/mux-facade.ts`; they no longer maintain separate vendor SDK
+implementations. Hosted authentication, bootstrap, persistence, and browser
+interaction still require their own deployed proof. Follow
+[docs/LAUNCH.md](docs/LAUNCH.md) before treating a historical matrix as release
+evidence.
 
 ---
 
@@ -302,13 +316,20 @@ Native tiers relay output frame by frame with no extra `exec` calls. The poll fa
 git clone https://github.com/Kevin-Liu-01/agent-machines
 cd agent-machines
 cp .env.example .env
-npm install
-npm run deploy   # CLI path (Hermes); or use /dashboard/setup for any provider
+corepack enable
+pnpm install --frozen-lockfile
+pnpm web        # open http://localhost:3210; choose a Worker and connect your keys
 ```
 
 Requires Node `^20.19` or `>= 22.12`. Not merely ">= 20": `require("agent-machines")`
 resolves through the `module-sync` export condition, which only those Nodes match,
 and older ones cannot `require()` an ES module at all.
+
+Use pnpm 10.30.0 (pinned in `package.json`): the root SDK and `web/` share one
+workspace and lockfile. For the dashboard, configure Clerk and Supabase as
+described in [`web/README.md`](web/README.md). For a local-only preview, set
+`ALLOW_DEV_AUTH=1`; real sign-up testing requires Clerk. `pnpm deploy` is the
+legacy Hermes-on-Dedalus CLI; `pnpm mux` exposes the multi-provider CLI.
 
 ### Agent Machines SDK
 
@@ -370,6 +391,7 @@ import { createMux } from "agent-machines";
 const mux = createMux();
 
 const machine = await mux.create({
+  name: "coder",
   agent: "claude-code",
   sandbox: "auto",                                  // route, don't pin
   constraints: { pty: "native", maxRuntimeMs: 3_600_000 },
@@ -484,10 +506,10 @@ npx tsx scripts/mux-live-test.ts
 ## Web app
 
 ```bash
-cd web
-cp .env.local.example .env.local
-npm install
-npm run dev
+# From the repository root:
+cp web/.env.local.example web/.env.local
+pnpm install --frozen-lockfile
+pnpm web
 ```
 
 Open <http://localhost:3210>.
@@ -500,6 +522,11 @@ CLERK_SECRET_KEY=...
 ```
 
 > **Production note:** use Clerk **production** keys (`pk_live_…` / `sk_live_…`) on the deployed domain. Development keys carry strict rate limits and store metadata on a separate instance.
+
+Hosted accounts connect their own sandbox and model keys in Settings. Deployment
+credentials are opt-in defaults for the exact Clerk user ID in
+`AGENT_MACHINES_OWNER_USER_ID`; leaving it unset requires BYOK for every hosted
+account. See [`web/.env.local.example`](web/.env.local.example).
 
 ### Key routes
 
@@ -524,6 +551,28 @@ CLERK_SECRET_KEY=...
 | `/dashboard/sessions` `/logs` `/artifacts` `/cursor` | observation surfaces |
 
 Command palette (`⌘K`) jumps across machines, registry, loadout, and console routes.
+
+## Development and release checks
+
+```bash
+pnpm test          # mux, lifecycle kernel, SDK, CLI, and dashboard suites
+pnpm typecheck     # SDK, CLI, and billable live-test scripts
+pnpm --dir web typecheck
+pnpm build         # compile the SDK, then the production Next.js app
+pnpm verify:sdk    # pack and exercise ESM/CommonJS exports in an isolated consumer
+pnpm check         # all of the above, in release order
+```
+
+These checks make no billable provider or model calls. A release also needs a
+real new-account run using the deployment's authentication, database, and chosen
+provider; the operator procedure is [`docs/LAUNCH.md`](docs/LAUNCH.md).
+
+The web dev server, tests, typecheck, and build compile the SDK first, so a new
+checkout does not need a pre-existing `dist/` directory. Builds prepare `web/data`
+from committed `knowledge/` sources. They never refresh external catalogs. To
+intentionally update the Cursor marketplace snapshot, run
+`pnpm --dir web refresh-catalog`, review the `knowledge/` and `web/data/` changes,
+then commit them together. This keeps the same revision's builds reproducible.
 
 ---
 

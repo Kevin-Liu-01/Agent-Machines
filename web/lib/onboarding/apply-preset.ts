@@ -7,6 +7,7 @@
  */
 
 import type { Preset } from "@/lib/dashboard/presets";
+import { runtimeModel } from "@/lib/agents/runtime-model";
 import { newWorker } from "@/lib/workers/resolve";
 import {
 	BAREBONES_MEMORY_BUNDLE_ID,
@@ -23,6 +24,7 @@ export type PresetApplication = {
 };
 
 export function applyPreset(input: {
+	workerId?: string;
 	config: UserConfig;
 	preset: Preset | null;
 	agentKind: AgentKind;
@@ -31,6 +33,12 @@ export function applyPreset(input: {
 	machineId: string | null;
 }): PresetApplication {
 	const { config, preset, agentKind, model, gatewayProfileId, machineId } = input;
+	const existing = input.workerId
+		? config.workers.find((worker) => worker.id === input.workerId)
+		: undefined;
+	if (existing) {
+		return { workers: config.workers, workerId: existing.id, memoryBundleId: existing.memoryBundleId };
+	}
 
 	// A curated preset -> its synthesized Memory; "no preset" -> Barebones.
 	const memoryBundleId = preset
@@ -40,13 +48,14 @@ export function applyPreset(input: {
 	const worker = newWorker({
 		name: preset ? preset.name : "Barebones worker",
 		agentKind,
-		model,
+		model: runtimeModel(agentKind, model),
 		gatewayProfileId,
 		memoryBundleId,
 		rolePrompt: preset?.rolePrompt ?? null,
 		source: preset ? "custom" : "default",
 		lastMachineId: machineId,
 	});
+	if (input.workerId) worker.id = input.workerId;
 
 	return {
 		workers: [...(config.workers ?? []), worker],

@@ -7,6 +7,7 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { StringDecoder } from "node:string_decoder";
 
 import { guardedRunCommand } from "agent-machines/mux";
 
@@ -96,15 +97,19 @@ async function readLogDelta(
 	machineId: string,
 	logPath: string,
 	offset: number,
-): Promise<{ data: string; nextOffset: number }> {
+): Promise<{ bytes: Buffer; nextOffset: number }> {
 	const readCmd = `
 if [ ! -f ${logPath} ]; then exit 0; fi
-dd if=${logPath} bs=1 skip=${offset} count=${READ_CHUNK_BYTES} 2>/dev/null
+dd if=${logPath} bs=1 skip=${offset} count=${READ_CHUNK_BYTES} 2>/dev/null | base64
 `.trim();
 	const result = await provider.exec(machineId, readCmd, { timeoutMs: 12_000 });
-	const data = result.stdout ?? "";
-	if (!data) return { data: "", nextOffset: offset };
-	return { data, nextOffset: offset + Buffer.byteLength(data, "utf8") };
+	if (result.exitCode !== 0) {
+		throw new Error(result.stderr || "failed to read command output");
+	}
+	// Provider exec responses are text. Base64 preserves partial UTF-8 sequences
+	// across byte-sized reads, and offsets must count source bytes, not decoded text.
+	const bytes = Buffer.from(result.stdout.trim(), "base64");
+	return { bytes, nextOffset: offset + bytes.length };
 }
 
 async function readExitCode(
@@ -119,8 +124,8 @@ async function readExitCode(
 	);
 	const raw = probe.stdout.trim();
 	if (!raw) return null;
-	const code = Number.parseInt(raw, 10);
-	return Number.isFinite(code) ? code : 0;
+	if (!/^\d+$/.test(raw)) throw new Error("invalid command exit status");
+	return Number(raw);
 }
 
 export async function* execStreamOnMachine(
@@ -196,21 +201,30 @@ async function* pollLogTailStream(
 	await waitForReady(provider, machineId, paths.readyPath);
 
 	let offset = 0;
+	const decoder = new StringDecoder("utf8");
 	while (Date.now() < deadline) {
-		const [{ data, nextOffset }, exitCode] = await Promise.all([
+		const [{ bytes, nextOffset }, exitCode] = await Promise.all([
 			readLogDelta(provider, machineId, paths.logPath, offset),
 			readExitCode(provider, machineId, paths.exitPath),
 		]);
 		offset = nextOffset;
+		const data = decoder.write(bytes);
 		if (data) {
 			yield { type: "stdout", data };
 		}
 
 		if (exitCode !== null) {
-			const tail = await readLogDelta(provider, machineId, paths.logPath, offset);
-			if (tail.data) {
-				yield { type: "stdout", data: tail.data };
+			// A completed command may have produced many chunks between polls.
+			// Drain the stable log completely before publishing its exit event.
+			while (true) {
+				const tail = await readLogDelta(provider, machineId, paths.logPath, offset);
+				if (tail.bytes.length === 0) break;
+				offset = tail.nextOffset;
+				const tailText = decoder.write(tail.bytes);
+				if (tailText) yield { type: "stdout", data: tailText };
 			}
+			const remainder = decoder.end();
+			if (remainder) yield { type: "stdout", data: remainder };
 			yield { type: "exit", exitCode };
 			return;
 		}
@@ -246,6 +260,7 @@ export async function* tailFileStreamOnMachine(
 	const pollMs = options.pollMs ?? 400;
 	const deadline = Date.now() + maxDurationMs;
 	let offset = options.startOffset ?? 0;
+	const decoder = new StringDecoder("utf8");
 
 	while (Date.now() < deadline) {
 		if (options.stopWhen && (await options.stopWhen())) {
@@ -260,13 +275,14 @@ export async function* tailFileStreamOnMachine(
 		const size = Number.parseInt(sizeProbe.stdout.trim(), 10) || 0;
 
 		if (size > offset) {
-			const { data, nextOffset } = await readLogDelta(
+			const { bytes, nextOffset } = await readLogDelta(
 				provider,
 				machine.id,
 				logPath,
 				offset,
 			);
 			offset = nextOffset;
+			const data = decoder.write(bytes);
 			if (data) {
 				yield { type: "stdout", data };
 			}

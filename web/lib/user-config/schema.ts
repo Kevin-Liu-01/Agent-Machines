@@ -226,7 +226,13 @@ export type ProviderCredentials = Partial<{
 	dedalus: { apiKey: string; baseUrl?: string };
 	sprites: { apiKey: string };
 	e2b: { apiKey: string };
-	vercel: { token: string; teamId: string; projectId: string };
+	vercel: {
+		token: string;
+		teamId: string;
+		projectId: string;
+		/** Server-resolved owner access; never trust or expose a stored/client value. */
+		allowDeploymentCredentials?: boolean;
+	};
 }>;
 
 /**
@@ -740,7 +746,11 @@ export function toPublicConfig(config: UserConfig): PublicUserConfig {
 		},
 		vercel: {
 			configured: Boolean(
-				config.providers.vercel?.token || process.env.VERCEL_OIDC_TOKEN?.trim(),
+				(config.providers.vercel?.token &&
+				config.providers.vercel?.teamId &&
+				config.providers.vercel?.projectId) ||
+				(config.providers.vercel?.allowDeploymentCredentials === true &&
+				process.env.VERCEL_OIDC_TOKEN?.trim()),
 			),
 			scopeHint: config.providers.vercel?.teamId
 				? `team ${config.providers.vercel.teamId.slice(0, 8)}…`

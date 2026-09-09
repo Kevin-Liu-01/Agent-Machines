@@ -274,6 +274,28 @@ test("forceBootstrap repairs an unchanged Worker on its existing sandbox", async
 	assert.deepEqual(driver.calls, ["inspect:sprites", "bootstrap:openclaw"]);
 });
 
+test("forceBootstrap without a request key does not reuse the initial successful reconcile", async () => {
+	const { plane, driver } = fixture();
+	const initial = await plane.apply({
+		id: "repair-default",
+		spec: { name: "Repair", runtime: "openclaw", sandbox: "sprites" },
+	});
+	await plane.reconcileNext();
+	driver.calls.length = 0;
+
+	for (let repair = 0; repair < 2; repair += 1) {
+		const accepted = await plane.apply(
+			{ id: initial.worker.id, spec: initial.worker.spec },
+			{ forceBootstrap: true },
+		);
+		assert.equal(accepted.reused, false);
+		assert.equal((await plane.reconcileNext())?.operation.status, "succeeded");
+	}
+	assert.deepEqual(driver.calls, [
+		"inspect:sprites", "bootstrap:openclaw", "inspect:sprites", "bootstrap:openclaw",
+	]);
+});
+
 test("a migration failure durably leaves the latest Worker in error", async () => {
 	const { plane, store, driver } = fixture();
 	await plane.apply({
@@ -363,4 +385,49 @@ test("adopt manages an existing placement without provisioning another one", asy
 	assert.equal(accepted.worker.status.placement?.sandboxId, "already-there");
 	assert.equal(outcome?.worker?.status.phase, "running");
 	assert.equal(driver.calls.filter((call) => call.startsWith("provision:")).length, 0);
+});
+
+test("deleted Workers reject direct and scheduled runs without allocating compute", async () => {
+	const { plane, store, driver } = fixture();
+	const initial = await plane.apply({
+		id: "retired",
+		spec: {
+			name: "Retired", runtime: "codex", sandbox: "e2b",
+			schedules: [{ id: "daily", schedule: "0 9 * * *", prompt: "check updates", enabled: true }],
+		},
+	});
+	await plane.reconcileNext();
+	await plane.apply({ id: "retired", spec: initial.worker.spec, desiredState: "deleted" });
+	await plane.reconcileNext();
+	driver.calls.length = 0;
+
+	await assert.rejects(plane.run("retired", "run again", "after-delete"), /worker retired is deleted/);
+	await assert.rejects(
+		plane.dispatchSchedule("retired", "daily", new Date("2026-09-09T09:00:00Z")),
+		/worker retired is deleted/,
+	);
+	assert.equal(await plane.reconcileNext(), null);
+	assert.equal((await store.getWorker("retired"))?.status.phase, "deleted");
+	assert.deepEqual(driver.calls, []);
+});
+
+test("a queued run cannot resurrect a Worker after deletion is requested", async () => {
+	const { plane, store, driver } = fixture();
+	const initial = await plane.apply({
+		id: "retiring",
+		spec: { name: "Retiring", runtime: "codex", sandbox: "e2b" },
+	});
+	await plane.reconcileNext();
+	await plane.run("retiring", "queued before deletion", "pending-run");
+	await plane.apply({ id: "retiring", spec: initial.worker.spec, desiredState: "deleted" });
+	driver.calls.length = 0;
+
+	const cancelledRun = await plane.reconcileNext();
+	assert.equal(cancelledRun?.operation.status, "failed");
+	assert.match(cancelledRun?.operation.error ?? "", /worker retiring is deleted/);
+	assert.deepEqual(driver.calls, []);
+	const deleted = await plane.reconcileNext();
+	assert.equal(deleted?.operation.status, "succeeded");
+	assert.equal((await store.getWorker("retiring"))?.status.phase, "deleted");
+	assert.deepEqual(driver.calls, ["destroy:e2b"]);
 });

@@ -58,6 +58,11 @@ const guarded = clerkMiddleware(async (auth, request) => {
 	if (DEV_BYPASS) return;
 
 	if (isProtectedApi(request)) {
+		// Route handlers validate both Clerk sessions and user-scoped SDK keys.
+		// Let bearer requests reach that validator; possession alone grants no access.
+		if (/^Bearer\s+\S+$/i.test(request.headers.get("authorization")?.trim() ?? "")) {
+			return;
+		}
 		return NextResponse.json(
 			{ error: "unauthorized" },
 			{ status: 401 },
@@ -65,7 +70,7 @@ const guarded = clerkMiddleware(async (auth, request) => {
 	}
 
 	const signInUrl = new URL("/sign-in", request.url);
-	signInUrl.searchParams.set("redirect_url", request.nextUrl.pathname);
+	signInUrl.searchParams.set("redirect_url", request.nextUrl.pathname + request.nextUrl.search);
 	return NextResponse.redirect(signInUrl);
 });
 

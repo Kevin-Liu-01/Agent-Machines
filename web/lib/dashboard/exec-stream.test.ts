@@ -81,7 +81,7 @@ describe("streamFromProvider", () => {
 						allChunksRead = true;
 						return { stdout: "", stderr: "", exitCode: 0 };
 					}
-					return { stdout: next, stderr: "", exitCode: 0 };
+					return { stdout: Buffer.from(next).toString("base64"), stderr: "", exitCode: 0 };
 				}
 				if (/\.exit/.test(command)) {
 					return {
@@ -113,5 +113,39 @@ describe("streamFromProvider", () => {
 		expect(last).toEqual({ type: "exit", exitCode: 0 });
 		// Fallback launches the detached shell on the VM.
 		expect(execBackground).toHaveBeenCalledTimes(1);
+	});
+
+	it("drains all completed output and preserves UTF-8 at byte boundaries", async () => {
+		const output = `${"a".repeat(8191)}🚀${"é".repeat(16000)}\nfinished\n`;
+		const bytes = Buffer.from(output);
+		const exec = vi.fn(async (_id: string, command: string): Promise<ExecResult> => {
+			let stdout = "";
+			if (command.includes(".ready")) stdout = "ok";
+			else if (command.includes("dd if=")) {
+				const offset = Number(command.match(/skip=(\d+)/)?.[1]);
+				const count = Number(command.match(/count=(\d+)/)?.[1]);
+				stdout = bytes.subarray(offset, offset + count).toString("base64");
+			} else if (command.includes(".exit")) stdout = "7";
+			return { stdout, stderr: "", exitCode: 0 };
+		});
+		const provider = makeProvider({ exec, execBackground: vi.fn().mockResolvedValue(undefined) });
+		const events = await collect(streamFromProvider(provider, "completed", "large command"));
+		const result = events.flatMap((event) => event.type === "stdout" ? [event.data] : []).join("");
+
+		expect(result).toBe(output);
+		expect(events.at(-1)).toEqual({ type: "exit", exitCode: 7 });
+	});
+
+	it("rejects an invalid exit marker instead of reporting a successful command", async () => {
+		const provider = makeProvider({
+			execBackground: vi.fn().mockResolvedValue(undefined),
+			exec: vi.fn(async (_id: string, command: string): Promise<ExecResult> => ({
+				stdout: command.includes(".ready") ? "ok" : command.includes(".exit") ? "broken" : "",
+				stderr: "",
+				exitCode: 0,
+			})),
+		});
+		await expect(collect(streamFromProvider(provider, "failed", "command")))
+			.rejects.toThrow("invalid command exit status");
 	});
 });

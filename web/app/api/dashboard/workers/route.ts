@@ -12,11 +12,11 @@ import { findPreset } from "@/lib/dashboard/presets";
 import { listBundles } from "@/lib/memory/bundle";
 import { applyPreset } from "@/lib/onboarding/apply-preset";
 import { DEFAULT_ROUTER_ID, isRemovedDedalusRouter } from "@/lib/agents/upstreams";
+import { runtimeModel } from "@/lib/agents/runtime-model";
 import { newWorker } from "@/lib/workers/resolve";
 import {
 	AGENT_KINDS,
 	DEFAULT_MEMORY_BUNDLE_ID,
-	DEFAULT_MODEL,
 	type AgentKind,
 } from "@/lib/user-config/schema";
 
@@ -46,6 +46,9 @@ export async function POST(request: Request): Promise<Response> {
 	} catch {
 		return Response.json({ error: "invalid_json" }, { status: 400 });
 	}
+	if (!body || typeof body !== "object" || Array.isArray(body)) {
+		return Response.json({ error: "invalid_body" }, { status: 400 });
+	}
 	const name = typeof body.name === "string" ? body.name.trim() : "";
 	if (!name) return Response.json({ error: "name_required" }, { status: 400 });
 	if (!isAgent(body.agentKind)) {
@@ -63,9 +66,7 @@ export async function POST(request: Request): Promise<Response> {
 
 	const config = await getUserConfig();
 
-	// Start from a curated preset: import its abilities into the pool, create a
-	// Memory shaped by it, and a Worker on that Memory (reuses the onboarding
-	// helper, machineId null since this worker isn't deployed yet).
+	// Curated presets reference a bundled Memory; bootstrap installs its loadout.
 	if (typeof body.presetId === "string" && body.presetId) {
 		const preset = findPreset(body.presetId);
 		if (!preset) return Response.json({ error: "unknown_preset" }, { status: 400 });
@@ -87,17 +88,21 @@ export async function POST(request: Request): Promise<Response> {
 		return Response.json({ ok: true, worker });
 	}
 
+	const memoryBundleId = typeof body.memoryBundleId === "string"
+		? body.memoryBundleId : DEFAULT_MEMORY_BUNDLE_ID;
+	if (!listBundles(config).some((bundle) => bundle.id === memoryBundleId)) {
+		return Response.json({ error: "unknown_memory_bundle" }, { status: 400 });
+	}
 	const worker = newWorker({
 		name,
 		agentKind: body.agentKind,
-		model:
+		model: runtimeModel(body.agentKind,
 			typeof body.model === "string" && body.model.trim()
 				? body.model.trim()
-				: DEFAULT_MODEL,
+				: config.draftModel),
 		gatewayProfileId:
 			typeof body.gatewayProfileId === "string" ? body.gatewayProfileId : DEFAULT_ROUTER_ID,
-		memoryBundleId:
-			typeof body.memoryBundleId === "string" ? body.memoryBundleId : DEFAULT_MEMORY_BUNDLE_ID,
+		memoryBundleId,
 		rolePrompt: typeof body.rolePrompt === "string" ? body.rolePrompt : null,
 		source: "custom",
 	});

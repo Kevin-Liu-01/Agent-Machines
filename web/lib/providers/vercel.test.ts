@@ -30,11 +30,25 @@ describe("VercelProvider credential gates", () => {
 		expect(() => new VercelProvider(null)).toThrow(MachineProviderError);
 	});
 
-	it("accepts OIDC-only credentials from the environment", () => {
+	it("rejects deployment OIDC for tenants without their own credentials", () => {
 		process.env.VERCEL_OIDC_TOKEN = "oidc-token";
-		const provider = new VercelProvider(null);
+		expect(() => new VercelProvider(null)).toThrow(MachineProviderError);
+		delete process.env.VERCEL_OIDC_TOKEN;
+	});
+
+	it("accepts deployment OIDC only with the server-resolved owner marker", () => {
+		process.env.VERCEL_OIDC_TOKEN = "oidc-token";
+		const provider = new VercelProvider({ token: "", teamId: "", projectId: "", allowDeploymentCredentials: true });
 		expect(provider.hasCredentials).toBe(true);
 		delete process.env.VERCEL_OIDC_TOKEN;
+	});
+
+	it("rejects the host's env triple when the tenant has not connected Vercel", () => {
+		process.env.VERCEL_TOKEN = "host-token";
+		process.env.VERCEL_TEAM_ID = "host-team";
+		process.env.VERCEL_PROJECT_ID = "host-project";
+		expect(() => new VercelProvider(null)).toThrow(MachineProviderError);
+		expect(() => new VercelProvider({ token: "tenant-token", teamId: "", projectId: "" })).toThrow(MachineProviderError);
 	});
 
 	it("reports a full triple as credentialed", () => {

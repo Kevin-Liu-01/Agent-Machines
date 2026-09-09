@@ -285,7 +285,8 @@ describe("sprites binding", () => {
 });
 
 describe("vercel binding", () => {
-	it("passes the triple through and takes OIDC only from process.env", () => {
+	it("passes only the tenant triple through even when deployment OIDC exists", () => {
+		vi.stubEnv("VERCEL_OIDC_TOKEN", "host-oidc");
 		mocks.createVercelProvider.mockReturnValue(fakeMuxProvider("vercel"));
 		void new VercelProvider({ token: "t", teamId: "team", projectId: "prj" });
 		expect(mocks.createVercelProvider).toHaveBeenCalledWith({
@@ -299,25 +300,19 @@ describe("vercel binding", () => {
 		});
 	});
 
-	it("falls back to the env triple when no creds are configured", () => {
+	it("rejects host env credentials when no tenant credentials are configured", () => {
 		vi.stubEnv("VERCEL_TOKEN", "env-tok");
 		vi.stubEnv("VERCEL_TEAM_ID", "env-team");
 		vi.stubEnv("VERCEL_PROJECT_ID", "env-prj");
 		mocks.createVercelProvider.mockReturnValue(fakeMuxProvider("vercel"));
-		void new VercelProvider(null);
-		expect(mocks.createVercelProvider).toHaveBeenCalledWith(
-			expect.objectContaining({
-				token: "env-tok",
-				teamId: "env-team",
-				projectId: "env-prj",
-			}),
-		);
+		expect(() => new VercelProvider(null)).toThrow(MachineProviderError);
+		expect(mocks.createVercelProvider).not.toHaveBeenCalled();
 	});
 
-	it("constructs under OIDC alone and forwards the process-env token", () => {
+	it("forwards deployment OIDC only for the server-resolved owner", () => {
 		vi.stubEnv("VERCEL_OIDC_TOKEN", "oidc-token");
 		mocks.createVercelProvider.mockReturnValue(fakeMuxProvider("vercel"));
-		void new VercelProvider(null);
+		void new VercelProvider({ token: "", teamId: "", projectId: "", allowDeploymentCredentials: true });
 		expect(mocks.createVercelProvider).toHaveBeenCalledWith(
 			expect.objectContaining({ oidcToken: "oidc-token" }),
 		);

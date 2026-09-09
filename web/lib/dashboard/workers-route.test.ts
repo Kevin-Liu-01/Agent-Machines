@@ -6,6 +6,7 @@ import {
 	type UserConfig,
 } from "@/lib/user-config/schema";
 import { listPresets } from "@/lib/dashboard/presets";
+import { DEFAULT_CLAUDE_CODE_MODEL, DEFAULT_CODEX_MODEL } from "@/lib/agents/runtime-model";
 
 const mocks = vi.hoisted(() => ({
 	getEffectiveUserId: vi.fn(),
@@ -39,6 +40,27 @@ beforeEach(() => {
 });
 
 describe("POST /api/dashboard/workers", () => {
+	it.each([null, [], 42])("rejects a non-object request body: %j", async (payload) => {
+		const response = await POST(request(payload));
+		expect(response.status).toBe(400);
+		expect(mocks.setUserConfig).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		["codex", DEFAULT_CODEX_MODEL],
+		["claude-code", DEFAULT_CLAUDE_CODE_MODEL],
+	])("stores the native %s model in a new Worker", async (agentKind, model) => {
+		const response = await POST(request({ name: "Native worker", agentKind }));
+		expect(response.status).toBe(200);
+		expect(await response.json()).toMatchObject({ worker: { agentKind, model } });
+	});
+
+	it("rejects a missing memory bundle before saving an unusable Worker", async () => {
+		const response = await POST(request({ name: "Bad memory", agentKind: "hermes", memoryBundleId: "missing" }));
+		expect(response.status).toBe(400);
+		expect(await response.json()).toMatchObject({ error: "unknown_memory_bundle" });
+		expect(mocks.setUserConfig).not.toHaveBeenCalled();
+	});
 	it("creates a deployable Worker from every surfaced preset", async () => {
 		const presets = listPresets();
 		expect(presets).toHaveLength(12);

@@ -23,16 +23,17 @@
  * than silently reading every tenant.
  */
 
-import { createMux, type Mux } from "agent-machines/mux";
+import { Mux } from "agent-machines/mux";
 
 import { createSupabasePlacementStore } from "@/lib/mux/placement-store";
 import { DEFAULT_ROUTE_ORDER, resolveRoute } from "@/lib/mux/route";
 import type { UserConfig } from "@/lib/user-config/schema";
 
-import type { MuxConfigInput } from "../../../src/mux/config.js";
+import type { MuxConfig } from "../../../src/mux/config.js";
 
 /**
- * The user's stored credentials in the shape `createMux()` takes.
+ * Fully resolved tenant credentials. Do not pass these through the CLI config
+ * resolver: it expands env: references and fills missing keys from the host.
  *
  * Deliberately NOT a new source of truth about which lanes are usable: the
  * credential RULES live in `lib/mux/route.ts` (including vercel's
@@ -44,23 +45,32 @@ import type { MuxConfigInput } from "../../../src/mux/config.js";
  * The primary is the first CREDENTIALED lane rather than a fixed default, so a
  * hosted mux never opens with a primary the user cannot authenticate against.
  */
-export function muxConfigForUser(config: UserConfig): MuxConfigInput {
+export function muxConfigForUser(config: UserConfig): MuxConfig {
 	const providers = config.providers;
 	const { route } = resolveRoute(config);
 	const order = route.length > 0 ? route : [...DEFAULT_ROUTE_ORDER];
 	return {
+		keys: {
+			anthropic: config.aiProviderKeys?.anthropic,
+			openai: config.aiProviderKeys?.openai,
+			aiGateway: config.aiProviderKeys?.vercelAiGateway,
+			openrouter: config.aiProviderKeys?.openrouter,
+		},
 		providers: {
 			...(providers.e2b?.apiKey ? { e2b: { apiKey: providers.e2b.apiKey } } : {}),
 			// The mux spells this one `token`; user config says `apiKey`.
 			...(providers.sprites?.apiKey
 				? { sprites: { token: providers.sprites.apiKey } }
 				: {}),
-			...(providers.vercel?.token
+			...(providers.vercel?.token || providers.vercel?.allowDeploymentCredentials
 				? {
 						vercel: {
 							token: providers.vercel.token,
 							teamId: providers.vercel.teamId,
 							projectId: providers.vercel.projectId,
+							...(providers.vercel.allowDeploymentCredentials === true
+								? { oidcToken: process.env.VERCEL_OIDC_TOKEN?.trim() }
+								: {}),
 						},
 					}
 				: {}),
@@ -76,6 +86,8 @@ export function muxConfigForUser(config: UserConfig): MuxConfigInput {
 				: {}),
 		},
 		sandboxes: { primary: order[0], backups: order.slice(1) },
+		agents: { default: "claude-code" },
+		defaults: { timeoutMs: 300_000 },
 	};
 }
 
@@ -97,7 +109,7 @@ export function createHostedMux(userId: string, config: UserConfig): Mux {
 		);
 	}
 	const placementStore = createSupabasePlacementStore(userId);
-	return createMux(muxConfigForUser(config), {
+	return new Mux(muxConfigForUser(config), {
 		placementStore,
 		// Health persists into THIS TENANT's row (2026-08-04, ROADMAP pillar 6).
 		//

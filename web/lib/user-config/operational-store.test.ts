@@ -36,12 +36,13 @@ vi.mock("./dev-store", () => ({
 	setDevUserConfig: vi.fn(),
 }));
 
-import { getUserConfigById, setOperationalUserConfigById } from "./clerk";
+import { getUserConfigById, setOperationalUserConfigById, setUserConfigById } from "./clerk";
 import {
 	DEFAULT_USER_CONFIG,
 	INITIAL_BOOTSTRAP_STATE,
 	type MachineRef,
 	type Worker,
+	type MemoryBundle,
 } from "./schema";
 
 const machine: MachineRef = {
@@ -83,6 +84,110 @@ beforeEach(() => {
 	mocks.patchMachine.mockResolvedValue(undefined);
 	mocks.archiveMachine.mockResolvedValue(undefined);
 	mocks.deleteMachine.mockResolvedValue(undefined);
+	mocks.getSupabaseUserConfig.mockImplementation(() => mocks.ensureUser());
+});
+
+describe("authoritative settings persistence", () => {
+	const memory: MemoryBundle = {
+		id: "memory-1", name: "Research memory", description: "Saved research", source: "custom",
+		docs: { soul: "", agentDocs: "", user: "", memory: "Remember this project" },
+		skillIds: [], toolIds: [], mcpServerIds: [],
+		createdAt: "2026-09-08T00:00:00.000Z", updatedAt: "2026-09-08T00:00:00.000Z",
+	};
+	const updateMetadata = vi.fn();
+	const row = () => ({
+		active_machine_id: machine.id,
+		gateway_profiles: [], environment_profiles: [], bootstrap_presets: [],
+		custom_loadout: [], loadout_sources: [], memory_bundles: [memory], workers: [worker],
+		setup_step: "provisioned", draft_agent_kind: "claude-code", draft_provider_kind: "e2b",
+		draft_model: "claude-opus-4-8", draft_spec: machine.spec,
+	});
+
+	beforeEach(() => {
+		mocks.clerkClient.mockResolvedValue({ users: {
+			getUser: vi.fn().mockResolvedValue({
+				publicMetadata: { machines: [], workers: [], memoryBundles: [], activeMachineId: null },
+				privateMetadata: { providers: { e2b: { apiKey: "existing-key" } } },
+				emailAddresses: [],
+			}),
+			updateUserMetadata: updateMetadata,
+		} });
+		updateMetadata.mockResolvedValue(undefined);
+		mocks.getSupabaseUserConfig.mockResolvedValue(row());
+		mocks.listMachines.mockResolvedValue([machine]);
+	});
+
+	it("preserves Worker, memory, machine and active selection when an API key changes", async () => {
+		const next = await setUserConfigById("tenant-1", { aiProviderKeys: { anthropic: "new-ai-key" } });
+		expect(next.machines).toEqual([machine]);
+		expect(next.workers).toEqual([worker]);
+		expect(next.memoryBundles).toEqual([memory]);
+		expect(next.activeMachineId).toBe(machine.id);
+		expect(mocks.updateUserConfigColumns).not.toHaveBeenCalled();
+		expect(updateMetadata.mock.calls[0][1].privateMetadata.aiProviderKeys).toMatchObject({ anthropic: "new-ai-key" });
+	});
+
+	it("writes only the changed wizard column", async () => {
+		await setUserConfigById("tenant-1", { draftProviderKind: "sprites" });
+		expect(mocks.updateUserConfigColumns).toHaveBeenCalledExactlyOnceWith("tenant-1", { draft_provider_kind: "sprites" });
+	});
+
+	it("preserves deliberate empty SQL arrays over old Clerk values", async () => {
+		mocks.clerkClient.mockResolvedValue({ users: { getUser: vi.fn().mockResolvedValue({
+			publicMetadata: {
+				workers: [worker], memoryBundles: [memory],
+				environmentProfiles: [{ id: "old-env", name: "Removed environment" }],
+				loadoutSources: [{ id: "old-source", name: "Removed source" }],
+				customLoadout: [{ id: "old-tool", name: "Removed tool" }],
+			}, privateMetadata: {}, emailAddresses: [],
+		}) } });
+		mocks.getSupabaseUserConfig.mockResolvedValue({ ...row(), workers: [], memory_bundles: [] });
+		const config = await getUserConfigById("tenant-1");
+		expect(config.workers).toEqual([]);
+		expect(config.memoryBundles).toEqual([]);
+		expect(config.environmentProfiles).toEqual([]);
+		expect(config.loadoutSources).toEqual([]);
+		expect(config.customLoadout).toEqual([]);
+	});
+
+	it("never resurrects a deleted machine from stale Clerk metadata", async () => {
+		mocks.clerkClient.mockResolvedValue({ users: { getUser: vi.fn().mockResolvedValue({
+			publicMetadata: { machines: [machine], machineId: "legacy-machine", activeMachineId: machine.id },
+			privateMetadata: {}, emailAddresses: [],
+		}) } });
+		mocks.getSupabaseUserConfig.mockResolvedValue({ ...row(), active_machine_id: null });
+		mocks.listMachines.mockResolvedValue([]);
+		const config = await getUserConfigById("tenant-1");
+		expect(config.machines).toEqual([]);
+		expect(config.activeMachineId).toBeNull();
+		expect(mocks.seedMachinesFromClerk).not.toHaveBeenCalled();
+	});
+
+	it("reports a database read failure instead of rebuilding stale empty state", async () => {
+		mocks.getSupabaseUserConfig.mockRejectedValue(new Error("database unavailable"));
+		await expect(setUserConfigById("tenant-1", { workers: [] })).rejects.toThrow("database unavailable");
+		expect(updateMetadata).not.toHaveBeenCalled();
+		expect(mocks.updateUserConfigColumns).not.toHaveBeenCalled();
+	});
+
+	it("reports failed Worker persistence instead of claiming it was saved", async () => {
+		mocks.updateUserConfigColumns.mockRejectedValue(new Error("workers column write failed"));
+		await expect(setUserConfigById("tenant-1", { workers: [worker] })).rejects.toThrow("workers column write failed");
+		expect(updateMetadata).not.toHaveBeenCalled();
+	});
+
+	it("reports machine writes that fail", async () => {
+		mocks.upsertMachine.mockRejectedValue(new Error("machine write failed"));
+		await expect(setUserConfigById("tenant-1", { upsertMachine: machine })).rejects.toThrow("machine write failed");
+		expect(updateMetadata).not.toHaveBeenCalled();
+	});
+
+	it("persists Worker arrays when running without Supabase", async () => {
+		vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "");
+		const next = await setUserConfigById("tenant-1", { workers: [worker], memoryBundles: [memory] });
+		expect(next.workers).toEqual([worker]);
+		expect(updateMetadata.mock.calls[0][1].publicMetadata).toMatchObject({ workers: [worker], memoryBundles: [memory] });
+	});
 });
 
 describe("getUserConfigById active machine ownership", () => {

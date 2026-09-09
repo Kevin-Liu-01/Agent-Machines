@@ -5,8 +5,8 @@
  * mapping, the vck_ AI-Gateway key rejection, and the no-wake
  * describe/remove/park trio proven (by VendorSpy in the conformance suite) to
  * only ever call `Sandbox.get` with `resume: false`. This module keeps only
- * what is hosted-plane-specific: the env-triple fallback, the OIDC rule
- * (below), the provision mapping, the cache scope, and the `VercelProvider`
+ * what is hosted-plane-specific: tenant credential checks, the provision
+ * mapping, the cache scope, and the `VercelProvider`
  * class shape `lib/bootstrap/runner.ts` casts to.
  *
  * VALUE-imported through the compiled package ("agent-machines/mux/providers/
@@ -62,37 +62,21 @@ export type VercelCreds = {
 	token: string;
 	teamId: string;
 	projectId: string;
+	/** Set only by the authenticated server config resolver for the deployment owner. */
+	allowDeploymentCredentials?: boolean;
 };
 
-function readEnvCredentials(): VercelCreds | null {
-	const token = process.env.VERCEL_TOKEN?.trim();
-	const teamId = process.env.VERCEL_TEAM_ID?.trim();
-	const projectId = process.env.VERCEL_PROJECT_ID?.trim();
-	if (token && teamId && projectId) {
-		return { token, teamId, projectId };
-	}
-	return null;
-}
-
-function hasOidcCredentials(): boolean {
-	return Boolean(process.env.VERCEL_OIDC_TOKEN?.trim());
-}
-
-function vercelBinding(creds: VercelCreds | null): MuxSubstrateBinding {
-	const resolved = creds ?? readEnvCredentials();
-	// oidcToken comes EXCLUSIVELY from this process's own environment, never
-	// from per-user config: the mux bridges a configured oidcToken into
-	// process.env.VERCEL_OIDC_TOKEN at call time (authParams in
-	// src/mux/providers/vercel.ts), and process env is process-GLOBAL -- on a
-	// warm serverless instance serving many tenants, the first user's token
-	// would win for every user. Passing only the process's own value makes the
-	// bridge a no-op (the value is already there) and keeps any user-supplied
-	// token out of cross-tenant reach.
-	const oidcToken = process.env.VERCEL_OIDC_TOKEN;
+function vercelBinding(creds: VercelCreds): MuxSubstrateBinding {
+	// Hosted requests use only credentials resolved for this account. Deployment
+	// OIDC belongs to the host's project. Only the server-resolved owner marker
+	// permits this deployment identity; credentials supplied by a user do not.
+	const oidcToken = creds.allowDeploymentCredentials === true
+		? process.env.VERCEL_OIDC_TOKEN?.trim()
+		: undefined;
 	const provider = createVercelProvider({
-		token: resolved?.token,
-		teamId: resolved?.teamId,
-		projectId: resolved?.projectId,
+		token: creds.token,
+		teamId: creds.teamId,
+		projectId: creds.projectId,
 		oidcToken,
 	});
 	requireNoWake("vercel", "describe", provider.describe);
@@ -101,12 +85,11 @@ function vercelBinding(creds: VercelCreds | null): MuxSubstrateBinding {
 	return {
 		kind: "vercel",
 		substrate: provider,
-		// All three, plus the OIDC token: a machine id is only unique within the
-		// project that owns it, and OIDC vs token-triple are different identities.
+		// A machine id is only unique within the project that owns it.
 		cacheScope: credentialScope([
-			resolved?.token,
-			resolved?.teamId,
-			resolved?.projectId,
+			creds.token,
+			creds.teamId,
+			creds.projectId,
 			oidcToken,
 		]),
 		describe: async (machineId) =>
@@ -152,15 +135,16 @@ export class VercelProvider implements MachineProvider {
 	private readonly facade: MachineProvider;
 
 	constructor(creds?: VercelCreds | null) {
-		const resolved = creds ?? readEnvCredentials();
-		if (!resolved && !hasOidcCredentials()) {
+		const explicitTriple = creds?.token?.trim() && creds.teamId?.trim() && creds.projectId?.trim();
+		const ownerOidc = creds?.allowDeploymentCredentials === true && process.env.VERCEL_OIDC_TOKEN?.trim();
+		if (!creds || (!explicitTriple && !ownerOidc)) {
 			throw new MachineProviderError(
 				"vercel",
 				"missing_credentials",
-				"Vercel Sandbox credentials required: set token + teamId + projectId, or run on Vercel with OIDC.",
+				"Vercel Sandbox credentials required: add your token, team ID, and project ID in /dashboard/setup.",
 			);
 		}
-		this.facade = createMuxBackedProvider(vercelBinding(resolved));
+		this.facade = createMuxBackedProvider(vercelBinding(creds));
 		this.capabilities = this.facade.capabilities;
 	}
 

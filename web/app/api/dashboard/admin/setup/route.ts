@@ -15,7 +15,6 @@
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import {
-	getOwnerDefaults,
 	getUserConfig,
 	setUserConfig,
 } from "@/lib/user-config/clerk";
@@ -145,15 +144,14 @@ export async function GET(): Promise<Response> {
 	}
 	try {
 		const config = await getUserConfig();
-		const defaults = getOwnerDefaults();
 		return Response.json({
 			config: toPublicConfig(config),
 			defaults: {
-				machineSpec: defaults.draftSpec,
-				model: defaults.draftModel,
-				hasOwnerDedalusKey: Boolean(defaults.providers.dedalus?.apiKey),
-				hasOwnerCursorKey: Boolean(defaults.cursorApiKey),
-				hasOwnerMachine: defaults.machines.length > 0,
+				machineSpec: config.draftSpec,
+				model: config.draftModel,
+				hasOwnerDedalusKey: Boolean(config.providers.dedalus?.apiKey),
+				hasOwnerCursorKey: Boolean(config.cursorApiKey),
+				hasOwnerMachine: config.machines.length > 0,
 			},
 		});
 	} catch (err) {
