@@ -46,6 +46,9 @@ const CREDENTIAL_VARS = [
 	"VERCEL_TEAM_ID",
 	"VERCEL_PROJECT_ID",
 	"VERCEL_OIDC_TOKEN",
+	"DAYTONA_API_KEY",
+	"DAYTONA_API_URL",
+	"DAYTONA_TARGET",
 	"DEDALUS_API_KEY",
 	"DEDALUS_BASE_URL",
 ];
@@ -436,7 +439,7 @@ test("stats on an empty window reports no policy placements rather than omitting
 test("health on a fresh install lists every lane as having no samples, and exits 0", async () => {
 	await withMux(async () => {
 		const lines = await capture(() => mux(["health"]));
-		for (const kind of ["e2b", "sprites", "vercel", "dedalus"]) {
+		for (const kind of ["e2b", "sprites", "vercel", "daytona"]) {
 			assert.deepEqual(cells(lines, kind), [
 				kind,
 				"no samples",
@@ -553,7 +556,7 @@ test("routes with no credentials explains the empty route and does not throw", a
 		assert.ok(has(lines, "skipped, no credentials:"));
 		assert.deepEqual(cells(lines, "e2b"), ["e2b", "missing credentials: E2B_API_KEY"]);
 		assert.ok(has(lines, "missing credentials: SPRITES_TOKEN"));
-		assert.ok(has(lines, "DEDALUS_API_KEY"));
+		assert.ok(has(lines, "DAYTONA_API_KEY"));
 		assert.ok(has(lines, "create() would fail closed"));
 	});
 });
@@ -562,7 +565,7 @@ test("routes shows the order it would try, with health and modeled price per lan
 	await withMux(async (box) => {
 		const config = box.config({
 			providers: { e2b: "test-key", sprites: "test-token" },
-			sandboxes: { primary: "e2b", backups: ["sprites", "vercel", "dedalus"] },
+			sandboxes: { primary: "e2b", backups: ["sprites", "vercel", "daytona"] },
 		});
 		const lines = await capture(() => mux(["routes", "--config", config, "--optimize", "cost"]));
 		assert.ok(has(lines, "route:     e2b -> sprites"));
@@ -596,7 +599,7 @@ test("routes names the dimension a lane failed when a need is declared", async (
 	await withMux(async (box) => {
 		const config = box.config({
 			providers: { e2b: "test-key", sprites: "test-token" },
-			sandboxes: { primary: "e2b", backups: ["sprites", "vercel", "dedalus"] },
+			sandboxes: { primary: "e2b", backups: ["sprites", "vercel", "daytona"] },
 		});
 		const lines = await capture(() =>
 			mux(["routes", "--config", config, "--needs", '{"persistence":"memory-snapshot"}']),

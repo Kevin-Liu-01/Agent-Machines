@@ -12,7 +12,7 @@ Five jobs:
 
 ## Current status
 
-- **Four substrate adapters:** E2B, Sprites.dev, Dedalus Machines, Vercel Sandbox (`lib/providers/*`). The latest strict proof is live-green on E2B, Sprites, and Vercel; Dedalus is adapter-complete and currently blocked by a disclosed upstream vendor incident.
+- **Four substrate adapters:** Daytona, E2B, Sprites.dev, Vercel Sandbox (`lib/providers/*`). Capabilities gate lifecycle controls; Daytona stop/start retains files, not RAM. Archived runtime/provider matrices predate Daytona and must not be presented as Daytona validation.
 - **Four runtimes:** Hermes, OpenClaw, Claude Code, Codex CLI (`lib/agents.ts`).
 - **Model routers:** Vercel AI Gateway first, OpenRouter second, then native Anthropic/OpenAI or other supported OpenAI-compatible gateways — credential gate before provision.
 - **Registry:** 2,595 installable items in the 2026-08-14 production audit (MCP registry cache, skills.sh, npm, bundled loadout, Cursor plugins).
@@ -63,8 +63,10 @@ OPENAI_API_KEY=...
 ```
 
 Use the full [.env.local.example](.env.local.example) for Vercel Sandbox,
-router, scheduler, and optional existing-machine settings. Dedalus is a sandbox
-adapter; its model API gateway is no longer supported.
+router, scheduler, and optional existing-machine settings. Daytona uses
+`DAYTONA_API_KEY`, optional `DAYTONA_API_URL` (default `https://app.daytona.io/api`),
+and optional `DAYTONA_TARGET` (default `us`). Retired provider records do not
+authorize new launches or provider calls.
 
 ## Scripts
 
@@ -141,7 +143,7 @@ A bounded WebSocket Function cannot own durable shell state, so the session is i
 - **Attach:** `POST /api/dashboard/terminal/session` ensures tmux, returns a `capture-pane` snapshot + byte offset for instant first paint.
 - **Resize:** `POST /api/dashboard/terminal/resize` runs `tmux resize-window`.
 
-`exec` remains the only portability requirement, so the same UI works on E2B, Sprites, Vercel Sandbox, and Dedalus. Production proof (2026-08-14): E2B delivered a 41ms latest acknowledgement and 89ms p95 across 20 human inputs. A location-aware Sprite Service measured 10.8ms p50 across 100 paced inputs, but provider-proxy outliers raised p95 to 75.6ms. The 50ms badge is a target and breach detector, not a false hard guarantee. Full write-up: [`docs/sandbox-terminal-gateway.md`](docs/sandbox-terminal-gateway.md) and [`../knowledge/BROWSER-AGENT-CONSOLE.md`](../knowledge/BROWSER-AGENT-CONSOLE.md).
+`exec` remains the only portability requirement, so the same UI works on E2B, Sprites, Vercel Sandbox, and Daytona. Production proof (2026-08-14): E2B delivered a 41ms latest acknowledgement and 89ms p95 across 20 human inputs. A location-aware Sprite Service measured 10.8ms p50 across 100 paced inputs, but provider-proxy outliers raised p95 to 75.6ms. The 50ms badge is a target and breach detector, not a false hard guarantee. Full write-up: [`docs/sandbox-terminal-gateway.md`](docs/sandbox-terminal-gateway.md) and [`../knowledge/BROWSER-AGENT-CONSOLE.md`](../knowledge/BROWSER-AGENT-CONSOLE.md).
 
 ## Data boundaries
 

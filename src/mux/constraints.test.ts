@@ -33,7 +33,7 @@ import type {
 	SubstrateLimits,
 } from "./types.js";
 
-const ROUTE: readonly SubstrateKind[] = ["e2b", "sprites", "vercel", "dedalus"];
+const ROUTE: readonly SubstrateKind[] = ["e2b", "sprites", "vercel", "daytona"];
 
 /**
  * Config with NO substrate credentials, whatever the shell holds.
@@ -49,7 +49,7 @@ const ROUTE: readonly SubstrateKind[] = ["e2b", "sprites", "vercel", "dedalus"];
  */
 function uncredentialedConfig(): ReturnType<typeof resolveMuxConfig> {
 	return resolveMuxConfig({
-		providers: { vercel: { token: "", teamId: "", projectId: "", oidcToken: "" } },
+		providers: { vercel: { token: "", teamId: "", projectId: "", oidcToken: "" }, daytona: { apiKey: "", target: "us" } },
 	});
 }
 
@@ -232,34 +232,19 @@ test("provider capabilities are exactly what the routing model was written again
 				resourceRequest: "honored",
 			},
 		},
-		dedalus: {
-			pty: "tmux",
-			persistence: "always-on",
-			reattach: true,
-			publicUrl: true,
-			streamingExec: false,
-			detachedWork: "reliable",
-			region: { default: "unknown", available: "unknown", select: "unknown" },
-			// The vendor claims GPU/CUDA; no documented way to ask for one.
-			gpu: { available: true, models: "unknown", request: "ignored" },
-			network: { egress: "unknown", control: "unsupported" },
-			fork: { vendor: "unknown", exposed: false },
-			publicPorts: {
-				model: "unknown",
-				vendorMax: "unknown",
-				muxMax: "unknown",
-				fixed: null,
-			},
+		daytona: {
+			pty: "native", persistence: "filesystem-snapshot", reattach: true,
+			publicUrl: true, streamingExec: true, detachedWork: "reliable",
+			region: { default: "us", available: "unknown", select: "honored" },
+			gpu: { available: "unknown", models: "unknown", request: "unsupported" },
+			network: { egress: "open", control: "ignored" },
+			fork: { vendor: true, exposed: false },
+			publicPorts: { model: "any-port", vendorMax: "unknown", muxMax: "unknown", fixed: null },
 			limits: {
-				baseVcpu: "unknown",
-				baseMemoryMib: "unknown",
-				baseDiskGib: "unknown",
-				maxVcpu: 4,
-				maxMemoryMib: 16384,
-				maxDiskGib: 10,
-				maxRuntimeMs: "unknown",
-				maxConcurrentSandboxes: 5,
-				resourceRequest: "unknown",
+				baseVcpu: "unknown", baseMemoryMib: "unknown", baseDiskGib: "unknown",
+				maxVcpu: "unknown", maxMemoryMib: "unknown", maxDiskGib: "unknown",
+				maxRuntimeMs: "unknown", maxConcurrentSandboxes: "unknown",
+				resourceRequest: "honored",
 			},
 		},
 	});
@@ -267,7 +252,7 @@ test("provider capabilities are exactly what the routing model was written again
 
 test("no constraints accepts the whole route in the offered order", () => {
 	const result = filterCandidates(realProfiles());
-	assert.deepEqual(result.accepted, ["e2b", "sprites", "vercel", "dedalus"]);
+	assert.deepEqual(result.accepted, ["e2b", "sprites", "vercel", "daytona"]);
 	assert.deepEqual(result.rejected, []);
 	// Same answer for an explicitly empty constraint object.
 	assert.deepEqual(filterCandidates(realProfiles(), {}).accepted, [...ROUTE]);
@@ -275,18 +260,14 @@ test("no constraints accepts the whole route in the offered order", () => {
 
 test("pty floor is ranked: native rejects the tmux lanes by name", () => {
 	const result = filterCandidates(realProfiles(), { pty: "native" });
-	assert.deepEqual(result.accepted, ["e2b", "sprites"]);
+	assert.deepEqual(result.accepted, ["e2b", "sprites", "daytona"]);
 	assert.deepEqual(
 		result.rejected.map((item) => item.substrate),
-		["vercel", "dedalus"],
+		["vercel"],
 	);
 	assert.equal(
 		reasonFor(result, "vercel"),
 		'pty: requires at least "native", vercel provides "tmux"',
-	);
-	assert.equal(
-		reasonFor(result, "dedalus"),
-		'pty: requires at least "native", dedalus provides "tmux"',
 	);
 
 	// A native substrate over-satisfies a tmux floor, and "none" constrains
@@ -296,7 +277,7 @@ test("pty floor is ranked: native rejects the tmux lanes by name", () => {
 });
 
 test("pty floor of native rejects a none-pty substrate with its actual value", () => {
-	const failures = checkConstraints(fakeProfile("dedalus", { pty: "none" }), {
+	const failures = checkConstraints(fakeProfile("daytona", { pty: "none" }), {
 		pty: "native",
 	});
 	assert.equal(failures.length, 1);
@@ -304,7 +285,7 @@ test("pty floor of native rejects a none-pty substrate with its actual value", (
 		constraint: "pty",
 		required: 'at least "native"',
 		actual: '"none"',
-		reason: 'pty: requires at least "native", dedalus provides "none"',
+		reason: 'pty: requires at least "native", daytona provides "none"',
 	});
 });
 
@@ -321,21 +302,22 @@ test("persistence accepts a single model or a set, and names the actual model", 
 	const snapshotting = filterCandidates(realProfiles(), {
 		persistence: ["memory-snapshot", "filesystem-snapshot"],
 	});
-	assert.deepEqual(snapshotting.accepted, ["e2b", "vercel"]);
+	assert.deepEqual(snapshotting.accepted, ["e2b", "vercel", "daytona"]);
 	assert.equal(
-		reasonFor(snapshotting, "dedalus"),
-		'persistence: requires "memory-snapshot" or "filesystem-snapshot", dedalus provides "always-on"',
+		reasonFor(snapshotting, "sprites"),
+		'persistence: requires "memory-snapshot" or "filesystem-snapshot", sprites provides "always-on"',
 	);
 
-	assert.deepEqual(accepted({ persistence: "always-on" }), ["sprites", "dedalus"]);
+	assert.deepEqual(accepted({ persistence: "always-on" }), ["sprites"]);
 });
 
 test("streamingExec=true rejects the one substrate that declares it false", () => {
-	const result = filterCandidates(realProfiles(), { streamingExec: true });
-	assert.deepEqual(result.accepted, ["e2b", "sprites", "vercel"]);
+	assert.deepEqual(accepted({ streamingExec: true }), [...ROUTE]);
+	const result = filterCandidates([fakeProfile("daytona", { streamingExec: false })], { streamingExec: true });
+	assert.deepEqual(result.accepted, []);
 	assert.equal(
-		reasonFor(result, "dedalus"),
-		"streamingExec: required, dedalus reports streamingExec=false",
+		reasonFor(result, "daytona"),
+		"streamingExec: required, daytona reports streamingExec=false",
 	);
 });
 
@@ -371,7 +353,7 @@ test("reattach and publicUrl reject with the same precise wording", () => {
 });
 
 test("boolean false is an explicit no-op, not an inverted requirement", () => {
-	const noPublicUrl = fakeProfile("dedalus", {
+	const noPublicUrl = fakeProfile("daytona", {
 		publicUrl: false,
 		streamingExec: false,
 		reattach: false,
@@ -405,8 +387,8 @@ test("region: only a declared placement or an honored selector satisfies", () =>
 		'region: requires "fra1", sprites publishes no default region (available unknown) and region requests are unsupported',
 	);
 	assert.equal(
-		reasonFor(result, "dedalus"),
-		'region: requires "fra1", dedalus publishes no default region (available unknown) and region requests are unknown',
+		reasonFor(result, "daytona"),
+		'region: requires "fra1", daytona places sandboxes in "us" (available unknown) and region requests are honored',
 	);
 
 	// A published list plus an honored selector is the only other pass.
@@ -430,27 +412,27 @@ test("region: only a declared placement or an honored selector satisfies", () =>
 test("gpu: a vendor with accelerators still fails when we cannot ask for one", () => {
 	const result = filterCandidates(realProfiles(), { gpu: true });
 	assert.deepEqual(result.accepted, []);
-	// Dedalus advertises GPU/CUDA, but its provision call takes no GPU field,
-	// so routing a GPU run there would be a promise we cannot keep.
+	// No active adapter exposes GPU selection. An advertised-but-unforwarded
+	// accelerator is modeled independently below, not borrowed from a vendor.
 	assert.equal(
-		reasonFor(result, "dedalus"),
-		"gpu: required, dedalus reports GPU available=true and GPU requests are ignored",
+		reasonFor(result, "daytona"),
+		"gpu: required, daytona reports GPU available=unknown and GPU requests are unsupported",
 	);
 	assert.equal(
 		reasonFor(result, "e2b"),
 		"gpu: required, e2b reports GPU available=unknown and GPU requests are unsupported",
 	);
-	const failures = checkConstraints(realProfiles()[3], { gpu: true });
+	const failures = checkConstraints(fakeProfile("e2b", { gpu: { available: true, models: ["fixture-gpu"], request: "ignored" } }), { gpu: true });
 	assert.equal(failures[0].actual, "available true, gpu requests ignored");
 
-	const honored = fakeProfile("dedalus", {
+	const honored = fakeProfile("daytona", {
 		gpu: { available: true, models: ["h100"], request: "honored" },
 	});
 	assert.deepEqual(checkConstraints(honored, { gpu: true }), []);
 });
 
 test("egress: a knob the adapter never forwards does not satisfy a posture", () => {
-	assert.deepEqual(accepted({ egress: "open" }), ["e2b", "sprites", "vercel"]);
+	assert.deepEqual(accepted({ egress: "open" }), [...ROUTE]);
 	const result = filterCandidates(realProfiles(), { egress: "blocked" });
 	assert.deepEqual(result.accepted, []);
 	// E2B *can* create a sandbox with no internet; this adapter passes no
@@ -460,8 +442,8 @@ test("egress: a knob the adapter never forwards does not satisfy a posture", () 
 		'egress: requires "blocked", e2b provides "open" and egress control is ignored',
 	);
 	assert.equal(
-		reasonFor(result, "dedalus"),
-		'egress: requires "blocked", dedalus provides unknown and egress control is unsupported',
+		reasonFor(result, "daytona"),
+		'egress: requires "blocked", daytona provides "open" and egress control is ignored',
 	);
 
 	const controllable = fakeProfile("e2b", {
@@ -482,8 +464,8 @@ test("fork: nothing satisfies it today, and the reason names the blocker", () =>
 		"fork: required, sprites reports vendor fork=false and the mux exposes no fork operation",
 	);
 	assert.equal(
-		reasonFor(result, "dedalus"),
-		"fork: required, dedalus reports vendor fork=unknown and the mux exposes no fork operation",
+		reasonFor(result, "daytona"),
+		"fork: required, daytona can fork but the mux exposes no fork operation",
 	);
 	const exposed = fakeProfile("e2b", { fork: { vendor: true, exposed: true } });
 	assert.deepEqual(checkConstraints(exposed, { fork: true }), []);
@@ -491,12 +473,12 @@ test("fork: nothing satisfies it today, and the reason names the blocker", () =>
 
 test("minPublicPorts: any-port satisfies any count, a fixed port does not", () => {
 	// E2B maps a URL per port on demand, so there is no count to compare.
-	assert.deepEqual(accepted({ minPublicPorts: 9 }), ["e2b"]);
-	assert.deepEqual(accepted({ minPublicPorts: 1 }), ["e2b", "sprites", "vercel"]);
-	assert.deepEqual(accepted({ minPublicPorts: 3 }), ["e2b", "vercel"]);
+	assert.deepEqual(accepted({ minPublicPorts: 9 }), ["e2b", "daytona"]);
+	assert.deepEqual(accepted({ minPublicPorts: 1 }), [...ROUTE]);
+	assert.deepEqual(accepted({ minPublicPorts: 3 }), ["e2b", "vercel", "daytona"]);
 
 	const result = filterCandidates(realProfiles(), { minPublicPorts: 4 });
-	assert.deepEqual(result.accepted, ["e2b"]);
+	assert.deepEqual(result.accepted, ["e2b", "daytona"]);
 	assert.equal(
 		reasonFor(result, "sprites"),
 		"minPublicPorts: requires at least 4 public ports, sprites exposes 1 (only 8080)",
@@ -508,8 +490,8 @@ test("minPublicPorts: any-port satisfies any count, a fixed port does not", () =
 		"minPublicPorts: requires at least 4 public ports, vercel exposes 3 (only 3000, 8642, 18789)",
 	);
 	assert.equal(
-		reasonFor(filterCandidates(realProfiles(), { minPublicPorts: 1 }), "dedalus"),
-		"minPublicPorts: requires at least 1 public port, dedalus publishes no public port count (unknown)",
+		reasonFor(filterCandidates([fakeProfile("daytona", { publicPorts: { model: "unknown", vendorMax: "unknown", muxMax: "unknown", fixed: null } })], { minPublicPorts: 1 }), "daytona"),
+		"minPublicPorts: requires at least 1 public port, daytona publishes no public port count (unknown)",
 	);
 });
 
@@ -614,11 +596,11 @@ test("minDiskGib uses the disk axis, not the resources request", () => {
 		"minDiskGib: requires at least 30 GiB, e2b baseline is 9 GiB and a disk-size request is unsupported on this substrate, so a larger size cannot be guaranteed",
 	);
 	assert.equal(
-		reasonFor(result, "dedalus"),
-		"minDiskGib: requires at least 30 GiB, dedalus publishes no baseline size and a disk-size request is unsupported on this substrate, so a larger size cannot be guaranteed",
+		reasonFor(result, "daytona"),
+		"minDiskGib: requires at least 30 GiB, daytona publishes no baseline size and a disk-size request is unsupported on this substrate, so a larger size cannot be guaranteed",
 	);
-	// Dedalus publishes a 10 GiB tier ceiling but no default, so even a floor
-	// inside the ceiling fails: the ceiling is unreachable without a request.
+	// Daytona snapshots vary in size; an unknown baseline cannot satisfy
+	// a floor until the routing profile has verified allocation evidence.
 	assert.equal(
 		checkConstraints(realProfiles()[3], { minDiskGib: 10 }).length,
 		1,
@@ -626,7 +608,7 @@ test("minDiskGib uses the disk axis, not the resources request", () => {
 });
 
 test("minConcurrency compares against the lowest published tier", () => {
-	assert.deepEqual(accepted({ minConcurrency: 5 }), ["e2b", "vercel", "dedalus"]);
+	assert.deepEqual(accepted({ minConcurrency: 5 }), ["e2b", "vercel"]);
 	assert.deepEqual(accepted({ minConcurrency: 20 }), ["e2b"]);
 	assert.deepEqual(accepted({ minConcurrency: 21 }), []);
 
@@ -636,8 +618,8 @@ test("minConcurrency compares against the lowest published tier", () => {
 		"minConcurrency: requires 20 concurrent sandboxes, vercel allows at most 10",
 	);
 	assert.equal(
-		reasonFor(result, "dedalus"),
-		"minConcurrency: requires 20 concurrent sandboxes, dedalus allows at most 5",
+		reasonFor(result, "daytona"),
+		"minConcurrency: requires 20 concurrent sandboxes, daytona publishes no concurrency limit (unknown)",
 	);
 	// Sprites returns concurrent_sprite_limit_exceeded, so a limit exists; Fly
 	// publishes no number, and an unknown ceiling must not read as generous.
@@ -668,8 +650,8 @@ test("maxRuntimeMs accepts the documented ceiling exactly and rejects past it", 
 		"maxRuntimeMs: requires a run of up to 3600001ms, sprites publishes no maximum run duration (unknown)",
 	);
 	assert.equal(
-		reasonFor(result, "dedalus"),
-		"maxRuntimeMs: requires a run of up to 3600001ms, dedalus publishes no maximum run duration (unknown)",
+		reasonFor(result, "daytona"),
+		"maxRuntimeMs: requires a run of up to 3600001ms, daytona publishes no maximum run duration (unknown)",
 	);
 });
 
@@ -702,21 +684,23 @@ test("an absent axis behaves exactly like an explicit unknown", () => {
 });
 
 test("all failing dimensions are reported, joined into one attempt reason", () => {
-	const result = filterCandidates(realProfiles(), {
+	// Synthetic capability gaps preserve the multi-rejection invariant even
+	// when every active provider supports native streaming commands.
+	const result = filterCandidates([fakeProfile("daytona", { pty: "tmux", streamingExec: false })], {
 		pty: "native",
 		streamingExec: true,
 		maxRuntimeMs: 7_200_000,
 	});
 	assert.deepEqual(result.accepted, []);
-	const dedalus = result.rejected.find((item) => item.substrate === "dedalus");
-	assert.ok(dedalus);
+	const daytona = result.rejected.find((item) => item.substrate === "daytona");
+	assert.ok(daytona);
 	assert.deepEqual(
-		dedalus.failures.map((failure) => failure.constraint),
+		daytona.failures.map((failure) => failure.constraint),
 		["pty", "streamingExec", "maxRuntimeMs"],
 	);
 	assert.equal(
-		dedalus.reason,
-		'pty: requires at least "native", dedalus provides "tmux"; streamingExec: required, dedalus reports streamingExec=false; maxRuntimeMs: requires a run of up to 7200000ms, dedalus publishes no maximum run duration (unknown)',
+		daytona.reason,
+		'pty: requires at least "native", daytona provides "tmux"; streamingExec: required, daytona reports streamingExec=false; maxRuntimeMs: requires a run of up to 7200000ms, daytona publishes no maximum run duration (unknown)',
 	);
 });
 
@@ -763,12 +747,6 @@ test("rejections render as skipped route attempts", () => {
 			constraint: "pty",
 			outcome: "skipped",
 			reason: 'pty: requires at least "native", vercel provides "tmux"',
-		},
-		{
-			substrate: "dedalus",
-			constraint: "pty",
-			outcome: "skipped",
-			reason: 'pty: requires at least "native", dedalus provides "tmux"',
 		},
 	]);
 	assert.deepEqual(asSkippedAttempts([]), []);

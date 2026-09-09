@@ -8,13 +8,14 @@
  * Usage (from repo root):
  *   npm run benchmark -- --demo                 # instant synthetic data
  *   npm run benchmark -- --yes                  # LIVE run, all providers
- *   npm run benchmark -- --yes --providers dedalus,e2b --iterations 12
+ *   npm run benchmark -- --yes --providers daytona,e2b --iterations 12
  *   npm run benchmark -- --yes --no-store --out /tmp/run.json
  *
  * Live runs PROVISION AND DESTROY real machines and spend real credits;
  * they require --yes. Credentials come from the environment (root .env +
- * web/.env.local): DEDALUS_API_KEY, E2B_API_KEY, SPRITES_API_KEY /
+ * web/.env.local): DAYTONA_API_KEY, E2B_API_KEY, SPRITES_API_KEY /
  * SPRITE_TOKEN, VERCEL_TOKEN + VERCEL_TEAM_ID + VERCEL_PROJECT_ID.
+ * Daytona optionally accepts DAYTONA_API_URL and DAYTONA_TARGET.
  */
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -220,7 +221,7 @@ async function main(): Promise<void> {
 		if (ready.length === 0) {
 			console.error(
 				"No providers have credentials in the environment. " +
-					"Set DEDALUS_API_KEY / E2B_API_KEY / SPRITES_API_KEY / VERCEL_* and retry.",
+					"Set DAYTONA_API_KEY / E2B_API_KEY / SPRITES_API_KEY / VERCEL_* and retry.",
 			);
 			process.exitCode = 1;
 			return;

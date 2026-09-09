@@ -13,6 +13,7 @@ import { createE2bProvider } from "./e2b.js";
 import { createSpritesProvider } from "./sprites.js";
 import { createVercelProvider } from "./vercel.js";
 import { createDedalusProvider } from "./dedalus.js";
+import { createDaytonaProvider } from "./daytona.js";
 
 export function getProvider(
 	kind: SubstrateKind,
@@ -27,6 +28,8 @@ export function getProvider(
 			return createVercelProvider(config.providers.vercel ?? {});
 		case "dedalus":
 			return createDedalusProvider(config.providers.dedalus ?? {});
+		case "daytona":
+			return createDaytonaProvider(config.providers.daytona ?? {});
 		default: {
 			const exhaustive: never = kind;
 			throw new MuxError("fatal", `Unknown substrate: ${String(exhaustive)}`);

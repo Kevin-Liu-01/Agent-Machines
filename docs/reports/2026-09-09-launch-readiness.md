@@ -1,8 +1,9 @@
 # Launch-readiness audit — September 9, 2026
 
-Status: deployed release under end-to-end verification, with a further corrective
-candidate in verification. This report distinguishes checked-in fixes from deployed
-evidence; it is not a blanket production-readiness claim.
+Status: revision `ebc9459a` is deployed and checked; the Daytona replacement
+candidate has passed the aggregate release gate and awaits deployment. This report
+distinguishes checked-in fixes from deployed evidence; it is not a blanket
+production-readiness claim.
 
 ## Observed end-to-end behavior
 
@@ -179,7 +180,13 @@ restored by waking it.
   deployed readiness check searched only an obsolete virtualenv location and
   blocked runs. The corrected probe accepts the installed executable, retains
   legacy layouts, and still rejects missing or non-executable installations.
-  Paid Hermes/OpenClaw task verification is pending deployment of this fix.
+  On deployed `ebc9459a`, a paid Hermes task subsequently completed, with the
+  resulting file independently read back. OpenClaw reached a successful native
+  Anthropic response but was killed by the E2B sandbox's observed 512 MiB memory
+  limit before completing the task. This is a failed OpenClaw run, not a pass.
+  The next candidate rejects that known insufficient allocation before paid work;
+  unknown allocation remains a warning, not a memory guarantee. See the
+  [runtime-switch audit](2026-09-09-hosted-runtime-switch-audit.md).
 - Archived machines accept explicit deletion without enabling other lifecycle
   actions. Deletion validates the exact requested sandbox placement before
   changing intent. A retained source whose legacy ID now identifies a migrated
@@ -220,7 +227,46 @@ manual-pause corrections, Hermes readiness, and archived-deletion protections
 passed the final aggregate `pnpm check` at approximately 08:41 UTC: **845
 SDK/source tests**, **1,393 web tests** (37 explicit platform-specific skips),
 both typechecks, a 204-page production build, and isolated SDK package
-verification. Deployment and post-deployment UI/runtime checks remain pending.
+verification. Revision `ebc9459a` became ready at approximately 08:43 UTC.
+Post-deployment checks confirmed that Sprites has no manual Sleep action and
+rejects both unsupported sleep routes without mutating Worker intent; E2B still
+supports explicit pause. The real allocation remained 2 vCPU / 512 MiB rather
+than the requested 1 vCPU / 2 GiB. The native Anthropic model catalog returned
+11 unique Claude IDs. Credential fields were masked, with no saved secret shown.
+Explicit deletion of the archived, retained E2B QA source was independently
+confirmed absent, while the migrated Sprites destination and Worker survived.
+
+At approximately 09:30 UTC, the Daytona candidate passed the complete
+`pnpm check` gate: **847 SDK/source tests**, **1,469 web tests** (37 explicit
+platform-specific skips), both typechecks, production build, and isolated SDK
+package verification. After partial-creation recovery and crawler-copy corrections,
+the final aggregate gate passed again at approximately 09:39 UTC: **854 SDK/source
+tests**, **1,473 web tests** (37 platform-specific skips), both typechecks,
+production build, and isolated package verification. These counts establish the
+candidate gate, not a hosted Daytona success claim.
+
+## Daytona replacement
+
+The active provider set is Daytona, E2B, Sprites, and Vercel Sandbox. New Dedalus
+creation and credential submission are rejected; its adapter is a retired,
+no-network compatibility shim. Existing persisted Dedalus placements and
+historical costs retain their original discriminator and IDs. They are not
+silently relabeled as Daytona or hidden from the owner.
+
+Daytona uses its official SDK and brand SVG. Local live checks verified private
+creation, actual allocation, filesystem preservation across stop/start, no wake
+on passive inspection, streaming command output and exit status, bounded timeout
+and cancellation, native PTY reconnect, and expiring private previews. Requested
+resources are verified against the provider's observed allocation. Daytona
+pricing and benchmark figures remain unknown until measured; historical Dedalus
+figures are not reused. Full evidence and scope are in the
+[Daytona adapter audit](2026-09-09-daytona-adapter-audit.md).
+
+Both disposable local Daytona fixtures were stopped after their checks; runtime
+QA stopped the 2 GiB fixture at 09:24:25 UTC. Stopped disk may still incur storage
+charges. Production Daytona credentials were saved server-side in the scoped
+Vercel project; hosted provisioning and real model execution on the new provider
+remain pending deployment. No secret is included in the repository or this report.
 
 ## Production authentication remains a separate check
 

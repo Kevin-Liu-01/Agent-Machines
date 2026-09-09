@@ -29,7 +29,7 @@ export const DEFAULT_ROUTE_ORDER: readonly SubstrateKind[] = [
 	"e2b",
 	"sprites",
 	"vercel",
-	"dedalus",
+	"daytona",
 ];
 
 function credentialsFor(
@@ -60,10 +60,12 @@ function credentialsFor(
 			if (missing.length === 0) return { ok: true, missing: [] };
 			return { ok: false, missing };
 		}
-		case "dedalus":
-			return providers.dedalus?.apiKey
+		case "daytona":
+			return providers.daytona?.apiKey?.trim()
 				? { ok: true, missing: [] }
-				: { ok: false, missing: ["DEDALUS_API_KEY"] };
+				: { ok: false, missing: ["DAYTONA_API_KEY"] };
+		case "dedalus":
+			return { ok: false, missing: ["Provider retired"] };
 		default: {
 			const exhaustive: never = kind;
 			throw new Error(`Unknown substrate: ${String(exhaustive)}`);

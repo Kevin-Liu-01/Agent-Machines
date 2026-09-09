@@ -32,7 +32,7 @@ export async function POST(): Promise<Response> {
 
 	const config = await getUserConfig();
 	const active = config.machines.find((m) => m.id === config.activeMachineId);
-	if (!active || !config.providers.dedalus?.apiKey) {
+	if (!active) {
 		return Response.json(
 			{
 				error: "not_provisioned",

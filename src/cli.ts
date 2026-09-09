@@ -46,7 +46,9 @@ const COMMANDS: Record<string, (args: string[]) => Promise<void>> = {
 };
 
 function help(): void {
-	console.log("Agent Machines -- manage a persistent agent (Hermes / OpenClaw) on a provider (Dedalus today).");
+	console.log("Agent Machines — persistent Workers on Daytona, E2B, Sprites, and Vercel.");
+	console.log("Use 'am mux help' for the current lifecycle, routing, terminal, and migration commands.");
+	console.log("The pre-mux single-provider commands below are retired and will not contact a vendor.");
 	console.log("");
 	console.log("Commands:");
 	console.log("  deploy             Provision a machine and install Hermes (idempotent)");
@@ -57,7 +59,7 @@ function help(): void {
 	console.log("  wake               Resume a sleeping machine");
 	console.log("  sleep              Pause the machine (preserves state)");
 	console.log("  destroy --yes      Permanently delete the machine");
-	console.log("  shell              Print the dedalus ssh command");
+	console.log("  shell              Retired; use am mux shell <worker>");
 	console.log("  reload-knowledge   Re-upload local knowledge/ to the machine");
 	console.log("  reset              Wipe sessions/agent-state DB and restart the gateway");
 	console.log("  doctor [flags]     Run diagnostic checks across all layers");
@@ -82,6 +84,7 @@ async function main(): Promise<void> {
 		help();
 		process.exit(1);
 	}
+	if (command !== "mux") throw new Error("This legacy single-provider command is retired. Use 'am mux help' for supported Worker operations.");
 	await handler(rest);
 }
 

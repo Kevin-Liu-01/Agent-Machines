@@ -25,7 +25,7 @@
  * them, so their rows are documentation only.
  */
 
-export type SubstrateKind = "e2b" | "sprites" | "vercel" | "dedalus";
+export type SubstrateKind = "daytona" | "e2b" | "sprites" | "vercel" | "dedalus";
 export type HarnessKind = "claude-code" | "codex" | "openclaw" | "hermes";
 export type PtySupport = "native" | "tmux" | "none";
 export type PersistenceModel =
@@ -192,33 +192,33 @@ export const SUBSTRATE_CAPABILITIES: readonly SubstrateCapability[] = [
 		measured: { createMs: null, execMs: 290 },
 	},
 	{
-		kind: "dedalus",
-		label: "Dedalus",
-		pty: "tmux",
-		persistence: "always-on",
+		kind: "daytona",
+		label: "Daytona",
+		pty: "native",
+		persistence: "filesystem-snapshot",
 		reattach: true,
 		publicUrl: true,
-		streamingExec: false,
+		streamingExec: true,
 		detachedWork: "reliable",
-		region: { default: null, available: null, select: "unknown" },
-		gpu: { available: true, request: "ignored" },
-		egress: null,
-		networkControl: "unsupported",
-		fork: { vendor: null, exposed: false },
-		publicPorts: { model: null, muxMax: null, fixed: null },
+		region: { default: "us", available: null, select: "honored" },
+		gpu: { available: null, request: "unsupported" },
+		egress: "open",
+		networkControl: "ignored",
+		fork: { vendor: true, exposed: false },
+		publicPorts: { model: "any-port", muxMax: null, fixed: null },
 		limits: {
 			baseVcpu: null,
 			baseMemoryMib: null,
 			baseDiskGib: null,
-			maxVcpu: 4,
-			maxMemoryMib: 16384,
-			maxDiskGib: 10,
+			maxVcpu: null,
+			maxMemoryMib: null,
+			maxDiskGib: null,
 			maxRuntimeMs: null,
-			maxConcurrentSandboxes: 5,
-			resourceRequest: "unknown",
+			maxConcurrentSandboxes: null,
+			resourceRequest: "honored",
 		},
-		credentials: ["DEDALUS_API_KEY"],
-		measured: { createMs: null, execMs: 866 },
+		credentials: ["DAYTONA_API_KEY"],
+		measured: { createMs: null, execMs: null },
 	},
 ];
 
@@ -254,6 +254,14 @@ export const HARNESS_CAPABILITIES: readonly HarnessCapability[] = [
 ];
 
 export function substrateCapability(kind: SubstrateKind): SubstrateCapability {
+	if (kind === "dedalus") return {
+		kind, label: "Retired provider", pty: "none", persistence: "none", reattach: false, publicUrl: false, streamingExec: false,
+		detachedWork: "throttled", region: { default: null, available: null, select: "unsupported" },
+		gpu: { available: null, request: "unsupported" }, egress: null, networkControl: "unsupported",
+		fork: { vendor: null, exposed: false }, publicPorts: { model: null, muxMax: null, fixed: null },
+		limits: { baseVcpu: null, baseMemoryMib: null, baseDiskGib: null, maxVcpu: null, maxMemoryMib: null, maxDiskGib: null, maxRuntimeMs: null, maxConcurrentSandboxes: null, resourceRequest: "unsupported" },
+		credentials: ["Provider retired"], measured: { createMs: null, execMs: null },
+	};
 	const found = SUBSTRATE_CAPABILITIES.find((item) => item.kind === kind);
 	if (!found) throw new Error(`Unknown substrate: ${kind}`);
 	return found;

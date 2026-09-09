@@ -10,12 +10,12 @@ Two audiences: humans (dashboard) → agents (MCP/CLI orchestration endgame).
 
 ## Environment
 
-- I run on an **Agent Machine** — persistent Linux. Dedalus: `/home/machine`; E2B: `/home/user`; Sprites: `/home/sprite`.
-- **Runtime root:** `~/.agent-machines` — skills, config, mcps, crons, sessions, logs, chats, artifacts.
-- **Providers:** Dedalus Machines, E2B Sandbox, Sprites.dev, Vercel Sandbox (four `MachineProvider` lanes).
+- I run on an **Agent Machine** — a Linux environment whose lifecycle and persistence capabilities depend on its provider. Expected home directories: Daytona `/home/daytona`; E2B `/home/user`; Sprites `/home/sprite`; Vercel Sandbox `/vercel/sandbox`. Confirm the executing user's `$HOME` before accessing files; these are provider-specific paths, not universal constants.
+- **Runtime root:** `"$HOME/.agent-machines"` — skills, config, mcps, crons, sessions, logs, chats, artifacts. **Managed project:** `"$HOME/agent-machines"`. Re-resolve both after provider migration. OpenClaw's own `"$HOME/.openclaw/workspace"` contains runtime memory and is not the managed project; project tools need an explicit project path or working directory.
+- **Providers:** Daytona, E2B Sandbox, Sprites.dev, Vercel Sandbox (four `MachineProvider` lanes). Use observed capabilities and resource limits; do not infer them from requested machine settings.
 - **Agent runtimes:** Hermes, OpenClaw, Claude Code, Codex CLI (native tool sets differ per runtime).
-- **Inference:** OpenAI-compatible `/v1`; default priority is Vercel AI Gateway, then OpenRouter, then configured fallbacks such as native keys or custom gateways. Configurable per machine via `model.base_url`.
-- **Gateway:** `:8642` (Hermes) or `:18789` (OpenClaw). Bearer: `API_SERVER_KEY` in `~/.agent-machines/.env`.
+- **Inference:** Native Anthropic or OpenAI credentials, Vercel AI Gateway, OpenRouter, or a compatible custom endpoint, according to the selected runtime and the account's configured model profile. Credentials are account-scoped; a deployment's environment keys are not shared tenant credentials.
+- **Interaction:** Managed Console runs execute the selected agent on its machine and record operations; native terminals attach to the actual CLI. Neither requires an HTTP agent gateway. Optional runtime HTTP gateways use `:8642` (Hermes) or `:18789` (OpenClaw) only where configured and actually running; do not infer health from a saved URL.
 - **Control plane:** agent-machines.com dashboard + CLI + (future) Agent Machines MCP server.
 - **Dashboard (August 2026):** off-the-shelf Workers, modular launch, Memory bundles, Registry (2,595 items in the 2026-08-14 production audit), Usage/metrics (Supabase), cron tick via `/api/internal/cron/tick` every 5 min on Vercel.
 

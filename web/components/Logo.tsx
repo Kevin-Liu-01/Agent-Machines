@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { ServerOff } from "lucide-react";
 
 import { VercelMark } from "@/components/VercelMark";
 import { CODEX_THEME_ASSETS } from "@/lib/brand/logo-assets";
@@ -6,6 +7,8 @@ import { cn } from "@/lib/cn";
 
 export type Mark =
 	| "am"
+	| "daytona"
+	| "retired"
 	| "dedalus"
 	| "nous"
 	| "cursor"
@@ -35,7 +38,8 @@ type Props = {
 	className?: string;
 	/**
 	 * "auto" -- pick a recoloring strategy per mark:
-	 *   am, dedalus -> light/dark image swap (mark SVG or baked logo PNG)
+	 *   am      -> light/dark image swap
+	 *   daytona -> official monochrome glyph, filled with currentColor
 	 *   nous    -> official SVG in a contrast chip so the portrait is visible
 	 *   cursor  -> light/dark image swap (Cursor ships their own variants)
 	 *
@@ -47,14 +51,16 @@ type Props = {
 	tone?: "auto" | "currentColor" | "native";
 };
 
-const NATIVE_SRC: Record<Mark, { light: string; dark: string }> = {
+type BrandedMark = Exclude<Mark, "retired" | "dedalus">;
+
+const NATIVE_SRC: Record<BrandedMark, { light: string; dark: string }> = {
 	am: {
 		light: "/brand/agent-machines-mark-dark.svg",
 		dark: "/brand/agent-machines-mark.svg",
 	},
-	dedalus: {
-		light: "/brand/dedalus-logo-dark.svg",
-		dark: "/brand/dedalus-logo.svg",
+	daytona: {
+		light: "/brand/services/daytona.svg",
+		dark: "/brand/services/daytona.svg",
 	},
 	nous: {
 		light: "/brand/nous-mark.svg",
@@ -106,9 +112,9 @@ const NATIVE_SRC: Record<Mark, { light: string; dark: string }> = {
 	},
 };
 
-const MASK_SRC: Record<Mark, string> = {
+const MASK_SRC: Record<BrandedMark, string> = {
 	am: "/brand/agent-machines-mark-mask.svg",
-	dedalus: "/brand/dedalus-mark-black.svg",
+	daytona: "/brand/services/daytona.svg",
 	nous: "/brand/nous-mark.svg",
 	cursor: "/brand/thesvg/cursor-mono.svg",
 	openclaw: "/brand/openclaw-mark.svg",
@@ -123,9 +129,9 @@ const MASK_SRC: Record<Mark, string> = {
 	typescript: "/brand/thesvg/typescript-mono.svg",
 };
 
-const DEFAULT_TONE: Record<Mark, NonNullable<Props["tone"]>> = {
+const DEFAULT_TONE: Record<BrandedMark, NonNullable<Props["tone"]>> = {
 	am: "auto",
-	dedalus: "auto",
+	daytona: "currentColor",
 	nous: "native",
 	cursor: "auto",
 	openclaw: "currentColor",
@@ -143,9 +149,9 @@ const DEFAULT_TONE: Record<Mark, NonNullable<Props["tone"]>> = {
 	typescript: "currentColor",
 };
 
-const ARIA_LABEL: Record<Mark, string> = {
+const ARIA_LABEL: Record<BrandedMark, string> = {
 	am: "Agent Machines",
-	dedalus: "Dedalus Labs",
+	daytona: "Daytona",
 	nous: "Nous Research",
 	cursor: "Cursor",
 	openclaw: "OpenClaw",
@@ -167,6 +173,10 @@ const ARIA_LABEL: Record<Mark, string> = {
  * width and height; the SVG is centered and contained.
  */
 export function Logo({ mark, size = 18, className, tone }: Props) {
+	// Preserve old machine records without advertising a retired integration.
+	if (mark === "retired" || mark === "dedalus") {
+		return <ServerOff role="img" aria-label="Retired provider" size={size} className={className} />;
+	}
 	if (mark === "agent") {
 		// Render Nous + OpenClaw side-by-side with a small horizontal
 		// overlap. Used wherever the UI represents the agent layer
@@ -192,10 +202,12 @@ export function Logo({ mark, size = 18, className, tone }: Props) {
 		);
 	}
 
-	const native = NATIVE_SRC[mark as Mark];
-	const resolved = tone ?? DEFAULT_TONE[mark as Mark];
+	const native = NATIVE_SRC[mark];
+	const resolved = mark === "daytona" && tone !== "native"
+		? "currentColor"
+		: tone ?? DEFAULT_TONE[mark];
 	const dim = `${size}px`;
-	const aria = ARIA_LABEL[mark as Mark] ?? String(mark);
+	const aria = ARIA_LABEL[mark] ?? String(mark);
 
 	if (mark === "vercel" && resolved === "currentColor") {
 		return <VercelMark size={size} className={className} />;

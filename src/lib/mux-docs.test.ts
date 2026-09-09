@@ -334,7 +334,7 @@ test("MUX.md documents every MuxError kind the contract defines", () => {
 // Live cells: MUX.md may not out-claim MUX-RESULTS.md
 // ---------------------------------------------------------------------------
 
-type Cell = { harness: string; substrate: SubstrateKind; result: string };
+type Cell = { harness: string; substrate: string; result: string };
 
 /**
  * The CURRENT matrix section of docs/MUX-RESULTS.md, found by date.
@@ -375,18 +375,21 @@ function currentMatrixSection(): string {
 function measuredCells(): Cell[] {
 	const cells: Cell[] = [];
 	for (const table of tablesIn(currentMatrixSection())) {
+		// Historical evidence belongs to the provider set measured then. An
+		// active registry change must never erase retired failed cells or turn
+		// their measurements into evidence for the replacement provider.
+		if (!table.headers.some((header) => /^result$/i.test(header))) continue;
 		for (const row of table.rows) {
 			const [harness, substrate, result] = row;
 			if (substrate === undefined || result === undefined) continue;
-			if (!SUBSTRATE_KINDS.includes(substrate as SubstrateKind)) continue;
 			if (!/^(ok|skipped|fail(ed)?)$/.test(result)) continue;
-			cells.push({ harness: harness ?? "", substrate: substrate as SubstrateKind, result });
+			cells.push({ harness: harness ?? "", substrate, result });
 		}
 	}
 	return cells;
 }
 
-test("the live-matrix claim in MUX.md equals what MUX-RESULTS.md measured", () => {
+test("the historical matrix claim in MUX.md preserves every provider actually measured", () => {
 	const doc = readText(MUX_DOC);
 	const cells = measuredCells();
 	assert.ok(cells.length > 0, `found no measured cells in ${RESULTS_DOC} -- the scanner is broken`);
@@ -424,6 +427,13 @@ test("the live-matrix claim in MUX.md equals what MUX-RESULTS.md measured", () =
 	// the lanes it covers routinely land on two different lines.
 	const claimParagraph = paragraphsIn(doc).find((paragraph) => paragraph.includes(claim));
 	assert.ok(claimParagraph, `${MUX_DOC} states "${claim}" outside any paragraph`);
+	assert.ok(doc.includes("Archived measurements (before Daytona)"));
+	assert.match(doc, /historical, not a validation of the current provider set/);
+	assert.match(doc, /never relabel these rows as Daytona results/);
+	const absentCurrentProviders = SUBSTRATE_KINDS.filter((kind) => !cells.some((cell) => cell.substrate === kind));
+	for (const kind of absentCurrentProviders) {
+		assert.ok(!claimParagraph.toLowerCase().includes(kind), `${kind} was not in this historical matrix`);
+	}
 	for (const kind of passingSubstrates) {
 		assert.ok(
 			claimParagraph.includes(kind),

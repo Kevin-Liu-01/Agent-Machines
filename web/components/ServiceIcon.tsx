@@ -24,6 +24,7 @@ import { cn } from "@/lib/cn";
  */
 
 export type ServiceSlug =
+	| "daytona"
 	| "vercel"
 	| "stripe"
 	| "supabase"
@@ -71,6 +72,7 @@ export type ServiceSlug =
 	| "huggingface";
 
 export const SERVICE_LABEL: Record<ServiceSlug, string> = {
+	daytona: "Daytona",
 	vercel: "Vercel",
 	stripe: "Stripe",
 	supabase: "Supabase",
@@ -134,6 +136,7 @@ export function isServiceSlug(value: string): value is ServiceSlug {
  * Figma, Linear, ...) keep their native palette via `tone="color"`.
  */
 const FORCE_MONO = new Set<ServiceSlug>([
+	"daytona", // official monochrome glyph, theme-adaptive
 	"vercel", // triangle: black on light, white on dark
 	"github", // near-black octocat
 	"anthropic", // near-black A

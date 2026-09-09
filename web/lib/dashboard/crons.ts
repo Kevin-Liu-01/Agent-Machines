@@ -13,7 +13,7 @@ const CRONS: ReadonlyArray<CronSummary> = [
 		schedule: "every 1h",
 		prompt:
 			"Run a runtime health check; summarize unhealthy items in 3 lines or fewer; reply OK if clean.",
-		skills: ["dedalus-machines"],
+		skills: ["production-safety"],
 	},
 	{
 		name: "daily-wiki-digest",

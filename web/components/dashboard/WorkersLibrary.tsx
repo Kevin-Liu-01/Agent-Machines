@@ -27,7 +27,7 @@ type BundleOpt = { id: string; name: string };
 /** Worker create source: a curated preset (`preset:<id>`) or an existing memory (`bundle:<id>`). */
 type CreateSource = { kind: "preset"; id: string } | { kind: "bundle"; id: string };
 
-const MARK_SET = new Set<string>(["am", "dedalus", "nous", "cursor", "openclaw", "anthropic", "openai"]);
+const MARK_SET = new Set<string>(["am", "daytona", "nous", "cursor", "openclaw", "anthropic", "openai"]);
 function isMark(value: string): value is Mark {
 	return MARK_SET.has(value);
 }

@@ -49,8 +49,9 @@ type CredentialField = [
 
 export function SettingsPanel({ initialConfig }: Props) {
 	const [config, setConfig] = useState(initialConfig);
-	const [dedalusKey, setDedalusKey] = useState("");
-	const [dedalusBaseUrl, setDedalusBaseUrl] = useState("");
+	const [daytonaKey, setDaytonaKey] = useState("");
+	const [daytonaApiUrl, setDaytonaApiUrl] = useState("");
+	const [daytonaTarget, setDaytonaTarget] = useState("");
 	const [spritesKey, setSpritesKey] = useState("");
 	const [e2bKey, setE2bKey] = useState("");
 	const [vercelToken, setVercelToken] = useState("");
@@ -114,10 +115,11 @@ export function SettingsPanel({ initialConfig }: Props) {
 		setState({ phase: "saving" });
 		try {
 			const providers: ProviderCredentials = {};
-			if (dedalusKey.trim() || dedalusBaseUrl.trim()) {
-				providers.dedalus = {
-					apiKey: dedalusKey.trim(),
-					baseUrl: dedalusBaseUrl.trim() || undefined,
+			if (daytonaKey.trim() || daytonaApiUrl.trim() || daytonaTarget.trim()) {
+				providers.daytona = {
+					apiKey: daytonaKey.trim(),
+					apiUrl: daytonaApiUrl.trim() || undefined,
+					target: daytonaTarget.trim() || undefined,
 				};
 			}
 		if (spritesKey.trim()) {
@@ -273,12 +275,13 @@ export function SettingsPanel({ initialConfig }: Props) {
 			>
 			<div className="grid gap-px bg-[var(--ret-border)] md:grid-cols-2 lg:grid-cols-5">
 				<ProviderBox
-					title="Dedalus"
-					mark="dedalus"
-					configured={config.providers.dedalus.configured}
+					title="Daytona"
+					mark="daytona"
+					configured={config.providers.daytona.configured}
 					fields={[
-						["API key", dedalusKey, setDedalusKey, "dsk-live-...", "password"],
-						["Base URL", dedalusBaseUrl, setDedalusBaseUrl, "https://dcs.dedaluslabs.ai", "text"],
+						["API key", daytonaKey, setDaytonaKey, "Daytona API key", "password"],
+						["API URL", daytonaApiUrl, setDaytonaApiUrl, "https://app.daytona.io/api", "text"],
+						["Target (optional)", daytonaTarget, setDaytonaTarget, "us", "text"],
 					]}
 				/>
 				<ProviderBox

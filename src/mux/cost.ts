@@ -73,6 +73,7 @@ export type SubstratePrice = KnownPrice | UnknownPrice;
 export type PriceTable = Record<SubstrateKind, SubstratePrice>;
 
 export const SUBSTRATE_PRICES: PriceTable = {
+	daytona: { known: false, reason: "Daytona billing has not yet been calibrated against this adapter's verified allocation and lifecycle. No prior provider's rate is substituted." },
 	// https://e2b.dev/pricing (read 2026-08-01): "$0.000014/s" per vCPU (the
 	// tier list is linear -- 1 vCPU $0.000014/s, 2 vCPUs $0.000028/s, 8 vCPUs
 	// $0.000112/s) and "$0.0000045/GiB/s" for memory, charged "per second of a

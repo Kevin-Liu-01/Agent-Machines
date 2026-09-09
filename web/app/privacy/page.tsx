@@ -59,7 +59,8 @@ export default function PrivacyPage() {
 				<DocSection title="where data lives">
 					<p>
 						Clerk stores auth data and private metadata. Vercel hosts the web
-						app. Dedalus hosts live provider machines today. Cloudflare may
+						app. Your selected sandbox provider—Daytona, E2B, Sprites, or Vercel—hosts
+						your Worker compute and workspace files. Cloudflare may
 						carry preview tunnel traffic. Cursor processes delegated code tasks
 						only when you configure CURSOR_API_KEY and call cursor-bridge.
 					</p>

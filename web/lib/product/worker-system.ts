@@ -43,7 +43,7 @@ export const WORKER_SYSTEM = {
 	replaceable: [
 		{ id: "runtime", label: "Agent runtime", detail: "Claude Code · Codex · Hermes · OpenClaw" },
 		{ id: "model", label: "Model path", detail: "native · router · gateway · custom" },
-		{ id: "sandbox", label: "Sandbox", detail: "E2B · Sprites · Vercel · Dedalus" },
+		{ id: "sandbox", label: "Sandbox", detail: "Daytona · E2B · Sprites · Vercel" },
 		{ id: "abilities", label: "Abilities", detail: "skills · MCPs · CLIs · tools" },
 		{ id: "transport", label: "Interaction", detail: "console · PTY · stream · API" },
 		{ id: "storage", label: "Persistence", detail: "volume · snapshot · always-on disk" },

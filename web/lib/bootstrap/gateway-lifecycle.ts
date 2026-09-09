@@ -21,6 +21,7 @@ type GatewayPaths = {
 
 function pathsFor(providerKind: MachineRef["providerKind"]): GatewayPaths {
 	const HOME =
+		providerKind === "daytona" ? "/home/daytona" :
 		providerKind === "e2b" ? "/home/user" :
 		providerKind === "sprites" ? "/home/sprite" :
 		providerKind === "vercel" ? "/vercel/sandbox" :

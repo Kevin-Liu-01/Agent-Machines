@@ -7,6 +7,7 @@ import { injectSessionAbilities } from "@/lib/packages/inject";
 import { getUserConfig } from "@/lib/user-config/clerk";
 import { getProvider } from "@/lib/providers";
 import { agentArtifactsPresent } from "@/lib/bootstrap/bootstrap-repair";
+import { assertRuntimeCapacity, RuntimeCapacityError } from "./runtime-capacity";
 
 export type RunMessage = { role: "user" | "assistant" | "system"; content: string; id?: string; createdAt?: number };
 export type ManagedRunResult = { text: string; events: MuxAgentEvent[]; exitCode: number; durationMs?: number; warnings?: string[] };
@@ -14,6 +15,7 @@ export class AgentRunRequestError extends Error {
 	constructor(readonly code: string, message: string, readonly status = 400) { super(message); }
 }
 export function runErrorResponse(error: unknown): Response {
+	if (error instanceof RuntimeCapacityError) return Response.json({ ok: false, error: error.code, message: error.message, capacity: error.capacity }, { status: 409 });
 	return Response.json({ ok: false, error: error instanceof AgentRunRequestError ? error.code : "agent_run_failed", message: error instanceof Error ? error.message : "Agent run failed." }, { status: error instanceof AgentRunRequestError ? error.status : 502 });
 }
 
@@ -38,7 +40,11 @@ export async function prepareManagedRun(request: Request, userId: string) {
 	// Never turn a bounded chat request into an unbounded cold-start install.
 	const provider = getProvider(machine.providerKind, config.providers);
 	const state = await provider.state(machine.id);
-	if (state.state !== "ready" || machine.bootstrapState.phase !== "succeeded" || !(await agentArtifactsPresent(machine, provider))) {
+	if (state.state !== "ready") {
+		throw new AgentRunRequestError("runtime_not_ready", "Wake or finish bootstrapping this Worker from its overview before submitting a run.", 409);
+	}
+	assertRuntimeCapacity(machine.agentKind, state.spec?.memoryMib);
+	if (machine.bootstrapState.phase !== "succeeded" || !(await agentArtifactsPresent(machine, provider))) {
 		throw new AgentRunRequestError("runtime_not_ready", "Wake or finish bootstrapping this Worker from its overview before submitting a run.", 409);
 	}
 	const sessionPackageIds = Array.isArray(body.sessionPackageIds) ? [...new Set(body.sessionPackageIds.filter((id): id is string => typeof id === "string" && id.length > 0))].slice(0, 100) : [];

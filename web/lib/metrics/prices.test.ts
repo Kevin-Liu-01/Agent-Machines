@@ -47,16 +47,18 @@ describe("the seed is read with its provenance intact", () => {
 			rateBasis: "published",
 		});
 		expect(SUBSTRATE_PRICES.sprites.known).toBe(false);
-		expect(SUBSTRATE_PRICES.dedalus.known).toBe(false);
+		expect(SUBSTRATE_PRICES.daytona.known).toBe(false);
 	});
 
 	it("names the seed field behind every refusal", () => {
-		for (const substrate of ["sprites", "dedalus"] as const) {
+		for (const substrate of ["sprites", "daytona"] as const) {
 			const price = SUBSTRATE_PRICES[substrate];
 			expect(price.known).toBe(false);
 			if (price.known) return;
 			expect(price.rateBasis).toBe("unknown");
-			expect(price.reason).toContain(`profiles[${substrate}].pricing.cpuPerVcpuHour.basis`);
+			expect(price.reason).toContain(substrate === "daytona"
+				? "has no profiles[daytona].pricing block"
+				: "profiles[sprites].pricing.cpuPerVcpuHour.basis");
 			expect(price.reason).toContain("web/data/benchmarks.json");
 		}
 	});
@@ -174,12 +176,12 @@ describe("priceSandboxRun -- exact arithmetic", () => {
 	});
 
 	it("returns no figure -- not zero -- for an unpriced lane, with the reason", () => {
-		for (const substrate of ["sprites", "dedalus"]) {
+		for (const substrate of ["sprites", "daytona"]) {
 			const quote = priceSandboxRun(substrate, RUN);
 			expect(quote.known).toBe(false);
 			expect(quote.sandboxMillicents).toBeUndefined();
 			expect(quote.lines).toEqual([]);
-			expect(quote.unknownReason).toContain("not \"published\"");
+			expect(quote.unknownReason).toContain(substrate === "daytona" ? "has no profiles[daytona].pricing block" : "not \"published\"");
 			expect(sandboxCostMillicents(substrate, RUN)).toBeNull();
 		}
 	});
@@ -210,8 +212,8 @@ describe("ranking", () => {
 	});
 
 	it("orders priced lanes cheapest-first and parks unpriced lanes last", () => {
-		const ranked = rankByPrice(["dedalus", "vercel", "sprites", "e2b"], RUN);
-		expect(ranked.map((q) => q.substrate)).toEqual(["e2b", "vercel", "dedalus", "sprites"]);
+		const ranked = rankByPrice(["daytona", "vercel", "sprites", "e2b"], RUN);
+		expect(ranked.map((q) => q.substrate)).toEqual(["e2b", "vercel", "daytona", "sprites"]);
 		// The two unpriced lanes keep the caller's order: a tie must not silently
 		// override an operator's stated preference.
 		expect(ranked.slice(2).every((q) => q.sandboxMillicents === undefined)).toBe(true);
@@ -226,7 +228,7 @@ describe("ranking", () => {
 	it("reports which lanes are cost-ranked and why the rest are not", () => {
 		const report = costRankingReport();
 		expect(report.ranked.sort()).toEqual(["e2b", "vercel"]);
-		expect(report.unpriced.map((u) => u.substrate).sort()).toEqual(["dedalus", "sprites"]);
+		expect(report.unpriced.map((u) => u.substrate).sort()).toEqual(["daytona", "sprites"]);
 		for (const lane of report.unpriced) {
 			expect(lane.reason.length).toBeGreaterThan(20);
 			expect(lane.rateBasis).toBe("unknown");
@@ -262,13 +264,15 @@ describe("agreement with src/mux/cost.ts", () => {
 		}
 	});
 
-	it("records that the seed still lacks the dedalus rate the mux cites", () => {
-		// Not a contradiction to paper over: src/mux/cost.ts cites
-		// dedaluslabs.ai/pricing while web/data/benchmarks.json still says "Not
-		// publicly listed". Until the seed is updated the hosted router must not
-		// rank dedalus, and when it IS updated this test fails and says so.
-		expect(muxBlock("dedalus")).toContain("known: true");
-		expect(SUBSTRATE_PRICES.dedalus.known).toBe(false);
+	it("does not substitute a historical provider's rate for Daytona or reactivate a retired lane", () => {
+		const historicalSeed = JSON.parse(readFileSync(join(process.cwd(), "data/benchmarks.json"), "utf8"));
+		expect(historicalSeed.profiles.some((profile: { provider: string }) => profile.provider === "dedalus")).toBe(true);
+		expect(historicalSeed.profiles.some((profile: { provider: string }) => profile.provider === "daytona")).toBe(false);
+		expect(MUX_COST).toMatch(/daytona:\s*\{\s*known:\s*false/);
+		expect(SUBSTRATE_PRICES.daytona.known).toBe(false);
+		expect(SUBSTRATE_PRICES).not.toHaveProperty("dedalus");
+		expect(isCostRankable("dedalus")).toBe(false);
+		expect(priceSandboxRun("dedalus", RUN).sandboxMillicents).toBeUndefined();
 		expect(muxBlock("sprites")).toContain("known: false");
 		expect(SUBSTRATE_PRICES.sprites.known).toBe(false);
 	});

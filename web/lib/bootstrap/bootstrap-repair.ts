@@ -8,6 +8,7 @@ import type { MachineRef } from "@/lib/user-config/schema";
 import { finalizeGatewayBootstrap } from "./runner";
 
 function homeFor(providerKind: MachineRef["providerKind"]): string {
+	if (providerKind === "daytona") return "/home/daytona";
 	if (providerKind === "e2b") return "/home/user";
 	if (providerKind === "sprites") return "/home/sprite";
 	if (providerKind === "vercel") return "/vercel/sandbox";

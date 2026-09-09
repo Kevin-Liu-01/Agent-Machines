@@ -71,7 +71,7 @@ export function CapabilityMatrix({ profiles }: { profiles: ProviderProfile[] }) 
 								key={p.provider}
 								className="px-4 py-2.5 font-mono text-[11px] text-[var(--ret-text)]"
 							>
-								{p.defaultSpec.vcpu} vCPU · {(p.defaultSpec.memoryMib / 1024).toFixed(0)} GiB
+								{p.defaultSpec ? `${p.defaultSpec.vcpu} vCPU · ${(p.defaultSpec.memoryMib / 1024).toFixed(0)} GiB` : "Image / request dependent"}
 							</td>
 						))}
 					</tr>

@@ -1482,7 +1482,7 @@ export async function mux(args: string[]): Promise<void> {
 	console.log("  am mux rm     --name <n>                         destroy a named machine");
 	console.log("");
 	console.log("  agents:    claude-code | codex | openclaw | hermes");
-	console.log("  sandboxes: e2b | sprites | vercel | dedalus | auto");
+	console.log("  sandboxes: e2b | sprites | vercel | daytona | auto");
 	const needs = Object.keys(NEEDS_KINDS);
 	console.log(`  needs:     ${needs.slice(0, 8).join(", ")},`);
 	console.log(`             ${needs.slice(8).join(", ")}`);

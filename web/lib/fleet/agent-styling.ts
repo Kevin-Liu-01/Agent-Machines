@@ -14,13 +14,6 @@ export const AGENT_HUE: Record<AgentKind, string> = {
 	codex: "#a1a1aa",
 };
 
-const PROVIDER_REGION: Partial<Record<ProviderKind, string>> = {
-	dedalus: "us-east-1",
-	e2b: "us-west-2",
-	sprites: "us-east-2",
-	vercel: "iad1",
-};
-
 const DEFAULT_TOOLS: Record<AgentKind, FleetToolBadge[]> = {
 	hermes: [
 		{ kind: "tool", name: "memory" },
@@ -61,8 +54,9 @@ export function fleetHue(agentKind: AgentKind): string {
 	return AGENT_HUE[agentKind] ?? "var(--ret-purple)";
 }
 
-export function fleetRegion(providerKind: ProviderKind): string {
-	return PROVIDER_REGION[providerKind] ?? "us-east-1";
+export function fleetRegion(_providerKind: ProviderKind): string {
+	// A provider name (or a configured default target) is not a measured region.
+	return "—";
 }
 
 export function fleetTools(agentKind: AgentKind): FleetToolBadge[] {

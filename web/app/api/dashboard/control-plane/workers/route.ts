@@ -83,7 +83,7 @@ export async function POST(request: Request): Promise<Response> {
 			{
 				error: "unsupported_gateway",
 				message:
-					"Dedalus is a sandbox provider only; choose Vercel AI Gateway or OpenRouter.",
+					"This model gateway is retired; choose Vercel AI Gateway, OpenRouter, or a supported native endpoint.",
 			},
 			{ status: 400 },
 		);

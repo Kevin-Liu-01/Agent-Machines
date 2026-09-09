@@ -24,7 +24,6 @@ export default async function MachineAgentsPage({ params }: Params) {
 	// Which inference upstreams have a key on file — drives readiness without
 	// exposing the keys themselves.
 	const aiConfigured: Record<string, boolean> = {
-		dedalus: Boolean(config.providers.dedalus?.apiKey),
 		anthropic: Boolean(config.aiProviderKeys.anthropic),
 		openai: Boolean(config.aiProviderKeys.openai),
 		openrouter: Boolean(config.aiProviderKeys.openrouter),

@@ -54,7 +54,7 @@ function inTempDir<T>(fn: (dir: string) => T): T {
 test("resolveMuxConfig applies route, agent and timeout defaults", () => {
 	const config = resolveMuxConfig({});
 	assert.equal(config.sandboxes.primary, "e2b");
-	assert.deepEqual(config.sandboxes.backups, ["sprites", "vercel", "dedalus"]);
+	assert.deepEqual(config.sandboxes.backups, ["sprites", "vercel", "daytona"]);
 	assert.equal(config.agents.default, "claude-code");
 	assert.equal(config.defaults.timeoutMs, 300_000);
 	assert.equal(config.defaults.model, undefined);
@@ -63,7 +63,7 @@ test("resolveMuxConfig applies route, agent and timeout defaults", () => {
 test("resolveMuxConfig excludes a custom primary from the default backups", () => {
 	const config = resolveMuxConfig({ sandboxes: { primary: "vercel" } });
 	assert.equal(config.sandboxes.primary, "vercel");
-	assert.deepEqual(config.sandboxes.backups, ["e2b", "sprites", "dedalus"]);
+	assert.deepEqual(config.sandboxes.backups, ["e2b", "sprites", "daytona"]);
 });
 
 test("env: indirection resolves through the named variable", () => {
@@ -108,8 +108,10 @@ test("bare environment variables back-fill credentials", () => {
 			AI_GATEWAY_API_KEY: undefined,
 			AI_GATEWAY_KEY: undefined,
 			OPENROUTER_API_KEY: undefined,
-			DEDALUS_API_KEY: undefined,
-			DEDALUS_BASE_URL: undefined,
+			DEDALUS_API_KEY: "retired-key",
+			DAYTONA_API_KEY: "daytona-key",
+			DAYTONA_API_URL: "https://app.daytona.io/api",
+			DAYTONA_TARGET: "us",
 		},
 		() => {
 			const config = resolveMuxConfig({});
@@ -124,10 +126,8 @@ test("bare environment variables back-fill credentials", () => {
 			assert.equal(config.providers.vercel?.projectId, "env-vercel-project");
 			assert.equal(config.providers.vercel?.oidcToken, undefined);
 			assert.equal(config.providers.dedalus?.apiKey, undefined);
-			assert.equal(
-				config.providers.dedalus?.baseUrl,
-				"https://dcs.dedaluslabs.ai",
-			);
+			assert.deepEqual(config.providers.dedalus, {});
+			assert.deepEqual(config.providers.daytona, { apiKey: "daytona-key", apiUrl: "https://app.daytona.io/api", target: "us" });
 		},
 	);
 });
@@ -144,19 +144,19 @@ test("string shorthand for providers expands to the credential object", () => {
 		{
 			E2B_API_KEY: "env-should-lose",
 			SPRITES_TOKEN: "env-should-lose",
-			DEDALUS_API_KEY: "env-should-lose",
+			DAYTONA_API_KEY: "env-should-lose",
 		},
 		() => {
 			const config = resolveMuxConfig({
 				providers: {
 					e2b: "raw-key",
 					sprites: "raw-token",
-					dedalus: "raw-dedalus",
+					daytona: "raw-daytona",
 				},
 			});
 			assert.equal(config.providers.e2b?.apiKey, "raw-key");
 			assert.equal(config.providers.sprites?.token, "raw-token");
-			assert.equal(config.providers.dedalus?.apiKey, "raw-dedalus");
+			assert.equal(config.providers.daytona?.apiKey, "raw-daytona");
 		},
 	);
 });

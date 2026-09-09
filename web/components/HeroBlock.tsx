@@ -235,7 +235,7 @@ type GroupItem =
 
 const svc = (slug: ServiceSlug): GroupItem => ({ kind: "service", slug });
 
-const dedalus: GroupItem = { kind: "logo", mark: "dedalus" };
+const daytona: GroupItem = { kind: "logo", mark: "daytona" };
 
 /**
  * Substrate lanes — selectable tiles that drive the center 3D model in the
@@ -250,7 +250,7 @@ const SUBSTRATES: ReadonlyArray<{
 }> = [
 	{ id: "e2b", item: svc("e2b"), label: "E2B", hue: "#ff8800" },
 	{ id: "sprites", item: svc("sprites"), label: "Sprites", hue: "#a1a1aa" },
-	{ id: "dedalus", item: dedalus, label: "Dedalus", hue: "#aaa5e6" },
+	{ id: "daytona", item: daytona, label: "Daytona", hue: "#aaa5e6" },
 	{ id: "vercel", item: svc("vercel"), label: "Vercel", hue: "#ededed" },
 ];
 
@@ -527,7 +527,7 @@ function HoverDiagram({
 export function HeroBlock() {
 	const [agent, setAgent] = useState<HeroAgent>("hermes");
 	const [wordIndex, setWordIndex] = useState(0);
-	const [substrate, setSubstrate] = useState<SubstrateId>("dedalus");
+	const [substrate, setSubstrate] = useState<SubstrateId>("daytona");
 	const activeWord = ALL_WORDS[wordIndex];
 	const activeRail = RAIL_AGENTS[wordIndex];
 	const isCursor = activeRail.id === null;
@@ -811,7 +811,7 @@ export function HeroBlock() {
 										{group.items.map((item, i) => (
 											<span
 												key={i}
-												title={item.kind === "service" ? SERVICE_LABEL[item.slug] : "Dedalus"}
+												title={item.kind === "service" ? SERVICE_LABEL[item.slug] : "Daytona"}
 												className="flex h-8 w-8 items-center justify-center rounded-md border border-[var(--ret-border)] bg-[var(--ret-surface)] transition-colors group-hover/reg:[border-color:var(--grp)]"
 											>
 												<GroupIcon item={item} size={15} />

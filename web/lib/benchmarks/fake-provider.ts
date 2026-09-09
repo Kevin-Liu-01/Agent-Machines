@@ -158,7 +158,9 @@ export class FakeProvider implements MachineProvider {
 }
 
 /** Plausible demo profiles per provider (NOT measurements — demo only). */
-export const DEMO_PROFILES: Record<ProviderKind, FakeProfile> = {
+export const DEMO_PROFILES: Record<Exclude<ProviderKind, "daytona">, FakeProfile> & { daytona: undefined } = {
+	// Do not turn a retired provider's illustrative timings into Daytona evidence.
+	daytona: undefined,
 	dedalus: {
 		provisionMs: 120,
 		readyDelayMs: 140,

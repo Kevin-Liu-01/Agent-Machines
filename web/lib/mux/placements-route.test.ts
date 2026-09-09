@@ -181,10 +181,10 @@ describe("GET /api/dashboard/mux/placements", () => {
 	it("?name= 409s an uncredentialed lane, NAMING the missing key", async () => {
 		// Fail closed before the vendor call: mux providers report missing keys
 		// from ready() rather than throwing at construction, so without the gate
-		// this would surface as an opaque auth error from dedalus.
+		// this would surface as an opaque auth error from daytona.
 		placementsImpl = async () => ({
 			box: {
-				substrate: "dedalus",
+				substrate: "daytona",
 				sandboxId: "sbx-1",
 				agent: "codex",
 				updatedAt: "2026-08-04T00:00:00.000Z",
@@ -194,7 +194,7 @@ describe("GET /api/dashboard/mux/placements", () => {
 		expect(res.status).toBe(409);
 		const body = (await res.json()) as { error: string; missing: string[] };
 		expect(body.error).toBe("missing_provider_credentials");
-		expect(body.missing).toContain("DEDALUS_API_KEY");
+		expect(body.missing).toContain("DAYTONA_API_KEY");
 	});
 
 	it("?name= 501s a substrate that cannot report status without resuming", async () => {

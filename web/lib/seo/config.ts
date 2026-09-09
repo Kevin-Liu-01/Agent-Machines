@@ -21,7 +21,7 @@ export const SITE = {
 	description:
 		"Create persistent, long-running Workers from a description or a trusted template. Keep their memory, files, schedules, abilities, and evidence while models, runtimes, and sandboxes change underneath them.",
 	longDescription:
-		`${PRODUCT.summary} Choose Hermes, OpenClaw, Claude Code, or Codex, then choose E2B, Sprites.dev, Dedalus Machines, or Vercel Sandbox. Route model paths through Vercel AI Gateway, OpenRouter, native keys, or any supported OpenAI-compatible endpoint. ${HARNESS_SUMMARY}.`,
+		`${PRODUCT.summary} Choose Hermes, OpenClaw, Claude Code, or Codex, then choose Daytona, E2B, Sprites.dev, or Vercel Sandbox. Route model paths through Vercel AI Gateway, OpenRouter, native keys, or a compatible endpoint where the runtime supports it. ${HARNESS_SUMMARY}.`,
 	tagline: PRODUCT.tagline,
 	ogImage: "/opengraph-image?v=4",
 	ogImageAlt:
@@ -39,7 +39,7 @@ export const SITE = {
 		"agent infrastructure",
 		"Hermes agent",
 		"OpenClaw agent",
-		"Dedalus Machines",
+		"Daytona sandboxes",
 		"VM agent",
 		"OpenAI-compatible chat completions",
 		"agent fleet",
@@ -73,7 +73,7 @@ export const SITE = {
 		"E2B agent",
 		"Sprites.dev agent",
 		"Vercel Sandbox agent",
-		"Dedalus agent",
+		"Daytona agent",
 	],
 	capabilities: [
 		"Harness-agnostic agent runtime switchboard",
@@ -127,12 +127,12 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "Which providers can host the machine?",
 		answer:
-			"Agent Machines has provider adapters for E2B Sandbox, Sprites.dev, Dedalus Machines, and Vercel Sandbox. The latest strict live proof is green on E2B, Sprites, and Vercel. Dedalus remains adapter-complete but degraded by a disclosed upstream vendor incident. Each lane declares its actual lifecycle and streaming capabilities instead of receiving fake parity.",
+			"Daytona, E2B Sandbox, Sprites.dev, and Vercel Sandbox. Daytona stop/start retains files but restarts processes; E2B supports pause/resume; Sprites manages idle suspension; Vercel resumes from filesystem snapshots. Each provider exposes only the lifecycle and terminal operations it supports. Historical benchmark results do not establish Daytona performance.",
 	},
 	{
 		question: "How is this different from a sandbox like E2B or Daytona?",
 		answer:
-			"Those are machine substrates. Agent Machines is the product layer above them: pick E2B, Sprites.dev, Vercel Sandbox, or Dedalus and get runtime install, loadout, gateway, cron, logs, usage, artifacts, and the browser console in one worker. Provider-specific features like sleep, snapshots, and public URLs are surfaced when the selected lane supports them.",
+			"Those supply compute. Agent Machines adds the durable Worker above Daytona, E2B, Sprites.dev, or Vercel Sandbox: runtime setup, memory, selected abilities, schedules, logs, usage, artifacts, and the browser console. Provider-specific features such as pause, snapshots, and preview URLs are available only where supported.",
 	},
 	{
 		question: "How do I get my own machine today?",
@@ -151,7 +151,7 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "What is ~/.agent-machines?",
 		answer:
-			"~/.agent-machines is the unified runtime root for Agent Machines. It holds all agent state -- skills, crons, sessions, logs, MEMORY.md, USER.md, config, chats, and artifacts. The repo checkout at /home/machine/agent-machines is used by reload-from-git.sh to sync knowledge from GitHub.",
+			"~/.agent-machines holds Worker configuration, canonical memory, skills, schedules, logs, chats, and artifacts. Native runtimes also keep their own state directories. The ~ prefix means the sandbox user's home: /home/daytona, /home/user, /home/sprite, or /vercel/sandbox. Knowledge updates use ~/.agent-machines/knowledge-source, separate from the Worker's project at ~/agent-machines.",
 	},
 	{
 		question: "What inference providers are supported?",
@@ -166,6 +166,6 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "Where does my data live?",
 		answer:
-			"Provider credentials and gateway bearers live in Clerk private metadata. Machine state lives on the provider machine under /home/machine, with all agent runtime data and app state under ~/.agent-machines. The public client only sees redacted provider and machine status.",
+			"Provider credentials and model keys are stored privately for your account. Worker configuration and history also use the hosted data store; workspace files and runtime state live in the selected sandbox user's home, including ~/.agent-machines. The public client receives redacted credential and machine status.",
 	},
 ];

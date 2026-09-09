@@ -29,7 +29,7 @@ const CAPABILITIES: ReadonlyArray<Capability> = [
 	{
 		kicker: "SWITCHBOARD",
 		title: "Agents and machine lanes",
-		body: `${PRODUCT.analogies.primary}. Pick Hermes, OpenClaw, Claude Code, or Codex, then pick E2B, Sprites.dev, Dedalus Machines, or Vercel Sandbox. One account stores the worker recipe and supervises the run.`,
+		body: `${PRODUCT.analogies.primary}. Pick Hermes, OpenClaw, Claude Code, or Codex, then pick E2B, Sprites.dev, Daytona, or Vercel Sandbox. One account stores the worker recipe and supervises the run.`,
 		notes: ["OpenRouter-style", "runtime + host", "one account"],
 		mark: "agent",
 		nyx: "nyx-waves",
@@ -52,8 +52,8 @@ const CAPABILITIES: ReadonlyArray<Capability> = [
 	{
 		kicker: "PROVIDERS",
 		title: "Four live hosts",
-		body: "Dedalus Machines, E2B Sandbox, Sprites.dev, and Vercel Sandbox each implement spin-up, command streaming, wake/sleep where supported, and public URLs through the same MachineProvider interface.",
-		notes: ["dedalus", "e2b", "sprites", "vercel"],
+		body: "Daytona, E2B Sandbox, Sprites.dev, and Vercel Sandbox each implement spin-up, command streaming, wake/sleep where supported, and public URLs through the same MachineProvider interface.",
+		notes: ["daytona", "e2b", "sprites", "vercel"],
 	},
 	{
 		kicker: "AGENTS",
@@ -158,7 +158,7 @@ export function CapabilityGrid() {
 
 function MiniGlyph({ index }: { index: number }) {
 	const labels = [
-		["hermes", "e2b", "dedalus"],
+		["hermes", "e2b", "daytona"],
 		["clerk", "fleet", "active"],
 		["sleep", "wake", "bill"],
 		["host", "shell", "disk"],

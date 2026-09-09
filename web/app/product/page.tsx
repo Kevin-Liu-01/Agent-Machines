@@ -43,7 +43,7 @@ export default function ProductPage() {
 							title="worker recipe"
 							lines={[
 								"runtime: hermes | openclaw | claude | codex",
-								"provider: e2b | sprites | dedalus | vercel",
+								"provider: e2b | sprites | daytona | vercel",
 								"model: router profile or native key",
 								"loadout: skills + MCP + CLI + cron",
 								"observe: logs + usage + artifacts",

@@ -90,11 +90,19 @@ function mountSettings() {
 	};
 }
 
-const secretFields = ["Dedalus/API key", "E2B Sandbox/API key", "Sprites/Token", "Vercel Sandbox/Token", "Cursor/API key", "Vercel AI Gateway/API key", "OpenRouter/API key", "Anthropic/API key", "OpenAI/API key", "Google AI/API key", "Custom gateway/API key"];
-const plainFields = ["Dedalus/Base URL", "Vercel Sandbox/Team ID", "Vercel Sandbox/Project ID", "Custom gateway/Label", "Custom gateway/Base URL"];
+const secretFields = ["Daytona/API key", "E2B Sandbox/API key", "Sprites/Token", "Vercel Sandbox/Token", "Cursor/API key", "Vercel AI Gateway/API key", "OpenRouter/API key", "Anthropic/API key", "OpenAI/API key", "Google AI/API key", "Custom gateway/API key"];
+const plainFields = ["Daytona/API URL", "Daytona/Target (optional)", "Vercel Sandbox/Team ID", "Vercel Sandbox/Project ID", "Custom gateway/Label", "Custom gateway/Base URL"];
 const privateInputProps = { type: "password", autoComplete: "off", autoCapitalize: "none", autoCorrect: "off", spellCheck: false };
 
 describe("credential input privacy (actual Settings and wizard TSX)", () => {
+	it("sends Daytona's exact credential contract with optional endpoint and target, never a legacy baseUrl", async () => {
+		const settings = mountSettings();
+		settings.change("Daytona/API key", "  fixture-daytona-key  ");
+		settings.change("Daytona/API URL", "  https://app.daytona.io/api  ");
+		settings.change("Daytona/Target (optional)", " us ");
+		await settings.save();
+		expect(settings.requests[0].providers).toEqual({ daytona: { apiKey: "fixture-daytona-key", apiUrl: "https://app.daytona.io/api", target: "us" } });
+	});
 	it("masks all 11 Settings secrets but leaves URLs, labels, and scope identifiers readable", () => {
 		const settings = mountSettings(), fields = settings.fields();
 		expect([...fields.keys()].sort()).toEqual([...secretFields, ...plainFields].sort());
@@ -127,5 +135,16 @@ describe("credential input privacy (actual Settings and wizard TSX)", () => {
 		expect(secrets).toHaveLength(1 + agentCredentialRequirements(agent).length);
 		for (const field of secrets) expect(field.props).toMatchObject({ ...privateInputProps, value: "" });
 		expect(fields.filter((node) => node.props.type === "text").map((node) => node.props.placeholder)).toEqual(["team_…", "prj_…"]);
+	});
+
+	it("keeps Daytona onboarding API URL and target readable while masking its key", () => {
+		const wizard = loadTsx("components/dashboard/OnboardingFlow.tsx", "export { KeyStep };", {
+			"@/lib/agents/credentials": { agentCredentialRequirements },
+			"@/lib/agents/upstreams": { agentUsesRouter },
+		});
+		const tree = wizard.KeyStep({ agent: "claude-code", provider: "daytona", config: publicConfig(), readiness: {}, substrateReady: true, hasKey: true, value: "", onChange() {}, aiKeys: { vercelAiGateway: "", openrouter: "", anthropic: "", openai: "" }, onAiKeyChange() {}, agentCredsOk: true, secondary: {}, onSecondaryChange() {}, busy: false, canProvision: true, onBack() {}, onProvision() {} });
+		const fields = elements(tree).filter((node) => node.type === "input");
+		expect(fields.find((node) => node.props.placeholder === "Daytona API key")?.props).toMatchObject(privateInputProps);
+		expect(fields.filter((node) => node.props.type === "text").map((node) => node.props.placeholder)).toEqual(["https://app.daytona.io/api", "us"]);
 	});
 });

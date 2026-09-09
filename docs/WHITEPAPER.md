@@ -175,7 +175,7 @@ type Worker = {
     name: string;
     responsibility: string;
     runtime: "claude-code" | "codex" | "hermes" | "openclaw";
-    sandbox: "e2b" | "sprites" | "vercel" | "dedalus";
+    sandbox: "daytona" | "e2b" | "sprites" | "vercel";
     model?: string;
     memory?: string;
     abilities: string[];
@@ -224,7 +224,7 @@ WorkerRuntimeDriver
         |
         +-- runtime: Claude Code | Codex | Hermes | OpenClaw
         +-- model: native | OpenRouter | Vercel AI Gateway | custom
-        +-- sandbox: E2B | Sprites | Vercel Sandbox | Dedalus
+        +-- sandbox: Daytona | E2B | Sprites | Vercel Sandbox
         +-- abilities: skills | MCP | CLI | native tools
         +-- trigger: prompt | cron | API | another Worker
         |
@@ -297,13 +297,13 @@ reattachment, and teardown, plus PTY, public URLs, and pause/resume where suppor
 - E2B;
 - Sprites.dev;
 - Vercel Sandbox;
-- Dedalus Machines.
+- Daytona.
 
 Capabilities are explicit. Unknown capability rejects a constraint that
 depends on it. Provider-specific lifecycle controls appear only when supported.
 E2B supports manual pause/resume; Vercel restores filesystem snapshots, not live
-processes. Sprites manages automatic idle suspension. Neither Sprites nor the
-Dedalus public adapter provides a manual pause operation. Unsupported pause
+processes. Daytona stop/start retains the filesystem but restarts processes.
+Sprites manages automatic idle suspension and does not provide a manual pause operation. Unsupported pause
 requests must fail before a journal claims that compute stopped. Requested
 resources remain distinct from provider-reported allocation; E2B resources are
 defined by its template rather than create-time sizing fields.
@@ -319,7 +319,7 @@ Model traffic may use:
 
 Runtime wire formats constrain valid model paths. A credential and
 compatibility gate rejects unusable combinations before provisioning.
-Dedalus is a sandbox substrate, not an inference gateway.
+Sandbox credentials provision compute; separate model credentials power inference.
 
 ### 6.4 Ability plane
 
@@ -519,16 +519,18 @@ The live product includes:
 
 ### 13.1 Live validation boundary
 
-The latest strict runtime/provider matrix counts exact output and clean
-lifecycle behavior, not exit code alone:
+The archived August 5 strict runtime/provider matrix counted exact output and
+clean lifecycle behavior, not exit code alone. It predates Daytona support:
 
 - E2B: four runtime cells green;
 - Sprites: four runtime cells green;
 - Vercel Sandbox: four runtime cells green;
-- Dedalus: adapter complete, but not currently live-green because of a vendor-side API/database incident and inconsistent teardown.
+- Retired fourth provider: failed vendor API and teardown checks.
 
-An earlier exit-code-only run reached 16/16. The stricter current result is
-12/16. The lower number is the more honest proof.
+An earlier exit-code-only run reached 16/16; that archived strict run was 12/16.
+Neither result validates Daytona. The current provider set is Daytona, E2B,
+Sprites, and Vercel; new validation must identify the provider, runtime, date,
+output evidence, and teardown result independently.
 
 ---
 

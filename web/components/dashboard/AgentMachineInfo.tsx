@@ -28,8 +28,9 @@ import {
  * summarizes the substrate + spec and what provisioning materializes.
  */
 
-const PROVIDER_MARK: Record<ProviderKind, "dedalus" | "e2b" | "sprites" | "vercel"> = {
-	dedalus: "dedalus",
+const PROVIDER_MARK: Record<ProviderKind, "daytona" | "e2b" | "sprites" | "vercel" | "retired"> = {
+	dedalus: "retired",
+	daytona: "daytona",
 	e2b: "e2b",
 	sprites: "sprites",
 	vercel: "vercel",

@@ -133,6 +133,17 @@ test("forget removes one name and leaves the others", () => {
 	assert.deepEqual(Object.keys(store.read().machines), ["beta"]);
 });
 
+test("retiring a provider does not hide or relabel its persisted placement", () => {
+	const { store } = localStore();
+	store.remember("legacy", placement({ substrate: "dedalus", sandboxId: "dm-original" }));
+	store.remember("new", placement({ substrate: "daytona", sandboxId: "daytona-new" }));
+	assert.equal(store.read().machines.legacy?.substrate, "dedalus");
+	assert.equal(store.read().machines.legacy?.sandboxId, "dm-original");
+	assert.equal(store.read().machines.new?.substrate, "daytona");
+	store.saveHealth(new SubstrateHealth().toJSON());
+	assert.equal(store.read().machines.legacy?.sandboxId, "dm-original");
+});
+
 test("forgetting an unknown name writes nothing", () => {
 	const { store, path } = localStore();
 	store.forget("never-existed");

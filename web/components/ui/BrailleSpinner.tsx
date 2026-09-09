@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
  * Braille Unicode loading indicator.
  *
  * Per the loading-screens skill in the wiki: braille spinners are the
- * canonical loading indicator across every Dedalus surface. They render
+ * canonical loading indicator across every Agent Machines surface. They render
  * as a single character that animates through a sequence of braille
  * patterns (or other Unicode block sequences for thematic variety).
  *

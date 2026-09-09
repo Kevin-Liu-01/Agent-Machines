@@ -90,7 +90,9 @@ function readyRouters(runtime: AgentKind, aiConfigured: Record<string, boolean>)
 function providerConfigured(config: UserConfig, provider: ProviderKind): boolean {
 	switch (provider) {
 		case "dedalus":
-			return Boolean(config.providers.dedalus?.apiKey);
+			return false;
+		case "daytona":
+			return Boolean(config.providers.daytona?.apiKey);
 		case "e2b":
 			return Boolean(config.providers.e2b?.apiKey);
 		case "sprites":

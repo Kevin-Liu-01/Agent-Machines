@@ -34,7 +34,7 @@ import { HARNESS, HARNESS_SUMMARY } from "@/lib/platform/harness";
  *   y=0    operator                                                   *
  *   y=140  dashboard      |   CLI                                     *
  *   y=280  fleet                                                      *
- *   y=420  Vercel | Dedalus(live) | Sprites       <- 3-column             *
+ *   y=420  Vercel | Daytona(live) | Sprites       <- 3-column             *
  *   y=580  persistent Linux machine                                   *
  *   y=720  Hermes  |  gateway  |  OpenClaw    <- agent runtime row    *
  *   y=860  ~/.agent-machines/ (runtime state + app data + repo)        *
@@ -283,7 +283,7 @@ const TRIPLE_X = {
 const PROVIDER_X = {
 	e2b: TRIPLE_X.left,
 	vercel: 280,
-	dedalus: TRIPLE_X.center,
+	daytona: TRIPLE_X.center,
 	sprites: 1300,
 };
 
@@ -379,8 +379,8 @@ const INITIAL_NODES: Node<NodeData>[] = [
 			size: "md",
 		},
 	},
-	// Row 3 -- providers (4-col spread). Dedalus center matches the
-	// gateway axis so fleet -> dedalus -> machine is one straight line.
+	// Row 3 -- providers (4-col spread). Daytona center matches the
+	// gateway axis so fleet -> daytona -> machine is one straight line.
 	{
 		id: "provider-e2b",
 		type: "box",
@@ -422,20 +422,20 @@ const INITIAL_NODES: Node<NodeData>[] = [
 		},
 	},
 	{
-		id: "provider-dedalus",
+		id: "provider-daytona",
 		type: "box",
-		position: { x: PROVIDER_X.dedalus, y: Y.providers },
+		position: { x: PROVIDER_X.daytona, y: Y.providers },
 		data: {
 			eyebrow: "provider",
-			title: "Dedalus Machines",
-			subtitle: "default VM provider",
-			body: "Provisions persistent machines and runs commands. Manual pause is not available through the public adapter; startup time depends on provisioning and runtime setup.",
+			title: "Daytona",
+			subtitle: "persistent sandbox provider",
+			body: "Provisions Linux sandboxes with native terminals and private previews. Stop/start retains files; processes restart. Initial launch includes runtime setup.",
 			bullets: [
 				"provision / inspect / connect",
 				"state / command / destroy",
-				"provider-managed lifecycle",
+				"stop / start; filesystem retained",
 			],
-			mark: "dedalus",
+			mark: "daytona",
 			tone: "provider",
 			size: "md",
 			status: "live",
@@ -510,7 +510,7 @@ const INITIAL_NODES: Node<NodeData>[] = [
 			eyebrow: "public api",
 			title: "agent gateway",
 			subtitle: ":8642 . OpenAI-compatible /v1",
-			body: "Single port for both agents. Exposed via Dedalus preview URL or a Cloudflare quick tunnel. The browser proxies through Next.js so bearer tokens stay server-side.",
+			body: "HTTP-capable runtimes can expose a provider preview URL or optional tunnel. Native CLI runtimes use their terminal transport instead. The browser proxies authenticated requests through the control plane.",
 			bullets: [
 				"SSE chat streaming",
 				"server-side bearer proxy",
@@ -789,9 +789,9 @@ const EDGES: Edge[] = [
 		label: "alt",
 	},
 	{
-		id: "e-fleet-dedalus",
+		id: "e-fleet-daytona",
 		source: "fleet",
-		target: "provider-dedalus",
+		target: "provider-daytona",
 		label: "active",
 	},
 	{
@@ -800,10 +800,10 @@ const EDGES: Edge[] = [
 		target: "provider-sprites",
 		label: "alt",
 	},
-	// Dedalus -> machine (live spine)
+	// Daytona -> machine (live spine)
 	{
-		id: "e-dedalus-machine",
-		source: "provider-dedalus",
+		id: "e-daytona-machine",
+		source: "provider-daytona",
 		target: "machine",
 		label: "provision / command",
 	},
@@ -948,7 +948,7 @@ export function ArchitectureFlow() {
 					activeNodeId !== null &&
 					(edge.source === activeNodeId || edge.target === activeNodeId);
 				const isHero =
-					edge.id === "e-dedalus-machine" ||
+					edge.id === "e-daytona-machine" ||
 					edge.id === "e-machine-gateway" ||
 					edge.id === "e-gateway-hermes" ||
 					edge.id === "e-gateway-openclaw";
@@ -1023,7 +1023,7 @@ export function ArchitectureFlow() {
 				<MachineNote
 					label="providers"
 					value="four live hosts"
-					body="Dedalus Machines, E2B Sandbox, Sprites.dev, and Vercel Sandbox — same MachineProvider interface."
+					body="Daytona, E2B Sandbox, Sprites.dev, and Vercel Sandbox — same MachineProvider interface."
 				/>
 				<MachineNote
 					label="loadout"

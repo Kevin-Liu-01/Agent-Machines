@@ -19,6 +19,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { getProvider as getSdkProvider } from "../../../src/mux/providers/index";
 import {
 	HARNESS_CAPABILITIES,
 	SUBSTRATE_CAPABILITIES,
@@ -219,13 +220,21 @@ describe("substrate capability mirror", () => {
 		expect(axes.length).toBeGreaterThanOrEqual(12);
 	});
 
-	it("covers exactly the substrates the factory can build", () => {
+	it("covers exactly the active substrates, with a separate retired compatibility discriminator", async () => {
 		const source = readMuxSource("providers/index.ts");
 		for (const substrate of SUBSTRATE_CAPABILITIES) {
 			expect(source).toContain(`case "${substrate.kind}":`);
 		}
-		const cases = source.match(/case "[a-z0-9-]+":/g) ?? [];
-		expect(cases.length).toBe(SUBSTRATE_CAPABILITIES.length);
+		const cases = (source.match(/case "[a-z0-9-]+":/g) ?? []).map((value) => value.slice(6, -2));
+		expect(cases.filter((kind) => kind !== "dedalus").sort()).toEqual(SUBSTRATE_CAPABILITIES.map((item) => item.kind).sort());
+		expect(SUBSTRATE_CAPABILITIES.map((item) => item.kind)).not.toContain("dedalus");
+		const config = { providers: {} } as Parameters<typeof getSdkProvider>[1];
+		for (const item of SUBSTRATE_CAPABILITIES) expect(getSdkProvider(item.kind, config).kind).toBe(item.kind);
+		const retired = getSdkProvider("dedalus", config);
+		expect(retired.ready()).toEqual({ ok: false, missing: ["Provider retired"] });
+		expect(retired.park).toBeUndefined();
+		await expect(retired.create({})).rejects.toMatchObject({ kind: "not_supported" });
+		await expect(retired.connect("old-id")).rejects.toMatchObject({ kind: "not_supported" });
 	});
 });
 

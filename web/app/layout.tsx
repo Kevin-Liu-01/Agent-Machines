@@ -11,7 +11,7 @@ import { DEFAULT_OG_IMAGE, DEFAULT_TWITTER_IMAGE } from "@/lib/seo/metadata";
 import "./globals.css";
 
 /**
- * Nacelle is the canonical Dedalus typeface. We load three weights
+ * Nacelle is the site's display typeface. We load three weights
  * locally so the font ships with the bundle and never blocks paint on a
  * remote font server. The `--font-sans` CSS variable threads through
  * globals.css and Tailwind so every component picks it up automatically.
@@ -89,7 +89,7 @@ export const metadata: Metadata = {
 		"product-category": "persistent agent worker control plane",
 		"agent-runtime-router": "Hermes, OpenClaw, Claude Code, Codex",
 		"sandbox-provider-router":
-			"E2B, Sprites.dev, Dedalus Machines, Vercel Sandbox",
+			"E2B, Sprites.dev, Daytona, Vercel Sandbox",
 	},
 	icons: {
 		icon: [{ url: "/icon.png", sizes: "512x512", type: "image/png" }],

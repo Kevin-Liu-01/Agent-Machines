@@ -36,7 +36,7 @@ const SANDBOXES: ReadonlyArray<{
 	{ id: "e2b", detail: "Fast pause and resume for focused agent work." },
 	{ id: "sprites", detail: "Persistent Linux with auto-sleep and quick wake." },
 	{ id: "vercel", detail: "Snapshot-backed Firecracker sandboxes." },
-	{ id: "dedalus", detail: "Persistent microVMs with durable home storage." },
+	{ id: "daytona", detail: "Linux sandboxes with stop/start and persistent files." },
 ];
 
 export function WorkerLaunchpad() {

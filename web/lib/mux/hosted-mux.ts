@@ -74,13 +74,12 @@ export function muxConfigForUser(config: UserConfig): MuxConfig {
 						},
 					}
 				: {}),
-			...(providers.dedalus?.apiKey
+			...(providers.daytona?.apiKey
 				? {
-						dedalus: {
-							apiKey: providers.dedalus.apiKey,
-							...(providers.dedalus.baseUrl
-								? { baseUrl: providers.dedalus.baseUrl }
-								: {}),
+						daytona: {
+							apiKey: providers.daytona.apiKey,
+							apiUrl: providers.daytona.apiUrl,
+							target: providers.daytona.target,
 						},
 					}
 				: {}),

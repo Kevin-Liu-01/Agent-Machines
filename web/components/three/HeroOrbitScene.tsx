@@ -37,7 +37,7 @@ const LERP_SPEED = 3.0;
 
 /* ── Substrate → center model ─────────────────────────────────────── */
 
-export type SubstrateId = "e2b" | "sprites" | "dedalus" | "vercel";
+export type SubstrateId = "e2b" | "sprites" | "daytona" | "vercel";
 
 type SubstrateModel = {
 	/** Dominant background polyhedron — bright, frames the agent icon. */
@@ -60,7 +60,7 @@ type SubstrateModel = {
  * The shapes are chosen to evoke the brand:
  *   E2B      → a sandbox: a box nested inside a box (isometric tilt)
  *   Sprites  → a dense geodesic micro-orb
- *   Dedalus  → an engineered dodecahedron gem around an octahedron
+ *   Daytona  → an engineered dodecahedron gem around an octahedron
  *   Vercel   → the triangle: a tetrahedron over a tetrahedron
  */
 const SUBSTRATE_VISUAL: Record<SubstrateId, SubstrateModel> = {
@@ -77,7 +77,7 @@ const SUBSTRATE_VISUAL: Record<SubstrateId, SubstrateModel> = {
 		hue: "#a1a1aa",
 		spin: 0.26,
 	},
-	dedalus: {
+	daytona: {
 		outer: () => new THREE.DodecahedronGeometry(0.62, 0),
 		inner: () => new THREE.OctahedronGeometry(0.34, 0),
 		hue: "#aaa5e6",
@@ -210,20 +210,9 @@ function CursorIcon({ size }: { size: number }) {
 	);
 }
 
-/** Dedalus symbol only (the swirl), extracted from the wide wordmark lockup so
- *  it reads inside a square chip instead of cropping to "Dedalus Labs". */
-function DedalusSymbol({ size }: { size: number }) {
-	return (
-		<svg
-			viewBox="1900 25 300 296"
-			width={size}
-			height={size}
-			fill="currentColor"
-			aria-hidden="true"
-		>
-			<path d="M2191.02 31.0007C2191.55 30.9809 2192.01 31.3973 2192.07 31.9323L2192.25 33.736H2192.23C2193.16 42.9925 2192.25 51.9123 2190.56 60.8913C2188.78 69.8108 2185.96 78.5919 2182.14 86.9763C2174.57 103.785 2163.07 119.007 2149.15 131.336C2147.43 132.901 2145.69 134.428 2143.86 135.875L2141.15 138.055L2138.49 140.057C2134.92 142.713 2131.45 145.469 2127.77 147.986L2122.28 151.811C2120.43 153.08 2118.53 154.269 2116.65 155.498C2112.92 158.015 2109.04 160.275 2105.15 162.554C2089.57 171.672 2072.88 178.907 2056.69 185.19L2032.61 194.565C2024.66 197.697 2016.77 200.869 2008.9 204.139C2004.96 205.745 2001.09 207.509 1997.15 209.154L1994.21 210.403L1988.98 212.86L1986.42 214.248C1979.6 217.934 1973.14 222.414 1967.1 227.588C1954.97 237.895 1944.66 250.877 1935.8 264.99C1927.04 279.142 1919.55 294.603 1913.76 310.539L1913.12 312.303C1912.95 312.799 1912.43 313.076 1911.94 312.977L1909.02 312.383C1908.49 312.283 1908.13 311.788 1908.19 311.233L1908.39 309.429C1909.32 300.47 1911.2 291.867 1913.6 283.285C1915.94 274.702 1919.03 266.278 1922.64 258.033C1929.97 241.641 1939.72 225.823 1952.89 212.444C1959.45 205.764 1966.8 199.699 1974.91 194.605L1977.96 192.722L1981.11 190.998L1984.28 189.273L1987.24 187.806C1991.18 185.864 1995.1 183.862 1999.09 182.039C2014.97 174.507 2031.3 167.768 2047.23 161.405C2055.22 158.194 2062.97 154.943 2070.62 151.573C2078.25 148.203 2085.63 144.517 2092.96 140.652C2096.59 138.63 2100.24 136.687 2103.82 134.547C2105.63 133.496 2107.43 132.466 2109.22 131.376L2114.55 128.046C2118.14 125.885 2121.64 123.526 2125.17 121.247L2127.83 119.522L2130.28 117.798L2132.76 116.093L2135.16 114.309C2147.99 104.716 2159.24 93.0017 2168.1 79.3649C2172.56 72.5663 2176.37 65.2519 2179.56 57.6208C2181.17 53.7953 2182.57 49.8708 2183.76 45.8669C2185.01 41.9027 2186.02 37.7204 2186.74 33.7761L2187.07 31.8727C2187.17 31.3776 2187.59 31.0207 2188.1 31.0007H2191.02ZM2155.76 249.845C2156.16 249.548 2156.73 249.568 2157.11 249.924L2158.73 251.431C2159.13 251.788 2159.19 252.383 2158.87 252.819L2158.02 254.008H2158.04C2148.7 266.932 2136.99 277.694 2123.91 286.851C2110.83 295.91 2096 303.164 2080.12 306.99C2072.35 308.932 2064.52 310.261 2056.67 311.252C2048.83 312.144 2040.96 312.719 2033.13 312.838C2017.43 313.016 2001.83 312.005 1986.41 308.755L1984.96 308.457C1984.45 308.358 1984.09 307.862 1984.13 307.346L1984.31 305.107C1984.35 304.592 1984.76 304.195 1985.26 304.135L1986.77 304.017C2002.03 302.729 2017.23 301.361 2032.19 299.498C2039.69 298.606 2047.1 297.436 2054.47 296.227C2061.83 294.879 2069.12 293.472 2076.26 291.648C2090.27 288.179 2103.73 282.432 2116.77 275.336C2129.75 268.22 2142.4 259.855 2154.53 250.777L2155.76 249.845ZM2187.3 135.357C2187.56 134.961 2188.03 134.762 2188.49 134.901L2190.53 135.515C2191.01 135.654 2191.32 136.13 2191.28 136.626L2191.13 138.271H2191.17C2190.31 146.695 2187.95 154.524 2184.9 162.215C2181.81 169.865 2177.91 177.239 2173.29 184.157C2168.63 191.055 2163.32 197.595 2157.31 203.482C2154.32 206.435 2151.17 209.23 2147.9 211.886C2144.62 214.523 2141.28 216.921 2137.85 219.299C2124.07 228.596 2108.91 235.712 2093.13 240.291C2085.24 242.59 2077.21 244.255 2069.11 245.246C2065.06 245.741 2060.98 246.079 2056.92 246.158C2052.81 246.277 2048.81 246.217 2044.61 245.741L2043 245.563C2042.49 245.504 2042.09 245.087 2042.07 244.572L2041.97 242.293C2041.95 241.797 2042.27 241.361 2042.74 241.222L2044.37 240.786C2051.78 238.824 2059.25 236.465 2066.45 233.908C2073.68 231.351 2080.74 228.457 2087.64 225.365C2101.41 219.101 2114.5 211.747 2126.61 203.145C2132.69 198.824 2138.42 194.246 2143.87 189.35C2146.59 186.873 2149.22 184.315 2151.84 181.718C2154.4 179.062 2156.97 176.387 2159.41 173.592C2169.28 162.493 2178.24 150.064 2186.37 136.863L2187.3 135.357Z" />
-		</svg>
-	);
+/** Official Daytona glyph, shared with the provider controls. */
+function DaytonaSymbol({ size }: { size: number }) {
+	return <Logo mark="daytona" size={size} tone="currentColor" />;
 }
 
 /* ── Shared chip + brand faces ── */
@@ -282,11 +271,11 @@ function AgentFace({
 	);
 }
 
-/** Substrate brand face — e2b/sprites/vercel are ServiceIcons; dedalus uses its
+/** Substrate brand face — e2b/sprites/vercel are ServiceIcons; daytona uses its
  *  symbol-only glyph so the wide wordmark doesn't crop inside the square chip. */
 function SubstrateFace({ id, size }: { id: SubstrateId; size: number }) {
-	return id === "dedalus" ? (
-		<DedalusSymbol size={size} />
+	return id === "daytona" ? (
+		<DaytonaSymbol size={size} />
 	) : (
 		<ServiceIcon slug={id as ServiceSlug} size={size} />
 	);
@@ -448,12 +437,12 @@ const AGENT_GEAR_R = 2.62; // agent-logo ring radius (outer wheel)
 const SUB_GEAR_R = 1.34; // substrate-logo ring radius (inner wheel)
 const GEAR_LERP = 2.8; // how fast a wheel turns the active to the lock
 const GEAR_LOCK = Math.PI; // 9 o'clock — the active combo aligns on the LEFT
-const SUBSTRATE_IDS: SubstrateId[] = ["e2b", "sprites", "dedalus", "vercel"];
+const SUBSTRATE_IDS: SubstrateId[] = ["e2b", "sprites", "daytona", "vercel"];
 
 const SUBSTRATE_LABEL: Record<SubstrateId, string> = {
 	e2b: "E2B",
 	sprites: "Sprites",
-	dedalus: "Dedalus",
+	daytona: "Daytona",
 	vercel: "Vercel",
 };
 
@@ -461,7 +450,7 @@ const SUBSTRATE_LABEL: Record<SubstrateId, string> = {
 const SUBSTRATE_URL: Record<SubstrateId, string> = {
 	e2b: "https://e2b.dev",
 	sprites: "https://sprites.dev",
-	dedalus: "https://www.dedaluslabs.ai",
+	daytona: "https://www.daytona.io",
 	vercel: "https://vercel.com/sandbox",
 };
 
@@ -975,7 +964,7 @@ type Props = {
 
 export function HeroOrbitScene({
 	activeAgent,
-	activeSubstrate = "dedalus",
+	activeSubstrate = "daytona",
 	mode = "portrait",
 	onSelectAgent,
 	onSelectSubstrate,

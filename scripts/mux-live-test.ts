@@ -70,7 +70,7 @@ const sandboxes = (listArg("--sandboxes") ?? [
 	"e2b",
 	"sprites",
 	"vercel",
-	"dedalus",
+	"daytona",
 ]) as SubstrateKind[];
 const keep = args.includes("--keep");
 /** Route model traffic through a gateway instead of a native key. */

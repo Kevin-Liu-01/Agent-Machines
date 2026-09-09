@@ -22,7 +22,7 @@ export type ContributionEvent = {
 
 export type PartnerKey =
 	| "am"
-	| "dedalus"
+	| "daytona"
 	| "nous"
 	| "cursor"
 	| "openclaw"
@@ -53,7 +53,7 @@ function makePrng(seed: number) {
 
 function pickPartner(rng: () => number): ContributionDay["partner"] {
 	const roll = rng();
-	if (roll < 0.32) return "dedalus";
+	if (roll < 0.32) return "daytona";
 	if (roll < 0.52) return "nous";
 	if (roll < 0.67) return "openclaw";
 	if (roll < 0.82) return "cursor";
@@ -388,32 +388,32 @@ function buildDayEvents(
 				events.push({
 					kind: "mcp",
 					label: "screenshot artifact",
-					detail: "saved to /home/machine/.agent-machines/artifacts",
+					detail: "saved to ~/.agent-machines/artifacts",
 					brand: "openclaw",
 					category: "vision",
 				});
 			}
-		} else if (partner === "dedalus") {
+		} else if (partner === "daytona") {
 			if (r < 0.35) {
 				events.push({
 					kind: "wake",
-					label: "machine woke",
-					detail: `${(rng() * 4 + 1.5).toFixed(1)}s . tunnel reused`,
+					label: "sandbox started",
+					detail: "filesystem retained . runtime restarted",
 					brand: "am",
 				});
 			} else if (r < 0.7) {
 				events.push({
 					kind: "sleep",
-					label: "machine slept",
-					detail: `${Math.floor(rng() * 60 + 4)} min idle`,
+					label: "sandbox stopped",
+					detail: "explicit stop . files retained",
 					brand: "am",
 				});
 			} else {
 				events.push({
 					kind: "deploy",
-					label: "tunnel re-established",
-					detail: "cloudflared quick-tunnel",
-					brand: "cloudflare",
+					label: "private preview connected",
+					detail: "time-limited preview URL",
+					brand: "daytona",
 				});
 			}
 		}
@@ -440,7 +440,7 @@ function pickMilestoneEvent(
 		[0, { kind: "milestone", label: "rig provisioned", detail: "npm run deploy . first machine boot" }],
 		[14, { kind: "milestone", label: "13 skills seeded", detail: "philosophy . engineering . design" }],
 		[42, { kind: "milestone", label: "cursor-bridge wired", detail: "@cursor/sdk MCP server registered" }],
-		[68, { kind: "milestone", label: "dashboard auto-wake live", detail: "vercel deploy . clerk gate . dedalus command" }],
+		[68, { kind: "milestone", label: "dashboard auto-wake live", detail: "vercel deploy . clerk gate . daytona command" }],
 		[82, { kind: "milestone", label: "claude-code connected", detail: "AGENTS.md loaded . multi-file edits", brand: "anthropic" }],
 		[96, { kind: "milestone", label: "wiki sync . 96 skills", detail: "knowledge/skills filled from my-wiki" }],
 		[110, { kind: "milestone", label: "codex-cli integrated", detail: "sandbox command . patch workflow", brand: "openai" }],

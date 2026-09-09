@@ -41,7 +41,13 @@ Run history is bounded to the most recent 100 returned scheduled operations. Dis
 
 ## Cleanup status
 
-The disposable Worker and test cron remain intentionally retained after post-deployment verification. The Worker was explicitly paused through the hosted lifecycle API and independently confirmed paused; its legacy E2B kill-on-timeout policy has not been changed. Cleanup awaits approval and must target only the IDs listed above. No other account's selection or Worker was modified.
+The disposable Worker and test cron were initially retained after post-deployment verification. Permanent cleanup was subsequently authorized for only cron `1125a99f-fdb8-42dc-8145-90fa097f1ba7`, Worker `ed074605-68c0-422b-ba2e-b97af47812c9`, and machine `inhhzbntovc0yik89pe4f` under the old QA account `user_3J4rO7BDLBYI7e2QrMDljAQsiVD`.
+
+The cleanup attempt on September 9 stopped before any mutation because that account's identity could not be verified. The old `launch-cron` and `launch-signup` browser sessions were absent. An explicitly authorized saved-state fallback, opened in a fresh isolated cleanup browser, also exposed no signed-in Clerk identity after page load. No cron deletion, Worker deletion, provider destruction, model call, or account change was performed. The existing newer QA browser sessions were not touched.
+
+An independent, non-waking E2B `getInfo` at `2026-09-09T08:46:36.678Z` confirmed the exact machine still exists and is `paused`, with legacy `onTimeout: kill` and `autoResume: false`. There is no deletion operation or provider-absence proof to report.
+
+At `2026-09-09T09:38:32Z`, a read-only Clerk Backend API lookup verified the exact old QA user and test email. Its private cron registry still contains this one schedule, enabled with expression `20 6 9 9 *` and last run at `2026-09-09T06:20:28.435Z`. That five-field expression is annual, not a year-specific one-shot; its next matching date is September 9, 2027. No metadata or provider mutation was performed. Explicit Clerk write scopes are not configured, so the backend checklist requires administrator confirmation before disabling it. That narrow confirmation has been requested; cleanup is not represented as complete.
 
 ## Post-deployment verification
 

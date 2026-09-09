@@ -4,7 +4,8 @@ import type { AgentKind, ProviderKind } from "@/lib/user-config/schema";
 import { agentMetaForKind } from "./agent-styling";
 
 const PROVIDER_MARK: Record<ProviderKind, Mark> = {
-	dedalus: "dedalus",
+	daytona: "daytona",
+	dedalus: "retired",
 	e2b: "e2b",
 	sprites: "sprites",
 	vercel: "vercel",
@@ -15,7 +16,7 @@ export function machineLogoMark(): Mark {
 }
 
 export function providerLogoMark(kind: ProviderKind): Mark {
-	return PROVIDER_MARK[kind] ?? "dedalus";
+	return PROVIDER_MARK[kind] ?? "retired";
 }
 
 export function agentLogoMark(agentKind: AgentKind): Mark {

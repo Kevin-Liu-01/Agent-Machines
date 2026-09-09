@@ -52,7 +52,7 @@ import { randomBytes } from "node:crypto";
 import { appendFileSync, mkdirSync, readFileSync, readdirSync } from "node:fs";
 import { homedir, hostname } from "node:os";
 import { join } from "node:path";
-import { HARNESS_KINDS, SUBSTRATE_KINDS } from "./config.js";
+import { HARNESS_KINDS, PERSISTED_SUBSTRATE_KINDS } from "./config.js";
 import { estimate } from "./cost.js";
 import { routeKey, type RouteKey } from "./traces.js";
 import { MuxError, type HarnessKind, type SubstrateKind } from "./types.js";
@@ -339,7 +339,7 @@ function normalizeTimestamp(value: string | number | Date, label: string): strin
 // ---------------------------------------------------------------------------
 
 const HARNESSES = new Set<string>(HARNESS_KINDS);
-const SUBSTRATES = new Set<string>(SUBSTRATE_KINDS);
+const SUBSTRATES = new Set<string>(PERSISTED_SUBSTRATE_KINDS);
 const LINE_KINDS = new Set<string>(LEDGER_LINE_KINDS);
 const PROVENANCES = new Set<string>(["metered", "estimated", "fixed"]);
 

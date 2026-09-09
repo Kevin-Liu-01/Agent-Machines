@@ -9,7 +9,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import Dedalus from "dedalus";
+import type Dedalus from "dedalus";
 
 import { STATE_FILE } from "./constants.js";
 import type { Config } from "./env.js";
@@ -24,11 +24,8 @@ export type MachineState = {
 	model: string;
 };
 
-export function makeClient(config: Config): Dedalus {
-	return new Dedalus({
-		xAPIKey: config.apiKey,
-		baseURL: config.machinesBaseUrl,
-	});
+export function makeClient(_config: Config): Dedalus {
+	throw new Error("The legacy provider has been retired. Use 'am mux help' for Daytona, E2B, Sprites, and Vercel. Existing machine records have not been moved or deleted.");
 }
 
 function statePath(): string {

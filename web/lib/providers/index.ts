@@ -20,7 +20,7 @@ import type {
 	ProviderKind,
 } from "@/lib/user-config/schema";
 
-import { DedalusProvider } from "./dedalus";
+import { createHostedDaytonaProvider } from "./daytona";
 import { E2BProvider } from "./e2b";
 import { SpritesProvider } from "./sprites";
 import { VercelProvider } from "./vercel";
@@ -31,16 +31,15 @@ export function getProvider(
 	credentials: ProviderCredentials,
 ): MachineProvider {
 	switch (kind) {
-		case "dedalus": {
-			const creds = credentials.dedalus;
-			if (!creds?.apiKey) {
-				throw new MachineProviderError(
-					"dedalus",
-					"missing_credentials",
-					"No Dedalus API key on file. Add one via /dashboard/setup step 1.",
-				);
+		case "daytona": {
+			const creds = credentials.daytona;
+			if (!creds?.apiKey?.trim()) {
+				throw new MachineProviderError("daytona", "missing_credentials", "Add your Daytona API key in /dashboard/setup.");
 			}
-			return new DedalusProvider(creds);
+			return createHostedDaytonaProvider(creds);
+		}
+		case "dedalus": {
+			throw new MachineProviderError("dedalus", "not_supported", "This sandbox provider has been retired. Create a new Worker on Daytona, E2B, Sprites, or Vercel; existing machine records have not been moved or deleted.");
 		}
 		case "e2b": {
 			const creds = credentials.e2b;

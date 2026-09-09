@@ -79,7 +79,7 @@ with the user.
 |---|---|
 | Identity and responsibility | Claude Code, Codex, Hermes, OpenClaw, or a future runtime |
 | Memory and instructions | Native model key, router, gateway, or compatible endpoint |
-| Schedules and desired lifecycle | E2B, Sprites, Vercel Sandbox, Dedalus, or a future substrate |
+| Schedules and desired lifecycle | Daytona, E2B, Sprites, Vercel Sandbox, or a future substrate |
 | Files and evidence | Volume, checkpoint, snapshot, or always-on disk |
 | Permissions and abilities | Skills, MCP servers, CLIs, native tools, and service routes |
 | History and output contracts | Browser console, PTY, stream, REST, SDK, CLI, or another Worker |
@@ -187,6 +187,7 @@ supervision surface.
 ## Runtime paths
 
 - **Product:** Agent Machines, including the Worker system, control plane, dashboard, SDK, and CLI.
-- **Runtime root:** `~/.agent-machines/`.
-- **Repo checkout:** `/home/machine/agent-machines/`.
+- **Runtime root:** `"$HOME/.agent-machines"`.
+- **Repo checkout:** `"$HOME/agent-machines"`.
+- **Provider-aware home:** Resolve the executing user's actual `$HOME`. The hosted defaults are `/home/daytona` on Daytona, `/home/user` on E2B, `/home/sprite` on Sprites, and `/vercel/sandbox` on Vercel Sandbox. Migration changes these paths; it must not preserve an obsolete absolute home as the new execution location.
 - **Hermes / OpenClaw / Claude Code / Codex:** replaceable runtime options, not the product identity.

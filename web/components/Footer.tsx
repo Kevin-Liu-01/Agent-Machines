@@ -39,7 +39,7 @@ const FOOTER_GROUPS = [
 			},
 			{
 				label: "DCS",
-				href: "https://docs.dedaluslabs.ai/dcs",
+				href: "https://www.daytona.io/docs/",
 				external: true,
 			},
 		],
@@ -51,7 +51,7 @@ type FooterMark = Mark | "tools";
 const SUBSTRATES: ReadonlyArray<{ label: string; mark: FooterMark }> = [
 	{ label: "E2B", mark: "e2b" },
 	{ label: "Sprites", mark: "sprites" },
-	{ label: "Dedalus", mark: "dedalus" },
+	{ label: "Daytona", mark: "daytona" },
 	{ label: "Vercel", mark: "vercel" },
 ];
 

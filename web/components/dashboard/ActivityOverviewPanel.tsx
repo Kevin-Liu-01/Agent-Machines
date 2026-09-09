@@ -34,7 +34,7 @@ const AGENT_FILTER_MAP: Record<string, { agent?: AgentKind; provider?: ProviderK
 	openclaw: { agent: "openclaw" },
 	"claude-code": { agent: "claude-code" },
 	codex: { agent: "codex" },
-	dedalus: { provider: "dedalus" },
+	daytona: { provider: "daytona" },
 	e2b: { provider: "e2b" },
 	sprites: { provider: "sprites" },
 	vercel: { provider: "vercel" },

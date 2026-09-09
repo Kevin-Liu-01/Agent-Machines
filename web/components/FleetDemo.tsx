@@ -12,25 +12,17 @@ const LANDING_META: Record<
 	{
 		shortId: string;
 		name: string;
-		region: string;
 		uptime: string;
-		cpu: string;
-		mem: string;
-		disk: string;
 		lines: string[];
 	}
 > = {
 	hermes: {
 		shortId: "dm-7f2a",
 		name: "hermes-prod",
-		region: "us-east-1",
 		uptime: "4d 12h",
-		cpu: "0.3 vCPU",
-		mem: "128 MB",
-		disk: "2.1 GB",
 		lines: [
 			"$ hermes wake",
-			"Hermes · hermes-prod · Dedalus",
+			"Hermes · hermes-prod · Daytona",
 			"loading memory index...",
 			"4,281 memories indexed",
 			"cron: sync-feeds in 12m",
@@ -41,14 +33,10 @@ const LANDING_META: Record<
 	openclaw: {
 		shortId: "dm-a91d",
 		name: "openclaw-browser",
-		region: "us-west-2",
 		uptime: "1d 6h",
-		cpu: "0.5 vCPU",
-		mem: "256 MB",
-		disk: "1.4 GB",
 		lines: [
 			"$ openclaw run",
-			"OpenClaw · openclaw-browser · Dedalus",
+			"OpenClaw · openclaw-browser · Daytona",
 			"launching browser...",
 			"navigating to target",
 			"screenshot captured",
@@ -59,14 +47,10 @@ const LANDING_META: Record<
 	"claude-code": {
 		shortId: "dm-e4c8",
 		name: "claude-code-ci",
-		region: "us-east-1",
 		uptime: "2d 19h",
-		cpu: "1.0 vCPU",
-		mem: "512 MB",
-		disk: "4.7 GB",
 		lines: [
 			"$ claude -p 'fix tests'",
-			"Claude Code · claude-code-ci · Dedalus",
+			"Claude Code · claude-code-ci · Daytona",
 			"reading src/api/auth.ts",
 			"found 2 failing tests",
 			"editing test fixtures...",
@@ -77,14 +61,10 @@ const LANDING_META: Record<
 	codex: {
 		shortId: "dm-3b17",
 		name: "codex-sandbox",
-		region: "us-east-2",
 		uptime: "6h 42m",
-		cpu: "0.5 vCPU",
-		mem: "256 MB",
-		disk: "1.8 GB",
 		lines: [
 			"$ codex exec 'add cache'",
-			"Codex CLI · codex-sandbox · Dedalus",
+			"Codex CLI · codex-sandbox · Daytona",
 			"analyzing codebase...",
 			"sandbox: initialized",
 			"writing redis layer",
@@ -94,7 +74,7 @@ const LANDING_META: Record<
 	},
 };
 
-function landingCard(agentId: AgentKind, idx: number): FleetStreamCardModel {
+function landingCard(agentId: AgentKind): FleetStreamCardModel {
 	const agent = agentMetaForKind(agentId);
 	const meta = LANDING_META[agentId];
 	const hue = fleetHue(agentId);
@@ -107,15 +87,15 @@ function landingCard(agentId: AgentKind, idx: number): FleetStreamCardModel {
 		agentName: agent.name,
 		agentBy: agent.by,
 		logoMark: agent.logoMark,
-		providerKind: "dedalus",
-		providerLabel: "Dedalus",
+		providerKind: "daytona",
+		providerLabel: "Daytona",
 		hue,
 		shortId: meta.shortId,
-		region: meta.region,
+		region: "—",
 		uptime: meta.uptime,
-		cpu: meta.cpu,
-		mem: meta.mem,
-		disk: meta.disk,
+		cpu: "— vCPU",
+		mem: "— MiB",
+		disk: "— GiB",
 		tools: fleetTools(agentId),
 		lines: meta.lines,
 		state: "ready",
@@ -131,11 +111,14 @@ function landingCard(agentId: AgentKind, idx: number): FleetStreamCardModel {
 export function FleetDemo() {
 	return (
 		<div className="px-1 py-1.5">
+			<p className="px-2 pb-2 text-xs leading-relaxed text-[var(--ret-text-muted)]">
+				Illustrative fleet — sample activity and uptime, not live Workers or provider benchmarks.
+			</p>
 			<div className="grid w-full grid-cols-2 gap-1.5 md:grid-cols-4">
 				{AGENTS.map((agent, idx) => (
 					<FleetStreamCard
 						key={agent.id}
-						card={landingCard(agent.id as AgentKind, idx)}
+						card={landingCard(agent.id as AgentKind)}
 						delaySec={idx * 0.8}
 						live={false}
 						external

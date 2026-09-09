@@ -58,7 +58,7 @@ export const CAPABILITY_GROUPS: ReadonlyArray<CapabilityGroup> = [
 			},
 			{
 				title: "Sandbox switchboard",
-				description: "Place or fail over the same worker across E2B, Sprites, Dedalus, and Vercel Sandbox.",
+				description: "Place or fail over the same worker across E2B, Sprites, Daytona, and Vercel Sandbox.",
 				meta: `${HARNESS.providersLive.length} lanes · primary + backups`,
 				href: "/product/lifecycle",
 				icon: "server",

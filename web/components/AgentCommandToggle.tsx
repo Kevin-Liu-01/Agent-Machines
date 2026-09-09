@@ -84,7 +84,7 @@ const TERMINAL_OUTPUT: Record<AgentKind, string[]> = {
 		"  hermes › I'll check the deployment and run tests.",
 		"",
 		"  ┌ tool:shell ─────────────────────────────────",
-		"  │ vercel inspect --scope dedalus-labs",
+		"  │ vercel inspect --scope your-team",
 		"  │ → production: ready (2m ago)",
 		"  └─────────────────────────────────────────────",
 		"",

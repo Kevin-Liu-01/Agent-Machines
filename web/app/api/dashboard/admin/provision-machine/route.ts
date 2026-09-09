@@ -62,11 +62,12 @@ export async function POST(request: Request): Promise<Response> {
 	const userId = await getEffectiveUserId();
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 	const body = ((await request.json().catch(() => ({}))) ?? {}) as Body;
+	if (body.providerKind !== undefined && !isProvider(body.providerKind)) return Response.json({ error: "invalid_provider_kind", message: "Choose Daytona, E2B, Sprites, or Vercel." }, { status: 400 });
 	if (isRemovedDedalusRouter(body.gatewayProfileId)) {
 		return Response.json(
 			{
 				error: "unsupported_gateway",
-				message: "Dedalus is supported only as a sandbox substrate, not as a model gateway.",
+				message: "This model gateway is retired. Choose a supported model endpoint.",
 			},
 			{ status: 400 },
 		);

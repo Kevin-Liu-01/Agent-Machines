@@ -40,7 +40,7 @@ export const RUNTIME = {
 export const LOADOUT_SUMMARY = HARNESS_SUMMARY;
 
 export const PROVIDER_LABELS: Record<(typeof RUNTIME.providersLive)[number], string> = {
-	dedalus: "Dedalus Machines",
+	daytona: "Daytona",
 	e2b: "E2B Sandbox",
 	sprites: "Sprites.dev",
 	vercel: "Vercel Sandbox",

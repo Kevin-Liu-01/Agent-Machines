@@ -1,4 +1,5 @@
 import { prepareManagedRun, runErrorResponse } from "@/lib/agents/managed-run";
+import { runtimeCapacity } from "@/lib/agents/runtime-capacity";
 import { agentArtifactsPresent } from "@/lib/bootstrap/bootstrap-repair";
 import { resolveMachine } from "@/lib/dashboard/exec";
 import { getProvider } from "@/lib/providers";
@@ -19,8 +20,10 @@ export async function GET(request: Request): Promise<Response> {
 		const provider = getProvider(machine.providerKind, config.providers);
 		const state = await provider.state(machine.id);
 		if (state.state !== "ready") return Response.json({ ok: false, state: state.state, message: `Worker is ${state.state}. Wake it from the machine overview.` });
+		const capacity = runtimeCapacity(machine.agentKind, state.spec?.memoryMib);
+		if (capacity.status === "blocked") return Response.json({ ok: false, machineId: machine.id, agent: machine.agentKind, error: "insufficient_runtime_memory", capacity, message: capacity.message });
 		const ready = await agentArtifactsPresent(machine, provider);
-		return Response.json({ ok: ready, machineId: machine.id, agent: machine.agentKind, model: machine.model, mode: "managed-runtime", message: ready ? "Runtime installed and machine reachable. Model credentials are checked when a run starts." : "The selected runtime is not installed or configured. Bootstrap the Worker first." });
+		return Response.json({ ok: ready, machineId: machine.id, agent: machine.agentKind, model: machine.model, mode: "managed-runtime", capacity, message: ready ? `Runtime installed and machine reachable. Model credentials are checked when a run starts.${capacity.message ? ` ${capacity.message}` : ""}` : "The selected runtime is not installed or configured. Bootstrap the Worker first." });
 	} catch (error) {
 		return Response.json({ ok: false, error: "runtime_unreachable", message: error instanceof Error ? error.message : "Runtime probe failed." }, { status: 502 });
 	}

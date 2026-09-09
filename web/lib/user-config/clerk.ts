@@ -73,6 +73,7 @@ import {
 
 const KNOWN_AGENTS: ReadonlySet<AgentKind> = new Set(AGENT_KINDS);
 const KNOWN_PROVIDERS: ReadonlySet<ProviderKind> = new Set([
+	"daytona",
 	"dedalus",
 	"sprites",
 	"e2b",
@@ -125,6 +126,12 @@ function asProvider(value: unknown, fallback: ProviderKind = "dedalus"): Provide
 	return v && KNOWN_PROVIDERS.has(v as ProviderKind)
 		? (v as ProviderKind)
 		: fallback;
+}
+
+/** New drafts use an active provider; persisted machine identities stay unchanged. */
+function asDraftProvider(value: unknown): ProviderKind {
+	const kind = asProvider(value, "daytona");
+	return kind === "dedalus" ? "daytona" : kind;
 }
 
 function asGateway(value: unknown, fallback: GatewayKind = "vercel-ai-gateway"): GatewayKind {
@@ -253,12 +260,12 @@ type RawPrivate = Record<string, unknown>;
 
 function readEnvProviderCreds(): ProviderCredentials {
 	const out: ProviderCredentials = {};
-	const dedalusKey = process.env.DEDALUS_API_KEY?.trim();
-	const dedalusBaseUrl = process.env.DEDALUS_BASE_URL?.trim();
-	if (dedalusKey) {
-		out.dedalus = {
-			apiKey: dedalusKey,
-			baseUrl: dedalusBaseUrl,
+	const daytonaKey = process.env.DAYTONA_API_KEY?.trim();
+	if (daytonaKey) {
+		out.daytona = {
+			apiKey: daytonaKey,
+			apiUrl: process.env.DAYTONA_API_URL?.trim(),
+			target: process.env.DAYTONA_TARGET?.trim(),
 		};
 	}
 	const e2bKey = process.env.E2B_API_KEY?.trim();
@@ -369,9 +376,9 @@ function defaultBootstrapPresetFor(agentKind: AgentKind): BootstrapPreset {
 		codex: "Codex CLI",
 	};
 	return {
-		id: `dedalus-${agentKind}-default`,
-		name: `Dedalus + ${titles[agentKind]}`,
-		providerKind: "dedalus",
+		id: `daytona-${agentKind}-default`,
+		name: `Daytona + ${titles[agentKind]}`,
+		providerKind: "daytona",
 		agentProfileId: `${agentKind}-default`,
 		environmentProfileId: null,
 		spec: DEFAULT_MACHINE_SPEC,
@@ -500,6 +507,13 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate, allowDeploy
 	const providers: ProviderCredentials = {};
 	const privateProviders =
 		(privateMeta.providers as ProviderCredentials | undefined) ?? {};
+	if (privateProviders.daytona?.apiKey) {
+		providers.daytona = {
+			apiKey: privateProviders.daytona.apiKey,
+			apiUrl: privateProviders.daytona.apiUrl,
+			target: privateProviders.daytona.target,
+		};
+	}
 	if (privateProviders.dedalus?.apiKey) {
 		providers.dedalus = {
 			apiKey: privateProviders.dedalus.apiKey,
@@ -674,7 +688,7 @@ function buildConfig(publicMeta: RawPublic, privateMeta: RawPrivate, allowDeploy
 		draftAgentKind: asAgent(
 			publicMeta.draftAgentKind ?? publicMeta.agentKind,
 		),
-		draftProviderKind: asProvider(
+		draftProviderKind: asDraftProvider(
 			publicMeta.draftProviderKind ?? publicMeta.providerKind,
 		),
 		draftSpec: asSpec(publicMeta.draftSpec ?? publicMeta.machineSpec),
@@ -731,7 +745,7 @@ function buildConfigFromSupabase(
 	base.activeMachineId = asString(sbRow.active_machine_id) ?? null;
 	if (sbRow.setup_step !== undefined) base.setupStep = asStep(sbRow.setup_step);
 	if (sbRow.draft_agent_kind !== undefined) base.draftAgentKind = asAgent(sbRow.draft_agent_kind);
-	if (sbRow.draft_provider_kind !== undefined) base.draftProviderKind = asProvider(sbRow.draft_provider_kind);
+	if (sbRow.draft_provider_kind !== undefined) base.draftProviderKind = asDraftProvider(sbRow.draft_provider_kind);
 	if (sbRow.draft_model !== undefined) base.draftModel = asString(sbRow.draft_model) ?? DEFAULT_MODEL;
 	if (sbRow.draft_spec !== undefined) base.draftSpec = asSpec(sbRow.draft_spec);
 
@@ -1387,26 +1401,7 @@ export async function getDedalusEnvForMachine(machine: MachineRef): Promise<{
 	baseUrl: string;
 	machineId: string;
 }> {
-	const config = await getUserConfig();
-	if (machine.providerKind !== "dedalus") {
-		throw new Error(
-			`getDedalusEnvForMachine called on a ${machine.providerKind} machine`,
-		);
-	}
-	const apiKey = config.providers.dedalus?.apiKey;
-	if (!apiKey) {
-		throw new Error(
-			"DEDALUS_API_KEY is not set on this user. Add it in /dashboard/setup.",
-		);
-	}
-	const baseUrl = (
-		config.providers.dedalus?.baseUrl ??
-		process.env.DEDALUS_BASE_URL ??
-		"https://dcs.dedaluslabs.ai"
-	)
-		.trim()
-		.replace(/\/$/, "");
-	return { apiKey, baseUrl, machineId: machine.id };
+	throw new Error(`The provider for legacy machine ${machine.id} is retired. Existing records have not been moved or deleted.`);
 }
 
 /**

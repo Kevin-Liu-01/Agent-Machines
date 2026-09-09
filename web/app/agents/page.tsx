@@ -22,7 +22,7 @@ export const metadata = buildPageMetadata({
 const MARKET_METRICS = [
 	{ label: "Templates", value: String(AGENT_TEMPLATES.length), detail: "runtime plus loadout recipes" },
 	{ label: "Runtime lanes", value: "4", detail: "Hermes, OpenClaw, Claude Code, Codex" },
-	{ label: "Provider lanes", value: "4", detail: "E2B, Sprites, Dedalus, Vercel" },
+	{ label: "Provider lanes", value: "4", detail: "E2B, Sprites, Daytona, Vercel" },
 ];
 
 export default function AgentsPage() {

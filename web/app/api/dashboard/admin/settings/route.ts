@@ -15,6 +15,7 @@ import { isRemovedDedalusRouter } from "@/lib/agents/upstreams";
 import { readTextFile, withActiveMachine } from "@/lib/storage/machine-fs";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
+import { daytonaCredentialsError } from "@/lib/user-config/daytona-credentials";
 import {
 	DEFAULT_MODEL,
 	toPublicConfig,
@@ -103,7 +104,7 @@ export async function POST(request: Request): Promise<Response> {
 				{
 					error: "unsupported_gateway",
 					message:
-						"Dedalus is a sandbox provider, not a model gateway. Use Vercel AI Gateway, OpenRouter, or another supported OpenAI-compatible endpoint.",
+						"This model gateway is no longer supported. Use Vercel AI Gateway, OpenRouter, or another supported OpenAI-compatible endpoint.",
 				},
 				{ status: 400 },
 			);
@@ -111,6 +112,11 @@ export async function POST(request: Request): Promise<Response> {
 
 		const patch: Parameters<typeof setUserConfig>[0] = {};
 		if (body.providers) {
+			if (body.providers.dedalus) return Response.json({ error: "retired_provider", message: "This sandbox provider has been retired. Choose Daytona, E2B, Sprites, or Vercel." }, { status: 400 });
+			if (body.providers.daytona !== undefined) {
+				const message = daytonaCredentialsError(body.providers.daytona);
+				if (message) return Response.json({ error: "invalid_daytona_credentials", message }, { status: 400 });
+			}
 			patch.providers = mergeProviderCredentials(body.providers, current.providers);
 		}
 		if (body.aiProviderKeys) {
@@ -199,7 +205,7 @@ function mergeEnvironmentProfile(
 }
 
 function clean(value: string | undefined): string | undefined {
-	const trimmed = value?.trim();
+	const trimmed = typeof value === "string" ? value.trim() : undefined;
 	return trimmed ? trimmed : undefined;
 }
 
@@ -208,6 +214,12 @@ function mergeProviderCredentials(
 	current: ProviderCredentials,
 ): ProviderCredentials {
 	const next: ProviderCredentials = {};
+	if (partial.daytona || current.daytona) {
+		const apiKey = clean(partial.daytona?.apiKey) ?? current.daytona?.apiKey;
+		const apiUrl = clean(partial.daytona?.apiUrl) ?? current.daytona?.apiUrl;
+		const target = clean(partial.daytona?.target) ?? current.daytona?.target;
+		if (apiKey) next.daytona = { apiKey, ...(apiUrl ? { apiUrl } : {}), ...(target ? { target } : {}) };
+	}
 	if (partial.dedalus || current.dedalus) {
 		const apiKey = clean(partial.dedalus?.apiKey) ?? current.dedalus?.apiKey;
 		const baseUrl = clean(partial.dedalus?.baseUrl) ?? current.dedalus?.baseUrl;

@@ -59,15 +59,15 @@ import {
 } from "./conformance.js";
 
 /**
- * Exhaustive by construction: adding a member to `SubstrateKind` without adding
+ * Exhaustive for active providers: adding a member to `SubstrateKind` without adding
  * it here is a type error, and adding it here without a fixture fails the
  * coverage test below.
  */
-const ALL_SUBSTRATES: Record<SubstrateKind, true> = {
+const ALL_SUBSTRATES: Record<Exclude<SubstrateKind, "dedalus">, true> = {
 	e2b: true,
 	sprites: true,
 	vercel: true,
-	dedalus: true,
+	daytona: true,
 };
 
 const MACHINE_STATES = new Set<MachineState>([
@@ -266,7 +266,7 @@ for (const lane of LANES) {
  * would have printed GATED and this suite would have gone green while no longer
  * gating anything. A skip is how a regression hides, and so is a stale matcher.
  */
-const BLOCKER_SOURCE = `const BLOCKED = ["e2b", "@fly/sprites", "@vercel/sandbox"];
+const BLOCKER_SOURCE = `const BLOCKED = ["e2b", "@fly/sprites", "@vercel/sandbox", "@daytona/sdk"];
 export async function resolve(specifier, context, next) {
 	if (BLOCKED.some((pkg) => specifier === pkg || specifier.startsWith(pkg + "/"))) {
 		throw new Error("VENDOR_SDK_RESOLVED:" + specifier);
@@ -289,6 +289,7 @@ const lanes = [
 	{ name: "e2b", file: "e2b.ts", specifier: "e2b", make: (m) => m.createE2bProvider({ apiKey: "k" }) },
 	{ name: "sprites", file: "sprites.ts", specifier: "@fly/sprites", make: (m) => m.createSpritesProvider({ token: "t" }) },
 	{ name: "vercel", file: "vercel.ts", specifier: "@vercel/sandbox", make: (m) => m.createVercelProvider({ token: "t", teamId: "team", projectId: "prj" }) },
+	{ name: "daytona", file: "daytona.ts", specifier: "@daytona/sdk", make: (m) => m.createDaytonaProvider({ apiKey: "k" }) },
 	{ name: "dedalus", file: "dedalus.ts", specifier: null, make: null },
 ];
 for (const lane of lanes) {
@@ -338,9 +339,9 @@ test("importing an adapter does not load its vendor SDK", () => {
 			`${lane.substrate} could not be imported with its vendor SDK blocked:\n${output}`,
 		);
 	}
-	// Three lanes drive a vendor SDK; dedalus is raw REST and has none to load,
-	// which is why it is absent from this list rather than exempted from a check.
-	for (const substrate of ["e2b", "sprites", "vercel"]) {
+	// All active lanes drive an optional vendor SDK. The retired compatibility
+	// module is also imported above, but deliberately has no vendor SDK to load.
+	for (const substrate of ["e2b", "sprites", "vercel", "daytona"]) {
 		assert.ok(
 			lines.some((line) => line.startsWith(`GATED ${substrate} `)),
 			`${substrate} never attempted its lazy SDK import, so the blocker proves nothing:\n${output}`,
@@ -373,7 +374,7 @@ test("importing an adapter does not load its vendor SDK", () => {
 	// the real ERR_REQUIRE_ESM away -- which is also why the marker survives to
 	// be asserted on now. "Not installed" is claimed only for
 	// ERR_MODULE_NOT_FOUND, and the taxonomy below is what the contract needs.
-	for (const substrate of ["e2b", "sprites", "vercel"]) {
+	for (const substrate of ["e2b", "sprites", "vercel", "daytona"]) {
 		const gated = lines.find((line) =>
 			line.startsWith(`GATED ${substrate} MuxError/fatal/${substrate} `),
 		);
@@ -501,7 +502,7 @@ for (const lane of LANES) {
 						"this lane declares server-side detachable sessions, so tmux must not be used",
 					);
 					assert.ok(
-						named.spy.touches.some((touch) => /createSession|attachSession/.test(touch)),
+						named.spy.touches.some((touch) => /createSession|attachSession|createPty|connectPty/.test(touch)),
 						"a native named session must use the vendor's own session primitive",
 					);
 				}
@@ -809,9 +810,10 @@ for (const lane of LANES) {
 		});
 	});
 
-	test(`${lane.substrate}: connect() then use DOES resume, so the guard is not vacuous`, async () => {
+	test(`${lane.substrate}: explicit wake DOES resume, so the guard is not vacuous`, async () => {
 		await withLane(lane, { parked: true }, async ({ provider, spy }) => {
 			const machine = await provider.connect(lane.expect.sampleId);
+			await machine.wake();
 			await machine.exec("true");
 			assert.ok(
 				spy.resumed(),
@@ -883,7 +885,7 @@ for (const lane of LANES) {
 // ---------------------------------------------------------------------------
 
 for (const lane of LANES) {
-	test(`${lane.substrate}: exec wraps arbitrary shell in the base64 pattern`, async () => {
+	test(`${lane.substrate}: exec transports arbitrary shell without changing it`, async () => {
 		await withLane(lane, {}, async (harness) => {
 			const machine = await machineFor(harness);
 			const result = await machine.exec(NASTY_COMMAND);
@@ -894,6 +896,16 @@ for (const lane of LANES) {
 			const sent = harness.spy.shell.filter((call) => call.mode === "exec");
 			assert.ok(sent.length > 0, "exec() sent nothing to the vendor");
 			const script = sent.at(-1)?.script ?? "";
+			if (lane.expect.commandTransport === "shell-quoted") {
+				const scratch = mkdtempSync(join(tmpdir(), "am-conformance-shell-"));
+				try {
+					writeFileSync(join(scratch, "timeout"), '#!/bin/sh\nshift 3\nexec "$@"\n', { mode: 0o700 });
+					const expected = execFileSync("bash", ["-c", NASTY_COMMAND], { encoding: "utf8" });
+					const actual = execFileSync("bash", ["-c", script], { encoding: "utf8", env: { ...process.env, PATH: `${scratch}:${process.env.PATH}` } });
+					assert.equal(actual, expected, "the actual emitted shell must preserve heredocs and literal quotes");
+				} finally { rmSync(scratch, { recursive: true, force: true }); }
+				return;
+			}
 			assert.match(
 				script,
 				BASE64_WRAPPER,

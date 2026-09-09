@@ -49,7 +49,7 @@ import {
 	type HealthStore,
 } from "./health";
 
-const ROUTE: readonly SubstrateKind[] = ["e2b", "sprites", "vercel", "dedalus"];
+const ROUTE: readonly SubstrateKind[] = ["e2b", "sprites", "vercel", "daytona"];
 
 /**
  * Every `ProviderError`. Listed rather than derived because the union has no
@@ -158,7 +158,7 @@ describe("loadTenantHealth -- scope", () => {
 		expect(gate.loaded).toBe(true);
 		expect(gate.stateOf("e2b")).toBe("open");
 		// e2b was first in the configured order and goes last -- but is still there.
-		expect(gate.order(ROUTE)).toEqual(["sprites", "vercel", "dedalus", "e2b"]);
+		expect(gate.order(ROUTE)).toEqual(["sprites", "vercel", "daytona", "e2b"]);
 	});
 
 	it("discards a snapshot from an incompatible version rather than misreading it", async () => {
@@ -245,9 +245,9 @@ describe("loadTenantHealth -- recording outcomes", () => {
 		const store = fakeStore();
 		const gate = await loadTenantHealth({ tenantId: "user-alpha", store, now: () => 5_000 });
 		for (const kind of ["missing_credentials", "not_supported"] as const) {
-			await gate.noteFailure("dedalus", kind, 5);
+			await gate.noteFailure("daytona", kind, 5);
 		}
-		expect(gate.stateOf("dedalus")).toBe("healthy");
+		expect(gate.stateOf("daytona")).toBe("healthy");
 		// No row churn either: these fire on every uncredentialed request.
 		expect(store.saved).toHaveLength(0);
 	});

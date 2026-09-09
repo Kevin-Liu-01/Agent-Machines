@@ -42,7 +42,8 @@ export type DetailMachine = {
 };
 
 const PROVIDER_MARK: Record<ProviderKind, Mark> = {
-	dedalus: "dedalus",
+	dedalus: "retired",
+	daytona: "daytona",
 	e2b: "e2b",
 	sprites: "sprites",
 	vercel: "vercel",

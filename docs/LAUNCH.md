@@ -45,8 +45,9 @@ catalog update uses `pnpm --dir web refresh-catalog`; review and commit both
   credentials or the owner's machines.
 
 The complete configuration template is
-[`web/.env.local.example`](../web/.env.local.example). Dedalus remains a sandbox
-adapter; its model API gateway is not a supported inference route.
+[`web/.env.local.example`](../web/.env.local.example). Active sandbox providers
+are Daytona, E2B, Sprites, and Vercel. Retired provider records remain identifiable
+for safety, but cannot supply a new launch, API call, or automatic conversion.
 
 ## Follow a new account to its first result
 

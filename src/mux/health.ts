@@ -29,7 +29,7 @@
  *   ~/.agent-machines/mux-state.json and be honored by the next process.
  */
 
-import { SUBSTRATE_KINDS } from "./config.js";
+import { PERSISTED_SUBSTRATE_KINDS } from "./config.js";
 import { MuxError, type SubstrateKind } from "./types.js";
 
 /** What one attempt against a substrate tells us about its health. */
@@ -355,7 +355,7 @@ export class SubstrateHealth {
 
 	/** Every lane with recorded history, for dashboards and `am doctor`. */
 	report(): SubstrateHealthStats[] {
-		return SUBSTRATE_KINDS.filter((kind) => this.entries.has(kind)).map((kind) =>
+		return PERSISTED_SUBSTRATE_KINDS.filter((kind) => this.entries.has(kind)).map((kind) =>
 			this.stats(kind),
 		);
 	}
@@ -396,7 +396,7 @@ export class SubstrateHealth {
 		const byKind = substrates as Record<string, unknown>;
 		// Iterate known kinds rather than the file's own keys, so an unknown or
 		// hand-edited lane name cannot enter the store.
-		for (const kind of SUBSTRATE_KINDS) {
+		for (const kind of PERSISTED_SUBSTRATE_KINDS) {
 			const entry = parseEntry(byKind[kind]);
 			if (entry) health.entries.set(kind, entry);
 		}

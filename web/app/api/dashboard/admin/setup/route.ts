@@ -13,6 +13,7 @@
  */
 
 import { getEffectiveUserId } from "@/lib/user-config/identity";
+import { daytonaCredentialsError } from "@/lib/user-config/daytona-credentials";
 
 import {
 	getUserConfig,
@@ -63,6 +64,7 @@ function asSpec(value: unknown): MachineSpec | null {
 }
 
 type CredsBody = {
+	daytona?: { apiKey?: string; apiUrl?: string; target?: string };
 	dedalus?: { apiKey?: string };
 	e2b?: { apiKey?: string };
 	sprites?: { apiKey?: string };
@@ -99,16 +101,14 @@ function validateCreds(input: CredsBody): {
 	value: ProviderCredentials;
 } | { ok: false; error: string; message: string } {
 	const out: ProviderCredentials = {};
+	if (input.daytona !== undefined) {
+		const message = daytonaCredentialsError(input.daytona);
+		if (message) return { ok: false, error: "invalid_daytona_credentials", message };
+		const apiKey = input.daytona.apiKey?.trim();
+		if (apiKey) out.daytona = { apiKey, apiUrl: input.daytona.apiUrl?.trim() || undefined, target: input.daytona.target?.trim() || undefined };
+	}
 	if (input.dedalus) {
-		const k = (input.dedalus.apiKey ?? "").trim();
-		if (k && !k.startsWith("dsk-")) {
-			return {
-				ok: false,
-				error: "invalid_dedalus_key",
-				message: "Dedalus keys start with 'dsk-'.",
-			};
-		}
-		if (k) out.dedalus = { apiKey: k };
+		return { ok: false, error: "retired_provider", message: "This sandbox provider has been retired. Choose Daytona, E2B, Sprites, or Vercel." };
 	}
 	if (input.e2b) {
 		const k = (input.e2b.apiKey ?? "").trim();
@@ -149,7 +149,7 @@ export async function GET(): Promise<Response> {
 			defaults: {
 				machineSpec: config.draftSpec,
 				model: config.draftModel,
-				hasOwnerDedalusKey: Boolean(config.providers.dedalus?.apiKey),
+				hasOwnerDaytonaKey: Boolean(config.providers.daytona?.apiKey),
 				hasOwnerCursorKey: Boolean(config.cursorApiKey),
 				hasOwnerMachine: config.machines.length > 0,
 			},

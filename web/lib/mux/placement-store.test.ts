@@ -414,6 +414,16 @@ describe("SupabasePlacementStore contract", () => {
 // ---------------------------------------------------------------------------
 
 describe("tenant scoping", () => {
+	it("preserves retired and Daytona placement identities as separate records", async () => {
+		const db = new FakeDb();
+		const hosted = store(db, "tenant-a");
+		await hosted.remember("legacy", { ...E2B_CLAUDE, substrate: "dedalus", sandboxId: "dm-original" });
+		await hosted.remember("new", { ...E2B_CLAUDE, substrate: "daytona", sandboxId: "daytona-new" });
+		const snapshot = await hosted.read();
+		expect(snapshot.machines.legacy).toMatchObject({ substrate: "dedalus", sandboxId: "dm-original" });
+		expect(snapshot.machines.new).toMatchObject({ substrate: "daytona", sandboxId: "daytona-new" });
+		expect((await store(db, "tenant-b").read()).machines).toEqual({});
+	});
 	it("returns only the caller's placements", async () => {
 		const db = new FakeDb();
 		await store(db, "tenant-a").remember("alpha", E2B_CLAUDE);

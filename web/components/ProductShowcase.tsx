@@ -16,7 +16,7 @@ const RUNTIMES = [
 const SUBSTRATES = [
 	{ kind: "service" as const, icon: "e2b" as const, label: "E2B" },
 	{ kind: "service" as const, icon: "sprites" as const, label: "Sprites" },
-	{ kind: "logo" as const, icon: "dedalus" as const, label: "Dedalus" },
+	{ kind: "logo" as const, icon: "daytona" as const, label: "Daytona" },
 	{ kind: "service" as const, icon: "vercel" as const, label: "Vercel" },
 ];
 

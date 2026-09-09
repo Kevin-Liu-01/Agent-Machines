@@ -56,7 +56,7 @@ and switch. Agent Machines lifts that to the cloud and splits it into two
 orthogonal planes.
 
 - **Substrate plane (sandbox mux).** 4 substrate adapters -- E2B, Sprites,
-  Vercel Sandbox and Dedalus -- behind one `SandboxProvider` contract
+  Vercel Sandbox and Daytona -- behind one `SandboxProvider` contract
   (`src/mux/types.ts`): create, connect, exec, streamed exec, PTY, files,
   public URLs, sleep/wake, no-wake describe/remove/park, destroy. Each declares
   its capabilities instead of pretending to be identical, and every declared
@@ -131,7 +131,7 @@ flowchart TB
         E2B["e2b<br/>pty native<br/>memory-snapshot"]
         SPR["sprites<br/>pty native<br/>always-on"]
         VS["vercel<br/>pty tmux<br/>filesystem-snapshot"]
-        DD["dedalus<br/>pty tmux, polled<br/>always-on"]
+        DD["daytona<br/>pty native<br/>filesystem stop/start"]
     end
 
     SDK --> S1
@@ -158,7 +158,7 @@ flowchart TB
     "e2b": "env:E2B_API_KEY",
     "sprites": "env:SPRITES_TOKEN"
   },
-  "sandboxes": { "primary": "e2b", "backups": ["sprites", "dedalus"] },
+  "sandboxes": { "primary": "e2b", "backups": ["sprites", "daytona"] },
   "agents": { "default": "claude-code" }
 }
 ```
@@ -243,7 +243,7 @@ demonstrably implements a value:
 | `e2b` | native (`sandbox.pty`) | yes | memory-snapshot | reliable | yes | yes |
 | `sprites` | native (detachable sessions) | yes | always-on | throttled | yes | yes |
 | `vercel` | tmux over exec | yes (`Command.logs()`) | filesystem-snapshot | reliable | yes | yes |
-| `dedalus` | tmux over exec, polled | no (batch REST) | always-on | reliable | yes | yes |
+| `daytona` | native | yes (session-log polling) | filesystem-snapshot (files retained on stop/start; not RAM) | reliable | yes | yes (private, expiring preview URLs) |
 
 Six further axes are vendor facts and are **optional**: `region`, `gpu`,
 `network` (egress posture), `fork`, `publicPorts`, and `limits` (base and
@@ -260,9 +260,10 @@ declared `"unknown"` for exactly that reason (MUX-RESULTS.md finding 10).
 `CreateSandboxOptions.resources` takes `vcpu`, `memoryMib` and `diskGib` -- the
 same three axes `SandboxDescription.resources` reports back, so a request and the
 vendor's answer to it are directly comparable. Substrates that do not expose
-sizing ignore the request rather than failing; only Dedalus takes all three
-today, clamped to its documented plan ceilings (an over-plan request is still
-satisfiable, just smaller, and `limits` already states the ceiling).
+sizing do not provide an allocation guarantee. Daytona supports create-time
+resource requests; E2B resources are template-defined. Inspect provider-reported
+resources after creation, and treat missing allocation axes as unknown rather
+than substituting the requested shape.
 
 `CreateSandboxOptions.onNameConflict` decides what `name` MEANS on substrates
 where the caller names the sandbox (sprites; the others get vendor ids and ignore
@@ -299,7 +300,7 @@ with the source URL and read date beside it. A rate that is not published is
 | `e2b` | yes | $0.0222 |
 | `sprites` | no -- Fly publishes no Sprites compute rate | unknown |
 | `vercel` | yes | $0.0503 (an upper bound: active-CPU billing excludes model wait) |
-| `dedalus` | yes | $0.0200 |
+| `daytona` | no -- no verified rate in the router's price model | unknown |
 
 The unit being optimized is **one completed agent run**, not one sandbox
 minute, so `costToSuccessfulResult` charges failed failover legs to the success
@@ -468,10 +469,10 @@ provider members exist for that reason, each verified against the vendor SDK:
 - `park(id)` -- pause without a resume round trip.
 
 They are optional following the `keepAlive` pattern: a caller must degrade when
-a substrate omits one, never assume it. Sprites and Dedalus deliberately omit
-`park()` -- the Sprites SDK has no suspend, and Dedalus's sleep is an HMAC-gated
-internal route a public key gets 401 on -- because a `park()` that resolved
-without parking would be a false claim.
+a substrate omits one, never assume it. Sprites deliberately omits `park()`
+because its SDK has no manual suspend. Daytona implements `park()` with stop;
+start restores the filesystem but not process memory. A `park()` that resolves
+without stopping compute would be a false claim.
 
 `Mux.remove(name)` forgets a placement only when the substrate confirms the
 sandbox is gone, and rethrows otherwise: an ambiguous teardown failure must not
@@ -612,7 +613,12 @@ possible value for a cost: **a number nobody measured renders as "unknown",
 never 0 and never a bare dash**, and **a stage that did not run says so** ("not
 applied", "no samples") rather than borrowing the word unknown.
 
-## Measured
+## Archived measurements (before Daytona)
+
+The results below are historical, not a validation of the current provider set.
+Daytona replaced the retired fourth integration on September 9, 2026. Its
+runtime, lifecycle, and performance evidence must be measured independently;
+never relabel these rows as Daytona results.
 
 Full detail, including every finding that changed the implementation, is in
 [MUX-RESULTS.md](./MUX-RESULTS.md). Headline, measured against real provider
@@ -643,7 +649,8 @@ MUX-RESULTS.md says its four sandboxes were unproven at the time rather than
 implying a clean sweep.
 
 Per-substrate numbers below are from the 2026-08-05 run, so they are the
-same 14-of-16 matrix as the headline rather than a mix of vintages:
+same historical run as the headline, with the corrected 12-of-16 accounting,
+rather than a mix of vintages:
 
 | Substrate | create | first event (claude-code) | Notes |
 | --- | --- | --- | --- |
@@ -666,7 +673,7 @@ worth knowing about, because those failures were ours rather than a vendor's:
 Hermes' vendor curl installer exhausted E2B's 478 MB base sandbox until it was
 replaced with the published wheel under `uv` (5.1s), and OpenClaw on Sprites
 never finished until detached work was understood (see
-[Detached work](#detached-work)). Both are green in the current matrix.
+[Detached work](#detached-work)). Both were green in that historical matrix.
 
 ## Which surface has what
 

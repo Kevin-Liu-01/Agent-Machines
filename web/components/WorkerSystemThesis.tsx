@@ -248,7 +248,7 @@ const SANDBOX_MARKS: ReadonlyArray<{ mark: Mark; label: string }> = [
 	{ mark: "e2b", label: "E2B" },
 	{ mark: "sprites", label: "Sprites" },
 	{ mark: "vercel", label: "Vercel Sandbox" },
-	{ mark: "dedalus", label: "Dedalus" },
+	{ mark: "daytona", label: "Daytona" },
 ];
 
 const MODEL_PATH_ICONS: ReadonlyArray<{ icon: LucideIcon; label: string }> = [

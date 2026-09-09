@@ -111,7 +111,7 @@ function DashboardArchitectureDiagram() {
 			<div className="relative grid gap-1.5">
 				<StackLayer icon={<Workflow className="h-3.5 w-3.5" />} label="Runtime" value="Claude · Codex · Hermes · OpenClaw" active />
 				<StackLayer icon={<Layers3 className="h-3.5 w-3.5" />} label="Model and abilities" value="native · router · skills · MCP" />
-				<StackLayer icon={<Box className="h-3.5 w-3.5" />} label="Sandbox and storage" value="E2B · Sprites · Vercel · Dedalus" />
+				<StackLayer icon={<Box className="h-3.5 w-3.5" />} label="Sandbox and storage" value="E2B · Sprites · Vercel · Daytona" />
 				<span className="pointer-events-none absolute -left-2 top-1/2 h-px w-2 bg-[var(--ret-purple)]" aria-hidden="true" />
 			</div>
 		</div>

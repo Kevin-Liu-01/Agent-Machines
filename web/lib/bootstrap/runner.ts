@@ -14,6 +14,7 @@ import type { MachineProvider } from "@/lib/providers";
 import { validateAgentCredentials } from "@/lib/agents/credentials";
 import { keyForModelEndpoint } from "@/lib/agents/endpoint-key";
 import { runtimeModel } from "@/lib/agents/runtime-model";
+import { assertRuntimeCapacity } from "@/lib/agents/runtime-capacity";
 import { modelForEndpoint } from "@/lib/agents/model-endpoint";
 import { nativeCliModelFilename } from "@/lib/dashboard/native-cli-model";
 import { ROUTER_PRESETS } from "@/lib/agents/upstreams";
@@ -69,6 +70,7 @@ type BootstrapPaths = {
 
 function pathsFor(providerKind: ProviderKind): BootstrapPaths {
 	const HOME =
+		providerKind === "daytona" ? "/home/daytona" :
 		providerKind === "e2b" ? "/home/user" :
 		providerKind === "sprites" ? "/home/sprite" :
 		providerKind === "vercel" ? "/vercel/sandbox" :
@@ -117,6 +119,11 @@ export async function runWebBootstrap({
 	const credCheck = validateAgentCredentials(machine.agentKind, config);
 	if (!credCheck.ok) {
 		throw new Error(credCheck.message);
+	}
+	// Direct scheduled/migration bootstrap callers must apply the same
+	// observed-capacity admission as the managed driver, without reinstalling.
+	if (machine.agentKind === "openclaw") {
+		assertRuntimeCapacity(machine.agentKind, (await provider.state(machine.id)).spec?.memoryMib);
 	}
 
 	const priorCompleted = machine.bootstrapState.completed ?? [];
@@ -297,6 +304,7 @@ export async function finalizeGatewayBootstrap({
 	});
 
 	const isSandbox =
+		machine.providerKind === "daytona" ||
 		machine.providerKind === "e2b" ||
 		machine.providerKind === "sprites" ||
 		machine.providerKind === "vercel";
@@ -490,8 +498,8 @@ function commandFor(
 	const isE2B = providerKind === "e2b";
 	const isSprites = providerKind === "sprites";
 	const isVercel = providerKind === "vercel";
-	const isSandbox = isE2B || isSprites || isVercel;
-	// E2B, Sprites, and Vercel run as non-root users with sudo available
+	const isSandbox = providerKind === "daytona" || isE2B || isSprites || isVercel;
+	// Active sandbox providers run as non-root users with sudo available.
 	const sudo = isSandbox ? "sudo " : "";
 
 	switch (phase) {
@@ -1412,32 +1420,8 @@ async function exposeGateway(
 		return apiUrl;
 	}
 
-	if (provider.kind !== "dedalus") return null;
-
-	const tunnelToken = config.cloudflareTunnelToken;
-	if (tunnelToken) {
-		await startNamedTunnel(machine, provider, tunnelToken, p);
-		const apiUrl = machine.apiUrl ?? null;
-		if (apiUrl) await waitForGatewayUrl(apiUrl, apiKey, waitOpts);
-		return apiUrl;
-	}
-
-	if (provider.kind === "dedalus" && "createPreview" in provider) {
-		const dedalus = provider as import("@/lib/providers/dedalus").DedalusProvider;
-		const previewUrl = await dedalus.createPreview(machine.id, port);
-		if (previewUrl) {
-			const normalized = previewUrl.trim().replace(/\/$/, "");
-			const apiUrl = normalized.endsWith("/v1") ? normalized : `${normalized}/v1`;
-			await waitForGatewayUrl(apiUrl, apiKey, { ...waitOpts, maxAttempts: 15 });
-			return apiUrl;
-		}
-	}
-
-	// No Cloudflare quick-tunnel fallback. The dashboard reaches the gateway
-	// over the provider `exec` primitive (curl localhost on the box), so a
-	// public URL isn't required. A Dedalus machine with neither a configured
-	// named tunnel nor a native preview URL is driven entirely via exec (the
-	// interactive console + the exec-localhost health probe) — no tunnel.
+	// Native runtimes use provider exec/PTY. Do not synthesize or retain an
+	// expiring preview URL as a model gateway, or revive retired-provider paths.
 	return null;
 }
 

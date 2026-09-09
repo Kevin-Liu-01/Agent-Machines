@@ -54,7 +54,7 @@ WorkerRuntimeDriver
         |-- MuxWorkerRuntimeDriver (public SDK / local journal)
         `-- HostedWorkerRuntimeDriver (dashboard / tenant journal)
                 |-- harness: Claude Code | Codex | Hermes | OpenClaw
-                `-- sandbox: E2B | Sprites | Vercel | Dedalus
+                `-- sandbox: Daytona | E2B | Sprites | Vercel
 ```
 
 `src/control-plane` is the new deep module. Its public surface is intent,
@@ -154,10 +154,9 @@ template.
 - A real scheduled OpenClaw run returned `AM_V2_CRON_LIVE_OK`, exit 0, and
   appended its runtime/substrate/model/router snapshot to the sandbox's
   `~/.agent-machines/cron/runs.jsonl`.
-- Dedalus credentials reached the vendor, but its API returned HTTP 500 because
-  the vendor database was missing `org_metering_buckets.charged_milli_cents`.
-  Dedalus is adapter-complete but is not claimed live-green until that upstream
-  incident is resolved.
+- The retired fourth provider failed vendor API and teardown checks in that
+  historical run. It is no longer an active integration. Daytona replaces it
+  as of September 9, 2026; those older results are not Daytona validation.
 - Vercel AI Gateway request formatting is verified; the test account correctly
   returned HTTP 402 for zero balance, so runtime proofs used native model keys.
 

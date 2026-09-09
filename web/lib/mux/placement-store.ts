@@ -187,9 +187,10 @@ export const READ_COLUMNS = "kind,name,substrate,sandbox_id,agent,health,updated
  * both sets inside the web package and `capabilities.test.ts` diffs every
  * mirrored value against the mux sources, so reusing it adds no third copy.
  */
-const KNOWN_SUBSTRATES: readonly SubstrateKind[] = SUBSTRATE_CAPABILITIES.map(
+// Retiring a route must never hide its existing, potentially billing machines.
+const KNOWN_SUBSTRATES: readonly SubstrateKind[] = [...SUBSTRATE_CAPABILITIES.map(
 	(entry) => entry.kind,
-);
+), "dedalus"];
 const KNOWN_HARNESSES: readonly HarnessKind[] = HARNESS_CAPABILITIES.map(
 	(entry) => entry.kind,
 );

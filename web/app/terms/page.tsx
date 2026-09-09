@@ -28,8 +28,8 @@ export default function TermsPage() {
 						current status
 					</p>
 					<p>
-						Dedalus Machines, E2B Sandbox, Sprites.dev, and Vercel Sandbox are live
-						provider implementations.
+						Daytona, E2B Sandbox, Sprites.dev, and Vercel Sandbox are supported
+						providers. Availability and capabilities depend on the selected service.
 					</p>
 				</div>
 			}
@@ -43,7 +43,7 @@ export default function TermsPage() {
 					</p>
 					<p>
 						The project is open source under the MIT license. Hosted usage may
-						depend on third-party services, including Clerk, Vercel, Dedalus,
+						depend on third-party services, including Clerk, Vercel, Daytona,
 						Cloudflare, Cursor, E2B, Sprites, Vercel, and model providers.
 					</p>
 				</DocSection>

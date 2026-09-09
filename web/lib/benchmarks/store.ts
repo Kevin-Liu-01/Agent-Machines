@@ -24,6 +24,7 @@ import { supabaseAdmin } from "@/lib/supabase/client";
 import type { ProviderKind } from "@/lib/user-config/schema";
 
 import seedJson from "@/data/benchmarks.json";
+import { BENCHMARK_PROVIDERS } from "./constants";
 import type {
 	BenchmarkRun,
 	BenchmarkSnapshot,
@@ -33,6 +34,30 @@ import type {
 } from "./types";
 
 const SEED = seedJson as unknown as BenchmarkSnapshot;
+
+const DAYTONA_PROFILE: ProviderProfile = {
+	provider: "daytona", label: "Daytona", hue: "#a1a1aa",
+	tagline: "Linux sandboxes with native PTY and filesystem-preserving stop/start.",
+	isolation: "Sandbox", runtimeKind: "persistent-machine",
+	capabilities: {
+		persistentDisk: true, nativeSleepWake: "Stop/start; files retained, processes restart",
+		streamingExec: "Incremental session-log reads", publicUrl: "Private, expiring preview URL",
+		maxRuntime: "Account-dependent",
+	},
+	pricing: {
+		cpuPerVcpuHour: { value: null, unit: "$/vCPU-hr", basis: "unknown" },
+		memoryPerGibHour: { value: null, unit: "$/GiB-hr", basis: "unknown" },
+		storagePerGibHour: { value: null, unit: "$/GiB-hr", basis: "unknown" },
+		scaleToZero: false,
+		note: "No benchmark pricing model supplied. Check current provider pricing; retained storage can remain billable after stopping compute.",
+	},
+	defaultSpec: null,
+	referenceMetrics: {},
+	citations: [
+		{ label: "Daytona sandbox lifecycle", url: "https://www.daytona.io/docs/en/typescript-sdk/sandbox/#stop" },
+		{ label: "Daytona TypeScript SDK", url: "https://www.daytona.io/docs/en/typescript-sdk/sandbox/" },
+	],
+};
 
 export function supabaseConfigured(): boolean {
 	return Boolean(
@@ -45,13 +70,17 @@ export function supabaseConfigured(): boolean {
 export function loadSeedSnapshot(): BenchmarkSnapshot {
 	return {
 		...SEED,
+		profiles: seedProfiles(),
+		methodology: "Requested resource shape is held constant; actual allocation and lifecycle support vary by provider. Reference values retain their original citations and dates. Daytona has no borrowed reference or demo timings. Live runs measure control-plane wall-clock latency and on-worker CPU / disk probes.",
 		latest: SEED.latest ?? null,
 		history: SEED.history ?? [],
 	};
 }
 
 export function seedProfiles(): ProviderProfile[] {
-	return SEED.profiles;
+	return BENCHMARK_PROVIDERS.map((provider) => provider === "daytona"
+		? DAYTONA_PROFILE
+		: SEED.profiles.find((profile) => profile.provider === provider)!).filter(Boolean);
 }
 
 type BenchmarkRow = {

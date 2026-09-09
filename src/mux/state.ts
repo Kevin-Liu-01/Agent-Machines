@@ -81,7 +81,7 @@
 import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir, hostname } from "node:os";
 import { dirname, join } from "node:path";
-import { HARNESS_KINDS, SUBSTRATE_KINDS } from "./config.js";
+import { HARNESS_KINDS, PERSISTED_SUBSTRATE_KINDS } from "./config.js";
 import type { SubstrateHealthSnapshot } from "./health.js";
 import { MuxError, type HarnessKind, type SubstrateKind } from "./types.js";
 
@@ -253,7 +253,7 @@ function parsePlacement(raw: unknown): RememberedMachine | null {
 	if (!raw || typeof raw !== "object") return null;
 	const record = raw as Record<string, unknown>;
 	if (typeof record.sandboxId !== "string" || record.sandboxId.length === 0) return null;
-	if (!isKnown(SUBSTRATE_KINDS, record.substrate)) return null;
+	if (!isKnown(PERSISTED_SUBSTRATE_KINDS, record.substrate)) return null;
 	if (!isKnown(HARNESS_KINDS, record.agent)) return null;
 	if (typeof record.updatedAt !== "string" || record.updatedAt.length === 0) return null;
 	return {

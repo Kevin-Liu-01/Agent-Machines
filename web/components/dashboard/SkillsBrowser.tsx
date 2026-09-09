@@ -15,11 +15,10 @@ import type { CustomLoadoutEntry } from "@/lib/user-config/schema";
 /**
  * Skill slugs that map to a partner whose logo we should attribute on the
  * card. Most skills are general-purpose (no logo), but a few like
- * cursor-coding and dedalus-machines are about a specific partner system.
+ * cursor-coding are about a specific partner system.
  */
 const SKILL_BRAND: Record<string, Mark> = {
 	"cursor-coding": "cursor",
-	"dedalus-machines": "dedalus",
 };
 
 /**

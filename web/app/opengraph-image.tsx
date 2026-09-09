@@ -153,7 +153,7 @@ function RoutingDiagram() {
 				}}
 			>
 				<Input label="Runtime" value="Hermes · OpenClaw · Claude · Codex" />
-				<Input label="Sandbox" value="E2B · Sprites · Dedalus · Vercel" />
+				<Input label="Sandbox" value="E2B · Sprites · Daytona · Vercel" />
 				<Input label="Model route" value="Gateway · OpenRouter · Native" />
 			</div>
 

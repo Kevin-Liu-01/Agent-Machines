@@ -521,17 +521,17 @@ test("routeFor skips uncredentialed providers and orders primary then backups", 
 
 	const mux = makeMux(router, {
 		keys: { anthropic: "test-anthropic-key" },
-		sandboxes: { primary: "e2b", backups: ["sprites", "vercel", "dedalus"] },
+		sandboxes: { primary: "e2b", backups: ["sprites", "vercel", "daytona"] },
 	});
 	const sprites = new FakeProvider("sprites");
 	sprites.missing = ["SPRITES_TOKEN"];
 	mux.registerProvider("e2b", new FakeProvider("e2b"));
 	mux.registerProvider("sprites", sprites);
 	mux.registerProvider("vercel", new FakeProvider("vercel"));
-	mux.registerProvider("dedalus", new FakeProvider("dedalus"));
+	mux.registerProvider("daytona", new FakeProvider("daytona"));
 
 	const route = mux.routeFor("auto");
-	assert.deepEqual(route.candidates, ["e2b", "vercel", "dedalus"]);
+	assert.deepEqual(route.candidates, ["e2b", "vercel", "daytona"]);
 	assert.equal(route.skipped.length, 1);
 	assert.equal(route.skipped[0].substrate, "sprites");
 	assert.equal(route.skipped[0].outcome, "skipped");
@@ -543,12 +543,12 @@ test("routeFor skips uncredentialed providers and orders primary then backups", 
 	// Primary-first ordering follows the configured route, not kind order.
 	const reordered = makeMux(router, {
 		keys: { anthropic: "test-anthropic-key" },
-		sandboxes: { primary: "dedalus", backups: ["vercel", "e2b"] },
+		sandboxes: { primary: "daytona", backups: ["vercel", "e2b"] },
 	});
-	reordered.registerProvider("dedalus", new FakeProvider("dedalus"));
+	reordered.registerProvider("daytona", new FakeProvider("daytona"));
 	reordered.registerProvider("vercel", new FakeProvider("vercel"));
 	reordered.registerProvider("e2b", new FakeProvider("e2b"));
-	assert.deepEqual(reordered.routeFor().candidates, ["dedalus", "vercel", "e2b"]);
+	assert.deepEqual(reordered.routeFor().candidates, ["daytona", "vercel", "e2b"]);
 });
 
 test("create() fails over from a transient primary to the backup", async (t) => {
@@ -831,7 +831,8 @@ test("a REFUSED install probe is a substrate fault, never a missing harness", as
 	const harness = harnesses.getHarness("claude-code");
 	const config = resolveMuxConfig({ keys: { anthropic: "test-anthropic-key" } });
 
-	// The exact error providers/dedalus.ts now raises, from the live capture of
+	// Historical vendor refusal, replayed against a synthetic active provider:
+	// the live capture of
 	// 2026-08-05: 4 of 9 create-then-exec sequences (44%) were refused with
 	// error_code machine_not_found on a machine whose own machines API
 	// reported phase=running. The probe's exit code used to be read as a
@@ -839,11 +840,11 @@ test("a REFUSED install probe is a substrate fault, never a missing harness", as
 	// -- and the install then ran against a machine the substrate had just
 	// refused to schedule work on, spending the whole 900s install budget and
 	// blaming the harness for a substrate fault.
-	const refused = new FakeSandboxHandle("dedalus-refused", "dedalus");
+	const refused = new FakeSandboxHandle("dedalus-refused", "daytona");
 	refused.execError = new MuxError(
 		"transient",
 		`dedalus refused to run the execution on machine dm-019fd311-71d0-7572-b001-293525eee808: machine_not_found: machine no longer exists (status failed, command: ${harness.isInstalledCommand()})`,
-		{ substrate: "dedalus" },
+		{ substrate: "daytona" },
 	);
 	const machine = new router.MuxMachine({ sandbox: refused, harness, config });
 	await assert.rejects(
@@ -854,7 +855,7 @@ test("a REFUSED install probe is a substrate fault, never a missing harness", as
 			assert.equal(thrown.kind, "transient");
 			assert.match(
 				thrown.message,
-				/cannot tell whether claude-code is installed on dedalus/,
+				/cannot tell whether claude-code is installed on daytona/,
 			);
 			// The vendor's words reach the operator.
 			assert.match(thrown.message, /machine_not_found: machine no longer exists/);
@@ -1373,15 +1374,15 @@ test("with no traces an auto route keeps the configured order", async (t) => {
 	const mux = router.createMux(
 		{
 			keys: { anthropic: "k" },
-			sandboxes: { primary: "dedalus", backups: ["e2b", "sprites"] },
+			sandboxes: { primary: "daytona", backups: ["e2b", "sprites"] },
 		},
 		{ health: new SubstrateHealth(), persistHealth: false },
 	);
-	for (const kind of ["dedalus", "e2b", "sprites"] as SubstrateKind[]) {
+	for (const kind of ["daytona", "e2b", "sprites"] as SubstrateKind[]) {
 		mux.registerProvider(kind, new FakeProvider(kind));
 	}
 	const route = mux.routeFor("auto");
-	assert.deepEqual(route.candidates, ["dedalus", "e2b", "sprites"]);
+	assert.deepEqual(route.candidates, ["daytona", "e2b", "sprites"]);
 	assert.equal(route.selection?.length, 3);
 	for (const lane of route.selection ?? []) {
 		assert.equal(lane.samples, 0, "an empty store is zero evidence, not bad evidence");
@@ -1729,14 +1730,14 @@ test("a failed-lane teardown that the substrate says worked is not reported as a
 	// teardown failed" -- for a machine that had already left the account
 	// entirely (the follow-up list held only two pre-existing machines).
 	for (const confirmed of [true, false]) {
-		const provider = new FakeProvider("dedalus");
-		const handle = new FakeSandboxHandle("dedalus-doomed", "dedalus");
+		const provider = new FakeProvider("daytona");
+		const handle = new FakeSandboxHandle("dedalus-doomed", "daytona");
 		handle.destroyError = new MuxError("transient", DEDALUS_DESTROY_500, {
-			substrate: "dedalus",
+			substrate: "daytona",
 		});
 		// The lane fails AFTER provisioning, which is what reaches the teardown.
 		handle.execError = new MuxError("transient", "machine_not_found: machine no longer exists", {
-			substrate: "dedalus",
+			substrate: "daytona",
 		});
 		provider.handleFactory = () => handle;
 		if (confirmed) {
@@ -1745,9 +1746,9 @@ test("a failed-lane teardown that the substrate says worked is not reported as a
 		}
 		const mux = makeMux(router, {
 			keys: { anthropic: "k" },
-			sandboxes: { primary: "dedalus", backups: [] },
+			sandboxes: { primary: "daytona", backups: [] },
 		});
-		mux.registerProvider("dedalus", provider);
+		mux.registerProvider("daytona", provider);
 
 		const thrown = await mux.create({ agent: "claude-code" }).then(
 			() => null,

@@ -27,7 +27,7 @@ export default async function SetupPage() {
 				defaults={{
 					machineSpec: config.draftSpec,
 					model: config.draftModel,
-					hasOwnerDedalusKey: Boolean(config.providers.dedalus?.apiKey),
+					hasOwnerDaytonaKey: Boolean(config.providers.daytona?.apiKey),
 					hasOwnerCursorKey: Boolean(config.cursorApiKey),
 					hasOwnerMachine: config.machines.length > 0,
 				}}

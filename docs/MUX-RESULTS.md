@@ -1,5 +1,7 @@
 # Mux live matrix -- measured results
 
+> Historical evidence. Daytona replaced the retired fourth provider on September 9, 2026. These dated measurements are preserved as recorded; none is a Daytona benchmark or proof of the current four-provider matrix.
+
 Every number below came from `npx tsx scripts/mux-live-test.ts` against
 real provider APIs with real model keys. No synthetic or demo values.
 Each section carries the date it was measured; the newest full matrix is

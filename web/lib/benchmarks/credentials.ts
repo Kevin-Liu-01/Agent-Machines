@@ -20,10 +20,11 @@ export function credentialsFromEnv(
 ): ProviderCredentials {
 	const creds: ProviderCredentials = {};
 
-	if (env.DEDALUS_API_KEY) {
-		creds.dedalus = {
-			apiKey: env.DEDALUS_API_KEY,
-			baseUrl: env.DEDALUS_BASE_URL,
+	if (env.DAYTONA_API_KEY) {
+		creds.daytona = {
+			apiKey: env.DAYTONA_API_KEY,
+			apiUrl: env.DAYTONA_API_URL,
+			target: env.DAYTONA_TARGET,
 		};
 	}
 	if (env.E2B_API_KEY) {

@@ -23,6 +23,7 @@ export type VercelSandboxCredentials = {
 };
 
 export type MuxProviderCredentials = {
+	daytona?: { apiKey?: string; apiUrl?: string; target?: string };
 	e2b?: { apiKey?: string };
 	sprites?: { token?: string };
 	vercel?: VercelSandboxCredentials;
@@ -48,6 +49,7 @@ export type MuxConfig = {
 export type MuxConfigInput = {
 	keys?: Partial<Record<keyof UpstreamKeys, string>>;
 	providers?: {
+		daytona?: { apiKey?: string; apiUrl?: string; target?: string } | string;
 		e2b?: { apiKey?: string } | string;
 		sprites?: { token?: string } | string;
 		vercel?: VercelSandboxCredentials;
@@ -62,8 +64,11 @@ export const SUBSTRATE_KINDS: readonly SubstrateKind[] = [
 	"e2b",
 	"sprites",
 	"vercel",
-	"dedalus",
+	"daytona",
 ];
+
+/** Historical records remain readable after a provider leaves the active route. */
+export const PERSISTED_SUBSTRATE_KINDS: readonly SubstrateKind[] = [...SUBSTRATE_KINDS, "dedalus"];
 
 export const HARNESS_KINDS: readonly HarnessKind[] = [
 	"claude-code",
@@ -101,12 +106,9 @@ function asObject<T>(value: T | string | undefined, key: string): T | undefined 
 
 export function resolveMuxConfig(input: MuxConfigInput = {}): MuxConfig {
 	const providersIn = input.providers ?? {};
+	const daytona = asObject<{ apiKey?: string; apiUrl?: string; target?: string }>(providersIn.daytona, "apiKey");
 	const e2b = asObject<{ apiKey?: string }>(providersIn.e2b, "apiKey");
 	const sprites = asObject<{ token?: string }>(providersIn.sprites, "token");
-	const dedalus = asObject<{ apiKey?: string; baseUrl?: string }>(
-		providersIn.dedalus,
-		"apiKey",
-	);
 	const vercel = providersIn.vercel;
 
 	const primary = input.sandboxes?.primary ?? "e2b";
@@ -133,6 +135,11 @@ export function resolveMuxConfig(input: MuxConfigInput = {}): MuxConfig {
 			openrouter: expand(input.keys?.openrouter) ?? fromEnv("OPENROUTER_API_KEY"),
 		},
 		providers: {
+			daytona: {
+				apiKey: expand(daytona?.apiKey) ?? fromEnv("DAYTONA_API_KEY"),
+				apiUrl: expand(daytona?.apiUrl) ?? fromEnv("DAYTONA_API_URL") ?? "https://app.daytona.io/api",
+				target: expand(daytona?.target) ?? fromEnv("DAYTONA_TARGET"),
+			},
 			e2b: { apiKey: expand(e2b?.apiKey) ?? fromEnv("E2B_API_KEY") },
 			sprites: {
 				token:
@@ -144,13 +151,8 @@ export function resolveMuxConfig(input: MuxConfigInput = {}): MuxConfig {
 				projectId: expand(vercel?.projectId) ?? fromEnv("VERCEL_PROJECT_ID"),
 				oidcToken: expand(vercel?.oidcToken) ?? fromEnv("VERCEL_OIDC_TOKEN"),
 			},
-			dedalus: {
-				apiKey: expand(dedalus?.apiKey) ?? fromEnv("DEDALUS_API_KEY"),
-				baseUrl:
-					expand(dedalus?.baseUrl) ??
-					fromEnv("DEDALUS_BASE_URL") ??
-					"https://dcs.dedaluslabs.ai",
-			},
+			// Preserve the legacy shape without loading or using retired credentials.
+			dedalus: {},
 		},
 		sandboxes: { primary, backups },
 		agents: { default: defaultAgent },

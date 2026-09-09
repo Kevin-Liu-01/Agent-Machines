@@ -96,13 +96,13 @@ describe("muxConfigForUser", () => {
 				e2b: { apiKey: "e2b-key" },
 				// user config says apiKey; the mux says token
 				sprites: { apiKey: "sprites-key" },
-				dedalus: { apiKey: "ded-key", baseUrl: "https://example.invalid" },
+				daytona: { apiKey: "daytona-key", apiUrl: "https://app.daytona.io/api", target: "us" },
 			}),
 		);
 		expect(input.providers).toEqual({
 			e2b: { apiKey: "e2b-key" },
 			sprites: { token: "sprites-key" },
-			dedalus: { apiKey: "ded-key", baseUrl: "https://example.invalid" },
+			daytona: { apiKey: "daytona-key", apiUrl: "https://app.daytona.io/api", target: "us" },
 		});
 	});
 

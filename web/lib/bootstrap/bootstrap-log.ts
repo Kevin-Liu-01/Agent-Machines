@@ -1,6 +1,7 @@
 import type { ProviderKind } from "@/lib/user-config/schema";
 
 export function machineHomeForProvider(providerKind: ProviderKind): string {
+	if (providerKind === "daytona") return "/home/daytona";
 	if (providerKind === "e2b") return "/home/user";
 	if (providerKind === "sprites") return "/home/sprite";
 	if (providerKind === "vercel") return "/vercel/sandbox";

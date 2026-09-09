@@ -16,7 +16,7 @@ import type { ProviderKind, PublicUserConfig } from "@/lib/user-config/schema";
 
 type Phase = "idle" | "provisioning" | "ready" | "error";
 
-const PROVIDERS = ["dedalus", "sprites", "e2b", "vercel"] as const;
+const PROVIDERS = ["daytona", "sprites", "e2b", "vercel"] as const;
 const AGENTS = ["openclaw", "hermes", "codex", "claude-code"] as const;
 
 type EnvironmentOption = PublicUserConfig["environmentProfiles"][number];
@@ -36,7 +36,7 @@ function isAgent(value: unknown): value is (typeof AGENTS)[number] {
  */
 export function DeployAndTalk() {
 	const router = useRouter();
-	const [provider, setProvider] = useState<(typeof PROVIDERS)[number]>("dedalus");
+	const [provider, setProvider] = useState<(typeof PROVIDERS)[number]>("daytona");
 	const [agent, setAgent] = useState<(typeof AGENTS)[number]>("openclaw");
 	const [phase, setPhase] = useState<Phase>("idle");
 	const [detail, setDetail] = useState<string>("");
@@ -69,7 +69,7 @@ export function DeployAndTalk() {
 				const ai = (config.aiProviders ?? {}) as Record<string, { configured?: boolean }>;
 				const conf: Record<string, boolean> = {};
 				for (const k of Object.keys(ai)) conf[k] = Boolean(ai[k]?.configured);
-				conf.dedalus = Boolean(config.providers?.dedalus?.configured);
+				conf.daytona = Boolean(config.providers?.daytona?.configured);
 				setAiConfigured(conf);
 				const provs = (config.providers ?? {}) as Record<string, { configured?: boolean }>;
 				const pconf: Record<string, boolean> = {};

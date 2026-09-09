@@ -23,7 +23,7 @@
 
 import { Buffer } from "node:buffer";
 
-import { createDedalusProvider } from "./dedalus.js";
+import { createDaytonaProvider, type DaytonaClient } from "./daytona.js";
 import { createE2bProvider, type E2bSdk } from "./e2b.js";
 import { createSpritesProvider } from "./sprites.js";
 import { createVercelProvider } from "./vercel.js";
@@ -159,6 +159,8 @@ export type BackgroundLauncher =
  * all four lanes.
  */
 export type LaneExpectation = {
+	/** Daytona sessions accept safely quoted shell; other lanes encode base64. */
+	readonly commandTransport?: "shell-quoted";
 	/** Vars `ready()` must name when the lane holds no credentials. */
 	readonly missingCredentials: readonly RegExp[];
 	/** An id shaped like this lane's own (E2B sandbox id, sprite name, ...). */
@@ -880,134 +882,71 @@ const vercelLane: Lane = {
 };
 
 // ---------------------------------------------------------------------------
-// dedalus. No SDK at all: raw REST over global fetch. Resuming entry point:
-// POST /executions, because submitting one is what makes the scheduler call the
-// signed admit/wake gate.
+// Daytona. get() never wakes; only explicit start() resumes a stopped sandbox.
 // ---------------------------------------------------------------------------
-
-const DEDALUS_BASE = "https://dcs.conf.test";
-
-function dedalusMachine(id: string, parked: boolean): Record<string, unknown> {
-	return {
-		machine_id: id,
-		vcpu: 1,
-		memory_mib: 2048,
-		storage_gib: 10,
-		created_at: CREATED_AT,
-		desired_state: "running",
-		// Submitting an execution is what wakes a sleeping machine here, so the
-		// phase follows the spy's parked flag rather than being fixed.
-		status: { phase: parked ? "sleeping" : "running", revision: 7 },
-	};
-}
-
-/**
- * Route the Dedalus REST surface, recording every request. The execution flow
- * is answered as already-terminal so no poll interval is ever waited on.
- */
-function dedalusFetch(spy: VendorSpy, failStatus?: number): typeof globalThis.fetch {
-	return (async (input: unknown, init?: RequestInit): Promise<Response> => {
-		const url = new URL(String(input));
-		const method = (init?.method ?? "GET").toUpperCase();
-		const path = url.pathname;
-		spy.touch(`${method} ${path}`);
-
-		if (failStatus !== undefined) {
-			return new Response(JSON.stringify({ error: "vendor said no" }), {
-				status: failStatus,
-				headers: { "content-type": "application/json" },
-			});
-		}
-
-		const json = (body: unknown, status = 200): Response =>
-			new Response(JSON.stringify(body), {
-				status,
-				headers: { "content-type": "application/json" },
-			});
-
-		// One document, whatever produced it: this substrate's execution API only
-		// exposes output once the execution is terminal, which is exactly why
-		// capabilities.streamingExec is false here.
-		if (path.endsWith("/output")) {
-			return json({ stdout: STREAM_CHUNKS.join(""), stderr: "" });
-		}
-		if (path.includes("/executions")) {
-			if (method === "POST") {
-				const body = JSON.parse(String(init?.body ?? "{}")) as {
-					command?: string[];
-				};
-				// Submitting an execution is the wake path on this substrate.
-				spy.markResumed();
-				spy.shellCall({
-					mode: "exec",
-					script: body.command?.[2] ?? "",
-					detached: false,
-				});
-				return json({ execution_id: "ex-conf", status: "succeeded", exit_code: 0 });
-			}
-			return json({ execution_id: "ex-conf", status: "succeeded", exit_code: 0 });
-		}
-		if (path.endsWith("/previews")) {
-			// No preview exists yet, so the adapter has to create one.
-			return method === "POST"
-				? json({ url: "https://preview-conf.dedalus.test" })
-				: json({ items: [] });
-		}
-		if (path === "/v1/machines") {
-			return method === "POST"
-				? json(dedalusMachine("dm-conf", spy.parked))
-				: json([dedalusMachine("dm-conf", spy.parked)]);
-		}
-		if (method === "DELETE") return new Response(null, { status: 204 });
-		return json(dedalusMachine(path.split("/").pop() ?? "dm-conf", spy.parked));
-	}) as typeof globalThis.fetch;
-}
-
-function dedalusHarness(
-	creds: { apiKey?: string },
-	options: LaneOptions = {},
-): LaneHarness {
+function daytonaHarness(credentials: { apiKey?: string }, options: LaneOptions = {}): LaneHarness {
 	const spy = new VendorSpy(options.parked);
-	const original = globalThis.fetch;
-	globalThis.fetch = dedalusFetch(spy, options.failStatus);
-	return {
-		provider: createDedalusProvider({ ...creds, baseUrl: DEDALUS_BASE }),
-		spy,
-		dispose: () => {
-			globalThis.fetch = original;
+	let polls = 0;
+	const touch = (method: string) => {
+		spy.touch(method);
+		if (options.failStatus !== undefined) throw Object.assign(new Error("Vendor request failed"), { statusCode: options.failStatus });
+	};
+	const pty = {
+		async waitForConnection() { touch("pty.waitForConnection"); },
+		wait: () => new Promise<{ exitCode: number }>(() => {}),
+		async sendInput() { touch("pty.sendInput"); },
+		async resize() { touch("pty.resize"); },
+		async kill() { touch("pty.kill"); },
+		async disconnect() { touch("pty.disconnect"); },
+	};
+	const sandbox = {
+		id: "daytona-conf", name: "conf", cpu: 1, memory: 1, disk: 3, createdAt: CREATED_AT,
+		get state() { return spy.parked ? "stopped" : "started"; },
+		async start() { touch("sandbox.start"); spy.markResumed(); },
+		async stop() { touch("sandbox.stop"); spy.parked = true; },
+		async delete() { touch("sandbox.delete"); },
+		async refreshData() { touch("sandbox.refreshData"); },
+		async getSignedPreviewUrl() { touch("sandbox.getSignedPreviewUrl"); return { url: "https://signed.daytona.conf.test" }; },
+		fs: { async uploadFile() { touch("fs.uploadFile"); } },
+		process: {
+			async createSession() { touch("process.createSession"); },
+			async deleteSession() { touch("process.deleteSession"); },
+			async executeSessionCommand(_session: string, request: { command: string; runAsync?: boolean }) {
+				touch("process.executeSessionCommand");
+				if (spy.parked) throw new Error("Sandbox is stopped; explicit start required");
+				spy.shellCall({ mode: request.runAsync ? "stream" : "exec", script: request.command, detached: false });
+				polls = 0;
+				return { cmdId: "cmd-conf", stdout: "", stderr: "", exitCode: request.runAsync ? undefined : 0 };
+			},
+			async getSessionCommand() { touch("process.getSessionCommand"); return { exitCode: ++polls >= 2 ? 0 : undefined }; },
+			async getSessionCommandLogs() { touch("process.getSessionCommandLogs"); return { stdout: STREAM_CHUNKS.slice(0, polls).join(""), stderr: "" }; },
+			async listPtySessions() { touch("process.listPtySessions"); return []; },
+			async createPty() { touch("process.createPty"); return pty; },
+			async connectPty() { touch("process.connectPty"); return pty; },
 		},
 	};
+	const client = {
+		async create() { touch("Daytona.create"); return sandbox; },
+		async get() { touch("Daytona.get"); return sandbox; },
+		async *list() { touch("Daytona.list"); yield sandbox; },
+	};
+	return {
+		provider: createDaytonaProvider(credentials, () => client as unknown as DaytonaClient),
+		spy, dispose: () => {},
+	};
 }
-
-const dedalusLane: Lane = {
-	substrate: "dedalus",
+const daytonaLane: Lane = {
+	substrate: "daytona",
 	expect: {
-		missingCredentials: [/DEDALUS_API_KEY/],
-		sampleId: "dm-conf",
-		pty: "tmux",
-		namedPtyUsesTmux: true,
-		// The execution API only exposes output once an execution is terminal,
-		// so incremental delivery is impossible here and the adapter says so.
-		streamingExec: false,
-		backgroundLauncher: "process-detach",
-		park: false,
-		keepAlive: false,
-		// model "unknown": the previews API answers per port, but no vendor page
-		// documents the endpoint or a ceiling, so only the behavior is pinned.
-		publicUrlProbes: [{ port: 4242, url: true }],
+		missingCredentials: [/DAYTONA_API_KEY/], sampleId: "daytona-conf",
+		pty: "native", namedPtyUsesTmux: false, streamingExec: true,
+		backgroundLauncher: "process-detach", commandTransport: "shell-quoted",
+		park: true, keepAlive: false,
+		publicUrlProbes: [{ port: 3000, url: true }, { port: 4242, url: true }],
 	},
-	open(options = {}): LaneHarness {
-		return dedalusHarness({ apiKey: "dedalus-conf" }, options);
-	},
-	openUncredentialed(): LaneHarness {
-		return dedalusHarness({});
-	},
+	open: (options = {}) => daytonaHarness({ apiKey: "daytona-conf" }, options),
+	openUncredentialed: () => daytonaHarness({}),
 };
 
-/**
- * The four lanes, in the order the default route walks them.
- *
- * A fifth substrate belongs here, and the suite will then hold it to every
- * shared assertion -- which is the point.
- */
-export const LANES: readonly Lane[] = [e2bLane, spritesLane, vercelLane, dedalusLane];
+/** The four active lanes; retired record discriminants have separate no-IO tests. */
+export const LANES: readonly Lane[] = [e2bLane, spritesLane, vercelLane, daytonaLane];

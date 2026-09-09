@@ -1,4 +1,5 @@
 import type { LogLine } from "@/lib/dashboard/types";
+import { machineHomeForProvider } from "@/lib/bootstrap/bootstrap-log";
 import {
 	agentMetaForKind,
 	fleetHue,
@@ -147,16 +148,16 @@ function activityLogMessages(logLines: LogLine[]): string[] {
 		.map((l) => l.message);
 }
 
-function idleTail(state: string, lastAt: string | null): string[] {
-	if (state === "sleeping") return ["sleeping — state persisted to /home/machine"];
+function idleTail(state: string, lastAt: string | null, providerKind: ProviderKind): string[] {
+	if (state === "sleeping") return [`sleeping — state persisted to ${machineHomeForProvider(providerKind)}`];
 	if (state === "starting") return ["placement pending…", "bootstrap in progress…"];
 	if (lastAt) return [`last activity ${formatRelativeTime(lastAt)}`];
 	return ["waiting for prompt…"];
 }
 
-function emptyLogLines(state: string, archived?: boolean): string[] {
+function emptyLogLines(state: string, providerKind: ProviderKind, archived?: boolean): string[] {
 	if (archived) return ["archived — no live activity"];
-	if (state === "sleeping") return ["sleeping — state persisted to /home/machine"];
+	if (state === "sleeping") return [`sleeping — state persisted to ${machineHomeForProvider(providerKind)}`];
 	return ["no logs yet"];
 }
 
@@ -194,7 +195,7 @@ export function buildTerminalLines(
 			lines:
 				logMsgs.length > 0
 					? [...logMsgs.slice(-8), "archived — no live activity"]
-					: emptyLogLines(state, true),
+					: emptyLogLines(state, machine.providerKind, true),
 			lastActivityAt: logLines.length > 0 ? logLines[logLines.length - 1].at : null,
 			streamActive: false,
 		};
@@ -206,7 +207,7 @@ export function buildTerminalLines(
 
 	if (logMsgs.length === 0) {
 		return {
-			lines: emptyLogLines(state, machine.archived),
+			lines: emptyLogLines(state, machine.providerKind, machine.archived),
 			lastActivityAt: null,
 			streamActive: false,
 		};
@@ -218,7 +219,7 @@ export function buildTerminalLines(
 				"container starting…",
 				"installing agent runtime…",
 				...buildActivityLines(headline, logMsgs),
-				...idleTail(state, lastActivityAt),
+				...idleTail(state, lastActivityAt, machine.providerKind),
 			],
 			lastActivityAt,
 			streamActive: true,
@@ -231,7 +232,7 @@ export function buildTerminalLines(
 				? buildActivityLines(headline, logMsgs)
 				: buildActivityLines(headline, []).length > 0
 					? buildActivityLines(headline, [])
-					: idleTail(state, lastActivityAt);
+					: idleTail(state, lastActivityAt, machine.providerKind);
 		return {
 			lines,
 			lastActivityAt,
@@ -241,7 +242,7 @@ export function buildTerminalLines(
 
 	// sleeping — show last known activity, no live stream
 	return {
-		lines: [...buildActivityLines(headline, logMsgs), ...idleTail(state, lastActivityAt)],
+		lines: [...buildActivityLines(headline, logMsgs), ...idleTail(state, lastActivityAt, machine.providerKind)],
 		lastActivityAt,
 		streamActive: false,
 	};

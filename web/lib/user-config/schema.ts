@@ -22,10 +22,11 @@ export type AgentKind = "hermes" | "openclaw" | "claude-code" | "codex";
 export const AGENT_KINDS: ReadonlyArray<AgentKind> = ["hermes", "openclaw", "claude-code", "codex"];
 
 /** Where the agent's VM lives. */
-export type ProviderKind = "dedalus" | "sprites" | "e2b" | "vercel";
+/** Dedalus is a retired persisted identity, never a new deployment option. */
+export type ProviderKind = "daytona" | "sprites" | "e2b" | "vercel" | "dedalus";
 
 export const PROVIDER_KINDS: ReadonlyArray<ProviderKind> = [
-	"dedalus",
+	"daytona",
 	"e2b",
 	"sprites",
 	"vercel",
@@ -223,6 +224,7 @@ export const SETUP_STEPS: ReadonlyArray<SetupStep> = [
  * Stored in Clerk privateMetadata; the public-config helper strips them.
  */
 export type ProviderCredentials = Partial<{
+	daytona: { apiKey: string; apiUrl?: string; target?: string };
 	dedalus: { apiKey: string; baseUrl?: string };
 	sprites: { apiKey: string };
 	e2b: { apiKey: string };
@@ -523,9 +525,9 @@ export const DEFAULT_GATEWAY_PROFILE: GatewayProfile = VERCEL_AI_GATEWAY_PROFILE
 
 export const DEFAULT_BOOTSTRAP_PRESETS: BootstrapPreset[] = [
 	{
-		id: "dedalus-hermes-default",
-		name: "Dedalus + Hermes",
-		providerKind: "dedalus",
+		id: "daytona-hermes-default",
+		name: "Daytona + Hermes",
+		providerKind: "daytona",
 		agentProfileId: "hermes-default",
 		environmentProfileId: null,
 		spec: DEFAULT_MACHINE_SPEC,
@@ -533,9 +535,9 @@ export const DEFAULT_BOOTSTRAP_PRESETS: BootstrapPreset[] = [
 		updatedAt: DEFAULT_CREATED_AT,
 	},
 	{
-		id: "dedalus-openclaw-default",
-		name: "Dedalus + OpenClaw",
-		providerKind: "dedalus",
+		id: "daytona-openclaw-default",
+		name: "Daytona + OpenClaw",
+		providerKind: "daytona",
 		agentProfileId: "openclaw-default",
 		environmentProfileId: null,
 		spec: DEFAULT_MACHINE_SPEC,
@@ -543,9 +545,9 @@ export const DEFAULT_BOOTSTRAP_PRESETS: BootstrapPreset[] = [
 		updatedAt: DEFAULT_CREATED_AT,
 	},
 	{
-		id: "dedalus-claude-code-default",
-		name: "Dedalus + Claude Code",
-		providerKind: "dedalus",
+		id: "daytona-claude-code-default",
+		name: "Daytona + Claude Code",
+		providerKind: "daytona",
 		agentProfileId: "claude-code-default",
 		environmentProfileId: null,
 		spec: DEFAULT_MACHINE_SPEC,
@@ -553,9 +555,9 @@ export const DEFAULT_BOOTSTRAP_PRESETS: BootstrapPreset[] = [
 		updatedAt: DEFAULT_CREATED_AT,
 	},
 	{
-		id: "dedalus-codex-default",
-		name: "Dedalus + Codex CLI",
-		providerKind: "dedalus",
+		id: "daytona-codex-default",
+		name: "Daytona + Codex CLI",
+		providerKind: "daytona",
 		agentProfileId: "codex-default",
 		environmentProfileId: null,
 		spec: DEFAULT_MACHINE_SPEC,
@@ -692,7 +694,7 @@ export const DEFAULT_USER_CONFIG: UserConfig = {
 	loadoutSources: DEFAULT_LOADOUT_SOURCES,
 	setupStep: "api-key",
 	draftAgentKind: "hermes",
-	draftProviderKind: "dedalus",
+	draftProviderKind: "daytona",
 	draftSpec: DEFAULT_MACHINE_SPEC,
 	draftModel: DEFAULT_MODEL,
 };
@@ -739,7 +741,8 @@ export type PublicUserConfig = Omit<
 
 export function toPublicConfig(config: UserConfig): PublicUserConfig {
 	const providers: Record<ProviderKind, PublicProviderStatus> = {
-		dedalus: { configured: Boolean(config.providers.dedalus?.apiKey) },
+		daytona: { configured: Boolean(config.providers.daytona?.apiKey) },
+		dedalus: { configured: false, scopeHint: "Retired provider" },
 		e2b: { configured: Boolean(config.providers.e2b?.apiKey) },
 		sprites: {
 			configured: Boolean(config.providers.sprites?.apiKey),
@@ -812,7 +815,8 @@ export function isProvisioned(config: UserConfig): boolean {
  * Kept in the schema layer because UI and API both need it.
  */
 export const PROVIDER_LABEL: Record<ProviderKind, string> = {
-	dedalus: "Dedalus",
+	daytona: "Daytona",
+	dedalus: "Retired provider",
 	e2b: "E2B Sandbox",
 	sprites: "Sprites",
 	vercel: "Vercel Sandbox",

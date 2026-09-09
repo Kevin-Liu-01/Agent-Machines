@@ -290,6 +290,7 @@ test("costToSuccessfulResult of no legs costs nothing and is complete", () => {
 
 test("every substrate has a price entry, known or explicitly not", () => {
 	assert.deepEqual(Object.keys(SUBSTRATE_PRICES).sort(), [
+		"daytona",
 		"dedalus",
 		"e2b",
 		"sprites",

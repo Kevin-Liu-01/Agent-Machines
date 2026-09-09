@@ -37,7 +37,7 @@ export function ProviderMark({
 	provider: ProviderKind;
 	size?: number;
 }) {
-	// `Logo` carries a mark for every substrate (dedalus/e2b/sprites/vercel)
+	// `Logo` carries a mark for every substrate (daytona/e2b/sprites/vercel)
 	// with the correct per-brand tone — including Vercel's theme-adaptive
 	// triangle — so providers render consistently across the dashboard.
 	return <Logo mark={provider} size={size} />;

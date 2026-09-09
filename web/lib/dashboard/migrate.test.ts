@@ -291,7 +291,7 @@ beforeEach(() => {
 		e2b: makeProvider("e2b", true),
 		sprites: makeProvider("sprites", false),
 		vercel: makeProvider("vercel", true),
-		dedalus: makeProvider("dedalus", false),
+		daytona: makeProvider("daytona", false),
 	};
 	configWrites = [];
 
@@ -792,12 +792,12 @@ describe("validate gate", () => {
 	});
 
 	it("refuses an uncredentialed target lane, NAMING the missing key, before any provision", async () => {
-		await run({ to: "dedalus" });
+		await run({ to: "daytona" });
 		expect(mocks.createMachineForConfig).not.toHaveBeenCalled();
 		const state = migrationStateOf("old-1");
 		expect(state?.phase).toBe("failed");
 		expect(state?.step).toBe("validate");
-		expect(state?.lastError).toContain("DEDALUS_API_KEY");
+		expect(state?.lastError).toContain("DAYTONA_API_KEY");
 	});
 });
 

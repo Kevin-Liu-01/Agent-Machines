@@ -27,7 +27,7 @@ import {
 type WizardDefaults = {
 	machineSpec: MachineSpec;
 	model: string;
-	hasOwnerDedalusKey: boolean;
+	hasOwnerDaytonaKey: boolean;
 	hasOwnerCursorKey: boolean;
 	hasOwnerMachine: boolean;
 };
@@ -82,17 +82,18 @@ const PROVIDERS_DESC: Record<
 	ProviderKind,
 	{ name: string; tagline: string; ready: boolean; keyHint: string }
 > = {
-	dedalus: {
-		name: "Dedalus Machines",
+	daytona: {
+		name: "Daytona",
 		tagline:
-			"Firecracker microVMs with sleep/wake, persistent /home/machine, cloudflared previews. The original.",
+			"Linux sandboxes with native terminals and private previews. Stop/start keeps the filesystem, not running processes.",
 		ready: true,
-		keyHint: "dsk-live-...",
+		keyHint: "Daytona API key",
 	},
+	dedalus: { name: "Retired provider", tagline: "Unavailable for new Workers.", ready: false, keyHint: "Choose a supported provider." },
 	sprites: {
 		name: "Sprites",
 		tagline:
-			"Persistent Linux sandboxes on Sprites.dev. Auto-sleep, instant wake, checkpoints, public URLs. Runs on Fly.io infrastructure.",
+			"Persistent Linux sandboxes with automatic idle sleep, wake on use, and checkpoints. Runs on Fly.io infrastructure.",
 		ready: true,
 		keyHint: "sprites-token",
 	},
@@ -106,7 +107,7 @@ const PROVIDERS_DESC: Record<
 	vercel: {
 		name: "Vercel Sandbox",
 		tagline:
-			"Persistent Firecracker microVMs on Vercel. Auto-snapshots on stop, resume by name, public port URLs, getOrCreate + fork APIs.",
+			"Linux microVMs with filesystem snapshots on stop and per-port preview URLs. Resume restores files; processes restart.",
 		ready: true,
 		keyHint: "vercel token",
 	},
@@ -229,7 +230,7 @@ export function SetupWizard({ initialConfig, defaults }: Props) {
 			{activeStep === "api-key" ? (
 				<CredentialsStep
 					config={config}
-					hasOwnerDedalusKey={defaults.hasOwnerDedalusKey}
+					hasOwnerDaytonaKey={defaults.hasOwnerDaytonaKey}
 					busy={busy}
 					onSave={async (creds, cursorApiKey, aiProviderKeys) => {
 						const patch: Record<string, unknown> = {
@@ -383,7 +384,9 @@ function StepShell({
 }
 
 type CredsState = {
-	dedalus: string;
+	daytona: string;
+	daytonaApiUrl: string;
+	daytonaTarget: string;
 	sprites: string;
 	e2b: string;
 	vercelToken: string;
@@ -398,16 +401,16 @@ type CredsState = {
 
 function CredentialsStep({
 	config,
-	hasOwnerDedalusKey,
+	hasOwnerDaytonaKey,
 	busy,
 	onSave,
 }: {
 	config: PublicUserConfig;
-	hasOwnerDedalusKey: boolean;
+	hasOwnerDaytonaKey: boolean;
 	busy: boolean;
 	onSave: (
 		creds: {
-			dedalus?: { apiKey: string };
+			daytona?: { apiKey: string; apiUrl?: string; target?: string };
 			sprites?: { apiKey: string };
 			e2b?: { apiKey: string };
 			vercel?: { token: string; teamId: string; projectId: string };
@@ -417,7 +420,9 @@ function CredentialsStep({
 	) => Promise<void>;
 }) {
 	const [state, setState] = useState<CredsState>({
-		dedalus: "",
+		daytona: "",
+		daytonaApiUrl: "",
+		daytonaTarget: "",
 		sprites: "",
 		e2b: "",
 		vercelToken: "",
@@ -430,7 +435,7 @@ function CredentialsStep({
 		openai: "",
 	});
 
-	const dedalusOnFile = config.providers.dedalus.configured;
+	const daytonaOnFile = config.providers.daytona.configured;
 	const spritesOnFile = config.providers.sprites.configured;
 	const e2bOnFile = config.providers.e2b.configured;
 	const vercelOnFile = config.providers.vercel.configured;
@@ -440,13 +445,13 @@ function CredentialsStep({
 	const anthropicOnFile = config.aiProviders.anthropic.configured;
 	const openaiOnFile = config.aiProviders.openai.configured;
 	const anyConfigured =
-		dedalusOnFile || spritesOnFile || e2bOnFile || vercelOnFile || hasOwnerDedalusKey ||
+		daytonaOnFile || spritesOnFile || e2bOnFile || vercelOnFile || hasOwnerDaytonaKey ||
 		vercelAiGatewayOnFile || openrouterOnFile || anthropicOnFile || openaiOnFile;
 
 	function buildPatch() {
 		const creds: Parameters<typeof onSave>[0] = {};
-		if (state.dedalus.trim()) {
-			creds.dedalus = { apiKey: state.dedalus.trim() };
+		if (state.daytona.trim() || state.daytonaApiUrl.trim() || state.daytonaTarget.trim()) {
+			creds.daytona = { apiKey: state.daytona.trim(), apiUrl: state.daytonaApiUrl.trim() || undefined, target: state.daytonaTarget.trim() || undefined };
 		}
 		if (state.sprites.trim()) {
 			creds.sprites = { apiKey: state.sprites.trim() };
@@ -483,17 +488,33 @@ function CredentialsStep({
 			<ReticleLabel>infrastructure providers</ReticleLabel>
 			<div className="mt-2 grid gap-4 lg:grid-cols-2">
 				<KeyField
-					label="Dedalus API key"
-					placeholder="dsk-live-..."
-					value={state.dedalus}
-					onChange={(v) => setState((s) => ({ ...s, dedalus: v }))}
+					label="Daytona API key"
+					placeholder="Daytona API key"
+					value={state.daytona}
+					onChange={(v) => setState((s) => ({ ...s, daytona: v }))}
 					hint={
-						dedalusOnFile
+						daytonaOnFile
 							? "On file. Leave blank to keep."
-							: hasOwnerDedalusKey
+							: hasOwnerDaytonaKey
 								? "Owner default exists. Leave blank to inherit."
-								: "Required for the Dedalus provider."
+								: "Required for the Daytona provider."
 					}
+				/>
+				<KeyField
+					label="Daytona API URL (optional)"
+					type="text"
+					placeholder="https://app.daytona.io/api"
+					value={state.daytonaApiUrl}
+					onChange={(v) => setState((s) => ({ ...s, daytonaApiUrl: v }))}
+					hint="Leave blank to use the configured endpoint or Daytona's default."
+				/>
+				<KeyField
+					label="Daytona target (optional)"
+					type="text"
+					placeholder="us"
+					value={state.daytonaTarget}
+					onChange={(v) => setState((s) => ({ ...s, daytonaTarget: v }))}
+					hint="Choose an available Daytona target, or leave blank for the configured default."
 				/>
 				<KeyField
 					label="E2B API key"
@@ -526,6 +547,7 @@ function CredentialsStep({
 				/>
 				<KeyField
 					label="Vercel team ID"
+					type="text"
 					placeholder="team_..."
 					value={state.vercelTeamId}
 					onChange={(v) => setState((s) => ({ ...s, vercelTeamId: v }))}
@@ -533,6 +555,7 @@ function CredentialsStep({
 				/>
 				<KeyField
 					label="Vercel project ID"
+					type="text"
 					placeholder="prj_..."
 					value={state.vercelProjectId}
 					onChange={(v) => setState((s) => ({ ...s, vercelProjectId: v }))}
@@ -628,6 +651,7 @@ function CredentialsStep({
 }
 
 function KeyField({
+	type = "password",
 	label,
 	placeholder,
 	value,
@@ -635,6 +659,7 @@ function KeyField({
 	hint,
 	secondary,
 }: {
+	type?: "password" | "text";
 	label: string;
 	placeholder: string;
 	value: string;
@@ -654,8 +679,11 @@ function KeyField({
 					{label}
 				</span>
 				<input
-					type="password"
+					type={type}
 					autoComplete="off"
+					autoCapitalize="none"
+					autoCorrect="off"
+					spellCheck={false}
 					placeholder={placeholder}
 					value={value}
 					onChange={(e) => onChange(e.target.value)}
@@ -754,7 +782,7 @@ function ProviderStep({
 	return (
 		<StepShell
 			title="Pick the provider"
-			description="Choose the replaceable compute beneath this Worker. E2B, Sprites, Vercel Sandbox, and Dedalus each declare their real lifecycle and persistence capabilities; current health is surfaced instead of assuming a universal default."
+			description="Choose the replaceable compute beneath this Worker. E2B, Sprites, Vercel Sandbox, and Daytona each declare their real lifecycle and persistence capabilities; current health is surfaced instead of assuming a universal default."
 		>
 			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 				{PROVIDER_KINDS.map((kind) => {

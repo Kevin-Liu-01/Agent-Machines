@@ -51,8 +51,7 @@ describe("onboarding wording and unchanged picker values (actual TSX)", () => {
 		expect(copy).toContain("path depends on the provider");
 		expect(copy).toContain("configure and enable a schedule");
 		expect(copy).not.toMatch(/Both run|\/home\/machine|same OpenAI-compatible API|instant recall|wake the VM on tick|ddls cookbook/i);
-		const legacyLink = elements(tree).find((node) => node.type === "a" && node.props.href === "https://github.com/dedalus-labs/openclaw-ddls");
-		expect(text(legacyLink)).toContain("Legacy integration example");
+		expect(elements(tree).filter((node) => node.type === "a").map((node) => node.props.href).join(" ")).not.toMatch(/dedalus|ddls/i);
 	});
 
 	it("labels specialist tools as selected, not installed, and keeps the blank catalog available", () => {
@@ -77,11 +76,18 @@ describe("onboarding wording and unchanged picker values (actual TSX)", () => {
 		const tree = wizard.ProviderPickStep({ value: "e2b", configured, onPick: (value: string) => picked.push(value), onBack() {}, onNext() {} });
 		for (const button of elements(tree).filter((node) => node.type === "button")) (button.props.onClick as () => void)();
 		expect(picked).toEqual(PROVIDER_KINDS);
+		expect(picked).toEqual(["daytona", "e2b", "sprites", "vercel"]);
 		const comparison = wizard.ProviderComparison({ selected: "e2b" });
 		const copy = text([tree, comparison]).replace(/\s+/g, " ");
 		expect(copy).toContain("first launch also installs");
 		expect(copy).toContain("Filesystem only");
 		expect(copy).toContain("Launch time and limits vary");
+		expect(copy).toContain("Stop / start; files retained");
+		const providerRows = elements(comparison).filter((node) => node.type === "tr");
+		const typeRow = providerRows.find((node) => text(node).startsWith("Type"));
+		expect(text(typeRow)).toContain("Persistent sandbox");
+		expect(text(typeRow)).not.toMatch(/Persistent VM\b/);
+		expect(copy).not.toMatch(/Dedalus/i);
 		expect(copy).not.toMatch(/instant|sub-second|unlimited|forever|~\d|300ms|getOrCreate|fork/i);
 	});
 

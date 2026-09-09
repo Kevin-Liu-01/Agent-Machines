@@ -194,4 +194,36 @@ describe("managed runtime Console", () => {
 		expect(response.status).toBe(409);
 		expect(mocks.submit).not.toHaveBeenCalled();
 	});
+
+	it("reports insufficient observed OpenClaw memory without confusing it with a missing install", async () => {
+		setup("openclaw");
+		mocks.state.mockResolvedValue({ state: "ready", spec: { memoryMib: 512 } });
+		const response = await GET(new Request("https://agent-machines.test/api/agents/run?machineId=tenant-machine"));
+		expect(await response.json()).toMatchObject({ ok: false, error: "insufficient_runtime_memory", capacity: { status: "blocked", memoryMib: 512 } });
+		expect(mocks.artifacts).not.toHaveBeenCalled();
+	});
+	it.each(["api", "console"])("rejects a %s OpenClaw run before journal or model work on a known-small allocation", async (surface) => {
+		setup("openclaw");
+		mocks.state.mockResolvedValue({ state: "ready", spec: { memoryMib: 512 } });
+		const response = await (surface === "api" ? runPost : POST)(request({ machineId: "tenant-machine", prompt: "Read a file" }));
+		expect(response.status).toBe(409);
+		expect(await response.json()).toMatchObject({ ok: false, error: "insufficient_runtime_memory" });
+		expect(mocks.submit).not.toHaveBeenCalled();
+		expect(mocks.run).not.toHaveBeenCalled();
+		expect(mocks.artifacts).not.toHaveBeenCalled();
+	});
+	it("does not infer observed OpenClaw RAM from the requested machine specification", async () => {
+		setup("openclaw");
+		const config = await mocks.config(); config.machines[0].spec = { vcpu: 8, memoryMib: 8192, storageGib: 10 };
+		mocks.state.mockResolvedValue({ state: "ready", spec: {} });
+		const response = await GET(new Request("https://agent-machines.test/api/agents/run?machineId=tenant-machine"));
+		expect(await response.json()).toMatchObject({ ok: true, capacity: { status: "unverified", memoryMib: null } });
+	});
+	it("keeps the explicit Wake path when a small OpenClaw allocation is paused", async () => {
+		setup("openclaw");
+		mocks.state.mockResolvedValue({ state: "sleeping", spec: { memoryMib: 512 } });
+		const response = await GET(new Request("https://agent-machines.test/api/agents/run?machineId=tenant-machine"));
+		expect(await response.json()).toMatchObject({ ok: false, state: "sleeping" });
+		expect(mocks.artifacts).not.toHaveBeenCalled();
+	});
 });

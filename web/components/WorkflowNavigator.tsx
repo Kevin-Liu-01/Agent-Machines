@@ -122,14 +122,14 @@ const STEPS: ReadonlyArray<Step> = [
 		tab: "providers",
 		stage: "04",
 		kicker: "AGENT MACHINES · SUBSTRATE LANES",
-		title: "Four substrate lanes — E2B, Sprites, Dedalus, and Vercel.",
+		title: "Four substrate lanes — E2B, Sprites, Daytona, and Vercel.",
 		body: "Each lane implements the same MachineProvider shape. The UI shows only the lifecycle actions and streaming behavior that provider supports.",
 		Icon: Server,
 		art: "machines",
 		bullets: [
 			["", "E2B", " — sandbox with pause/resume"],
 			["", "Sprites", " — persistent microVM on Sprites.dev"],
-			["", "Dedalus Machines", " — adapter-complete; current health disclosed"],
+			["", "Daytona", " — native terminals; filesystem stop/start"],
 			["", "Vercel Sandbox", " — persistent microVMs with auto-snapshots"],
 		],
 		metrics: [
@@ -474,7 +474,7 @@ function ProvidersTerminal() {
 			<THeader cols={["Lane", "Type", "Status"]} />
 			<TTableRow cols={["e2b", "sandbox", "● active"]} accent={[false, false, true]} />
 			<TTableRow cols={["sprites", "persistent", "○ standby"]} />
-			<TTableRow cols={["dedalus", "persistent", "○ standby"]} />
+			<TTableRow cols={["daytona", "persistent", "○ standby"]} />
 			<TTableRow cols={["vercel", "persistent", "○ standby"]} />
 			<TSpacer />
 			<TLine dim>Filesystem:</TLine>

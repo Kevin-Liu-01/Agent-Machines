@@ -83,6 +83,20 @@ beforeEach(() => {
 	mocks.after.mockImplementation((fn: () => unknown) => fn());
 });
 
+it("refuses an explicitly retired provider before applying intent or choosing a fallback", async () => {
+	const response = await POST(request({ ...BASE, providerKind: "dedalus" }));
+	expect(response.status).toBe(400);
+	expect(mocks.apply).not.toHaveBeenCalled();
+	expect(mocks.recommendArm).not.toHaveBeenCalled();
+});
+
+it("accepts Daytona credentials and preserves the requested provider in intent", async () => {
+	mocks.getUserConfig.mockResolvedValue(config({ providers: { daytona: { apiKey: "daytona-fixture", apiUrl: "https://app.daytona.io/api" } } }));
+	const response = await POST(request({ ...BASE, providerKind: "daytona" }));
+	expect(response.status).toBe(202);
+	expect(mocks.apply).toHaveBeenCalledWith(expect.objectContaining({ spec: expect.objectContaining({ sandbox: "daytona" }) }), expect.anything());
+});
+
 describe("POST /api/dashboard/admin/provision-machine", () => {
 	it("fails authentication before reading tenant config", async () => {
 		mocks.getEffectiveUserId.mockResolvedValue(null);

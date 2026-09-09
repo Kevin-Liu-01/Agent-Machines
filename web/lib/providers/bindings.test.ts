@@ -28,7 +28,7 @@ const mocks = vi.hoisted(() => ({
 	createE2bProvider: vi.fn(),
 	createSpritesProvider: vi.fn(),
 	createVercelProvider: vi.fn(),
-	createDedalusProvider: vi.fn(),
+	createDaytonaProvider: vi.fn(),
 }));
 
 vi.mock("agent-machines/mux/providers/e2b", () => ({
@@ -40,11 +40,12 @@ vi.mock("agent-machines/mux/providers/sprites", () => ({
 vi.mock("agent-machines/mux/providers/vercel", () => ({
 	createVercelProvider: mocks.createVercelProvider,
 }));
-vi.mock("agent-machines/mux/providers/dedalus", () => ({
-	createDedalusProvider: mocks.createDedalusProvider,
+vi.mock("agent-machines/mux/providers/daytona", () => ({
+	createDaytonaProvider: mocks.createDaytonaProvider,
 }));
 
-import { DedalusProvider } from "./dedalus";
+import { createHostedDaytonaProvider } from "./daytona";
+import { getProvider } from "./index";
 import { E2BProvider } from "./e2b";
 import { SpritesProvider } from "./sprites";
 import { VercelProvider } from "./vercel";
@@ -379,81 +380,35 @@ describe("vercel binding", () => {
 	});
 });
 
-describe("dedalus binding", () => {
-	it("rejects manual pause without a public park operation or any vendor calls", async () => {
-		const provider = fakeMuxProvider("dedalus", { noPark: true });
-		mocks.createDedalusProvider.mockReturnValue(provider);
-		const dedalus = new DedalusProvider({ apiKey: "fixture-key" });
-		expect(dedalus.capabilities.canSleep).toBe(false);
-		await expect(dedalus.sleep("dm-1")).rejects.toMatchObject({ kind: "not_supported" });
+describe("Daytona binding", () => {
+	it("keeps tenant keys, API URL, and target separate from deployment credentials", () => {
+		mocks.createDaytonaProvider.mockReturnValue(fakeMuxProvider("daytona"));
+		createHostedDaytonaProvider({ apiKey: "tenant-key", apiUrl: "https://app.daytona.io/api", target: "us" });
+		expect(mocks.createDaytonaProvider).toHaveBeenCalledWith({ apiKey: "tenant-key", apiUrl: "https://app.daytona.io/api", target: "us" });
+	});
+	it("forwards requested allocation and pins the verified guest HOME", async () => {
+		const provider = fakeMuxProvider("daytona");
+		mocks.createDaytonaProvider.mockReturnValue(provider);
+		await createHostedDaytonaProvider({ apiKey: "tenant-key" }).provision(SPEC);
+		expect(provider.create).toHaveBeenCalledWith(expect.objectContaining({
+			resources: { vcpu: 2, memoryMib: 4096, diskGib: 10 },
+			env: expect.objectContaining({ HOME: "/home/daytona" }),
+		}));
+		expect(homeFor("daytona")).toBe("/home/daytona");
+		expect(machineHomeForProvider("daytona")).toBe("/home/daytona");
+	});
+	it("reads and parks without connecting or waking the machine", async () => {
+		const provider = fakeMuxProvider("daytona", { described: { state: "sleeping", rawPhase: "stopped", resources: { vcpu: 1, memoryMib: 2048, diskGib: 3 } } });
+		mocks.createDaytonaProvider.mockReturnValue(provider);
+		const hosted = createHostedDaytonaProvider({ apiKey: "tenant-key" });
+		expect(hosted.capabilities.canSleep).toBe(true);
+		expect((await hosted.state("dtn-machine")).spec).toEqual({ vcpu: 1, memoryMib: 2048, storageGib: 3 });
+		await hosted.sleep("dtn-machine");
+		expect(provider.park).toHaveBeenCalledWith("dtn-machine");
 		expect(provider.connect).not.toHaveBeenCalled();
-		expect(provider.describe).not.toHaveBeenCalled();
 	});
-
-	it("hands the mux factory the apiKey and the baseUrl namespace", () => {
-		mocks.createDedalusProvider.mockReturnValue(fakeMuxProvider("dedalus"));
-		void new DedalusProvider({ apiKey: "dk", baseUrl: "https://alt.example" });
-		expect(mocks.createDedalusProvider).toHaveBeenCalledWith({
-			apiKey: "dk",
-			baseUrl: "https://alt.example",
-		});
-	});
-
-	it("refuses a disk request the mux clamp would silently shrink", async () => {
-		const provider = fakeMuxProvider("dedalus");
-		mocks.createDedalusProvider.mockReturnValue(provider);
-		const dedalus = new DedalusProvider({ apiKey: "dk" });
-		const error = await dedalus
-			.provision({ spec: { vcpu: 1, memoryMib: 2048, storageGib: 50 } })
-			.catch((err: unknown) => err);
-		expect(error).toBeInstanceOf(MachineProviderError);
-		expect((error as MachineProviderError).kind).toBe("not_supported");
-		expect((error as MachineProviderError).message).toContain("50 GiB");
-		// Fail closed BEFORE any vendor call.
-		expect(provider.create).not.toHaveBeenCalled();
-	});
-
-	it("forwards a satisfiable disk request on the contract's new axis", async () => {
-		const provider = fakeMuxProvider("dedalus");
-		mocks.createDedalusProvider.mockReturnValue(provider);
-		await new DedalusProvider({ apiKey: "dk" }).provision(SPEC);
-		expect(provider.create).toHaveBeenCalledWith(
-			expect.objectContaining({
-				resources: { vcpu: 2, memoryMib: 4096, diskGib: 10 },
-			}),
-		);
-	});
-
-	it("keeps createPreview on the class surface for the runner's feature-detect", async () => {
-		const provider = fakeMuxProvider("dedalus");
-		mocks.createDedalusProvider.mockReturnValue(provider);
-		const dedalus = new DedalusProvider({ apiKey: "dk" });
-		expect("createPreview" in dedalus).toBe(true);
-		await expect(dedalus.createPreview("dm-1", 8642)).resolves.toBe(
-			"https://preview-8642.example",
-		);
-		expect(provider.handleFor("dm-1").publicUrl).toHaveBeenCalledWith(8642);
-	});
-
-	it("derives spec from the dedalus wire fields, storage included", async () => {
-		const provider = fakeMuxProvider("dedalus", {
-			described: {
-				state: "ready",
-				rawPhase: "running",
-				createdAt: "2026-08-01T00:00:00.000Z",
-				lastError: "OutOfCredits",
-				resources: { vcpu: 1, memoryMib: 2048, diskGib: 10 },
-			},
-		});
-		mocks.createDedalusProvider.mockReturnValue(provider);
-		const summary = await new DedalusProvider({ apiKey: "dk" }).state("dm-1");
-		expect(summary).toEqual({
-			id: "dm-1",
-			state: "ready",
-			rawPhase: "running",
-			spec: { vcpu: 1, memoryMib: 2048, storageGib: 10 },
-			createdAt: "2026-08-01T00:00:00.000Z",
-			lastError: "OutOfCredits",
-		});
+	it("rejects the retired provider even when old credentials are present", () => {
+		expect(() => getProvider("dedalus", { dedalus: { apiKey: "legacy-key" }, daytona: { apiKey: "new-key" } })).toThrow("retired");
+		expect(mocks.createDaytonaProvider).not.toHaveBeenCalled();
 	});
 });

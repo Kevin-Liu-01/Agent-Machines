@@ -101,8 +101,15 @@ test("bootstrap false provisions without calling bootstrap", async () => {
 		{ body: { ok: true, machineId: "machine-2" } },
 	]);
 	const client = new AgentMachines({ fetch: fetcher, bootstrap: false });
-	await client.create({ agent: "hermes", sandbox: "dedalus" });
+	await client.create({ agent: "hermes", sandbox: "daytona" });
 	assert.equal(calls.length, 1);
+});
+
+test("retired provider requests fail before any hosted provisioning request", async () => {
+	const { calls, fetcher } = mockFetch([]);
+	const client = new AgentMachines({ fetch: fetcher });
+	await assert.rejects(client.create({ agent: "hermes", sandbox: "dedalus" }), /retired/);
+	assert.equal(calls.length, 0);
 });
 
 test("missing key gets an actionable authentication error", async () => {

@@ -18,7 +18,8 @@
  * control plane can adopt these adapters without a translation layer.
  */
 
-export type SubstrateKind = "e2b" | "sprites" | "vercel" | "dedalus";
+/** Dedalus is retained only to identify retired persisted placements. */
+export type SubstrateKind = "e2b" | "sprites" | "vercel" | "daytona" | "dedalus";
 export type HarnessKind = "claude-code" | "codex" | "openclaw" | "hermes";
 
 export type MachineState =

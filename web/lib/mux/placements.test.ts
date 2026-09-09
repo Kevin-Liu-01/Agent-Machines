@@ -85,7 +85,7 @@ function machine(overrides: Partial<MachineRef> = {}): MachineRef {
 function config(machines: MachineRef[] = [machine()]): UserConfig {
 	return {
 		...DEFAULT_USER_CONFIG,
-		// e2b and sprites credentialed, dedalus deliberately NOT: the
+		// e2b and sprites credentialed, daytona deliberately NOT: the
 		// uncredentialed-lane assertions need a lane that stays uncredentialed
 		// whatever the developer has exported.
 		providers: { e2b: { apiKey: "e2b_live" }, sprites: { apiKey: "sp_live" } },
@@ -417,7 +417,7 @@ describe("readHostedPlacements", () => {
 		// fixture credentials e2b and sprites only.
 		withPlacements({
 			box: {
-				substrate: "dedalus",
+				substrate: "daytona",
 				sandboxId: "sbx-1",
 				agent: "codex",
 				updatedAt: "2026-08-04T00:00:00.000Z",
@@ -428,7 +428,7 @@ describe("readHostedPlacements", () => {
 			config: config([]),
 		});
 		expect(placements[0].credentialed).toBe(false);
-		expect(placements[0].missingCredentials).toContain("DEDALUS_API_KEY");
+		expect(placements[0].missingCredentials).toContain("DAYTONA_API_KEY");
 	});
 
 	it("propagates a store failure instead of reporting an empty tenant", async () => {
@@ -493,9 +493,9 @@ describe("describeHostedPlacement", () => {
 
 	it("FAILS CLOSED on an uncredentialed lane, naming the key, before any vendor call", async () => {
 		// mux providers never throw at construction -- they report missing keys
-		// from ready() -- so without this gate the request would reach dedalus and
+		// from ready() -- so without this gate the request would reach daytona and
 		// come back as an opaque auth error.
-		const describe = withPlacement("dedalus");
+		const describe = withPlacement("daytona");
 		const result = await describeHostedPlacement({
 			userId: "user-alpha",
 			config: config(),
@@ -504,7 +504,7 @@ describe("describeHostedPlacement", () => {
 		expect(result.ok).toBe(false);
 		if (result.ok) throw new Error("unreachable");
 		expect(result.error).toBe("missing_provider_credentials");
-		expect(result.missing).toContain("DEDALUS_API_KEY");
+		expect(result.missing).toContain("DAYTONA_API_KEY");
 		expect(describe).not.toHaveBeenCalled();
 	});
 
@@ -522,7 +522,7 @@ describe("describeHostedPlacement", () => {
 	});
 
 	it("keeps not_supported as its own outcome, not an error", async () => {
-		// sprites and dedalus cannot read status without resuming; that is a
+		// sprites and daytona cannot read status without resuming; that is a
 		// capability fact, and reporting it as a failure would tell the user
 		// something is broken.
 		withPlacement("sprites", async () => {

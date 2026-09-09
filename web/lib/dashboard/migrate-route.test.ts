@@ -69,7 +69,7 @@ function machine(overrides: Partial<MachineRef> = {}): MachineRef {
 	};
 }
 
-/** e2b + sprites credentialed; vercel + dedalus not. */
+/** e2b + sprites credentialed; vercel + daytona not. */
 function config(overrides: Partial<UserConfig> = {}): UserConfig {
 	return {
 		...DEFAULT_USER_CONFIG,
@@ -119,8 +119,8 @@ describe("GET /api/dashboard/machines/[id]/migrate", () => {
 		};
 		expect(body.current).toBe("e2b");
 		expect(body.lanes.map((l) => l.substrate)).toEqual(["sprites"]);
-		const dedalus = body.skipped.find((s) => s.substrate === "dedalus");
-		expect(dedalus?.missing).toContain("DEDALUS_API_KEY");
+		const daytona = body.skipped.find((s) => s.substrate === "daytona");
+		expect(daytona?.missing).toContain("DAYTONA_API_KEY");
 		// The static contract rides the same response (one wording everywhere).
 		expect(body.contract.moves).toContain(".agent-machines/MEMORY.md");
 		expect(body.contract.moves).toContain(".agent-machines/config.yaml");
@@ -158,11 +158,11 @@ describe("POST /api/dashboard/machines/[id]/migrate", () => {
 	});
 
 	it("409s an uncredentialed target with the missing keys NAMED, before anything runs", async () => {
-		const res = await POST(req({ to: "dedalus" }), ctx("m-1"));
+		const res = await POST(req({ to: "daytona" }), ctx("m-1"));
 		expect(res.status).toBe(409);
 		const body = (await res.json()) as { missing: string[]; message: string };
-		expect(body.missing).toContain("DEDALUS_API_KEY");
-		expect(body.message).toContain("DEDALUS_API_KEY");
+		expect(body.missing).toContain("DAYTONA_API_KEY");
+		expect(body.message).toContain("DAYTONA_API_KEY");
 		expect(mocks.submitMachineIntent).not.toHaveBeenCalled();
 	});
 

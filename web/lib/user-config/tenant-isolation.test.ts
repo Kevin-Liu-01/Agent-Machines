@@ -19,6 +19,8 @@ beforeEach(() => {
 	vi.stubEnv("AGENT_MACHINES_OWNER_USER_ID", "owner");
 	vi.stubEnv("CLERK_OWNER_USER_ID", "");
 	vi.stubEnv("E2B_API_KEY", "deployment-e2b-secret");
+	vi.stubEnv("DAYTONA_API_KEY", "deployment-daytona-secret");
+	vi.stubEnv("DAYTONA_API_URL", "https://app.daytona.io/api");
 	vi.stubEnv("AI_GATEWAY_API_KEY", "deployment-model-secret");
 	vi.stubEnv("CURSOR_API_KEY", "deployment-cursor-secret");
 	vi.stubEnv("CLOUDFLARE_TUNNEL_TOKEN", "deployment-tunnel-secret");
@@ -42,6 +44,7 @@ describe("tenant deployment credential isolation", () => {
 	it("allows only the configured owner to use deployment defaults", async () => {
 		const config = await getUserConfigById("owner");
 		expect(config.providers.e2b?.apiKey).toBe("deployment-e2b-secret");
+		expect(config.providers.daytona?.apiKey).toBe("deployment-daytona-secret");
 		expect(config.aiProviderKeys.vercelAiGateway).toBe("deployment-model-secret");
 		expect(config.machines[0]?.id).toBe("owner-machine");
 	});
@@ -61,6 +64,16 @@ describe("tenant deployment credential isolation", () => {
 		const config = await getUserConfigById("new-user");
 		expect(config.providers).toEqual({ e2b: { apiKey: "tenant-e2b" } });
 		expect(config.aiProviderKeys).toEqual({ anthropic: "tenant-ai" });
+	});
+	it("keeps a legacy machine identity while switching only the new-worker draft", async () => {
+		mocks.getUser.mockResolvedValue({ publicMetadata: { machineId: "dm-legacy", providerKind: "dedalus", draftProviderKind: "dedalus" }, privateMetadata: { providers: { dedalus: { apiKey: "legacy-key" }, daytona: { apiKey: "tenant-daytona", apiUrl: "https://app.daytona.io/api", target: "us" } } }, emailAddresses: [] });
+		const config = await getUserConfigById("new-user");
+		expect(config.machines[0]).toMatchObject({ id: "dm-legacy", providerKind: "dedalus" });
+		expect(config.draftProviderKind).toBe("daytona");
+		expect(config.providers.daytona?.apiKey).toBe("tenant-daytona");
+		expect(resolveRoute(config).route).toEqual(["daytona"]);
+		expect(toPublicConfig(config).providers.dedalus.configured).toBe(false);
+		expect(JSON.stringify(toPublicConfig(config))).not.toContain("tenant-daytona");
 	});
 	it("ignores a spoofed deployment-auth marker stored by an ordinary tenant", async () => {
 		vi.stubEnv("VERCEL_OIDC_TOKEN", "deployment-oidc-secret");

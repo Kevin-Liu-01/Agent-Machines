@@ -2,7 +2,7 @@ import { Logo } from "@/components/Logo";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 
 type StackEntry = {
-	mark: "am" | "agent" | "cursor";
+	mark: "daytona" | "agent" | "cursor";
 	name: string;
 	role: string;
 	tag: string;
@@ -19,11 +19,11 @@ type StackEntry = {
 
 const STACK: ReadonlyArray<StackEntry> = [
 	{
-		mark: "am",
-		name: "Dedalus Machines",
-		role: "the runtime layer",
-		href: "https://docs.dedaluslabs.ai/dcs",
-		tag: "microVM + gateway",
+		mark: "daytona",
+		name: "Daytona",
+		role: "a compute provider",
+		href: "https://www.daytona.io/docs/",
+		tag: "sandbox + persistent files",
 	},
 	{
 		mark: "agent",

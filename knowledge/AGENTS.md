@@ -4,7 +4,7 @@ This file loads into the system prompt every session. Combined with `SOUL.md` (p
 
 ## What this rig is
 
-**Agent Machines** is the Worker system for persistent digital labor. The Worker is durable—identity, responsibility, memory, schedules, files, permissions, abilities, history, and evidence—while runtime, model, sandbox, tools, transport, persistence, and placement remain replaceable primitives. The routing wedge spans Hermes, OpenClaw, Claude Code, and Codex on E2B, Sprites.dev, Dedalus Machines, and Vercel Sandbox. Runtime state lives under `~/.agent-machines/`. This repo ships the control plane, Next.js dashboard, SDK, and CLI.
+**Agent Machines** is the Worker system for persistent digital labor. The Worker is durable—identity, responsibility, memory, schedules, files, permissions, abilities, history, and evidence—while runtime, model, sandbox, tools, transport, persistence, and placement remain replaceable primitives. The routing wedge spans Hermes, OpenClaw, Claude Code, and Codex on Daytona, E2B, Sprites.dev, and Vercel Sandbox. Runtime state lives under `"$HOME/.agent-machines"`; the managed project checkout is `"$HOME/agent-machines"`. Resolve the executing user's actual `$HOME` on the current provider rather than carrying an absolute home path across migration. This repo ships the control plane, Next.js dashboard, SDK, and CLI.
 
 **Operator surfaces:** Machines (provision, **Browser Agent Console**), Workers (presets), Memory (bundles), Registry (install catalog), Loadout (active stack), Cron, Usage. Docs: `knowledge/VISION.md`, `web/docs/sandbox-terminal-gateway.md`.
 

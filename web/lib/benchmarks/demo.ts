@@ -11,7 +11,7 @@
 
 import type { MachineSpec, ProviderKind } from "@/lib/user-config/schema";
 
-import { DEFAULT_BENCHMARK_SPEC, METRIC_BY_ID } from "./constants";
+import { BENCHMARK_PROVIDERS, DEFAULT_BENCHMARK_SPEC, METRIC_BY_ID } from "./constants";
 import { DEMO_PROFILES, type FakeProfile } from "./fake-provider";
 import { computeResponsivenessScores, summarize } from "./stats";
 import type {
@@ -52,24 +52,22 @@ function profileToMetrics(
 }
 
 export function synthesizeDemoRun(
-	providers: readonly ProviderKind[] = Object.keys(
-		DEMO_PROFILES,
-	) as ProviderKind[],
+	providers: readonly ProviderKind[] = BENCHMARK_PROVIDERS,
 	spec: MachineSpec = DEFAULT_BENCHMARK_SPEC,
 ): BenchmarkRun {
 	const now = new Date().toISOString();
 	const benches: ProviderBenchmark[] = providers.map((provider) => ({
 		provider,
 		source: "demo",
-		ok: true,
-		error: null,
+		ok: Boolean(DEMO_PROFILES[provider]),
+		error: DEMO_PROFILES[provider] ? null : "No demo or reference timings supplied. Run a live benchmark for measured results.",
 		spec,
 		machineId: `demo-${provider}`,
 		startedAt: now,
 		finishedAt: now,
 		durationMs: 0,
 		iterations: 1,
-		metrics: profileToMetrics(DEMO_PROFILES[provider]),
+		metrics: DEMO_PROFILES[provider] ? profileToMetrics(DEMO_PROFILES[provider]) : {},
 		score: null,
 	}));
 
@@ -78,6 +76,7 @@ export function synthesizeDemoRun(
 		Partial<Record<BenchmarkMetricId, number>>
 	> = {};
 	for (const b of benches) {
+		if (!b.ok) continue;
 		const m: Partial<Record<BenchmarkMetricId, number>> = {};
 		for (const id of Object.keys(b.metrics) as BenchmarkMetricId[]) {
 			const v = b.metrics[id]?.stats?.value;

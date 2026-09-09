@@ -8,6 +8,7 @@ import type { UserConfig } from "@/lib/user-config/schema";
  * resolveRoute has to report on.
  */
 type LooseProviders = {
+	daytona?: { apiKey?: string };
 	e2b?: { apiKey?: string };
 	sprites?: { apiKey?: string };
 	vercel?: { token?: string; teamId?: string; projectId?: string; allowDeploymentCredentials?: boolean };
@@ -35,7 +36,7 @@ describe("resolveRoute", () => {
 			}),
 		);
 		expect(route).toEqual(["e2b", "sprites"]);
-		expect(skipped.map((entry) => entry.substrate)).toEqual(["vercel", "dedalus"]);
+		expect(skipped.map((entry) => entry.substrate)).toEqual(["vercel", "daytona"]);
 	});
 
 	it("promotes an explicit primary ahead of the default order", () => {
@@ -74,10 +75,15 @@ describe("resolveRoute", () => {
 	});
 
 	it("identifies which lanes have a native pty", () => {
-		expect(nativePtyLanes(["e2b", "sprites", "vercel", "dedalus"])).toEqual([
+		expect(nativePtyLanes(["e2b", "sprites", "vercel", "daytona", "dedalus"])).toEqual([
 			"e2b",
 			"sprites",
+			"daytona",
 		]);
+	});
+	it("never routes legacy keys to Daytona or selects the retired provider", () => {
+		expect(resolveRoute(configWith({ dedalus: { apiKey: "legacy-key" } }), { primary: "dedalus" }).route).toEqual([]);
+		expect(resolveRoute(configWith({ daytona: { apiKey: "tenant-key" }, dedalus: { apiKey: "legacy-key" } })).route).toEqual(["daytona"]);
 	});
 });
 

@@ -22,12 +22,12 @@ describe("buildBenchmarksView", () => {
 		const e2b = coldBoot?.cells.find((c) => c.provider === "e2b");
 		expect(e2b?.value).toBe(150); // from cited reference seed
 		expect(e2b?.source).toBe("reference");
-		// E2B (150) beats the only other provider with a reference (dedalus 250).
+		// E2B is the active provider with a cited cold-boot reference.
 		expect(coldBoot?.winner).toBe("e2b");
 	});
 
 	it("overlays a measured/demo run and computes a winners leaderboard + scores", () => {
-		// DEMO_PROFILES make dedalus strictly fastest on every scored metric.
+		// Existing demo profiles make E2B fastest among the active sampled providers.
 		const view = buildBenchmarksView(assembleSnapshot([synthesizeDemoRun()]));
 		expect(view.hasMeasuredData).toBe(true);
 		expect(view.runMeta?.source).toBe("demo");
@@ -37,34 +37,34 @@ describe("buildBenchmarksView", () => {
 			(g) => g.category === "lifecycle",
 		);
 		const coldBoot = lifecycle?.comparisons.find((c) => c.id === "coldBootMs");
-		const dedalus = coldBoot?.cells.find((c) => c.provider === "dedalus");
-		expect(dedalus?.source).toBe("demo");
-		expect(dedalus?.value).toBeGreaterThan(0);
+		const e2b = coldBoot?.cells.find((c) => c.provider === "e2b");
+		expect(e2b?.source).toBe("demo");
+		expect(e2b?.value).toBeGreaterThan(0);
 
-		// dedalus is configured strictly faster -> wins boot + score.
-		expect(coldBoot?.winner).toBe("dedalus");
-		expect(view.scores[0].provider).toBe("dedalus");
+		// e2b is configured strictly faster -> wins boot + score.
+		expect(coldBoot?.winner).toBe("e2b");
+		expect(view.scores[0].provider).toBe("e2b");
 		expect(view.scores[0].score).toBe(100);
 
 		// Exec comparison should carry a measured p95 companion.
 		const exec = view.comparisonsByCategory
 			.find((g) => g.category === "exec")
 			?.comparisons.find((c) => c.id === "execP50Ms");
-		const execDedalus = exec?.cells.find((c) => c.provider === "dedalus");
-		expect(execDedalus?.p95).toBeGreaterThan(0);
+		const execE2b = exec?.cells.find((c) => c.provider === "e2b");
+		expect(execE2b?.p95).toBeGreaterThan(0);
 
 		const bootEntry = view.leaderboard.find((l) => l.id === "coldBootMs");
-		expect(bootEntry?.winner).toBe("dedalus");
+		expect(bootEntry?.winner).toBe("e2b");
 	});
 });
 
 describe("measured-beats-reference ranking", () => {
 	it("does not let a faster cited reference outrank a slower measurement", () => {
-		// Only dedalus is measured (demo coldBoot ~330ms). E2B has a cited
+		// Only Sprites is measured (synthetic demo). E2B has a cited
 		// reference of 150ms in the seed. The winner must be the measured
 		// provider, not the unverified faster reference claim.
 		const view = buildBenchmarksView(
-			assembleSnapshot([synthesizeDemoRun(["dedalus"])]),
+			assembleSnapshot([synthesizeDemoRun(["sprites"])]),
 		);
 		const coldBoot = view.comparisonsByCategory
 			.find((g) => g.category === "lifecycle")
@@ -72,10 +72,10 @@ describe("measured-beats-reference ranking", () => {
 		const e2b = coldBoot?.cells.find((c) => c.provider === "e2b");
 		expect(e2b?.source).toBe("reference");
 		expect(e2b?.value).toBe(150); // faster on paper…
-		expect(coldBoot?.winner).toBe("dedalus"); // …but measured wins
+		expect(coldBoot?.winner).toBe("sprites"); // …but the sampled provider wins
 
 		const bootEntry = view.leaderboard.find((l) => l.id === "coldBootMs");
-		expect(bootEntry?.winner).toBe("dedalus");
+		expect(bootEntry?.winner).toBe("sprites");
 		expect(bootEntry?.source).toBe("demo");
 	});
 });
@@ -84,7 +84,7 @@ describe("applyRunToSnapshot", () => {
 	it("sets the run as latest and flags measured data without a store round-trip", () => {
 		const seed = loadSeedSnapshot();
 		expect(seed.hasMeasuredData).toBe(false);
-		const merged = applyRunToSnapshot(seed, synthesizeDemoRun(["dedalus", "e2b"]));
+		const merged = applyRunToSnapshot(seed, synthesizeDemoRun(["sprites", "e2b"]));
 		expect(merged.hasMeasuredData).toBe(true);
 		expect(merged.latest?.providers).toHaveLength(2);
 		expect(merged.profiles).toEqual(seed.profiles); // profiles untouched

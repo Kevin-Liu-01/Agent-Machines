@@ -26,7 +26,8 @@ import { MuxError } from "../mux/types.js";
 import { usableUpstreams, type UpstreamChoice } from "../mux/upstreams.js";
 
 export type AgentKind = "hermes" | "openclaw" | "claude-code" | "codex";
-export type SandboxKind = "dedalus" | "e2b" | "sprites" | "vercel";
+/** Legacy Dedalus IDs are never interpreted as Daytona machines. */
+export type SandboxKind = "daytona" | "e2b" | "sprites" | "vercel" | "dedalus";
 
 /**
  * Same set as the mux's `HARNESS_KINDS`, in this module's own order. Exported
@@ -170,6 +171,7 @@ export function normalizeModel(model: string | undefined, agent?: AgentKind): st
 }
 
 export function resolveAgentRoute(input: AgentCreateInput): AgentRoute {
+	if (input.sandbox === "dedalus") throw new MuxError("not_supported", "This sandbox provider has been retired. Choose Daytona, E2B, Sprites, or Vercel.", { substrate: "dedalus" });
 	return {
 		agent: input.agent,
 		sandbox: input.sandbox,

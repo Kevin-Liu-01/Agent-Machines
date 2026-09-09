@@ -3,7 +3,7 @@
     "name": "hourly-health-check",
     "schedule": "every 1h",
     "prompt": "Run a health check on the agent runtime. If anything is unhealthy, summarize the issues in three lines or fewer. If everything is healthy, reply with the single word 'OK'.",
-    "skills": ["dedalus-machines"]
+    "skills": ["production-safety"]
   },
   {
     "name": "daily-wiki-digest",

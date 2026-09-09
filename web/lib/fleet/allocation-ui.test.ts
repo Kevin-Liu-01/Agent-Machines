@@ -47,6 +47,18 @@ function load(file: string, extraExports = "", customGlobals: Record<string, unk
 }
 
 describe("actual allocation presentation", () => {
+	it.each([
+		["daytona", "/home/daytona"], ["e2b", "/home/user"],
+		["sprites", "/home/sprite"], ["vercel", "/vercel/sandbox"],
+	] as const)("uses %s's actual HOME for sleeping activity instead of a legacy provider path", (providerKind, home) => {
+		const current = { ...machine, providerKind };
+		for (const logs of [[], [{ at: "2026-09-09T07:00:00Z", message: "Completed a task", level: "info" as const, source: "worker" }]]) {
+			const result = viewModel.buildTerminalLines(current, logs, null);
+			expect(result.lines).toContain(`sleeping — state persisted to ${home}`);
+			expect(result.streamActive).toBe(false);
+		}
+	});
+
 	it("formats the provider's 2 vCPU / 512 MiB / unknown disk rather than requested 1 / 2048 / 10", () => {
 		const card = viewModel.toFleetStreamCard(machine, [], { active: true });
 		expect(card).toMatchObject({ cpu: "2 vCPU", mem: "512 MiB", disk: "— GiB" });

@@ -24,6 +24,7 @@ export type AgentCredentialRequirement = {
 /** Config slice used for credential validation (private or public projection). */
 export type CredentialCheckConfig = {
 	providers: {
+		daytona?: { apiKey?: string; apiUrl?: string; target?: string; configured?: boolean };
 		dedalus?: { apiKey?: string; baseUrl?: string; configured?: boolean };
 		sprites?: { apiKey?: string; configured?: boolean };
 		e2b?: { apiKey?: string; configured?: boolean };

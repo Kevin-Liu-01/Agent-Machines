@@ -1,5 +1,11 @@
 # Agent Machines -- the end state
 
+## 2026-09-09 provider update
+
+The active providers are now Daytona, E2B, Sprites, and Vercel Sandbox. Older
+provider names below are historical engineering records, not current options
+or affiliations. Daytona validation is tracked separately from those results.
+
 ## 2026-08-15 Worker-system overlay
 
 The canonical product invariant is now: **the Worker is durable; everything

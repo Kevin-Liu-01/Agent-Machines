@@ -14,7 +14,8 @@ const SUBSTRATE_MARK: Record<SubstrateKind, Mark> = {
 	e2b: "e2b",
 	sprites: "sprites",
 	vercel: "vercel",
-	dedalus: "dedalus",
+	daytona: "daytona",
+	dedalus: "retired",
 };
 
 const HARNESS_MARK: Record<HarnessKind, Mark> = {

@@ -19,13 +19,13 @@ export const BENCHMARK_SCHEMA_VERSION = 1;
 
 /** Providers we benchmark, in canonical display order. */
 export const BENCHMARK_PROVIDERS: readonly ProviderKind[] = [
-	"dedalus",
+	"daytona",
 	"e2b",
 	"sprites",
 	"vercel",
 ];
 
-/** Default spec held constant across providers for a fair comparison. */
+/** Requested spec held constant; actual allocation must be checked separately. */
 export const DEFAULT_BENCHMARK_SPEC: MachineSpec = {
 	vcpu: 2,
 	memoryMib: 4096,
@@ -266,7 +266,8 @@ export const RESPONSIVENESS_SCORE = {
 
 /** Fallback brand hues if a profile is missing (kept in sync with seed). */
 export const PROVIDER_HUE: Record<ProviderKind, string> = {
-	dedalus: "#d2beff",
+	daytona: "#a1a1aa",
+	dedalus: "#71717a", // historical records only
 	e2b: "#ff8351",
 	sprites: "#a855f7",
 	vercel: "#7c8cf8",

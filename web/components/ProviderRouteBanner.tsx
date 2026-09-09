@@ -10,7 +10,7 @@ type ProviderChip = { mark: Mark; label: string };
 const PROVIDERS: ReadonlyArray<ProviderChip> = [
 	{ mark: "e2b", label: "E2B" },
 	{ mark: "sprites", label: "Sprites" },
-	{ mark: "dedalus", label: "Dedalus" },
+	{ mark: "daytona", label: "Daytona" },
 	{ mark: "vercel", label: "Vercel" },
 ];
 

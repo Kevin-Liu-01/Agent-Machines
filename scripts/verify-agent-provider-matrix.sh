@@ -8,7 +8,7 @@ CHAT_TIMEOUT="${CHAT_TIMEOUT:-90}"
 EXEC_TIMEOUT="${EXEC_TIMEOUT:-130}"
 RESULTS="${RESULTS_FILE:-/tmp/agent-provider-matrix.jsonl}"
 
-PROVIDERS=(e2b sprites dedalus vercel)
+PROVIDERS=(e2b sprites daytona vercel)
 AGENTS=(hermes openclaw claude-code codex)
 
 log() { printf '[%s] %s\n' "$(date -u +%H:%M:%S)" "$*"; }

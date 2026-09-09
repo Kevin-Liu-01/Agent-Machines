@@ -36,7 +36,7 @@ export const PRODUCT = {
 		primary:
 			"OpenRouter for routing the machinery, Lovable/Bolt/v0 for composing a Worker, and ChatGPT-simple access to the first useful result",
 		substrate:
-			"Vercel on AWS — Agent Machines is the product layer; E2B, Sprites.dev, Dedalus Machines, and Vercel Sandbox are interchangeable infrastructure underneath",
+			"Agent Machines is the product layer; Daytona, E2B, Sprites.dev, and Vercel Sandbox supply replaceable infrastructure underneath",
 	},
 	audiences: {
 		humans:
@@ -47,7 +47,7 @@ export const PRODUCT = {
 	fleet:
 		"Provision specialist Workers from opinionated templates or modular primitives. Each Worker keeps its identity, responsibility, memory bundle, schedules, files, loadout, history, and evidence while the implementation beneath it changes.",
 	substrateNote:
-		"E2B, Sprites.dev, Dedalus Machines, and Vercel Sandbox implement the substrate contract, but each lane exposes only the capabilities it can honestly provide. The provider is replaceable machinery, never the Worker itself.",
+		"Daytona, E2B, Sprites.dev, and Vercel Sandbox implement the substrate contract, but each lane exposes only its supported capabilities. The provider is replaceable machinery, never the Worker itself.",
 	moat: [
 		"Durable Worker identity — responsibility, memory, files, schedules, permissions, history, and evidence survive implementation changes",
 		"Worker composer — useful off-the-shelf specialists today, intent-to-Worker assembly as the creation layer",
@@ -147,7 +147,7 @@ export const HARNESS = {
 	nativeToolMin: minNativeTools(),
 	nativeToolMax: maxNativeTools(),
 	agentRuntimeCount: AGENTS.length,
-	providersLive: ["dedalus", "e2b", "sprites", "vercel"] as const,
+	providersLive: ["daytona", "e2b", "sprites", "vercel"] as const,
 	catalogUpdated: mcpCatalog.updated,
 } as const;
 

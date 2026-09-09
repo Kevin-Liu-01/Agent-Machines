@@ -41,7 +41,8 @@ const AGENT_CHIP: Record<AgentKind, { id: string; label: string; mark: Mark }> =
 };
 
 const PROVIDER_CHIP: Record<ProviderKind, { id: string; label: string; mark: Mark }> = {
-	dedalus: { id: "dedalus", label: "Dedalus", mark: "dedalus" },
+	daytona: { id: "daytona", label: "Daytona", mark: "daytona" },
+	dedalus: { id: "dedalus", label: "Retired provider", mark: "retired" },
 	e2b: { id: "e2b", label: "E2B", mark: "e2b" },
 	sprites: { id: "sprites", label: "Sprites", mark: "sprites" },
 	vercel: { id: "vercel", label: "Vercel", mark: "vercel" },

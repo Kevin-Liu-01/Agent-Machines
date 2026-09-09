@@ -44,7 +44,7 @@ export function MachineRouterCard() {
 				const ai = (j.config.aiProviders ?? {}) as Record<string, { configured?: boolean }>;
 				const conf: Record<string, boolean> = {};
 				for (const k of Object.keys(ai)) conf[k] = Boolean(ai[k]?.configured);
-				conf.dedalus = Boolean(j.config.providers?.dedalus?.configured);
+				conf.daytona = Boolean(j.config.providers?.daytona?.configured);
 				setAiConfigured(conf);
 			})
 			.catch(() => {});

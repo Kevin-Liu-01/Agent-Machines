@@ -636,7 +636,7 @@ function QuickProvisionForm({
 	onDone: () => void;
 	onCancel: () => void;
 }) {
-	const [providerKind, setProviderKind] = useState<ProviderKind>("dedalus");
+	const [providerKind, setProviderKind] = useState<ProviderKind>("daytona");
 	const [agentKind, setAgentKind] = useState<AgentKind>("hermes");
 	const [model, setModel] = useState(DEFAULT_MODEL);
 	const [name, setName] = useState("");

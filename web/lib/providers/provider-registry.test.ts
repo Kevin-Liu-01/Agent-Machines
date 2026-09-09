@@ -22,7 +22,12 @@ describe("provider registry", () => {
 	it("exhaustively handles every ProviderKind in getProvider", () => {
 		const kinds: ProviderKind[] = [...PROVIDER_KINDS];
 		expect(kinds).toEqual(
-			expect.arrayContaining(["dedalus", "e2b", "sprites", "vercel"]),
+			expect.arrayContaining(["daytona", "e2b", "sprites", "vercel"]),
 		);
+	});
+	it("constructs Daytona only from its own credentials", () => {
+		expect(getProvider("daytona", { daytona: { apiKey: "fixture-key", apiUrl: "https://app.daytona.io/api" } }).kind).toBe("daytona");
+		expect(() => getProvider("daytona", { dedalus: { apiKey: "legacy-key" } })).toThrow("Daytona API key");
+		expect(PROVIDER_KINDS).not.toContain("dedalus");
 	});
 });

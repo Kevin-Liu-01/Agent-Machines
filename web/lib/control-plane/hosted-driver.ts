@@ -12,6 +12,7 @@ import type { MuxAgentEvent, UpstreamKeys } from "agent-machines/mux";
 import { agentArtifactsPresent } from "@/lib/bootstrap/bootstrap-repair";
 import { machineHomeForProvider } from "@/lib/bootstrap/bootstrap-log";
 import { runtimeModel } from "@/lib/agents/runtime-model";
+import { assertRuntimeCapacity } from "@/lib/agents/runtime-capacity";
 import { runWebBootstrap } from "@/lib/bootstrap/runner";
 import { boundedConsoleCommand } from "./bounded-console-command";
 import { createMachineForConfig } from "@/lib/dashboard/provision";
@@ -255,6 +256,11 @@ export class HostedWorkerRuntimeDriver implements WorkerRuntimeDriver {
 	): Promise<WorkerPlacement> {
 		let { config, machine } = await this.machineFor(placementValue);
 		const provider = getProvider(machine.providerKind, config.providers);
+		// Capacity is not an installation defect. Refuse before the healthy
+		// shortcut or bootstrap so repair cannot loop through reinstallations.
+		if (worker.spec.runtime === "openclaw") {
+			assertRuntimeCapacity(worker.spec.runtime, (await provider.state(machine.id)).spec?.memoryMib);
+		}
 		const desiredModel = worker.spec.model ?? machine.model;
 		const desiredGatewayProfile =
 			worker.spec.gatewayProfileId ?? machine.gatewayProfileId;
@@ -405,10 +411,21 @@ export class HostedWorkerRuntimeDriver implements WorkerRuntimeDriver {
 		}
 		const { config, machine } = await this.machineFor(placementValue);
 		const provider = getProvider(machine.providerKind, config.providers);
+		this.runTimeoutMs();
+		const capacity = machine.agentKind === "openclaw"
+			? assertRuntimeCapacity(machine.agentKind, (await provider.state(machine.id)).spec?.memoryMib)
+			: null;
 		const home = machineHomeForProvider(machine.providerKind);
 		const harness = getHarness(machine.agentKind);
 		const configuredRuntime = machine.agentKind === "hermes" || machine.agentKind === "openclaw";
-		const command = harness.runCommand(prompt, machine.agentKind === "hermes" ? {} : upstreams(config), {
+		// OpenClaw's own workspace owns its canonical memory entrypoints and
+		// overrides the shell cwd. Supply project context without relocating that
+		// memory or overwriting AGENTS.md in the user's project. This is a tool
+		// instruction, not a filesystem isolation boundary.
+		const runtimePrompt = machine.agentKind === "openclaw"
+			? `Worker project directory: ${JSON.stringify(`${home}/agent-machines`)}. Resolve relative project paths for this request in that directory. OpenClaw's own workspace contains runtime memory, not this project's files. Use absolute project paths or explicitly set each tool's working directory.\n\n${prompt}`
+			: prompt;
+		const command = harness.runCommand(runtimePrompt, machine.agentKind === "hermes" ? {} : upstreams(config), {
 			// OpenClaw's configured primary already incorporates the gateway
 			// provider. Passing the logical Worker model here can be a different
 			// ref (for example anthropic/... vs router/anthropic/...), which current
@@ -457,6 +474,7 @@ export class HostedWorkerRuntimeDriver implements WorkerRuntimeDriver {
 		});
 		const durationMs = Math.round(performance.now() - started);
 		const collected = await finishWorkspaceCapture(provider, machine, capture, this.executionOptions);
+		if (capacity?.message) collected.warnings.push(capacity.message);
 		const parser = harness.newTurnParser?.() ?? harness.parseLine.bind(harness);
 		const events = result.stdout
 			.split(/\r?\n/)
@@ -500,8 +518,15 @@ export class HostedWorkerRuntimeDriver implements WorkerRuntimeDriver {
 			}
 		}
 		if (exitCode !== 0) {
+			const runtimeMessage = runtimeError?.type === "error" ? runtimeError.message
+				: runtimeError?.type === "result" ? runtimeError.text : "";
+			const diagnostics = [
+				runtimeMessage?.slice(0, 800),
+				result.stderr.trim() ? `stderr: ${result.stderr.slice(-800)}` : "",
+				!runtimeMessage && result.stdout.trim() ? `stdout: ${result.stdout.slice(-800)}` : "",
+			].filter(Boolean).join("\n");
 			throw new Error(
-				`${machine.agentKind} run failed with exit ${exitCode}: ${(result.stderr || result.stdout).slice(-800)}${collected.warnings.length ? ` ${collected.warnings.join(" ")}` : ""}`,
+				`${machine.agentKind} run failed with exit ${exitCode}: ${diagnostics || "No runtime diagnostic was returned."}${collected.warnings.length ? ` ${collected.warnings.join(" ")}` : ""}`,
 			);
 		}
 		return {

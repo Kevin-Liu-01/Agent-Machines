@@ -76,16 +76,17 @@ Replaceable does not mean identical. Every provider and runtime declares what it
 Most products lock you into one runtime *or* one cloud. Agent Machines routes both axes independently. Every substrate implements a single `MachineProvider` interface (`provision` / `state` / `wake` / `sleep` / `destroy` / `exec` / `streamExec`), so the rest of the system is provider-agnostic.
 
 The shared interface does not promise identical operations. E2B supports manual
-pause/resume; Vercel saves and restores filesystem snapshots. Sprites manages
-idle suspension automatically, and neither Sprites nor the Dedalus public
-adapter exposes manual pause. Unsupported Sleep requests fail before changing
+pause/resume; Vercel saves and restores filesystem snapshots. Daytona supports
+stop/start with filesystem retention, not running-process or RAM restoration.
+Sprites manages idle suspension automatically and does not expose manual pause.
+Unsupported Sleep requests fail before changing
 Worker intent. Resource requests are also not allocation guarantees: E2B sizing
 is template-defined, and the dashboard reports observed resources separately.
 
 | Axis | Options | Abstraction |
 |------|---------|-------------|
 | **Agent runtime** | Hermes, OpenClaw, Claude Code, Codex CLI | bootstrap phase recipes + launch commands |
-| **Substrate** | E2B, Sprites.dev, Vercel Sandbox, Dedalus Machines | `MachineProvider` (`web/lib/providers/*`) |
+| **Substrate** | Daytona, E2B, Sprites.dev, Vercel Sandbox | `MachineProvider` (`web/lib/providers/*`) |
 | **Model upstream** | Vercel AI Gateway, OpenRouter, native OpenAI / Anthropic keys, custom OpenAI-compatible fallback | router presets + per-machine credential gate |
 
 A **credential gate** blocks provisioning when the chosen runtime has no usable model upstream or the substrate has no key, so spin-up never fails silently downstream.
@@ -171,7 +172,7 @@ Stop hosting the session in the API. **Put the session on the worker; keep the c
 - **Portable fallback.** HTTP `tmux send-keys` input plus offset-aware SSE `tail -f` output remains available anywhere `exec` exists.
 - **Session durability is unchanged.** Socket reconnects reattach to worker-owned tmux; the Function never owns the shell or its scrollback.
 
-`exec` is the only primitive each substrate must provide, so **the same UI works across Dedalus, E2B, Sprites, and Vercel**.
+`exec` is the shared command primitive, so **the same UI works across Daytona, E2B, Sprites, and Vercel**, with additional controls gated by each provider's capabilities.
 
 ```txt
 Browser (xterm.js)
@@ -272,7 +273,7 @@ Declarative Worker API  ---------------  dashboard / SDK / CLI
 WorkerRuntimeDriver  ------------------  MuxWorkerRuntimeDriver
   | hosted bridge: Clerk UserConfig + MachineRef during cutover
   v
-MachineProvider  ----------------  E2B | Sprites | Vercel Sandbox | Dedalus
+MachineProvider  ----------------  Daytona | E2B | Sprites | Vercel Sandbox
   | provision / state / wake / sleep / destroy / exec / streamExec
   v
 persistent worker (provider home: /home/user | /home/sprite | /vercel/sandbox | /home/machine)
@@ -296,15 +297,15 @@ Every substrate implements `MachineProvider`; streaming tier depends on the SDK.
 | **E2B** | `commands.run(cmd, { onStdout, onStderr })`, bridged to a generator | native stream |
 | **Sprites** | `spawn()` process `stdout` / `stderr` Readables, bridged | native stream |
 | **Vercel Sandbox** | `Command.logs()` async iterator on a detached command | native stream |
-| **Dedalus** | none (REST exec returns output only after completion) | poll fallback |
+| **Daytona** | SDK session command logs; native PTY for interactive terminals | provider session-log polling |
 
 Native tiers relay output frame by frame with no extra `exec` calls. The poll fallback launches a detached command, tees combined output to a temp log, and polls new bytes until an exit-marker file appears.
 
-**Which lanes are proven, and on which surface.** The multiplexer's adapters
-(`src/mux/providers/*`) have run every agent on every substrate live. The archived
+**Which lanes are proven, and on which surface.** Daytona is now an active
+provider; old benchmark results are not Daytona results. The archived
 strict matrix from 2026-08-05 passed **12 of 16 cells**: all four harnesses on E2B,
-Sprites, and Vercel Sandbox. Dedalus failed because of intermittent provider
-lookup and teardown errors. An earlier 16-of-16 run checked exit codes alone;
+Sprites, and Vercel Sandbox. The now-retired fourth provider failed lookup and
+teardown checks. An earlier 16-of-16 run checked exit codes alone;
 [docs/MUX-RESULTS.md](docs/MUX-RESULTS.md) distinguishes that weaker proof from
 the strict sentinel and teardown checks.
 
@@ -335,8 +336,8 @@ and older ones cannot `require()` an ES module at all.
 Use pnpm 10.30.0 (pinned in `package.json`): the root SDK and `web/` share one
 workspace and lockfile. For the dashboard, configure Clerk and Supabase as
 described in [`web/README.md`](web/README.md). For a local-only preview, set
-`ALLOW_DEV_AUTH=1`; real sign-up testing requires Clerk. `pnpm deploy` is the
-legacy Hermes-on-Dedalus CLI; `pnpm mux` exposes the multi-provider CLI.
+`ALLOW_DEV_AUTH=1`; real sign-up testing requires Clerk. `pnpm mux` exposes
+the multi-provider CLI.
 
 ### Agent Machines SDK
 
@@ -393,7 +394,7 @@ history in the dashboard before deciding to submit again.
 ### The multiplexer (no control plane required)
 
 The same package ships a direct-to-substrate multiplexer: it talks to E2B,
-Sprites, Vercel Sandbox and Dedalus itself, installs the agent harness, and
+Sprites, Vercel Sandbox and Daytona, installs the agent harness, and
 streams normalized events. No hosted control plane, no API key of ours -- just
 your provider keys. See [docs/MUX.md](docs/MUX.md) for the architecture and
 [docs/MUX-RESULTS.md](docs/MUX-RESULTS.md) for measured latencies.
@@ -613,7 +614,7 @@ Beyond provision-and-chat, the control plane is a **fleet operations desk**:
 | **Loadout** | Ranked service routes (MCP → CLI → skill), task routes, trusted add-ons already on the machine |
 | **Cron** | User-defined schedules stored in config; **`/api/internal/cron/tick`** (Vercel Cron every 5 min) evaluates and execs on machines |
 | **Usage / metrics** | Supabase-backed utilization, activity timeline, per-machine charts; collector runs on cron tick + on-demand |
-| **Benchmarks** | Compare E2B, Sprites, Dedalus, Vercel on boot, exec, streaming tier |
+| **Benchmarks** | Compare measured provider runs on boot, exec, and streaming tier; missing samples remain unknown |
 
 **Supabase** is required for durable metrics, usage, and activity. Without it, the app falls back to Clerk metadata only. See `web/.env.local.example`.
 
@@ -629,7 +630,7 @@ agent-machines/
     app/api/dashboard/terminal/*     Browser Agent Console
     app/api/dashboard/registry/*     unified install catalog search
     app/api/internal/cron/tick       scheduler + metrics collector (Vercel Cron)
-    lib/providers/*                  MachineProvider (e2b | sprites | dedalus | vercel)
+    lib/providers/*                  MachineProvider (daytona | e2b | sprites | vercel)
     lib/dashboard/registry/*         MCP registry, skills.sh, npm, bundled adapters
     lib/bootstrap/runner.ts          browser bootstrap (phase recipes)
     lib/dashboard/terminal-session.ts  tmux-over-exec session logic

@@ -9,14 +9,14 @@
  * returns a state too, after resuming and billing a parked sandbox. What has
  * to be proven is that the resuming entry point is never reached --
  * `Sandbox.connect` on e2b, `Sandbox.get` with resume defaulted or true on
- * vercel, an exec against the sprite on sprites, and an execution POST on
- * dedalus (submitting one is what wakes a sleeping machine there).
+ * vercel, an exec against the sprite on sprites, and explicit start() on
+ * Daytona. Daytona get/connect intentionally remain non-waking.
  *
  * Each suite also drives the resuming path once, so "connect was not called"
  * cannot pass merely because the fake records nothing.
  *
- * No network and no vendor SDK: three factories take an override for the SDK
- * surface they drive, and dedalus is driven through a stubbed global fetch.
+ * No network and no vendor SDK: all four factories accept an injected vendor
+ * surface. Retired Dedalus records have separate no-network regression tests.
  */
 
 import assert from "node:assert/strict";
@@ -24,7 +24,7 @@ import { test } from "node:test";
 import type { SpritesClient } from "@fly/sprites";
 
 import { MuxError, type SandboxProvider } from "../types.js";
-import { createDedalusProvider } from "./dedalus.js";
+import { createDaytonaProvider, type DaytonaClient } from "./daytona.js";
 import { createE2bProvider, type E2bSdk } from "./e2b.js";
 import { createSpritesProvider } from "./sprites.js";
 import { createVercelProvider } from "./vercel.js";
@@ -506,232 +506,65 @@ test("sprites no-wake reads fail closed without a token", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// dedalus: raw REST. The wake is POST /executions, so none may be sent.
+// Daytona: get is non-waking; start is the only explicit resume operation.
 // ---------------------------------------------------------------------------
-
-type RecordedRequest = { method: string; path: string };
-
-type FetchHandler = (
-	method: string,
-	path: string,
-) => { status: number; body?: unknown };
-
-function stubFetch(handler: FetchHandler): {
-	calls: RecordedRequest[];
-	restore: () => void;
-} {
-	const original = globalThis.fetch;
-	const calls: RecordedRequest[] = [];
-	globalThis.fetch = (async (input: unknown, init?: RequestInit) => {
-		const url = new URL(String(input));
-		const method = (init?.method ?? "GET").toUpperCase();
-		calls.push({ method, path: url.pathname });
-		const { status, body } = handler(method, url.pathname);
-		// null, not "": a 204 may not carry a body at all.
-		return new Response(body === undefined ? null : JSON.stringify(body), {
-			status,
-			headers: { "content-type": "application/json" },
-		});
-	}) as typeof globalThis.fetch;
+function daytonaFixture() {
+	const calls: string[] = [];
+	const sandbox = {
+		id: "daytona-1", state: "stopped", cpu: 2, memory: 4, disk: 8,
+		createdAt: CREATED_AT,
+		async start() { calls.push("start"); sandbox.state = "started"; },
+		async stop() { calls.push("stop"); sandbox.state = "stopped"; },
+		async delete() { calls.push("delete"); },
+	};
+	const client = {
+		async get() { calls.push("get"); return sandbox; },
+		async create() { calls.push("create"); return sandbox; },
+		async *list() { calls.push("list"); yield sandbox; },
+	};
 	return {
-		calls,
-		restore: () => {
-			globalThis.fetch = original;
-		},
+		calls, sandbox,
+		provider: createDaytonaProvider({ apiKey: "fixture" }, () => client as unknown as DaytonaClient),
 	};
 }
-
-function dedalusMachine(
-	phase: string,
-	extra: { last_error?: string | null; reason?: string | null } = {},
-): Record<string, unknown> {
-	return {
-		machine_id: "dm-1",
-		vcpu: 1,
-		memory_mib: 2048,
-		storage_gib: 10,
-		created_at: CREATED_AT,
-		desired_state: "running",
-		status: { phase, revision: 7, ...extra },
-	};
-}
-
-function dedalusProvider(): SandboxProvider {
-	return createDedalusProvider({
-		apiKey: "dedalus-key",
-		baseUrl: "https://dcs.example.test",
+test("invariant_daytona_non_waking_reads_report_observed_state_and_allocation", async () => {
+	const { provider, calls } = daytonaFixture();
+	assert.deepEqual(await requireDescribe(provider)("daytona-1"), {
+		state: "sleeping", rawPhase: "stopped", createdAt: CREATED_AT,
+		resources: { vcpu: 2, memoryMib: 4096, diskGib: 8 },
 	});
-}
-
-/** An execution POST is the documented wake path; a read must send none. */
-function assertNoExecution(calls: RecordedRequest[]): void {
-	assert.ok(calls.length > 0, "the dedalus API was never called at all");
-	for (const call of calls) {
-		assert.ok(
-			!call.path.includes("/executions"),
-			`a no-wake path submitted an execution: ${call.method} ${call.path}`,
-		);
-		assert.ok(
-			!call.path.endsWith("/wake"),
-			`a no-wake path called wake: ${call.method} ${call.path}`,
-		);
-	}
-}
-
-/** Guard against a vacuous "no execution was submitted". */
-test("dedalus: the fetch stub records the execution POST a real wake sends", async () => {
-	const stub = stubFetch((_method, path) =>
-		path.endsWith("/executions")
-			? { status: 200, body: { execution_id: "ex-1", status: "queued" } }
-			: { status: 200, body: dedalusMachine("sleeping") },
-	);
-	try {
-		const handle = await dedalusProvider().connect("dm-1");
-		await handle.wake();
-		assert.ok(
-			stub.calls.some(
-				(call) => call.method === "POST" && call.path.endsWith("/executions"),
-			),
-			"the wake path did not submit an execution, so the guard proves nothing",
-		);
-	} finally {
-		stub.restore();
-	}
+	assert.deepEqual(calls, ["get"]);
 });
-
-test("dedalus describe reads the machine record and submits no execution", async () => {
-	const stub = stubFetch(() => ({ status: 200, body: dedalusMachine("sleeping") }));
-	try {
-		const description = await requireDescribe(dedalusProvider())("dm-1");
-		assert.deepEqual(stub.calls, [{ method: "GET", path: "/v1/machines/dm-1" }]);
-		assertNoExecution(stub.calls);
-		assert.deepEqual(description, {
-			state: "sleeping",
-			rawPhase: "sleeping",
-			createdAt: CREATED_AT,
-			resources: { vcpu: 1, memoryMib: 2048, diskGib: 10 },
-		});
-	} finally {
-		stub.restore();
-	}
+test("invariant_daytona_connect_does_not_wake_but_explicit_wake_does", async () => {
+	const { provider, calls } = daytonaFixture();
+	const handle = await provider.connect("daytona-1");
+	assert.deepEqual(calls, ["get"]);
+	await handle.wake();
+	assert.deepEqual(calls, ["get", "get", "start"]);
 });
-
-test("dedalus describe carries the vendor's own failure text", async () => {
-	const stub = stubFetch(() => ({
-		status: 200,
-		body: dedalusMachine("failed", { last_error: "SNAPSHOT_LAUNCH_TIMEOUT" }),
-	}));
-	try {
-		const description = await requireDescribe(dedalusProvider())("dm-1");
-		assert.equal(description.state, "error");
-		assert.equal(description.lastError, "SNAPSHOT_LAUNCH_TIMEOUT");
-		assertNoExecution(stub.calls);
-	} finally {
-		stub.restore();
-	}
-});
-
-test("dedalus describe does not report a benign desired-state note as an error", async () => {
-	const stub = stubFetch(() => ({
-		status: 200,
-		body: dedalusMachine("running", { reason: "DesiredStateReached" }),
-	}));
-	try {
-		const description = await requireDescribe(dedalusProvider())("dm-1");
-		assert.equal(description.state, "ready");
-		assert.equal(description.lastError, undefined);
-	} finally {
-		stub.restore();
-	}
-});
-
-test("dedalus describe reports a purged machine as destroyed", async () => {
-	const stub = stubFetch(() => ({ status: 404, body: { error: "not_found" } }));
-	try {
-		const description = await requireDescribe(dedalusProvider())("dm-gone");
-		assert.deepEqual(description, { state: "destroyed", rawPhase: null });
-		assertNoExecution(stub.calls);
-	} finally {
-		stub.restore();
-	}
-});
-
-test("dedalus remove deletes a sleeping machine without waking it", async () => {
-	const stub = stubFetch((method) =>
-		method === "DELETE"
-			? { status: 204 }
-			: { status: 200, body: dedalusMachine("sleeping") },
-	);
-	try {
-		await requireRemove(dedalusProvider())("dm-1");
-		assert.deepEqual(stub.calls, [
-			{ method: "GET", path: "/v1/machines/dm-1" },
-			{ method: "DELETE", path: "/v1/machines/dm-1" },
-		]);
-		assertNoExecution(stub.calls);
-	} finally {
-		stub.restore();
-	}
-});
-
-test("dedalus remove is idempotent for a machine that is already gone", async () => {
-	const stub = stubFetch(() => ({ status: 404, body: { error: "not_found" } }));
-	try {
-		await requireRemove(dedalusProvider())("dm-gone");
-		assertNoExecution(stub.calls);
-	} finally {
-		stub.restore();
-	}
-});
-
-test("dedalus omits park rather than faking one", () => {
-	// POST /sleep is an HMAC-gated internal route: a public key gets 401, so a
-	// park() here could only ever pretend.
-	assert.equal(dedalusProvider().park, undefined);
-});
-
-test("dedalus no-wake reads fail closed without an API key", async () => {
-	const stub = stubFetch(() => ({ status: 200, body: dedalusMachine("running") }));
-	try {
-		const provider = createDedalusProvider({});
-		await rejectsWith(
-			() => requireDescribe(provider)("dm-1"),
-			"missing_credentials",
-			/DEDALUS_API_KEY/,
-		);
-		await rejectsWith(() => requireRemove(provider)("dm-1"), "missing_credentials");
-		assert.deepEqual(stub.calls, []);
-	} finally {
-		stub.restore();
-	}
+test("invariant_daytona_stop_and_remove_never_resume_a_stopped_sandbox", async () => {
+	const { provider, calls } = daytonaFixture();
+	await requirePark(provider)("daytona-1");
+	await requireRemove(provider)("daytona-1");
+	assert.deepEqual(calls, ["get", "get", "delete"]);
 });
 
 // ---------------------------------------------------------------------------
-// Contract shape across all four lanes.
+// Contract shape across all four active lanes.
 // ---------------------------------------------------------------------------
-
-test("every substrate offers a no-wake read and a no-wake destroy", () => {
+test("every active substrate offers a no-wake read and a no-wake destroy", () => {
 	const providers: SandboxProvider[] = [
-		e2bProvider(new FakeE2bStatics()),
-		vercelProvider(new FakeVercelStatics()),
-		spritesProvider(new FakeSpritesClient()),
-		dedalusProvider(),
+		e2bProvider(new FakeE2bStatics()), vercelProvider(new FakeVercelStatics()),
+		spritesProvider(new FakeSpritesClient()), daytonaFixture().provider,
 	];
 	for (const provider of providers) {
-		assert.equal(
-			typeof provider.describe,
-			"function",
-			`${provider.kind} has no describe()`,
-		);
+		assert.equal(typeof provider.describe, "function", `${provider.kind} has no describe()`);
 		assert.equal(typeof provider.remove, "function", `${provider.kind} has no remove()`);
 	}
 });
-
-test("park exists only where the vendor can pause by id", () => {
-	// e2b: POST /sandboxes/{id}/pause. vercel: get(resume:false) then stop().
+test("park exists only where the vendor can stop by id", () => {
 	assert.equal(typeof e2bProvider(new FakeE2bStatics()).park, "function");
 	assert.equal(typeof vercelProvider(new FakeVercelStatics()).park, "function");
-	// sprites: no suspend API at all. dedalus: /sleep is HMAC-gated.
+	assert.equal(typeof daytonaFixture().provider.park, "function");
 	assert.equal(spritesProvider(new FakeSpritesClient()).park, undefined);
-	assert.equal(dedalusProvider().park, undefined);
 });

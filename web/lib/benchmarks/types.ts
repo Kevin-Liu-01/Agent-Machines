@@ -160,7 +160,7 @@ export type ProviderProfile = {
 	runtimeKind: "persistent-machine" | "ephemeral-session";
 	capabilities: Record<string, CapabilityValue>;
 	pricing: ProviderPricing;
-	defaultSpec: MachineSpec;
+	defaultSpec: MachineSpec | null;
 	/**
 	 * Published reference latencies (ms), cited — shown until a measured
 	 * run replaces them. Keyed by metric id; only latency metrics apply.

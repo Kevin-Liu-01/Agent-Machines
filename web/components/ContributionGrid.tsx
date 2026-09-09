@@ -21,11 +21,11 @@ import {
 	type PartnerKey,
 } from "@/lib/contribution-data";
 
-const PARTNER_MARKS = new Set<Mark>(["am", "dedalus", "nous", "cursor", "openclaw"]);
+const PARTNER_MARKS = new Set<Mark>(["am", "daytona", "nous", "cursor", "openclaw"]);
 
 const PARTNER_HUE: Record<PartnerKey, string> = {
 	am: "var(--ret-purple)",
-	dedalus: "var(--ret-purple)",
+	daytona: "var(--ret-purple)",
 	nous: "#7c8cf8",
 	cursor: "#f5c542",
 	openclaw: "#e87c4f",
@@ -40,7 +40,7 @@ const PARTNER_HUE: Record<PartnerKey, string> = {
 
 const PARTNER_LABEL: Record<PartnerKey, string> = {
 	am: "agent-machines",
-	dedalus: "dedalus",
+	daytona: "daytona",
 	nous: "nous",
 	cursor: "cursor",
 	openclaw: "openclaw",
@@ -54,7 +54,7 @@ const PARTNER_LABEL: Record<PartnerKey, string> = {
 };
 
 const LOGO_PARTNERS = new Set<PartnerKey>([
-	"dedalus",
+	"daytona",
 	"nous",
 	"cursor",
 	"openclaw",
@@ -62,7 +62,7 @@ const LOGO_PARTNERS = new Set<PartnerKey>([
 	"codex",
 ]);
 const LOGO_MARK: Partial<Record<PartnerKey, Mark>> = {
-	dedalus: "dedalus",
+	daytona: "daytona",
 	am: "am",
 	nous: "nous",
 	cursor: "cursor",
@@ -79,7 +79,7 @@ const COLOR_LOGO_PARTNERS = new Set<PartnerKey>([
 ]);
 
 const ALL_PARTNERS: ReadonlyArray<PartnerKey> = [
-	"dedalus",
+	"daytona",
 	"nous",
 	"openclaw",
 	"cursor",
@@ -316,7 +316,7 @@ export function ContributionGrid() {
 	const partnerCounts = useMemo(() => {
 		const counts: Record<PartnerKey, number> = {
 			am: 0,
-			dedalus: 0,
+			daytona: 0,
 			nous: 0,
 			cursor: 0,
 			openclaw: 0,
@@ -372,7 +372,7 @@ export function ContributionGrid() {
 			{/* Header */}
 			<div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--ret-border)] px-3 py-2">
 				<div className="flex items-center gap-2">
-					<ReticleLabel>ACTIVITY -- 6 MONTHS</ReticleLabel>
+					<ReticleLabel>Sample activity · 6 months</ReticleLabel>
 					<ReticleBadge>{totalActive} active days</ReticleBadge>
 				</div>
 				{hasFilter ? (
@@ -545,7 +545,7 @@ function DayDetail({ day }: { day: ContributionDay }) {
 			</div>
 			{day.events.length === 0 ? (
 				<p className="text-[11px] text-[var(--ret-text-dim)]">
-					no recorded activity. machine likely asleep.
+					No activity in this sample day.
 				</p>
 			) : (
 				<ul className="flex flex-col gap-2">
@@ -555,10 +555,9 @@ function DayDetail({ day }: { day: ContributionDay }) {
 				</ul>
 			)}
 			<p className="mt-auto pt-3 text-[10px] leading-relaxed text-[var(--ret-text-muted)]">
-				<span className="text-[var(--ret-purple)]">→</span> each cell is
-				one day this machine was awake. hover to peek, click to pin. nothing
-				lives in RAM that it can&rsquo;t rebuild from{" "}
-				<code className="font-mono text-[var(--ret-text-dim)]">/home/machine</code>.
+				<span className="text-[var(--ret-purple)]">→</span> Illustrative activity,
+				not a live uptime or benchmark record. Hover to preview a sample day;
+				click to inspect its events.
 			</p>
 		</aside>
 	);

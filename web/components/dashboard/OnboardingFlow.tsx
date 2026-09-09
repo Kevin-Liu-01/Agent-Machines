@@ -43,7 +43,7 @@ import {
 	type PublicUserConfig,
 } from "@/lib/user-config/schema";
 
-const MARK_SET = new Set<string>(["am", "dedalus", "nous", "cursor", "openclaw", "anthropic", "openai"]);
+const MARK_SET = new Set<string>(["am", "daytona", "nous", "cursor", "openclaw", "anthropic", "openai"]);
 function isMark(value: string): value is Mark { return MARK_SET.has(value); }
 
 type OnboardingAiKeys = {
@@ -89,13 +89,18 @@ const PROVIDERS_META: Record<
 		}>;
 	}
 > = {
-	dedalus: {
-		name: "Dedalus Machines",
+	dedalus: { name: "Retired provider", tagline: "Unavailable for new Workers.", keyLabel: "Unavailable", keyPlaceholder: "", keyHint: "Choose a supported provider." },
+	daytona: {
+		name: "Daytona",
 		tagline:
-			"Linux machines with persistent disk and preview tunnels. Manual pause is not available through the public adapter.",
-		keyLabel: "Dedalus API key",
-		keyPlaceholder: "dsk-live-...",
-		keyHint: "Get one at dedaluslabs.ai/dashboard/api-keys",
+			"Linux sandboxes with native terminals and private preview URLs. Stop and start retain files; running processes restart.",
+		keyLabel: "Daytona API key",
+		keyPlaceholder: "Daytona API key",
+		keyHint: "Create an API key at app.daytona.io. API URL and target are optional.",
+		secondaryFields: [
+			{ label: "API URL (optional)", placeholder: "https://app.daytona.io/api", field: "apiUrl" },
+			{ label: "Target (optional)", placeholder: "us", field: "target" },
+		],
 	},
 	sprites: {
 		name: "Sprites",
@@ -129,20 +134,20 @@ const PROVIDERS_META: Record<
 
 const COMPARISON_ROWS: ReadonlyArray<{
 	label: string;
-	dedalus: string;
+	daytona: string;
 	e2b: string;
 	sprites: string;
 	vercel: string;
 }> = [
-	{ label: "Type", dedalus: "Persistent VM", e2b: "Pausable sandbox", sprites: "Persistent sandbox", vercel: "Persistent microVM" },
-	{ label: "Environment", dedalus: "Linux", e2b: "Linux", sprites: "Linux", vercel: "Linux" },
-	{ label: "Sleep / wake", dedalus: "No manual pause", e2b: "Pause / resume", sprites: "Automatic idle suspension", vercel: "Snapshot / resume" },
-	{ label: "First launch", dedalus: "Includes runtime setup", e2b: "Includes runtime setup", sprites: "Includes runtime setup", vercel: "Includes runtime setup" },
-	{ label: "Storage", dedalus: "Persistent disk", e2b: "Retained across pause", sprites: "Persistent filesystem", vercel: "Filesystem snapshots" },
-	{ label: "Workspace URLs", dedalus: "Preview tunnels", e2b: "Per-port host", sprites: "Per-sprite URL", vercel: "Per-port URL" },
-	{ label: "Snapshots", dedalus: "Not exposed", e2b: "Filesystem and memory", sprites: "Checkpoints", vercel: "Filesystem only" },
-	{ label: "Limits", dedalus: "Account-dependent", e2b: "Plan-dependent", sprites: "Account-dependent", vercel: "Plan-dependent" },
-	{ label: "Credentials", dedalus: "API key", e2b: "API key", sprites: "API token", vercel: "Token, team, and project" },
+	{ label: "Type", daytona: "Persistent sandbox", e2b: "Pausable sandbox", sprites: "Persistent sandbox", vercel: "Persistent microVM" },
+	{ label: "Environment", daytona: "Linux", e2b: "Linux", sprites: "Linux", vercel: "Linux" },
+	{ label: "Sleep / wake", daytona: "Stop / start; files retained", e2b: "Pause / resume", sprites: "Automatic idle suspension", vercel: "Snapshot / resume" },
+	{ label: "First launch", daytona: "Includes runtime setup", e2b: "Includes runtime setup", sprites: "Includes runtime setup", vercel: "Includes runtime setup" },
+	{ label: "Storage", daytona: "Persistent disk", e2b: "Retained across pause", sprites: "Persistent filesystem", vercel: "Filesystem snapshots" },
+	{ label: "Workspace URLs", daytona: "Preview tunnels", e2b: "Per-port host", sprites: "Per-sprite URL", vercel: "Per-port URL" },
+	{ label: "Snapshots", daytona: "Not exposed", e2b: "Filesystem and memory", sprites: "Checkpoints", vercel: "Filesystem only" },
+	{ label: "Limits", daytona: "Account-dependent", e2b: "Plan-dependent", sprites: "Account-dependent", vercel: "Plan-dependent" },
+	{ label: "Credentials", daytona: "API key", e2b: "API key", sprites: "API token", vercel: "Token, team, and project" },
 ];
 
 const AGENT_DESC: Record<
@@ -180,7 +185,6 @@ const AGENT_DESC: Record<
 		],
 		links: [
 			{ label: "Source", href: "https://github.com/openclaw/openclaw" },
-			{ label: "Legacy integration example", href: "https://github.com/dedalus-labs/openclaw-ddls" },
 		],
 	},
 	"claude-code": {
@@ -221,7 +225,7 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 		initialPreset?.agentKind ?? initialConfig.draftAgentKind ?? "hermes",
 	);
 	const [provider, setProvider] = useState<ProviderKind>(
-		initialConfig.draftProviderKind ?? "dedalus",
+		initialConfig.draftProviderKind ?? "daytona",
 	);
 	const [routerId, setRouterId] = useState<string>(DEFAULT_ROUTER_ID);
 	const [model, setModel] = useState("");
@@ -281,7 +285,7 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 				draftAgentKind: agent,
 				draftProviderKind: provider,
 			};
-			if (providerKey.trim()) {
+			if (providerKey.trim() || (provider === "daytona" && Object.values(providerSecondary).some((value) => value.trim()))) {
 				const cred: Record<string, unknown> =
 					provider === "vercel"
 						? { token: providerKey.trim() }
@@ -785,7 +789,7 @@ function PresetStep({
 
 function ProviderComparison({ selected }: { selected: ProviderKind }) {
 	const COLS: ReadonlyArray<{ key: keyof (typeof COMPARISON_ROWS)[number]; label: string }> = [
-		{ key: "dedalus", label: "Dedalus" },
+		{ key: "daytona", label: "Daytona" },
 		{ key: "e2b", label: "E2B" },
 		{ key: "sprites", label: "Sprites" },
 		{ key: "vercel", label: "Vercel" },
@@ -1231,7 +1235,7 @@ function BootStep({
 			  log line we can pull. Replaces the old "this can take a
 			  minute" silence with a real running commentary so the
 			  operator can see exactly which step the machine is
-			  blocked on (and which Dedalus error code if it's failing).
+			  blocked on (and which Daytona error code if it's failing).
 			*/}
 			{machineId ? <BootTranscript active={busy && !done} machineId={machineId} maxHeight={280} /> : null}
 		</div>

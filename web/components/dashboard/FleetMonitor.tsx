@@ -101,8 +101,9 @@ const STATE_TONE: Record<string, "ok" | "warn" | "info" | "muted"> = {
 	unknown: "muted",
 };
 
-const PROVIDER_MARK: Record<ProviderKind, "dedalus" | "e2b" | "sprites" | "vercel" | null> = {
-	dedalus: "dedalus",
+const PROVIDER_MARK: Record<ProviderKind, "daytona" | "e2b" | "sprites" | "vercel" | "retired" | null> = {
+	dedalus: "retired",
+	daytona: "daytona",
 	e2b: "e2b",
 	sprites: "sprites",
 	vercel: "vercel",
@@ -143,7 +144,7 @@ export function FleetMonitor() {
 				>;
 				const conf: Record<string, boolean> = {};
 				for (const k of Object.keys(ai)) conf[k] = Boolean(ai[k]?.configured);
-				conf.dedalus = Boolean(j.config.providers?.dedalus?.configured);
+				conf.daytona = Boolean(j.config.providers?.daytona?.configured);
 				setAiConfigured(conf);
 				const provs = (j.config.providers ?? {}) as Record<
 					string,
@@ -658,7 +659,7 @@ function SpinUpForm({
 	}) => Promise<void>;
 }) {
 	const [agent, setAgent] = useState<AgentKind>("hermes");
-	const [provider, setProvider] = useState<ProviderKind>("dedalus");
+	const [provider, setProvider] = useState<ProviderKind>("daytona");
 	const [presetId, setPresetId] = useState<string>("small");
 	const [name, setName] = useState("");
 	const [routerId, setRouterId] = useState<string>(DEFAULT_ROUTER_ID);

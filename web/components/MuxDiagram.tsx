@@ -40,7 +40,8 @@ const SUBSTRATE_MARKS: Record<
 	e2b: "e2b",
 	sprites: "sprites",
 	vercel: "vercel",
-	dedalus: "dedalus",
+	daytona: "daytona",
+	dedalus: "retired",
 };
 
 const ROUTER_CHECKS: ReadonlyArray<{
