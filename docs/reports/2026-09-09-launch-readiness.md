@@ -1,11 +1,12 @@
 # Launch-readiness audit — September 9, 2026
 
-Status: Daytona is deployed through `6bbfdfd`. Real hosted Claude execution,
+Status: Daytona is deployed through `d1eb6d9`. Real hosted Claude execution,
 independently verified file output, sleep/wake persistence, non-waking passive
 reads, and native browser-terminal launch passed after correcting an incompatible
 preinstalled CLI and a stale completed-phase health check. E2B-to-Daytona state
-migration and a real Claude task afterward also passed. OpenClaw switching exposed
-an incompatible preinstalled configuration command and remains under verification.
+migration and a real Claude task afterward also passed. After correcting an
+incompatible preinstalled configuration command, normal hosted OpenClaw repair
+and a real tool-using task passed on the same 2 GiB Daytona Worker.
 This report distinguishes
 checked-in fixes from deployed evidence; it is not a blanket production-readiness
 claim.
@@ -270,7 +271,19 @@ fix passed the complete `pnpm check` gate: **863 SDK/source tests**, **1,524 web
 tests** (37 explicit platform-specific skips), both typechecks, production build,
 and isolated SDK package verification. The actual pinned OpenClaw CLI also completed
 the full configuration sequence in an isolated fake-key home without a model call.
-Hosted OpenClaw repair and execution remain separate post-deployment checks.
+Release `d1eb6d9` became ready on the independently checked production aliases
+at 10:38:54 UTC. Normal hosted OpenClaw repair completed at 10:41:29 UTC and its
+first subsequent paid task completed at 10:42:54 UTC. Native history and an
+independent filesystem read confirmed the actual tool result and original hash.
+These are separate deployed checks, not inferences from the local test count.
+
+The final Sessions presentation correction passed the complete `pnpm check` at
+approximately 10:56 UTC: **863 SDK/source tests**, **1,530 web tests** (37 explicit
+platform-specific skips), both typechecks, the production build, and isolated SDK
+package verification. Six additional executable reader cases keep diagnostic
+traces separate from conversations, avoid the false auth/memory-database warning,
+and retain genuine corruption warnings. Deployment verification is recorded
+separately from this local gate.
 
 ## Daytona replacement
 
@@ -289,9 +302,11 @@ pricing and benchmark figures remain unknown until measured; historical Dedalus
 figures are not reused. Full evidence and scope are in the
 [Daytona adapter audit](2026-09-09-daytona-adapter-audit.md).
 
-Both disposable local Daytona fixtures were stopped after their checks; runtime
-QA stopped the 2 GiB fixture at 09:24:25 UTC. Stopped disk may still incur storage
-charges. Production Daytona credentials were saved server-side in the scoped
+Both disposable local Daytona fixtures were deleted after their checks; fresh
+provider reads independently confirmed absence at 10:31:29 and 10:48:02 UTC.
+The [cleanup audit](2026-09-09-qa-cleanup.md) distinguishes these later, explicitly
+authorized deletions from migration and runtime verification. Production Daytona
+credentials were saved server-side in the scoped
 Vercel project. Real hosted creation completed in 50.344 seconds with independently
 verified requested allocation, but its first Claude task failed on the image's
 old CLI before model execution. On deployed `6bbfdfd`, normal hosted repair then
@@ -308,9 +323,18 @@ The separate [E2B-to-Daytona migration](2026-09-09-daytona-live-migration.md)
 preserved the stable Worker ID, file hashes, canonical documents, native history,
 and Git state. A subsequent real Claude task read the transferred file correctly;
 its native JSONL independently contained the tool results. OpenClaw switching on
-the first hosted Daytona Worker failed before model execution because the base
-image's CLI lacks the required batch-configuration flag; that path is not yet
-claimed as passing.
+the first hosted Daytona Worker initially failed before model execution because
+the base image's CLI lacks the required batch-configuration flag. Release
+`d1eb6d9` corrected capability detection and installation. A normal hosted repair
+and real Sonnet 4.6 task then passed on that same Worker, preserving the original
+Claude file and native history. The native OpenClaw conversation independently
+confirmed the file-read tool result. This is not a claim that all runtime/provider
+combinations or native session-resume paths were retested.
+
+Post-deployment desktop and 390-pixel mobile checks verified the official Daytona
+glyph in dark and light themes, no horizontal overflow, current provider copy,
+and correct September 9 chart labels in an America/Los_Angeles browser. Unknown
+allocation remained unknown rather than being displayed as zero.
 
 ## Production authentication remains a separate check
 
@@ -323,6 +347,8 @@ classified both Clerk keys as development keys (values withheld).
 An independent environment refresh at 08:27 UTC found the same classification.
 At 10:22 UTC, the real dashboard DOM still loaded its Clerk script from that
 development hostname after a fresh navigation on the `6bbfdfd` deployment.
+The authenticated QA browser still exposed that hostname at 10:54 UTC; its Clerk
+user identity was independently checked before any QA credential cleanup.
 No Clerk instance or user identity was silently switched. Production key
 connection and a fresh-account test on that deployment remain outstanding.
 

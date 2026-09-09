@@ -131,6 +131,11 @@ def discover(runtime, root, suffix):
                         finally:
                             os.close(nested)
                     elif stat.S_ISREG(info.st_mode) and info.st_nlink == 1 and child.name.endswith(suffix):
+                        # OpenClaw writes a diagnostic trajectory beside the
+                        # conversation JSONL. It is not a second conversation;
+                        # leave the file intact and exclude it from this index.
+                        if runtime == "openclaw" and child.name.endswith(".trajectory.jsonl"):
+                            continue
                         add(runtime, location, info=info)
                     elif stat.S_ISLNK(info.st_mode):
                         warn("Symlinked history paths were skipped.")
@@ -396,13 +401,10 @@ try:
                     break
                 agent = agents / child.name
                 discover("openclaw", agent / "sessions", ".jsonl")
-                try:
-                    file_info(agent / "agent/openclaw-agent.sqlite")
-                    warn("This OpenClaw version uses SQLite history. Only JSONL sessions from the supported pinned runtime can be inspected here.")
-                except FileNotFoundError:
-                    pass
-                except (OSError, ValueError):
-                    warn("Some OpenClaw history paths could not be read safely.")
+                # agent/openclaw-agent.sqlite stores auth/cache/memory metadata
+                # alongside supported JSONL conversations. Its presence does
+                # not establish another history format, so do not inspect it
+                # or invent an unsupported-conversation warning from its name.
     except FileNotFoundError:
         pass
     except (OSError, ValueError):

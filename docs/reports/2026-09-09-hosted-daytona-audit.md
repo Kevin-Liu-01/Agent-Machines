@@ -123,19 +123,45 @@ Claude JSONL with both the file-read result and `/home/daytona/agent-machines`
 working-directory result, without truncation. This is continued real execution
 after a provider move, not native `--resume` of the source's session.
 
-## Remaining checks at this checkpoint
+## OpenClaw compatibility and real hosted execution
 
-OpenClaw on the observed 2 GiB allocation remains pending. Its switch operation
+OpenClaw's initial switch operation on the observed 2 GiB allocation,
 `f66987cf-dd6a-42d9-85bb-58708afbc94d` failed configuration before any paid task:
 the image's preinstalled OpenClaw 2026.2.1 did not support `--batch-file`.
-The operation correctly failed rather than reporting a ready runtime. Its
-compatibility-probe and pinned-installer correction is being verified separately.
+The operation correctly failed rather than reporting a ready runtime.
+
+Release `d1eb6d9ef1f6b3a5a2c991208973de60c6d6aea5` corrected the capability probe
+and pinned installer. Deployment `dpl_4TrWSDKREt7oyhcARqqUna81sxfP` was ready
+with the production aliases independently verified at 10:38:54 UTC. Normal
+hosted repair `3793a08f-7197-450d-adbd-9365ea7398a7` completed at 10:41:29 UTC,
+reusing the original Worker and sandbox without an out-of-band upgrade.
+
+Real native-Anthropic OpenClaw task `8c842a28-84db-4b2d-8180-9e0bb7b4c730`
+completed at 10:42:54 UTC with HTTP 200, exit 0, and one attempt. Runtime duration
+was 12,615 ms; end-to-end request duration was 27,616 ms. It returned the correct
+working directory and original file content. An independent provider read at
+10:43:11 UTC retained the original SHA-256 above. The hosted native Sessions API
+at 10:43:27 UTC exposed the untruncated OpenClaw JSONL, including the actual
+`cat /home/daytona/agent-machines/daytona-proof.txt` tool call and result. The
+earlier Claude history remained available. Full failed-attempt and success
+evidence is in the [runtime-switch audit](2026-09-09-hosted-runtime-switch-audit.md).
+
+The history inspection also found two presentation defects: the reader mistook
+an OpenClaw auth/cache/memory SQLite database for unsupported conversation history,
+and listed a companion trajectory file as another conversation. The actual native
+conversation remained readable; this warning is not a failed model task.
+
+## Public UI and remaining launch boundary
+
 Public desktop and 390-pixel mobile
 checks verified Daytona's official logo in both themes, no horizontal overflow,
 masked empty credential inputs, the four active provider choices, and the real
 Worker's observed allocation. The same pass found an unrelated malformed Vercel
 SVG in Settings; its namespace correction is included with the CLI fix.
-No completion claim is made for the pending runtime/lifecycle checks.
+Post-deployment `d1eb6d9` checks also verified the corrected calendar labels in
+America/Los_Angeles and the current provider copy on product and Worker pages.
+Disposable resources were subsequently cleaned up separately as recorded in the
+[cleanup audit](2026-09-09-qa-cleanup.md); their disks are not promised to remain.
 
 The production hostname still uses a Clerk development instance. Existing
 production-instance availability, reported by the owner, is separate from

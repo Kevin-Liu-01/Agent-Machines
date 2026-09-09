@@ -15,6 +15,8 @@ After the local checks, the first resource was explicitly parked through the ada
 
 At 10:31:29 UTC, the first fixture (`c5b11be3-342d-45c0-8f01-61c10a13f381`) was explicitly deleted after independently matching its exact ID, QA name, and stopped state. A new provider description confirmed `destroyed`. Its disposable disk was removed; the proof reports remain. The second fixture was retained for runtime compatibility testing, not included in that deletion.
 
+At **10:48:02 UTC**, the second fixture (`24b471d1-4025-4f0f-808c-e22099d6f38a`) was explicitly deleted after the runtime tests finished. Fresh provider reads first matched that exact ID, name `am-daytona-sized-qa-20260909`, and `stopped` state. A separate provider GET after deletion returned **HTTP 404**, independently confirming absence. Its disposable sandbox and disk were removed; the proof reports and private cleanup evidence remain. Both local adapter fixtures are now deleted. This cleanup did not touch the hosted Daytona Workers or make any model calls. Evidence: `/tmp/agent-machines-launch-20260909/daytona-sized-fixture-cleanup.json`.
+
 ## Passed against the actual provider
 
 - A file retained SHA-256 `0939bf6f60379890c1bf880617cc92f267648a78cd2a1526c7714c59f04fd224` across stop → non-waking record lookup → start. The intermediate lookup still reported `stopped`.

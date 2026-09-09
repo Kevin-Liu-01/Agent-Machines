@@ -55,6 +55,20 @@ with sqlite3.connect(sys.argv[1]) as db:
 	return path;
 }
 
+function openclawMetadataDatabase(home: string) {
+	const path = join(home, ".openclaw/agents/main/agent/openclaw-agent.sqlite");
+	mkdirSync(dirname(path), { recursive: true });
+	const result = spawnSync("python3", ["-c", `
+import sqlite3, sys
+with sqlite3.connect(sys.argv[1]) as db:
+    db.execute("CREATE TABLE auth_profile_store (store_key TEXT PRIMARY KEY, store_json TEXT, updated_at INTEGER)")
+    db.execute("CREATE TABLE memory_index_meta (key TEXT PRIMARY KEY, value TEXT)")
+    db.execute("INSERT INTO auth_profile_store VALUES ('fixture', 'NOT-A-CONVERSATION-OR-PUBLIC-CREDENTIAL', 1)")
+`, path], { encoding: "utf8" });
+	expect(result.status, result.stderr).toBe(0);
+	return path;
+}
+
 afterEach(() => {
 	for (const home of homes.splice(0)) rmSync(home, { recursive: true, force: true });
 });
@@ -136,13 +150,68 @@ describe("native runtime session reader (executed on a real fixture HOME)", () =
 		expect(probe(home).sessions).toEqual([]);
 	});
 
-	it("marks corrupt databases and unsupported newer OpenClaw SQLite history as degraded, not absent", () => {
+	it("preserves warnings for corrupt actual Hermes history databases", () => {
 		const home = fixtureHome();
 		file(home, ".agent-machines/state.db", "not a sqlite database");
-		file(home, ".openclaw/agents/main/agent/openclaw-agent.sqlite", "database");
 		const list = probe(home);
 		expect(list.sessions).toEqual([]);
-		expect(list.warnings).toEqual(expect.arrayContaining([expect.stringContaining("Hermes history exists"), expect.stringContaining("OpenClaw version uses SQLite")]));
+		expect(list.warnings).toEqual(expect.arrayContaining([expect.stringContaining("Hermes history exists")]));
+	});
+
+	it.each([true, false])("does not mistake OpenClaw auth/memory SQLite for conversation storage (JSONL present: %s)", (withConversation) => {
+		const home = fixtureHome();
+		const metadata = openclawMetadataDatabase(home);
+		const before = readFileSync(metadata);
+		if (withConversation) jsonl(home, ".openclaw/agents/main/sessions/conversation.jsonl", [
+			{ type: "message", message: { role: "user", content: "A real OpenClaw conversation" } },
+		]);
+		const list = probe(home);
+		expect(list.sessions).toHaveLength(withConversation ? 1 : 0);
+		expect(list.warnings).toEqual([]);
+		if (withConversation) {
+			const detail = probe<SessionTranscriptPayload>(home, list.sessions[0].id);
+			expect(detail.messages[0].text).toBe("A real OpenClaw conversation");
+			expect(detail.warnings).toEqual([]);
+		}
+		expect(JSON.stringify(list)).not.toContain("NOT-A-CONVERSATION-OR-PUBLIC-CREDENTIAL");
+		expect(readFileSync(metadata)).toEqual(before);
+		expect(readdirSync(dirname(metadata))).toEqual(["openclaw-agent.sqlite"]);
+	});
+
+	it.each([true, false])("excludes OpenClaw trajectory traces without deleting them (conversation companion: %s)", (withConversation) => {
+		const home = fixtureHome();
+		const trace = jsonl(home, ".openclaw/agents/main/sessions/same-id.trajectory.jsonl", [
+			{ traceSchema: "openclaw", type: "context.compiled", sessionId: "same-id", data: "x".repeat(80000) },
+		]);
+		const before = readFileSync(trace);
+		if (withConversation) jsonl(home, ".openclaw/agents/main/sessions/same-id.jsonl", [
+			{ type: "message", message: { role: "user", content: "The conversation, not its diagnostic trace" } },
+		]);
+		const list = probe(home);
+		expect(list.sessions).toHaveLength(withConversation ? 1 : 0);
+		expect(list.warnings).toEqual([]);
+		expect(list.totalBytes).toBe(withConversation ? readFileSync(join(home, ".openclaw/agents/main/sessions/same-id.jsonl")).length : 0);
+		if (withConversation) expect(list.sessions[0].source).toBe("~/.openclaw/agents/main/sessions/same-id.jsonl");
+		expect(readFileSync(trace)).toEqual(before);
+	});
+
+	it("preserves corruption warnings for an actual OpenClaw conversation while ignoring its trace", () => {
+		const home = fixtureHome();
+		file(home, ".openclaw/agents/main/sessions/broken.jsonl", '{"type":');
+		file(home, ".openclaw/agents/main/sessions/broken.trajectory.jsonl", '{"traceSchema":');
+		const list = probe(home);
+		expect(list.sessions).toHaveLength(1);
+		expect(list.sessions[0].source).toBe("~/.openclaw/agents/main/sessions/broken.jsonl");
+		expect(list.warnings.join(" ")).toContain("Some transcript records could not be decoded");
+		const detail = probe<SessionTranscriptPayload>(home, list.sessions[0].id);
+		expect(detail.messages).toEqual([]);
+		expect(detail.warnings).toContain("Some incomplete or invalid transcript records were skipped.");
+	});
+
+	it("does not apply OpenClaw-specific trace naming to another runtime", () => {
+		const home = fixtureHome();
+		jsonl(home, ".claude/projects/test/legitimate.trajectory.jsonl", [{ type: "user", message: { role: "user", content: "Claude transcript" } }]);
+		expect(probe(home).sessions).toHaveLength(1);
 	});
 
 	it("bounds transcripts and skips incomplete append records without losing readable messages", () => {
