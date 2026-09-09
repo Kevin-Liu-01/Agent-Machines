@@ -87,10 +87,24 @@ requested Worker destination.
 
 The independent DNS lookup still returned `NXDOMAIN`. These checks demonstrate
 recovery from an unavailable authentication service, not a successful login.
-Provider creation forms and the Clerk DNS page were retained for the owner;
-no credentials were created or stored and no forms were submitted.
+At that pre-approval checkpoint, provider creation forms and the Clerk DNS page
+were retained for the owner; no credentials had been created or stored and no
+forms had been submitted.
 
-## Social login preparation, not completion
+## Social login follow-up
+
+After owner approval, Google, GitHub, and X / Twitter were configured with custom
+production credentials. At 21:07 UTC, all three Clerk connections reported
+**Used for sign-in**; legacy Twitter remained disabled. Google was published
+for external users. See the [social login setup report](2026-09-09-social-login-setup.md)
+for configuration evidence and the remaining live-login checks. Credentials
+are not included in these reports.
+
+Porkbun remains signed out in Chrome, and the owner has been asked to sign in.
+The independent DNS lookup still returned `NXDOMAIN`; configuring social
+providers does not make the Clerk domain reachable or prove a successful login.
+
+### Initial preparation — historical
 
 The user requested Google, GitHub, and X login using their signed-in Chrome
 tabs. GitHub's unsubmitted registration form was corrected to the exact callback
@@ -100,15 +114,17 @@ Agent Machines and selects Production in the existing pay-per-use project;
 no credits were purchased and no billable API calls were made. Google project
 `agent-machines` has no OAuth branding configuration yet; its setup form is open.
 
-Creation of persistent OAuth credentials, storing provider secrets in Clerk,
-and Google's support/contact email are awaiting the requested action-time user
-confirmation. No provider has been declared configured or login-tested.
+At this earlier checkpoint, creation of persistent OAuth credentials, storage
+of provider secrets in Clerk, and Google's support/contact email awaited
+action-time user confirmation. The approved configuration above supersedes
+that preparation-only state; live login remains unverified.
 
 ## Remaining launch proof
 
 - Verify the Clerk DNS records and certificates for the confirmed `.dev` domain.
-- Complete the approved provider registrations and Clerk connections with only
-  the permissions required for sign-in.
+- Verify the configured provider connections through their actual consent and
+  callback flows after DNS and certificates are ready; keep permissions limited
+  to sign-in and resolve any paid X profile-read boundary before testing it.
 - Confirm the intended production owner mapping; do not infer automatic
   migration of development users, keys, or Worker ownership.
 - Exercise a fresh production account through onboarding, credential setup,
