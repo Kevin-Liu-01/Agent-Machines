@@ -21,6 +21,7 @@ import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
 import { waitForControlPlaneOperation } from "@/lib/control-plane/client";
 import { onboardingProviderReady, submitOnboardingLaunch, type OnboardingLaunch } from "@/lib/onboarding/launch";
+import { selectedPreset as resolveSelectedPreset } from "@/lib/onboarding/preset-selection";
 import {
 	agentCredentialRequirements,
 	canBootstrapAgent,
@@ -57,6 +58,7 @@ type OnboardingAiKeyField = keyof OnboardingAiKeys;
 type Props = {
 	initialConfig: PublicUserConfig;
 	presets: Preset[];
+	initialPresetId?: string;
 };
 
 type Step = "agent" | "preset" | "provider" | "key" | "boot";
@@ -211,11 +213,12 @@ const AGENT_DESC: Record<
 	},
 };
 
-export function OnboardingFlow({ initialConfig, presets }: Props) {
+export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Props) {
 	const router = useRouter();
+	const initialPreset = resolveSelectedPreset(presets, initialPresetId);
 	const [step, setStep] = useState<Step>("agent");
 	const [agent, setAgent] = useState<AgentKind>(
-		initialConfig.draftAgentKind ?? "hermes",
+		initialPreset?.agentKind ?? initialConfig.draftAgentKind ?? "hermes",
 	);
 	const [provider, setProvider] = useState<ProviderKind>(
 		initialConfig.draftProviderKind ?? "dedalus",
@@ -228,7 +231,7 @@ export function OnboardingFlow({ initialConfig, presets }: Props) {
 		return conf;
 	}, [initialConfig]);
 	// Default to the first curated preset (the "core starter"); NO_PRESET = blank.
-	const [presetId, setPresetId] = useState<string>(presets[0]?.id ?? NO_PRESET);
+	const [presetId, setPresetId] = useState<string>(initialPreset?.id ?? presets[0]?.id ?? NO_PRESET);
 	const selectedPreset = useMemo(
 		() => presets.find((p) => p.id === presetId) ?? null,
 		[presets, presetId],

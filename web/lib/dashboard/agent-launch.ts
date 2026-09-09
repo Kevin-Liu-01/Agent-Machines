@@ -11,17 +11,21 @@
  * standalone REPL that talks to the configured model directly.
  */
 
+import { nativeCliModelSetup, shellArgument } from "./native-cli-model";
+import { runtimeModel } from "@/lib/agents/runtime-model";
+
 export function agentLaunchCommand(
 	agentKind: string | null | undefined,
+	model?: string | null,
 ): string | null {
 	// cd into the cloned repo first — the agents expect a working directory.
 	const cd = "cd ~/agent-machines 2>/dev/null || cd ~;";
 	switch (agentKind) {
 		case "codex":
 			// .agent-env exports PATH (CLI bin); auth lives in ~/.codex/auth.json.
-			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null; codex`;
+			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null;\n${nativeCliModelSetup("codex", model)}\ncodex --model "$am_cli_model"`;
 		case "claude-code":
-			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null; claude`;
+			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null;\n${nativeCliModelSetup("claude-code", model)}\nclaude --model "$am_cli_model"`;
 		case "hermes":
 			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null; export HERMES_HOME="$HOME/.agent-machines"; export PATH="$HOME/.agent-machines/venv/bin:$PATH"; hermes chat`;
 		case "openclaw":
@@ -38,10 +42,12 @@ export function agentLaunchCommand(
  */
 export function agentTerminalLauncherCommand(
 	agentKind: string | null | undefined,
+	model?: string | null,
 ): string | null {
 	switch (agentKind) {
 		case "codex":
 		case "claude-code":
+			return `~/.agent-machines/bin/am-launch-agent ${agentKind}${model?.trim() ? ` ${shellArgument(runtimeModel(agentKind, model))}` : ""}`;
 		case "hermes":
 		case "openclaw":
 			return `~/.agent-machines/bin/am-launch-agent ${agentKind}`;
@@ -79,13 +85,14 @@ export function isCliAgent(agentKind: string | null | undefined): boolean {
  */
 export function agentOneShotInvocation(
 	agentKind: string | null | undefined,
+	model?: string | null,
 ): string | null {
 	const cd = "cd ~/agent-machines 2>/dev/null || cd ~;";
 	switch (agentKind) {
 		case "codex":
-			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null; codex exec "$AM_CRON_PROMPT"`;
+			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null;\n${nativeCliModelSetup("codex", model)}\ncodex exec --model "$am_cli_model" "$AM_CRON_PROMPT"`;
 		case "claude-code":
-			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null; claude -p "$AM_CRON_PROMPT"`;
+			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null;\n${nativeCliModelSetup("claude-code", model)}\nclaude --model "$am_cli_model" -p "$AM_CRON_PROMPT"`;
 		case "hermes":
 			return `${cd} source ~/.agent-machines/.agent-env 2>/dev/null; export HERMES_HOME="$HOME/.agent-machines"; export PATH="$HOME/.agent-machines/venv/bin:$PATH"; hermes chat --query "$AM_CRON_PROMPT" --quiet`;
 		case "openclaw":

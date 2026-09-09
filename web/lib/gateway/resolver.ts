@@ -8,6 +8,7 @@
  */
 
 import { resolveMachine } from "@/lib/dashboard/exec";
+import { keyForModelEndpoint } from "@/lib/agents/endpoint-key";
 import {
 	DEFAULT_ROUTER_ID,
 	ROUTER_PRESETS,
@@ -135,8 +136,7 @@ function fromProfile(
 	if (profile.kind === "vercel-ai-gateway") {
 		const key =
 			profile.apiKey ??
-			keyForRouterSource("vercelAiGateway", config) ??
-			null;
+			keyForModelEndpoint(profile.baseUrl ?? "https://ai-gateway.vercel.sh", config.aiProviderKeys);
 		if (!key) {
 			throw new Error(
 				"Vercel AI Gateway profile has no API key. Add one in Settings.",
@@ -164,8 +164,7 @@ function fromProfile(
 		}
 		const apiKey =
 			profile.apiKey ??
-			inferKey(profile.baseUrl, config) ??
-			null;
+			keyForModelEndpoint(profile.baseUrl, config.aiProviderKeys);
 		if (!apiKey) {
 			throw new Error(`Gateway profile '${profile.name}' is missing an API key.`);
 		}
@@ -231,21 +230,6 @@ function keyForRouterSource(
 		case "custom":
 			return ai.custom?.key ?? "";
 	}
-}
-
-function inferKey(
-	baseUrl: string | null,
-	config: Awaited<ReturnType<typeof getUserConfig>>,
-): string {
-	const lower = baseUrl?.toLowerCase() ?? "";
-	if (lower.includes("openrouter")) return keyForRouterSource("openrouter", config);
-	if (lower.includes("openai.com")) return keyForRouterSource("openai", config);
-	if (lower.includes("dedalus")) return "";
-	if (lower.includes("ai-gateway.vercel")) {
-		return keyForRouterSource("vercelAiGateway", config);
-	}
-	if (lower.includes("googleapis")) return keyForRouterSource("google", config);
-	return keyForRouterSource("custom", config);
 }
 
 function normalizeOpenAiBase(value: string): string {

@@ -15,7 +15,9 @@
 
 import type { AgentKind } from "@/lib/user-config/schema";
 
-const HOME = "/home/machine";
+// Provider adapters pin the worker's HOME. E2B, Sprites, and Vercel each use
+// a different directory; never inspect the legacy Dedalus home on every host.
+const HOME = "$HOME";
 
 export type MemoryFile = {
 	name: string;
@@ -117,6 +119,7 @@ export type HermesProfile = AgentProfile;
 export const INTROSPECTION_COMMAND = `
 set -e
 
+export PATH="${HOME}/.agent-machines/node/bin:${HOME}/.agent-machines/pkgs/node_modules/.bin:${HOME}/.npm-global/bin:${HOME}/.local/bin:$PATH"
 runtime="${HOME}/.agent-machines"
 if [ ! -d "$runtime" ] && [ -d ${HOME}/.hermes ]; then runtime="${HOME}/.hermes"; fi
 
@@ -135,11 +138,11 @@ elif [ -d ${HOME}/.openclaw ] && (command -v openclaw >/dev/null 2>&1 || [ -f ${
   agent="openclaw"
   agent_version=$(openclaw --version 2>/dev/null | head -1 || echo "")
   config_path="${HOME}/.openclaw/config.json"
-elif [ -d ${HOME}/.claude ] || command -v claude >/dev/null 2>&1; then
+elif command -v claude >/dev/null 2>&1; then
   agent="claude-code"
   agent_version=$(claude --version 2>/dev/null | head -1 || echo "")
   config_path="${HOME}/.claude/settings.json"
-elif [ -d ${HOME}/.codex ] || command -v codex >/dev/null 2>&1; then
+elif command -v codex >/dev/null 2>&1; then
   agent="codex"
   agent_version=$(codex --version 2>/dev/null | head -1 || echo "")
   config_path="${HOME}/.codex/config.toml"
@@ -251,7 +254,7 @@ echo "profiles_done"
 
 echo "===SESSIONS==="
 sess_total=0; sess_transcripts=0
-for d in "$runtime/sessions" ${HOME}/.openclaw/agents/*/sessions ${HOME}/.agent-machines/sessions; do
+for d in "$runtime/sessions" ${HOME}/.openclaw/agents/*/sessions ${HOME}/.claude/projects ${HOME}/.codex/sessions; do
   if [ -d "$d" ]; then
     c=$(find "$d" -name '*.db' -o -name '*.jsonl' 2>/dev/null | wc -l)
     sess_total=$((sess_total + c))

@@ -1,10 +1,12 @@
 import { SignIn } from "@clerk/nextjs";
+import { redirect } from "next/navigation";
 
 import { BrandMark } from "@/components/BrandMark";
 import { ClerkAppProvider } from "@/components/ClerkAppProvider";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { WingBackground } from "@/components/WingBackground";
+import { AUTH_REDIRECTS, signInCleanupRedirect, type AuthSearchParams } from "@/lib/auth/redirects";
 
 const CLERK_READY = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
@@ -20,7 +22,12 @@ const CLERK_READY = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
  * user wires Clerk), we render a setup-message card instead of `<SignIn>`
  * so the route doesn't crash.
  */
-export default function SignInPage() {
+export default async function SignInPage({ searchParams, params }: {
+	searchParams: Promise<AuthSearchParams>;
+	params: Promise<{ "sign-in"?: string[] }>;
+}) {
+	const cleanup = signInCleanupRedirect(await searchParams, (await params)["sign-in"]);
+	if (cleanup) redirect(cleanup);
 	return (
 		<ClerkAppProvider>
 		<main className="relative flex min-h-[100dvh] items-center justify-center overflow-hidden bg-[var(--ret-bg)] px-6 py-16">
@@ -38,12 +45,12 @@ export default function SignInPage() {
 					<BrandMark size={28} withLabel={false} />
 					<ReticleLabel>AGENT MACHINES</ReticleLabel>
 					<h1 className="text-2xl font-semibold tracking-tight">
-						{CLERK_READY ? "Sign in to your fleet" : "Auth not configured"}
+						{CLERK_READY ? "Welcome to your fleet" : "Sign-in is unavailable"}
 					</h1>
 					<p className="max-w-[44ch] text-sm text-[var(--ret-text-dim)]">
 						{CLERK_READY
-							? "Your machines, chat history, and learned skills are scoped to your Clerk identity. Sign in once and your fleet follows you across devices."
-							: "Set NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY and CLERK_SECRET_KEY in the Vercel project env, then redeploy."}
+							? "Create an account or sign in to keep your Workers, files, and progress together across devices."
+							: "We can’t connect to sign-in right now. Please try again shortly."}
 					</p>
 				</div>
 				{CLERK_READY ? (
@@ -51,7 +58,8 @@ export default function SignInPage() {
 						routing="path"
 						path="/sign-in"
 						signUpUrl="/sign-in"
-						forceRedirectUrl="/dashboard"
+						fallbackRedirectUrl={AUTH_REDIRECTS.signInFallbackRedirectUrl}
+						signUpFallbackRedirectUrl={AUTH_REDIRECTS.signUpFallbackRedirectUrl}
 						appearance={{
 							variables: {
 								colorPrimary: "var(--ret-purple)",

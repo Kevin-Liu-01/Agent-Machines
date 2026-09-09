@@ -16,8 +16,8 @@ export default async function SetupPage() {
 		<div className="flex flex-col">
 			<PageHeader
 				kicker="SETUP"
-				title="Provision a persistent agent"
-				description="Bring a provider key, pick Hermes or OpenClaw, size the environment, and provision. Both agents can be bootstrapped from the UI into a durable machine profile; secrets persist in Clerk private metadata. Claude Code and Codex CLI are also available as task-driven agents."
+				title="Set up your Worker"
+				description="Connect your sandbox and model accounts, choose an agent, and launch a persistent workspace. Your credentials stay private."
 			/>
 			<div className="px-5 pb-6 md:px-7">
 				<SandboxRouterPanel route={route} skipped={skipped} />

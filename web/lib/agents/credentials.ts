@@ -30,6 +30,7 @@ export type CredentialCheckConfig = {
 	};
 	aiProviderKeys?: UserConfig["aiProviderKeys"];
 	aiProviders?: PublicAiProviderStatus;
+	gatewayProfiles?: Array<{ apiKey?: string | null; hasApiKey?: boolean }>;
 };
 
 const SIGNUP = {
@@ -172,6 +173,7 @@ function hasAnyGatewayUpstream(
 	if (config.aiProviders?.google?.configured) return true;
 	if (config.aiProviders?.custom?.configured) return true;
 	if (keyAvailable(config, "anthropic", draft)) return true;
+	if (config.gatewayProfiles?.some((profile) => profile.apiKey?.trim() || profile.hasApiKey)) return true;
 	return false;
 }
 

@@ -12,6 +12,9 @@ import { getHarness } from "agent-machines/mux";
 
 import type { MachineProvider } from "@/lib/providers";
 import { validateAgentCredentials } from "@/lib/agents/credentials";
+import { keyForModelEndpoint } from "@/lib/agents/endpoint-key";
+import { runtimeModel } from "@/lib/agents/runtime-model";
+import { nativeCliModelFilename } from "@/lib/dashboard/native-cli-model";
 import { ROUTER_PRESETS } from "@/lib/agents/upstreams";
 import {
 	buildMcpRegisterShell,
@@ -399,12 +402,7 @@ function resolveRouterPreset(
 	switch (preset.source) {
 		case "vercelAiGateway":
 			return {
-				key:
-					ai.vercelAiGateway ??
-					process.env.AI_GATEWAY_API_KEY?.trim() ??
-					process.env.VERCEL_OIDC_TOKEN?.trim() ??
-					process.env.AI_GATEWAY_KEY?.trim() ??
-					"",
+				key: ai.vercelAiGateway ?? "",
 				baseUrl: vercelOpenAiCompatibleBase(
 					preset.baseUrl ?? VERCEL_AI_GATEWAY_BASE,
 				),
@@ -413,7 +411,7 @@ function resolveRouterPreset(
 			return { key: ai.openai ?? "", baseUrl: preset.baseUrl ?? OPENAI_BASE };
 		case "openrouter":
 			return {
-				key: ai.openrouter ?? process.env.OPENROUTER_API_KEY?.trim() ?? "",
+				key: ai.openrouter ?? "",
 				baseUrl: preset.baseUrl ?? OPENROUTER_BASE,
 			};
 		case "google":
@@ -433,55 +431,36 @@ function gatewayProfileToUpstream(
 	const ai = config.aiProviderKeys ?? {};
 	if (profile.kind === "vercel-ai-gateway") {
 		return {
-			key:
-				profile.apiKey ??
-				ai.vercelAiGateway ??
-				process.env.AI_GATEWAY_API_KEY?.trim() ??
-				process.env.VERCEL_OIDC_TOKEN?.trim() ??
-				process.env.AI_GATEWAY_KEY?.trim() ??
-				"",
+			key: profile.apiKey ?? keyForModelEndpoint(profile.baseUrl ?? VERCEL_AI_GATEWAY_BASE, ai),
 			baseUrl: vercelOpenAiCompatibleBase(
 				profile.baseUrl ?? VERCEL_AI_GATEWAY_BASE,
 			),
 		};
 	}
-	// openai-compatible: explicit profile key, else infer from the base URL.
+	// An explicit profile key may target any saved endpoint. Account-wide keys
+	// may only be inferred for their exact provider endpoint.
 	const baseUrl = profile.baseUrl ?? OPENAI_BASE;
-	let key = profile.apiKey ?? "";
-	if (!key) {
-		if (baseUrl.includes("openrouter")) key = ai.openrouter ?? process.env.OPENROUTER_API_KEY?.trim() ?? "";
-		else if (baseUrl.includes("openai.com")) key = ai.openai ?? process.env.OPENAI_API_KEY?.trim() ?? "";
-		else if (baseUrl.includes("dedalus")) key = "";
-		else if (baseUrl.includes("ai-gateway.vercel")) {
-			key =
-				ai.vercelAiGateway ??
-				process.env.AI_GATEWAY_API_KEY?.trim() ??
-				process.env.VERCEL_OIDC_TOKEN?.trim() ??
-				process.env.AI_GATEWAY_KEY?.trim() ??
-				"";
-		}
-		else key = ai.custom?.key ?? "";
-	}
+	const key = profile.apiKey ?? keyForModelEndpoint(baseUrl, ai);
 	return { key, baseUrl };
 }
 
 /** Fallback priority: Vercel AI Gateway, OpenRouter, then other configured providers. */
 function firstConfiguredUpstream(config: UserConfig): UpstreamProvider {
 	const ai = config.aiProviderKeys ?? {};
-	const vercelGateway =
-		ai.vercelAiGateway ??
-		process.env.AI_GATEWAY_API_KEY?.trim() ??
-		process.env.VERCEL_OIDC_TOKEN?.trim() ??
-		process.env.AI_GATEWAY_KEY?.trim();
+	const vercelGateway = ai.vercelAiGateway;
 	if (vercelGateway) {
 		return { key: vercelGateway, baseUrl: VERCEL_AI_GATEWAY_BASE };
 	}
-	const openrouter = ai.openrouter ?? process.env.OPENROUTER_API_KEY?.trim();
+	const openrouter = ai.openrouter;
 	if (openrouter) return { key: openrouter, baseUrl: OPENROUTER_BASE };
 	if (ai.openai) return { key: ai.openai, baseUrl: OPENAI_BASE };
 	if (ai.google) return { key: ai.google, baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai" };
 	if (ai.custom?.key) return { key: ai.custom.key, baseUrl: ai.custom.url };
 	if (ai.anthropic) return { key: ai.anthropic, baseUrl: ANTHROPIC_BASE };
+	for (const profile of config.gatewayProfiles) {
+		const upstream = gatewayProfileToUpstream(profile, config);
+		if (upstream.key) return upstream;
+	}
 	return { key: "", baseUrl: VERCEL_AI_GATEWAY_BASE };
 }
 
@@ -1037,7 +1016,7 @@ function configureOpenClaw(
 }
 
 function configureCliAgent(
-	agent: string,
+	agent: "claude-code" | "codex",
 	upstreamApiKey: string,
 	upstreamBaseUrl: string,
 	p: BootstrapPaths,
@@ -1046,6 +1025,7 @@ function configureCliAgent(
 	config: UserConfig,
 ): string {
 	const isClaude = agent === "claude-code";
+	const selectedModel = runtimeModel(agent, machine.model);
 	const configDir = isClaude ? `${p.HOME}/.claude` : `${p.HOME}/.codex`;
 	const pathLine = `export PATH=${p.NPM_PREFIX}/bin:${p.HOME}/.local/bin:$PATH`;
 
@@ -1060,15 +1040,18 @@ function configureCliAgent(
 	const envLines = [
 		`export PATH=${p.NPM_PREFIX}/bin:${p.HOME}/.local/bin:$PATH`,
 		`export ${isClaude ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY"}=${upstreamApiKey}`,
+		`export ${isClaude ? "AM_CLAUDE_CODE_MODEL" : "AM_CODEX_MODEL"}=${shell(selectedModel)}`,
 	];
 	if (isClaude) {
 		const host = upstreamBaseUrl.replace(/\/v1\/?$/, "");
 		envLines.push(`export ANTHROPIC_BASE_URL=${host}`);
+		envLines.push(`export ANTHROPIC_MODEL=${shell(selectedModel)}`);
 	}
 	const envWrite = writeRemoteFile(
 		`${p.APP_HOME}/.agent-env`,
 		machineAgentEnvFile(machine, config, envLines),
 	);
+	const modelWrite = `mkdir -p ${p.APP_HOME}/state && ${writeRemoteFile(`${p.APP_HOME}/state/${nativeCliModelFilename(agent)}`, `${selectedModel}\n`)}`;
 
 	if (isClaude) {
 		const aptWait = isSandbox ? "" : `${WAIT_FOR_APT} && `;
@@ -1082,6 +1065,7 @@ function configureCliAgent(
 			`mkdir -p ${configDir} ${p.APP_HOME} ${p.NPM_PREFIX} ${p.NPM_CACHE}`,
 			`if ! command -v claude >/dev/null 2>&1 || ! claude --version >/dev/null 2>&1; then ${claudeInstall}; fi`,
 			envWrite,
+			modelWrite,
 			`chmod 600 ${p.APP_HOME}/.agent-env`,
 			`${pathLine} && claude --version`,
 		].join(" && ");
@@ -1096,6 +1080,7 @@ function configureCliAgent(
 		`if ! command -v codex >/dev/null 2>&1 || ! codex --version >/dev/null 2>&1; then ` +
 			`${aptWait}NPM_CONFIG_CACHE=${p.NPM_CACHE} npm install -g @openai/codex --prefix=${p.NPM_PREFIX} --no-audit --no-fund --loglevel=error; fi`,
 		envWrite,
+		modelWrite,
 		`chmod 600 ${p.APP_HOME}/.agent-env`,
 		// codex >=0.118 authenticates from ~/.codex/auth.json, not the env var.
 		`printf %s ${shell(upstreamApiKey)} | codex login --with-api-key`,

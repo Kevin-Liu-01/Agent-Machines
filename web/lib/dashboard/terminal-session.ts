@@ -21,6 +21,7 @@ import { getUserConfigCached } from "@/lib/user-config/request-cache";
 
 import { resolveMachine } from "./exec";
 import { tailFileStreamOnMachine } from "./exec-stream";
+import { nativeCliModelFilename, nativeCliModelSetup } from "./native-cli-model";
 
 /** One interactive console session per machine (sufficient for the operator UI). */
 export const CONSOLE_SESSION = "amconsole";
@@ -133,6 +134,7 @@ cat > "$HOME/.agent-machines/bin/am-launch-agent" <<'AM_LAUNCHER'
 set -u
 
 kind="${"${1:-}"}"
+requested_model="${"${2:-}"}"
 state_dir="$HOME/.agent-machines/state"
 state_file="$state_dir/terminal-agent.json"
 mkdir -p "$state_dir"
@@ -179,10 +181,24 @@ case "$kind" in
 		openclaw chat
 		;;
 	claude-code)
-		claude
+		if [ -n "$requested_model" ]; then
+			am_cli_model="${"${requested_model#anthropic/}"}"
+			case "$am_cli_model" in claude-*) ;; *) echo "invalid Claude model" >&2; exit 64 ;; esac
+		else
+			${nativeCliModelSetup("claude-code")}
+		fi
+		printf '%s\n' "$am_cli_model" > "$state_dir/${nativeCliModelFilename("claude-code")}" || exit 1
+		claude --model "$am_cli_model"
 		;;
 	codex)
-		codex
+		if [ -n "$requested_model" ]; then
+			am_cli_model="${"${requested_model#openai/}"}"
+			case "$am_cli_model" in gpt-*|o[0-9]*) ;; *) echo "invalid Codex model" >&2; exit 64 ;; esac
+		else
+			${nativeCliModelSetup("codex")}
+		fi
+		printf '%s\n' "$am_cli_model" > "$state_dir/${nativeCliModelFilename("codex")}" || exit 1
+		codex --model "$am_cli_model"
 		;;
 esac
 AM_LAUNCHER

@@ -1,15 +1,11 @@
 "use client";
 
-import { ClerkProvider, UserButton } from "@clerk/nextjs";
+import { UserButton } from "@clerk/nextjs";
+import { ClerkAppProvider } from "@/components/ClerkAppProvider";
 
 export function ClerkUserButton() {
 	return (
-		<ClerkProvider
-			signInUrl="/sign-in"
-			signInForceRedirectUrl="/dashboard"
-			signUpForceRedirectUrl="/dashboard"
-			afterSignOutUrl="/"
-		>
+		<ClerkAppProvider>
 			<UserButton
 				appearance={{
 					elements: {
@@ -29,6 +25,6 @@ export function ClerkUserButton() {
 					},
 				}}
 			/>
-		</ClerkProvider>
+		</ClerkAppProvider>
 	);
 }

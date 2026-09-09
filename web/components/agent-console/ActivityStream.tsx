@@ -45,6 +45,7 @@ type HealthInfo = {
 	model?: string;
 	apiHost?: string;
 	error?: string;
+	message?: string;
 };
 
 export type ActivityStreamProps = {
@@ -164,10 +165,10 @@ export function ActivityStream({
 					{health?.ok ? (
 						<ReticleBadge variant="success">
 							<span className="inline-block h-1.5 w-1.5 bg-[var(--ret-green)]" />
-							online
+							runtime ready
 						</ReticleBadge>
 					) : health ? (
-						<ReticleBadge variant="warning">offline</ReticleBadge>
+						<ReticleBadge variant="warning">not ready</ReticleBadge>
 					) : (
 						<ReticleBadge>
 							<BrailleSpinner name="orbit" className="text-[10px]" />
@@ -200,7 +201,7 @@ export function ActivityStream({
 					) : null}
 					{streaming ? (
 						<ReticleButton variant="secondary" size="sm" onClick={onStop}>
-							Stop
+							Disconnect
 						</ReticleButton>
 					) : null}
 				</div>
@@ -216,7 +217,7 @@ export function ActivityStream({
 					<div className="border border-[var(--ret-amber)]/40 bg-[var(--ret-amber)]/5 p-4 font-mono text-[12px] text-[var(--ret-amber)]">
 						{!activeMachineId
 							? "No active machine. Pick or provision one in /dashboard/machines."
-							: "Agent gateway is offline. Wake the machine or bootstrap the agent."}
+							: health?.message ?? "Checking the Worker's runtime and conversation storage…"}
 					</div>
 				) : null}
 
@@ -295,7 +296,7 @@ export function ActivityStream({
 					)}
 					placeholder={
 						disabled
-							? "Bootstrap or wake the agent gateway first."
+							? "Waiting for the Worker runtime to be ready."
 							: "Message the agent. Shift+Enter for newline."
 					}
 					value={input}

@@ -13,6 +13,8 @@ export type ManagedMachineIntent = {
 	spec?: Partial<WorkerSpec>;
 	idempotencyKey?: string;
 	forceBootstrap?: boolean;
+	/** Absolute request deadline for bounded hosted Console execution. */
+	executionDeadlineMs?: number;
 };
 
 /**
@@ -38,7 +40,9 @@ export async function submitMachineIntent(
 		(candidate) => candidate.lastMachineId === machine.id,
 	);
 	const workerId = linkedWorker?.id ?? machine.id;
-	const controlPlane = createHostedControlPlane(userId);
+	const controlPlane = createHostedControlPlane(userId, null, {
+		executionDeadlineMs: intent.executionDeadlineMs,
+	});
 	const existing = await controlPlane.store.getWorker(workerId);
 	const schedules = (config.crons ?? [])
 		.filter((cron) => cron.machineId === machine.id)

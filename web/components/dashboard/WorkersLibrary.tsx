@@ -14,6 +14,7 @@ import { ReticleSelect, type ReticleSelectOption } from "@/components/reticle/Re
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
 import type { Preset } from "@/lib/dashboard/presets";
+import { workerPresetSeed } from "@/lib/onboarding/preset-selection";
 import {
 	AGENT_KINDS,
 	AGENT_LABEL,
@@ -38,12 +39,12 @@ function presetBrand(brand: string | undefined, size: number) {
 	return null;
 }
 
-export function WorkersLibrary({ presets }: { presets: Preset[] }) {
+export function WorkersLibrary({ presets, initialPresetId }: { presets: Preset[]; initialPresetId?: string }) {
 	const router = useRouter();
 	const [workers, setWorkers] = useState<Worker[] | null>(null);
 	const [bundleNames, setBundleNames] = useState<Record<string, string>>({});
 	const [bundles, setBundles] = useState<BundleOpt[]>([]);
-	const [seed, setSeed] = useState<{ name: string; sourceValue: string } | null>(null);
+	const [seed, setSeed] = useState<{ name: string; sourceValue: string } | null>(() => workerPresetSeed(presets, initialPresetId));
 	const [busy, setBusy] = useState(false);
 	const [loadWarning, setLoadWarning] = useState<string | null>(null);
 	const [createError, setCreateError] = useState<string | null>(null);

@@ -10,8 +10,8 @@ import {
 describe("agentLaunchCommand", () => {
 	it("cds into the repo, sources .agent-env, then launches the coding CLI", () => {
 		expect(agentLaunchCommand("codex")).toContain("source ~/.agent-machines/.agent-env");
-		expect(agentLaunchCommand("codex")?.endsWith(" codex")).toBe(true);
-		expect(agentLaunchCommand("claude-code")?.endsWith(" claude")).toBe(true);
+		expect(agentLaunchCommand("codex")).toContain('codex --model "$am_cli_model"');
+		expect(agentLaunchCommand("claude-code")).toContain('claude --model "$am_cli_model"');
 	});
 
 	it("launches the interactive chat REPL for gateway agents with their owned runtime on PATH", () => {

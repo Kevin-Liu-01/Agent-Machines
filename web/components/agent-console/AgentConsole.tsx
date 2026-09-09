@@ -69,22 +69,31 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 	const [sessionPackageIds, setSessionPackageIds] = useState<string[]>([]);
 
 	const abortRef = useRef<AbortController | null>(null);
+	const machineIdRef = useRef(activeMachineId);
+	machineIdRef.current = activeMachineId;
 	const turnsRef = useRef(turns);
 	turnsRef.current = turns;
 	const sessionPackageIdsRef = useRef(sessionPackageIds);
 	sessionPackageIdsRef.current = sessionPackageIds;
 
 	useEffect(() => {
-		const params = activeMachineId
-			? `?machineId=${encodeURIComponent(activeMachineId)}`
-			: "";
-		fetch(`/api/dashboard/gateway${params}`)
-			.then((r) => {
-				if (!r.ok) return { ok: false, error: `HTTP ${r.status}` } as HealthInfo;
-				return r.json() as Promise<HealthInfo>;
-			})
-			.then((info) => setHealth(info))
-			.catch(() => setHealth({ ok: false, error: "unreachable" }));
+		setHealth(null);
+		if (!activeMachineId) return;
+		let disposed = false;
+		let checking = false;
+		const check = async () => {
+			if (checking) return;
+			checking = true;
+			try {
+				const response = await fetch(`/api/agents/run?machineId=${encodeURIComponent(activeMachineId)}`, { cache: "no-store" });
+				const info = await response.json() as HealthInfo;
+				if (!disposed) setHealth(info);
+			} catch { if (!disposed) setHealth({ ok: false, message: "Could not reach the Worker. Retrying…" }); }
+			finally { checking = false; }
+		};
+		void check();
+		const interval = setInterval(() => void check(), 15_000);
+		return () => { disposed = true; clearInterval(interval); };
 	}, [activeMachineId]);
 
 	const refreshList = useCallback(async () => {
@@ -94,6 +103,7 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 				: "";
 			const response = await fetch(`/api/dashboard/chats${params}`, { cache: "no-store" });
 			const body = await response.json();
+			if (machineIdRef.current !== activeMachineId) return;
 			if (body.ok) {
 				const summaries: ConversationSummary[] = (body.chats ?? []).map(
 					(c: Record<string, unknown>) => ({
@@ -115,21 +125,28 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 				setMachineOk(false);
 			}
 		} catch {
-			setMachineOk(false);
+			if (machineIdRef.current === activeMachineId) setMachineOk(false);
 		}
 	}, [activeMachineId]);
 
 	useEffect(() => { void refreshList(); }, [refreshList]);
+	useEffect(() => { if (health?.ok) void refreshList(); }, [health?.ok, refreshList]);
 
 	useEffect(() => {
+		abortRef.current?.abort();
+		setStreamState("idle");
+		setErrorMessage(null);
+		setMachineOk(false);
 		setActiveConvoId(null);
 		setTurns([]);
 		setArtifacts([]);
 		setSelectedArtifact(null);
 		setSessionPackageIds([]);
+		return () => { abortRef.current?.abort(); };
 	}, [activeMachineId]);
 
 	const loadConversation = useCallback(async (convoId: string) => {
+		if (abortRef.current) return;
 		try {
 			const params = activeMachineId
 				? `?machineId=${encodeURIComponent(activeMachineId)}`
@@ -138,6 +155,7 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 				cache: "no-store",
 			});
 			const body = await response.json();
+			if (machineIdRef.current !== activeMachineId) return;
 			if (body.ok && body.chat) {
 				setActiveConvoId(body.chat.id);
 				writeStoredId(activeConversationStorageKey, body.chat.id);
@@ -146,7 +164,7 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 						id: m.id as string,
 						role: m.role as "user" | "assistant",
 						content: m.content as string,
-						events: legacyEventsToAgentEvents(m.events as unknown[]),
+						events: Array.isArray(m.agentEvents) ? m.agentEvents as AgentEvent[] : legacyEventsToAgentEvents(m.events as unknown[]),
 						startedAt: (m.createdAt as number) ?? Date.now(),
 						durationMs: m.durationMs as number | undefined,
 						model: m.model as string | undefined,
@@ -162,6 +180,7 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 	}, [activeConversationStorageKey, activeMachineId]);
 
 	const newConversation = useCallback(() => {
+		if (abortRef.current) return;
 		const id = makeEventId();
 		setActiveConvoId(id);
 		writeStoredId(activeConversationStorageKey, id);
@@ -172,6 +191,7 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 	}, [activeConversationStorageKey]);
 
 	const deleteConversation = useCallback(async (convoId: string) => {
+		if (abortRef.current) return;
 		try {
 			const params = activeMachineId
 				? `?machineId=${encodeURIComponent(activeMachineId)}`
@@ -211,7 +231,7 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 
 	const send = useCallback(async (text: string) => {
 		const trimmed = text.trim();
-		if (!trimmed || streamState === "streaming") return;
+		if (!trimmed || streamState === "streaming" || abortRef.current || !activeMachineId || !activeConvoId || !health?.ok) return;
 
 		setErrorMessage(null);
 
@@ -243,8 +263,10 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 
 		try {
 			const upstream = nextTurns.slice(0, -1).map((t) => ({
+				id: t.id,
 				role: t.role,
 				content: t.content,
+				createdAt: t.startedAt,
 			}));
 
 			const response = await fetch("/api/chat", {
@@ -252,6 +274,9 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					messages: upstream,
+					conversationId: activeConvoId,
+					assistantTurnId: assistantTurn.id,
+					runKey: assistantTurn.id,
 					...(activeMachineId ? { machineId: activeMachineId } : {}),
 					...(sessionPackageIdsRef.current.length > 0
 						? { sessionPackageIds: sessionPackageIdsRef.current }
@@ -266,8 +291,11 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 			}
 
 			let acc: StreamAccumulator = createStreamAccumulator();
+			let completed = false;
 
 			for await (const sseEvent of readSseStream(response.body)) {
+				if (ctrl.signal.aborted || machineIdRef.current !== activeMachineId) return;
+				if (sseEvent.data === "[DONE]") completed = true;
 				acc = processAgentEvent(sseEvent, acc);
 
 				const updated = turnsRef.current.map((t) =>
@@ -288,6 +316,9 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 					if (!rightPanelOpen) setRightPanelOpen(true);
 				}
 			}
+			if (!completed) throw new Error("Connection ended before the Worker reported completion. Check its operation history before retrying.");
+			const runError = [...acc.events].reverse().find((event) => event.kind === "error");
+			if (runError?.kind === "error") throw new Error(runError.message);
 
 			// Finalize
 			const finalTurns = turnsRef.current.map((t) =>
@@ -305,9 +336,10 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 			setTurns(finalTurns);
 			setStreamState("idle");
 
-			// Persist
-			void persistConversation(finalTurns);
+			// The server saves the full transcript even if this viewer disconnects.
+			void refreshList();
 		} catch (err) {
+			if (machineIdRef.current !== activeMachineId) return;
 			if (ctrl.signal.aborted) {
 				setStreamState("idle");
 				return;
@@ -315,9 +347,9 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 			setErrorMessage(err instanceof Error ? err.message : "unknown_error");
 			setStreamState("error");
 		} finally {
-			abortRef.current = null;
+			if (abortRef.current === ctrl) abortRef.current = null;
 		}
-	}, [streamState, model, agentKind, rightPanelOpen, activeMachineId]);
+	}, [streamState, model, agentKind, rightPanelOpen, activeMachineId, activeConvoId, health?.ok, refreshList]);
 
 	const acceptSuggestion = useCallback(async (suggestion: PackageSuggestion) => {
 		const response = await fetch("/api/dashboard/packages/attach", {
@@ -352,6 +384,7 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 			createdAt: t.startedAt,
 			durationMs: t.durationMs,
 			model: t.model,
+			agentEvents: t.events,
 			events: t.events.length > 0 ? agentEventsToLegacy(t.events) : undefined,
 		}));
 
@@ -382,9 +415,10 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 	const stop = useCallback(() => {
 		abortRef.current?.abort();
 		setStreamState("idle");
+		setErrorMessage("Disconnected from output, not cancelled. The current bounded run may still finish and save its result. Check this conversation or the operation history before submitting the same work again.");
 	}, []);
 
-	const disabled = !activeMachineId || !machineOk || health?.ok === false;
+	const disabled = !activeMachineId || !activeConvoId || !machineOk || health?.ok !== true;
 
 	return (
 		<div className="flex h-[calc(100dvh-48px)] overflow-hidden">
@@ -405,7 +439,7 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 
 			{/* Middle: Activity stream */}
 			<main className="flex min-w-0 flex-1 flex-col bg-[var(--ret-bg)]">
-				<TranscriptActions turns={turns} onSave={() => void persistConversation(turnsRef.current)} canSave={machineOk && Boolean(activeConvoId)} />
+				<TranscriptActions turns={turns} onSave={() => void persistConversation(turnsRef.current)} canSave={machineOk && Boolean(activeConvoId) && streamState !== "streaming"} />
 				<ActivityStream
 					turns={turns}
 					streaming={streamState === "streaming"}

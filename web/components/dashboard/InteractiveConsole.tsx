@@ -95,6 +95,7 @@ export function InteractiveConsole({
 	const machineCtx = useOptionalMachineContext();
 	const machineId = machineCtx?.machineId;
 	const agentKind = machineCtx?.machine?.agentKind ?? null;
+	const agentModel = machineCtx?.machine?.model;
 	const searchParams = useSearchParams();
 	const autoLaunch = autoLaunchProp || searchParams.get("launch") === "1";
 	const preferDirect = searchParams.get("transport") !== "native";
@@ -399,10 +400,10 @@ export function InteractiveConsole({
 
 	const launchAgent = useCallback(() => {
 		const cmd =
-			agentTerminalLauncherCommand(agentKind) ?? agentLaunchCommand(agentKind);
+			agentTerminalLauncherCommand(agentKind, agentModel) ?? agentLaunchCommand(agentKind, agentModel);
 		if (!cmd) return;
 		sendInput(`${cmd}\r`, { rememberAgentKind: agentKind });
-	}, [agentKind, sendInput]);
+	}, [agentKind, agentModel, sendInput]);
 
 	const launchRef = useRef(launchAgent);
 	launchRef.current = launchAgent;

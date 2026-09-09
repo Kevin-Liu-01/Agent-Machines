@@ -89,6 +89,15 @@ export function processAgentEvent(
 	if (sseEvent.data === "[DONE]") return next;
 
 	const eventType = sseEvent.event ?? "";
+	if (eventType === "error") {
+		try {
+			const parsed = JSON.parse(sseEvent.data);
+			next.events = [...next.events, { kind: "error", message: parsed.message ?? parsed.error ?? "Agent run failed.", timestamp: Date.now() }];
+		} catch {
+			next.events = [...next.events, { kind: "error", message: sseEvent.data || "Agent run failed.", timestamp: Date.now() }];
+		}
+		return next;
+	}
 
 	// ── Thinking ──────────────────────────────────────────────────
 	if (eventType === "hermes.thinking" || eventType === "thinking") {

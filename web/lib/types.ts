@@ -78,6 +78,9 @@ export type Message = {
 	content: string;
 	createdAt: number;
 	events?: MessageEvent[];
+	/** Lossless runtime evidence; legacy events remain readable. */
+	agentEvents?: import("@/lib/agents/protocol").AgentEvent[];
+	operationId?: string;
 	model?: string;
 	durationMs?: number;
 };

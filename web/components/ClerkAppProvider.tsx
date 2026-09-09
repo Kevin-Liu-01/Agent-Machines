@@ -2,6 +2,7 @@
 
 import { ClerkProvider } from "@clerk/nextjs";
 import type { ReactNode } from "react";
+import { AUTH_REDIRECTS } from "@/lib/auth/redirects";
 
 const CLERK_CONFIGURED = Boolean(
 	process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
@@ -13,8 +14,7 @@ export function ClerkAppProvider({ children }: { children: ReactNode }) {
 	return (
 		<ClerkProvider
 			signInUrl="/sign-in"
-			signInForceRedirectUrl="/dashboard"
-			signUpForceRedirectUrl="/dashboard"
+			{...AUTH_REDIRECTS}
 			afterSignOutUrl="/"
 			appearance={{
 				variables: {

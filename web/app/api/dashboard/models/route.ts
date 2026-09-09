@@ -5,6 +5,8 @@
  * Falls back to public OpenAI-compatible catalogs, then the local curated list.
  */
 
+import { createHash } from "node:crypto";
+
 import {
 	MODEL_CATALOG,
 	modelOptionFromId,
@@ -16,6 +18,7 @@ import {
 	type RouterSource,
 } from "@/lib/agents/upstreams";
 import { getUserConfig } from "@/lib/user-config/clerk";
+import { keyForModelEndpoint } from "@/lib/agents/endpoint-key";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 import type {
 	GatewayProfile,
@@ -69,7 +72,7 @@ export async function GET(request: Request): Promise<Response> {
 	const sources = catalogSources(config, machineId);
 
 	for (const source of sources) {
-		const key = `${source.id}:${source.baseUrl}:${Boolean(source.apiKey)}`;
+		const key = `${userId}:${source.id}:${source.baseUrl}:${credentialDigest(source.apiKey)}`;
 		const cached = cache.get(key);
 		if (cached && cached.expiresAt > Date.now()) {
 			return json(cached.payload);
@@ -222,14 +225,10 @@ function catalogSources(
 		if (preset) sources.push(sourceFromRouter(preset.source, preset.baseUrl, config));
 	}
 
-	if (
-		config.aiProviderKeys.vercelAiGateway ||
-		process.env.AI_GATEWAY_API_KEY ||
-		process.env.VERCEL_OIDC_TOKEN
-	) {
+	if (config.aiProviderKeys.vercelAiGateway) {
 		sources.push(sourceFromRouter("vercelAiGateway", UPSTREAM_BASE_URL.vercelAiGateway, config));
 	}
-	if (config.aiProviderKeys.openrouter || process.env.OPENROUTER_API_KEY) {
+	if (config.aiProviderKeys.openrouter) {
 		sources.push(sourceFromRouter("openrouter", UPSTREAM_BASE_URL.openrouter, config));
 	}
 	if (config.aiProviderKeys.openai) {
@@ -267,13 +266,7 @@ function sourceFromProfile(
 			id: profile.id,
 			label: profile.name || "Vercel AI Gateway",
 			baseUrl: profile.baseUrl ?? UPSTREAM_BASE_URL.vercelAiGateway,
-			apiKey:
-				profile.apiKey ??
-				config.aiProviderKeys.vercelAiGateway ??
-				process.env.AI_GATEWAY_API_KEY?.trim() ??
-				process.env.VERCEL_OIDC_TOKEN?.trim() ??
-				process.env.AI_GATEWAY_KEY?.trim() ??
-				"",
+			apiKey: profile.apiKey ?? keyForModelEndpoint(profile.baseUrl ?? UPSTREAM_BASE_URL.vercelAiGateway, config.aiProviderKeys),
 		};
 	}
 	const baseUrl = profile.baseUrl ?? UPSTREAM_BASE_URL.openai;
@@ -281,7 +274,7 @@ function sourceFromProfile(
 		id: profile.id,
 		label: profile.name || "OpenAI-compatible",
 		baseUrl,
-		apiKey: profile.apiKey ?? inferKey(baseUrl, config),
+		apiKey: profile.apiKey ?? keyForModelEndpoint(baseUrl, config.aiProviderKeys),
 	};
 }
 
@@ -297,12 +290,7 @@ function sourceFromRouter(
 				id: "vercel-ai-gateway",
 				label: "Vercel AI Gateway",
 				baseUrl: baseUrl ?? UPSTREAM_BASE_URL.vercelAiGateway,
-				apiKey:
-					ai.vercelAiGateway ??
-					process.env.AI_GATEWAY_API_KEY?.trim() ??
-					process.env.VERCEL_OIDC_TOKEN?.trim() ??
-					process.env.AI_GATEWAY_KEY?.trim() ??
-					"",
+				apiKey: ai.vercelAiGateway ?? "",
 			};
 		case "openai":
 			return {
@@ -316,7 +304,7 @@ function sourceFromRouter(
 				id: "openrouter",
 				label: "OpenRouter",
 				baseUrl: baseUrl ?? UPSTREAM_BASE_URL.openrouter,
-				apiKey: ai.openrouter ?? process.env.OPENROUTER_API_KEY?.trim() ?? "",
+				apiKey: ai.openrouter ?? "",
 			};
 		case "google":
 			return {
@@ -335,31 +323,15 @@ function sourceFromRouter(
 	}
 }
 
-function inferKey(baseUrl: string, config: UserConfig): string {
-	const lower = baseUrl.toLowerCase();
-	if (lower.includes("openrouter")) {
-		return config.aiProviderKeys.openrouter ?? process.env.OPENROUTER_API_KEY?.trim() ?? "";
-	}
-	if (lower.includes("openai.com")) return config.aiProviderKeys.openai ?? "";
-	if (lower.includes("dedalus")) return "";
-	if (lower.includes("ai-gateway.vercel")) {
-		return (
-			config.aiProviderKeys.vercelAiGateway ??
-			process.env.AI_GATEWAY_API_KEY?.trim() ??
-			process.env.VERCEL_OIDC_TOKEN?.trim() ??
-			process.env.AI_GATEWAY_KEY?.trim() ??
-			""
-		);
-	}
-	if (lower.includes("googleapis")) return config.aiProviderKeys.google ?? "";
-	return config.aiProviderKeys.custom?.key ?? "";
+function credentialDigest(key: string): string {
+	return createHash("sha256").update(key).digest("hex");
 }
 
 function dedupeSources(sources: CatalogSource[]): CatalogSource[] {
 	const seen = new Set<string>();
 	const out: CatalogSource[] = [];
 	for (const source of sources) {
-		const key = `${source.baseUrl.replace(/\/$/, "")}:${Boolean(source.apiKey)}`;
+		const key = `${source.baseUrl.replace(/\/$/, "")}:${credentialDigest(source.apiKey)}`;
 		if (seen.has(key)) continue;
 		seen.add(key);
 		out.push(source);

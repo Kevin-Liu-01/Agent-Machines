@@ -17,6 +17,8 @@ import {
 	agentTemplateBySlug,
 } from "@/lib/marketing/public-site";
 import { buildPageMetadata } from "@/lib/seo/metadata";
+import { listPresets } from "@/lib/dashboard/presets";
+import { presetDestination } from "@/lib/onboarding/preset-selection";
 
 type Params = {
 	params: Promise<{ slug: string }>;
@@ -54,8 +56,8 @@ export default async function AgentTemplatePage({ params }: Params) {
 					icon={agent.icon}
 					actions={
 						<>
-							<ReticleButton as="a" href="/sign-in" size="lg" className="rounded-[var(--ret-card-radius)]">
-								Start for free
+							<ReticleButton as="a" href={presetDestination("/onboarding", listPresets(), agent.slug)} size="lg" className="rounded-[var(--ret-card-radius)]">
+								Set up this Worker
 							</ReticleButton>
 							<ReticleButton as="a" href="/agents" variant="secondary" size="lg" className="rounded-[var(--ret-card-radius)]">
 								All agents

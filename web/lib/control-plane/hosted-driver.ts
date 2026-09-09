@@ -13,6 +13,7 @@ import { agentArtifactsPresent } from "@/lib/bootstrap/bootstrap-repair";
 import { machineHomeForProvider } from "@/lib/bootstrap/bootstrap-log";
 import { runtimeModel } from "@/lib/agents/runtime-model";
 import { runWebBootstrap } from "@/lib/bootstrap/runner";
+import { boundedConsoleCommand } from "./bounded-console-command";
 import { createMachineForConfig } from "@/lib/dashboard/provision";
 import { runMachineMigration } from "@/lib/dashboard/migrate";
 import { forgetHostedPlacement } from "@/lib/mux/placements";
@@ -104,6 +105,11 @@ function aggregateEvents(events: MuxAgentEvent[]): string {
 		.join("");
 }
 
+export type HostedRuntimeExecutionOptions = {
+	/** Absolute request deadline, not a fresh timeout after lifecycle work. */
+	executionDeadlineMs?: number;
+};
+
 /**
  * Hosted provider/harness adapter for the public control-plane kernel. It uses
  * stable user-id persistence instead of request-local auth so the same driver
@@ -112,8 +118,22 @@ function aggregateEvents(events: MuxAgentEvent[]): string {
 export class HostedWorkerRuntimeDriver implements WorkerRuntimeDriver {
 	private config: UserConfig | null;
 
-	constructor(readonly userId: string, initialConfig: UserConfig | null = null) {
+	constructor(
+		readonly userId: string,
+		initialConfig: UserConfig | null = null,
+		private readonly executionOptions: HostedRuntimeExecutionOptions = {},
+	) {
 		this.config = initialConfig;
+	}
+
+	private runTimeoutMs(): number {
+		const deadline = this.executionOptions.executionDeadlineMs;
+		if (deadline === undefined) return 600_000;
+		if (!Number.isFinite(deadline)) throw new Error("Worker run execution deadline is invalid.");
+		// Reserve ten seconds for guest termination and twenty for journal/save.
+		const remaining = Math.floor(deadline - Date.now() - 30_000);
+		if (remaining <= 0) throw new Error("Worker run did not start: its execution deadline has been reached.");
+		return Math.min(180_000, remaining);
 	}
 
 	private async getConfig(): Promise<UserConfig> {
@@ -251,6 +271,9 @@ export class HostedWorkerRuntimeDriver implements WorkerRuntimeDriver {
 		) {
 			return placement(worker, machine);
 		}
+		if (this.executionOptions.executionDeadlineMs !== undefined) {
+			throw new Error("Prepare the Worker through its lifecycle controls before starting a Console run. Its runtime configuration needs bootstrap.");
+		}
 		// Bootstrap against the desired runtime in memory. Persisting agentKind
 		// before its install/probe succeeds would make the dashboard lie about
 		// what is actually on the sandbox.
@@ -372,30 +395,40 @@ export class HostedWorkerRuntimeDriver implements WorkerRuntimeDriver {
 		const { config, machine } = await this.machineFor(placementValue);
 		const provider = getProvider(machine.providerKind, config.providers);
 		const harness = getHarness(machine.agentKind);
-		const command = harness.runCommand(prompt, upstreams(config), {
+		const configuredRuntime = machine.agentKind === "hermes" || machine.agentKind === "openclaw";
+		const command = harness.runCommand(prompt, machine.agentKind === "hermes" ? {} : upstreams(config), {
 			// OpenClaw's configured primary already incorporates the gateway
 			// provider. Passing the logical Worker model here can be a different
 			// ref (for example anthropic/... vs router/anthropic/...), which current
 			// OpenClaw correctly rejects as an unallowlisted per-run override.
 			model:
-				machine.agentKind === "openclaw"
+				configuredRuntime
 					? undefined
 					: runtimeModel(machine.agentKind, options.model),
 		});
 		const home = machineHomeForProvider(machine.providerKind);
 		const hostedPath = [
+			`${home}/.agent-machines/venv/bin`,
 			`${home}/.npm-global/bin`,
 			`${home}/.local/bin`,
 			`${home}/.agent-machines/node/bin`,
 			`${home}/.agent-machines/pkgs/node_modules/.bin`,
 		].join(":");
+		// Hosted Hermes keeps its provider, credentials, model and memory in this
+		// durable home. A generic SDK provider override would ignore that setup.
+		const runtimeSetup = machine.agentKind === "hermes"
+			? `if [ -f "${home}/.agent-machines/.agent-env" ]; then . "${home}/.agent-machines/.agent-env" || exit $?; fi; export HERMES_HOME="${home}/.agent-machines"; `
+			: "";
 		const startedAt = new Date().toISOString();
 		const started = performance.now();
+		const timeoutMs = this.runTimeoutMs();
+		const isBounded = this.executionOptions.executionDeadlineMs !== undefined;
+		const runCommand = `${runtimeSetup}export PATH="${hostedPath}:$PATH"; ${command.command}`;
 		const result = await provider.exec(
 			machine.id,
-			`export PATH="${hostedPath}:$PATH"; ${command.command}`,
+			isBounded ? boundedConsoleCommand(runCommand, timeoutMs) : runCommand,
 			{
-			timeoutMs: 600_000,
+			timeoutMs: timeoutMs + (isBounded ? 10_000 : 0),
 			env: command.env,
 			},
 		);

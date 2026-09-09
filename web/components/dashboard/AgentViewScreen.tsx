@@ -431,7 +431,7 @@ export function AgentViewScreen() {
 			setConsoleAutoLaunch(false);
 			prefetchXterm();
 
-			const launchCommand = agentLaunchCommand(machine.agentKind);
+			const launchCommand = agentLaunchCommand(machine.agentKind, machine.model);
 			const hasCli = isCliAgent(machine.agentKind);
 			const runtimeProfile = runtimeProfileFor(machine.agentKind);
 			const shouldBootstrap =
@@ -605,7 +605,7 @@ export function AgentViewScreen() {
 
 	if (!machine) return null;
 	const runtimeProfile = runtimeProfileFor(machine.agentKind);
-	const launchCommand = agentLaunchCommand(machine.agentKind);
+	const launchCommand = agentLaunchCommand(machine.agentKind, machine.model);
 	const launchTerminalHref = `${base}/terminal?launch=1`;
 	const agentDisplay = agentLabel(machine.agentKind);
 	const detectedAgent = snapshot.introspection?.detectedAgent ?? null;
