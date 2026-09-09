@@ -17,7 +17,7 @@ export const TITLE_SEPARATOR = " | ";
 export const SITE = {
 	name: "Agent Machines",
 	wordmark: "agent-machines",
-	url: "https://www.agent-machines.com",
+	url: "https://www.agent-machines.dev",
 	description:
 		"Create persistent, long-running Workers from a description or a trusted template. Keep their memory, files, schedules, abilities, and evidence while models, runtimes, and sandboxes change underneath them.",
 	longDescription:

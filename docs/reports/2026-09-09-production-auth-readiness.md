@@ -1,6 +1,9 @@
 # Production authentication follow-up — September 9, 2026
 
-## Changed production state
+## Initial inspection — historical
+
+The later DNS and domain follow-up below supersedes the missing-DNS state and
+`.com` public-host policy described at this initial checkpoint.
 
 At 20:11 UTC, a fresh read of the exact Vercel Production project classified
 both Clerk keys as production keys. No key values were printed. The configured
@@ -39,7 +42,7 @@ At 20:36 UTC, deployment `dpl_9M8FXTv7mjr8VQko6gx46F7Wy2XK`
 (`agent-machines-dmdvxyvir-kl01s-projects.vercel.app`) was Production/Ready and
 served both public domains. This deployment supersedes the one recorded above.
 
-Public marketing stays on `.com`. Browser sign-in, onboarding, and dashboard
+At that checkpoint, public marketing stayed on `.com`. Browser sign-in, onboarding, and dashboard
 requests must use `https://www.agent-machines.dev` when the configured production
 key belongs to this exact Clerk domain. This avoids trying to use a primary
 Clerk instance across unrelated domains without satellite configuration.
@@ -100,9 +103,29 @@ for external users. See the [social login setup report](2026-09-09-social-login-
 for configuration evidence and the remaining live-login checks. Credentials
 are not included in these reports.
 
-Porkbun remains signed out in Chrome, and the owner has been asked to sign in.
-The independent DNS lookup still returned `NXDOMAIN`; configuring social
-providers does not make the Clerk domain reachable or prove a successful login.
+At that checkpoint, Porkbun was signed out in Chrome, and the independent DNS
+lookup still returned `NXDOMAIN`. The following DNS work supersedes that state;
+social-provider configuration alone was not proof of a successful login.
+
+### DNS and canonical-domain follow-up
+
+After the owner signed in, the five CNAMEs above were added to the `.dev` zone
+with TTL 600. Existing website records and nameservers were preserved. Public
+DNS now resolves the new records, and Clerk reports the frontend API, account
+portal, and all three email records **Verified**. By 21:30 UTC, both SSL
+certificates were **Issued**. The versioned frontend browser script returned
+200 over verified TLS using its publicly resolved IP.
+
+The Mac's configured DNS resolver still returned `NXDOMAIN`, and Chrome still
+showed the sign-in recovery state. No system DNS or VPN changes were made.
+See the [social login follow-up](2026-09-09-social-login-setup.md) for the exact
+verification boundary; this is not yet an actual OAuth callback test.
+
+At the owner's request, Vercel now redirects both `.com` hosts to
+`www.agent-machines.dev` with 308 responses across all paths. This supersedes
+the earlier public-marketing/API exception at the domain level; authenticated
+API clients should target `.dev` directly. The narrower code-side auth redirect
+remains in place. See the [domain report](2026-09-09-domain-canonicalization.md).
 
 ### Initial preparation — historical
 
@@ -121,7 +144,7 @@ that preparation-only state; live login remains unverified.
 
 ## Remaining launch proof
 
-- Verify the Clerk DNS records and certificates for the confirmed `.dev` domain.
+- Resolve the browser's local DNS discrepancy and verify that production sign-in loads.
 - Verify the configured provider connections through their actual consent and
   callback flows after DNS and certificates are ready; keep permissions limited
   to sign-in and resolve any paid X profile-read boundary before testing it.

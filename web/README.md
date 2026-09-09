@@ -42,10 +42,18 @@ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=...
 CLERK_SECRET_KEY=...
 ```
 
-The hosted production Clerk instance uses `agent-machines.dev`. Browser auth and
-dashboard pages on `.com` redirect to `www.agent-machines.dev` when this exact
-production instance is configured; public pages and API endpoints do not move.
-Verify Clerk DNS and certificates before testing login. See the
+The hosted production Clerk instance uses `agent-machines.dev`, and the canonical
+hosted origin is `https://www.agent-machines.dev`. Vercel now redirects both
+`.com` hosts to it with HTTP 308 for all paths, including public pages and APIs,
+preserving paths and queries. API clients should set
+`AGENT_MACHINES_URL=https://www.agent-machines.dev` directly: clients may drop
+authorization on cross-origin redirects, even though HTTP 308 preserves the
+method and body when followed correctly.
+
+The application's narrower GET/HEAD auth-page redirect remains defense in depth,
+independent of Vercel settings and gated to this exact production Clerk instance.
+Its API and POST exclusions do not exempt those requests from Vercel's
+whole-domain redirect. Verify Clerk DNS and certificates before testing login. See the
 [hosted authentication setup](../docs/LAUNCH.md#hosted-authentication-domain).
 
 For a local preview, the example enables `ALLOW_DEV_AUTH=1`, which works only

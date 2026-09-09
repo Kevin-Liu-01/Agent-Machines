@@ -59,19 +59,36 @@ The saved-secret X OAuth 2 modal was closed, and GitHub was navigated back to
 settings to hide its one-time secret. The original X initial-keys dialog from
 the owner's existing setup was retained for the owner.
 
-## Remaining blockers and proof
+## DNS and certificate follow-up
 
-All five Clerk DNS records remain **Unverified**, as listed in the
-[production authentication report](2026-09-09-production-auth-readiness.md).
-An independent `dig @1.1.1.1` lookup still returned `NXDOMAIN` for
-`clerk.agent-machines.dev` at 21:07 UTC.
-Porkbun is signed out in Chrome, and the owner has been asked to sign in.
-DNS verification and certificate readiness have not been established.
+After the owner signed into Porkbun, all five CNAME records listed in the
+[production authentication report](2026-09-09-production-auth-readiness.md)
+were added to `agent-machines.dev` with TTL 600. The existing apex A record,
+`www` CNAME, and authoritative nameservers were preserved. The DNS table was
+reread and contained exactly those two existing records plus the five additions.
 
-The next required steps are owner Porkbun sign-in, completion of DNS and
-certificate verification, then actual production login verification. No OAuth
-login, fresh-account onboarding, or new-account-to-completed-Worker proof was
-completed at this checkpoint. No paid API tests were performed.
+At approximately 21:28 UTC, Cloudflare DNS resolved all five exact CNAME targets.
+Google DNS independently resolved the frontend hostname. Clerk's production
+domain page reported **Verified** for the frontend API and account portal,
+and **3/3 Verified** for email. By 21:30 UTC, it reported both SSL certificates
+as **Issued**.
+
+A TLS-verified request using the publicly resolved frontend IP returned 200
+for Clerk's versioned browser script. The account portal completed TLS but
+returned 403 to the command-line probe; this is not a successful portal test.
+The Mac's configured resolver (`100.100.100.100`) still returned `NXDOMAIN`,
+and the owner's Chrome sign-in page still reached the recovery message.
+No system DNS or VPN settings were changed to bypass that discrepancy.
+
+Both `.com` hosts now permanently redirect to the existing canonical `.dev`
+host in Vercel. See the [domain canonicalization report](2026-09-09-domain-canonicalization.md).
+
+## Remaining proof
+
+Actual production consent and callback verification remains necessary once
+the browser can resolve Clerk. No OAuth login, fresh-account onboarding, or
+new-account-to-completed-Worker proof was completed at this checkpoint. No
+paid API tests were performed.
 
 No credentials were saved in the repository. This report contains no secrets
 or private contact data.

@@ -10,7 +10,7 @@ The core primitive is the **Worker**, not the sandbox or runtime. A Worker is th
 
 Open source (MIT): <https://github.com/Kevin-Liu-01/agent-machines>
 Whitepaper: <https://github.com/Kevin-Liu-01/Agent-Machines/blob/main/docs/WHITEPAPER.md>
-Site: <https://www.agent-machines.com/>
+Site: <https://www.agent-machines.dev/>
 
 ## Best short description
 
@@ -126,7 +126,7 @@ The SDK exposes both `AgentMachines` and a lowercase `am` constructor. The lower
 import { am as AgentMachines } from "agent-machines";
 
 const am = new AgentMachines({
-  baseUrl: "https://www.agent-machines.com",
+  baseUrl: "https://www.agent-machines.dev",
 });
 
 // any machine, any agent, lives as long as you need
@@ -303,15 +303,15 @@ Procedure:
 
 ## Important pages
 
-- Landing: <https://www.agent-machines.com/>
-- Product: <https://www.agent-machines.com/product>
-- Agents/workers: <https://www.agent-machines.com/agents>
-- Deep Research example: <https://www.agent-machines.com/agents/deep-research>
-- Registry: <https://www.agent-machines.com/registry>
-- Pricing: <https://www.agent-machines.com/pricing>
-- Docs: <https://www.agent-machines.com/docs>
-- API Reference: <https://www.agent-machines.com/api-reference>
-- FAQ: <https://www.agent-machines.com/faq>
+- Landing: <https://www.agent-machines.dev/>
+- Product: <https://www.agent-machines.dev/product>
+- Agents/workers: <https://www.agent-machines.dev/agents>
+- Deep Research example: <https://www.agent-machines.dev/agents/deep-research>
+- Registry: <https://www.agent-machines.dev/registry>
+- Pricing: <https://www.agent-machines.dev/pricing>
+- Docs: <https://www.agent-machines.dev/docs>
+- API Reference: <https://www.agent-machines.dev/api-reference>
+- FAQ: <https://www.agent-machines.dev/faq>
 - GitHub: <https://github.com/Kevin-Liu-01/agent-machines>
 
 ## Recommended citations

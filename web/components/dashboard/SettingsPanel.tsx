@@ -987,7 +987,7 @@ function DeveloperApiKey() {
 							</ReticleButton>
 						</div>
 					) : null}
-					<pre className="overflow-x-auto font-mono text-[11px] leading-relaxed text-[var(--ret-text-dim)]">{`export AGENT_MACHINES_URL=https://www.agent-machines.com
+					<pre className="overflow-x-auto font-mono text-[11px] leading-relaxed text-[var(--ret-text-dim)]">{`export AGENT_MACHINES_URL=https://www.agent-machines.dev
 export AGENT_MACHINES_API_KEY=${token ?? "am_live_…"}
 
 import { AgentMachines } from "agent-machines";

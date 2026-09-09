@@ -54,13 +54,28 @@ for safety, but cannot supply a new launch, API call, or automatic conversion.
 
 ### Hosted authentication domain
 
-The hosted Clerk primary domain is `agent-machines.dev`. With this exact
-production instance configured, `.com` GET/HEAD requests to `/sign-in`,
-`/onboarding`, and `/dashboard` (including nested routes) move to
-`https://www.agent-machines.dev` before Clerk processes them. Public marketing
-and existing API URLs remain on their original hosts; API credentials and POST
-bodies must not be forwarded across origins. Local development and other Clerk
-instances do not activate this hosted-domain policy.
+The canonical hosted origin is `https://www.agent-machines.dev`, under Clerk's
+primary domain `agent-machines.dev`. Vercel redirects both `agent-machines.com`
+and `www.agent-machines.com` to this origin with HTTP 308, preserving paths and
+queries. This is a whole-domain redirect, including public pages and APIs; it
+supersedes the earlier policy that kept marketing and API requests on `.com`.
+The existing `.dev` apex-to-`www` HTTP 307 redirect remains unchanged.
+
+SDKs and other API clients must target `https://www.agent-machines.dev` directly
+(for example, `AGENT_MACHINES_URL=https://www.agent-machines.dev`). HTTP 308
+preserves the method and body when followed by a conforming client, but clients
+may drop authorization headers across origins. Do not rely on redirects to
+transport credentials or server-action requests.
+
+Independently of Vercel's domain configuration, the application proxy retains
+its narrower auth-host policy as defense in depth: with this exact production
+Clerk instance configured, `.com` GET/HEAD requests to `/sign-in`, `/onboarding`,
+and `/dashboard` (including nested routes) redirect before Clerk processes them.
+That application policy excludes APIs and POST requests and does not activate
+for local development or other Clerk instances. The Vercel redirect applies
+before those application-level exclusions. See the
+[domain canonicalization audit](reports/2026-09-09-domain-canonicalization.md)
+for the verified settings and rollback boundary.
 
 Keep `redirect_url` destinations relative and validated. OAuth providers instead
 use the exact callback URL shown in the production Clerk connection settings;
