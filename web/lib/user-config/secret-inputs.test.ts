@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { agentCredentialRequirements } from "@/lib/agents/credentials";
 import { agentUsesRouter } from "@/lib/agents/upstreams";
 import * as schema from "@/lib/user-config/schema";
+import * as credentialRemoval from "@/lib/user-config/credential-removal";
 
 type Element = { type: unknown; props: Record<string, unknown> };
 function elements(value: unknown): Element[] {
@@ -29,6 +30,7 @@ function loadTsx(file: string, extraExports: string, overrides: Record<string, u
 		module, exports: module.exports, ...globals,
 		require: (id: string) => overrides[id] ?? (id === "react/jsx-runtime" ? { jsx, jsxs: jsx }
 			: id.endsWith("user-config/schema") ? schema
+				: id.endsWith("user-config/credential-removal") ? credentialRemoval
 				: id === "@/lib/agents" ? { AGENTS: [] }
 					: new Proxy({}, { get: () => () => null })),
 	});
@@ -51,6 +53,11 @@ function mountSettings() {
 			return [cell.value, (value: unknown) => { cell.value = typeof value === "function" ? value(cell.value) : value; }];
 		},
 		useEffect() {},
+		useRef(initial: unknown) {
+			const index = cursor++;
+			const cell = state[index] ?? (state[index] = { value: { current: initial } });
+			return cell.value;
+		},
 	};
 	const component = loadTsx("components/dashboard/SettingsPanel.tsx", "", { react }, {
 		fetch: async (_url: string, options: { body: string }) => {
@@ -85,7 +92,8 @@ function mountSettings() {
 		async save() {
 			const button = elements(tree).find((node) => text(node).trim() === "Save settings" && typeof node.props.onClick === "function")!;
 			(button.props.onClick as () => void)();
-			await Promise.resolve();
+			for (let i = 0; i < 10; i++) await Promise.resolve();
+			render();
 		},
 	};
 }

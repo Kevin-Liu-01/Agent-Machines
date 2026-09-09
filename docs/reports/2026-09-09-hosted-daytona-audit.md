@@ -151,6 +151,14 @@ an OpenClaw auth/cache/memory SQLite database for unsupported conversation histo
 and listed a companion trajectory file as another conversation. The actual native
 conversation remained readable; this warning is not a failed model task.
 
+The narrow classification fix shipped in `48408dc30ec8fb72d260b59e72f24c6b5e6df906`
+(`dpl_2oXayupDn3S62sKDHLSMrC69Kr6f`), with production aliases verified at
+approximately 10:58 UTC. The real hosted Sessions API and browser then returned
+the single OpenClaw conversation and earlier Claude history without false warnings
+or a duplicate trace. The actual tool result remained untruncated; no additional
+model task was submitted. A bounded deployment error-log scan returned zero rows
+at this checkpoint; this is not a long-term uptime or monitoring guarantee.
+
 ## Public UI and remaining launch boundary
 
 Public desktop and 390-pixel mobile

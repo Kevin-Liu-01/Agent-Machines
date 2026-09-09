@@ -6,8 +6,8 @@
  * in `privateMetadata`; everything client-readable lives in
  * `publicMetadata`.
  *
- * The shape supports multiple providers (Dedalus, E2B, Sprites, Vercel)
- * and multiple machines per user. Each machine has its own provider,
+ * Active providers are Daytona, E2B, Sprites, and Vercel Sandbox.
+ * The shape supports multiple machines per user. Each machine has its own provider,
  * agent kind, spec, and (after install) gateway URL + bearer. The user
  * picks one as `activeMachineId` -- that's the one the chat surface
  * targets and the dashboard polls.

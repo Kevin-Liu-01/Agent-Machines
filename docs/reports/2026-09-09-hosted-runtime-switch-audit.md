@@ -109,6 +109,19 @@ A bounded read-only follow-up at 10:46:53 confirmed both presentation defects. T
 
 The subsequent approved correction changes only those two classification rules. OpenClaw `*.trajectory.jsonl` files are omitted from the conversation index and totals, without deletion; the known auth/cache/memory SQLite file is no longer inspected or used to infer conversation storage. Other runtimes' filenames, safe descriptor-relative reads, payload limits, and actual JSONL/Hermes corruption warnings remain unchanged. Five executable regressions failed before the correction, covering SQLite coexistence/metadata-only, trace companion/trace-only, and a corrupt real conversation alongside its trace. All 33 actual-reader tests and 14 hosted Sessions route tests then passed; web TypeScript and whitespace checks passed. Those tests also verify the metadata database and trace bytes are unchanged and that real corrupted history still produces warnings. Deployed verification of this presentation correction remains pending; no additional provider or paid-model calls were made while implementing it.
 
+## Final deployed Sessions verification and cleanup
+
+Release `48408dc30ec8fb72d260b59e72f24c6b5e6df906` became ready on both production
+domains. At 10:58:31 UTC, the actual hosted Sessions API returned zero warnings,
+exactly one OpenClaw conversation, and the earlier Claude conversation. The
+OpenClaw detail returned four readable messages, no truncation or warnings, and
+the actual file-read tool call/result. Its diagnostic trajectory was not listed.
+The authenticated Sessions page independently displayed that same saved
+conversation and tool evidence, with a screenshot retained. No model call was
+made for this verification. The original hosted fixture was then deleted through
+the normal lifecycle, with provider absence and hosted HTTP 404 independently
+confirmed at 10:59:33 UTC; see the [cleanup audit](2026-09-09-qa-cleanup.md).
+
 ## Limits and next checks
 
-Hermes has a completed hosted runtime-switch/model/tool proof on E2B. OpenClaw has a proven 512 MiB E2B capacity failure and now a successful normal hosted repair, runtime switch, and real native-Anthropic tool task on 2 GiB Daytona, with the original file and Claude history retained. This is not a complete runtime/provider matrix, does not establish that 1 GiB is sufficient, and does not guarantee capacity for arbitrary workloads. The managed workspace prefix is contextual guidance, not filesystem isolation. The narrowly corrected native-history presentation still awaits deployed verification. No further paid retry is needed for this bounded proof.
+Hermes has a completed hosted runtime-switch/model/tool proof on E2B. OpenClaw has a proven 512 MiB E2B capacity failure and now a successful normal hosted repair, runtime switch, and real native-Anthropic tool task on 2 GiB Daytona, with the original file and Claude history retained through verification. This is not a complete runtime/provider matrix, does not establish that 1 GiB is sufficient, and does not guarantee capacity for arbitrary workloads. The managed workspace prefix is contextual guidance, not filesystem isolation. The narrowly corrected native-history presentation also passed deployed verification. No further paid retry is needed for this bounded proof.

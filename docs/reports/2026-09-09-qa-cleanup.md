@@ -38,9 +38,6 @@ now removed; their verification evidence remains.
 
 ## Retained at this checkpoint
 
-- Hosted Daytona Worker placement `e4f3dde3-c174-407b-9a55-5901eecb0e34` is
-  retained temporarily for the final session-history inspection after its real
-  OpenClaw task. No further paid task is scheduled.
 - The old, separate Clerk QA account's schedule `1125a99f-fdb8-42dc-8145-90fa097f1ba7`
   remains enabled; its next matching date is September 9, 2027. Its E2B placement
   `inhhzbntovc0yik89pe4f` was last independently confirmed paused. Disabling the
@@ -48,6 +45,39 @@ now removed; their verification evidence remains.
   approval because backend write scopes are absent. Neither the account nor its
   schedule was silently changed. See the [cron audit](2026-09-09-hosted-cron-audit.md).
 
-Stopped retained disks may continue incurring storage charges. The current QA
-API key remains available only until the remaining checks and cleanup are done.
-No credential values are included here.
+Stopped retained disks may continue incurring storage charges. No credential
+values are included here.
+
+## Final hosted Daytona fixture
+
+After deployment `48408dc`, the original hosted Daytona Worker's native Sessions
+API and actual browser page were checked without another model call. They showed
+one OpenClaw conversation, the earlier Claude conversation, no false warning or
+duplicate trajectory, and the untruncated real file-read tool result. Screenshots
+were saved before cleanup.
+
+Worker `7c595405-e315-4260-8d81-5fa9d766569c` and exact Daytona placement
+`e4f3dde3-c174-407b-9a55-5901eecb0e34` were rechecked with the original QA name,
+no enabled schedules, and no active operations. Normal hosted deletion
+`99dcaf77-df63-4d50-b5e3-ee7348998927` succeeded; a fresh provider description
+returned `destroyed` and the hosted machine API returned HTTP 404 at 10:59:33 UTC.
+This removes the last current-account hosted test fixture, including its disk.
+The old, separately permission-gated QA account above remains distinct.
+
+## Current QA SDK credential
+
+At 11:00:34 UTC, the browser's Clerk identity was checked against the exact
+current QA account. The Settings API's key metadata matched the privately stored
+QA key, and a cookie-free bearer request returned HTTP 200. The actual Settings
+page's **Revoke** action then removed that account's SDK key; it did not rotate
+the key or modify another account. At 11:01:35 UTC, the signed-in metadata read
+reported `configured: false`, and the old bearer alone returned HTTP 401.
+This revokes the disposable Agent Machines SDK credential, not the owner-supplied
+Daytona or model-provider credentials used by the deployment.
+
+Saved vendor/model credential copies in the two disposable Clerk QA accounts are
+a separate cleanup item, not covered by SDK-key revocation. Removing those copies
+and disabling the old QA-only schedule through administrator access remains
+pending explicit approval. The exact QA user IDs are
+`user_3J583f03iTTmxiyOeSVDHQHe48i` and `user_3J4rO7BDLBYI7e2QrMDljAQsiVD`.
+The owner's actual account and Vercel Production environment are excluded.

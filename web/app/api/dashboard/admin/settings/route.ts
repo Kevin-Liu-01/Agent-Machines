@@ -11,11 +11,14 @@
  * can be reflected back into the UI.
  */
 
+import { auth } from "@clerk/nextjs/server";
 import { isRemovedDedalusRouter } from "@/lib/agents/upstreams";
 import { readTextFile, withActiveMachine } from "@/lib/storage/machine-fs";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 import { daytonaCredentialsError } from "@/lib/user-config/daytona-credentials";
+import { parseCredentialRemoval } from "@/lib/user-config/credential-removal";
+import { removeSavedCredentialsForUser } from "@/lib/user-config/remove-credentials";
 import {
 	DEFAULT_MODEL,
 	toPublicConfig,
@@ -150,6 +153,24 @@ export async function POST(request: Request): Promise<Response> {
 			{ error: "save_failed", message },
 			{ status: 500 },
 		);
+	}
+}
+
+/** Explicit removal of selected saved account copies, never vendor revocation. */
+export async function DELETE(request: Request): Promise<Response> {
+	const headers = { "Cache-Control": "private, no-store" };
+	let userId: string | null = null;
+	try { userId = (await auth()).userId; } catch { /* No SDK/dev/admin fallback. */ }
+	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401, headers });
+	const credentials = parseCredentialRemoval(await request.json().catch(() => null));
+	if (!credentials) {
+		return Response.json({ error: "invalid_credentials", message: "Select one or more supported saved credentials to remove." }, { status: 400, headers });
+	}
+	try {
+		return Response.json(await removeSavedCredentialsForUser(userId, credentials), { headers });
+	} catch {
+		// Do not return provider keys, metadata, or Clerk exception details.
+		return Response.json({ error: "credential_removal_unverified", message: "Saved credential removal could not be verified. Refresh Settings before trying again." }, { status: 503, headers });
 	}
 }
 

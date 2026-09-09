@@ -119,7 +119,11 @@ export default function PrivacyPage() {
 							need them.
 						</DocListItem>
 						<DocListItem>
-							Remove provider keys from setup when you stop using a provider.
+							Remove saved provider and model credentials in Settings when you
+							stop using them. This removes your account’s saved copy, not
+							deployment-provided defaults or copies already installed in Workers
+							or profiles. It does not revoke the vendor key or stop sandboxes;
+							revoke keys separately with the vendor when needed.
 						</DocListItem>
 						<DocListItem>
 							Destroy provider machines when you want their disks removed by

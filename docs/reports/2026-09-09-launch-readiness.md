@@ -1,6 +1,6 @@
 # Launch-readiness audit — September 9, 2026
 
-Status: Daytona is deployed through `d1eb6d9`. Real hosted Claude execution,
+Latest completed hosted runtime/history verification: `48408dc`. Real Claude execution,
 independently verified file output, sleep/wake persistence, non-waking passive
 reads, and native browser-terminal launch passed after correcting an incompatible
 preinstalled CLI and a stale completed-phase health check. E2B-to-Daytona state
@@ -284,6 +284,26 @@ package verification. Six additional executable reader cases keep diagnostic
 traces separate from conversations, avoid the false auth/memory-database warning,
 and retain genuine corruption warnings. Deployment verification is recorded
 separately from this local gate.
+
+Release `48408dc` subsequently became ready on the independently checked `.com`
+and `.dev` production aliases. At 10:58:31 UTC, the real native-history API returned
+one OpenClaw conversation, the earlier Claude history, zero warnings, and the
+untruncated actual tool result. The authenticated browser independently displayed
+that conversation. No further model call was made. The last hosted Daytona QA
+fixture was then explicitly deleted, with independent provider absence and
+hosted HTTP 404 confirmed at 10:59:33 UTC. A bounded error-log scan for this
+deployment returned zero rows; no long-term uptime guarantee is inferred.
+
+At approximately 11:16 UTC, the saved-credential removal addition passed the
+complete `pnpm check`: **863 SDK/source tests**, **1,585 web tests** (37 explicit
+platform-specific skips), both typechecks, production build, and isolated SDK
+package verification. Its 33 executable route cases and 22 Settings-handler cases
+cover current-session ownership, exact selected-field deletion, fresh persistence
+verification, cancellation, ambiguous responses, and preventing accidental
+re-saving from pending inputs. An independent security review found no concrete
+blocker. These deterministic tests are not a live Clerk deletion claim; the
+approval-gated QA cleanup remains separate. See the
+[saved-credential removal audit](2026-09-09-saved-credential-removal.md).
 
 ## Daytona replacement
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { DashboardPageBody } from "@/components/dashboard/DashboardPageBody";
 import { Logo, type Mark } from "@/components/Logo";
@@ -13,6 +13,11 @@ import { ReticleSelect } from "@/components/reticle/ReticleSelect";
 import { AGENTS } from "@/lib/agents";
 import { TRUSTED_ADDONS } from "@/lib/dashboard/loadout";
 import { groupedModelCatalog, modelDisplayLabel } from "@/lib/dashboard/model-catalog";
+import {
+	CREDENTIAL_OPTIONS,
+	type CredentialRemovalResult,
+	type CredentialSelector,
+} from "@/lib/user-config/credential-removal";
 import {
 	AGENT_KINDS,
 	AGENT_LABEL,
@@ -76,6 +81,12 @@ export function SettingsPanel({ initialConfig }: Props) {
 	const [state, setState] = useState<SaveState>({ phase: "idle" });
 	// Which instant-save Active-configuration control is mid-flight.
 	const [savingField, setSavingField] = useState<string | null>(null);
+	const [credentialSelection, setCredentialSelection] = useState("");
+	const [removalState, setRemovalState] = useState<SaveState>({ phase: "idle" });
+	const settingsWriteInFlight = useRef(false);
+	const busy = state.phase === "saving" || savingField !== null || removalState.phase === "saving";
+	const removableCredentials = CREDENTIAL_OPTIONS.filter((option) => credentialConfigured(config, option.id));
+	const selectedCredential = removableCredentials.find((option) => option.id === credentialSelection);
 
 	// Active configuration writes a single field and reflects the returned
 	// config immediately, so switching agent/substrate/model/loadout feels
@@ -85,6 +96,8 @@ export function SettingsPanel({ initialConfig }: Props) {
 		body: Record<string, unknown>,
 		field: string,
 	): Promise<void> {
+		if (settingsWriteInFlight.current) return;
+		settingsWriteInFlight.current = true;
 		setSavingField(field);
 		try {
 			const response = await fetch(`/api/dashboard/admin/${endpoint}`, {
@@ -107,11 +120,14 @@ export function SettingsPanel({ initialConfig }: Props) {
 				message: err instanceof Error ? err.message : `${field} update failed`,
 			});
 		} finally {
+			settingsWriteInFlight.current = false;
 			setSavingField(null);
 		}
 	}
 
 	async function save(): Promise<void> {
+		if (settingsWriteInFlight.current) return;
+		settingsWriteInFlight.current = true;
 		setState({ phase: "saving" });
 		try {
 			const providers: ProviderCredentials = {};
@@ -177,10 +193,14 @@ export function SettingsPanel({ initialConfig }: Props) {
 				phase: "error",
 				message: err instanceof Error ? err.message : "settings save failed",
 			});
+		} finally {
+			settingsWriteInFlight.current = false;
 		}
 	}
 
 	async function syncFromMachine(): Promise<void> {
+		if (settingsWriteInFlight.current) return;
+		settingsWriteInFlight.current = true;
 		setState({ phase: "saving" });
 		try {
 			const response = await fetch("/api/dashboard/admin/settings", {
@@ -207,6 +227,61 @@ export function SettingsPanel({ initialConfig }: Props) {
 				phase: "error",
 				message: err instanceof Error ? err.message : "sync failed",
 			});
+		} finally {
+			settingsWriteInFlight.current = false;
+		}
+	}
+
+	async function removeCredential(): Promise<void> {
+		if (settingsWriteInFlight.current || !selectedCredential) return;
+		const { id, label } = selectedCredential;
+		if (!window.confirm(`Remove the saved ${label} credential from this account?\n\nThis also clears any unsaved value for this credential. It does not revoke the key at the vendor, stop sandboxes, or erase copies already installed in Workers or profiles. Future work may fail until you add a replacement. Deployment-provided defaults, if any, remain available.`)) return;
+		settingsWriteInFlight.current = true;
+		setRemovalState({ phase: "saving" });
+		// Clear the selected draft even if the response is lost after the server removes it.
+		// A later Save must not silently restore the credential the user asked to remove.
+		const clearInputs: Record<CredentialSelector, Array<(value: string) => void>> = {
+			"provider:daytona": [setDaytonaKey, setDaytonaApiUrl, setDaytonaTarget],
+			"provider:e2b": [setE2bKey],
+			"provider:sprites": [setSpritesKey],
+			"provider:vercel": [setVercelToken, setVercelTeamId, setVercelProjectId],
+			"provider:dedalus": [],
+			"model:anthropic": [setAnthropicKey],
+			"model:openai": [setOpenaiKey],
+			"model:openrouter": [setOpenrouterKey],
+			"model:google": [setGoogleKey],
+			"model:vercelAiGateway": [setVercelAiGatewayKey],
+			"model:custom": [setCustomKey, setCustomUrl, setCustomLabel],
+			cursor: [setCursorApiKey],
+		};
+		clearInputs[id].forEach((clear) => clear(""));
+		let removedMessage: string | null = null;
+		try {
+			const response = await fetch("/api/dashboard/admin/settings", {
+				method: "DELETE",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ credentials: [id] }),
+			});
+			const result = (await response.json().catch(() => ({}))) as Partial<CredentialRemovalResult> & { message?: string };
+			if (!response.ok || !Array.isArray(result.removed) || !result.removed.includes(id) || !Array.isArray(result.stillConfigured)) {
+				throw new Error(result.message ?? "Could not confirm credential removal. Refresh Settings to check its status.");
+			}
+			const stillConfigured = result.stillConfigured.includes(id);
+			removedMessage = `${label}: this account's saved copy was removed. ${stillConfigured
+				? "Still configured through a deployment-provided default; that default was not removed."
+				: "No account credential remains configured."}`;
+			setConfig((current) => withCredentialConfigured(current, id, stillConfigured));
+			setCredentialSelection("");
+			const refresh = await fetch("/api/dashboard/admin/settings", { cache: "no-store" });
+			const refreshed = (await refresh.json().catch(() => ({}))) as { config?: PublicUserConfig; message?: string };
+			if (!refresh.ok || !refreshed.config) throw new Error("The Settings refresh failed. Reload to check other configuration.");
+			setConfig(refreshed.config);
+			setRemovalState({ phase: "ok", message: removedMessage });
+		} catch (error) {
+			const detail = error instanceof Error ? error.message : "Could not confirm credential removal.";
+			setRemovalState({ phase: "error", message: removedMessage ? `${removedMessage} ${detail}` : detail });
+		} finally {
+			settingsWriteInFlight.current = false;
 		}
 	}
 
@@ -228,6 +303,7 @@ export function SettingsPanel({ initialConfig }: Props) {
 
 			<DeveloperApiKey />
 
+			<fieldset disabled={busy} className="contents" aria-label="Account settings">
 			<Section
 				kicker="ACTIVE CONFIGURATION"
 				title="Defaults for new machines"
@@ -406,6 +482,41 @@ export function SettingsPanel({ initialConfig }: Props) {
 				</div>
 			</Section>
 
+			<Section
+				kicker="CREDENTIAL CONTROL"
+				title="Remove a saved credential"
+				description="Remove a provider, model, or tool credential saved to this account. Blank fields above still preserve saved credentials."
+			>
+				<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+					<div className="min-w-0 flex-1">
+						<ReticleSelect
+							ariaLabel="Saved credential to remove"
+							value={selectedCredential?.id ?? ""}
+							onChange={setCredentialSelection}
+							placeholder={removableCredentials.length ? "Choose a configured credential" : "No credentials configured"}
+							options={removableCredentials.map((option) => ({ value: option.id, label: option.label }))}
+						/>
+					</div>
+					<ReticleButton
+						variant="ghost"
+						disabled={busy || !selectedCredential}
+						aria-describedby="credential-removal-limits"
+						onClick={() => void removeCredential()}
+					>
+						{removalState.phase === "saving" ? "Removing…" : "Remove saved credential"}
+					</ReticleButton>
+				</div>
+				<p id="credential-removal-limits" className="mt-2 max-w-[90ch] text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
+					This removes only this account’s saved copy. It does not revoke the vendor key,
+					stop sandboxes, or erase copies already installed in Workers or profiles.
+					Future work may fail until you add a replacement. Revoke compromised keys with the vendor.
+				</p>
+				<p role="status" aria-live="polite" className="mt-2 text-[12px] text-[var(--ret-text)]">
+					{removalState.phase === "saving" ? "Removing saved credential…"
+						: removalState.phase === "idle" ? "" : removalState.message}
+				</p>
+			</Section>
+
 			<details className="group">
 				<summary className="flex cursor-pointer list-none items-center justify-between gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2.5">
 					<span className="flex items-center gap-2">
@@ -443,8 +554,25 @@ export function SettingsPanel({ initialConfig }: Props) {
 					Save settings
 				</ReticleButton>
 			</div>
+			</fieldset>
 		</DashboardPageBody>
 	);
+}
+
+function credentialConfigured(config: PublicUserConfig, selector: CredentialSelector): boolean {
+	if (selector === "cursor") return config.hasCursorKey;
+	if (selector.startsWith("provider:")) return config.providers[selector.slice(9) as keyof PublicUserConfig["providers"]].configured;
+	return config.aiProviders[selector.slice(6) as keyof PublicUserConfig["aiProviders"]].configured;
+}
+
+function withCredentialConfigured(config: PublicUserConfig, selector: CredentialSelector, configured: boolean): PublicUserConfig {
+	if (selector === "cursor") return { ...config, hasCursorKey: configured };
+	if (selector.startsWith("provider:")) {
+		const key = selector.slice(9) as keyof PublicUserConfig["providers"];
+		return { ...config, providers: { ...config.providers, [key]: { ...config.providers[key], configured } } };
+	}
+	const key = selector.slice(6) as keyof PublicUserConfig["aiProviders"];
+	return { ...config, aiProviders: { ...config.aiProviders, [key]: { ...config.aiProviders[key], configured } } };
 }
 
 function Section({
