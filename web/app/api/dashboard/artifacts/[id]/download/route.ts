@@ -15,6 +15,7 @@
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import { loadArtifactBytes } from "@/lib/storage/machine-artifacts";
+import { artifactContentType, artifactDisposition } from "@/lib/storage/artifact-links";
 import { withActiveMachine } from "@/lib/storage/machine-fs";
 
 export const runtime = "nodejs";
@@ -46,9 +47,11 @@ export async function GET(request: Request, ctx: Ctx): Promise<Response> {
 		return new Response(bytes as BodyInit, {
 			status: 200,
 			headers: {
-				"Content-Type": result.ref.mime || "application/octet-stream",
-				"Content-Length": String(result.ref.bytes),
-				"Content-Disposition": `inline; filename="${result.ref.name.replace(/"/g, "")}"`,
+				"Content-Type": artifactContentType(result.ref.mime),
+				"Content-Length": String(bytes.byteLength),
+				"Content-Disposition": artifactDisposition(result.ref.name),
+				"Content-Security-Policy": "sandbox; default-src 'none'",
+				"X-Content-Type-Options": "nosniff",
 				"Cache-Control": "private, no-store",
 			},
 		});

@@ -11,10 +11,13 @@ import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
 import { describeSchedule } from "@/lib/cron/expr";
 import type { CronEntry, CronStatus, PublicMachineRef } from "@/lib/user-config/schema";
+import type { CronRunView } from "@/lib/crons/history";
 
 type Payload = {
 	ok: boolean;
 	crons?: CronEntry[];
+	runs?: CronRunView[];
+	error?: string;
 };
 
 const STATUS_VARIANT: Record<CronStatus, "success" | "default"> = {
@@ -37,16 +40,26 @@ const STATUS_TONE: Record<CronStatus, string> = {
 export function CronPanel() {
 	const [crons, setCrons] = useState<CronEntry[] | null>(null);
 	const [machines, setMachines] = useState<PublicMachineRef[]>([]);
+	const [runs, setRuns] = useState<CronRunView[]>([]);
+	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
-		fetch("/api/dashboard/crons", { cache: "no-store" })
-			.then((r) => r.json() as Promise<Payload>)
-			.then((json) => setCrons(json.crons ?? []))
-			.catch(() => setCrons([]));
+		let disposed = false;
+		const refresh = async () => {
+			try {
+				const response = await fetch("/api/dashboard/crons", { cache: "no-store" });
+				const json = await response.json() as Payload;
+				if (!response.ok || !json.ok) throw new Error(json.error ?? `Cron history unavailable (HTTP ${response.status}).`);
+				if (!disposed) { setCrons(json.crons ?? []); setRuns(json.runs ?? []); setError(null); }
+			} catch (failure) { if (!disposed) setError(failure instanceof Error ? failure.message : "Cron history unavailable."); }
+		};
+		void refresh();
+		const interval = setInterval(() => void refresh(), 15_000);
 		fetch("/api/dashboard/machines", { cache: "no-store" })
 			.then((r) => (r.ok ? (r.json() as Promise<{ machines?: PublicMachineRef[] }>) : null))
 			.then((json) => setMachines(json?.machines ?? []))
 			.catch(() => setMachines([]));
+		return () => { disposed = true; clearInterval(interval); };
 	}, []);
 
 	const machineName = useMemo(() => {
@@ -65,7 +78,7 @@ export function CronPanel() {
 		return [...map.entries()];
 	}, [crons]);
 
-	if (!crons) {
+	if (!crons && !error) {
 		return (
 			<DashboardPageBody>
 				<div className="flex items-center gap-2 py-12 text-[11px] text-[var(--ret-text-muted)]">
@@ -84,7 +97,8 @@ export function CronPanel() {
 				description="Autonomous agent work — health checks, digests, audits. The scheduler fires enabled crons on their schedule. Create and run crons from each machine's console."
 			/>
 			<DashboardPageBody className="space-y-5">
-				{grouped.length === 0 ? (
+				{error ? <p role="alert" className="text-sm text-[var(--ret-red)]">{error} Retrying automatically.</p> : null}
+				{crons && grouped.length === 0 ? (
 					<ReticleFrame className="px-4 py-10 text-center">
 						<p className="text-[13px] text-[var(--ret-text-dim)]">No crons scheduled yet.</p>
 						<p className="mt-1 text-[11px] text-[var(--ret-text-muted)]">
@@ -151,6 +165,22 @@ export function CronPanel() {
 						</section>
 					);
 				})}
+				{runs.length > 0 ? (
+					<section aria-label="Cron run history" className="space-y-3">
+						<h2 className="text-base font-medium text-[var(--ret-text)]">Run history</h2>
+						<p className="text-xs text-[var(--ret-text-muted)]">Actual Worker operations, including completed, failed, and queued runs. Deleting a schedule does not erase its evidence.</p>
+						{runs.map((run) => (
+							<details key={run.operationId} className="border border-[var(--ret-border)] p-3">
+								<summary className="cursor-pointer text-sm text-[var(--ret-text)]">
+									{crons?.find((cron) => cron.id === run.scheduleId)?.name ?? "Deleted schedule"} · {run.status} · {new Date(run.startedAt ?? run.createdAt).toLocaleString()}
+								</summary>
+								<p className="mt-2 text-xs text-[var(--ret-text-dim)]">{run.summary}</p>
+								<p className="mt-1 text-xs text-[var(--ret-text-muted)]">Operation {run.operationId}{run.exitCode !== undefined ? ` · exit ${run.exitCode}` : ""}</p>
+								{run.output ? <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap text-xs text-[var(--ret-text)]">{run.output}</pre> : null}
+							</details>
+							))}
+					</section>
+				) : null}
 			</DashboardPageBody>
 		</div>
 	);

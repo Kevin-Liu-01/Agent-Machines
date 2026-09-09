@@ -2,9 +2,13 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { WorkerPlacement, WorkerResource } from "agent-machines/control-plane";
 import { DEFAULT_USER_CONFIG, type MachineRef } from "@/lib/user-config/schema";
 
-const mocks = vi.hoisted(() => ({ exec: vi.fn(), artifacts: vi.fn(), bootstrap: vi.fn() }));
+const mocks = vi.hoisted(() => ({ exec: vi.fn(), artifacts: vi.fn(), bootstrap: vi.fn(), runCommand: vi.fn(() => ({ command: "fixture-native-agent", env: {} })) }));
 vi.mock("@/lib/bootstrap/bootstrap-repair", () => ({ agentArtifactsPresent: mocks.artifacts }));
 vi.mock("@/lib/bootstrap/runner", () => ({ runWebBootstrap: mocks.bootstrap }));
+vi.mock("@/lib/storage/workspace-capture", () => ({
+	beginWorkspaceCapture: async () => ({ available: false, warnings: [] }),
+	finishWorkspaceCapture: async () => ({ artifacts: [], warnings: [] }),
+}));
 vi.mock("@/lib/providers", async (original) => ({
 	...await original<typeof import("@/lib/providers")>(),
 	getProvider: () => ({ exec: mocks.exec }),
@@ -13,7 +17,7 @@ vi.mock("@/lib/user-config/clerk", () => ({ getUserConfigById: vi.fn(), setOpera
 vi.mock("agent-machines/mux", async (original) => ({
 	...await original<typeof import("agent-machines/mux")>(),
 	getHarness: () => ({
-		runCommand: () => ({ command: "fixture-native-agent", env: {} }),
+		runCommand: mocks.runCommand,
 		parseLine: () => [],
 	}),
 }));
@@ -30,6 +34,15 @@ function driver(executionDeadlineMs?: number) {
 afterEach(() => { vi.restoreAllMocks(); vi.clearAllMocks(); });
 
 describe("hosted Console run deadlines", () => {
+	it("uses the machine's selected native model when a run does not override it", async () => {
+		await driver().run(placement, "Use my selected model", { runKey: "run" });
+		expect(mocks.runCommand).toHaveBeenCalledWith(expect.any(String), expect.any(Object), expect.objectContaining({ model: "claude-sonnet-4-6" }));
+	});
+	it("retains an explicit native run override", async () => {
+		await driver().run(placement, "Use my explicit model", { runKey: "run", model: "anthropic/claude-opus-4-8" });
+		expect(mocks.runCommand).toHaveBeenCalledWith(expect.any(String), expect.any(Object), expect.objectContaining({ model: "claude-opus-4-8" }));
+	});
+
 	it.each([
 		[260_000, 190_000],
 		[80_000, 60_000],

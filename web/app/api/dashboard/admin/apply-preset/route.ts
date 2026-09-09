@@ -9,6 +9,8 @@
 import { findPreset } from "@/lib/dashboard/presets";
 import { DEFAULT_ROUTER_ID } from "@/lib/agents/upstreams";
 import { applyPreset } from "@/lib/onboarding/apply-preset";
+import { modelEndpointForSelection } from "@/lib/bootstrap/runner";
+import { initialWorkerModel } from "@/lib/agents/model-endpoint";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 import {
@@ -60,16 +62,20 @@ export async function POST(request: Request): Promise<Response> {
 		return Response.json({ error: "unknown_preset" }, { status: 400 });
 	}
 
+	const gatewayProfileId = typeof body.gatewayProfileId === "string" && body.gatewayProfileId.trim() ? body.gatewayProfileId.trim() : DEFAULT_ROUTER_ID;
+	let model: string;
+	try {
+		model = initialWorkerModel(agentKind, modelEndpointForSelection({ agentKind, gatewayProfileId }, config), typeof body.model === "string" ? body.model : null, config.draftModel);
+	} catch (error) {
+		return Response.json({ error: "model_required", message: error instanceof Error ? error.message : "Choose a model for the selected endpoint." }, { status: 400 });
+	}
 	const application = applyPreset({
 		workerId: body.workerId,
 		config,
 		preset,
 		agentKind,
-		model: typeof body.model === "string" && body.model.trim() ? body.model.trim() : config.draftModel,
-		gatewayProfileId:
-			typeof body.gatewayProfileId === "string" && body.gatewayProfileId.trim()
-				? body.gatewayProfileId.trim()
-				: DEFAULT_ROUTER_ID,
+		model,
+		gatewayProfileId,
 		machineId: typeof body.machineId === "string" ? body.machineId : null,
 	});
 

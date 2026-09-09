@@ -156,6 +156,13 @@ beforeEach(() => {
 });
 
 describe("DELETE /api/dashboard/machines/[id] placement pruning", () => {
+	it("discloses retained billable Vercel snapshots without changing the destroy operation", async () => {
+		mocks.getUserConfigById.mockResolvedValue({ ...CONFIG, machines: [machine({ providerKind: "vercel" })] });
+		const response = await DELETE(req("?destroy=1"), ctx("m-1"));
+		expect(response.status).toBe(202);
+		expect(await response.json()).toMatchObject({ action: "destroy_scheduled", storageWarning: expect.stringContaining("storage charges") });
+		expect(mocks.submitMachineIntent).toHaveBeenCalledWith("user-alpha", "m-1", expect.objectContaining({ desiredState: "deleted" }));
+	});
 	it("?destroy=1 journals deletion and schedules reconciliation", async () => {
 		const res = await DELETE(req("?destroy=1"), ctx("m-1"));
 		expect(res.status).toBe(202);

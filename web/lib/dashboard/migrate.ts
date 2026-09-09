@@ -72,11 +72,9 @@ import {
 } from "@/lib/mux/failover";
 import { recordHostedPlacement } from "@/lib/mux/placements";
 import { resolveRoute } from "@/lib/mux/route";
-import { defaultMemoryBundle, resolveBundle } from "@/lib/memory/bundle";
-import { bundleInstallLines } from "@/lib/memory/install";
+import { regenerateMemoryEntrypointsLines } from "@/lib/memory/install";
 import { getProvider, type MachineProvider } from "@/lib/providers";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
-import { resolveMachineWorker } from "@/lib/workers/resolve";
 import type {
 	MachineRef,
 	MigrationReport,
@@ -239,6 +237,7 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<Migra
 	let liveBaseline: LiveBaseline | null = null;
 	let drainStarted: DrainStarted | null = null;
 	let drainAttempted = false;
+	let sourceLifetimeWarning: string | null = null;
 
 	const setStep = async (step: MigrationStepId): Promise<void> => {
 		state.step = step;
@@ -279,6 +278,23 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<Migra
 			);
 		}
 		const sourceProvider = getProvider(machine.providerKind, config.providers);
+		if (machine.providerKind === "e2b") {
+			// A legacy sandbox may still have E2B's destructive timeout policy.
+			// Read without waking, and refuse to spend on a target whose source
+			// may disappear during provisioning. This is a guard, not a lease
+			// extension or a claim that an already-deleted sandbox is recoverable.
+			const sourceState = await sourceProvider.state(machine.id);
+			if (sourceState.state === "destroyed" || sourceState.state === "destroying") {
+				throw new MigrationError("validate", "The source E2B sandbox has been deleted. Its lost filesystem cannot be recovered by wake or migration.");
+			}
+			if (sourceState.lifecycle?.onTimeout !== "pause") {
+				const remainingMs = sourceState.endAt ? Date.parse(sourceState.endAt) - Date.now() : Number.NaN;
+				if (sourceState.lifecycle?.onTimeout !== "kill" || sourceState.state !== "ready" || !Number.isFinite(remainingMs) || remainingMs < 15 * 60_000) {
+					throw new MigrationError("validate", "This legacy E2B sandbox does not have a verified, non-destructive timeout policy and at least 15 minutes of remaining running time. Pause it now to preserve its state; explicitly wake it and re-check its lifetime before migrating. No target was created.");
+				}
+				sourceLifetimeWarning = `The source E2B sandbox retained a legacy kill-on-timeout policy with deadline ${sourceState.endAt}. This migration did not change or extend that policy; a kept source still needs explicit pause before its deadline.`;
+			}
+		}
 		sourceForDrain = sourceHandle(sourceProvider, machine.id);
 
 		// -- provision (new record visible immediately; activate:false so the
@@ -448,14 +464,13 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<Migra
 			// The restored canonical docs are now authoritative; regenerate the
 			// combined entry docs from them so claude/codex/openclaw read the
 			// moved memory, not the bootstrap-time bundle.
-			const worker = resolveMachineWorker(configAfterProvision, newRef);
-			const bundle =
-				resolveBundle(configAfterProvision, worker.memoryBundleId) ?? defaultMemoryBundle();
-			await targetProvider
-				.exec(newMachineId, bundleInstallLines(bundle, machine.agentKind).join("\n"), {
+			const memoryRefresh = await targetProvider
+				.exec(newMachineId, regenerateMemoryEntrypointsLines(machine.agentKind).join("\n"), {
 					timeoutMs: 60_000,
-				})
-				.catch(() => undefined);
+				});
+			if (memoryRefresh.exitCode !== 0 || !memoryRefresh.stdout.includes("AM_MEMORY_ENTRYPOINTS_REGENERATED")) {
+				throw new MigrationError("restore", `Could not regenerate runtime instructions from restored Worker memory: ${(memoryRefresh.stderr || memoryRefresh.stdout).trim().slice(-400) || "completion confirmation missing"}`);
+			}
 			// hermes config.yaml / state.db changed under the gateway; restart it.
 			if (machine.agentKind === "hermes" || machine.agentKind === "openclaw") {
 				const refreshed = await finalizeGatewayBootstrap({
@@ -571,7 +586,7 @@ export async function runMachineMigration(args: RunMigrationArgs): Promise<Migra
 			// really still exists.
 			source: { action: "kept" },
 			newMachineId,
-			notes: MOVE_NOTES(machine.agentKind),
+			notes: [...MOVE_NOTES(machine.agentKind), ...(sourceLifetimeWarning ? [sourceLifetimeWarning] : [])],
 			continuity: {
 				mode: args.mode,
 				managedRuns: args.mode === "live" ? "drained" : "not-gated",

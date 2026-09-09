@@ -6,6 +6,7 @@ import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
 import { waitForControlPlaneOperation } from "@/lib/control-plane/client";
 import type { ProviderCapabilities } from "@/lib/providers";
+import { deletionConfirmation, deletionStorageWarning, VERCEL_SNAPSHOT_CLEANUP_URL } from "@/lib/dashboard/deletion-warning";
 
 /**
  * Per-machine action bar.
@@ -52,6 +53,7 @@ type Action = "wake" | "sleep" | "active" | "archive" | "unarchive" | "destroy" 
 
 type Props = {
 	machineId: string;
+	providerKind?: string;
 	state: MachineState;
 	capabilities?: ProviderCapabilities | null;
 	active: boolean;
@@ -75,6 +77,7 @@ type Props = {
 
 export function MachineActions({
 	machineId,
+	providerKind,
 	state,
 	capabilities,
 	active,
@@ -120,9 +123,9 @@ export function MachineActions({
 	);
 
 	const onDestroy = useCallback((): void => {
-		if (!window.confirm("Hard-destroy this machine on the provider? This cannot be undone.")) return;
+		if (!window.confirm(deletionConfirmation("Hard-destroy this machine on the provider? This cannot be undone.", providerKind))) return;
 		void run("destroy");
-	}, [run]);
+	}, [run, providerKind]);
 
 	const onForceRemove = useCallback((): void => {
 		if (!window.confirm("Remove this machine from the dashboard without calling the provider? Use this when the provider machine is already gone.")) return;
@@ -221,6 +224,12 @@ export function MachineActions({
 					title={error}
 				>
 					{error.slice(0, 80)}
+				</p>
+			) : null}
+			{canDestroy && deletionStorageWarning(providerKind) ? (
+				<p className="basis-full text-right text-[10px] text-[var(--ret-text-muted)]">
+					{deletionStorageWarning(providerKind)}{" "}
+					<a href={VERCEL_SNAPSHOT_CLEANUP_URL} target="_blank" rel="noreferrer" className="underline">Snapshot cleanup</a>
 				</p>
 			) : null}
 		</div>

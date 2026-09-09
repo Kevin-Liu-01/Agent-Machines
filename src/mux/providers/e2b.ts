@@ -784,6 +784,10 @@ export function createE2bProvider(
 				const sandbox = await Sandbox.create({
 					apiKey: key,
 					timeoutMs: options.timeoutMs ?? DEFAULT_SANDBOX_TIMEOUT_MS,
+					// The Worker outlives a compute lease. E2B otherwise defaults
+					// to kill, permanently deleting files when the lease expires.
+					// Reads remain no-wake; explicit connect()/wake() resumes it.
+					lifecycle: { onTimeout: "pause", autoResume: false },
 					envs: options.env,
 					metadata: options.name ? { name: options.name } : undefined,
 					// Both are optional upstream: omit rather than pass
@@ -838,6 +842,12 @@ export function createE2bProvider(
 				};
 				if (info.startedAt instanceof Date) {
 					description.createdAt = info.startedAt.toISOString();
+				}
+				if (info.endAt instanceof Date && Number.isFinite(info.endAt.getTime())) {
+					description.endAt = info.endAt.toISOString();
+				}
+				if (info.lifecycle?.onTimeout === "pause" || info.lifecycle?.onTimeout === "kill") {
+					description.lifecycle = { onTimeout: info.lifecycle.onTimeout, autoResume: info.lifecycle.autoResume };
 				}
 				return description;
 			} catch (error) {

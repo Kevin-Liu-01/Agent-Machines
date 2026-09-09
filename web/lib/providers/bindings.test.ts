@@ -55,6 +55,8 @@ type FakeDescription = {
 	createdAt?: string;
 	lastError?: string;
 	resources?: { vcpu?: number; memoryMib?: number; diskGib?: number };
+	endAt?: string;
+	lifecycle?: { onTimeout: "pause" | "kill"; autoResume: boolean };
 };
 
 function fakeHandle(id: string) {
@@ -135,6 +137,13 @@ afterEach(() => {
 });
 
 describe("e2b binding", () => {
+	it("passes actual lifecycle and expiration through to the hosted summary without waking", async () => {
+		const provider = fakeMuxProvider("e2b", { described: { state: "ready", rawPhase: "running", endAt: "2026-09-09T07:03:46.106Z", lifecycle: { onTimeout: "kill", autoResume: false } } });
+		mocks.createE2bProvider.mockReturnValue(provider);
+		const summary = await new E2BProvider({ apiKey: "fixture-key" }).state("legacy-worker");
+		expect(summary).toMatchObject({ endAt: "2026-09-09T07:03:46.106Z", lifecycle: { onTimeout: "kill", autoResume: false } });
+		expect(provider.connect).not.toHaveBeenCalled();
+	});
 	it("hands the mux factory the config credential unchanged", () => {
 		mocks.createE2bProvider.mockReturnValue(fakeMuxProvider("e2b"));
 		void new E2BProvider({ apiKey: "e2b_key" });

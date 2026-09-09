@@ -10,23 +10,23 @@
  * loop inverted, or a tar header off by one byte -- all of which are exactly
  * the failures that turn "re-running is idempotent" into a lie.
  *
- * The layout comparison reads web/lib/memory/install.ts and
- * web/lib/dashboard/skills/custom-skill.ts as TEXT rather than importing them.
- * They resolve `@/...` path aliases that the root tsconfig does not define, so
- * importing them would pull web into the src type program; reading the source
- * still fails loudly when the hosted path moves a file, which is the drift the
- * test exists to catch.
+ * The layout comparison transpiles the standalone hosted memory adapter and
+ * executes its real shell payload in a temporary HOME. Its type-only web
+ * imports disappear during transpilation, keeping web out of the SDK type
+ * program while checking actual written paths and contents, not source style.
  */
 
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync, existsSync, lstatSync, mkdirSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync, existsSync, lstatSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gzipSync } from "node:zlib";
 import { test } from "node:test";
+import { runInNewContext } from "node:vm";
+import ts from "typescript";
 import {
 	CODEX_REGION_BEGIN,
 	CODEX_REGION_END,
@@ -48,6 +48,19 @@ import {
 import { MuxError, type ExecResult, type HarnessKind } from "./types.js";
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+
+function hostedMemoryInstaller(): {
+	bundleInstallCommand(bundle: { docs: typeof DOCS }, kind: HarnessKind): string;
+	combinedDoc(bundle: { docs: typeof DOCS }): string;
+} {
+	const source = readFileSync(join(REPO_ROOT, "web/lib/memory/install.ts"), "utf8");
+	const output = ts.transpileModule(source, {
+		compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 },
+	}).outputText;
+	const module = { exports: {} };
+	runInNewContext(output, { module, exports: module.exports, Buffer });
+	return module.exports as ReturnType<typeof hostedMemoryInstaller>;
+}
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -289,7 +302,6 @@ test("a non-zero exec and a missing sentinel both surface as MuxErrors", async (
  */
 test("canonical doc paths match web/lib/memory/install.ts", () => {
 	const source = readFileSync(join(REPO_ROOT, "web", "lib", "memory", "install.ts"), "utf8");
-	assert.match(source, /const ROOT = "\$HOME\/\.agent-machines";/);
 
 	// The DOCS table: [key, filename] pairs.
 	const docTable = [...source.matchAll(/\["(\w+)", "([A-Z]+\.md)"\]/g)].map((m) => [m[1], m[2]]);
@@ -306,7 +318,6 @@ test("canonical doc paths match web/lib/memory/install.ts", () => {
 	}
 	// hermes reads the canonical docs only -- install.ts writes no entrypoint
 	// for it, and neither may we.
-	assert.match(source, /\/\/ hermes reads the canonical ~\/\.agent-machines docs/);
 	for (const path of mine) {
 		assert.ok(
 			path.startsWith(`${RUNTIME_ROOT}/`),
@@ -315,27 +326,29 @@ test("canonical doc paths match web/lib/memory/install.ts", () => {
 	}
 });
 
-test("per-runtime entrypoints match the branches in web/lib/memory/install.ts", () => {
-	const source = readFileSync(join(REPO_ROOT, "web", "lib", "memory", "install.ts"), "utf8");
-	/** Every "$HOME/..." literal inside one agentKind branch. */
-	const branch = (kind: string): string[] => {
-		const start = source.indexOf(`agentKind === "${kind}"`);
-		assert.ok(start > 0, `install.ts has no branch for ${kind}`);
-		const rest = source.slice(start);
-		const end = rest.indexOf("} else if");
-		const body = end > 0 ? rest.slice(0, end) : rest.slice(0, rest.indexOf("\n\t}"));
-		return [...body.matchAll(/"\$HOME\/([^"]+)"/g)]
-			.map((m) => m[1])
-			.filter((p) => p.endsWith(".md"))
-			.sort();
-	};
-
-	for (const kind of ["claude-code", "codex", "openclaw"] as const) {
-		const expected = branch(kind);
-		assert.ok(expected.length > 0, `no doc paths found in the ${kind} branch`);
-		const mine = pathsOf(kind, kind === "openclaw" ? DOCS_AND_SKILLS : FULL);
-		for (const path of expected) {
-			assert.ok(mine.includes(path), `${kind} plan is missing ${path} (install.ts writes it)`);
+test("per-runtime entrypoints match files actually written by the hosted installer", () => {
+	const installer = hostedMemoryInstaller();
+	for (const kind of ["claude-code", "codex", "openclaw", "hermes"] as const) {
+		const temp = realpathSync(mkdtempSync(join(tmpdir(), "am-memory-parity-")));
+		try {
+			execFileSync("/bin/sh", ["-c", installer.bundleInstallCommand({ docs: DOCS }, kind)], {
+				env: { ...process.env, HOME: temp }, stdio: "pipe",
+			});
+			const plan = planLoadout(kind, DOCS_AND_SKILLS, registry());
+			for (const file of ["SOUL.md", "AGENTS.md", "MEMORY.md", "USER.md"]) {
+				assert.ok(existsSync(join(temp, RUNTIME_ROOT, file)), `${kind}: hosted canonical ${file} moved`);
+			}
+			const actual = readdirSync(temp, { recursive: true, withFileTypes: true })
+				.filter((entry) => entry.isFile())
+				.map((entry) => join(entry.parentPath, entry.name).slice(temp.length + 1));
+			assert.ok(actual.length >= 4, `${kind}: canonical docs were not installed`);
+			for (const path of actual) {
+				const planned = plan.files.find((file) => file.path === path);
+				assert.ok(planned, `${kind} plan is missing ${path} (hosted installer writes it)`);
+				assert.equal(readFileSync(join(temp, path), "utf8").trim(), planned.content.trim(), `${kind}: ${path} content drift`);
+			}
+		} finally {
+			rmSync(temp, { recursive: true, force: true });
 		}
 	}
 
@@ -350,6 +363,7 @@ test("per-runtime entrypoints match the branches in web/lib/memory/install.ts", 
 });
 
 test("combinedDoc reproduces install.ts headings and order", () => {
+	assert.equal(hostedMemoryInstaller().combinedDoc({ docs: DOCS }), combinedDoc(DOCS));
 	const source = readFileSync(join(REPO_ROOT, "web", "lib", "memory", "install.ts"), "utf8");
 	const headings = [...source.matchAll(/# ([A-Z][^\\`\n]*?)\\n\\n\$\{d\./g)].map((m) => m[1]);
 	assert.deepEqual(headings, [
@@ -371,10 +385,11 @@ test("combinedDoc reproduces install.ts headings and order", () => {
 });
 
 test("skill paths match the hosted skills tree", () => {
-	// reload-script.ts rsyncs knowledge/skills into "$RUNTIME/skills"; the
-	// runtime root is ~/.agent-machines everywhere in the hosted path.
+	// Managed knowledge sync copies bundled skills without deleting or
+	// overwriting Worker-owned skills. All adapters share the same root.
 	const reload = readFileSync(join(REPO_ROOT, "web", "lib", "bootstrap", "reload-script.ts"), "utf8");
-	assert.match(reload, /rsync -a --delete "\$REPO_DIR\/knowledge\/skills\/" "\$RUNTIME\/skills\/"/);
+	assert.match(reload, /knowledgeSyncCommand\(`\$\{repoDir\}\/knowledge`, runtimeHome\)/);
+	assert.doesNotMatch(reload, /rsync[^\n]*--delete|git reset --hard/);
 	const introspection = readFileSync(
 		join(REPO_ROOT, "web", "lib", "agents", "machine-introspection.ts"),
 		"utf8",

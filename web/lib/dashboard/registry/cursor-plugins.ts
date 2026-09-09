@@ -8,8 +8,7 @@
 import type { ServiceSlug } from "@/components/ServiceIcon";
 import { listCursorPlugins, type CursorPluginRecord } from "@/lib/dashboard/cursor-plugins-data";
 
-import { cacheGet, cacheKey, cacheSet } from "./cache";
-import type { RegistryAdapter, RegistryItem, RegistrySearchOptions } from "./types";
+import type { RegistryAdapter, RegistryItem } from "./types";
 
 export type PluginSkillEntry = {
 	name: string;
@@ -18,13 +17,6 @@ export type PluginSkillEntry = {
 	vendor: string;
 	skillCount: number;
 };
-
-/** @deprecated Use listCursorPlugins() — kept for machine scan injection. */
-let scanResults: PluginSkillEntry[] | null = null;
-
-export function setCursorPluginScanResults(results: PluginSkillEntry[]): void {
-	scanResults = results;
-}
 
 function toRegistryItem(plugin: CursorPluginRecord): RegistryItem {
 	const brand =
@@ -55,7 +47,9 @@ function toRegistryItem(plugin: CursorPluginRecord): RegistryItem {
  */
 export function parseScanOutput(stdout: string): PluginSkillEntry[] {
 	return stdout
+		.slice(0, 256 * 1024)
 		.split("\n")
+		.slice(0, 1000)
 		.map((line) => line.trim())
 		.filter((line) => line.length > 0)
 		.map((line) => {
@@ -79,63 +73,32 @@ export function parseScanOutput(stdout: string): PluginSkillEntry[] {
 		.filter((e): e is PluginSkillEntry => e !== null);
 }
 
-export const cursorPluginsAdapter: RegistryAdapter = {
-	id: "cursor-plugins",
-	label: "Cursor Plugins",
-	async search(opts: RegistrySearchOptions): Promise<RegistryItem[]> {
-		const key = cacheKey("cursor-plugins", opts.query);
-		const cached = cacheGet<RegistryItem[]>(key);
-		if (cached) return cached;
-
-		if (scanResults) {
-			let items = scanResults.map((entry) =>
-				toRegistryItem({
-					id: entry.slug,
-					cursorPluginId: entry.slug,
-					cursorVendor: entry.vendor,
-					name: entry.name,
-					description: entry.description || `${entry.skillCount} skills`,
-					homepage: "https://cursor.com/marketplace",
-					docsUrl: "https://cursor.com/docs/plugins",
-					marketplaceUrl: "https://cursor.com/marketplace",
-					repositoryUrl: null,
-					brand: null,
-					logoUrl: null,
-					mcpServerIds: [],
-					skillSlugs: [],
-					skillDetails: [],
-					registryItemIds: [],
-					triggers: [],
-					publisher: null,
-					isVerified: false,
-					tags: [],
-				}),
-			);
+/** Scanned machine data belongs only to this request, never a shared cache. */
+export function createCursorPluginsAdapter(scanResults: readonly PluginSkillEntry[] = []): RegistryAdapter {
+	const scanned: RegistryItem[] = scanResults.map((entry) => ({
+		id: `cursor-plugin-scan:${encodeURIComponent(entry.vendor)}:${encodeURIComponent(entry.slug)}`,
+		name: entry.name, kind: "plugin", description: entry.description || `${entry.skillCount} skills`,
+		provider: `${entry.vendor} · machine scan`, source: "cursor-plugins", installCommand: null,
+		logoUrl: null, brand: null, stars: null, version: null, homepage: null, installed: false,
+	}));
+	return {
+		id: "cursor-plugins",
+		label: "Cursor Plugins",
+		async search(opts): Promise<RegistryItem[]> {
+			let items = [...scanned, ...listCursorPlugins().map(toRegistryItem)];
 			if (opts.query) {
 				const q = opts.query.toLowerCase();
 				items = items.filter(
 					(i) =>
 						i.name.toLowerCase().includes(q) ||
-						i.description.toLowerCase().includes(q),
+						i.description.toLowerCase().includes(q) ||
+						(i.brand?.toLowerCase().includes(q) ?? false),
 				);
 			}
-			items = items.slice(0, opts.limit ?? 40);
-			cacheSet(key, items);
-			return items;
-		}
+			return items.slice(0, opts.limit ?? 200);
+		},
+	};
+}
 
-		let items = listCursorPlugins().map(toRegistryItem);
-		if (opts.query) {
-			const q = opts.query.toLowerCase();
-			items = items.filter(
-				(i) =>
-					i.name.toLowerCase().includes(q) ||
-					i.description.toLowerCase().includes(q) ||
-					(i.brand?.toLowerCase().includes(q) ?? false),
-			);
-		}
-		items = items.slice(0, opts.limit ?? 200);
-		cacheSet(key, items);
-		return items;
-	},
-};
+/** Only the immutable public catalog is shared by default. */
+export const cursorPluginsAdapter = createCursorPluginsAdapter();

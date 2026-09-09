@@ -1,6 +1,7 @@
 import { resolve } from "node:path";
 import type { NextConfig } from "next";
 import { config as loadEnv } from "dotenv";
+import { RESPONSE_SECURITY_HEADERS } from "./lib/security/response-headers";
 
 // Next only loads env files from the app directory. Agent Machines keeps its
 // provider/runtime keys at the workspace root so the SDK and dashboard share
@@ -17,6 +18,9 @@ loadEnv({
 
 const config: NextConfig = {
 	reactStrictMode: true,
+	async headers() {
+		return [{ source: "/:path*", headers: RESPONSE_SECURITY_HEADERS }];
+	},
 	allowedDevOrigins: ["127.0.0.1"],
 	htmlLimitedBots:
 		/Googlebot|Bingbot|GPTBot|ChatGPT-User|OAI-SearchBot|ClaudeBot|Claude-Web|anthropic-ai|PerplexityBot|Perplexity-User|Applebot|Applebot-Extended|YouBot|Bravebot|CCBot|Twitterbot|facebookexternalhit|Slackbot|LinkedInBot/i,

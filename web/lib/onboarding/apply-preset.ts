@@ -48,7 +48,9 @@ export function applyPreset(input: {
 	const worker = newWorker({
 		name: preset ? preset.name : "Barebones worker",
 		agentKind,
-		model: runtimeModel(agentKind, model),
+		// The caller resolved gateway models against the chosen endpoint. Keep
+		// opaque custom IDs intact; only native CLIs need prefix normalization.
+		model: agentKind === "claude-code" || agentKind === "codex" ? runtimeModel(agentKind, model) : model,
 		gatewayProfileId,
 		memoryBundleId,
 		rolePrompt: preset?.rolePrompt ?? null,

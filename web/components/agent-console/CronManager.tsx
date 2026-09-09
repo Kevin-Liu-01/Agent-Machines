@@ -36,6 +36,11 @@ const SCHEDULE_PRESETS = [
 	{ label: "weekly Mon", value: "0 9 * * mon" },
 ];
 
+async function requireCronMutation(response: Response): Promise<void> {
+	const body = await response.json().catch(() => ({}));
+	if (!response.ok || !body.ok) throw new Error(body.message ?? body.error ?? `Cron update failed (HTTP ${response.status}).`);
+}
+
 export function CronManager({ machineId, machineOk }: Props) {
 	const [crons, setCrons] = useState<CronEntry[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -90,20 +95,22 @@ export function CronManager({ machineId, machineOk }: Props) {
 		setBusyId("save");
 		try {
 			if (editing === "new") {
-				await fetch("/api/dashboard/crons", {
+				await requireCronMutation(await fetch("/api/dashboard/crons", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({ name, schedule, prompt, machineId }),
-				});
+				}));
 			} else if (editing) {
-				await fetch(`/api/dashboard/crons/${encodeURIComponent(editing)}`, {
+				await requireCronMutation(await fetch(`/api/dashboard/crons/${encodeURIComponent(editing)}`, {
 					method: "PATCH",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({ name, schedule, prompt }),
-				});
+				}));
 			}
 			setEditing(null);
 			await load();
+		} catch (failure) {
+			setError(failure instanceof Error ? failure.message : "Cron update failed.");
 		} finally {
 			setBusyId(null);
 		}
@@ -112,12 +119,14 @@ export function CronManager({ machineId, machineOk }: Props) {
 	const toggle = async (cron: CronEntry) => {
 		setBusyId(cron.id);
 		try {
-			await fetch(`/api/dashboard/crons/${encodeURIComponent(cron.id)}`, {
+			await requireCronMutation(await fetch(`/api/dashboard/crons/${encodeURIComponent(cron.id)}`, {
 				method: "PATCH",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({ enabled: !cron.enabled }),
-			});
+			}));
 			await load();
+		} catch (failure) {
+			setError(failure instanceof Error ? failure.message : "Cron update failed.");
 		} finally {
 			setBusyId(null);
 		}
@@ -127,10 +136,12 @@ export function CronManager({ machineId, machineOk }: Props) {
 		if (!window.confirm(`Delete cron "${cron.name}"?`)) return;
 		setBusyId(cron.id);
 		try {
-			await fetch(`/api/dashboard/crons/${encodeURIComponent(cron.id)}`, {
+			await requireCronMutation(await fetch(`/api/dashboard/crons/${encodeURIComponent(cron.id)}`, {
 				method: "DELETE",
-			});
+			}));
 			await load();
+		} catch (failure) {
+			setError(failure instanceof Error ? failure.message : "Cron deletion failed.");
 		} finally {
 			setBusyId(null);
 		}
@@ -387,7 +398,7 @@ function CronRow({
 				<div className="border-t border-[var(--ret-border)]/20 px-3 py-2">
 					<p className="text-[10px] leading-relaxed text-[var(--ret-text-dim)]">{cron.prompt}</p>
 					<div className="mt-2 flex flex-wrap items-center gap-1.5">
-						<RowAction label={busy ? "…" : "run now"} onClick={onRun} disabled={busy} accent />
+						<RowAction label={busy ? "…" : "run now"} onClick={onRun} disabled={busy || !cron.enabled} accent />
 						<RowAction label={cron.enabled ? "pause" : "resume"} onClick={onToggle} disabled={busy} />
 						<RowAction label="edit" onClick={onEdit} disabled={busy} />
 						<RowAction label="delete" onClick={onDelete} disabled={busy} danger />

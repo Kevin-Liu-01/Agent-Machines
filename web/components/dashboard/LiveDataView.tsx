@@ -35,7 +35,8 @@ export function LiveDataView<T>({
 			try {
 				const response = await fetch(endpoint, { cache: "no-store" });
 				if (!response.ok) {
-					if (!stopped) setError(`HTTP ${response.status}`);
+					const body = await response.json().catch(() => null);
+					if (!stopped) setError(body?.message || body?.error || `HTTP ${response.status}`);
 					return;
 				}
 				const body = (await response.json()) as LiveDataEnvelope<T>;
@@ -64,7 +65,7 @@ export function LiveDataView<T>({
 		return (
 			<EmptyState
 				title="Couldn't reach the dashboard API"
-				description={`The browser request to ${endpoint} failed. ${error}.`}
+				description={error}
 			/>
 		);
 	}
@@ -93,19 +94,11 @@ export function LiveDataView<T>({
 			config_missing: "Dashboard not configured",
 			exec_failed: "Couldn't read the machine",
 		};
-		const descriptions: Record<string, string> = {
-			machine_offline:
-				"Live data needs a running Dedalus machine. Wake it from your terminal, then refresh this page.",
-			config_missing:
-			"Set DEDALUS_API_KEY and AGENT_MACHINE_ID in the Vercel env so the dashboard knows which machine to read.",
-			exec_failed:
-				"The Dedalus command call returned an error. The machine may be in an unhealthy state.",
-		};
 		return (
 			<EmptyState
 				title={titles[envelope.reason] ?? "Unavailable"}
-				description={descriptions[envelope.reason] ?? envelope.message}
-				hint={offlineHint ?? envelope.message}
+				description={envelope.message}
+				hint={offlineHint}
 				action={
 					envelope.reason === "machine_offline"
 						? { label: "View overview", href: "/dashboard" }

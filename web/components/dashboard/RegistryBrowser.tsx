@@ -8,11 +8,14 @@ import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { cn } from "@/lib/cn";
 import type { TrustedAddOnKind } from "@/lib/dashboard/loadout";
 import type { RegistryItem, RegistrySourceId, SourceStatus } from "@/lib/dashboard/registry";
+import type { RegistryInstallOutcome } from "@/lib/dashboard/registry/types";
 
 import { RegistryCard } from "./RegistryCard";
 
 type Props = {
 	installedIds: string[];
+	machines: Array<{ id: string; name: string }>;
+	activeMachineId: string | null;
 };
 
 type SearchState =
@@ -45,7 +48,8 @@ const KINDS: Array<{ id: TrustedAddOnKind | "all"; label: string }> = [
 	{ id: "source", label: "Source" },
 ];
 
-export function RegistryBrowser({ installedIds }: Props) {
+export function RegistryBrowser({ installedIds, machines, activeMachineId }: Props) {
+	const [targetId, setTargetId] = useState(activeMachineId ?? "");
 	const [query, setQuery] = useState("");
 	const [activeSource, setActiveSource] = useState<RegistrySourceId | "all">("all");
 	const [activeKind, setActiveKind] = useState<TrustedAddOnKind | "all">("all");
@@ -54,10 +58,14 @@ export function RegistryBrowser({ installedIds }: Props) {
 	const [showUrlDrawer, setShowUrlDrawer] = useState(false);
 	const [visible, setVisible] = useState(PAGE_SIZE);
 	const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-	const installedSet = useMemo(() => new Set(installedIds), [installedIds]);
+	const searchAbort = useRef<AbortController | null>(null);
+	const libraryIds = useRef(new Set(installedIds));
 
 	const doSearch = useCallback(
 		async (q: string, source: RegistrySourceId | "all", kind: TrustedAddOnKind | "all") => {
+			searchAbort.current?.abort();
+			const controller = new AbortController();
+			searchAbort.current = controller;
 			setState({ phase: "loading" });
 			setVisible(PAGE_SIZE);
 			try {
@@ -65,26 +73,28 @@ export function RegistryBrowser({ installedIds }: Props) {
 				if (q) params.set("q", q);
 				if (source !== "all") params.set("source", source);
 				if (kind !== "all") params.set("kind", kind);
-				const res = await fetch(`/api/dashboard/registry/search?${params.toString()}`);
+				const res = await fetch(`/api/dashboard/registry/search?${params.toString()}`, { signal: controller.signal });
 				if (!res.ok) throw new Error(`HTTP ${res.status}`);
 				const body = (await res.json()) as { items: RegistryItem[]; sources: SourceStatus[] };
 				const items = body.items.map((item) => ({
 					...item,
-					installed: item.installed || installedSet.has(item.id) || installedSet.has(item.name),
+					installed: item.installed || libraryIds.current.has(item.id) || libraryIds.current.has(item.name),
 				}));
-				setState({ phase: "done", items, sources: body.sources });
+				if (!controller.signal.aborted) setState({ phase: "done", items, sources: body.sources });
 			} catch (err) {
+				if (controller.signal.aborted) return;
 				setState({
 					phase: "error",
 					message: err instanceof Error ? err.message : "Search failed",
 				});
 			}
 		},
-		[installedSet],
+		[],
 	);
 
 	useEffect(() => {
 		void doSearch("", "all", "all");
+		return () => { clearTimeout(debounceRef.current); searchAbort.current?.abort(); };
 	}, [doSearch]);
 
 	function handleQueryChange(value: string) {
@@ -96,16 +106,19 @@ export function RegistryBrowser({ installedIds }: Props) {
 	}
 
 	function handleSourceChange(source: RegistrySourceId | "all") {
+		clearTimeout(debounceRef.current);
 		setActiveSource(source);
 		void doSearch(query, source, activeKind);
 	}
 
 	function handleKindChange(kind: TrustedAddOnKind | "all") {
+		clearTimeout(debounceRef.current);
 		setActiveKind(kind);
 		void doSearch(query, activeSource, kind);
 	}
 
 	function handleUrlSearch() {
+		clearTimeout(debounceRef.current);
 		if (!urlInput.trim()) return;
 		const isGitHub = urlInput.includes("github.com/");
 		setQuery(urlInput);
@@ -114,16 +127,20 @@ export function RegistryBrowser({ installedIds }: Props) {
 		setShowUrlDrawer(false);
 	}
 
-	async function handleAdd(item: RegistryItem) {
+	async function handleAdd(item: RegistryItem, install = false): Promise<RegistryInstallOutcome> {
 		const res = await fetch("/api/dashboard/registry/add", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ item }),
+			body: JSON.stringify({ item, install, machineId: install ? targetId : null }),
 		});
 		if (!res.ok) {
 			const body = (await res.json().catch(() => ({}))) as { error?: string };
 			throw new Error(body.error ?? `HTTP ${res.status}`);
 		}
+		const outcome = await res.json() as RegistryInstallOutcome;
+		libraryIds.current.add(item.id);
+		setState((current) => current.phase === "done" ? { ...current, items: current.items.map((candidate) => candidate.id === item.id ? { ...candidate, installed: true } : candidate) } : current);
+		return outcome;
 	}
 
 	async function handleRemove(itemId: string) {
@@ -136,6 +153,8 @@ export function RegistryBrowser({ installedIds }: Props) {
 			const body = (await res.json().catch(() => ({}))) as { error?: string };
 			throw new Error(body.error ?? `HTTP ${res.status}`);
 		}
+		libraryIds.current.delete(itemId);
+		setState((current) => current.phase === "done" ? { ...current, items: current.items.map((candidate) => candidate.id === itemId ? { ...candidate, installed: false } : candidate) } : current);
 	}
 
 	const items = state.phase === "done" ? state.items : [];
@@ -151,6 +170,14 @@ export function RegistryBrowser({ installedIds }: Props) {
 
 	return (
 		<div className="space-y-5 px-5 py-5">
+			<div className="flex flex-wrap items-center gap-3 rounded-lg border border-[var(--ret-border)] p-3">
+				<label htmlFor="registry-worker" className="text-sm text-[var(--ret-text-dim)]">Installation target</label>
+				<select id="registry-worker" value={targetId} onChange={(event) => setTargetId(event.target.value)} className="max-w-full rounded border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 text-sm text-[var(--ret-text)]">
+					<option value="">Choose a Worker</option>
+					{machines.map((machine) => <option key={machine.id} value={machine.id}>{machine.name} · {machine.id.slice(-6)}</option>)}
+				</select>
+				<p className="text-xs text-[var(--ret-text-muted)]">Saving adds to your library. Installing runs the reviewed command on this Worker only.</p>
+			</div>
 			{/* Search + URL import */}
 			<div className="flex flex-wrap items-end gap-3">
 				<div className="flex-1">
@@ -294,6 +321,7 @@ export function RegistryBrowser({ installedIds }: Props) {
 							<RegistryCard
 								key={item.id}
 								item={item}
+								targetId={targetId}
 								onAdd={handleAdd}
 								onRemove={handleRemove}
 							/>

@@ -16,6 +16,9 @@ export function consoleResultEvents(result: ManagedRunResult): ConsoleSseEvent[]
 			default: event satisfies never;
 		}
 	}
+	for (const warning of result.warnings ?? []) {
+		events.push(consoleEvent("status", { label: "Output capture needs attention", detail: warning }));
+	}
 	events.push(consoleEvent("thinking.done", {}));
 	events.push(consoleEvent("message", { choices: [{ delta: { content: result.text ?? "" } }] }));
 	return events;

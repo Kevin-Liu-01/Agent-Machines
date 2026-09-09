@@ -12,6 +12,7 @@ import { getEffectiveUserId } from "@/lib/user-config/identity";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 import { isValidSchedule, normalizeSchedule } from "@/lib/cron/expr";
 import type { CronEntry } from "@/lib/user-config/schema";
+import { cronRunHistory } from "@/lib/crons/service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,9 +23,10 @@ export async function GET(): Promise<Response> {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}
 	const config = await getUserConfig();
+	const history = await cronRunHistory(config, userId);
 	return Response.json({
 		ok: true,
-		crons: config.crons ?? [],
+		...history,
 		fetchedAt: new Date().toISOString(),
 	});
 }
@@ -41,6 +43,7 @@ export async function POST(request: Request): Promise<Response> {
 	} catch {
 		return Response.json({ error: "invalid_json" }, { status: 400 });
 	}
+	if (!body || typeof body !== "object" || Array.isArray(body)) return Response.json({ error: "invalid_body" }, { status: 400 });
 
 	const name = typeof body.name === "string" ? body.name.trim() : "";
 	const schedule = typeof body.schedule === "string" ? body.schedule.trim() : "";
@@ -52,6 +55,7 @@ export async function POST(request: Request): Promise<Response> {
 		return Response.json({ error: "invalid_schedule" }, { status: 400 });
 	}
 	if (!prompt) return Response.json({ error: "prompt_required" }, { status: 400 });
+	if (prompt.length > 100_000 || name.length > 120) return Response.json({ error: "input_too_long" }, { status: 400 });
 
 	const config = await getUserConfig();
 	const target = config.machines.find((m) => m.id === machineId && !m.archived);

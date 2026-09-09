@@ -25,7 +25,9 @@ import { after } from "next/server";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import { validateAgentCredentials, agentCredentialRequirements } from "@/lib/agents/credentials";
-import { runtimeModel } from "@/lib/agents/runtime-model";
+import { initialWorkerModel } from "@/lib/agents/model-endpoint";
+import { agentUsesRouter } from "@/lib/agents/upstreams";
+import { modelEndpointForSelection } from "@/lib/bootstrap/runner";
 import { submitMachineIntent } from "@/lib/control-plane/adopt-machine";
 import { getProvider } from "@/lib/providers";
 import { getUserConfig } from "@/lib/user-config/clerk";
@@ -40,7 +42,7 @@ export const maxDuration = 300;
 
 type Ctx = { params: Promise<{ id: string }> };
 
-type Body = { agentKind?: AgentKind };
+type Body = { agentKind?: AgentKind; model?: string };
 
 function isAgent(value: unknown): value is AgentKind {
 	return typeof value === "string" && (AGENT_KINDS as ReadonlyArray<string>).includes(value);
@@ -57,7 +59,7 @@ export async function POST(request: Request, ctx: Ctx): Promise<Response> {
 	} catch {
 		return Response.json({ error: "invalid_json" }, { status: 400 });
 	}
-	if (!isAgent(body.agentKind)) {
+	if (!body || !isAgent(body.agentKind)) {
 		return Response.json(
 			{ error: "invalid_agent_kind", message: `agentKind must be one of ${AGENT_KINDS.join(", ")}` },
 			{ status: 400 },
@@ -123,6 +125,16 @@ export async function POST(request: Request, ctx: Ctx): Promise<Response> {
 		);
 	}
 
+	let model: string;
+	try {
+		// Gateway-to-gateway switches can reuse the configured opaque model ID.
+		// Native-to-gateway switches select an endpoint-compatible default unless
+		// the caller supplies an explicit model for the new runtime.
+		const explicit = typeof body.model === "string" ? body.model : agentUsesRouter(machine.agentKind) && agentUsesRouter(agentKind) ? machine.model : null;
+		model = initialWorkerModel(agentKind, modelEndpointForSelection({ agentKind, gatewayProfileId: machine.gatewayProfileId }, config), explicit, machine.model);
+	} catch (error) {
+		return Response.json({ error: "model_required", message: error instanceof Error ? error.message : "Choose a model for the selected endpoint." }, { status: 400 });
+	}
 	const submitted = await submitMachineIntent(userId, id, {
 		desiredState: "running",
 		idempotencyKey:
@@ -130,7 +142,7 @@ export async function POST(request: Request, ctx: Ctx): Promise<Response> {
 			`runtime:${id}:${agentKind}:${crypto.randomUUID()}`,
 		spec: {
 			runtime: agentKind,
-			model: runtimeModel(agentKind, machine.model),
+			model,
 		},
 	});
 	after(async () => {

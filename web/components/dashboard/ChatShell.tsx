@@ -41,6 +41,7 @@ type ChatsListResponse =
 				| "machine_starting"
 				| "machine_asleep"
 				| "machine_error"
+				| "machine_missing"
 				| "no_active_machine"
 				| "missing_credentials"
 				| "exec_failed";
@@ -67,7 +68,6 @@ const newId = () =>
 
 const TRANSIENT_REASONS: ReadonlySet<string> = new Set([
 	"machine_starting",
-	"machine_asleep",
 ]);
 
 export function ChatShell({ activeMachineId, model }: Props) {
@@ -493,12 +493,8 @@ function MachineStateBanner({
 }) {
 	if (state.ok) return null;
 	if (state.reason === "machine_starting" || state.reason === "machine_asleep") {
-		// Posting any message implicitly wakes the active machine, but
-		// when the user just opens /dashboard/chat with no draft we
-		// want a single-click "wake now" affordance so they can warm
-		// the VM before composing. Renders MachineActions in compact
-		// mode so the same wake/sleep buttons are visible here as in
-		// the fleet UIs.
+		// Viewing saved chats must not resume compute. Use the same explicit
+		// Wake action as the fleet, and distinguish pause from a real startup.
 		const phase: MachineActionState =
 			state.reason === "machine_starting" ? "starting" : "sleeping";
 		return (
@@ -507,11 +503,11 @@ function MachineStateBanner({
 					<div>
 					<p className="text-[10px] text-[var(--ret-amber)]">
 						{phase === "sleeping"
-							? "Machine is asleep. Wake it to load /home/machine."
-							: "Waking your machine... chats are stored on its disk."}
+							? "Machine paused. Wake it to read its saved chats."
+							: "Machine starting… chats will be available when it is ready."}
 					</p>
 					<p className="mt-1 text-[10px] text-[var(--ret-text-muted)]">
-						{state.message ?? "First open after sleep takes ~30 seconds."}
+						{state.message ?? "Viewing this page does not start compute."}
 					</p>
 					</div>
 					{machineId ? (

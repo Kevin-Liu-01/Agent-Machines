@@ -110,6 +110,7 @@ function FilesTab({
 	selected: ConversationArtifact | null;
 	onSelect: (a: ConversationArtifact | null) => void;
 }) {
+	const fileTree = useMemo(() => buildFileTree(artifacts), [artifacts]);
 	if (artifacts.length === 0) {
 		return (
 			<div className="flex h-full items-center justify-center p-6 font-mono text-[11px] text-[var(--ret-text-muted)]">
@@ -117,8 +118,6 @@ function FilesTab({
 			</div>
 		);
 	}
-
-	const fileTree = useMemo(() => buildFileTree(artifacts), [artifacts]);
 
 	return (
 		<div className="flex h-full flex-col">

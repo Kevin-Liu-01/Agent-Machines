@@ -296,7 +296,7 @@ const AGENT_FEATURES: Feat[] = [
 	{ Icon: Network, label: "Model paths", value: "BYOK upstreams", logos: ["openrouter", "anthropic", "openai"] },
 	{ Icon: Boxes, label: "Install catalog", value: "2,595 audited", logos: ["figma", "slack", "react"] },
 	{ Icon: Terminal, label: "Browser terminal", value: "live PTY", logos: ["googlechrome", "playwright", "brave"] },
-	{ Icon: Plug, label: "Tools & MCPs", value: "auto-wired", logos: ["linear", "slack", "github"] },
+	{ Icon: Plug, label: "Tools & MCPs", value: "runtime-aware", logos: ["linear", "slack", "github"] },
 	{ Icon: Clock, label: "Crons", value: "scheduled", logos: ["cloudflare", "upstash", "datadog"] },
 	{ Icon: Rocket, label: "Guided deploy", value: "phase-tracked", logos: ["vercel", "cloudflare", "firebase"] },
 ];

@@ -24,6 +24,7 @@ import {
 import { loadTenantHealth } from "@/lib/mux/health";
 import { resolveRoute } from "@/lib/mux/route";
 import { getProvider } from "@/lib/providers";
+import { beginWorkspaceCapture, finishWorkspaceCapture } from "@/lib/storage/workspace-capture";
 import {
 	getUserConfigById,
 	setOperationalUserConfigById,
@@ -392,8 +393,19 @@ export class HostedWorkerRuntimeDriver implements WorkerRuntimeDriver {
 			scheduledFor?: string;
 		},
 	): Promise<unknown> {
+		// A schedule can be paused, deleted, or rebound after it was enqueued.
+		// Re-read the tenant registry before paid execution; cached bootstrap
+		// configuration must never resurrect a revoked recurring responsibility.
+		if (options.scheduleId) {
+			this.config = await getUserConfigById(this.userId);
+			const schedule = this.config.crons.find((entry) => entry.id === options.scheduleId);
+			if (!schedule?.enabled || schedule.machineId !== placementValue.sandboxId) {
+				throw new Error(`schedule ${options.scheduleId} was removed, disabled, or moved before execution`);
+			}
+		}
 		const { config, machine } = await this.machineFor(placementValue);
 		const provider = getProvider(machine.providerKind, config.providers);
+		const home = machineHomeForProvider(machine.providerKind);
 		const harness = getHarness(machine.agentKind);
 		const configuredRuntime = machine.agentKind === "hermes" || machine.agentKind === "openclaw";
 		const command = harness.runCommand(prompt, machine.agentKind === "hermes" ? {} : upstreams(config), {
@@ -404,9 +416,9 @@ export class HostedWorkerRuntimeDriver implements WorkerRuntimeDriver {
 			model:
 				configuredRuntime
 					? undefined
-					: runtimeModel(machine.agentKind, options.model),
+					: runtimeModel(machine.agentKind, options.model ?? machine.model),
+			cwd: `${home}/agent-machines`,
 		});
-		const home = machineHomeForProvider(machine.providerKind);
 		const hostedPath = [
 			`${home}/.agent-machines/venv/bin`,
 			`${home}/.npm-global/bin`,
@@ -419,11 +431,18 @@ export class HostedWorkerRuntimeDriver implements WorkerRuntimeDriver {
 		const runtimeSetup = machine.agentKind === "hermes"
 			? `if [ -f "${home}/.agent-machines/.agent-env" ]; then . "${home}/.agent-machines/.agent-env" || exit $?; fi; export HERMES_HOME="${home}/.agent-machines"; `
 			: "";
+		// Refuse exhausted requests before any capture exec, then recompute the
+		// paid-work budget after the bounded baseline scan has consumed time.
+		this.runTimeoutMs();
+		const capture = await beginWorkspaceCapture(provider, machine, {
+			runKey: options.runKey,
+			executionDeadlineMs: this.executionOptions.executionDeadlineMs,
+		});
 		const startedAt = new Date().toISOString();
 		const started = performance.now();
 		const timeoutMs = this.runTimeoutMs();
 		const isBounded = this.executionOptions.executionDeadlineMs !== undefined;
-		const runCommand = `${runtimeSetup}export PATH="${hostedPath}:$PATH"; ${command.command}`;
+		const runCommand = `mkdir -p "${home}/agent-machines" || exit $?; ${runtimeSetup}export PATH="${hostedPath}:$PATH"; ${command.command}`;
 		const result = await provider.exec(
 			machine.id,
 			isBounded ? boundedConsoleCommand(runCommand, timeoutMs) : runCommand,
@@ -431,18 +450,28 @@ export class HostedWorkerRuntimeDriver implements WorkerRuntimeDriver {
 			timeoutMs: timeoutMs + (isBounded ? 10_000 : 0),
 			env: command.env,
 			},
-		);
+		).catch(async (error: unknown) => {
+			const collected = await finishWorkspaceCapture(provider, machine, capture, this.executionOptions);
+			if (!collected.warnings.length) throw error;
+			throw new Error(`${error instanceof Error ? error.message : "Worker execution failed."} ${collected.warnings.join(" ")}`);
+		});
+		const durationMs = Math.round(performance.now() - started);
+		const collected = await finishWorkspaceCapture(provider, machine, capture, this.executionOptions);
 		const parser = harness.newTurnParser?.() ?? harness.parseLine.bind(harness);
 		const events = result.stdout
 			.split(/\r?\n/)
 			.flatMap((line) => (line.trim() ? parser(line) : []));
+		const runtimeError = events.find((event) => event.type === "error" || (event.type === "result" && event.isError));
+		const exitCode = result.exitCode === 0 && runtimeError ? 1 : result.exitCode;
 		if (options.scheduleId) {
 			const record = Buffer.from(
 				JSON.stringify({
 					id: options.scheduleId,
+					runKey: options.runKey,
+					scheduledFor: options.scheduledFor,
 					startedAt,
 					finishedAt: new Date().toISOString(),
-					exitCode: result.exitCode,
+					exitCode,
 					arm: {
 						runtime: machine.agentKind,
 						substrate: machine.providerKind,
@@ -452,28 +481,37 @@ export class HostedWorkerRuntimeDriver implements WorkerRuntimeDriver {
 				}),
 				"utf8",
 			).toString("base64");
-			const recorded = await provider.exec(
-				machine.id,
-				`mkdir -p "$HOME/.agent-machines/cron" && printf %s '${record}' | base64 -d >> "$HOME/.agent-machines/cron/runs.jsonl" && printf '\\n' >> "$HOME/.agent-machines/cron/runs.jsonl"`,
-				{ timeoutMs: 15_000 },
-			);
-			if (recorded.exitCode !== 0) {
-				throw new Error(
-					`cron run completed but its durable run log failed with exit ${recorded.exitCode}`,
-				);
+			const logBudgetMs = this.executionOptions.executionDeadlineMs === undefined
+				? 15_000
+				: Math.min(15_000, this.executionOptions.executionDeadlineMs - Date.now() - 3_000);
+			if (!Number.isFinite(logBudgetMs) || logBudgetMs < 1_000) {
+				collected.warnings.push("The on-machine cron log was skipped because the execution deadline was exhausted; inspect this run in the operation journal.");
+			} else {
+				try {
+					const recorded = await provider.exec(
+						machine.id,
+						`mkdir -p "$HOME/.agent-machines/cron" && printf %s '${record}' | base64 -d >> "$HOME/.agent-machines/cron/runs.jsonl" && printf '\\n' >> "$HOME/.agent-machines/cron/runs.jsonl"`,
+						{ timeoutMs: logBudgetMs },
+					);
+					if (recorded.exitCode !== 0) throw new Error("Cron log append failed.");
+				} catch {
+					collected.warnings.push("The on-machine cron log could not be saved; inspect this run in the operation journal. Paid work was not retried.");
+				}
 			}
 		}
-		if (result.exitCode !== 0) {
+		if (exitCode !== 0) {
 			throw new Error(
-				`${machine.agentKind} run failed with exit ${result.exitCode}: ${(result.stderr || result.stdout).slice(-800)}`,
+				`${machine.agentKind} run failed with exit ${exitCode}: ${(result.stderr || result.stdout).slice(-800)}${collected.warnings.length ? ` ${collected.warnings.join(" ")}` : ""}`,
 			);
 		}
 		return {
 			runKey: options.runKey,
 			text: aggregateEvents(events),
 			events,
-			exitCode: result.exitCode,
-			durationMs: Math.round(performance.now() - started),
+			exitCode,
+			durationMs,
+			artifacts: collected.artifacts,
+			warnings: collected.warnings,
 		};
 	}
 }

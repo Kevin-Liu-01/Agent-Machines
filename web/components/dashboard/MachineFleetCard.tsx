@@ -290,6 +290,7 @@ export function MachineFleetCard({
 						</div>
 						<MachineActions
 							machineId={machine.id}
+							providerKind={machine.providerKind}
 							state={state as MachineActionState}
 							capabilities={machine.capabilities}
 							active={active}

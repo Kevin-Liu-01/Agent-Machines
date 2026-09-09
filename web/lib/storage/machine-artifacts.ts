@@ -3,12 +3,11 @@
  */
 
 import { Buffer } from "node:buffer";
+import { execOnMachine } from "@/lib/dashboard/exec";
+import { artifactInventoryCommand } from "./artifact-inventory";
 
 import {
-	deletePath,
 	ensureAppDataLayout,
-	readBytes,
-	readJsonFile,
 	writeFile,
 	writeJsonFile,
 	type MachineStorageContext,
@@ -21,14 +20,13 @@ export type ArtifactRef = {
 	bytes: number;
 	chatId: string | null;
 	createdAt: string;
+	sourcePath?: string;
+	runKey?: string;
+	sha256?: string;
 };
 
 function artifactsDir(ctx: MachineStorageContext): string {
 	return `${ctx.appDataRoot}/artifacts`;
-}
-
-function artifactsIndex(ctx: MachineStorageContext): string {
-	return `${artifactsDir(ctx)}/_index.json`;
 }
 
 function safeName(name: string): string {
@@ -40,9 +38,8 @@ function safeName(name: string): string {
 }
 
 function safeId(id: string): string {
-	const v = id.replace(/[^a-zA-Z0-9_-]/g, "");
-	if (v.length === 0) throw new Error("invalid artifact id");
-	return v;
+	if (!/^[a-zA-Z0-9_-]{1,128}$/.test(id)) throw new Error("invalid artifact id");
+	return id;
 }
 
 function artifactDir(id: string, ctx: MachineStorageContext): string {
@@ -57,25 +54,27 @@ function artifactPath(id: string, name: string, ctx: MachineStorageContext): str
 	return `${artifactDir(id, ctx)}/${safeName(name)}`;
 }
 
+async function inventory<T>(ctx: MachineStorageContext, action: "list" | "read" | "delete", id?: string): Promise<T> {
+	if (id !== undefined) safeId(id);
+	const result = await execOnMachine(artifactInventoryCommand({ root: ctx.appDataRoot, action, id }), { machineId: ctx.machineId, timeoutMs: 20_000 });
+	if (result.exitCode !== 0) throw new Error(`Artifact ${action} failed: ${result.stderr.slice(-500) || `exit ${result.exitCode}`}`);
+	return JSON.parse(result.stdout) as T;
+}
+
+export async function listArtifactInventory(ctx: MachineStorageContext): Promise<{ artifacts: ArtifactRef[]; warnings: string[] }> {
+	return inventory(ctx, "list");
+}
+
 export async function listArtifacts(ctx: MachineStorageContext): Promise<ArtifactRef[]> {
-	const index = await readJsonFile<ArtifactRef[]>(artifactsIndex(ctx), ctx);
-	if (index && Array.isArray(index)) {
-		return [...index].sort((a, b) =>
-			b.createdAt.localeCompare(a.createdAt),
-		);
-	}
-	return [];
+	return (await listArtifactInventory(ctx)).artifacts;
 }
 
 export async function loadArtifactBytes(
 	id: string,
 	ctx: MachineStorageContext,
 ): Promise<{ ref: ArtifactRef; bytes: Buffer } | null> {
-	const ref = await readJsonFile<ArtifactRef>(artifactMeta(id, ctx), ctx);
-	if (!ref) return null;
-	const bytes = await readBytes(artifactPath(id, ref.name, ctx), ctx);
-	if (!bytes) return null;
-	return { ref, bytes };
+	const result = await inventory<{ found: false } | { found: true; ref: ArtifactRef; body: string }>(ctx, "read", id);
+	return result.found ? { ref: result.ref, bytes: Buffer.from(result.body, "base64") } : null;
 }
 
 export async function saveArtifact(
@@ -99,8 +98,6 @@ export async function saveArtifact(
 	};
 	await writeFile(artifactPath(ref.id, ref.name, ctx), args.body, ctx);
 	await writeJsonFile(artifactMeta(ref.id, ctx), ref, ctx);
-	const existing = (await listArtifacts(ctx)).filter((a) => a.id !== ref.id);
-	await writeJsonFile(artifactsIndex(ctx), [ref, ...existing], ctx);
 	return ref;
 }
 
@@ -108,7 +105,5 @@ export async function deleteArtifact(
 	id: string,
 	ctx: MachineStorageContext,
 ): Promise<void> {
-	await deletePath(artifactDir(id, ctx), ctx);
-	const existing = (await listArtifacts(ctx)).filter((a) => a.id !== id);
-	await writeJsonFile(artifactsIndex(ctx), existing, ctx);
+	await inventory(ctx, "delete", id);
 }

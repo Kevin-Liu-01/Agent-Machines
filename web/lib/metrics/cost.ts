@@ -1,54 +1,52 @@
 /**
- * DISPLAY ONLY -- the daily machine-cost rollup. NOT a routing input.
- *
- * One caller: `web/lib/metrics/collector.ts` (`upsert` of `machine_costs`,
- * rendered at /dashboard/usage). It has no provider argument, so it applies the
- * single rate table below to every machine on every substrate, which is exactly
- * why it may not price a route. Retired as a routing input by roadmap 4.1;
- * `web/lib/metrics/prices.ts` is what a router reads now, per provider, from the
- * published rates in `web/data/benchmarks.json`, with the lanes that publish no
- * rate refused rather than filled in from here.
- *
- * The gap is not small. These rates price 60s of a 2 vCPU / 4 GiB box at 1.1
- * millicents where E2B's published rate says 276 -- ~250x, and the same table
- * is applied to three other vendors whose rates differ from each other. Any
- * figure produced here is an order-of-magnitude display estimate, not money.
- * `cost.test.ts` guards that nothing under lib/learning imports it again.
- *
- * Rates are expressed in millicents (1/1000 of a cent) to avoid
- * floating-point rounding in running totals. Final display uses
- * `formatMillicents` to convert to dollars.
+ * DISPLAY ONLY: sampled compute allocation, never an invoice or routing input.
+ * Uses the same published rates as web/lib/metrics/prices.ts. The former
+ * provider-agnostic table in web/lib/metrics/collector.ts was underpriced and
+ * must not be read back from machine_cost_estimates as trustworthy money.
  */
+import { MILLICENTS_PER_USD, substratePrice } from "./prices";
 
-const CPU_RATE_MILLICENTS_PER_VCPU_SECOND = 0.0046;
-const MEMORY_RATE_MILLICENTS_PER_GIB_SECOND = 0.0023;
-const STORAGE_RATE_MILLICENTS_PER_GIB_HOUR = 0.015;
+export const COMPUTE_PRICE_SOURCES = [
+	{ label: "E2B pricing", url: "https://e2b.dev/pricing" },
+	{ label: "Vercel pricing", url: "https://vercel.com/docs/sandbox/pricing" },
+	{ label: "Sprites metering", url: "https://fly.io/sprites/" },
+];
 
-export type CostEstimate = {
-	cpuMillicents: number;
-	memoryMillicents: number;
-	storageMillicents: number;
-	totalMillicents: number;
-};
+export type CostEstimate =
+	| { known: true; cpuMillicents: number; memoryMillicents: number; totalMillicents: number; note: string }
+	| { known: false; totalMillicents: null; note: string };
 
+/** Price accumulated resource-time, not the current machine shape × all history.
+ * Rates verified against the linked official pages on 2026-09-09. Vercel uses
+ * regional active CPU metering; without its region/meter we cannot quote it.
+ * Sprites meters cpu.stat and actual RAM, neither recoverable from allocations.
+ */
 export function estimateCost(
-	spec: { vcpu: number; memoryMib: number; storageGib: number },
-	awakeSeconds: number,
+	provider: string,
+	usage: { cpuVcpuSeconds: number; memoryGibSeconds: number },
 ): CostEstimate {
-	const cpuMillicents =
-		spec.vcpu * awakeSeconds * CPU_RATE_MILLICENTS_PER_VCPU_SECOND;
-	const memoryGib = spec.memoryMib / 1024;
-	const memoryMillicents =
-		memoryGib * awakeSeconds * MEMORY_RATE_MILLICENTS_PER_GIB_SECOND;
-	const awakeHours = awakeSeconds / 3600;
-	const storageMillicents =
-		spec.storageGib * awakeHours * STORAGE_RATE_MILLICENTS_PER_GIB_HOUR;
-	const totalMillicents = cpuMillicents + memoryMillicents + storageMillicents;
-
-	return { cpuMillicents, memoryMillicents, storageMillicents, totalMillicents };
+	if (![usage.cpuVcpuSeconds, usage.memoryGibSeconds].every((n) => Number.isFinite(n) && n >= 0)) {
+		return { known: false, totalMillicents: null, note: "Resource-time evidence is missing or invalid." };
+	}
+	if (provider === "sprites") {
+		return { known: false, totalMillicents: null, note: "Sprites bills actual CPU and RAM usage; allocation samples are not its billing meter." };
+	}
+	if (provider === "vercel") {
+		return { known: false, totalMillicents: null, note: "Vercel cost requires regional pricing and active CPU usage, which these samples do not record." };
+	}
+	const rate = substratePrice(provider);
+	if (!rate.known) return { known: false, totalMillicents: null, note: "No verified compute price is available for this provider." };
+	const cpuMillicents = usage.cpuVcpuSeconds / 3600 * rate.vcpuHourUsd * MILLICENTS_PER_USD;
+	const memoryUnits = usage.memoryGibSeconds * (rate.memoryUnit === "GB" ? 1_073_741_824 / 1_000_000_000 : 1);
+	const memoryMillicents = memoryUnits / 3600 * rate.memoryHourUsd * MILLICENTS_PER_USD;
+	return {
+		known: true, cpuMillicents, memoryMillicents, totalMillicents: cpuMillicents + memoryMillicents,
+		note: "E2B list-price estimate for sampled allocation. Not a provider invoice.",
+	};
 }
 
-export function formatMillicents(millicents: number): string {
-	const dollars = millicents / 100_000;
-	return `$${dollars.toFixed(2)}`;
+export function formatMillicents(millicents: number | null): string {
+	if (millicents === null || !Number.isFinite(millicents) || millicents < 0) return "Unknown";
+	if (millicents > 0 && millicents < 1000) return "<$0.01";
+	return `$${(millicents / MILLICENTS_PER_USD).toFixed(2)}`;
 }

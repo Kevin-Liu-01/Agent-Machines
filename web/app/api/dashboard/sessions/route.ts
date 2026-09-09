@@ -1,105 +1,65 @@
-/**
- * GET /api/dashboard/sessions
- *
- * Lists recent agent session SQLite files in `~/.agent-machines/sessions/`.
- * The agent stores one DB per session by default. We don't crack the SQLite
- * open here -- that requires a binary on the VM. Instead, we treat each
- * `.db` file as one session and surface size + mtime + filename. PR2.5
- * would add a session detail view that runs a small `sqlite3` query
- * remotely to dump the transcript.
- */
-
+/** Read actual runtime histories and transcripts on the selected owned machine. */
+import { execOnMachine, isMachineRunning, resolveMachine } from "@/lib/dashboard/exec";
+import { isRuntimeSessionId, runtimeSessionsCommand } from "@/lib/dashboard/runtime-sessions";
+import type { LiveDataEnvelope, SessionsPayload, SessionTranscriptPayload } from "@/lib/dashboard/types";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
-
-import { execOnMachine, isMachineRunning } from "@/lib/dashboard/exec";
-import type {
-	LiveDataEnvelope,
-	SessionRecord,
-	SessionsPayload,
-} from "@/lib/dashboard/types";
+import { getUserConfigCached } from "@/lib/user-config/request-cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const LIST_LIMIT = 80;
-
-type RawSession = {
-	path: string;
-	size: number;
-	mtime: number;
-};
-
-function parseRows(stdout: string): RawSession[] {
-	return stdout
-		.split("\n")
-		.filter(Boolean)
-		.map((line) => {
-			const [path, size, mtime] = line.split("\t");
-			return {
-				path: (path ?? "").trim(),
-				size: Number.parseInt(size ?? "0", 10) || 0,
-				mtime: Number.parseInt(mtime ?? "0", 10) || 0,
-			};
-		})
-		.filter((row) => row.path);
-}
-
-function toSummary(row: RawSession): SessionRecord {
-	const filename = row.path.split("/").pop() ?? row.path;
-	const id = filename.replace(/\.db(?:-(?:wal|shm|journal))?$/, "");
-	const updatedAt = row.mtime ? new Date(row.mtime * 1000).toISOString() : null;
-	return {
-		id,
-		preview: filename,
-		updatedAt,
-		bytes: row.size,
-	};
-}
+const headers = { "Cache-Control": "no-store" };
 
 export async function GET(request: Request): Promise<Response> {
-	const userId = await getEffectiveUserId();
-	if (!userId) {
-		return Response.json({ error: "unauthorized" }, { status: 401 });
+	if (!(await getEffectiveUserId())) {
+		return Response.json({ error: "unauthorized" }, { status: 401, headers });
 	}
-
-	const machineId = new URL(request.url).searchParams.get("machineId") ?? undefined;
-
-	if (!(await isMachineRunning(machineId))) {
-		const envelope: LiveDataEnvelope<SessionsPayload> = {
-			ok: false,
-			reason: "machine_offline",
-			message: "Machine is not running. Wake it with `npm run wake`.",
-		};
-		return Response.json(envelope);
+	const params = new URL(request.url).searchParams;
+	const machineId = params.get("machineId") ?? undefined;
+	const sessionId = params.get("sessionId") ?? undefined;
+	if (sessionId !== undefined && !isRuntimeSessionId(sessionId)) {
+		return Response.json({ error: "Invalid session identifier." }, { status: 400, headers });
 	}
 
 	try {
-		const command = `find $HOME/.agent-machines/sessions -maxdepth 2 -type f -name '*.db' -printf '%p\\t%s\\t%T@\\n' 2>/dev/null | sort -t$'\\t' -k3,3nr | head -n ${LIST_LIMIT}`;
-		const { stdout } = await execOnMachine(command, { machineId });
-		const rows = parseRows(stdout);
-		const sessions = rows.map(toSummary);
-		const totalBytes = rows.reduce((acc, r) => acc + r.size, 0);
-
-		const envelope: LiveDataEnvelope<SessionsPayload> = {
+		const config = await getUserConfigCached();
+		const machine = resolveMachine(config, machineId);
+		if (!machine) {
+			return Response.json({ error: "Machine not found in your account." }, { status: 404, headers });
+		}
+		if (!(await isMachineRunning(machine.id))) {
+			return Response.json({
+				ok: false,
+				reason: "machine_offline",
+				message: "Wake this machine from its overview to read its saved conversations.",
+			}, { headers });
+		}
+		const result = await execOnMachine(runtimeSessionsCommand(sessionId), {
+			machineId: machine.id,
+			timeoutMs: 20_000,
+		});
+		if (result.exitCode !== 0) {
+			throw new Error("The native history reader could not run. Verify that Python 3 is installed on this machine.");
+		}
+		const data = JSON.parse(result.stdout.trim());
+		if (data.error === "session_not_found") {
+			return Response.json({ error: "Session no longer exists in this machine's history." }, { status: 404, headers });
+		}
+		if (data.error || (sessionId ? !Array.isArray(data.messages) : !Array.isArray(data.sessions))) {
+			throw new Error(data.message || "Native history returned an unreadable response.");
+		}
+		const envelope: LiveDataEnvelope<SessionsPayload | SessionTranscriptPayload> = {
 			ok: true,
-			data: {
-				sessions,
-				totalSessions: sessions.length,
-				totalBytes,
-				dbPath: "~/.agent-machines/sessions/",
-			},
+			data,
 			fetchedAt: new Date().toISOString(),
 		};
-		return Response.json(envelope, {
-			headers: { "Cache-Control": "no-store" },
-		});
-	} catch (err) {
-		const envelope: LiveDataEnvelope<SessionsPayload> = {
+		return Response.json(envelope, { headers });
+	} catch (error) {
+		return Response.json({
 			ok: false,
 			reason: "exec_failed",
-			message: err instanceof Error ? err.message : "exec failed",
-		};
-		return Response.json(envelope);
+			message: error instanceof Error ? error.message : "Native history could not be read.",
+		}, { status: 502, headers });
 	}
 }

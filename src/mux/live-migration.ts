@@ -274,21 +274,31 @@ export type LiveBaseline = {
 };
 
 function assertPlanPaths(plan: StateMovePlan): void {
-	for (const path of [...plan.include, ...plan.exclude]) {
+	for (const path of plan.include) {
 		if (!/^[A-Za-z0-9._/-]+$/.test(path) || path.startsWith("/") || path.includes("..")) {
 			throw new MuxError("fatal", `live migration plan contains an unsafe path: ${path}`);
+		}
+	}
+	for (const pattern of plan.exclude) {
+		if (!/^[A-Za-z0-9._/*?-]+$/.test(pattern) || pattern.startsWith("/") || pattern.includes("..")) {
+			throw new MuxError("fatal", `live migration plan contains an unsafe exclusion: ${pattern}`);
 		}
 	}
 }
 
 function findExcludeExpression(exclude: readonly string[]): string {
-	return exclude
+	if (exclude.length === 0) return "";
+	const matches = exclude
 		.flatMap((pattern) =>
 			pattern.includes("/")
-				? [`! -path ${shq(pattern)}`, `! -path ${shq(`${pattern}/*`)}`]
-				: [`! -name ${shq(pattern)}`],
+				? [`-path ${shq(pattern)}`, `-path ${shq(`*/${pattern}`)}`]
+				: [`-name ${shq(pattern)}`],
 		)
-		.join(" ");
+		.join(" -o ");
+	// Match tar's unanchored exclusions and prune dependency directories, not
+	// just their own entries. Otherwise large node_modules trees still hash
+	// into the final delta and excluded children can enter deletion manifests.
+	return `\\( ${matches} \\) -prune -o`;
 }
 
 /** Record the source tree before the baseline tar is built. */
@@ -304,9 +314,9 @@ export async function prepareLiveBaseline(
 	const paths = plan.include.map(shq).join(" ");
 	const findExcludes = findExcludeExpression(plan.exclude);
 	const command = [
-		`set -e`,
+		`set -e -o pipefail`,
 		`touch ${shq(markerPath)}`,
-		`(cd "$HOME" && for am_path in ${paths}; do [ -e "$am_path" ] && find "$am_path" -xdev ${findExcludes} -print0; done | LC_ALL=C sort -z -u) > ${shq(baselineListPath)}`,
+		`(cd "$HOME" && for am_path in ${paths}; do [ -e "$am_path" ] || exit 66; find "$am_path" -xdev ${findExcludes} -print0 || exit $?; done | LC_ALL=C sort -z -u) > ${shq(baselineListPath)}`,
 		`echo AM_LIVE_BASELINE_READY`,
 	].join("\n");
 	const result = await handle.exec(command, { timeoutMs: DEFAULT_TAR_TIMEOUT_MS });
@@ -331,7 +341,7 @@ function fingerprintCommand(baseline: LiveBaseline): string {
 	const findExcludes = findExcludeExpression(baseline.exclude);
 	return [
 		`set -o pipefail`,
-		`(cd "$HOME" && for am_path in ${paths}; do [ -e "$am_path" ] && find "$am_path" -xdev ${findExcludes} -print0; done | LC_ALL=C sort -z -u | tar -cf - --null --no-recursion ${excludes} -T - 2>/dev/null) | sha256sum`,
+		`(cd "$HOME" && for am_path in ${paths}; do if [ -e "$am_path" ]; then find "$am_path" -xdev ${findExcludes} -print0 || exit $?; fi; done | LC_ALL=C sort -z -u | tar -cf - --null --no-recursion ${excludes} -T - 2>/dev/null) | sha256sum`,
 	].join("\n");
 }
 
@@ -379,14 +389,14 @@ export async function exportStableLiveDelta(
 	for (let attempt = 1; attempt <= attempts; attempt += 1) {
 		const before = await fingerprint(handle, baseline);
 		const build = [
-			`set -e`,
+			`set -e -o pipefail`,
 			`mkdir -p "$HOME/.agent-machines"`,
-			`(cd "$HOME" && for am_path in ${paths}; do [ -e "$am_path" ] && find "$am_path" -xdev ${findExcludes} -print0; done | LC_ALL=C sort -z -u) > ${shq(currentPath)}`,
+			`(cd "$HOME" && for am_path in ${paths}; do if [ -e "$am_path" ]; then find "$am_path" -xdev ${findExcludes} -print0 || exit $?; fi; done | LC_ALL=C sort -z -u) > ${shq(currentPath)}`,
 			// Deepest paths first: replay can remove children before attempting
 			// rmdir on parents, while excluded/re-derived files keep their parent.
 			`comm -z -23 ${shq(baseline.baselineListPath)} ${shq(currentPath)} | LC_ALL=C sort -zr > ${shq(deletedPath)}`,
 			`cp ${shq(deletedPath)} "$HOME/${deleteManifest}"`,
-			`(cd "$HOME" && for am_path in ${paths}; do [ -e "$am_path" ] && find "$am_path" -xdev ${findExcludes} \\( -newer ${shq(baseline.markerPath)} -o -cnewer ${shq(baseline.markerPath)} \\) -print0; done | LC_ALL=C sort -z -u) > ${shq(changedPath)}`,
+			`(cd "$HOME" && for am_path in ${paths}; do if [ -e "$am_path" ]; then find "$am_path" -xdev ${findExcludes} \\( -newer ${shq(baseline.markerPath)} -o -cnewer ${shq(baseline.markerPath)} \\) -print0 || exit $?; fi; done | LC_ALL=C sort -z -u) > ${shq(changedPath)}`,
 			`printf '%s\\0' ${shq(deleteManifest)} >> ${shq(changedPath)}`,
 			`tar -C "$HOME" -czf ${shq(tarPath)} --null --no-recursion ${excludes} -T ${shq(changedPath)}`,
 			`echo AM_LIVE_DELTA_READY`,
@@ -421,11 +431,7 @@ function allowedDeletePatterns(include: readonly string[]): string {
 
 function blockedDeletePatterns(exclude: readonly string[]): string {
 	return exclude
-		.flatMap((pattern) =>
-			pattern.includes("/")
-				? [pattern, `${pattern}/*`]
-				: [pattern, `*/${pattern}`],
-		)
+		.flatMap((pattern) => [pattern, `${pattern}/*`, `*/${pattern}`, `*/${pattern}/*`])
 		.join("|");
 }
 

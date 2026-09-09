@@ -548,6 +548,7 @@ function MachineRow({
 				<div onClick={stopCardNavigation} onKeyDown={stopCardNavigation}>
 					<MachineActions
 						machineId={machine.id}
+						providerKind={machine.providerKind}
 						state={stateName as MachineActionState}
 						capabilities={machine.capabilities}
 						active={active}

@@ -215,6 +215,7 @@ export default function MachineOverviewPage() {
 						/>
 						<MachineActions
 							machineId={machineId}
+							providerKind={machine.providerKind}
 							state={stateName as MachineActionState}
 							capabilities={null}
 							active={isActive}
@@ -310,7 +311,7 @@ export default function MachineOverviewPage() {
 					<div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--ret-border)] px-4 py-3">
 						<h2 className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 							<Gauge size={12} />
-							Resource utilization
+							Sampled allocation
 						</h2>
 						<TimeRangeSelector
 							options={RANGE_OPTIONS_DETAIL}
@@ -338,7 +339,7 @@ export default function MachineOverviewPage() {
 								? (usageResources.memory.total / 3600).toFixed(1)
 								: "–"
 						}
-						unit="GB-hrs"
+						unit="GiB-hrs"
 						data={memBuckets}
 						color="var(--ret-amber)"
 						loading={usageLoading}
@@ -350,7 +351,7 @@ export default function MachineOverviewPage() {
 								? usageResources.storage.total.toFixed(1)
 								: "–"
 						}
-						unit="GB-hrs"
+						unit="GiB-hrs"
 						data={storageBuckets}
 						color="var(--ret-red)"
 						loading={usageLoading}

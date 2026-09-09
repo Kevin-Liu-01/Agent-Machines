@@ -421,14 +421,14 @@ const HARNESS_SPECS: Record<HarnessKind, HarnessSpec> = {
 		],
 	},
 	openclaw: {
-		combinedDocPaths: [".openclaw/workspace/SOUL.md", ".openclaw/workspace/AGENTS.md"],
+		combinedDocPaths: MEMORY_DOC_FILES.map(([, file]) => `.openclaw/workspace/${file}`),
 		skillLink: null,
 		mcp: null,
 		mcpGap:
 			"no MCP config location for openclaw 2026.7.1-2 has been verified (the CLI was not available to probe, and this repo's ~/.openclaw/config.json reference is our own code, not vendor documentation)",
 		baseRunArgs: () => [],
 		notes: [
-			"openclaw: MCP servers are not installable through this module; see LoadoutPlan gaps. Persona docs follow web/lib/memory/install.ts (workspace SOUL.md + AGENTS.md, which are NOT the combined doc).",
+			"openclaw: MCP servers are not installable through this module; see LoadoutPlan gaps. Persona docs follow web/lib/memory/install.ts (workspace SOUL.md, AGENTS.md, MEMORY.md and USER.md, which are NOT the combined doc).",
 		],
 	},
 	hermes: {
@@ -595,12 +595,13 @@ export function planLoadout(
 	}
 
 	// 2. The per-runtime entrypoint. openclaw is the one runtime that gets the
-	//    raw soul/agentDocs rather than the combined doc; install.ts does the
+	//    four raw memory docs rather than the combined doc; install.ts does the
 	//    same, and diverging would put different text on the machine.
 	const combined = combinedDoc(docs);
 	if (harness === "openclaw") {
-		files.push({ path: ".openclaw/workspace/SOUL.md", content: docs.soul });
-		files.push({ path: ".openclaw/workspace/AGENTS.md", content: docs.agentDocs });
+		for (const [key, file] of MEMORY_DOC_FILES) {
+			files.push({ path: `.openclaw/workspace/${file}`, content: docs[key] });
+		}
 	} else {
 		for (const path of spec.combinedDocPaths) files.push({ path, content: combined });
 	}

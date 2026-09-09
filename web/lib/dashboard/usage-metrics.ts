@@ -21,6 +21,8 @@ export type UsageMachineRow = {
 	awakeSeconds: number;
 	cpuVcpuSeconds: number;
 	memoryGibSeconds?: number;
+	costFormatted?: string;
+	costNote?: string;
 };
 
 export type NormalizedUsage = {
@@ -28,8 +30,11 @@ export type NormalizedUsage = {
 	days: number;
 	resources: UsageResources;
 	machineBreakdown: UsageMachineRow[];
-	totalCostMillicents: number;
+	totalCostMillicents: number | null;
 	totalCostFormatted: string;
+	costStatus: "unknown" | "partial" | "estimated";
+	knownCostFormatted: string;
+	costCoverage: { sampleCount: number; truncated: boolean; observedSeconds: number; pricedMachines: number; observedMachines: number };
 };
 
 const EMPTY_RESOURCES: UsageResources = {
@@ -39,7 +44,8 @@ const EMPTY_RESOURCES: UsageResources = {
 };
 
 function asFiniteNumber(value: unknown, fallback = 0): number {
-	return typeof value === "number" && Number.isFinite(value) ? value : fallback;
+	const parsed = typeof value === "string" && value.trim() ? Number(value) : value;
+	return typeof parsed === "number" && Number.isFinite(parsed) ? parsed : fallback;
 }
 
 function parseCpuResource(raw: unknown): UsageResources["cpu"] {
@@ -170,14 +176,20 @@ function parseMachineBreakdown(raw: unknown): UsageMachineRow[] {
 			memoryGibSeconds: asFiniteNumber(
 				o.memoryGibSeconds ?? o.memory_gib_seconds,
 			),
+			costFormatted: typeof o.costFormatted === "string" ? o.costFormatted : "Unknown",
+			costNote: typeof o.costNote === "string" ? o.costNote : undefined,
 		});
 	}
 	return rows;
 }
 
-function formatCost(millicents: number): string {
+function formatCost(millicents: number | null): string {
+	if (millicents === null) return "Unknown";
+	if (millicents > 0 && millicents < 1000) return "<$0.01";
 	return `$${(millicents / 100_000).toFixed(2)}`;
 }
+
+const EMPTY_COST_COVERAGE = { sampleCount: 0, truncated: false, observedSeconds: 0, pricedMachines: 0, observedMachines: 0 };
 
 /** Parse any usage-shaped JSON (prod API, demo, partial errors) into a safe shape. */
 export function normalizeUsagePayload(
@@ -192,13 +204,12 @@ export function normalizeUsagePayload(
 	const machineBreakdown = parseMachineBreakdown(
 		o.machineBreakdown ?? o.byMachine,
 	);
-	const totalCostMillicents = asFiniteNumber(o.totalCostMillicents);
-	const totalCostFormatted =
-		typeof o.totalCostFormatted === "string"
-			? o.totalCostFormatted
-			: typeof o.totalCostUsd === "number"
-				? `$${o.totalCostUsd.toFixed(2)}`
-				: formatCost(totalCostMillicents);
+	const costStatus = o.costStatus === "estimated" || o.costStatus === "partial" ? o.costStatus : "unknown";
+	const amount = asFiniteNumber(o.totalCostMillicents, -1);
+	const totalCostMillicents = costStatus === "estimated" && amount >= 0 ? amount : null;
+	const totalCostFormatted = formatCost(totalCostMillicents);
+	const knownAmount = asFiniteNumber(o.knownCostMillicents, -1);
+	const coverage = o.costCoverage && typeof o.costCoverage === "object" ? o.costCoverage as Record<string, unknown> : {};
 
 	return {
 		ok: true,
@@ -207,16 +218,23 @@ export function normalizeUsagePayload(
 		machineBreakdown,
 		totalCostMillicents,
 		totalCostFormatted,
+		costStatus,
+		knownCostFormatted: formatCost(costStatus !== "unknown" && knownAmount >= 0 ? knownAmount : null),
+		costCoverage: {
+			sampleCount: asFiniteNumber(coverage.sampleCount), truncated: coverage.truncated === true,
+			observedSeconds: asFiniteNumber(coverage.observedSeconds), pricedMachines: asFiniteNumber(coverage.pricedMachines),
+			observedMachines: asFiniteNumber(coverage.observedMachines),
+		},
 	};
 }
 
 export type DailyUsageRow = {
 	bucket_date: string;
 	machine_id?: string;
-	awake_seconds?: number | null;
-	cpu_vcpu_seconds?: number | null;
-	memory_gib_seconds?: number | null;
-	storage_gib_hours?: number | null;
+	awake_seconds?: number | string | null;
+	cpu_vcpu_seconds?: number | string | null;
+	memory_gib_seconds?: number | string | null;
+	storage_gib_hours?: number | string | null;
 };
 
 /** Build chart resources from Supabase machine_usage_daily rows. */
@@ -233,9 +251,9 @@ export function buildUsageResourcesFromDailyRows(
 			gibSeconds: 0,
 			gibHours: 0,
 		};
-		existing.vcpuSeconds += r.cpu_vcpu_seconds ?? 0;
-		existing.gibSeconds += r.memory_gib_seconds ?? 0;
-		existing.gibHours += r.storage_gib_hours ?? 0;
+		existing.vcpuSeconds += asFiniteNumber(r.cpu_vcpu_seconds);
+		existing.gibSeconds += asFiniteNumber(r.memory_gib_seconds);
+		existing.gibHours += asFiniteNumber(r.storage_gib_hours);
 		dailyMap.set(r.bucket_date, existing);
 	}
 
@@ -358,8 +376,11 @@ export function normalizeMachineUsagePayload(
 		machineId,
 		resources,
 		machineBreakdown: [],
-		totalCostMillicents: 0,
-		totalCostFormatted: "$0.00",
+		totalCostMillicents: null,
+		totalCostFormatted: "Unknown",
+		costStatus: "unknown",
+		knownCostFormatted: "Unknown",
+		costCoverage: { ...EMPTY_COST_COVERAGE },
 		transitions,
 	};
 }

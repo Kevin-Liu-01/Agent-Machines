@@ -249,7 +249,7 @@ A worker is a runtime **plus** a composable harness. The app derives every count
 
 Skills follow the **SKILL.md protocol**: procedures saved to the machine compound over time and cannot be exported out of a stateless chat product.
 
-**Loadout vs registry:** **Loadout** is what is already active on a machine (skills, MCPs, service routes). **Registry** is the install catalog: search, add to loadout, sync on deploy/reload.
+**Loadout vs registry:** **Loadout** describes a Worker's selected abilities, not proof that each tool is installed or connected. **Registry** is the discovery and import catalog: save to your library, review a command, choose a specific Worker, then run or retry installation. Command success is reported separately from runtime verification. MCP servers and plugins can require manual setup, credentials, permissions, and runtime-specific wiring. Offline installs are not silently queued. Bundled knowledge refresh preserves Worker-authored memory and modified skills.
 
 ---
 

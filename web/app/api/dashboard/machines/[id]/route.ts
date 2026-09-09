@@ -22,6 +22,7 @@ import { after } from "next/server";
 import { isRemovedDedalusRouter } from "@/lib/agents/upstreams";
 import { submitMachineIntent } from "@/lib/control-plane/adopt-machine";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
+import { deletionStorageWarning } from "@/lib/dashboard/deletion-warning";
 
 import { forgetHostedPlacement } from "@/lib/mux/placements";
 import { MachineProviderError, getProvider } from "@/lib/providers";
@@ -219,6 +220,7 @@ export async function DELETE(request: Request, ctx: Ctx): Promise<Response> {
 				{
 					ok: true,
 					action: "destroy_scheduled",
+					storageWarning: deletionStorageWarning(machine.providerKind),
 					operation: submitted.accepted.operation,
 					statusUrl: `/api/dashboard/control-plane/operations/${submitted.accepted.operation.id}`,
 				},

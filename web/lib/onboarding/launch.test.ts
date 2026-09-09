@@ -34,6 +34,16 @@ describe("onboarding provider readiness", () => {
 });
 
 describe("onboarding launch recovery", () => {
+	it("passes an optional explicit model to recipe creation", async () => {
+		fetchMock
+			.mockResolvedValueOnce(response({ ok: true }))
+			.mockResolvedValueOnce(response({ workerId: "worker-1" }))
+			.mockResolvedValueOnce(response({ operation: { id: "op-1", status: "queued" } }, 202))
+			.mockResolvedValueOnce(response({ operation: { id: "op-1", status: "running" } }));
+		await submitOnboardingLaunch({ workerId: "worker-1", operationId: null }, { ...input, model: "  gpt-custom-id  " });
+		expect(JSON.parse(fetchMock.mock.calls[1][1]!.body as string)).toMatchObject({ model: "gpt-custom-id" });
+	});
+
 	it("saves the recipe before one idempotent provisioning request", async () => {
 		const launch: OnboardingLaunch = { workerId: "worker-1", operationId: null };
 		fetchMock

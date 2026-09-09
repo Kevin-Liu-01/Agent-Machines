@@ -9,6 +9,7 @@ import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/cn";
+import { artifactContentType, artifactUrl } from "@/lib/storage/artifact-links";
 
 type ArtifactRef = {
 	id: string;
@@ -17,16 +18,18 @@ type ArtifactRef = {
 	bytes: number;
 	chatId: string | null;
 	createdAt: string;
+	sourcePath?: string;
 };
 
 type ListResponse =
-	| { ok: true; artifacts: ArtifactRef[]; machineId: string }
+	| { ok: true; artifacts: ArtifactRef[]; machineId: string; warnings?: string[] }
 	| {
 			ok: false;
 			reason:
 				| "machine_starting"
 				| "machine_asleep"
 				| "machine_error"
+				| "machine_missing"
 				| "no_active_machine"
 				| "missing_credentials"
 				| "exec_failed";
@@ -40,7 +43,6 @@ const POLL_OK_MS = 30_000;
 
 const TRANSIENT_REASONS: ReadonlySet<string> = new Set([
 	"machine_starting",
-	"machine_asleep",
 ]);
 
 function formatBytes(n: number): string {
@@ -50,7 +52,7 @@ function formatBytes(n: number): string {
 }
 
 function isImage(mime: string): boolean {
-	return mime.startsWith("image/");
+	return artifactContentType(mime).startsWith("image/");
 }
 
 function isText(mime: string): boolean {
@@ -61,13 +63,15 @@ function isText(mime: string): boolean {
 	);
 }
 
-function downloadUrl(id: string): string {
-	return `/api/dashboard/artifacts/${id}/download`;
-}
-
 export function ArtifactsPanel() {
 	const machineCtx = useOptionalMachineContext();
 	const machineId = machineCtx?.machineId;
+	return <MachineArtifacts key={machineId ?? "active"} machineId={machineId} />;
+}
+
+function MachineArtifacts({ machineId }: { machineId?: string }) {
+	const [resolvedMachineId, setResolvedMachineId] = useState(machineId);
+	const targetMachineId = machineId ?? resolvedMachineId;
 	const [artifacts, setArtifacts] = useState<ArtifactRef[]>([]);
 	const [machineState, setMachineState] = useState<{
 		ok: boolean;
@@ -75,21 +79,35 @@ export function ArtifactsPanel() {
 		message: string | null;
 	}>({ ok: false, reason: null, message: "loading" });
 	const [error, setError] = useState<string | null>(null);
+	const [warnings, setWarnings] = useState<string[]>([]);
 	const [uploading, setUploading] = useState(false);
+	const [waking, setWaking] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
+	const pendingRefresh = useRef<AbortController | null>(null);
 
-	const refresh = useCallback(async () => {
+	const refresh = useCallback(async (force = false) => {
+		// A provider read can take longer than the transient polling cadence.
+		// Only explicit mutations supersede it; interval ticks must not starve it.
+		if (pendingRefresh.current && !force) return;
+		pendingRefresh.current?.abort();
+		const controller = new AbortController();
+		pendingRefresh.current = controller;
 		try {
 			const params = machineId ? `?machineId=${encodeURIComponent(machineId)}` : "";
 			const response = await fetch(`/api/dashboard/artifacts${params}`, {
 				cache: "no-store",
+				signal: controller.signal,
 			});
 			const body = (await response.json()) as ListResponse;
+			if (controller.signal.aborted) return;
 			if (body.ok) {
+				setResolvedMachineId(body.machineId);
 				setArtifacts(body.artifacts);
+				setWarnings(body.warnings ?? []);
 				setMachineState({ ok: true, reason: null, message: null });
 				setError(null);
 			} else {
+				if (body.machineId) setResolvedMachineId(body.machineId);
 				setArtifacts([]);
 				setMachineState({
 					ok: false,
@@ -98,12 +116,32 @@ export function ArtifactsPanel() {
 				});
 			}
 		} catch (err) {
+			if (controller.signal.aborted) return;
 			setError(err instanceof Error ? err.message : "fetch failed");
+		} finally {
+			if (pendingRefresh.current === controller) pendingRefresh.current = null;
 		}
-	}, []);
+	}, [machineId]);
+
+	const wake = useCallback(async () => {
+		if (!targetMachineId) return;
+		setWaking(true);
+		setError(null);
+		try {
+			const response = await fetch(`/api/dashboard/machines/${encodeURIComponent(targetMachineId)}/wake`, { method: "POST", cache: "no-store" });
+			if (!response.ok) {
+				const body = await response.json().catch(() => ({}));
+				throw new Error(body.message ?? body.error ?? `HTTP ${response.status}`);
+			}
+			await refresh(true);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Wake failed.");
+		} finally { setWaking(false); }
+	}, [refresh, targetMachineId]);
 
 	useEffect(() => {
 		void refresh();
+		return () => pendingRefresh.current?.abort();
 	}, [refresh]);
 
 	useEffect(() => {
@@ -121,13 +159,14 @@ export function ArtifactsPanel() {
 
 	const upload = useCallback(
 		async (file: File) => {
+			if (!targetMachineId) return;
 			setUploading(true);
 			setError(null);
 			try {
-			const form = new FormData();
-			form.append("file", file);
-			if (machineId) form.append("machineId", machineId);
-			const response = await fetch("/api/dashboard/artifacts", {
+				const form = new FormData();
+				form.append("file", file);
+				form.append("machineId", targetMachineId);
+				const response = await fetch("/api/dashboard/artifacts", {
 					method: "POST",
 					body: form,
 				});
@@ -137,21 +176,22 @@ export function ArtifactsPanel() {
 					};
 					throw new Error(body.message ?? `HTTP ${response.status}`);
 				}
-				await refresh();
+				await refresh(true);
 			} catch (err) {
 				setError(err instanceof Error ? err.message : "upload failed");
 			} finally {
 				setUploading(false);
 			}
 		},
-		[refresh],
+		[refresh, targetMachineId],
 	);
 
 	const remove = useCallback(
 		async (id: string) => {
+			if (!targetMachineId) return;
 			if (!window.confirm("Delete this artifact?")) return;
 			try {
-				const response = await fetch(`/api/dashboard/artifacts/${id}`, {
+				const response = await fetch(artifactUrl(targetMachineId, id), {
 					method: "DELETE",
 				});
 				if (!response.ok) {
@@ -161,12 +201,12 @@ export function ArtifactsPanel() {
 					setError(body.message ?? `HTTP ${response.status}`);
 					return;
 				}
-				await refresh();
+				await refresh(true);
 			} catch (err) {
 				setError(err instanceof Error ? err.message : "delete failed");
 			}
 		},
-		[refresh],
+		[refresh, targetMachineId],
 	);
 
 	const onDrop = useCallback(
@@ -180,7 +220,7 @@ export function ArtifactsPanel() {
 
 	const isTransient =
 		machineState.reason !== null && TRANSIENT_REASONS.has(machineState.reason);
-	const dropDisabled = uploading || !machineState.ok;
+	const dropDisabled = uploading || !machineState.ok || !targetMachineId;
 
 	return (
 		<div className="space-y-6 px-5 py-5">
@@ -192,7 +232,8 @@ export function ArtifactsPanel() {
 			</ReticleFrame>
 			) : null}
 
-			<MachineStateBanner state={machineState} />
+			<MachineStateBanner state={machineState} onWake={targetMachineId ? wake : undefined} waking={waking} />
+			{warnings.map((warning) => <p key={warning} role="status" className="text-sm text-[var(--ret-amber)]">{warning}</p>)}
 
 			<UploadZone
 				disabled={dropDisabled}
@@ -234,21 +275,21 @@ export function ArtifactsPanel() {
 					<div className="space-y-3 p-6 text-center">
 						<h3 className="ret-display text-base">No artifacts yet</h3>
 						<p className="mx-auto max-w-[60ch] text-[12px] text-[var(--ret-text-dim)]">
-							Drop a file above or pick one with the picker. Artifacts persist
-							on your machine's disk under{" "}
+							Upload a file, or ask your Worker to save an output under{" "}
 							<code className="font-mono">~/.agent-machines/artifacts/</code>{" "}
-							-- the agent on the same VM can read them as context.
+							. Files in this directory appear here automatically and stay on this Worker's disk.
 						</p>
 					</div>
 				</ReticleFrame>
 			) : null}
 
-			{artifacts.length > 0 ? (
+			{artifacts.length > 0 && targetMachineId ? (
 				<section className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
 					{artifacts.map((artifact) => (
 						<ArtifactCard
 							key={artifact.id}
 							artifact={artifact}
+							machineId={targetMachineId}
 							onDelete={() => remove(artifact.id)}
 							waking={isTransient}
 						/>
@@ -261,18 +302,31 @@ export function ArtifactsPanel() {
 
 function MachineStateBanner({
 	state,
+	onWake,
+	waking,
 }: {
 	state: { ok: boolean; reason: string | null; message: string | null };
+	onWake?: () => Promise<void>;
+	waking: boolean;
 }) {
 	if (state.ok) return null;
-	if (state.reason === "machine_starting" || state.reason === "machine_asleep") {
+	if (state.reason === "machine_asleep") {
+		return (
+			<ReticleFrame className="border-[var(--ret-amber)]/40 bg-[var(--ret-amber)]/5 p-3">
+				<p className="text-[11px] text-[var(--ret-amber)]">Machine paused.</p>
+				<p className="mt-1 text-[10px] text-[var(--ret-text-muted)]">{state.message ?? "Artifacts remain on its disk. Wake the machine when you want to access them."}</p>
+				{onWake ? <ReticleButton className="mt-3" disabled={waking} onClick={() => void onWake()}>{waking ? "Waking…" : "Wake machine"}</ReticleButton> : null}
+			</ReticleFrame>
+		);
+	}
+	if (state.reason === "machine_starting") {
 		return (
 		<ReticleFrame className="border-[var(--ret-amber)]/40 bg-[var(--ret-amber)]/5 p-3">
 			<p className="text-[11px] text-[var(--ret-amber)]">
-				Waking your machine... artifacts live on its disk.
+				Machine starting… artifacts will be available when it is ready.
 			</p>
 			<p className="mt-1 text-[10px] text-[var(--ret-text-muted)]">
-				{state.message ?? "First open after sleep takes ~30 seconds."}
+				{state.message ?? "Waiting for the provider to finish starting."}
 			</p>
 		</ReticleFrame>
 		);
@@ -361,14 +415,16 @@ function UploadZone({
 
 function ArtifactCard({
 	artifact,
+	machineId,
 	onDelete,
 	waking,
 }: {
 	artifact: ArtifactRef;
+	machineId: string;
 	onDelete: () => void;
 	waking: boolean;
 }) {
-	const url = downloadUrl(artifact.id);
+	const url = artifactUrl(machineId, artifact.id, true);
 	return (
 		<ReticleFrame>
 			<div className="flex items-center justify-between gap-2 border-b border-[var(--ret-border)] px-3 py-2">
@@ -399,6 +455,7 @@ function ArtifactCard({
 					</span>
 				)}
 			</div>
+			{artifact.sourcePath ? <p title={artifact.sourcePath} className="truncate px-3 pb-2 text-[10px] text-[var(--ret-text-muted)]">{artifact.sourcePath}</p> : null}
 			<div className="flex items-center justify-between gap-2 border-t border-[var(--ret-border)] px-3 py-2">
 				<span className="font-mono text-[10px] text-[var(--ret-text-muted)]">
 					{new Date(artifact.createdAt).toLocaleString()}
@@ -427,10 +484,16 @@ function ArtifactCard({
 function TextPreview({ url }: { url: string }) {
 	const [text, setText] = useState<string | null>(null);
 	useEffect(() => {
-		fetch(url)
-			.then((r) => r.text())
+		const controller = new AbortController();
+		setText(null);
+		fetch(url, { signal: controller.signal })
+			.then((r) => {
+				if (!r.ok) throw new Error(`HTTP ${r.status}`);
+				return r.text();
+			})
 			.then((body) => setText(body.slice(0, 320)))
-			.catch(() => setText("(failed to load preview)"));
+			.catch(() => { if (!controller.signal.aborted) setText("(failed to load preview)"); });
+		return () => controller.abort();
 	}, [url]);
 	if (text === null) {
 		return (

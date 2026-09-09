@@ -13,7 +13,7 @@ vi.mock("@/lib/providers", () => ({
 	MachineProviderError: class MachineProviderError extends Error {},
 }));
 
-import { buildDailyRollupRows, probeMachine } from "./collector";
+import { buildDailyRollupRows, observedIntervalSeconds, probeMachine } from "./collector";
 
 const MACHINE: MachineRef = {
 	id: "am-openclaw",
@@ -86,10 +86,23 @@ describe("probeMachine", () => {
 		});
 		expect(providerMocks.exec).not.toHaveBeenCalled();
 	});
+
+	it("invariant_provider_reported_allocation_overrides_requested_shape", async () => {
+		providerMocks.state.mockResolvedValue({ state: "ready", rawPhase: "running", spec: { vcpu: 4, memoryMib: 8192 } });
+		providerMocks.exec.mockResolvedValue({ exitCode: 1, stdout: "", stderr: "" });
+		expect(await probeMachine(MACHINE, CREDS)).toMatchObject({ vcpu: 4, specMemoryMib: 8192, specStorageGib: 0 });
+		expect(providerMocks.exec.mock.calls[0][1]).toContain('df -B1 "$HOME"');
+	});
+
+	it("invariant_unreported_allocation_is_not_filled_from_requested_spec", async () => {
+		providerMocks.state.mockResolvedValue({ state: "ready", rawPhase: "running", spec: {} });
+		providerMocks.exec.mockResolvedValue({ exitCode: 1, stdout: "", stderr: "" });
+		expect(await probeMachine(MACHINE, CREDS)).toMatchObject({ vcpu: 0, specMemoryMib: 0, specStorageGib: 0 });
+	});
 });
 
 describe("buildDailyRollupRows", () => {
-	it("increments every running machine in one batch and costs the new total", () => {
+	it("invariant_rollup_accumulates_observed_resource_time_without_repricing_history", () => {
 		const samples = [
 			{
 				machineId: "machine-1",
@@ -101,7 +114,7 @@ describe("buildDailyRollupRows", () => {
 				snapshot: null,
 			},
 		];
-		const { usageRows, costRows } = buildDailyRollupRows(
+		const { usageRows } = buildDailyRollupRows(
 			"user-1",
 			samples,
 			[
@@ -115,7 +128,7 @@ describe("buildDailyRollupRows", () => {
 				},
 			],
 			"2026-07-23",
-			1800,
+			new Map([["machine-1", 1800]]),
 		);
 
 		expect(usageRows).toEqual([
@@ -127,11 +140,23 @@ describe("buildDailyRollupRows", () => {
 				sample_count: 3,
 			}),
 		]);
-		expect(costRows[0]).toEqual(
-			expect.objectContaining({
-				machine_id: "machine-1",
-				total_cost_millicents: expect.any(Number),
-			}),
-		);
+	});
+});
+
+describe("observed collection intervals", () => {
+	const sample = { machineId: "m", machineName: "m", phase: "ready", vcpu: 2, specMemoryMib: 4096, specStorageGib: 20, snapshot: null };
+	const now = "2026-09-09T10:00:30Z";
+	const previous = { recorded_at: "2026-09-09T10:00:15Z", phase: "ready", vcpu: 2, spec_memory_mib: 4096 };
+	it("invariant_first_observation_does_not_invent_prior_usage", () => {
+		expect(observedIntervalSeconds(null, sample, now, 1800)).toBe(0);
+	});
+	it("invariant_foreground_refresh_cannot_count_a_full_cadence_twice", () => {
+		expect(observedIntervalSeconds(previous, sample, now, 30)).toBe(15);
+		expect(observedIntervalSeconds({ ...previous, recorded_at: now }, sample, now, 30)).toBe(0);
+	});
+	it("invariant_sleep_resize_and_missing_observation_gaps_are_not_charged", () => {
+		expect(observedIntervalSeconds({ ...previous, phase: "sleeping" }, sample, now, 30)).toBe(0);
+		expect(observedIntervalSeconds({ ...previous, vcpu: 1 }, sample, now, 30)).toBe(0);
+		expect(observedIntervalSeconds({ ...previous, recorded_at: "2026-09-01T00:00:00Z" }, sample, now, 30)).toBe(0);
 	});
 });

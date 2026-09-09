@@ -13,7 +13,8 @@ import {
 import { after } from "next/server";
 
 import { validateAgentCredentials } from "@/lib/agents/credentials";
-import { runtimeModel } from "@/lib/agents/runtime-model";
+import { initialWorkerModel } from "@/lib/agents/model-endpoint";
+import { modelEndpointForSelection } from "@/lib/bootstrap/runner";
 import { createHostedControlPlane } from "@/lib/control-plane/service";
 import { resolveRoute, toSubstrateKind } from "@/lib/mux/route";
 import { newWorker } from "@/lib/workers/resolve";
@@ -23,7 +24,6 @@ import {
 	AGENT_KINDS,
 	DEFAULT_MACHINE_SPEC,
 	DEFAULT_MEMORY_BUNDLE_ID,
-	DEFAULT_MODEL,
 	PROVIDER_KINDS,
 	type AgentKind,
 	type MachineSpec,
@@ -115,17 +115,18 @@ export async function POST(request: Request): Promise<Response> {
 		typeof body.name === "string" && body.name.trim()
 			? body.name.trim().slice(0, 80)
 			: `${body.runtime} worker`;
-	const requestedModel =
-		typeof body.model === "string" && body.model.trim()
-			? body.model.trim()
-			: config.draftModel || DEFAULT_MODEL;
-	const model = runtimeModel(body.runtime, requestedModel);
 	const gatewayProfileId =
 		agentUsesRouter(body.runtime) &&
 		typeof body.gatewayProfileId === "string" &&
 		body.gatewayProfileId
 			? body.gatewayProfileId
 			: DEFAULT_ROUTER_ID;
+	let model: string;
+	try {
+		model = initialWorkerModel(body.runtime, modelEndpointForSelection({ agentKind: body.runtime, gatewayProfileId }, config), typeof body.model === "string" ? body.model : null, config.draftModel);
+	} catch (error) {
+		return Response.json({ error: "model_required", message: error instanceof Error ? error.message : "Choose a model for the selected endpoint." }, { status: 400 });
+	}
 	const worker = newWorker({
 		name,
 		agentKind: body.runtime,

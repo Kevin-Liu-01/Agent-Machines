@@ -116,7 +116,8 @@ test("the re-derived and lost lists say what the report will say", () => {
 	assert.ok(REDERIVED("hermes").some((line) => line.includes("249 MB")));
 	assert.ok(REDERIVED("codex").some((line) => line.includes("auth.json")));
 	// Every migration loses processes, /tmp, apt state and create-time env.
-	assert.equal(LOST_ALWAYS.length, 4);
+	assert.equal(LOST_ALWAYS.length, 5);
+	assert.ok(LOST_ALWAYS.some((line) => line.includes("workspaces outside")));
 	// Only e2b has RAM-snapshot state no file copy captures.
 	assert.ok(lostState("e2b").some((line) => line.includes("RAM state")));
 	assert.ok(!lostState("sprites").some((line) => line.includes("RAM state")));
@@ -127,18 +128,14 @@ test("the re-derived and lost lists say what the report will say", () => {
 // The export command
 // ---------------------------------------------------------------------------
 
-test("buildExportCommand snapshots: relative paths, excludes first, everything quoted", () => {
+test("buildExportCommand uses explicit roots and never suppresses archive read failures", () => {
 	const plan = MOVE_ALLOWLIST("claude-code");
-	assert.equal(
-		buildExportCommand(plan, "/tmp/t.tgz"),
-		`tar -C "$HOME" -czf '/tmp/t.tgz' --ignore-failed-read ` +
-			`--exclude='.env' --exclude='.agent-env' --exclude='.claude/.credentials.json' ` +
-			`'.agent-machines/SOUL.md' '.agent-machines/AGENTS.md' '.agent-machines/MEMORY.md' ` +
-			`'.agent-machines/USER.md' '.agent-machines/skills' '.agent-machines/.loadout' ` +
-			`'.agent-machines/state' '.agent-machines/chats' '.agent-machines/artifacts' ` +
-			`'.agent-machines/crons' '.agent-machines/mcps' '.agent-machines/sessions' ` +
-			`'.agent-machines/.migration-marker' '.claude' '.claude.json'`,
-	);
+	const command = buildExportCommand(plan, "/tmp/t.tgz");
+	assert.match(command, /^tar -C "\$HOME" -czf '\/tmp\/t\.tgz'/);
+	assert.match(command, /--exclude='\.env\.\*'/);
+	assert.match(command, /--exclude='node_modules'/);
+	assert.match(command, /'agent-machines' 'work'/);
+	assert.doesNotMatch(command, /ignore-failed-read/);
 	// Never `tar $HOME`: the command must archive the allowlist, not the home.
 	assert.ok(!buildExportCommand(plan, "/tmp/t.tgz").includes(`-czf '/tmp/t.tgz' "$HOME"`));
 });
@@ -159,12 +156,11 @@ test("buildExportCommand refuses an empty include list", () => {
 // Presence probe
 // ---------------------------------------------------------------------------
 
-test("probeIncludes reports absences and swallowed verdicts instead of dropping them", async () => {
-	const include = [".agent-machines/MEMORY.md", ".agent-machines/chats", ".agent-machines/mcps"];
+test("probeIncludes reports confirmed absences", async () => {
+	const include = [".agent-machines/MEMORY.md", ".agent-machines/chats"];
 	const handle = {
 		async exec(command: string): Promise<ExecResult> {
 			assert.equal(command, buildPresenceProbe(include));
-			// mcps gets NO verdict at all -- the trimmed-output case.
 			return ok("AM_MOVE P .agent-machines/MEMORY.md\nAM_MOVE A .agent-machines/chats\n");
 		},
 	};
@@ -172,11 +168,11 @@ test("probeIncludes reports absences and swallowed verdicts instead of dropping 
 	assert.deepEqual(report.present, [".agent-machines/MEMORY.md"]);
 	assert.deepEqual(report.skipped, [
 		{ path: ".agent-machines/chats", reason: "not present on the source" },
-		{
-			path: ".agent-machines/mcps",
-			reason: "presence probe returned no verdict for this path",
-		},
 	]);
+});
+
+test("probeIncludes aborts when a missing verdict leaves workspace presence unknown", async () => {
+	await assert.rejects(() => probeIncludes({ exec: async () => ok("AM_MOVE P .agent-machines/MEMORY.md\n") }, [".agent-machines/MEMORY.md", "agent-machines"]), /no verdict for agent-machines/);
 });
 
 // ---------------------------------------------------------------------------

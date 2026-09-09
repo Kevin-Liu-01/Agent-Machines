@@ -35,6 +35,9 @@ export type MachineSummary = {
 	storageGib: number | null;
 	createdAt: string;
 	configuredAt: string | null;
+	/** Provider-reported deadline/policy; absent means unknown, not safe. */
+	endAt?: string;
+	lifecycle?: { onTimeout: "pause" | "kill"; autoResume: boolean };
 	reason: string | null;
 	/**
 	 * Dedalus controlplane progress markers. Surface them on the
@@ -147,8 +150,11 @@ export type LiveDataEnvelope<T> =
 
 export type SessionRecord = {
 	id: string;
+	runtime: "claude-code" | "codex" | "openclaw" | "hermes";
+	source: string;
 	preview: string;
 	updatedAt: string | null;
+	/** SQLite sessions share a database; zero means no per-session byte size. */
 	bytes: number;
 };
 
@@ -157,6 +163,20 @@ export type SessionsPayload = {
 	totalSessions: number;
 	totalBytes: number;
 	dbPath: string;
+	warnings: string[];
+};
+
+export type SessionTranscriptPayload = {
+	session: SessionRecord;
+	messages: Array<{
+		role: "user" | "assistant" | "tool";
+		text: string;
+		at: string | null;
+		toolName?: string | null;
+		truncated?: boolean;
+	}>;
+	truncated: boolean;
+	warnings: string[];
 };
 
 export type LogLine = {

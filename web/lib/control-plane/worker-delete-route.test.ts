@@ -60,6 +60,12 @@ beforeEach(() => {
 });
 
 describe("DELETE /api/dashboard/workers/[id]", () => {
+	it("warns about retained Vercel snapshots using actual placement, not requested provider", async () => {
+		mocks.getWorker.mockResolvedValue({ ...managedWorker, status: { placement: { sandbox: "vercel", sandboxId: "vercel-worker" } } });
+		const response = await DELETE(new Request("https://example.invalid/api/dashboard/workers/managed-1", { method: "DELETE" }), { params: Promise.resolve({ id: "managed-1" }) });
+		expect(response.status).toBe(202);
+		expect(await response.json()).toMatchObject({ storageWarning: expect.stringContaining("explicitly remove them there") });
+	});
 	it("deletes a control-plane-only Worker without requiring a legacy template row", async () => {
 		const response = await DELETE(
 			new Request("https://example.invalid/api/dashboard/workers/managed-1", {

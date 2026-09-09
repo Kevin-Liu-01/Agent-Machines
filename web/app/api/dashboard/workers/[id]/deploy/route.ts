@@ -11,7 +11,8 @@
 import { after } from "next/server";
 
 import { validateAgentCredentials } from "@/lib/agents/credentials";
-import { runtimeModel } from "@/lib/agents/runtime-model";
+import { initialWorkerModel } from "@/lib/agents/model-endpoint";
+import { modelEndpointForSelection } from "@/lib/bootstrap/runner";
 import { createHostedControlPlane } from "@/lib/control-plane/service";
 import { resolveRoute, toSubstrateKind } from "@/lib/mux/route";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
@@ -82,6 +83,13 @@ export async function POST(request: Request, ctx: Ctx): Promise<Response> {
 		);
 	}
 
+	const gatewayProfileId = worker.gatewayProfileId.trim() || "vercel-ai-gateway";
+	let model: string;
+	try {
+		model = initialWorkerModel(worker.agentKind, modelEndpointForSelection({ agentKind: worker.agentKind, gatewayProfileId }, config), worker.model, config.draftModel);
+	} catch (error) {
+		return Response.json({ error: "model_required", message: error instanceof Error ? error.message : "Choose a model for the selected endpoint." }, { status: 400 });
+	}
 	const controlPlane = createHostedControlPlane(userId);
 	const accepted = await controlPlane.apply({
 		id: worker.id,
@@ -90,10 +98,10 @@ export async function POST(request: Request, ctx: Ctx): Promise<Response> {
 			name: worker.name,
 			runtime: worker.agentKind,
 			sandbox: providerKind,
-			model: runtimeModel(worker.agentKind, worker.model),
+			model,
 			memoryBundleId: worker.memoryBundleId,
 			rolePrompt: worker.rolePrompt,
-			gatewayProfileId: worker.gatewayProfileId,
+			gatewayProfileId,
 			resources: {
 				vcpu: spec.vcpu,
 				memoryMib: spec.memoryMib,

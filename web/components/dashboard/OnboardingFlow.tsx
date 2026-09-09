@@ -20,7 +20,7 @@ import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
 import { waitForControlPlaneOperation } from "@/lib/control-plane/client";
-import { onboardingProviderReady, submitOnboardingLaunch, type OnboardingLaunch } from "@/lib/onboarding/launch";
+import { onboardingProviderReady, onboardingWorkspaceUrl, submitOnboardingLaunch, type OnboardingLaunch } from "@/lib/onboarding/launch";
 import { selectedPreset as resolveSelectedPreset } from "@/lib/onboarding/preset-selection";
 import {
 	agentCredentialRequirements,
@@ -224,6 +224,7 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 		initialConfig.draftProviderKind ?? "dedalus",
 	);
 	const [routerId, setRouterId] = useState<string>(DEFAULT_ROUTER_ID);
+	const [model, setModel] = useState("");
 	const wizardAiConfigured = useMemo(() => {
 		const ai = (initialConfig.aiProviders ?? {}) as Record<string, { configured?: boolean }>;
 		const conf: Record<string, boolean> = {};
@@ -304,7 +305,7 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 			if (Object.keys(aiProviderKeys).length > 0) {
 				setupBody.aiProviderKeys = aiProviderKeys;
 			}
-			const intent = JSON.stringify({ agent, presetId, provider, routerId });
+			const intent = JSON.stringify({ agent, presetId, provider, routerId, model });
 			if (!launchRef.current || launchRef.current.intent !== intent) {
 				launchRef.current = { workerId: crypto.randomUUID(), operationId: null, intent };
 				setBootMachineId(null);
@@ -316,6 +317,7 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 				agentKind: agent,
 				providerKind: provider,
 				gatewayProfileId: agentUsesRouter(agent) && routerId ? routerId : DEFAULT_ROUTER_ID,
+				model,
 			});
 			const completed = await waitForControlPlaneOperation(operationId, {
 				onUpdate: (view) => {
@@ -333,7 +335,7 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 			launchingRef.current = false;
 			setBusy(false);
 		}
-	}, [agent, aiKeys, presetId, provider, providerKey, providerSecondary, routerId]);
+	}, [agent, aiKeys, presetId, provider, providerKey, providerSecondary, routerId, model]);
 
 	const agentCredDraft: DraftAiKeys = {
 		vercelAiGateway: aiKeys.vercelAiGateway,
@@ -367,7 +369,7 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 	useEffect(() => {
 		if (!bootDone || !bootMachineId) return;
 		const id = window.setTimeout(() => {
-			router.replace(`/dashboard/machines/${encodeURIComponent(bootMachineId)}/view?launch=1`);
+			router.replace(onboardingWorkspaceUrl(bootMachineId));
 		}, 700);
 		return () => window.clearTimeout(id);
 	}, [bootDone, bootMachineId, router]);
@@ -458,6 +460,19 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 									/>
 								</div>
 							) : null}
+							<div className="grid gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3">
+								<label htmlFor="onboarding-model" className="text-sm font-medium">Model <span className="font-normal text-[var(--ret-text-muted)]">(optional)</span></label>
+								<input
+									id="onboarding-model"
+									value={model}
+									onChange={(event) => setModel(event.target.value)}
+									placeholder="Choose automatically for my connection"
+									maxLength={200}
+									aria-describedby="onboarding-model-help"
+									className="w-full rounded border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-3 py-2 text-sm outline-none focus:border-[var(--ret-purple)]"
+								/>
+								<p id="onboarding-model-help" className="text-xs leading-relaxed text-[var(--ret-text-muted)]">Leave blank to use a model for your connected provider. For Google or a custom endpoint, enter the exact model ID it supports.</p>
+							</div>
 							<KeyStep
 								agent={agent}
 								provider={provider}

@@ -35,6 +35,40 @@ beforeEach(() => {
 });
 
 describe("onboarding recipe API", () => {
+	it.each(["hermes", "openclaw"])("chooses an OpenAI model for %s when only OpenAI is connected", async (agentKind) => {
+		const config = await mocks.getUserConfig();
+		config.aiProviderKeys = { openai: "test-key-not-a-secret" };
+		const response = await POST(request({ agentKind, presetId: "coding-agent" }));
+		expect(response.status).toBe(200);
+		expect((await mocks.getUserConfig()).workers[0].model).toMatch(/^openai\/gpt-/);
+	});
+
+	it("uses the selected router rather than the presence of unrelated account keys", async () => {
+		const config = await mocks.getUserConfig();
+		config.aiProviderKeys = { openai: "test-openai", openrouter: "test-router" };
+		const response = await POST(request({ agentKind: "hermes", gatewayProfileId: "openrouter-router" }));
+		expect(response.status).toBe(200);
+		expect((await mocks.getUserConfig()).workers[0].model).toBe(DEFAULT_USER_CONFIG.draftModel);
+	});
+
+	it("rejects a native-provider mismatch without saving a Worker", async () => {
+		const config = await mocks.getUserConfig();
+		config.aiProviderKeys = { openai: "test-key-not-a-secret" };
+		const response = await POST(request({ agentKind: "hermes", model: "anthropic/claude-sonnet-4-6" }));
+		expect(response.status).toBe(400);
+		expect(await response.json()).toMatchObject({ error: "model_required", message: expect.stringContaining("OpenAI endpoint") });
+		expect(mocks.setUserConfig).not.toHaveBeenCalled();
+	});
+
+	it("requires and preserves an explicit opaque custom model", async () => {
+		const config = await mocks.getUserConfig();
+		config.aiProviderKeys = { custom: { url: "https://custom.example/v1", key: "test-custom" } };
+		expect((await POST(request({ agentKind: "hermes", gatewayProfileId: "custom-router" }))).status).toBe(400);
+		expect(mocks.setUserConfig).not.toHaveBeenCalled();
+		expect((await POST(request({ agentKind: "hermes", gatewayProfileId: "custom-router", model: "gpt-custom-id" }))).status).toBe(200);
+		expect((await mocks.getUserConfig()).workers[0].model).toBe("gpt-custom-id");
+	});
+
 	it("returns the same Worker for a retried launch request", async () => {
 		const body = {
 			workerId: "cf5dbe1d-f475-4c4e-852a-18c7d816ee97",

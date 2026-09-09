@@ -7,9 +7,9 @@ export default function MachineSessionsPage() {
 	return (
 		<div className="flex flex-col">
 			<PageHeader
-				kicker="SESSIONS -- ~/.agent-machines/sessions/"
+				kicker="SESSIONS · NATIVE HISTORY"
 				title="Conversation history"
-				description="Sessions on this machine, polled every 30 seconds."
+				description="Inspect saved Claude Code, Codex, OpenClaw, and Hermes conversations on this machine. Refreshed every 30 seconds."
 			/>
 			<SessionsList />
 		</div>

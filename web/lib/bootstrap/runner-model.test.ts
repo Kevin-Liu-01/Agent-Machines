@@ -3,8 +3,18 @@ import { describe, expect, it } from "vitest";
 import {
 	openClawModelForEndpoint,
 	openClawProviderModelId,
+	openclawProviderFor,
+	hermesProviderId,
 	vercelOpenAiCompatibleBase,
 } from "./runner";
+
+it("does not misclassify a custom hostname or path as a native OpenClaw provider", () => {
+	expect(openclawProviderFor("https://api.openai.com/v1")).toEqual({ id: "openai", builtin: true });
+	expect(openclawProviderFor("https://api.openai.com.custom.example/v1")).toEqual({ id: "router", builtin: false });
+	expect(openclawProviderFor("https://custom.example/openrouter/v1")).toEqual({ id: "router", builtin: false });
+	expect(hermesProviderId("https://api.openai.com.custom.example/v1")).toEqual({ id: "custom", builtin: false });
+	expect(hermesProviderId("https://openrouter.ai/api/v1")).toEqual({ id: "openrouter", builtin: true });
+});
 
 describe("openClawModelForEndpoint", () => {
 	it("translates native Claude aliases at the Vercel AI Gateway boundary", () => {
@@ -16,13 +26,13 @@ describe("openClawModelForEndpoint", () => {
 		).toBe("anthropic/claude-opus-4.8");
 	});
 
-	it("does not rewrite native or unrelated provider endpoints", () => {
+	it("uses native IDs for Anthropic and preserves other routed providers", () => {
 		expect(
 			openClawModelForEndpoint(
 				"anthropic/claude-opus-4-8",
 				"https://api.anthropic.com/v1",
 			),
-		).toBe("anthropic/claude-opus-4-8");
+		).toBe("claude-opus-4-8");
 		expect(
 			openClawModelForEndpoint(
 				"openai/gpt-5.6-sol",

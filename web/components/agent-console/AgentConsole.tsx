@@ -50,9 +50,10 @@ export type AgentConsoleProps = {
 	activeMachineId: string | null;
 	model: string | null;
 	agentKind: string | null;
+	loadoutItems?: Array<{ name: string; kind: "skill" | "mcp" | "tool"; description: string }>;
 };
 
-export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsoleProps) {
+export function AgentConsole({ activeMachineId, model, agentKind, loadoutItems = [] }: AgentConsoleProps) {
 	const activeConversationStorageKey = activeMachineId
 		? activeAgentConsoleKey(activeMachineId)
 		: null;
@@ -66,9 +67,11 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 	const [health, setHealth] = useState<HealthInfo | null>(null);
 	const [rightPanelOpen, setRightPanelOpen] = useState(false);
 	const [machineOk, setMachineOk] = useState(false);
+	const [storageError, setStorageError] = useState<string | null>(null);
 	const [sessionPackageIds, setSessionPackageIds] = useState<string[]>([]);
 
 	const abortRef = useRef<AbortController | null>(null);
+	const storageReadRef = useRef<AbortController | null>(null);
 	const machineIdRef = useRef(activeMachineId);
 	machineIdRef.current = activeMachineId;
 	const turnsRef = useRef(turns);
@@ -97,14 +100,17 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 	}, [activeMachineId]);
 
 	const refreshList = useCallback(async () => {
+		if (!activeMachineId || storageReadRef.current) return;
+		const controller = new AbortController();
+		storageReadRef.current = controller;
 		try {
 			const params = activeMachineId
 				? `?machineId=${encodeURIComponent(activeMachineId)}`
 				: "";
-			const response = await fetch(`/api/dashboard/chats${params}`, { cache: "no-store" });
+			const response = await fetch(`/api/dashboard/chats${params}`, { cache: "no-store", signal: controller.signal });
 			const body = await response.json();
-			if (machineIdRef.current !== activeMachineId) return;
-			if (body.ok) {
+			if (controller.signal.aborted || machineIdRef.current !== activeMachineId) return;
+			if (response.ok && body.ok) {
 				const summaries: ConversationSummary[] = (body.chats ?? []).map(
 					(c: Record<string, unknown>) => ({
 						id: c.id as string,
@@ -121,15 +127,31 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 				);
 				setConversations(summaries);
 				setMachineOk(true);
+				setStorageError(null);
 			} else {
 				setMachineOk(false);
+				setStorageError(body.message || body.error || `Conversation storage is unavailable (HTTP ${response.status}). Retrying…`);
 			}
 		} catch {
-			if (machineIdRef.current === activeMachineId) setMachineOk(false);
+			if (!controller.signal.aborted && machineIdRef.current === activeMachineId) {
+				setMachineOk(false);
+				setStorageError("Could not read this Worker's conversations. Retrying…");
+			}
+		} finally {
+			if (storageReadRef.current === controller) storageReadRef.current = null;
 		}
 	}, [activeMachineId]);
 
-	useEffect(() => { void refreshList(); }, [refreshList]);
+	useEffect(() => {
+		setStorageError(null);
+		void refreshList();
+		const interval = setInterval(() => void refreshList(), 15_000);
+		return () => {
+			clearInterval(interval);
+			storageReadRef.current?.abort();
+			storageReadRef.current = null;
+		};
+	}, [refreshList]);
 	useEffect(() => { if (health?.ok) void refreshList(); }, [health?.ok, refreshList]);
 
 	useEffect(() => {
@@ -433,7 +455,7 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 					machineOk={machineOk}
 					machineId={activeMachineId}
 					streaming={streamState === "streaming"}
-					loadoutItems={DEFAULT_LOADOUT}
+					loadoutItems={loadoutItems}
 				/>
 			</aside>
 
@@ -444,6 +466,7 @@ export function AgentConsole({ activeMachineId, model, agentKind }: AgentConsole
 					turns={turns}
 					streaming={streamState === "streaming"}
 					health={health}
+					storageError={storageError}
 					error={errorMessage}
 					disabled={disabled}
 					model={model}
@@ -643,18 +666,3 @@ function ToolbarButton({
 		</button>
 	);
 }
-
-const DEFAULT_LOADOUT = [
-	{ name: "shell", kind: "tool" as const, description: "Run bash commands in the VM" },
-	{ name: "browser", kind: "tool" as const, description: "Navigate, click, screenshot via agent-browser" },
-	{ name: "vision", kind: "tool" as const, description: "Analyze images and screenshots" },
-	{ name: "memory", kind: "tool" as const, description: "Read/write persistent agent memory" },
-	{ name: "web_search", kind: "tool" as const, description: "Search the web for information" },
-	{ name: "cursor_agent", kind: "mcp" as const, description: "Delegate code tasks to a Cursor agent" },
-	{ name: "cursor_models", kind: "mcp" as const, description: "List available Cursor models" },
-	{ name: "agent-ethos", kind: "skill" as const, description: "Core agent operating principles" },
-	{ name: "closed-loop-development", kind: "skill" as const, description: "Write, test, verify, iterate" },
-	{ name: "production-safety", kind: "skill" as const, description: "Guards against destructive operations" },
-	{ name: "code-review", kind: "skill" as const, description: "Staff-level code review patterns" },
-	{ name: "dedalus-machines", kind: "skill" as const, description: "Manage Dedalus microVM lifecycle" },
-];

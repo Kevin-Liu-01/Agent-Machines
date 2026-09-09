@@ -10,6 +10,7 @@ import { DASHBOARD_SHELL_HEADER_ROW } from "@/lib/dashboard/shell-chrome";
 import { headerDivider } from "@/lib/dashboard/header-chrome";
 import { cn } from "@/lib/cn";
 import { withMachineId } from "@/lib/dashboard/api-url";
+import { runtimeUsesGateway } from "@/lib/agents/runtime-capabilities";
 import type {
 	GatewaySummary,
 	MachineSummary,
@@ -48,6 +49,7 @@ export function StatusHeader({ machines = [] }: Props) {
 		? machines.find((machine) => machine.id === machineId)
 		: undefined;
 	const inMachineView = Boolean(machineId);
+	const gatewayEnabled = runtimeUsesGateway(urlMachine?.agentKind);
 	const [state, setState] = useState<State>({
 		machine: null,
 		gateway: null,
@@ -60,20 +62,28 @@ export function StatusHeader({ machines = [] }: Props) {
 			return;
 		}
 		let stopped = false;
+		let fetching = false;
+		const controller = new AbortController();
+		setState({ machine: null, gateway: null, error: null });
 
 		async function tick() {
+			if (fetching || stopped) return;
+			fetching = true;
 			try {
 				const [machineResult, gatewayResult] = await Promise.all([
 					fetch(withMachineId("/api/dashboard/machine", machineId), {
 						cache: "no-store",
-					}).then((response) =>
-						response.ok ? (response.json() as Promise<MachineSummary>) : null,
-					),
-					fetch(withMachineId("/api/dashboard/gateway", machineId), {
+						signal: controller.signal,
+					}).then((response) => {
+						if (!response.ok) throw new Error(`Machine status unavailable (HTTP ${response.status})`);
+						return response.json() as Promise<MachineSummary>;
+					}),
+					gatewayEnabled ? fetch(withMachineId("/api/dashboard/gateway", machineId), {
 						cache: "no-store",
+						signal: controller.signal,
 					}).then((response) =>
-						response.ok ? (response.json() as Promise<GatewaySummary>) : null,
-					),
+						response.ok ? (response.json() as Promise<GatewaySummary>) : { ok: false, status: response.status, model: "", apiHost: "Gateway health unavailable", latencyMs: 0, modelCount: null },
+					) : Promise.resolve(null),
 				]);
 				if (stopped) return;
 				setState({ machine: machineResult, gateway: gatewayResult, error: null });
@@ -81,6 +91,8 @@ export function StatusHeader({ machines = [] }: Props) {
 				if (stopped) return;
 				const message = error instanceof Error ? error.message : "fetch_failed";
 				setState((previous) => ({ ...previous, error: message }));
+			} finally {
+				fetching = false;
 			}
 		}
 
@@ -95,12 +107,15 @@ export function StatusHeader({ machines = [] }: Props) {
 
 		return () => {
 			stopped = true;
+			controller.abort();
 			window.clearInterval(interval);
 			document.removeEventListener("visibilitychange", onVisible);
 		};
-	}, [machineId]);
+	}, [machineId, gatewayEnabled]);
 
 	const machinePhase = state.machine?.phase ?? "loading";
+	const legacyTimeout = state.machine?.lifecycle?.onTimeout === "kill";
+	const expiresAt = state.machine?.endAt ? new Date(state.machine.endAt) : null;
 
 	return (
 		<header
@@ -154,7 +169,7 @@ export function StatusHeader({ machines = [] }: Props) {
 
 			<div className="hidden min-w-0 flex-[1_1_520px] flex-wrap items-center justify-end gap-2 md:flex">
 				{inMachineView ? (
-					<GatewayStrip data={state.gateway} />
+					state.error ? <span role="status" className="text-xs text-[var(--ret-amber)]">Status unavailable</span> : gatewayEnabled ? <GatewayStrip data={state.gateway} /> : <span className="text-xs text-[var(--ret-text-muted)]">{urlMachine ? "Native runtime · Console + Terminal" : "Runtime status unavailable"}</span>
 				) : (
 					<>
 						<FleetStatusStrip />
@@ -173,6 +188,11 @@ export function StatusHeader({ machines = [] }: Props) {
 					<DeferredClerkUserButton />
 				) : null}
 			</div>
+			{inMachineView && legacyTimeout && machinePhase !== "destroyed" && machinePhase !== "destroying" ? (
+				<p role="alert" className="w-full rounded border border-[var(--ret-amber)]/40 bg-[var(--ret-amber)]/10 px-3 py-2 text-xs leading-relaxed text-[var(--ret-text)]">
+					This older sandbox deletes its disk at timeout{expiresAt && Number.isFinite(expiresAt.getTime()) ? ` (${expiresAt.toLocaleString()})` : ""}. Pause it to preserve its state, or migrate while enough time remains. New E2B Workers pause automatically; this Worker’s policy has not changed.
+				</p>
+			) : null}
 		</header>
 	);
 }

@@ -44,6 +44,9 @@ describe("isValidSchedule", () => {
 		expect(isValidSchedule("0 9 * *")).toBe(false);
 		expect(isValidSchedule("")).toBe(false);
 	});
+	it.each(["61 * * * *", "0 24 * * *", "0 0 0 * *", "0 0 * 13 *", "0 0 * * 8", "1oops * * * *", "*/2oops * * * *", "1-2-3 * * * *", "*/0 * * * *", ",5 * * * *", "every 0m", "every 90m", "every 25h"])("rejects invalid or silently clamped schedule %s", (schedule) => {
+		expect(isValidSchedule(schedule)).toBe(false);
+	});
 });
 
 describe("cronMatchesMinute", () => {

@@ -6,11 +6,13 @@
 
 import { after } from "next/server";
 
-import { runtimeModel } from "@/lib/agents/runtime-model";
+import { initialWorkerModel } from "@/lib/agents/model-endpoint";
 import { isRemovedDedalusRouter } from "@/lib/agents/upstreams";
+import { modelEndpointForSelection } from "@/lib/bootstrap/runner";
 import { submitMachineIntent } from "@/lib/control-plane/adopt-machine";
 import { createHostedControlPlane } from "@/lib/control-plane/service";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
+import { deletionStorageWarning } from "@/lib/dashboard/deletion-warning";
 import {
 	getUserConfig,
 	getUserConfigById,
@@ -82,6 +84,9 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
 	} catch {
 		return Response.json({ error: "invalid_json" }, { status: 400 });
 	}
+	if (!body || typeof body !== "object" || Array.isArray(body)) {
+		return Response.json({ error: "invalid_body" }, { status: 400 });
+	}
 	if (isRemovedDedalusRouter(body.gatewayProfileId)) {
 		return Response.json(
 			{
@@ -102,7 +107,7 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
 		agentKind: isAgent(body.agentKind) ? body.agentKind : existing.agentKind,
 		model: typeof body.model === "string" && body.model.trim() ? body.model.trim() : existing.model,
 		gatewayProfileId:
-			typeof body.gatewayProfileId === "string" ? body.gatewayProfileId : existing.gatewayProfileId,
+			typeof body.gatewayProfileId === "string" ? body.gatewayProfileId.trim() : existing.gatewayProfileId,
 		memoryBundleId:
 			typeof body.memoryBundleId === "string" ? body.memoryBundleId : existing.memoryBundleId,
 		rolePrompt:
@@ -113,10 +118,25 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
 					: existing.rolePrompt,
 		updatedAt: new Date().toISOString(),
 	};
+	// A rename or memory edit must not reinterpret an opaque custom model ID.
+	// When selection changes, resolve once against the actual endpoint and use
+	// the same value in the saved Worker and reconciled runtime specification.
+	if (updated.agentKind !== existing.agentKind || updated.gatewayProfileId !== existing.gatewayProfileId || updated.model !== existing.model) {
+		try {
+			updated.model = initialWorkerModel(
+				updated.agentKind,
+				modelEndpointForSelection(updated, config),
+				typeof body.model === "string" ? body.model : null,
+				existing.model,
+			);
+		} catch (error) {
+			return Response.json({ error: "model_required", message: error instanceof Error ? error.message : "Choose a model for the selected endpoint." }, { status: 400 });
+		}
+	}
 	const spec = {
 		name: updated.name,
 		runtime: updated.agentKind,
-		model: runtimeModel(updated.agentKind, updated.model),
+		model: updated.model,
 		gatewayProfileId: updated.gatewayProfileId,
 		memoryBundleId: updated.memoryBundleId,
 		rolePrompt: updated.rolePrompt,
@@ -207,6 +227,8 @@ export async function DELETE(_req: Request, ctx: Ctx): Promise<Response> {
 			operation: accepted.operation,
 			statusUrl: `/api/dashboard/control-plane/operations/${accepted.operation.id}`,
 			message: "Worker deletion accepted. The sandbox will be destroyed before the template is removed.",
+			storageWarning: deletionStorageWarning(managed?.status?.placement?.sandbox
+				?? config.machines.find((machine) => machine.id === worker?.lastMachineId)?.providerKind),
 		},
 		{ status: 202 },
 	);

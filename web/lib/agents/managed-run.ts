@@ -9,7 +9,7 @@ import { getProvider } from "@/lib/providers";
 import { agentArtifactsPresent } from "@/lib/bootstrap/bootstrap-repair";
 
 export type RunMessage = { role: "user" | "assistant" | "system"; content: string; id?: string; createdAt?: number };
-export type ManagedRunResult = { text: string; events: MuxAgentEvent[]; exitCode: number; durationMs?: number };
+export type ManagedRunResult = { text: string; events: MuxAgentEvent[]; exitCode: number; durationMs?: number; warnings?: string[] };
 export class AgentRunRequestError extends Error {
 	constructor(readonly code: string, message: string, readonly status = 400) { super(message); }
 }

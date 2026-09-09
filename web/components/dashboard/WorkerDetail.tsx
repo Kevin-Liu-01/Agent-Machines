@@ -15,6 +15,7 @@ import { RouterSelect } from "@/components/dashboard/RouterSelect";
 import { validateAgentCredentials } from "@/lib/agents/credentials";
 import { runtimeModel } from "@/lib/agents/runtime-model";
 import { cn } from "@/lib/cn";
+import { deletionConfirmation } from "@/lib/dashboard/deletion-warning";
 import {
 	AGENT_KINDS,
 	AGENT_LABEL,
@@ -28,6 +29,7 @@ import {
 type BundleOpt = { id: string; name: string };
 type ManagedWorkerView = {
 	status: {
+		placement?: { sandbox: ProviderKind; sandboxId: string } | null;
 		phase: string;
 		observedGeneration: number;
 		lastError: string | null;
@@ -252,7 +254,9 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 	}, [load, waitForOperation]);
 
 	const remove = useCallback(async () => {
-		if (!window.confirm(`Delete ${worker?.name ?? "this Worker"} and its deployed sandbox?`)) return;
+		const deployedProvider = managedWorker?.status.placement?.sandbox
+			?? config?.machines.find((machine) => machine.id === worker?.lastMachineId)?.providerKind;
+		if (!window.confirm(deletionConfirmation(`Delete ${worker?.name ?? "this Worker"} and its deployed sandbox?`, deployedProvider))) return;
 		setDeleting(true);
 		setSaveMsg(null);
 		try {
@@ -275,7 +279,7 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 			setSaveMsg(cause instanceof Error ? cause.message : "Worker deletion failed.");
 			setDeleting(false);
 		}
-	}, [router, waitForOperation, worker?.name, workerId]);
+	}, [router, waitForOperation, worker?.name, worker?.lastMachineId, workerId, managedWorker?.status.placement?.sandbox, config?.machines]);
 
 	const deploy = useCallback(async () => {
 		setDeploying(true);

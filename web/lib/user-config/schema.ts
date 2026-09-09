@@ -477,7 +477,7 @@ export type UserConfig = {
 	environmentProfiles: EnvironmentProfile[];
 	bootstrapPresets: BootstrapPreset[];
 	/**
-	 * Account-global imported pool: every skill / MCP / CLI the user installed
+	 * Account-global library: every skill / MCP / CLI the user saved
 	 * from the Registry. The Skills + MCPs library pages render this set, and a
 	 * Memory selects a subset (or "*" = all) of it as its abilities.
 	 */

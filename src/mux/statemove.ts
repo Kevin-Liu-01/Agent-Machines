@@ -55,7 +55,7 @@ import { MuxError, type HarnessKind, type SandboxHandle, type SubstrateKind } fr
 // Seams
 // ---------------------------------------------------------------------------
 
-/** Read side: exec only (the export leg never writes to the source). */
+/** Read side: exec only (export stages an archive, but never removes source state). */
 export type MoveSource = Pick<SandboxHandle, "exec">;
 /** Write side: the restore leg stages one file and runs one script. */
 export type MoveTarget = Pick<SandboxHandle, "exec" | "writeFile">;
@@ -81,24 +81,30 @@ export const MIGRATION_MARKER_PATH = ".agent-machines/.migration-marker";
  * web/lib/memory/on-machine.ts reads-and-diffs on that premise), the WHOLE
  * skills tree (custom/ and agent-authored skills are machine-only and
  * agent-authored entries are not guaranteed to live under custom/; the
- * bundled subset riding along is ~1.5 MB and the reload script prunes
- * against its own manifest, so over-shipping is safe where under-shipping
- * loses work), the loadout manifest that makes those prune decisions
+ * bundled subset riding along is ~1.5 MB and the reload script updates only
+ * unchanged managed entries, so over-shipping is safe where under-shipping
+ * loses work), the knowledge manifest that makes those update decisions
  * reproducible, terminal state, and the hosted app data ("these survive
  * sleep/wake" is the promise web/lib/storage/machine-fs.ts documents --
  * they must survive a migration too; harmless empty on the pure mux plane).
  */
 const COMMON_INCLUDE = [
+	// The hosted native terminals use ~/agent-machines; SDK/older workers use
+	// ~/work. Keep project files, untracked outputs, and Git object/index state.
+	"agent-machines",
+	"work",
 	".agent-machines/SOUL.md",
 	".agent-machines/AGENTS.md",
 	".agent-machines/MEMORY.md",
 	".agent-machines/USER.md",
+	".agent-machines/.knowledge-manifest.json",
 	".agent-machines/skills",
 	".agent-machines/.loadout",
 	".agent-machines/state",
 	".agent-machines/chats",
 	".agent-machines/artifacts",
 	".agent-machines/crons",
+	".agent-machines/cron",
 	".agent-machines/mcps",
 	".agent-machines/sessions",
 	MIGRATION_MARKER_PATH,
@@ -111,7 +117,19 @@ const COMMON_INCLUDE = [
  * the control plane is the failure this belt-and-suspenders exists to
  * prevent. A basename pattern in GNU tar matches at any depth.
  */
-const COMMON_EXCLUDE = [".env", ".agent-env"];
+const COMMON_EXCLUDE = [
+	// PID leases and the source's closed drain gate are process-local state.
+	// Moving them would strand the target behind a gate for the old machine.
+	".agent-machines/state/migration",
+	".env", ".env.*", ".agent-env", ".npmrc", ".yarnrc.yml", ".pypirc", ".netrc",
+	".git-credentials", ".git/config", ".git/config.worktree",
+	".credentials.json", "auth.json", "auth-profiles.json", "credentials.json",
+	"id_rsa", "id_ed25519", "*.pem", "*.key", "*.p12", "*.pfx",
+	// Keep manifests, lockfiles, source and generated job outputs; only known
+	// dependency environments/caches are omitted. No broad dist/build exclusion.
+	"node_modules", ".pnpm-store", ".venv", "venv", "__pycache__",
+	".pytest_cache", ".mypy_cache", ".ruff_cache", ".next", ".turbo", ".yarn/cache",
+];
 
 const HARNESS_INCLUDE: Record<HarnessKind, string[]> = {
 	// ~/.claude holds resumable sessions, user skills and MCP config;
@@ -153,7 +171,10 @@ export function MOVE_ALLOWLIST(agent: HarnessKind): StateMovePlan {
 
 const COMMON_REDERIVED = [
 	"harness toolchain (~/.agent-machines/node, ~/.agent-machines/pkgs, ~/.agent-machines/uv, ~/.local/bin, ~/.local/share/uv): reinstalled by the adapter's idempotent, arch-detecting installCommand() -- copying binaries risks an x64/arm64 mismatch",
-	"credential material (.env, .agent-env, upstream model keys): re-injected from config at run time, never round-tripped through the control plane",
+	"known credential files (.env and .env.*, .agent-env, package-registry credentials, native auth files, private-key files): excluded; supported runtime/provider credentials are re-injected from account config, while project-specific secrets must be reconnected",
+	"workspace dependencies and caches (node_modules, Python virtualenvs, package caches, Next/Turbo caches): excluded; reinstall project dependencies from the moved manifests and lockfiles before running the project",
+	"Git remote/local configuration (.git/config and config.worktree): excluded because remote URLs can contain credentials; reconnect remotes on the target. Git commits, refs, index, and working-tree files still move",
+	"migration gates, locks, and run leases: process-local coordination state is not copied to the target",
 	"combined entry docs (~/.claude/CLAUDE.md, ~/CLAUDE.md, ~/.codex/AGENTS.md, ~/AGENTS.md, openclaw workspace docs): regenerated from the four moved canonical docs",
 ];
 
@@ -183,6 +204,7 @@ export const LOST_ALWAYS = [
 	"/tmp contents",
 	"apt/system packages installed ad hoc (anything outside $HOME is not inventoried)",
 	"create-time env vars: the placement remembers only {substrate, sandboxId, agent}; re-supply them via migrate options.env",
+	"workspaces outside ~/agent-machines and ~/work: not inventoried or copied; move them into a supported workspace before migration (symlink targets and external Git worktrees are not followed)",
 ] as const;
 
 const LIVE_PROCESS_LOSS =
@@ -216,7 +238,10 @@ export function lostState(
  * not a claim).
  */
 export function MOVE_NOTES(agent: HarnessKind): string[] {
-	const notes: string[] = [];
+	const notes: string[] = [
+		"workspace contents move under the target HOME, including untracked files and Git state; arbitrary absolute paths in project files or transcripts are not rewritten",
+		"credential exclusions match known filenames, not file contents: review source files, runtime/MCP configuration, and Git history for embedded secrets before migration; the archive is not a secret scanner",
+	];
 	if (agent === "openclaw") {
 		notes.push(
 			"~/.openclaw/config.json is this repo's assumption for openclaw's config location, not vendor documentation (loadout.ts:87-91)",
@@ -318,10 +343,9 @@ export async function probeIncludes(
 		const verdict = verdicts.get(path);
 		if (verdict === "P") present.push(path);
 		else if (verdict === "A") skipped.push({ path, reason: "not present on the source" });
-		// Fail closed on a verdict the probe never printed: treating a
-		// swallowed line as "present" would put a path in the tar command
-		// that tar then errors on, or worse, in `moved` without evidence.
-		else skipped.push({ path, reason: "presence probe returned no verdict for this path" });
+		// Missing output is not proof that state was absent. Do not silently
+		// skip an unknown workspace and then call the migration verified.
+		else throw new MuxError("transient", `state export presence probe returned no verdict for ${path}; refusing an incomplete state inventory`);
 	}
 	return { present, skipped };
 }
@@ -331,10 +355,10 @@ export async function probeIncludes(
 // ---------------------------------------------------------------------------
 
 /**
- * The tar command run on the source. `--ignore-failed-read` covers the race
- * where a file vanishes between the presence probe and this command; the
- * probe (not this flag) is what reports absences, so nothing is silently
- * dropped. Refuses an empty include list: `tar` with no operands refuses to
+ * The tar command run on the source. A disappearing, unreadable, or changing
+ * file must make tar fail; a digest only verifies bytes actually archived,
+ * not whether source files were silently omitted. Refuses an empty include
+ * list: `tar` with no operands refuses to
  * create an empty archive, and an empty allowlist means the caller skipped
  * the probe.
  */
@@ -347,7 +371,7 @@ export function buildExportCommand(plan: StateMovePlan, tarPath: string): string
 	}
 	const excludes = plan.exclude.map((pattern) => `--exclude=${shq(pattern)}`).join(" ");
 	const includes = plan.include.map(shq).join(" ");
-	return `tar -C "$HOME" -czf ${shq(tarPath)} --ignore-failed-read ${excludes} ${includes}`;
+	return `tar -C "$HOME" -czf ${shq(tarPath)} ${excludes} ${includes}`;
 }
 
 export type ExportedTar = {

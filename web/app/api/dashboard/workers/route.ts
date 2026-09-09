@@ -12,7 +12,8 @@ import { findPreset } from "@/lib/dashboard/presets";
 import { listBundles } from "@/lib/memory/bundle";
 import { applyPreset } from "@/lib/onboarding/apply-preset";
 import { DEFAULT_ROUTER_ID, isRemovedDedalusRouter } from "@/lib/agents/upstreams";
-import { runtimeModel } from "@/lib/agents/runtime-model";
+import { initialWorkerModel } from "@/lib/agents/model-endpoint";
+import { modelEndpointForSelection } from "@/lib/bootstrap/runner";
 import { newWorker } from "@/lib/workers/resolve";
 import {
 	AGENT_KINDS,
@@ -65,8 +66,21 @@ export async function POST(request: Request): Promise<Response> {
 	}
 
 	const config = await getUserConfig();
+	const gatewayProfileId = typeof body.gatewayProfileId === "string" && body.gatewayProfileId.trim()
+		? body.gatewayProfileId.trim() : DEFAULT_ROUTER_ID;
+	let model: string;
+	try {
+		model = initialWorkerModel(
+			body.agentKind,
+			modelEndpointForSelection({ agentKind: body.agentKind, gatewayProfileId }, config),
+			typeof body.model === "string" ? body.model : null,
+			config.draftModel,
+		);
+	} catch (error) {
+		return Response.json({ error: "model_required", message: error instanceof Error ? error.message : "Choose a model for the selected endpoint." }, { status: 400 });
+	}
 
-	// Curated presets reference a bundled Memory; bootstrap installs its loadout.
+	// Curated presets retain their bundled Memory selection for later bootstrap.
 	if (typeof body.presetId === "string" && body.presetId) {
 		const preset = findPreset(body.presetId);
 		if (!preset) return Response.json({ error: "unknown_preset" }, { status: 400 });
@@ -74,10 +88,8 @@ export async function POST(request: Request): Promise<Response> {
 			config,
 			preset,
 			agentKind: body.agentKind,
-			model:
-				typeof body.model === "string" && body.model.trim() ? body.model.trim() : config.draftModel,
-			gatewayProfileId:
-				typeof body.gatewayProfileId === "string" ? body.gatewayProfileId : DEFAULT_ROUTER_ID,
+			model,
+			gatewayProfileId,
 			machineId: null,
 		});
 		const workers = application.workers.map((w) =>
@@ -96,12 +108,8 @@ export async function POST(request: Request): Promise<Response> {
 	const worker = newWorker({
 		name,
 		agentKind: body.agentKind,
-		model: runtimeModel(body.agentKind,
-			typeof body.model === "string" && body.model.trim()
-				? body.model.trim()
-				: config.draftModel),
-		gatewayProfileId:
-			typeof body.gatewayProfileId === "string" ? body.gatewayProfileId : DEFAULT_ROUTER_ID,
+		model,
+		gatewayProfileId,
 		memoryBundleId,
 		rolePrompt: typeof body.rolePrompt === "string" ? body.rolePrompt : null,
 		source: "custom",

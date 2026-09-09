@@ -36,6 +36,8 @@ export default function UsagePage() {
 	useEffect(() => {
 		let stopped = false;
 		setLoading(true);
+		setData(null);
+		setError(null);
 		async function load() {
 			try {
 				const res = await fetch(
@@ -93,7 +95,7 @@ export default function UsagePage() {
 			<PageHeader
 				kicker="USAGE"
 				title="Usage"
-				description="Org-level machine resource consumption and estimated costs."
+				description="Sampled machine allocation and compute estimates. Not a provider bill."
 				right={
 					<TimeRangeSelector
 						options={RANGE_OPTIONS_USAGE}
@@ -121,33 +123,51 @@ export default function UsagePage() {
 					) : (
 						<>
 							<StatCard
-								label="Total cost"
-								value={data?.totalCostFormatted ?? "$0.00"}
-								unit="USD"
+								label={data?.costStatus === "partial" ? "Known compute · partial" : "Sampled compute estimate"}
+								value={data?.costStatus === "partial" ? data.knownCostFormatted : data?.totalCostFormatted ?? "Unknown"}
+								unit="USD est."
 							/>
 							<StatCard
-								label="CPU"
+								label="CPU allocation"
 								value={cpuHours}
 								unit="vCPU-hrs"
 							/>
 							<StatCard
-								label="Memory"
+								label="Memory allocation"
 								value={memHours}
-								unit="GB-hrs"
+								unit="GiB-hrs"
 							/>
 							<StatCard
-								label="Storage"
+								label="Storage allocation"
 								value={storageHours}
-								unit="GB-hrs"
+								unit="GiB-hrs"
 							/>
 						</>
 					)}
 				</div>
+				<ReticleFrame className="space-y-2 p-4 text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
+					<p>
+						{data?.costStatus === "unknown"
+							? "Compute cost is unknown: these records do not yet contain enough compatible usage and pricing evidence. Unknown does not mean free."
+							: "Compute estimates cover only intervals between nearby ready observations with unchanged recorded allocation—not the entire selected period."}
+					</p>
+					{data ? <p>
+						{data.costCoverage.sampleCount.toLocaleString()} observations · {fmtActiveTime(data.costCoverage.observedSeconds)} of sampled machine time · {data.costCoverage.pricedMachines}/{data.costCoverage.observedMachines} observed machines priced.
+						{data.costCoverage.truncated ? " Only the latest 1,000 observations are included; earlier data is not priced." : ""}
+						{data.costStatus === "partial" ? " The amount shown is a known subtotal, not a fleet total." : ""}
+					</p> : null}
+					<p>
+						Uses <a className="underline underline-offset-2" href="https://e2b.dev/pricing" target="_blank" rel="noreferrer">E2B list prices</a> where allocation is recorded.
+						{" "}<a className="underline underline-offset-2" href="https://vercel.com/docs/sandbox/pricing" target="_blank" rel="noreferrer">Vercel</a> and <a className="underline underline-offset-2" href="https://fly.io/sprites/" target="_blank" rel="noreferrer">Sprites</a> require billing meters these observations do not provide; other unpriced providers remain unknown.
+						{" "}Excludes models, tools, storage, network, creation fees, subscriptions, taxes, credits, and discounts. Check your provider invoices for actual charges.
+					</p>
+					<p className="text-[var(--ret-text-muted)]">Historical charts use approximate sampling-based allocation rollups, not active resource consumption. They are not used to calculate these cost estimates.</p>
+				</ReticleFrame>
 
 				<ReticleFrame>
 					<div className="divide-y divide-[var(--ret-border)]">
 						<ResourceChartRow
-							title="CPU"
+							title="CPU allocation"
 							total={cpuHours}
 							unit="vCPU-hrs"
 							avgLabel={`${resources ? avgPerDay(resources.cpu.total / 3600, days) : "–"} avg/day`}
@@ -156,18 +176,18 @@ export default function UsagePage() {
 							loading={loading}
 						/>
 						<ResourceChartRow
-							title="Memory"
+							title="Memory allocation"
 							total={memHours}
-							unit="GB-hrs"
+							unit="GiB-hrs"
 							avgLabel={`${resources ? avgPerDay(resources.memory.total / 3600, days) : "–"} avg/day`}
 							data={memBuckets}
 							color="var(--ret-amber)"
 							loading={loading}
 						/>
 						<ResourceChartRow
-							title="Storage"
+							title="Storage allocation"
 							total={storageHours}
-							unit="GB-hrs"
+							unit="GiB-hrs"
 							avgLabel={`${resources ? avgPerDay(resources.storage.total, days) : "–"} avg/day`}
 							data={storageBuckets}
 							color="var(--ret-red)"
@@ -206,14 +226,11 @@ export default function UsagePage() {
 										<th className="hidden px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] font-normal sm:table-cell">
 											Memory
 										</th>
-										<th className="hidden px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] font-normal md:table-cell">
-											Disk Used
-										</th>
 										<th className="px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] font-normal">
-											Active Time
+											Sampled Time
 										</th>
 										<th className="hidden px-4 py-2 font-mono text-[10px] uppercase tracking-[0.18em] font-normal lg:table-cell">
-											Amount Billed
+											Sampled Compute
 										</th>
 									</tr>
 								</thead>
@@ -235,17 +252,14 @@ export default function UsagePage() {
 												{row.memoryMib != null
 													? `${(row.memoryMib / 1024).toFixed(1)} GiB`
 													: row.memoryGibSeconds
-														? `${(row.memoryGibSeconds / 3600).toFixed(1)} GB-hrs`
+														? `${(row.memoryGibSeconds / 3600).toFixed(1)} GiB-hrs`
 														: "–"}
-											</td>
-											<td className="hidden px-4 py-2.5 text-[11px] text-[var(--ret-text-muted)] md:table-cell">
-												–
 											</td>
 											<td className="px-4 py-2.5 font-mono text-[11px] text-[var(--ret-text)]">
 												{fmtActiveTime(row.awakeSeconds)}
 											</td>
-											<td className="hidden px-4 py-2.5 text-[11px] text-[var(--ret-text-muted)] lg:table-cell">
-												–
+											<td title={row.costNote} className="hidden px-4 py-2.5 text-[11px] text-[var(--ret-text-muted)] lg:table-cell">
+												{row.costFormatted ?? "Unknown"}
 											</td>
 										</tr>
 									))}

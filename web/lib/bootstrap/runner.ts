@@ -14,11 +14,13 @@ import type { MachineProvider } from "@/lib/providers";
 import { validateAgentCredentials } from "@/lib/agents/credentials";
 import { keyForModelEndpoint } from "@/lib/agents/endpoint-key";
 import { runtimeModel } from "@/lib/agents/runtime-model";
+import { modelForEndpoint } from "@/lib/agents/model-endpoint";
 import { nativeCliModelFilename } from "@/lib/dashboard/native-cli-model";
 import { ROUTER_PRESETS } from "@/lib/agents/upstreams";
 import {
 	buildMcpRegisterShell,
 	buildWebReloadScript,
+	managedCheckoutGuard,
 	REPO_BRANCH,
 	REPO_CLONE_URL,
 } from "@/lib/bootstrap/reload-script";
@@ -363,7 +365,7 @@ export function vercelOpenAiCompatibleBase(baseUrl: string): string {
  *   through Vercel AI Gateway, OpenRouter, or any custom OpenAI-compatible
  *   endpoint. Falls back in provider priority order when no profile resolves.
  */
-function resolveUpstream(machine: MachineRef, config: UserConfig): UpstreamProvider {
+function resolveUpstream(machine: Pick<MachineRef, "agentKind" | "gatewayProfileId">, config: UserConfig): UpstreamProvider {
 	const agent = machine.agentKind;
 	const ai = config.aiProviderKeys ?? {};
 
@@ -389,6 +391,11 @@ function resolveUpstream(machine: MachineRef, config: UserConfig): UpstreamProvi
 	}
 
 	return firstConfiguredUpstream(config);
+}
+
+/** Expose the chosen endpoint for model setup without returning its secret. */
+export function modelEndpointForSelection(machine: Pick<MachineRef, "agentKind" | "gatewayProfileId">, config: UserConfig): string {
+	return resolveUpstream(machine, config).baseUrl;
 }
 
 /** Resolve a built-in router preset id to a concrete upstream key + base URL. */
@@ -472,9 +479,9 @@ function commandFor(
 	p: BootstrapPaths,
 ): string | null {
 	const agent = machine.agentKind;
-	const model = shell(machine.model);
 	const gatewayKey = shell(apiKey);
 	const upstream = resolveUpstream(machine, config);
+	const model = shell(modelForEndpoint(machine.model, upstream.baseUrl));
 	const upstreamApiKey = shell(upstream.key);
 	const upstreamBaseUrl = shell(upstream.baseUrl);
 	const cursorKey = config.cursorApiKey ? shell(config.cursorApiKey) : null;
@@ -558,14 +565,15 @@ function commandFor(
 			].join(" && ");
 		case "install-git-reload": {
 			const reloadBody = buildWebReloadScript(p.HOME, p.APP_HOME);
-			const repoDir = `${p.HOME}/agent-machines`;
-			const legacyRepo = `${p.HOME}/hermes-machines`;
+			const repoDir = `${p.APP_HOME}/knowledge-source`;
 			return [
 				"set -e",
+				managedCheckoutGuard(p.APP_HOME),
 				`if [ ! -d ${repoDir}/.git ]; then ` +
-					`if [ -d ${legacyRepo}/.git ]; then ln -sfn ${legacyRepo} ${repoDir}; ` +
-					`else rm -rf ${repoDir} && git clone --depth 1 --branch ${REPO_BRANCH} ${REPO_CLONE_URL} ${repoDir}; fi; ` +
-					`else cd ${repoDir} && git fetch --depth 1 origin ${REPO_BRANCH} && git reset --hard origin/${REPO_BRANCH}; fi`,
+					`git clone --depth 1 --branch ${REPO_BRANCH} ${REPO_CLONE_URL} ${repoDir}; fi`,
+				// The knowledge distribution is infrastructure. Never reset, delete,
+				// or replace the separate directory where the Worker does its work.
+				`mkdir -p ${p.HOME}/agent-machines`,
 				`mkdir -p ${p.HERMES_HOME}/scripts ${p.APP_HOME}/scripts`,
 				// base64 write, not a heredoc: this command is `&&`-joined, and a
 				// heredoc whose closing `EOF` isn't alone on its line ("EOF && ...")
@@ -576,10 +584,10 @@ function commandFor(
 				// point a file at itself ("are the same file", exit 1 under set -e).
 				// Only link when the paths actually differ.
 				`[ "${p.HERMES_HOME}/scripts/reload-from-git.sh" = "${p.APP_HOME}/scripts/reload-from-git.sh" ] || ln -sfn ${p.HERMES_HOME}/scripts/reload-from-git.sh ${p.APP_HOME}/scripts/reload-from-git.sh`,
+				// Seed the selected persona before bundled defaults, but never
+				// overwrite memory the Worker has accumulated during repair.
+				...bundleInstallLines(machineMemory(config, machine), machine.agentKind, { preserveExisting: true }),
 				`${p.HERMES_HOME}/scripts/reload-from-git.sh`,
-				// Install the deployed Worker's Memory docs LAST, so a custom Memory
-				// wins over the repo-default knowledge/*.md the reload script copies.
-				...bundleInstallLines(machineMemory(config, machine), machine.agentKind),
 			].join(" && ");
 		}
 		case "install-cursor-bridge":
@@ -871,12 +879,9 @@ async function startGatewaySandbox(
  * `hermes auth add`; everything else (Vercel AI Gateway, custom) is a
  * `custom` OpenAI-compatible endpoint configured with base_url + api_key.
  */
-function hermesProviderId(rawBaseUrl: string): { id: string; builtin: boolean } {
-	const b = rawBaseUrl.toLowerCase();
-	if (b.includes("openrouter")) return { id: "openrouter", builtin: true };
-	if (b.includes("api.openai.com")) return { id: "openai", builtin: true };
-	if (b.includes("api.anthropic.com")) return { id: "anthropic", builtin: true };
-	return { id: "custom", builtin: false };
+export function hermesProviderId(rawBaseUrl: string): { id: string; builtin: boolean } {
+	const provider = openclawProviderFor(rawBaseUrl);
+	return provider.builtin ? provider : { id: "custom", builtin: false };
 }
 
 function configureHermes(
@@ -922,23 +927,17 @@ function configureHermes(
  * OpenAI-compatible router (Vercel AI Gateway / custom) is registered
  * as a `models.providers` custom provider with api=openai-completions.
  */
-function openclawProviderFor(rawBaseUrl: string): { id: string; builtin: boolean } {
-	const b = rawBaseUrl.toLowerCase();
-	if (b.includes("openrouter")) return { id: "openrouter", builtin: true };
-	if (b.includes("api.openai.com")) return { id: "openai", builtin: true };
-	if (b.includes("api.anthropic.com")) return { id: "anthropic", builtin: true };
+export function openclawProviderFor(rawBaseUrl: string): { id: string; builtin: boolean } {
+	let hostname = "";
+	try { hostname = new URL(rawBaseUrl).hostname.toLowerCase(); } catch { /* Custom endpoint validation happens before bootstrap. */ }
+	if (hostname === "openrouter.ai") return { id: "openrouter", builtin: true };
+	if (hostname === "api.openai.com") return { id: "openai", builtin: true };
+	if (hostname === "api.anthropic.com") return { id: "anthropic", builtin: true };
 	return { id: "router", builtin: false };
 }
 
 export function openClawModelForEndpoint(model: string, baseUrl: string): string {
-	// Claude's native API/CLI aliases use 4-8, while Vercel AI Gateway's
-	// model catalog uses 4.8. Keep Worker specs portable in native form and
-	// translate only at the gateway boundary (verified against /v1/models).
-	if (!baseUrl.toLowerCase().includes("ai-gateway.vercel.sh")) return model;
-	return model.replace(
-		/^(anthropic\/claude-(?:opus|sonnet)-\d+)-(\d+)(?=$|-)/,
-		"$1.$2",
-	);
+	return modelForEndpoint(model, baseUrl);
 }
 
 export function openClawProviderModelId(model: string, providerId: string): string {
@@ -1209,7 +1208,7 @@ function machineSettingsJson(machine: MachineRef, config: UserConfig): string {
 			mcpServerIds: memory.mcpServerIds,
 		},
 		abilities,
-		// The account-global imported pool (what's installed on the box).
+		// Library selections, not installation or runtime-availability evidence.
 		customLoadout: config.customLoadout.filter((entry) => entry.enabled),
 		loadoutSources: config.loadoutSources.filter((source) => source.enabled),
 		createdAt: new Date().toISOString(),

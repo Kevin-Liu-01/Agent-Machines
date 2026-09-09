@@ -110,6 +110,33 @@ beforeEach(() => {
 });
 
 describe("POST /api/dashboard/machines/[id]/agent", () => {
+	it("preserves an opaque custom model when changing gateway runtimes", async () => {
+		const config = baseConfig();
+		config.aiProviderKeys = { custom: { url: "https://custom.example/v1", key: "test-custom" } };
+		config.machines[0].model = "gpt-custom-id";
+		config.machines[0].gatewayProfileId = "custom-router";
+		installConfig(config);
+		expect((await POST(req({ agentKind: "openclaw" }), ctx("m-1"))).status).toBe(202);
+		expect(mocks.submitMachineIntent).toHaveBeenCalledWith("user-1", "m-1", expect.objectContaining({ spec: { runtime: "openclaw", model: "gpt-custom-id" } }));
+	});
+
+	it("selects an OpenAI model when switching native Claude to an OpenAI-backed gateway", async () => {
+		const config = baseConfig();
+		config.aiProviderKeys = { openai: "test-openai", anthropic: "test-anthropic" };
+		config.machines[0].agentKind = "claude-code";
+		installConfig(config);
+		expect((await POST(req({ agentKind: "hermes" }), ctx("m-1"))).status).toBe(202);
+		expect(mocks.submitMachineIntent).toHaveBeenCalledWith("user-1", "m-1", expect.objectContaining({ spec: { runtime: "hermes", model: expect.stringMatching(/^openai\/gpt-/) } }));
+	});
+
+	it("rejects an explicit incompatible model before scheduling a runtime switch", async () => {
+		const config = baseConfig();
+		config.aiProviderKeys = { openai: "test-openai" };
+		installConfig(config);
+		expect((await POST(req({ agentKind: "openclaw", model: "anthropic/claude-sonnet-4-6" }), ctx("m-1"))).status).toBe(400);
+		expect(mocks.submitMachineIntent).not.toHaveBeenCalled();
+	});
+
 	it("401s when unauthenticated, before any read", async () => {
 		mocks.getEffectiveUserId.mockResolvedValue(null);
 		const res = await POST(req({ agentKind: "openclaw" }), ctx("m-1"));

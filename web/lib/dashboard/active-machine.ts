@@ -119,6 +119,8 @@ function toMachineSummary(summary: ProviderMachineSummary): MachineSummary {
 		storageGib: spec.storageGib ?? null,
 		createdAt: summary.createdAt ?? new Date(0).toISOString(),
 		configuredAt: null,
+		...(summary.endAt ? { endAt: summary.endAt } : {}),
+		...(summary.lifecycle ? { lifecycle: summary.lifecycle } : {}),
 		reason: summary.lastError,
 		statusReason: summary.rawPhase,
 		lastTransitionAt: null,

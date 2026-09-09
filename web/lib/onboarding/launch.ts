@@ -5,6 +5,11 @@ export type OnboardingLaunch = {
 	operationId: string | null;
 };
 
+/** The first destination should accept a job, not require vendor terminal setup. */
+export function onboardingWorkspaceUrl(machineId: string): string {
+	return `/dashboard/machines/${encodeURIComponent(machineId)}/console?launch=1`;
+}
+
 /** A token replacement is usable only when the full Vercel scope is supplied. */
 export function onboardingProviderReady(
 	provider: ProviderKind,
@@ -45,6 +50,7 @@ export async function submitOnboardingLaunch(
 		agentKind: AgentKind;
 		providerKind: ProviderKind;
 		gatewayProfileId: string;
+		model?: string;
 	},
 ): Promise<string> {
 	let retryFailed = Boolean(launch.operationId);
@@ -55,6 +61,7 @@ export async function submitOnboardingLaunch(
 			presetId: input.presetId,
 			agentKind: input.agentKind,
 			gatewayProfileId: input.gatewayProfileId,
+			...(input.model?.trim() ? { model: input.model.trim() } : {}),
 			machineId: null,
 		});
 		if (preset.workerId !== launch.workerId) throw new Error("Could not save the Worker recipe.");

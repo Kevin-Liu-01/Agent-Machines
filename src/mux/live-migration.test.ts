@@ -107,8 +107,9 @@ test("a live baseline and stable delta use one allowlist and a digest-checked ta
 	assert.match(String(build), /comm -z -23.*sort -zr/);
 	assert.match(String(build), /--no-recursion/);
 	assert.match(String(build), /--exclude='\.codex\/auth\.json'/);
-	assert.match(String(build), /! -name '\.env'/);
-	assert.match(String(build), /! -path '\.codex\/auth\.json'/);
+	assert.match(String(build), /-name '\.env'/);
+	assert.match(String(build), /-path '\.codex\/auth\.json'/);
+	assert.match(String(build), /-prune -o/);
 	assert.match(String(build), /\\\( -newer/);
 	const syntax = spawnSync("bash", ["-n", "-c", String(build)], {
 		encoding: "utf8",

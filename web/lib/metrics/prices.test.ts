@@ -9,7 +9,6 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { estimateCost } from "@/lib/metrics/cost";
 import {
 	MILLICENTS_PER_USD,
 	MIB_PER_GB,
@@ -206,12 +205,8 @@ describe("ranking", () => {
 		// The retired estimator gives this run ~1 millicent on every substrate;
 		// E2B's own published rate gives 276. Routing on the first is routing on
 		// a number no vendor charges.
-		const legacy = estimateCost({ vcpu: 2, memoryMib: 4096, storageGib: 20 }, 60);
-		expect(Math.round(legacy.totalMillicents)).toBe(1);
 		expect(sandboxCostMillicents("e2b", RUN)).toBe(276);
-		expect(sandboxCostMillicents("e2b", RUN) as number).toBeGreaterThan(
-			legacy.totalMillicents * 100,
-		);
+		expect(sandboxCostMillicents("e2b", RUN)).not.toBe(1);
 	});
 
 	it("orders priced lanes cheapest-first and parks unpriced lanes last", () => {

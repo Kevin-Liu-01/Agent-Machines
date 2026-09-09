@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ExternalLink } from "lucide-react";
 
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import type { RegistryItem } from "@/lib/dashboard/registry";
+import type { RegistryInstallOutcome } from "@/lib/dashboard/registry/types";
 
 import { RegistryLogo } from "./RegistryLogo";
 
@@ -21,20 +22,24 @@ const KIND_BADGE: Record<string, "default" | "accent" | "success" | "warning"> =
 
 type Props = {
 	item: RegistryItem;
-	onAdd: (item: RegistryItem) => Promise<void>;
+	targetId: string;
+	onAdd: (item: RegistryItem, install?: boolean) => Promise<RegistryInstallOutcome>;
 	onRemove: (itemId: string) => Promise<void>;
 };
 
-export function RegistryCard({ item, onAdd, onRemove }: Props) {
+export function RegistryCard({ item, targetId, onAdd, onRemove }: Props) {
 	const [pending, setPending] = useState(false);
 	const [installed, setInstalled] = useState(item.installed);
 	const [error, setError] = useState<string | null>(null);
+	const [outcome, setOutcome] = useState<RegistryInstallOutcome | null>(null);
+	const canInstall = Boolean(item.installCommand?.trim()) && ["skill", "cli", "tool"].includes(item.kind);
+	useEffect(() => setInstalled(item.installed), [item.installed]);
 
-	async function handleAdd() {
+	async function handleAdd(install = false) {
 		setPending(true);
 		setError(null);
 		try {
-			await onAdd(item);
+			setOutcome(await onAdd(item, install));
 			setInstalled(true);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to add");
@@ -49,6 +54,7 @@ export function RegistryCard({ item, onAdd, onRemove }: Props) {
 		try {
 			await onRemove(item.id);
 			setInstalled(false);
+			setOutcome(null);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to remove");
 		} finally {
@@ -142,7 +148,7 @@ export function RegistryCard({ item, onAdd, onRemove }: Props) {
 							disabled={pending}
 							className="border border-[var(--ret-green)]/40 bg-[var(--ret-green)]/10 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--ret-green)] transition-colors hover:border-[var(--ret-red)]/40 hover:bg-[var(--ret-red)]/10 hover:text-[var(--ret-red)] disabled:opacity-50"
 						>
-							{pending ? "..." : "installed"}
+							{pending ? "Saving…" : "Remove from library"}
 						</button>
 					) : (
 						<button
@@ -151,10 +157,25 @@ export function RegistryCard({ item, onAdd, onRemove }: Props) {
 							disabled={pending}
 							className="border border-[var(--ret-purple)]/40 bg-[var(--ret-purple-glow)] px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--ret-purple)] transition-colors hover:bg-[var(--ret-purple)]/20 disabled:opacity-50"
 						>
-							{pending ? "adding..." : "add"}
+							{pending ? "Saving…" : "Save to library"}
 						</button>
 					)}
 				</div>
+				{canInstall ? (
+					<details className="border-t border-[var(--ret-border)] pt-2 text-xs text-[var(--ret-text-dim)]">
+						<summary className="cursor-pointer py-1">Review install command</summary>
+						<pre className="my-2 max-h-32 overflow-auto whitespace-pre-wrap break-all bg-[var(--ret-bg)] p-2 text-[11px]">{item.installCommand}</pre>
+						<p className="mb-2">This third-party command runs with the selected Worker’s permissions. Review it before continuing.</p>
+						<button type="button" disabled={pending || !targetId} onClick={() => void handleAdd(true)} className="rounded border border-[var(--ret-border)] px-3 py-2 text-[var(--ret-text)] disabled:opacity-50">
+							{pending ? "Working…" : "Run on selected Worker"}
+						</button>
+						{!targetId ? <p className="mt-1">Choose an installation target above.</p> : null}
+					</details>
+				) : <p className="text-xs text-[var(--ret-text-muted)]">Library entry only. Check the source for setup, credentials, and runtime support.</p>}
+				{outcome ? <div role="status" className="border-t border-[var(--ret-border)] pt-2 text-xs text-[var(--ret-text-dim)]">
+					{outcome.machineId ? <p>Target: <span className="break-all">{outcome.machineId}</span></p> : null}
+					<pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words font-sans">{outcome.installLog}</pre>
+				</div> : null}
 				{error ? (
 					<p className="text-[10px] text-[var(--ret-red)]">{error}</p>
 				) : null}

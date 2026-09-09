@@ -519,12 +519,25 @@ cannot strand the source permanently closed.
 
 What moves is an explicit allowlist, not the disk: the `~/.agent-machines`
 persona and state tree (SOUL/AGENTS/MEMORY/USER docs, skills, loadout, state,
-chats, artifacts, crons, mcps, sessions) plus each harness's own resumable
+chats, artifacts, both `cron/` run history and `crons/`, mcps, sessions), the
+standard working directories `~/agent-machines` and `~/work`, plus the
+selected harness's own resumable
 state (`~/.claude` + `~/.claude.json`, `~/.codex`, `~/.openclaw`, hermes's
 config and state db). Toolchains are re-derived by the idempotent installers
 rather than copied (an x64 binary shipped to an arm64 box is a broken machine),
-and credentials are re-injected from config, never round-tripped. Losses are
-DECLARED in the report, not implied: process memory and tmux scrollback,
+and known credential files are excluded and reconnected from account configuration.
+Project sources, untracked job outputs, manifests, lockfiles, and Git commits,
+refs, and index move. `node_modules`, Python virtualenvs, and known caches do
+not; reinstall project dependencies on the target. Git remote/local config is
+excluded because remote URLs may contain tokens, so reconnect remotes there.
+Workspaces outside the two supported roots, external Git worktrees, and
+symlink targets are not copied. Arbitrary absolute paths inside project files
+are not rewritten. The filename exclusions are not a secret scanner: review
+source files, runtime/MCP configuration, and Git history for embedded secrets
+before transferring them. Process-local migration gates and PID leases are
+not transferred. A missing inventory result, unreadable file, or tar
+read/change error aborts the transfer instead of claiming a verified archive.
+Losses are DECLARED in the report, not implied: process memory and tmux scrollback,
 `/tmp`, ad-hoc system packages, create-time env vars, and e2b RAM state (its
 persistence is a memory snapshot no cross-provider file copy captures). Live
 mode drains managed one-shot, streamed, and gateway runs, but existing direct

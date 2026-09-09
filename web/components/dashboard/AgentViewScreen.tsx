@@ -684,7 +684,7 @@ export function AgentViewScreen() {
 				artSlug="machines"
 				kicker={`OBSERVABILITY -- ${machine.name}`}
 				title={`${agentName} runtime view`}
-				description="Inspect state, logs, usage, and config. Hermes stays the default."
+				description="Inspect this Worker's runtime, memory, logs, and execution evidence."
 				right={
 					<div className="flex flex-wrap items-center gap-2">
 						<ReticleButton
@@ -816,7 +816,6 @@ export function AgentViewScreen() {
 						rows={[
 							["configured", agentDisplay],
 							["detected", detectedAgentLabel],
-							["default", agentLabel(DEFAULT_AGENT_KIND)],
 							["agent home", runtimeProfile.home],
 							["model", activeModel],
 							["configure", `${base}/agents`],
@@ -903,7 +902,6 @@ export function AgentViewScreen() {
 								["config", snapshot.introspection?.configPath ?? runtimeProfile.configPath],
 								["sandbox", snapshot.introspection?.sandboxMode ?? "unknown"],
 								["approval", snapshot.introspection?.approvalPolicy ?? "unknown"],
-								["default", agentLabel(DEFAULT_AGENT_KIND)],
 								["command", snapshot.introspectionError ? "degraded" : "available"],
 							]}
 						/>

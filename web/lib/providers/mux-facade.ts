@@ -141,6 +141,8 @@ export type MuxDescription = {
 	spec: Partial<MachineSpec>;
 	createdAt: string | null;
 	lastError: string | null;
+	endAt?: string;
+	lifecycle?: { onTimeout: "pause" | "kill"; autoResume: boolean };
 };
 
 /**
@@ -183,6 +185,8 @@ export function toMuxDescription(described: SandboxDescription): MuxDescription 
 		},
 		createdAt: described.createdAt ?? null,
 		lastError: described.lastError ?? null,
+		...(described.endAt ? { endAt: described.endAt } : {}),
+		...(described.lifecycle ? { lifecycle: described.lifecycle } : {}),
 	};
 }
 
@@ -481,6 +485,8 @@ function toSummary(machineId: string, described: MuxDescription): ProviderMachin
 		spec: described.spec,
 		createdAt: described.createdAt,
 		lastError: described.lastError,
+		...(described.endAt ? { endAt: described.endAt } : {}),
+		...(described.lifecycle ? { lifecycle: described.lifecycle } : {}),
 	};
 }
 

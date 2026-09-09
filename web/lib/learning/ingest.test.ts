@@ -8,7 +8,6 @@ import {
 } from "@/lib/user-config/schema";
 import { readTraceOutcome } from "@/lib/learning/route-outcomes";
 import { readTraceLanePrice } from "@/lib/learning/trace-price";
-import { estimateCost } from "@/lib/metrics/cost";
 import { sandboxCostMillicents } from "@/lib/metrics/prices";
 import type { RunTrace } from "@/lib/learning/types";
 
@@ -121,9 +120,8 @@ describe("ingestRunTracesForUser -- outcome block on the write path", () => {
 	it("prices the run at the provider's published rate, not the retired table", async () => {
 		await ingestRunTracesForUser("user-1", CONFIG);
 		const [trace] = emitted();
-		const legacy = Math.round(estimateCost(MACHINE.spec, 60).totalMillicents);
-		expect(legacy).toBe(1);
-		expect(trace.costMillicents).not.toBe(legacy);
+		// The removed provider-agnostic table rounded this run to 1 millicent.
+		expect(trace.costMillicents).not.toBe(1);
 		expect(trace.costMillicents).toBe(
 			sandboxCostMillicents("e2b", { durationMs: 60_000, vcpu: 2, memoryMib: 4096 }),
 		);

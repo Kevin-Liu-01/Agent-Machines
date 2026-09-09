@@ -49,6 +49,8 @@ export type ProviderMachineSummary = {
 	spec: Partial<MachineSpec>;
 	createdAt: string | null;
 	lastError: string | null;
+	endAt?: string;
+	lifecycle?: { onTimeout: "pause" | "kill"; autoResume: boolean };
 };
 
 export type RuntimeKind = "persistent-machine" | "ephemeral-session";

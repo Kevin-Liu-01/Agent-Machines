@@ -19,6 +19,10 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { spawnSync } from "node:child_process";
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import {
 	DEFAULT_USER_CONFIG,
@@ -101,9 +105,6 @@ vi.mock("@/lib/memory/bundle", () => ({
 	resolveBundle: vi.fn(() => null),
 	defaultMemoryBundle: vi.fn(() => ({ docs: {} })),
 }));
-vi.mock("@/lib/memory/install", () => ({
-	bundleInstallLines: vi.fn(() => ["echo docs"]),
-}));
 vi.mock("@/lib/workers/resolve", () => ({
 	resolveMachineWorker: vi.fn(() => ({ memoryBundleId: "mb" })),
 }));
@@ -162,6 +163,7 @@ import { runMachineMigration } from "@/lib/dashboard/migrate";
 type FakeProvider = {
 	kind: string;
 	capabilities: { canSleep: boolean };
+	state: ReturnType<typeof vi.fn>;
 	wake: ReturnType<typeof vi.fn>;
 	destroy: ReturnType<typeof vi.fn>;
 	sleep: ReturnType<typeof vi.fn>;
@@ -238,6 +240,7 @@ function makeProvider(kind: string, canSleep: boolean): FakeProvider {
 	return {
 		kind,
 		capabilities: { canSleep },
+		state: vi.fn(async () => ({ state: "ready", lifecycle: { onTimeout: "pause", autoResume: false } })),
 		wake: vi.fn(async () => {
 			mocks.trace.push(`wake:${kind}`);
 			return { state: "ready" };
@@ -250,7 +253,7 @@ function makeProvider(kind: string, canSleep: boolean): FakeProvider {
 		}),
 		exec: vi.fn(async (_id: string, cmd: string) => {
 			mocks.trace.push(`exec:${kind}:${cmd.split(" ")[0].slice(0, 16)}`);
-			return { stdout: "", stderr: "", exitCode: 0 };
+			return { stdout: cmd.includes("AM_MEMORY_ENTRYPOINTS_REGENERATED") ? "AM_MEMORY_ENTRYPOINTS_REGENERATED" : "", stderr: "", exitCode: 0 };
 		}),
 	};
 }
@@ -412,6 +415,36 @@ const run = (overrides: Partial<Parameters<typeof runMachineMigration>[0]> = {})
 /* ------------------------------------------------------------------ */
 
 describe("runMachineMigration happy path", () => {
+	it("keeps newly learned source memory after restore and generates native instructions from those actual files", async () => {
+		const fixture = realpathSync(mkdtempSync(join(tmpdir(), "am-migrate-memory-")));
+		const source = join(fixture, "source");
+		const target = join(fixture, "target");
+		try {
+			for (const home of [source, target]) {
+				mkdirSync(join(home, ".agent-machines"), { recursive: true });
+				for (const file of ["SOUL.md", "AGENTS.md", "MEMORY.md", "USER.md"]) writeFileSync(join(home, ".agent-machines", file), "Old saved template");
+			}
+			writeFileSync(join(source, ".agent-machines/MEMORY.md"), "Remember the conclusion from the latest completed job.\n");
+			mocks.restoreTar.mockImplementation(async () => {
+				mocks.trace.push("restore");
+				cpSync(join(source, ".agent-machines"), join(target, ".agent-machines"), { recursive: true });
+			});
+			const originalExec = providers.sprites.exec.getMockImplementation()!;
+			providers.sprites.exec.mockImplementation(async (id: string, command: string) => {
+				if (!command.includes("AM_MEMORY_ENTRYPOINTS_REGENERATED")) return originalExec(id, command);
+				const result = spawnSync("/bin/bash", ["-c", command], { env: { ...process.env, HOME: target }, encoding: "utf8" });
+				return { stdout: result.stdout, stderr: result.stderr, exitCode: result.status ?? 1 };
+			});
+			const state = await run();
+			expect(state.phase).toBe("succeeded");
+			expect(readFileSync(join(target, ".agent-machines/MEMORY.md"), "utf8")).toBe("Remember the conclusion from the latest completed job.\n");
+			expect(readFileSync(join(target, ".codex/AGENTS.md"), "utf8")).toContain("Remember the conclusion from the latest completed job.");
+			expect(readFileSync(join(target, "AGENTS.md"), "utf8")).toContain("Remember the conclusion from the latest completed job.");
+		} finally {
+			rmSync(fixture, { recursive: true, force: true });
+		}
+	});
+
 	it("walks provision -> bootstrap -> export -> restore -> verify -> COMMIT -> destroy old, in that order", async () => {
 		await run();
 
@@ -613,6 +646,16 @@ const FAILURES: FailureCase[] = [
 		inject: () => mocks.restoreTar.mockRejectedValue(new Error("untar failed")),
 	},
 	{
+		name: "restored memory regeneration failure",
+		step: "restore",
+		inject: () => providers.sprites.exec.mockImplementation(async (_id: string, command: string) => ({ stdout: "", stderr: "Canonical memory is unreadable", exitCode: command.includes("AM_MEMORY_ENTRYPOINTS_REGENERATED") ? 1 : 0 })),
+	},
+	{
+		name: "restored memory regeneration missing confirmation",
+		step: "restore",
+		inject: () => providers.sprites.exec.mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 }),
+	},
+	{
 		name: "verify failure (marker mismatch)",
 		step: "verify",
 		inject: () =>
@@ -699,6 +742,28 @@ describe("live drain recovery", () => {
 /* ------------------------------------------------------------------ */
 
 describe("validate gate", () => {
+	it.each([
+		{ state: "ready", lifecycle: { onTimeout: "kill", autoResume: false }, endAt: new Date(Date.now() + 30_000).toISOString() },
+		{ state: "ready", lifecycle: { onTimeout: "kill", autoResume: false } },
+		{ state: "sleeping", lifecycle: { onTimeout: "kill", autoResume: false }, endAt: new Date(Date.now() + 3_600_000).toISOString() },
+		{ state: "ready" },
+	])("refuses unsafe or unknown legacy E2B lifetime before creating or mutating a target", async (summary) => {
+		providers.e2b.state.mockResolvedValue(summary);
+		const result = await run();
+		expect(result.phase).toBe("failed"); expect(result.step).toBe("validate");
+		expect(result.lastError).toMatch(/15 minutes/);
+		expect(mocks.createMachineForConfig).not.toHaveBeenCalled(); expect(providers.e2b.wake).not.toHaveBeenCalled(); expect(providers.e2b.exec).not.toHaveBeenCalled();
+	});
+	it("does not claim a destroyed legacy filesystem can be recovered", async () => {
+		providers.e2b.state.mockResolvedValue({ state: "destroyed" });
+		const result = await run(); expect(result.lastError).toMatch(/cannot be recovered/);
+		expect(mocks.createMachineForConfig).not.toHaveBeenCalled();
+	});
+	it("reports the unchanged destructive policy when a legacy source has enough initial lease to migrate", async () => {
+		providers.e2b.state.mockResolvedValue({ state: "ready", lifecycle: { onTimeout: "kill", autoResume: false }, endAt: new Date(Date.now() + 3_600_000).toISOString() });
+		const result = await run({ source: "keep" }); expect(result.phase).toBe("succeeded");
+		expect(result.report?.notes.join(" ")).toMatch(/legacy kill-on-timeout/);
+	});
 	it("refuses a same-substrate migrate with zero provider calls", async () => {
 		await run({ to: "e2b" });
 		expect(mocks.createMachineForConfig).not.toHaveBeenCalled();

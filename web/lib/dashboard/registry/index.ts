@@ -2,7 +2,7 @@ export { bundledAdapter } from "./bundled";
 export { skillsShAdapter } from "./skills-sh";
 export { mcpRegistryAdapter } from "./mcp-registry";
 export { npmAdapter } from "./npm";
-export { cursorPluginsAdapter, setCursorPluginScanResults, parseScanOutput } from "./cursor-plugins";
+export { cursorPluginsAdapter, createCursorPluginsAdapter, parseScanOutput } from "./cursor-plugins";
 export { githubRepoAdapter } from "./github-repo";
 export { urlManifestAdapter } from "./url-manifest";
 export { cacheKey, cacheGet, cacheSet, cacheClear } from "./cache";

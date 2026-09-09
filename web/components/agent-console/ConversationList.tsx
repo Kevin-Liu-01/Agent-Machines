@@ -129,7 +129,10 @@ export function ConversationList({
 				) : view === "automations" ? (
 					<CronManager machineId={machineId} machineOk={machineOk} />
 				) : (
-					<LoadoutView items={loadoutItems} search={search} />
+					<div>
+						<p className="border-b border-[var(--ret-border)] p-3 text-xs text-[var(--ret-text-muted)]">Selected in this Worker's memory. Installation and credentials have not been verified here; test an ability in the Console before relying on it.</p>
+						<LoadoutView items={loadoutItems} search={search} />
+					</div>
 				)}
 			</div>
 		</div>
@@ -392,7 +395,7 @@ function SessionCard({
 					) : null}
 					{streaming ? (
 						<span className="font-mono text-[8px] uppercase tracking-[0.15em] text-[var(--ret-green)]">
-							streaming
+							running
 						</span>
 					) : null}
 				</div>

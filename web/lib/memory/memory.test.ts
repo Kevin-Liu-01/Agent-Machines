@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import type { Pool } from "@/lib/dashboard/pool";
 import { listPresets } from "@/lib/dashboard/presets";
@@ -90,39 +94,45 @@ describe("bundleFromPaste", () => {
 });
 
 describe("bundleInstallCommand", () => {
-	it("always writes the canonical ~/.agent-machines docs and confirms", () => {
-		const b = newBundle({ name: "I", docs });
-		const cmd = bundleInstallCommand(b, "hermes");
-		expect(cmd).toContain('"$HOME/.agent-machines"');
-		expect(cmd).toContain("$HOME/.agent-machines/SOUL.md");
-		expect(cmd).toContain("$HOME/.agent-machines/AGENTS.md");
-		expect(cmd).toContain("AM_MEMORY_INSTALLED");
-		// hermes reads the canonical root, no extra entrypoints
-		expect(cmd).not.toContain("CLAUDE.md");
-		expect(cmd).not.toContain(".codex");
+	it.each(["hermes", "claude-code", "codex", "openclaw"] as const)("executes the %s canonical and derived document contract", (agent) => {
+		const root = realpathSync(mkdtempSync(join(tmpdir(), "am-memory-contract-")));
+		try {
+			const b = newBundle({ name: "I", docs });
+			const result = spawnSync("/bin/bash", ["-c", bundleInstallCommand(b, agent)], { env: { ...process.env, HOME: root }, encoding: "utf8" });
+			expect(result.status, result.stderr).toBe(0);
+			expect(result.stdout).toContain("AM_MEMORY_INSTALLED");
+			const files = { "SOUL.md": docs.soul, "AGENTS.md": docs.agentDocs, "MEMORY.md": docs.memory, "USER.md": docs.user };
+			for (const [name, content] of Object.entries(files)) {
+				expect(readFileSync(join(root, ".agent-machines", name), "utf8")).toBe(content);
+				if (agent === "openclaw") expect(readFileSync(join(root, ".openclaw/workspace", name), "utf8")).toBe(content);
+			}
+			if (agent === "claude-code" || agent === "codex") {
+				const entry = agent === "claude-code" ? "CLAUDE.md" : "AGENTS.md";
+				const directory = agent === "claude-code" ? ".claude" : ".codex";
+				expect(readFileSync(join(root, entry), "utf8")).toBe(combinedDoc(b));
+				expect(readFileSync(join(root, directory, entry), "utf8")).toBe(combinedDoc(b));
+			} else {
+				expect(existsSync(join(root, "CLAUDE.md"))).toBe(false);
+				expect(existsSync(join(root, ".codex"))).toBe(false);
+			}
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 
-	it("writes Claude entrypoints for claude-code", () => {
-		const cmd = bundleInstallCommand(newBundle({ name: "C", docs }), "claude-code");
-		expect(cmd).toContain("$HOME/.claude/CLAUDE.md");
-		expect(cmd).toContain("$HOME/CLAUDE.md");
-	});
-
-	it("writes Codex entrypoints for codex", () => {
-		const cmd = bundleInstallCommand(newBundle({ name: "X", docs }), "codex");
-		expect(cmd).toContain("$HOME/.codex/AGENTS.md");
-		expect(cmd).toContain("$HOME/AGENTS.md");
-	});
-
-	it("writes the openclaw workspace for openclaw", () => {
-		const cmd = bundleInstallCommand(newBundle({ name: "O", docs }), "openclaw");
-		expect(cmd).toContain("$HOME/.openclaw/workspace/SOUL.md");
-	});
-
-	it("base64-encodes doc content (no raw text injection)", () => {
-		const cmd = bundleInstallCommand(newBundle({ name: "B", docs }), "hermes");
-		const b64 = Buffer.from("SOUL_X", "utf8").toString("base64");
-		expect(cmd).toContain(b64);
+	it("passes shell metacharacters as document data, never commands", () => {
+		const root = realpathSync(mkdtempSync(join(tmpdir(), "am-memory-quoting-")));
+		try {
+			const text = `quotes '\"; $(touch ${root}/injected) \`echo NO\`\nUnicode: 你好`;
+			const command = bundleInstallCommand(newBundle({ name: "B", docs: { ...docs, soul: text } }), "hermes");
+			expect(command).not.toContain(text);
+			const result = spawnSync("/bin/bash", ["-c", command], { env: { ...process.env, HOME: root }, encoding: "utf8" });
+			expect(result.status, result.stderr).toBe(0);
+			expect(readFileSync(join(root, ".agent-machines/SOUL.md"), "utf8")).toBe(text);
+			expect(existsSync(join(root, "injected"))).toBe(false);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 });
 

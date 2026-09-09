@@ -15,7 +15,7 @@
 
 import type { TrustedAddOnKind } from "@/lib/dashboard/loadout";
 
-import { cacheGet, cacheKey, cacheSet } from "./cache";
+import { fetchPublicJson, publicManifestUrl } from "./public-json";
 import type { RegistryAdapter, RegistryItem, RegistrySearchOptions } from "./types";
 
 type ManifestEntry = {
@@ -27,11 +27,6 @@ type ManifestEntry = {
 	homepage?: string | null;
 	version?: string | null;
 	logo?: string | null;
-};
-
-type Manifest = {
-	name?: string;
-	items?: ManifestEntry[];
 };
 
 const VALID_KINDS = new Set<string>(["skill", "mcp", "cli", "tool", "plugin", "provider", "source"]);
@@ -62,13 +57,36 @@ function normalize(entry: ManifestEntry, manifestName: string, url: string): Reg
 	};
 }
 
-async function fetchManifest(url: string): Promise<Manifest> {
-	const res = await fetch(url, {
-		headers: { Accept: "application/json" },
-		signal: AbortSignal.timeout(10_000),
-	});
-	if (!res.ok) throw new Error(`manifest fetch ${res.status}`);
-	return (await res.json()) as Manifest;
+function optionalText(value: unknown, max: number): string | undefined {
+	return typeof value === "string" && value.length <= max ? value : undefined;
+}
+
+function publicLink(value: unknown): string | null {
+	if (typeof value !== "string" || value.length > 2048) return null;
+	try {
+		return publicManifestUrl(value).href;
+	} catch { return null; }
+}
+
+export function normalizeManifest(value: unknown, url: string, limit = 100): RegistryItem[] {
+	if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Manifest must be a JSON object.");
+	const manifest = value as Record<string, unknown>;
+	if (!Array.isArray(manifest.items)) throw new Error("Manifest must contain an items array.");
+	if (manifest.items.length > 1000) throw new Error("Manifest exceeds 1,000 items.");
+	const name = optionalText(manifest.name, 256) ?? "";
+	const items: RegistryItem[] = [];
+	for (const value of manifest.items) {
+		if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+		const entry = value as Record<string, unknown>;
+		const entryName = optionalText(entry.name, 256)?.trim();
+		if (!entryName) continue;
+		items.push(normalize({ name: entryName,
+			kind: optionalText(entry.kind, 32), description: optionalText(entry.description, 4096),
+			provider: optionalText(entry.provider, 256), command: optionalText(entry.command, 8192) ?? null,
+			version: optionalText(entry.version, 128), homepage: publicLink(entry.homepage), logo: publicLink(entry.logo),
+		}, name, url));
+	}
+	return items.slice(0, Math.max(0, Math.min(1000, Number.isFinite(limit) ? Math.floor(limit) : 100)));
 }
 
 export const urlManifestAdapter: RegistryAdapter = {
@@ -83,17 +101,8 @@ export const urlManifestAdapter: RegistryAdapter = {
 			return [];
 		}
 
-		const key = cacheKey("url-manifest", opts.query);
-		const cached = cacheGet<RegistryItem[]>(key);
-		if (cached) return cached;
-
-		const manifest = await fetchManifest(opts.query);
-		if (!Array.isArray(manifest.items)) return [];
-
-		const items = manifest.items
-			.map((entry) => normalize(entry, manifest.name ?? "", opts.query))
-			.slice(0, opts.limit ?? 100);
-		cacheSet(key, items);
-		return items;
+		// A URL can contain a capability token: never retain its response in a
+		// process-global catalog cache or fold case-sensitive URL paths together.
+		return normalizeManifest(await fetchPublicJson(opts.query), opts.query, opts.limit);
 	},
 };

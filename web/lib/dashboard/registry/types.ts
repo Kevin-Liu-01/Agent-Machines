@@ -32,7 +32,15 @@ export type RegistryItem = {
 	stars: number | null;
 	version: string | null;
 	homepage: string | null;
+	/** Legacy field name: membership in the library, not proof of installation. */
 	installed: boolean;
+};
+
+export type RegistryInstallOutcome = {
+	status: "saved" | "manual_setup" | "machine_offline" | "command_succeeded" | "failed";
+	installOk: boolean;
+	installLog: string;
+	machineId: string | null;
 };
 
 export type RegistrySearchOptions = {

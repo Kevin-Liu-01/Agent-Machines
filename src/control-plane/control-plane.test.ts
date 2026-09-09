@@ -344,6 +344,20 @@ test("duplicate scheduler ticks enqueue and execute one run", async () => {
 	assert.equal(driver.runs, 1);
 });
 
+test("queued schedules removed or disabled before execution do not run", async () => {
+	for (const enabled of [false, undefined]) {
+		const { plane, store, driver } = fixture();
+		const spec = { name: "Scheduled", runtime: "claude-code" as const, sandbox: "e2b" as const, schedules: [{ id: "daily", schedule: "0 9 * * *", prompt: "Check updates", enabled: true }] };
+		await plane.apply({ id: "scheduled", spec });
+		await plane.drain();
+		const operation = await plane.dispatchSchedule("scheduled", "daily", new Date("2026-09-09T09:00:00Z"));
+		await plane.apply({ id: "scheduled", spec: { ...spec, schedules: enabled === undefined ? [] : [{ ...spec.schedules[0], enabled }] } });
+		await plane.drain();
+		assert.equal(driver.runs, 0);
+		assert.equal((await store.getOperation(operation.id))?.status, "failed");
+	}
+});
+
 test("a failed default reconcile can be retried without changing intent", async () => {
 	const { plane, driver } = fixture();
 	await plane.apply({

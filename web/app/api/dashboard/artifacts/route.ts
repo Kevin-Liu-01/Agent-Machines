@@ -13,7 +13,7 @@ import { randomUUID } from "node:crypto";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 
 import {
-	listArtifacts,
+	listArtifactInventory,
 	saveArtifact,
 } from "@/lib/storage/machine-artifacts";
 import { withActiveMachine } from "@/lib/storage/machine-fs";
@@ -34,10 +34,11 @@ export async function GET(request: Request): Promise<Response> {
 		return Response.json({ ...handle, artifacts: [] });
 	}
 	try {
-		const artifacts = await listArtifacts(handle.storage);
+		const { artifacts, warnings } = await listArtifactInventory(handle.storage);
 		return Response.json({
 			ok: true,
 			artifacts,
+			warnings,
 			machineId: handle.machine.id,
 		});
 	} catch (err) {

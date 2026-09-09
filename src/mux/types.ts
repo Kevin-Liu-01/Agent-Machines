@@ -349,6 +349,10 @@ export type SandboxDescription = {
 	rawPhase: string | null;
 	/** ISO-8601, when the vendor's status read carries a creation time. */
 	createdAt?: string;
+	/** Provider-reported compute lease deadline, not a promise of deletion. */
+	endAt?: string;
+	/** Omitted when the provider does not expose its timeout policy. */
+	lifecycle?: { onTimeout: "pause" | "kill"; autoResume: boolean };
 	/** The vendor's own failure text, on substrates that publish one. */
 	lastError?: string;
 	/**

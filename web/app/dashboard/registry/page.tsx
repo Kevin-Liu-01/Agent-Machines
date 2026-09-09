@@ -1,29 +1,22 @@
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { RegistryBrowser } from "@/components/dashboard/RegistryBrowser";
-import { defaultPoolMcpIds, defaultPoolSkillIds } from "@/lib/dashboard/defaults";
-import { slug } from "@/lib/dashboard/loadout";
 import { getUserConfigForRequest } from "@/lib/user-config/clerk";
 
 export const dynamic = "force-dynamic";
 
 export default async function RegistryPage() {
 	const config = await getUserConfigForRequest();
-	// Installed = the user's imports plus the curated default starter pool
-	// (already loaded on every machine), so defaults read as installed here.
-	const installedIds = [
-		...config.customLoadout.map((entry) => entry.id),
-		...defaultPoolSkillIds().map((s) => `skill-${s}`),
-		...defaultPoolMcpIds().map((name) => `mcp-server-${slug(name)}`),
-	];
+	// Library membership is not evidence that an item is installed on a Worker.
+	const installedIds = config.customLoadout.map((entry) => entry.id);
 
 	return (
 		<div className="flex flex-col">
 			<PageHeader
 				kicker="REGISTRY"
-				title="Browse and install tools, skills, MCPs, and CLIs"
-				description="The installable catalog — search skills.sh, the MCP server registry, npm, Cursor plugins, GitHub repos, and URL manifests, then Add to a machine. Distinct from Loadout, which shows the stack already active on a given machine."
+				title="Build your Worker’s library"
+				description="Discover skills, MCPs, CLIs, and tools. Save an item first, then review its command and choose a Worker to install it. MCP servers and plugins may need credentials and runtime-specific setup; saving is not verification."
 			/>
-			<RegistryBrowser installedIds={installedIds} />
+			<RegistryBrowser installedIds={installedIds} machines={config.machines.filter((machine) => !machine.archived).map(({ id, name }) => ({ id, name }))} activeMachineId={config.activeMachineId} />
 		</div>
 	);
 }

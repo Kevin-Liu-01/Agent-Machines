@@ -411,8 +411,23 @@ function classifyError(error: unknown): "rate_limited" | "transient" | "fatal" {
 }
 
 function isNotFound(error: unknown): boolean {
+	if (vendorErrorCode(error) === "snapshot_not_found" || /snapshot.*not[_ ]?found/i.test(errorMessage(error))) return false;
 	if (httpStatus(error) === 404) return true;
 	return /not[_ ]?found/i.test(errorMessage(error));
+}
+
+function vendorErrorCode(error: unknown): string | undefined {
+	if (!error || typeof error !== "object") return undefined;
+	const code = (error as { json?: { error?: { code?: unknown } } }).json?.error?.code;
+	return typeof code === "string" ? code : undefined;
+}
+
+/** Creation is allowed only when the named sandbox itself is absent. A
+ * missing/expired snapshot, project, or ambiguous failure must preserve state. */
+function isMissingSandbox(error: unknown): boolean {
+	const code = vendorErrorCode(error);
+	return httpStatus(error) === 404 && (code === "not_found" || code === "sandbox_not_found")
+		&& !/snapshot/i.test(errorMessage(error));
 }
 
 /**
@@ -440,6 +455,11 @@ function isoOf(value: Date | undefined): string | undefined {
 
 function toMuxError(error: unknown, context: string): MuxError {
 	if (error instanceof MuxError) return error;
+	if (vendorErrorCode(error) === "snapshot_not_found") {
+		const failure = new MuxError("fatal", `vercel ${context}: snapshot_not_found: ${errorMessage(error)}`, { substrate: "vercel" });
+		failure.cause = error;
+		return failure;
+	}
 	return new MuxError(
 		classifyError(error),
 		`vercel ${context}: ${errorMessage(error)}`,
@@ -784,8 +804,13 @@ export function createVercelProvider(
 				options.name ?? `am-${randomUUID().slice(0, 12)}`,
 			);
 			try {
-				// getOrCreate makes named creates idempotent (reattaches to a
-				// live sandbox, recreates when the snapshot is gone).
+				// Never use getOrCreate: the SDK deletes and recreates an existing
+				// named sandbox when its snapshot is missing. That loses Worker state.
+				try {
+					return makeHandle(await Sandbox.get({ ...authParams(), name, resume: false }));
+				} catch (error) {
+					if (!isMissingSandbox(error)) throw error;
+				}
 				// A dropped size request is worse than a refused one: the sandbox
 				// comes up small and the harness starves at run time with no hint
 				// that the request was ignored. Vercel hangs MIB_PER_VCPU on each
@@ -793,11 +818,14 @@ export function createVercelProvider(
 				// it, and the count is clamped to the ceiling this credential's
 				// plan proves.
 				const vcpus = requestedVcpus(options.resources, vcpuCeiling);
-				const sandbox = await Sandbox.getOrCreate({
+				const sandbox = await Sandbox.create({
 					...authParams(),
 					name,
 					runtime: RUNTIME,
 					persistent: true,
+					// New durable Workers retain their snapshots until explicitly
+					// deleted. Do not silently expire idle state or prune its history.
+					snapshotExpiration: 0,
 					ports: [...DEFAULT_PORTS],
 					timeout: options.timeoutMs ?? DEFAULT_SESSION_TIMEOUT_MS,
 					env: options.env,

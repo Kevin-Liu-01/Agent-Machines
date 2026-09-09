@@ -7,6 +7,10 @@ import { DEFAULT_USER_CONFIG, type MachineRef } from "@/lib/user-config/schema";
 
 const mocks = vi.hoisted(() => ({ exec: vi.fn() }));
 vi.mock("@/lib/providers", () => ({ getProvider: () => ({ exec: mocks.exec }) }));
+vi.mock("@/lib/storage/workspace-capture", () => ({
+	beginWorkspaceCapture: async () => ({ available: false, warnings: [] }),
+	finishWorkspaceCapture: async () => ({ artifacts: [], warnings: [] }),
+}));
 vi.mock("@/lib/user-config/clerk", () => ({ getUserConfigById: vi.fn(), setOperationalUserConfigById: vi.fn() }));
 import { HostedWorkerRuntimeDriver } from "./hosted-driver";
 

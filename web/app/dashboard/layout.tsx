@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import { AutoWake } from "@/components/dashboard/AutoWake";
 import { BetaBanner } from "@/components/dashboard/BetaBanner";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 import { getUserConfigForRequest } from "@/lib/user-config/clerk";
@@ -39,10 +38,6 @@ export default async function DashboardLayout({
 	return (
 		<DashboardShell config={publicConfig}>
 				<BetaBanner />
-				<AutoWake
-					machines={publicConfig.machines}
-					activeMachineId={publicConfig.activeMachineId}
-				/>
 				{children}
 		</DashboardShell>
 	);

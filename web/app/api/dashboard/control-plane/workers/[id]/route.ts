@@ -3,6 +3,7 @@ import { after } from "next/server";
 import { isRemovedDedalusRouter } from "@/lib/agents/upstreams";
 import { createHostedControlPlane } from "@/lib/control-plane/service";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
+import { deletionStorageWarning } from "@/lib/dashboard/deletion-warning";
 import {
 	AGENT_KINDS,
 	PROVIDER_KINDS,
@@ -125,7 +126,7 @@ export async function DELETE(_request: Request, context: Ctx): Promise<Response>
 		await controlPlane.reconcileNext(id);
 	});
 	return Response.json(
-		{ ok: true, operation: accepted.operation },
+		{ ok: true, operation: accepted.operation, storageWarning: deletionStorageWarning(current.status?.placement?.sandbox) },
 		{ status: 202 },
 	);
 }

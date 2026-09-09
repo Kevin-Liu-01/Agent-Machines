@@ -3,44 +3,41 @@
  */
 
 import { RUNTIME } from "@/lib/platform/runtime";
+import { knowledgeSyncCommand } from "./knowledge-sync";
 
 export const REPO_CLONE_URL = RUNTIME.repoUrl;
 export const REPO_BRANCH = RUNTIME.repoBranch;
 
+function quote(value: string): string {
+	return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+/** Run before Git: a managed checkout must not alias the Worker's own files. */
+export function managedCheckoutGuard(runtimeHome: string): string {
+	const paths = [runtimeHome, `${runtimeHome}/knowledge-source`, `${runtimeHome}/knowledge-source/.git`];
+	return `if ${paths.map((path) => `[ -L ${quote(path)} ]`).join(" || ")}; then echo 'Managed knowledge checkout must not be a symlink.' >&2; exit 2; fi`;
+}
+
 export function buildWebReloadScript(home: string, runtimeHome: string): string {
-	const repoDir = `${home}/agent-machines`;
-	const legacyRepo = `${home}/hermes-machines`;
+	const repoDir = `${runtimeHome}/knowledge-source`;
 	return [
 		"#!/usr/bin/env bash",
 		"set -euo pipefail",
-		`RUNTIME=${runtimeHome}`,
-		`if [ -d ${repoDir}/.git ]; then REPO_DIR=${repoDir}`,
-		`elif [ -d ${legacyRepo}/.git ]; then REPO_DIR=${legacyRepo}`,
+		`RUNTIME=${quote(runtimeHome)}`,
+		managedCheckoutGuard(runtimeHome),
+		`if [ -d ${quote(`${repoDir}/.git`)} ]; then REPO_DIR=${quote(repoDir)}`,
 		"else",
-		'  echo "[reload] no repo checkout" >&2',
+		'  echo "[reload] no managed knowledge checkout; run Repair boot to install it" >&2',
 		"  exit 2",
 		"fi",
-		"if ! command -v rsync >/dev/null 2>&1; then USE_CP=1; else USE_CP=0; fi",
-		'echo "[reload] git fetch + reset"',
+		`export PATH="${home}/.agent-machines/node/bin:$PATH"`,
+		'echo "[reload] refresh managed knowledge checkout (workspace untouched)"',
 		'cd "$REPO_DIR"',
-		"git fetch --depth 1 origin main",
-		"git reset --hard origin/main",
-		'echo "[reload] purge private local-only docs"',
-		'rm -f "$REPO_DIR/yc-application-s26.md" "$REPO_DIR/knowledge/YC-PARTNER-PREP.md"',
+		`git fetch origin ${REPO_BRANCH}`,
+		"git merge --ff-only FETCH_HEAD",
 		'echo "[reload] sync -> ~/.agent-machines"',
 		'mkdir -p "$RUNTIME/skills" "$RUNTIME/crons" "$RUNTIME/mcps" "$RUNTIME/scripts"',
-		'if [ "$USE_CP" -eq 0 ]; then',
-		'  rsync -a --delete "$REPO_DIR/knowledge/skills/" "$RUNTIME/skills/"',
-		'  rsync -a "$REPO_DIR/knowledge/crons/" "$RUNTIME/crons/" || true',
-		'  rsync -a "$REPO_DIR/knowledge/mcps/" "$RUNTIME/mcps/" || true',
-		"else",
-		'  rm -rf "$RUNTIME/skills" && cp -r "$REPO_DIR/knowledge/skills" "$RUNTIME/skills"',
-		'  cp -r "$REPO_DIR/knowledge/crons/." "$RUNTIME/crons/" 2>/dev/null || true',
-		'  cp -r "$REPO_DIR/knowledge/mcps/." "$RUNTIME/mcps/" 2>/dev/null || true',
-		"fi",
-		'for f in SOUL.md USER.md MEMORY.md AGENTS.md; do',
-		'  if [ -f "$REPO_DIR/knowledge/$f" ]; then cp "$REPO_DIR/knowledge/$f" "$RUNTIME/$f"; fi',
-		"done",
+		knowledgeSyncCommand(`${repoDir}/knowledge`, runtimeHome),
 		'echo "[reload] done at $(date -Iseconds)"',
 		'echo "[reload] HEAD: $(git rev-parse --short HEAD)"',
 	].join("\n");

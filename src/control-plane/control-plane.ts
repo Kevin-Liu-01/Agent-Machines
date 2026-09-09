@@ -344,6 +344,10 @@ export class AgentMachinesControlPlane {
 					return { operation: succeeded, worker };
 				}
 
+				const scheduleId = operation.payload.scheduleId;
+				if (scheduleId && !worker.spec.schedules?.some((schedule) => schedule.id === scheduleId && schedule.enabled)) {
+					throw new Error(`schedule ${scheduleId} was removed or disabled before execution`);
+				}
 				worker = await this.ensureRunning(worker);
 				if (!worker.status.placement) throw new Error("worker has no placement after wake");
 				const result = await this.driver.run(

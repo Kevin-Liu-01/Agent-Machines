@@ -60,11 +60,13 @@ export function normalizeSchedule(input: string): string {
 
 	const every = raw.match(/^every\s+(\d+)\s*(m|min|mins|minute|minutes|h|hr|hrs|hour|hours|d|day|days)$/);
 	if (every) {
-		const n = Math.max(1, Number.parseInt(every[1], 10));
+		const n = Number(every[1]);
 		const unit = every[2][0];
-		if (unit === "m") return `*/${Math.min(n, 59)} * * * *`;
-		if (unit === "h") return n === 1 ? "0 * * * *" : `0 */${Math.min(n, 23)} * * *`;
-		return n === 1 ? "0 0 * * *" : `0 0 */${Math.min(n, 31)} * *`;
+		if (!Number.isSafeInteger(n) || n < 1) return raw;
+		if (unit === "m") return n === 60 ? "0 * * * *" : n < 60 ? `*/${n} * * * *` : raw;
+		if (unit === "h") return n === 24 ? "0 0 * * *" : n === 1 ? "0 * * * *" : n < 24 ? `0 */${n} * * *` : raw;
+		// Multi-day intervals cannot be represented faithfully by a DOM step.
+		return n === 1 ? "0 0 * * *" : raw;
 	}
 
 	return raw;
@@ -77,20 +79,24 @@ function parseToken(
 	names: Record<string, number>,
 	out: Set<number>,
 ): boolean {
+	if (!token) return false;
 	let step = 1;
 	let body = token;
 	const slash = token.indexOf("/");
 	if (slash >= 0) {
 		body = token.slice(0, slash);
-		step = Number.parseInt(token.slice(slash + 1), 10);
-		if (!Number.isFinite(step) || step <= 0) return false;
+		const rawStep = token.slice(slash + 1);
+		if (!/^\d+$/.test(rawStep)) return false;
+		step = Number(rawStep);
+		if (!Number.isSafeInteger(step) || step <= 0 || step > max - min + 1) return false;
 	}
 
 	let lo = min;
 	let hi = max;
-	if (body === "*" || body === "") {
+	if (body === "*") {
 		// full range
 	} else if (body.includes("-")) {
+		if (body.split("-").length !== 2) return false;
 		const [a, b] = body.split("-");
 		const av = resolveValue(a, names);
 		const bv = resolveValue(b, names);
@@ -104,7 +110,7 @@ function parseToken(
 		hi = slash >= 0 ? max : v; // `a/n` means from a stepping by n
 	}
 
-	if (lo > hi) return false;
+	if (lo > hi || lo < min || hi > max) return false;
 	for (let i = lo; i <= hi; i += step) {
 		if (i >= min && i <= max) out.add(i);
 	}
@@ -114,8 +120,9 @@ function parseToken(
 function resolveValue(raw: string, names: Record<string, number>): number | null {
 	const t = raw.trim();
 	if (t in names) return names[t];
-	const n = Number.parseInt(t, 10);
-	return Number.isFinite(n) ? n : null;
+	if (!/^\d+$/.test(t)) return null;
+	const n = Number(t);
+	return Number.isSafeInteger(n) ? n : null;
 }
 
 function parseField(
@@ -128,7 +135,7 @@ function parseField(
 	for (const token of field.split(",")) {
 		if (!parseToken(token.trim(), min, max, names, out)) return null;
 	}
-	return out;
+	return out.size > 0 ? out : null;
 }
 
 type ParsedCron = {
@@ -205,7 +212,17 @@ export function cronIsDueSince(
 	nowMs: number,
 	lookbackMs: number = DEFAULT_LOOKBACK_MS,
 ): boolean {
-	if (!isValidSchedule(input)) return false;
+	return cronDueMinuteSince(input, lastRunAtMs, nowMs, lookbackMs) !== null;
+}
+
+/** Coalesce missed occurrences to their latest actual UTC schedule boundary. */
+export function cronDueMinuteSince(
+	input: string,
+	lastRunAtMs: number | null,
+	nowMs: number,
+	lookbackMs: number = DEFAULT_LOOKBACK_MS,
+): number | null {
+	if (!isValidSchedule(input) || !Number.isFinite(nowMs)) return null;
 	const nowFloor = Math.floor(nowMs / MINUTE_MS) * MINUTE_MS;
 	const earliest = nowFloor - lookbackMs;
 	let start =
@@ -214,11 +231,11 @@ export function cronIsDueSince(
 			: earliest;
 	if (start < earliest) start = earliest;
 
-	for (let t = start; t <= nowFloor; t += MINUTE_MS) {
+	for (let t = nowFloor; t >= start; t -= MINUTE_MS) {
 		if (lastRunAtMs != null && t <= lastRunAtMs) continue;
-		if (cronMatchesMinute(input, new Date(t))) return true;
+		if (cronMatchesMinute(input, new Date(t))) return t;
 	}
-	return false;
+	return null;
 }
 
 /** Best-effort human label for the schedule. Falls back to the raw expr. */

@@ -180,7 +180,10 @@ function recordingSandboxClass(): {
 	const creates: CreateParams[] = [];
 	const lists: CreateParams[] = [];
 	const statics = {
-		async getOrCreate(params: CreateParams) {
+		async get() {
+			throw Object.assign(new Error("Sandbox not found"), { response: { status: 404 }, json: { error: { code: "not_found" } } });
+		},
+		async create(params: CreateParams) {
 			creates.push(params);
 			return { name: String(params["name"]), vcpus: 2, memory: 4096 };
 		},

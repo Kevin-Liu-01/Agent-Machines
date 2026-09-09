@@ -81,7 +81,7 @@ export function WorkersLibrary({ presets, initialPresetId }: { presets: Preset[]
 	}, [load]);
 
 	const create = useCallback(
-		async (name: string, agentKind: AgentKind, source: CreateSource) => {
+		async (name: string, agentKind: AgentKind, source: CreateSource, model?: string) => {
 			setBusy(true);
 			setCreateError(null);
 			try {
@@ -91,6 +91,7 @@ export function WorkersLibrary({ presets, initialPresetId }: { presets: Preset[]
 					body: JSON.stringify({
 						name,
 						agentKind,
+						...(model?.trim() ? { model: model.trim() } : {}),
 						...(source.kind === "preset"
 							? { presetId: source.id }
 							: { memoryBundleId: source.id }),
@@ -131,7 +132,7 @@ export function WorkersLibrary({ presets, initialPresetId }: { presets: Preset[]
 					</button>
 				</div>
 				) : null}
-			{createError ? (
+			{createError && !seed ? (
 				<div role="alert" className="border border-[var(--ret-red)]/35 bg-[var(--ret-red)]/5 px-3 py-2 font-mono text-[10px] text-[var(--ret-red)]">
 					{createError}
 				</div>
@@ -258,6 +259,7 @@ export function WorkersLibrary({ presets, initialPresetId }: { presets: Preset[]
 					initialName={seed.name}
 					initialSource={seed.sourceValue}
 					busy={busy}
+					error={createError}
 					onCancel={() => setSeed(null)}
 					onSubmit={create}
 				/>
@@ -278,6 +280,7 @@ function CreateWorkerModal({
 	initialName,
 	initialSource,
 	busy,
+	error,
 	onCancel,
 	onSubmit,
 }: {
@@ -286,14 +289,16 @@ function CreateWorkerModal({
 	initialName: string;
 	initialSource: string;
 	busy: boolean;
+	error: string | null;
 	onCancel: () => void;
-	onSubmit: (name: string, agentKind: AgentKind, source: CreateSource) => void;
+	onSubmit: (name: string, agentKind: AgentKind, source: CreateSource, model?: string) => void;
 }) {
 	const [name, setName] = useState(initialName);
 	const [agentKind, setAgentKind] = useState<AgentKind>(
 		presets.find((p) => `preset:${p.id}` === initialSource)?.agentKind ?? "hermes",
 	);
 	const [sourceValue, setSourceValue] = useState(initialSource);
+	const [model, setModel] = useState("");
 
 	const sourceOptions: ReticleSelectOption[] = [
 		...presets.map((p) => ({ value: `preset:${p.id}`, label: p.name, group: "Curated presets" })),
@@ -319,6 +324,20 @@ function CreateWorkerModal({
 						onChange={(v) => setAgentKind(v as AgentKind)}
 						options={AGENT_KINDS.map((k) => ({ value: k, label: AGENT_LABEL[k] }))}
 					/>
+					<label htmlFor="create-worker-model" className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">Model ID (optional)</label>
+					<input
+						id="create-worker-model"
+						className={fieldCls}
+						value={model}
+						onChange={(event) => setModel(event.target.value)}
+						placeholder="Automatic for supported providers"
+						aria-describedby="create-worker-model-help"
+						autoComplete="off"
+						spellCheck={false}
+					/>
+					<p id="create-worker-model-help" className="text-[11px] leading-relaxed text-[var(--ret-text-dim)]">
+						Leave blank for an automatic model on OpenAI, Anthropic, OpenRouter, or Vercel AI Gateway. Google and custom endpoints require the exact model ID they support.
+					</p>
 					<label className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">Start from</label>
 					<ReticleSelect
 						ariaLabel="Start from"
@@ -328,8 +347,9 @@ function CreateWorkerModal({
 						placeholder="Pick a preset or memory"
 					/>
 				</div>
+				{error ? <p role="alert" className="mt-3 text-[12px] text-[var(--ret-red)]">{error}</p> : null}
 				<div className="mt-3 flex items-center gap-2">
-					<ReticleButton variant="primary" size="sm" disabled={!name.trim() || busy} onClick={() => onSubmit(name.trim(), agentKind, parseSource(sourceValue))}>
+					<ReticleButton variant="primary" size="sm" disabled={!name.trim() || busy} onClick={() => onSubmit(name.trim(), agentKind, parseSource(sourceValue), model.trim() || undefined)}>
 						<Rocket className="h-3.5 w-3.5" strokeWidth={1.75} /> {busy ? "creating…" : "Create agent"}
 					</ReticleButton>
 					<button type="button" onClick={onCancel} className="font-mono text-[11px] text-[var(--ret-text-muted)] hover:text-[var(--ret-text)]">

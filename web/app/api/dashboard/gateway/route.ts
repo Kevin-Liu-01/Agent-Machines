@@ -22,6 +22,7 @@ import {
 } from "@/lib/bootstrap/gateway-lifecycle";
 import { getProvider } from "@/lib/providers";
 import { getUserConfig } from "@/lib/user-config/clerk";
+import { runtimeUsesGateway } from "@/lib/agents/runtime-capabilities";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,7 +55,7 @@ export async function GET(request: Request): Promise<Response> {
 	}
 
 	// CLI agents have no HTTP gateway — they're driven through the console.
-	if (machine.agentKind === "codex" || machine.agentKind === "claude-code") {
+	if (!runtimeUsesGateway(machine.agentKind)) {
 		return Response.json(
 			{
 				error: "no_gateway",

@@ -11,6 +11,7 @@ import { getEffectiveUserId } from "@/lib/user-config/identity";
 import { getUserConfig, setUserConfig } from "@/lib/user-config/clerk";
 import { isValidSchedule, normalizeSchedule } from "@/lib/cron/expr";
 import type { CronEntry } from "@/lib/user-config/schema";
+import { cronRunHistory } from "@/lib/crons/service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,9 +23,10 @@ export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
 	if (!userId) return Response.json({ error: "unauthorized" }, { status: 401 });
 	const { name: id } = await ctx.params;
 	const config = await getUserConfig();
-	const cron = (config.crons ?? []).find((c) => c.id === id);
+	const history = await cronRunHistory(config, userId);
+	const cron = history.crons.find((c) => c.id === id);
 	if (!cron) return Response.json({ error: "not_found" }, { status: 404 });
-	return Response.json({ ok: true, cron });
+	return Response.json({ ok: true, cron, runs: history.runs.filter((run) => run.scheduleId === id) });
 }
 
 export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
@@ -38,6 +40,9 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
 	} catch {
 		return Response.json({ error: "invalid_json" }, { status: 400 });
 	}
+	if (!body || typeof body !== "object" || Array.isArray(body)) return Response.json({ error: "invalid_body" }, { status: 400 });
+	if (body.prompt !== undefined && (typeof body.prompt !== "string" || !body.prompt.trim() || body.prompt.length > 100_000)) return Response.json({ error: "invalid_prompt" }, { status: 400 });
+	if (body.name !== undefined && (typeof body.name !== "string" || !body.name.trim() || body.name.length > 120)) return Response.json({ error: "invalid_name" }, { status: 400 });
 
 	const config = await getUserConfig();
 	const existing = (config.crons ?? []).find((c) => c.id === id);

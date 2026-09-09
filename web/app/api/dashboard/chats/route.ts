@@ -6,11 +6,9 @@
  * because the persistent volume already survives sleep/wake and the
  * agent itself can `cat` the same files for context.
  *
- * Wake-on-read: if the machine is sleeping, GET fires a wake and
- * returns `{ ok: false, reason: "machine_starting" }` so the client
- * can poll. POSTs that arrive while a machine is asleep similarly
- * return a transitional state -- the client retries after the machine
- * is ready.
+ * Reads never wake compute. A sleeping machine returns an explicit
+ * `machine_asleep` state; the operator must choose Wake before reading
+ * or updating its on-machine history.
  */
 
 import { getEffectiveUserId } from "@/lib/user-config/identity";

@@ -143,6 +143,7 @@ export function MachineDetailModal({
 					<div className="mt-4 flex justify-end border-t border-[var(--ret-border)] pt-3">
 						<MachineActions
 							machineId={machine.id}
+							providerKind={machine.providerKind}
 							state={stateName as MachineActionState}
 							capabilities={machine.capabilities}
 							active={active}

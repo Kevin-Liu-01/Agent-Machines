@@ -28,6 +28,7 @@ import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { SchematicPanel } from "@/components/reticle/SchematicPanel";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
+import { CONSOLE_STARTERS } from "@/lib/agents/console-starters";
 import type {
 	AgentEvent,
 	ConversationArtifact,
@@ -54,6 +55,7 @@ export type ActivityStreamProps = {
 	health: HealthInfo | null;
 	error: string | null;
 	disabled: boolean;
+	storageError?: string | null;
 	model: string | null;
 	agentKind: string | null;
 	activeMachineId: string | null;
@@ -74,6 +76,7 @@ export function ActivityStream({
 	health,
 	error,
 	disabled,
+	storageError,
 	model,
 	agentKind,
 	activeMachineId,
@@ -217,7 +220,7 @@ export function ActivityStream({
 					<div className="border border-[var(--ret-amber)]/40 bg-[var(--ret-amber)]/5 p-4 font-mono text-[12px] text-[var(--ret-amber)]">
 						{!activeMachineId
 							? "No active machine. Pick or provision one in /dashboard/machines."
-							: health?.message ?? "Checking the Worker's runtime and conversation storage…"}
+							: storageError ?? health?.message ?? "Checking the Worker's runtime and conversation storage…"}
 					</div>
 				) : null}
 
@@ -433,13 +436,6 @@ function EventTimeline({
 }
 
 function EmptyState({ onPick }: { onPick: (text: string) => void }) {
-	const starters = [
-		{ label: "Introduce yourself", prompt: "Introduce yourself. What skills, tools, and MCP servers do you have loaded?" },
-		{ label: "Show skills", prompt: "List every skill installed in ~/.agent-machines/skills/. One-line description each." },
-		{ label: "Spawn a Cursor agent", prompt: "In /home/machine/work, scaffold a TypeScript project. Use cursor_agent with load_skills=['taste-output']." },
-		{ label: "Schedule a briefing", prompt: "Schedule a daily 8am cron that summarizes overnight repo changes into ~/briefing.md." },
-	];
-
 	return (
 		<div className="space-y-5">
 			<div className="flex flex-col items-center gap-3 py-2 text-center">
@@ -449,7 +445,7 @@ function EmptyState({ onPick }: { onPick: (text: string) => void }) {
 				</p>
 			</div>
 			<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-			{starters.map((s) => (
+			{CONSOLE_STARTERS.map((s) => (
 				<button
 					key={s.label}
 					type="button"

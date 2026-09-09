@@ -1,7 +1,8 @@
 import { after } from "next/server";
 
 import { validateAgentCredentials } from "@/lib/agents/credentials";
-import { runtimeModel } from "@/lib/agents/runtime-model";
+import { initialWorkerModel } from "@/lib/agents/model-endpoint";
+import { modelEndpointForSelection } from "@/lib/bootstrap/runner";
 import { agentUsesRouter, isRemovedDedalusRouter } from "@/lib/agents/upstreams";
 import { createHostedControlPlane } from "@/lib/control-plane/service";
 import { recommendArm } from "@/lib/learning/recommend";
@@ -89,7 +90,7 @@ export async function POST(request: Request): Promise<Response> {
 		return Response.json({ error: "worker_not_found" }, { status: 404 });
 	}
 
-	const explicitModel = body.model?.trim() || undefined;
+	const explicitModel = typeof body.model === "string" ? body.model.trim() || undefined : undefined;
 	const recommendation =
 		body.autoRoute === true
 			? await recommendArm(config, {
@@ -130,14 +131,21 @@ export async function POST(request: Request): Promise<Response> {
 	}
 
 	const spec = asSpec(body.spec, config.draftSpec ?? DEFAULT_MACHINE_SPEC);
-	const model = runtimeModel(
-		agentKind,
-		existingWorker?.model ?? explicitModel ?? recommendation?.arm.model ?? config.draftModel,
-	);
 	const gatewayProfileId =
-		existingWorker?.gatewayProfileId ??
-		body.gatewayProfileId ??
-		(agentUsesRouter(agentKind) ? recommendation?.arm.routerId ?? "vercel-ai-gateway" : null);
+		existingWorker?.gatewayProfileId.trim() ||
+		(typeof body.gatewayProfileId === "string" ? body.gatewayProfileId.trim() : "") ||
+		(agentUsesRouter(agentKind) ? recommendation?.arm.routerId?.trim() || "vercel-ai-gateway" : null);
+	let model: string;
+	try {
+		model = initialWorkerModel(
+			agentKind,
+			modelEndpointForSelection({ agentKind, gatewayProfileId }, config),
+			existingWorker?.model ?? explicitModel ?? recommendation?.arm.model,
+			config.draftModel,
+		);
+	} catch (error) {
+		return Response.json({ error: "model_required", message: error instanceof Error ? error.message : "Choose a model for the selected endpoint." }, { status: 400 });
+	}
 	const worker =
 		existingWorker ??
 		newWorker({

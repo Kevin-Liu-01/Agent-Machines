@@ -1,6 +1,7 @@
 /**
  * Metrics collector -- stores raw samples, detects state transitions,
- * maintains daily usage rollups, and upserts cost estimates.
+ * maintains sampled daily usage rollups. Cost is estimated from timestamped
+ * observations on read; the obsolete cost table is no longer written.
  *
  * The API route does the parallel exec calls; this module receives
  * pre-collected data and handles all Supabase writes in batch.
@@ -15,10 +16,9 @@ import type {
 	ProviderKind,
 	UserConfig,
 } from "@/lib/user-config/schema";
-import { estimateCost } from "./cost";
 import { parseResourceSnapshot, type ResourceSnapshot } from "./parser";
 
-/** Default cadence assumed when a caller doesn't specify one. */
+/** Maximum observed interval when a caller doesn't specify its cadence. */
 const DEFAULT_INTERVAL_SECONDS = 30;
 const EXEC_TIMEOUT_MS = 10_000;
 
@@ -28,7 +28,7 @@ const RESOURCE_CMD = [
 	"echo '---DELIM---'",
 	"free -b",
 	"echo '---DELIM---'",
-	"df -B1 /home/machine",
+	'df -B1 "$HOME"',
 	"echo '---DELIM---'",
 	"cat /proc/loadavg",
 ].join(" && ");
@@ -53,20 +53,21 @@ type ExistingDailyUsage = {
 };
 
 /**
- * Build all usage and cost rows in memory so one collection pass needs one
- * read and two writes, regardless of how many machines are running.
+ * Accumulate bounded observed intervals, never an assumed interval per poll.
+ * Historical daily rows remain approximate charts, not a billing input.
  */
 export function buildDailyRollupRows(
 	userId: string,
 	samples: CollectedSample[],
 	existingRows: ExistingDailyUsage[],
 	bucketDate: string,
-	intervalSeconds: number,
+	observedSecondsByMachine: Map<string, number>,
 ) {
 	const existingByMachine = new Map(
 		existingRows.map((row) => [row.machine_id, row]),
 	);
 	const usageRows = samples.map((sample) => {
+		const intervalSeconds = Math.max(0, observedSecondsByMachine.get(sample.machineId) ?? 0);
 		const existing = existingByMachine.get(sample.machineId);
 		const awakeSeconds = (existing?.awake_seconds ?? 0) + intervalSeconds;
 		return {
@@ -88,27 +89,22 @@ export function buildDailyRollupRows(
 			spec_storage_gib: sample.specStorageGib,
 		};
 	});
-	const costRows = samples.map((sample, index) => {
-		const cost = estimateCost(
-			{
-				vcpu: sample.vcpu,
-				memoryMib: sample.specMemoryMib,
-				storageGib: sample.specStorageGib,
-			},
-			usageRows[index].awake_seconds,
-		);
-		return {
-			user_id: userId,
-			machine_id: sample.machineId,
-			bucket_date: bucketDate,
-			cpu_cost_millicents: Math.round(cost.cpuMillicents),
-			memory_cost_millicents: Math.round(cost.memoryMillicents),
-			storage_cost_millicents: Math.round(cost.storageMillicents),
-			total_cost_millicents: Math.round(cost.totalMillicents),
-		};
-	});
+	return { usageRows };
+}
 
-	return { usageRows, costRows };
+export function observedIntervalSeconds(
+	previous: { recorded_at: string; phase: string; vcpu: number; spec_memory_mib: number } | null,
+	sample: CollectedSample,
+	now: string,
+	maximumGapSeconds: number,
+): number {
+	if (!previous || sample.phase !== "ready" || previous.phase !== "ready") return 0;
+	if (previous.vcpu !== sample.vcpu || previous.spec_memory_mib !== sample.specMemoryMib) return 0;
+	const elapsed = (Date.parse(now) - Date.parse(previous.recorded_at)) / 1000;
+	if (!(elapsed > 0 && elapsed <= maximumGapSeconds * 2)) return 0;
+	// A daily row cannot charge time that belonged to yesterday.
+	const secondsToday = (Date.parse(now) - Date.parse(`${now.slice(0, 10)}T00:00:00Z`)) / 1000;
+	return Math.floor(Math.min(elapsed, maximumGapSeconds, secondsToday));
 }
 
 function isSupabaseConfigured(): boolean {
@@ -128,21 +124,28 @@ export async function collectAndStore(
 	const now = new Date().toISOString();
 	const today = now.slice(0, 10);
 
-	const withSnapshots = samples.filter((s) => s.snapshot);
+	const observedSecondsByMachine = new Map<string, number>();
+	await Promise.all(samples.filter((s) => s.phase === "ready").map(async (sample) => {
+		const { data, error } = await db.from("machine_metrics")
+			.select("recorded_at,phase,vcpu,spec_memory_mib")
+			.eq("user_id", userId).eq("machine_id", sample.machineId)
+			.order("recorded_at", { ascending: false }).limit(1).maybeSingle();
+		if (!error) observedSecondsByMachine.set(sample.machineId, observedIntervalSeconds(data, sample, now, intervalSeconds));
+	}));
 	let metricsStored = 0;
 	let transitions = 0;
 
-	if (withSnapshots.length > 0) {
-		const rows = withSnapshots.map((s) => ({
+	if (samples.length > 0) {
+		const rows = samples.map((s) => ({
 			user_id: userId,
 			machine_id: s.machineId,
 			recorded_at: now,
-			cpu_percent: s.snapshot!.cpuPercent,
-			memory_used_mib: s.snapshot!.memoryUsedMib,
-			memory_total_mib: s.snapshot!.memoryTotalMib,
-			storage_used_gib: s.snapshot!.storageUsedGib,
-			storage_total_gib: s.snapshot!.storageTotalGib,
-			load_avg_1m: s.snapshot!.loadAvg1m,
+			cpu_percent: s.snapshot?.cpuPercent ?? null,
+			memory_used_mib: s.snapshot?.memoryUsedMib ?? null,
+			memory_total_mib: s.snapshot?.memoryTotalMib ?? null,
+			storage_used_gib: s.snapshot?.storageUsedGib ?? null,
+			storage_total_gib: s.snapshot?.storageTotalGib ?? null,
+			load_avg_1m: s.snapshot?.loadAvg1m ?? null,
 			phase: s.phase,
 			vcpu: s.vcpu,
 			spec_memory_mib: s.specMemoryMib,
@@ -196,6 +199,9 @@ export async function collectAndStore(
 		if (!error) transitions = transitionRows.length;
 	}
 
+	// Without a persisted observation, advancing the rollup would cause the
+	// next pass to count this same interval again.
+	if (metricsStored === 0) return { transitions, metricsStored };
 	const runningSamples = samples.filter((s) => s.phase === "ready");
 	if (runningSamples.length > 0) {
 		const machineIds = runningSamples.map((sample) => sample.machineId);
@@ -208,21 +214,16 @@ export async function collectAndStore(
 			.eq("bucket_date", today)
 			.in("machine_id", machineIds);
 		if (existingError) return { transitions, metricsStored };
-		const { usageRows, costRows } = buildDailyRollupRows(
+		const { usageRows } = buildDailyRollupRows(
 			userId,
 			runningSamples,
 			(existingRows ?? []) as ExistingDailyUsage[],
 			today,
-			intervalSeconds,
+			observedSecondsByMachine,
 		);
-		const { error: usageError } = await db
+		await db
 			.from("machine_usage_daily")
 			.upsert(usageRows, { onConflict: "user_id,machine_id,bucket_date" });
-		if (!usageError) {
-			await db
-				.from("machine_cost_estimates")
-				.upsert(costRows, { onConflict: "user_id,machine_id,bucket_date" });
-		}
 	}
 
 	return { transitions, metricsStored };
@@ -252,6 +253,11 @@ export async function probeMachine(
 		if (summary.state !== "ready") {
 			return { ...base, phase: summary.rawPhase, snapshot: null };
 		}
+		// Zero is the schema-compatible unknown sentinel; requested specs are not
+		// evidence of actual allocation (templates and providers can override them).
+		base.vcpu = summary.spec.vcpu ?? 0;
+		base.specMemoryMib = summary.spec.memoryMib ?? 0;
+		base.specStorageGib = summary.spec.storageGib ?? 0;
 		let snapshot: ResourceSnapshot | null = null;
 		try {
 			const exec = await provider.exec(machine.id, RESOURCE_CMD, {
@@ -260,7 +266,7 @@ export async function probeMachine(
 			snapshot = exec.exitCode === 0 ? parseResourceSnapshot(exec.stdout) : null;
 		} catch {
 			// Usage rollups are spec-based; keep the machine ready even when the
-			// optional resource probe fails so billing/usage does not silently stop.
+			// optional resource probe fails. This observation is not a billing meter.
 			snapshot = null;
 		}
 		return { ...base, phase: summary.state, snapshot };
@@ -272,11 +278,10 @@ export async function probeMachine(
 
 /**
  * One full collection pass for a user: probe every non-archived machine,
- * store raw samples + daily rollups + cost, and record transitions against
+ * store raw samples + sampled daily rollups, and record transitions against
  * the durable last-known phase (read from Supabase, so it survives the
  * stateless serverless scheduler). No-ops cleanly when Supabase isn't
- * configured. `intervalSeconds` is the cadence this pass represents — used
- * to accumulate awake/CPU/memory/storage time.
+ * configured. `intervalSeconds` caps the observed interval, never creates one.
  */
 export async function collectMetricsForUser(
 	userId: string,

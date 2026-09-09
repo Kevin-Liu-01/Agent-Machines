@@ -77,6 +77,8 @@ type FakeE2bInfo = {
 	startedAt: Date;
 	cpuCount: number;
 	memoryMB: number;
+	endAt?: Date;
+	lifecycle?: { onTimeout: "pause" | "kill"; autoResume: boolean };
 };
 
 class FakeE2bStatics {
@@ -149,6 +151,16 @@ test("e2b describe reports a vanished sandbox as destroyed without connecting", 
 	const description = await requireDescribe(e2bProvider(statics))("sbx-gone");
 	assert.deepEqual(description, { state: "destroyed", rawPhase: null });
 	assert.deepEqual(statics.calls, ["getInfo:sbx-gone:e2b-key"]);
+});
+
+test("e2b no-wake description exposes the actual lease and destructive legacy policy", async () => {
+	const statics = new FakeE2bStatics();
+	statics.info.endAt = new Date("2026-09-09T07:03:46.106Z");
+	statics.info.lifecycle = { onTimeout: "kill", autoResume: false };
+	const description = await requireDescribe(e2bProvider(statics))("sbx-1");
+	assert.equal(description.endAt, "2026-09-09T07:03:46.106Z");
+	assert.deepEqual(description.lifecycle, { onTimeout: "kill", autoResume: false });
+	assert.deepEqual(statics.calls, ["getInfo:sbx-1:e2b-key"]);
 });
 
 test("e2b remove kills by id and never connects first", async () => {

@@ -19,7 +19,7 @@ import {
 } from "@/lib/user-config/clerk";
 import { authorizedInternalRequest } from "@/lib/cron/auth";
 import { isCadenceDue } from "@/lib/cron/cadence";
-import { listDueCrons, runCronOnMachine } from "@/lib/crons/service";
+import { dueCronOccurrences, runCronOnMachine } from "@/lib/crons/service";
 import { createHostedControlPlane } from "@/lib/control-plane/service";
 import { ingestRunTracesForUser } from "@/lib/learning/ingest";
 import { collectMetricsForUser } from "@/lib/metrics/collector";
@@ -44,8 +44,12 @@ async function listUserIds(): Promise<string[]> {
 		return [DEV_USER_ID];
 	}
 	const client = await clerkClient();
-	const res = await client.users.getUserList({ limit: USER_PAGE_LIMIT });
-	return res.data.map((u) => u.id);
+	const users: string[] = [];
+	for (let offset = 0; ; offset += USER_PAGE_LIMIT) {
+		const res = await client.users.getUserList({ limit: USER_PAGE_LIMIT, offset });
+		users.push(...res.data.map((u) => u.id));
+		if (res.data.length < USER_PAGE_LIMIT || users.length >= res.totalCount) return users;
+	}
 }
 
 type UserTick = {
@@ -95,31 +99,32 @@ async function tickUser(
 		}
 	}
 
-	const due = listDueCrons(config, now);
+	const due = dueCronOccurrences(config, now);
 	if (due.length === 0) {
 		return { fired: 0, failed: 0, collected, transitions, ingested };
 	}
 
-	const dueIds = new Set(due.map((c) => c.id));
+	const dueIds = new Set(due.map(({ cron }) => cron.id));
 	const results = await Promise.all(
-		due.map((cron) =>
+		due.map(({ cron, scheduledFor }) =>
 			runCronOnMachine(config, cron, {
 				wait: false,
 				userId,
-				scheduledFor: new Date(now),
+				scheduledFor,
 			}),
 		),
 	);
 	const statusById = new Map<string, (typeof results)[number]>();
-	due.forEach((cron, i) => statusById.set(cron.id, results[i]));
+	due.forEach(({ cron }, i) => statusById.set(cron.id, results[i]));
 
-	const ranAt = new Date().toISOString();
-	const nextCrons: CronEntry[] = (config.crons ?? []).map((cron) => {
+	// Merge after dispatch IO so a concurrent edit/delete is not overwritten.
+	const latestConfig = await getUserConfigById(userId);
+	const nextCrons: CronEntry[] = (latestConfig.crons ?? []).map((cron) => {
 		if (!dueIds.has(cron.id)) return cron;
 		const r = statusById.get(cron.id);
 		return {
 			...cron,
-			lastRunAt: ranAt,
+			lastRunAt: r?.ok ? due.find((entry) => entry.cron.id === cron.id)!.scheduledFor.toISOString() : cron.lastRunAt,
 			lastStatus: r?.status ?? "running",
 			lastSummary: r?.message ?? "dispatched",
 		};
@@ -152,6 +157,7 @@ async function handle(req: Request): Promise<Response> {
 	let ingested = 0;
 	let scanned = 0;
 	const now = Date.now();
+	const executionDeadlineMs = now + 240_000;
 	const metricsDue = isCadenceDue(
 		now,
 		OBSERVABILITY_INTERVAL_SECONDS * 1000,
@@ -181,10 +187,15 @@ async function handle(req: Request): Promise<Response> {
 	// this durable sweep resumes queued work and claims operations whose lease
 	// expired after an interrupted serverless invocation.
 	after(async () => {
-		for (let offset = 0; offset < users.length; offset += USER_CONCURRENCY) {
+		for (let offset = 0; offset < users.length && Date.now() < executionDeadlineMs - 30_000; offset += USER_CONCURRENCY) {
 			const batch = users.slice(offset, offset + USER_CONCURRENCY);
 			await Promise.allSettled(
-				batch.map((userId) => createHostedControlPlane(userId).drain(4)),
+				batch.map(async (userId) => {
+					const plane = createHostedControlPlane(userId, null, { executionDeadlineMs });
+					for (let step = 0; step < 4 && Date.now() < executionDeadlineMs - 30_000; step += 1) {
+						if (!(await plane.reconcileNext())) break;
+					}
+				}),
 			);
 		}
 	});

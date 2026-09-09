@@ -4,7 +4,7 @@
  *
  * Expected input is the concatenated output of:
  *   cat /proc/stat && echo '---DELIM---' && free -b && echo '---DELIM---' \
- *   && df -B1 /home/machine && echo '---DELIM---' && cat /proc/loadavg
+ *   && df -B1 "$HOME" && echo '---DELIM---' && cat /proc/loadavg
  */
 
 export type ResourceSnapshot = {

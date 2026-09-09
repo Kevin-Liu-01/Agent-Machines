@@ -1,23 +1,16 @@
 /**
  * Filesystem helpers that run against the user's active persistent machine.
  *
- * The persistent volume at `/home/machine` survives sleep/wake. Storing
- * chats + artifacts there means each user's data lives on the machine
- * they already own -- no separate blob store, no shared bucket, no
- * cross-tenant leak risk, and the agent itself can read/write the same
- * files as context. This mirrors the Dedalus "agent sandbox per user"
- * cookbook pattern.
- *
- * All operations route through the selected provider's exec API. On
- * persistent-machine providers (Dedalus, Sprites, E2B)
- * this points at `/home/machine`. Ephemeral providers such as Vercel
- * Sandbox need an external storage backend and fail closed here until
- * that profile is configured.
+ * Chats and artifacts live in the selected machine's provider-aware
+ * durable directory. Pause preserves them only when the provider's
+ * lifecycle is configured to retain state; deletion is not recoverable
+ * through this helper. Status reads never resume compute, and file
+ * access is allowed only after a non-waking probe reports it ready.
  */
 
 import { Buffer } from "node:buffer";
 
-import { execOnMachine, isMachineRunning, resolveMachine } from "@/lib/dashboard/exec";
+import { execOnMachine, resolveMachine } from "@/lib/dashboard/exec";
 import {
 	MachineProviderError,
 	getProvider,
@@ -46,6 +39,7 @@ export type MachineUnreachable =
 	| { ok: false; reason: "missing_credentials"; message: string }
 	| { ok: false; reason: "machine_starting"; message: string; machineId: string }
 	| { ok: false; reason: "machine_asleep"; message: string; machineId: string }
+	| { ok: false; reason: "machine_missing"; message: string; machineId: string }
 	| { ok: false; reason: "machine_error"; message: string; machineId: string };
 
 export type MachineHandle = {
@@ -54,7 +48,7 @@ export type MachineHandle = {
 };
 
 /**
- * Resolve a machine and ensure it's awake.
+ * Resolve a machine using a read-only provider status check. Never wake it.
  *
  * When `machineId` is provided, targets that specific machine (used
  * by per-machine dashboard pages). When omitted, falls back to the
@@ -62,8 +56,8 @@ export type MachineHandle = {
  *
  * Returns the machine handle when ready, or a typed unreachable state
  * the API route can pass straight back to the browser as the response
- * body. This pattern keeps the client's loading UI generic -- it just
- * polls until `ok: true`.
+ * body. Sleeping and deleted machines are not loading states: the caller
+ * must show an explicit Wake action or a terminal missing-machine message.
  */
 export async function withActiveMachine(
 	machineId?: string | null,
@@ -78,29 +72,23 @@ export async function withActiveMachine(
 				"No active machine. Pick one in /dashboard/machines or provision via /dashboard/setup.",
 		};
 	}
-	const provider = getProvider(machine.providerKind, config.providers);
-	if (!provider.capabilities.hasPersistentDisk) {
-		return {
-			ok: false,
-			reason: "missing_credentials",
-			message: `Machine ${machine.id} runs on ${machine.providerKind}; chats and artifacts need an external storage backend for ephemeral sessions.`,
-		};
-	}
-
-	if (await isMachineRunning(machine.id)) {
-		return { machine, storage: storageContextFor(machine) };
-	}
-
 	try {
+		const provider = getProvider(machine.providerKind, config.providers);
+		if (!provider.capabilities.hasPersistentDisk) {
+			return { ok: false, reason: "missing_credentials", message: `Machine ${machine.id} runs on ${machine.providerKind}; chats and artifacts need an external storage backend for ephemeral sessions.` };
+		}
 		const summary = await provider.state(machine.id);
+		if (summary.state === "ready") return { machine, storage: storageContextFor(machine) };
 		if (summary.state === "sleeping") {
-			await provider.wake(machine.id);
 			return {
 				ok: false,
-				reason: "machine_starting",
-				message: "Waking your machine. Retry in a few seconds.",
+				reason: "machine_asleep",
+				message: "This machine is paused. Wake it explicitly to read its saved chats and artifacts; viewing this page does not start compute.",
 				machineId: machine.id,
 			};
+		}
+		if (summary.state === "destroyed" || summary.state === "destroying") {
+			return { ok: false, reason: "machine_missing", message: "This sandbox has been deleted or is being deleted. Its disk is unavailable and cannot be recovered by Wake. Restore a backup or create a new Worker.", machineId: machine.id };
 		}
 		if (summary.state === "starting") {
 			return {
@@ -122,8 +110,8 @@ export async function withActiveMachine(
 		}
 		return {
 			ok: false,
-			reason: "machine_asleep",
-			message: `Machine in state '${summary.state}'. Wake it from /dashboard.`,
+			reason: "machine_error",
+			message: `Machine state is '${summary.state}'. Inspect its provider status before starting work.`,
 			machineId: machine.id,
 		};
 	} catch (err) {

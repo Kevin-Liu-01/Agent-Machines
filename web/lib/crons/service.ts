@@ -18,7 +18,9 @@ import type {
 	CronStatus,
 	UserConfig,
 } from "@/lib/user-config/schema";
-import { cronIsDueSince } from "@/lib/cron/expr";
+import { cronDueMinuteSince } from "@/lib/cron/expr";
+import { operationRun } from "./history";
+export { cronRunHistory } from "./history";
 
 /** The "armed from" baseline: last successful run, else creation time. */
 export function cronBaselineMs(cron: CronEntry): number | null {
@@ -30,11 +32,16 @@ export function cronBaselineMs(cron: CronEntry): number | null {
 
 /** Enabled crons whose schedule became due at or before `nowMs`. */
 export function listDueCrons(config: UserConfig, nowMs: number): CronEntry[] {
-	return (config.crons ?? []).filter((cron) => {
-		if (!cron.enabled) return false;
+	return dueCronOccurrences(config, nowMs).map(({ cron }) => cron);
+}
+
+export function dueCronOccurrences(config: UserConfig, nowMs: number): Array<{ cron: CronEntry; scheduledFor: Date }> {
+	return (config.crons ?? []).flatMap((cron) => {
+		if (!cron.enabled) return [];
 		const machine = config.machines.find((m) => m.id === cron.machineId);
-		if (!machine || machine.archived) return false;
-		return cronIsDueSince(cron.schedule, cronBaselineMs(cron), nowMs);
+		if (!machine || machine.archived) return [];
+		const dueAt = cronDueMinuteSince(cron.schedule, cronBaselineMs(cron), nowMs);
+		return dueAt === null ? [] : [{ cron, scheduledFor: new Date(dueAt) }];
 	});
 }
 
@@ -56,10 +63,10 @@ export type CronRunResult = {
 export async function runCronOnMachine(
 	config: UserConfig,
 	cron: CronEntry,
-	opts: { wait?: boolean; userId?: string; scheduledFor?: Date } = {},
+	opts: { wait?: boolean; userId?: string; scheduledFor?: Date; executionDeadlineMs?: number } = {},
 ): Promise<CronRunResult> {
 	const machine = resolveMachine(config, cron.machineId);
-	if (!machine) {
+	if (!machine || machine.archived) {
 		return { ok: false, status: "failed", message: "machine_not_found" };
 	}
 	if (!opts.userId) {
@@ -68,6 +75,7 @@ export async function runCronOnMachine(
 	try {
 		const managed = await submitMachineIntent(opts.userId, machine.id, {
 			desiredState: "running",
+			...(opts.executionDeadlineMs ? { executionDeadlineMs: opts.executionDeadlineMs } : {}),
 		});
 		const operation = await managed.controlPlane.dispatchSchedule(
 			managed.accepted.worker.id,
@@ -75,22 +83,25 @@ export async function runCronOnMachine(
 			opts.scheduledFor ?? new Date(),
 		);
 		if (!opts.wait) {
-			return { ok: true, status: "running", operationId: operation.id };
+			const run = operationRun(operation);
+			return { ok: operation.status !== "failed", status: run?.status ?? "running", operationId: operation.id, message: run?.summary };
 		}
 
 		let terminal = operation;
 		for (let step = 0; step < 8; step += 1) {
 			if (terminal.status === "succeeded" || terminal.status === "failed") break;
-			await managed.controlPlane.reconcileNext(managed.accepted.worker.id);
+			if (opts.executionDeadlineMs && Date.now() >= opts.executionDeadlineMs - 30_000) break;
+			const outcome = await managed.controlPlane.reconcileNext(managed.accepted.worker.id);
 			terminal =
 				(await managed.controlPlane.store.getOperation(operation.id)) ?? terminal;
+			if (!outcome) break;
 		}
 		if (terminal.status === "succeeded") {
 			const result = (terminal.result ?? {}) as { text?: string; exitCode?: number };
 			return {
-				ok: true,
-				status: "success",
-				exitCode: result.exitCode ?? 0,
+				ok: operationRun(terminal)?.status === "success",
+				status: operationRun(terminal)?.status ?? "failed",
+				exitCode: result.exitCode,
 				output: result.text ?? "",
 				operationId: operation.id,
 			};
