@@ -139,8 +139,15 @@ const COMMAND_GROUPS: ReadonlyArray<{
 	},
 ];
 
-const STARTUP_COMMAND =
-	"echo '--- MACHINE STATUS ---' && whoami && hostname && echo '--- AGENT RUNTIME ---' && (hermes --version 2>/dev/null || echo 'not installed') && echo '--- LISTENING PORTS ---' && (ss -tlnp 2>/dev/null | grep -E ':(8642|18789|9119)\\b' || echo 'none') && echo '--- APP DATA ---' && (ls /home/machine/.agent-machines/ 2>/dev/null || echo 'no app data') && echo '--- UPTIME ---' && uptime";
+// Opening a terminal observes identity and filenames, not runtime readiness.
+// Never launch an agent CLI or assume a provider-specific home here.
+const STARTUP_COMMAND = [
+	"printf '%s\\n' '--- MACHINE ---'",
+	"whoami", "hostname", "pwd",
+	"printf 'HOME=%s\\n' \"$HOME\"",
+	"printf '%s\\n' '--- WORKER FILES (first 40) ---'",
+	"if [ -d \"$HOME/.agent-machines\" ]; then ls -1A \"$HOME/.agent-machines\" | head -40; else printf '%s\\n' 'No Worker app data directory at this home.'; fi",
+].join(" && ");
 
 type Props = {
 	initialCommand?: string;

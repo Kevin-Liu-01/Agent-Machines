@@ -1,5 +1,7 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
@@ -215,5 +217,31 @@ describe("one-shot terminal machine ownership", () => {
 			await panel.flush(); panel.switch("second"); await panel.flush(); panel.timers(); await panel.flush();
 			expect(panel.requests).toHaveLength(1); expect(panel.requests[0].body.machineId).toBe("second");
 		} finally { panel.unmount(); }
+	});
+	it("invariant_automatic_startup_uses_home_and_never_launches_an_agent_or_network_client", async () => {
+		const panel = mountTerminal("fixture-machine");
+		const fixture = mkdtempSync(join(tmpdir(), "am-terminal-startup-"));
+		try {
+			const bin = join(fixture, "bin"), appData = join(fixture, ".agent-machines");
+			mkdirSync(bin); mkdirSync(appData);
+			writeFileSync(join(appData, "fixture-state.txt"), "fixture");
+			for (const name of ["hermes", "claude", "codex", "openclaw", "curl", "wget"]) {
+				writeFileSync(join(bin, name), "#!/bin/sh\nprintf 'FORBIDDEN_STARTUP_EXECUTION\\n' >> \"$HOME/forbidden-startup-execution\"\nexit 79\n", { mode: 0o700 });
+			}
+			await panel.flush(); panel.timers(); await panel.flush();
+			expect(panel.requests).toHaveLength(1);
+			const command = panel.requests[0].body.command;
+			const result = spawnSync("/bin/bash", ["-c", command], {
+				cwd: fixture, env: { NODE_ENV: "test", HOME: fixture, PATH: `${bin}:/usr/bin:/bin` }, encoding: "utf8", timeout: 2000,
+			});
+			expect(result.error).toBeUndefined();
+			expect(existsSync(join(fixture, "forbidden-startup-execution"))).toBe(false);
+			expect(result.status).toBe(0);
+			expect(result.stderr).toBe("");
+			expect(result.stdout).toContain("fixture-state.txt");
+			expect(result.stdout).toContain(fixture);
+			expect(command).not.toContain("/home/machine");
+			expect(command).not.toContain("--version");
+		} finally { panel.unmount(); rmSync(fixture, { recursive: true, force: true }); }
 	});
 });
