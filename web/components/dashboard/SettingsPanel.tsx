@@ -39,6 +39,14 @@ type SaveState =
 	| { phase: "ok"; message: string }
 	| { phase: "error"; message: string };
 
+type CredentialField = [
+	label: string,
+	value: string,
+	onChange: (value: string) => void,
+	placeholder: string,
+	type: "password" | "text",
+];
+
 export function SettingsPanel({ initialConfig }: Props) {
 	const [config, setConfig] = useState(initialConfig);
 	const [dedalusKey, setDedalusKey] = useState("");
@@ -269,8 +277,8 @@ export function SettingsPanel({ initialConfig }: Props) {
 					mark="dedalus"
 					configured={config.providers.dedalus.configured}
 					fields={[
-						["API key", dedalusKey, setDedalusKey, "dsk-live-..."],
-						["Base URL", dedalusBaseUrl, setDedalusBaseUrl, "https://dcs.dedaluslabs.ai"],
+						["API key", dedalusKey, setDedalusKey, "dsk-live-...", "password"],
+						["Base URL", dedalusBaseUrl, setDedalusBaseUrl, "https://dcs.dedaluslabs.ai", "text"],
 					]}
 				/>
 				<ProviderBox
@@ -278,7 +286,7 @@ export function SettingsPanel({ initialConfig }: Props) {
 					mark="e2b"
 					configured={config.providers.e2b.configured}
 					fields={[
-						["API key", e2bKey, setE2bKey, "e2b_..."],
+						["API key", e2bKey, setE2bKey, "e2b_...", "password"],
 					]}
 				/>
 				<ProviderBox
@@ -286,7 +294,7 @@ export function SettingsPanel({ initialConfig }: Props) {
 					mark="sprites"
 					configured={config.providers.sprites.configured}
 					fields={[
-						["Token", spritesKey, setSpritesKey, "kevin-liu-553/..."],
+						["Token", spritesKey, setSpritesKey, "kevin-liu-553/...", "password"],
 					]}
 				/>
 				<ProviderBox
@@ -294,15 +302,20 @@ export function SettingsPanel({ initialConfig }: Props) {
 					mark="vercel"
 					configured={config.providers.vercel.configured}
 					fields={[
-						["Token", vercelToken, setVercelToken, "vercel token"],
-						["Team ID", vercelTeamId, setVercelTeamId, "team_..."],
-						["Project ID", vercelProjectId, setVercelProjectId, "prj_..."],
+						["Token", vercelToken, setVercelToken, "vercel token", "password"],
+						["Team ID", vercelTeamId, setVercelTeamId, "team_...", "text"],
+						["Project ID", vercelProjectId, setVercelProjectId, "prj_...", "text"],
 					]}
 				/>
 			</div>
 				<label className="mt-3 block font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					Cursor API key
 					<input
+						type="password"
+						autoComplete="off"
+						autoCapitalize="none"
+						autoCorrect="off"
+						spellCheck={false}
 						value={cursorApiKey}
 						onChange={(event) => setCursorApiKey(event.target.value)}
 						placeholder={config.hasCursorKey ? "configured (leave blank to preserve)" : "optional"}
@@ -340,7 +353,7 @@ export function SettingsPanel({ initialConfig }: Props) {
 						hint="Hermes, OpenClaw preferred"
 						configured={config.aiProviders.vercelAiGateway.configured}
 						fields={[
-							["API key", vercelAiGatewayKey, setVercelAiGatewayKey, "vck_..."],
+							["API key", vercelAiGatewayKey, setVercelAiGatewayKey, "vck_...", "password"],
 						]}
 					/>
 					<AiProviderBox
@@ -348,7 +361,7 @@ export function SettingsPanel({ initialConfig }: Props) {
 						hint="Hermes, OpenClaw fallback"
 						configured={config.aiProviders.openrouter.configured}
 						fields={[
-							["API key", openrouterKey, setOpenrouterKey, "sk-or-..."],
+							["API key", openrouterKey, setOpenrouterKey, "sk-or-...", "password"],
 						]}
 					/>
 					<AiProviderBox
@@ -356,7 +369,7 @@ export function SettingsPanel({ initialConfig }: Props) {
 						hint="Claude Code, OpenClaw, Hermes"
 						configured={config.aiProviders.anthropic.configured}
 						fields={[
-							["API key", anthropicKey, setAnthropicKey, "sk-ant-..."],
+							["API key", anthropicKey, setAnthropicKey, "sk-ant-...", "password"],
 						]}
 					/>
 					<AiProviderBox
@@ -364,7 +377,7 @@ export function SettingsPanel({ initialConfig }: Props) {
 						hint="Codex CLI, OpenClaw, Hermes"
 						configured={config.aiProviders.openai.configured}
 						fields={[
-							["API key", openaiKey, setOpenaiKey, "sk-..."],
+							["API key", openaiKey, setOpenaiKey, "sk-...", "password"],
 						]}
 					/>
 					<AiProviderBox
@@ -372,7 +385,7 @@ export function SettingsPanel({ initialConfig }: Props) {
 						hint="Hermes -- Gemini models"
 						configured={config.aiProviders.google.configured}
 						fields={[
-							["API key", googleKey, setGoogleKey, "AIza..."],
+							["API key", googleKey, setGoogleKey, "AIza...", "password"],
 						]}
 					/>
 				</div>
@@ -382,9 +395,9 @@ export function SettingsPanel({ initialConfig }: Props) {
 						hint="LiteLLM, Portkey, RelayPlane, self-hosted -- any OpenAI-compatible endpoint"
 						configured={config.aiProviders.custom.configured}
 						fields={[
-							["Label", customLabel, setCustomLabel, "My gateway"],
-							["Base URL", customUrl, setCustomUrl, "https://my-gateway.example.com/v1"],
-							["API key", customKey, setCustomKey, "key-..."],
+							["Label", customLabel, setCustomLabel, "My gateway", "text"],
+							["Base URL", customUrl, setCustomUrl, "https://my-gateway.example.com/v1", "text"],
+							["API key", customKey, setCustomKey, "key-...", "password"],
 						]}
 					/>
 				</div>
@@ -549,7 +562,7 @@ function ProviderBox({
 	title: string;
 	mark?: Mark;
 	configured: boolean;
-	fields: Array<[string, string, (value: string) => void, string]>;
+	fields: CredentialField[];
 }) {
 	return (
 		<div className="bg-[var(--ret-bg)] p-3">
@@ -565,10 +578,15 @@ function ProviderBox({
 				</ReticleBadge>
 			</div>
 			<div className="space-y-2">
-				{fields.map(([label, value, onChange, placeholder]) => (
+				{fields.map(([label, value, onChange, placeholder, type]) => (
 					<label key={label} className="block font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 						{label}
 						<input
+							type={type}
+							autoComplete="off"
+							autoCapitalize="none"
+							autoCorrect="off"
+							spellCheck={false}
 							value={value}
 							onChange={(event) => onChange(event.target.value)}
 							placeholder={placeholder}
@@ -590,7 +608,7 @@ function AiProviderBox({
 	title: string;
 	hint: string;
 	configured: boolean;
-	fields: Array<[string, string, (value: string) => void, string]>;
+	fields: CredentialField[];
 }) {
 	return (
 		<div className="bg-[var(--ret-bg)] p-3">
@@ -608,10 +626,15 @@ function AiProviderBox({
 				</ReticleBadge>
 			</div>
 			<div className="space-y-2">
-				{fields.map(([label, value, onChange, placeholder]) => (
+				{fields.map(([label, value, onChange, placeholder, type]) => (
 					<label key={label} className="block font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 						{label}
 						<input
+							type={type}
+							autoComplete="off"
+							autoCapitalize="none"
+							autoCorrect="off"
+							spellCheck={false}
 							value={value}
 							onChange={(event) => onChange(event.target.value)}
 							placeholder={configured && label.toLowerCase().includes("key") ? "configured (leave blank to preserve)" : placeholder}

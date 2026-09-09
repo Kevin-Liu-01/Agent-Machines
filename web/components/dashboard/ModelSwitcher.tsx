@@ -22,12 +22,14 @@ import {
 } from "@/lib/dashboard/header-chrome";
 import { cn } from "@/lib/cn";
 import { requestMachineRuntimeUpdate } from "@/lib/dashboard/machine-runtime-update";
+import { pickerModelId, runtimeModelCatalog } from "@/lib/dashboard/runtime-model-catalog";
+import type { AgentKind } from "@/lib/user-config/schema";
 
 const POLL_MS = 8000;
 
 type Payload = {
 	ok: boolean;
-	machines: Array<{ id: string; model: string; archived?: boolean }>;
+	machines: Array<{ id: string; model: string; agentKind: AgentKind; gatewayProfileId?: string | null; archived?: boolean }>;
 	activeMachineId: string | null;
 };
 
@@ -55,8 +57,8 @@ export function ModelSwitcher({ activeMachineId, surface = "header" }: Props) {
 	const [pending, setPending] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [notice, setNotice] = useState<string | null>(null);
-	const [catalog, setCatalog] = useState<readonly ModelOption[]>(MODEL_CATALOG);
-	const [catalogSource, setCatalogSource] = useState("local fallback");
+	const [catalogResult, setCatalogResult] = useState<(ModelsPayload & { context: string }) | null>(null);
+	const catalogRequestRef = useRef(0);
 	const rootRef = useRef<HTMLDivElement>(null);
 
 	const refresh = useCallback(async () => {
@@ -72,28 +74,35 @@ export function ModelSwitcher({ activeMachineId, surface = "header" }: Props) {
 	}, []);
 
 	const targetId = activeMachineId ?? data?.activeMachineId ?? null;
+	const machines = data?.machines.filter((m) => !m.archived) ?? [];
+	const active = machines.find((m) => m.id === targetId) ?? null;
+	const agent = active?.agentKind;
+	const catalogContext = `${targetId ?? "draft"}:${agent ?? "unknown"}:${active?.gatewayProfileId ?? ""}`;
+	const catalogContextRef = useRef(catalogContext);
+	catalogContextRef.current = catalogContext;
 	const targetRef = useRef(targetId);
 	targetRef.current = targetId;
 	const mountedRef = useRef(true);
 	useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
 	useEffect(() => { setPending(null); setError(null); setNotice(null); }, [targetId]);
 
-	const refreshCatalog = useCallback(async () => {
+	const refreshCatalog = useCallback(async (signal: AbortSignal) => {
+		const version = ++catalogRequestRef.current;
 		try {
 			const qs = targetId ? `?machineId=${encodeURIComponent(targetId)}` : "";
 			const response = await fetch(`/api/dashboard/models${qs}`, {
 				cache: "no-store",
+				signal,
 			});
 			if (!response.ok) return;
 			const payload = (await response.json()) as ModelsPayload;
-			if (payload.ok && payload.models.length > 0) {
-				setCatalog(payload.models);
-				setCatalogSource(payload.source);
+			if (!signal.aborted && mountedRef.current && catalogContextRef.current === catalogContext && version === catalogRequestRef.current && payload.ok && Array.isArray(payload.models)) {
+				setCatalogResult({ ...payload, context: catalogContext });
 			}
 		} catch {
 			// keep local fallback
 		}
-	}, [targetId]);
+	}, [targetId, catalogContext]);
 
 	useEffect(() => {
 		void refresh();
@@ -120,16 +129,21 @@ export function ModelSwitcher({ activeMachineId, surface = "header" }: Props) {
 	}, [open]);
 
 	useEffect(() => {
-		if (open) void refreshCatalog();
+		if (!open) return;
+		const controller = new AbortController();
+		void refreshCatalog(controller.signal);
+		return () => controller.abort();
 	}, [open, refreshCatalog]);
 
-	const machines = data?.machines.filter((m) => !m.archived) ?? [];
-	const active = machines.find((m) => m.id === targetId) ?? null;
 	const currentModel = active?.model ?? null;
+	const currentPickerId = currentModel ? pickerModelId(agent, currentModel) : null;
+	const scopedResult = catalogResult?.context === catalogContext ? catalogResult : null;
+	// Unknown/archived explicit targets never inherit another Worker's choices.
+	const catalog = targetId && !active ? [] : runtimeModelCatalog(scopedResult?.models ?? MODEL_CATALOG, agent);
 	const mark = currentModel ? modelProviderMark(currentModel) : null;
 
 	async function pick(modelId: string): Promise<void> {
-		if (!modelId || modelId === currentModel || pending) {
+		if (!modelId || modelId === currentPickerId || pending) {
 			setOpen(false);
 			return;
 		}
@@ -165,10 +179,10 @@ export function ModelSwitcher({ activeMachineId, surface = "header" }: Props) {
 	}
 
 	const pickerCatalog =
-		currentModel && !catalog.some((option) => option.id === currentModel)
+		currentPickerId && !catalog.some((option) => option.id === currentPickerId)
 			? [
 				modelOptionFromId({
-					id: currentModel,
+					id: currentPickerId,
 					hint: "current",
 				}),
 				...catalog,
@@ -246,7 +260,7 @@ export function ModelSwitcher({ activeMachineId, surface = "header" }: Props) {
 								</p>
 								<ul>
 									{models.map((option) => {
-										const selected = option.id === currentModel;
+										const selected = option.id === currentPickerId;
 										const inFlight = pending === option.id;
 										return (
 											<li key={option.id}>
@@ -296,9 +310,9 @@ export function ModelSwitcher({ activeMachineId, surface = "header" }: Props) {
 						))}
 					</ul>
 					<p className="border-t border-[var(--ret-border)] px-3 py-2 text-[11px] leading-relaxed text-[var(--ret-text-muted)]">
-						{targetId
-							? `Live list from ${catalogSource}.`
-							: "Sets your next machine model."}
+						{targetId && !active ? data ? "This Worker is unavailable." : "Loading this Worker's runtime…" : scopedResult
+							? `${scopedResult.fallback ? "Suggestions" : "Catalog"} from ${scopedResult.source}. Model availability depends on your endpoint and account.`
+							: "Compatible local suggestions. Availability has not been verified with your endpoint."}
 					</p>
 				</div>
 			) : null}

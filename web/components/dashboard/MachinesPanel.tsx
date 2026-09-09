@@ -14,7 +14,7 @@ import { SchematicPanel } from "@/components/reticle/SchematicPanel";
 import type { LogLine } from "@/lib/dashboard/types";
 import { fetchLogTail, headlineFromLogs, isFleetLogsLoaded, shouldFetchFleetLogs } from "@/lib/fleet/fetch-log-tail";
 import { useFleetLoadout } from "@/lib/fleet/use-fleet-loadout";
-import { toFleetStreamCard } from "@/lib/fleet/view-model";
+import { compactSpec, reportedMachineSpec, toFleetStreamCard } from "@/lib/fleet/view-model";
 import { cn } from "@/lib/cn";
 import { waitForControlPlaneOperation } from "@/lib/control-plane/client";
 import type { ProviderCapabilities } from "@/lib/providers";
@@ -59,7 +59,7 @@ type LiveMachine = {
 	capabilities: ProviderCapabilities | null;
 	bootstrapState: BootstrapState;
 	live:
-		| { ok: true; state: string; rawPhase: string; lastError: string | null }
+		| { ok: true; state: string; rawPhase: string; lastError: string | null; spec?: Partial<MachineSpec> }
 		| { ok: false; reason: string };
 };
 
@@ -437,7 +437,7 @@ function MachineTable({
 							<th className="px-4 py-2 font-mono text-[10px] font-normal uppercase tracking-[0.18em]">Machine</th>
 							<th className="px-4 py-2 font-mono text-[10px] font-normal uppercase tracking-[0.18em]">Agent</th>
 							<th className="px-4 py-2 font-mono text-[10px] font-normal uppercase tracking-[0.18em]">Status</th>
-							<th className="hidden px-4 py-2 font-mono text-[10px] font-normal uppercase tracking-[0.18em] md:table-cell">Shape</th>
+							<th className="hidden px-4 py-2 font-mono text-[10px] font-normal uppercase tracking-[0.18em] md:table-cell">Actual allocation</th>
 							<th className="hidden px-4 py-2 font-mono text-[10px] font-normal uppercase tracking-[0.18em] lg:table-cell">Created</th>
 							<th className="px-4 py-2">
 								<span className="sr-only">Open</span>
@@ -448,7 +448,7 @@ function MachineTable({
 						{machines.map((machine) => {
 							const state = machine.live.ok ? machine.live.state : "unknown";
 							const meta = TABLE_PHASE[state] ?? TABLE_PHASE.unknown;
-							const memGib = (machine.spec.memoryMib / 1024).toFixed(1);
+							const allocation = compactSpec(reportedMachineSpec(machine.live));
 							const isActive = machine.id === activeMachineId;
 							return (
 								<tr
@@ -480,7 +480,7 @@ function MachineTable({
 										</span>
 									</td>
 									<td className="hidden px-4 py-2.5 font-mono text-[11px] text-[var(--ret-text-dim)] md:table-cell">
-										{machine.spec.vcpu}v / {memGib}G / {machine.spec.storageGib}G
+										{allocation}
 									</td>
 									<td className="hidden px-4 py-2.5 text-[11px] text-[var(--ret-text-dim)] lg:table-cell">
 										{new Date(machine.createdAt).toLocaleDateString()}
@@ -732,10 +732,13 @@ function QuickProvisionForm({
 				</div>
 				<div className="grid gap-3 md:grid-cols-4">
 					<EditField label="model" value={model} onChange={setModel} placeholder={DEFAULT_MODEL} colSpan />
-					<EditField label="vCPU" value={vcpu} onChange={setVcpu} placeholder="1" />
-					<EditField label="RAM (MiB)" value={memoryMib} onChange={setMemoryMib} placeholder="2048" />
-					<EditField label="Disk (GiB)" value={storageGib} onChange={setStorageGib} placeholder="10" />
+					<EditField label="Requested vCPU" value={vcpu} onChange={setVcpu} placeholder="1" />
+					<EditField label="Requested RAM (MiB)" value={memoryMib} onChange={setMemoryMib} placeholder="2048" />
+					<EditField label="Requested disk (GiB)" value={storageGib} onChange={setStorageGib} placeholder="10" />
 				</div>
+				{providerKind === "e2b" ? (
+					<p className="text-[11px] text-[var(--ret-amber)]">E2B allocation is defined by its template. These sizing requests do not resize the sandbox; a larger allocation requires a suitable E2B template.</p>
+				) : null}
 				<div className="grid grid-cols-1 gap-2 sm:flex sm:justify-end">
 					<ReticleButton variant="ghost" size="sm" onClick={onCancel} disabled={busy} className="w-full sm:w-auto">
 						Cancel

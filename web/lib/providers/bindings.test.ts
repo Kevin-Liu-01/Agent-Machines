@@ -202,6 +202,7 @@ describe("e2b binding", () => {
 		const provider = fakeMuxProvider("e2b");
 		mocks.createE2bProvider.mockReturnValue(provider);
 		const e2b = new E2BProvider({ apiKey: "k" });
+		expect(e2b.capabilities.canSleep).toBe(true);
 		await e2b.sleep("sbx-1");
 		await e2b.destroy("sbx-1");
 		expect(provider.park).toHaveBeenCalledWith("sbx-1");
@@ -286,10 +287,10 @@ describe("sprites binding", () => {
 		await sprites.destroy("am-x");
 		expect(provider.remove).toHaveBeenCalledWith("am-x");
 		expect(provider.connect).not.toHaveBeenCalled();
-		// sleep falls back to the handle (sprites have no park); on the mux
-		// handle that is a state read, preserving the old adapter's no-op sleep.
-		await sprites.sleep("am-x");
-		expect(provider.connect).toHaveBeenCalledWith("am-x");
+		expect(sprites.capabilities.canSleep).toBe(false);
+		await expect(sprites.sleep("am-x")).rejects.toMatchObject({ kind: "not_supported" });
+		expect(provider.connect).not.toHaveBeenCalled();
+		expect(provider.describe).not.toHaveBeenCalled();
 	});
 });
 
@@ -335,6 +336,7 @@ describe("vercel binding", () => {
 		const provider = fakeMuxProvider("vercel");
 		mocks.createVercelProvider.mockReturnValue(provider);
 		const vercel = new VercelProvider({ token: "t", teamId: "tm", projectId: "p" });
+		expect(vercel.capabilities.canSleep).toBe(true);
 		await vercel.sleep("sbx-1");
 		await vercel.destroy("sbx-1");
 		expect(provider.park).toHaveBeenCalledWith("sbx-1");
@@ -378,6 +380,16 @@ describe("vercel binding", () => {
 });
 
 describe("dedalus binding", () => {
+	it("rejects manual pause without a public park operation or any vendor calls", async () => {
+		const provider = fakeMuxProvider("dedalus", { noPark: true });
+		mocks.createDedalusProvider.mockReturnValue(provider);
+		const dedalus = new DedalusProvider({ apiKey: "fixture-key" });
+		expect(dedalus.capabilities.canSleep).toBe(false);
+		await expect(dedalus.sleep("dm-1")).rejects.toMatchObject({ kind: "not_supported" });
+		expect(provider.connect).not.toHaveBeenCalled();
+		expect(provider.describe).not.toHaveBeenCalled();
+	});
+
 	it("hands the mux factory the apiKey and the baseUrl namespace", () => {
 		mocks.createDedalusProvider.mockReturnValue(fakeMuxProvider("dedalus"));
 		void new DedalusProvider({ apiKey: "dk", baseUrl: "https://alt.example" });

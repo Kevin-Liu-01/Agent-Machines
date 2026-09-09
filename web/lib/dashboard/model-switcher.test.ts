@@ -3,10 +3,11 @@ import { resolve } from "node:path";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
 import { expect, it, vi } from "vitest";
+import * as runtimeCatalog from "./runtime-model-catalog";
 
 type Node = { type: unknown; props: Record<string, any> };
 /** Run the real component's event handlers/effects without a DOM dependency. */
-function mountPicker() {
+function mountPicker(options: { catalog?: Array<{id:string;label:string}>; machines?: Array<{id:string;model:string;agentKind:string}>; deferCatalog?: boolean } = {}) {
 	type Hook = { value?: any; deps?: unknown[]; cleanup?: () => void };
 	const hooks: Hook[] = [];
 	let cursor = 0, dirty = false, effects: Array<() => void> = [], target = "first-worker", tree: Node;
@@ -18,10 +19,14 @@ function mountPicker() {
 		useCallback(fn: unknown, deps: unknown[]) { const h = next(); if (!equal(h.deps, deps)) { h.deps = deps; h.value = fn; } return h.value; },
 		useEffect(effect: () => void | (() => void), deps: unknown[]) { const h = next(); if (!equal(h.deps, deps)) { h.deps = deps; effects.push(() => { h.cleanup?.(); h.cleanup = effect() || undefined; }); } },
 	};
-	const catalog = [{ id: "current-model", label: "Current" }, { id: "next-model", label: "Next" }];
-	const fetchMock = vi.fn(async (url: string) => ({ ok: true, json: async () => url.includes("/models")
-		? { ok: true, models: catalog, source: "fixture" }
-		: { ok: true, machines: [{ id: "first-worker", model: "current-model" }, { id: "second-worker", model: "current-model" }], activeMachineId: "different-active-worker" } }));
+	const catalog = options.catalog ?? [{ id: "current-model", label: "Current" }, { id: "next-model", label: "Next" }];
+	const catalogRequests = new Map<string, (value: unknown) => void>();
+	const fetchMock = vi.fn(async (url: string) => {
+		if (url.includes("/models") && options.deferCatalog) return new Promise(resolve => { catalogRequests.set(url, resolve); });
+		return { ok: true, json: async () => url.includes("/models")
+			? { ok: true, models: catalog, source: "fixture", fallback:false }
+			: { ok: true, machines: options.machines ?? [{ id: "first-worker", model: "current-model", agentKind:"hermes" }, { id: "second-worker", model: "current-model", agentKind:"hermes" }], activeMachineId: "different-active-worker" } };
+	});
 	let complete!: (message: string) => void;
 	let fail!: (error: Error) => void;
 	const update = vi.fn((_target: string, _selection: unknown, progress?: (message: string) => void) => {
@@ -35,12 +40,13 @@ function mountPicker() {
 		react, "react/jsx-runtime": { jsx, jsxs: jsx }, "next/navigation": { useRouter: () => ({ refresh: refreshRouter }) },
 		"@/components/Logo": { Logo: () => null }, "@/lib/cn": { cn: () => "" },
 		"@/lib/dashboard/model-catalog": { MODEL_CATALOG: catalog, groupedModelCatalog: (models: unknown[]) => [{ group: "fixture", label: "Models", models }], modelDisplayLabel: (id: string) => id, modelOptionFromId: (value: unknown) => value, modelProviderMark: () => null },
+		"@/lib/dashboard/runtime-model-catalog": runtimeCatalog,
 		"@/lib/dashboard/sidebar-popover": { useSidebarPopoverStyle: () => undefined },
 		"@/lib/dashboard/header-chrome": { headerControlTrigger: () => "" },
 		"@/lib/dashboard/machine-runtime-update": { requestMachineRuntimeUpdate: update },
 	};
 	runInNewContext(ts.transpileModule(readFileSync(resolve(process.cwd(), "components/dashboard/ModelSwitcher.tsx"), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX } }).outputText, {
-		module, exports: module.exports, Error, require: (id: string) => { if (!(id in imports)) throw new Error(`Unexpected import: ${id}`); return imports[id]; },
+		module, exports: module.exports, Error, AbortController, require: (id: string) => { if (!(id in imports)) throw new Error(`Unexpected import: ${id}`); return imports[id]; },
 		fetch: fetchMock, window: { setInterval: () => 1, clearInterval: () => undefined },
 		document: { visibilityState: "visible", addEventListener: () => undefined, removeEventListener: () => undefined },
 	});
@@ -51,6 +57,10 @@ function mountPicker() {
 	render();
 	return {
 		fetchMock, update, refreshRouter, flush,
+		async open() { await flush(); nodes(tree).find((node) => node.type === "button" && node.props["aria-haspopup"] === "listbox")!.props.onClick(); await flush(); },
+		modelIds: () => nodes(tree).filter(node => node.props.role === "option").map(node => texts(node)),
+		selectedCount: () => nodes(tree).filter(node => node.props.role === "option" && node.props["aria-selected"]).length,
+		resolveCatalog: (workerId:string, models: Array<{id:string;label:string}>) => { const request = catalogRequests.get(`/api/dashboard/models?machineId=${workerId}`); if(!request)throw new Error(`No catalog request for ${workerId}`); request({ok:true,json:async()=>({ok:true,models,source:"fixture",fallback:false})}); },
 		async choose() {
 			await flush(); nodes(tree).find((node) => node.type === "button" && node.props["aria-haspopup"] === "listbox")!.props.onClick(); await flush();
 			nodes(tree).filter((node) => node.props.role === "option")[1].props.onClick(); await flush();
@@ -74,6 +84,31 @@ it("invariant_picker_pins_the_viewed_worker_and_waits_without_changing_the_globa
 		expect(picker.text()).toContain("Saved for next wake");
 		expect(picker.refreshRouter).toHaveBeenCalledOnce();
 	} finally { picker.unmount(); }
+});
+
+const nativeMachines = [{id:"first-worker",agentKind:"claude-code",model:"claude-sonnet-4-6"},{id:"second-worker",agentKind:"codex",model:"gpt-5.2"}];
+const mixedCatalog = [{id:"anthropic/claude-sonnet-4.6",label:"Sonnet"},{id:"openai/gpt-5.2",label:"GPT"},{id:"openai/gpt-image-1",label:"Image"}];
+it("filters the native local fallback before its catalog request returns",async()=>{
+	const picker=mountPicker({catalog:mixedCatalog,machines:nativeMachines,deferCatalog:true});
+	try{await picker.open();expect(picker.modelIds()).toHaveLength(1);expect(picker.modelIds()[0]).toContain("claude-sonnet-4-6");expect(picker.text()).not.toContain("Live list from local fallback");}finally{picker.unmount();}
+});
+it("normalizes native aliases so the selected Sonnet model appears once",async()=>{
+	const picker=mountPicker({catalog:[...mixedCatalog,{id:"claude-sonnet-4-6",label:"Sonnet duplicate"}],machines:nativeMachines});
+	try{await picker.open();expect(picker.modelIds()).toHaveLength(1);expect(picker.selectedCount()).toBe(1);}finally{picker.unmount();}
+});
+it("an old catalog cannot replace the newly selected Worker's runtime catalog",async()=>{
+	const picker=mountPicker({catalog:mixedCatalog,machines:nativeMachines,deferCatalog:true});
+	try{
+		await picker.open();picker.switch("second-worker");await picker.flush();
+		picker.resolveCatalog("second-worker",[{id:"gpt-5.2",label:"GPT selected"},{id:"gpt-5.4",label:"Fresh GPT"}]);await picker.flush();
+		picker.resolveCatalog("first-worker",[{id:"claude-sonnet-4-6",label:"STALE CLAUDE"}]);await picker.flush();
+		expect(picker.text()).toContain("Fresh GPT");expect(picker.text()).not.toContain("STALE CLAUDE");expect(picker.modelIds()).toHaveLength(2);
+	}finally{picker.unmount();}
+});
+it("keeps a custom text model selectable when its opaque name mentions audio",async()=>{
+	const id="company/audio-notes-assistant";
+	const picker=mountPicker({catalog:[{id,label:"Audio notes text assistant"}],machines:[{id:"first-worker",agentKind:"hermes",model:id}]});
+	try{await picker.open();expect(picker.modelIds()).toHaveLength(1);expect(picker.modelIds()[0]).toContain(id);expect(picker.selectedCount()).toBe(1);}finally{picker.unmount();}
 });
 it("invariant_failed_runtime_change_remains_visible_and_does_not_refresh_as_success", async () => {
 	const picker = mountPicker();

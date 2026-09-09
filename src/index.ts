@@ -2,6 +2,7 @@ export {
 	AgentMachines,
 	AgentMachinesAgent,
 	am,
+	type AgentCallOptions,
 	type AgentCreateInput,
 	type AgentKind,
 	type AgentMachinesOptions,

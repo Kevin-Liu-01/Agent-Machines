@@ -47,14 +47,20 @@ import {
 	type NormalizedMachineUsage,
 } from "@/lib/dashboard/usage-metrics";
 import { cn } from "@/lib/cn";
+import { compactSpec, reportedMachineSpec } from "@/lib/fleet/view-model";
+import type { ProviderCapabilities } from "@/lib/providers";
 import {
 	AGENT_LABEL,
 	PROVIDER_LABEL,
 	type BootstrapState,
 	type MigrationState,
+	type MachineSpec,
 } from "@/lib/user-config/schema";
 
 type MachineStatus = {
+	machineId: string;
+	capabilities: ProviderCapabilities | null;
+	spec: Partial<MachineSpec> | null;
 	state: string;
 	rawPhase: string;
 	lastError: string | null;
@@ -64,10 +70,12 @@ type MachineRouteResponse =
 	| {
 			ok: true;
 			machine?: {
+				capabilities?: ProviderCapabilities | null;
 				bootstrapState?: BootstrapState;
 				migrationState?: MigrationState | null;
 			} | null;
 			live?: {
+				spec?: Partial<MachineSpec>;
 				state?: string;
 				rawPhase?: string;
 				lastError?: string | null;
@@ -110,6 +118,7 @@ export default function MachineOverviewPage() {
 
 	useEffect(() => {
 		let stopped = false;
+		setStatus(null);
 		async function poll() {
 			try {
 				const res = await fetch(`/api/dashboard/machines/${encodeURIComponent(machineId)}`, {
@@ -117,16 +126,20 @@ export default function MachineOverviewPage() {
 				});
 				if (stopped) return;
 				if (res.status === 404) {
+					setStatus(null);
 					stopped = true;
 					window.clearInterval(id);
 					return;
 				}
-				if (!res.ok) return;
+				if (!res.ok) { setStatus(null); return; }
 				const data = (await res.json()) as MachineRouteResponse;
 				const live =
 					data.ok && data.live && typeof data.live === "object" ? data.live : null;
 				if (!stopped) {
 					setStatus({
+						machineId,
+						capabilities: data.ok ? data.machine?.capabilities ?? null : null,
+						spec: reportedMachineSpec(live) ?? null,
 						state: live?.state ?? live?.rawPhase ?? "unknown",
 						rawPhase: live?.rawPhase ?? live?.state ?? "unknown",
 						lastError: live?.lastError ?? live?.error ?? null,
@@ -137,7 +150,7 @@ export default function MachineOverviewPage() {
 					}
 				}
 			} catch {
-				/* ignore */
+				if (!stopped) setStatus(null);
 			} finally {
 				if (!stopped) setLoading(false);
 			}
@@ -191,8 +204,8 @@ export default function MachineOverviewPage() {
 
 	if (!machine) return null;
 
-	const memGib = (machine.spec.memoryMib / 1024).toFixed(1);
-	const stateName = status?.state ?? "loading";
+	const allocation = status?.machineId === machineId ? status.spec : null;
+	const stateName = status?.machineId === machineId ? status.state : loading ? "loading" : "unknown";
 
 	return (
 		<div className="flex flex-col">
@@ -217,7 +230,7 @@ export default function MachineOverviewPage() {
 							machineId={machineId}
 							providerKind={machine.providerKind}
 							state={stateName as MachineActionState}
-							capabilities={null}
+							capabilities={status?.machineId === machineId ? status.capabilities : null}
 							active={isActive}
 							archived={machine.archived ?? false}
 							allowDestroy
@@ -276,8 +289,8 @@ export default function MachineOverviewPage() {
 					<StatCard label="Agent" icon={<Bot size={12} />}>
 						{AGENT_LABEL[machine.agentKind]}
 					</StatCard>
-					<StatCard label="Spec" icon={<Cpu size={12} />}>
-						{machine.spec.vcpu}v / {memGib}G RAM / {machine.spec.storageGib}G disk
+					<StatCard label="Actual allocation" icon={<Cpu size={12} />}>
+						{compactSpec(allocation)}
 					</StatCard>
 					<StatCard label="Model" icon={<Brain size={12} />}>
 						{machine.model}

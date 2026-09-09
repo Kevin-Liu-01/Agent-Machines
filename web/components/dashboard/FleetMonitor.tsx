@@ -33,7 +33,7 @@ import { cn } from "@/lib/cn";
 import { waitForControlPlaneOperation } from "@/lib/control-plane/client";
 import type { ProviderCapabilities } from "@/lib/providers";
 import { MigrationPhaseBadge } from "@/components/dashboard/MigrationPhaseBadge";
-import { compactSpec } from "@/lib/fleet/view-model";
+import { compactSpec, reportedMachineSpec } from "@/lib/fleet/view-model";
 import {
 	AGENT_KINDS,
 	AGENT_LABEL,
@@ -75,7 +75,7 @@ type LiveMachine = {
 	capabilities: ProviderCapabilities | null;
 	migrationState?: MigrationState | null;
 	live:
-		| { ok: true; state: string; rawPhase: string; lastError: string | null }
+		| { ok: true; state: string; rawPhase: string; lastError: string | null; spec?: Partial<MachineSpec> }
 		| { ok: false; reason: string };
 };
 
@@ -417,7 +417,7 @@ function MachineRow({
 	const providerMessage =
 		machine.live.ok && machine.live.lastError ? machine.live.lastError : null;
 	const isActualError = stateName === "error";
-	const specText = compactSpec(machine.spec);
+	const specText = compactSpec(reportedMachineSpec(machine.live));
 	const providerMark = PROVIDER_MARK[machine.providerKind];
 	const ageHrs = Math.max(
 		0,
@@ -495,7 +495,7 @@ function MachineRow({
 						{AGENT_LABEL[machine.agentKind]}
 					</span>
 				</Cell>
-				<Cell label="spec">
+				<Cell label="actual allocation">
 					<span className="text-[var(--ret-text)]">
 						{specText}
 					</span>
@@ -715,7 +715,7 @@ function SpinUpForm({
 					onChange={(v) => setProvider(v as ProviderKind)}
 					/>
 				</Field>
-				<Field label="spec">
+				<Field label="requested sizing">
 					<Choice
 						value={presetId}
 						options={PRESETS.map((p) => ({

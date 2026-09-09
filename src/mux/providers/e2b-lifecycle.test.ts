@@ -29,3 +29,21 @@ test("default and short SDK timeouts retain the same explicit pause policy", asy
 	]);
 	assert.deepEqual(calls.map((call) => call.timeoutMs), [300_000, 1_000]);
 });
+
+test("E2B sizing remains template-defined and create does not pass ignored resource fields", async () => {
+	const calls: Record<string, unknown>[] = [];
+	const sdk = { Sandbox: {
+		create: async (options: Record<string, unknown>) => { calls.push(options); return { sandboxId: "template-worker" }; },
+		getInfo: async () => ({ state: "paused", cpuCount: 2, memoryMB: 512 }),
+		connect: async () => { assert.fail("describe must not wake the sandbox"); },
+	} } as unknown as E2bSdk;
+	const provider = createE2bProvider({ apiKey: "fixture-key" }, sdk);
+	await provider.create({ template: "existing-template", resources: { vcpu: 1, memoryMib: 2048, diskGib: 10 } });
+	assert.equal(calls[0]?.template, "existing-template");
+	assert.equal("cpuCount" in calls[0]!, false);
+	assert.equal("memoryMB" in calls[0]!, false);
+	assert.equal(provider.capabilities.limits?.resourceRequest, "unsupported");
+	const description = await provider.describe!("template-worker");
+	assert.deepEqual(description.resources, { vcpu: 2, memoryMib: 512 });
+	assert.equal(description.state, "sleeping");
+});

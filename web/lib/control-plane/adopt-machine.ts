@@ -33,7 +33,7 @@ export async function submitMachineIntent(
 }> {
 	const config = await getUserConfigById(userId);
 	const machine = config.machines.find(
-		(candidate) => candidate.id === machineId && !candidate.archived,
+		(candidate) => candidate.id === machineId && (!candidate.archived || intent.desiredState === "deleted"),
 	);
 	if (!machine) throw new Error(`machine ${machineId} does not exist`);
 	const linkedWorker = config.workers.find(
@@ -80,7 +80,11 @@ export async function submitMachineIntent(
 		idempotencyKey: intent.idempotencyKey,
 		forceBootstrap: intent.forceBootstrap,
 	};
-	const accepted = existing
+	// Deletion must be addressed to this exact sandbox even for an existing
+	// Worker. A legacy Worker keyed by a kept migration source's ID may now
+	// manage the destination: adopt's placement check rejects that mismatch
+	// before applying any destructive intent to the current Worker.
+	const accepted = existing && desiredState !== "deleted"
 		? await controlPlane.apply(
 				{ id: workerId, spec, desiredState },
 				options,

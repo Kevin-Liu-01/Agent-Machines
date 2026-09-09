@@ -160,7 +160,7 @@ test("provider capabilities are exactly what the routing model was written again
 				maxDiskGib: 9,
 				maxRuntimeMs: 3_600_000,
 				maxConcurrentSandboxes: 20,
-				resourceRequest: "unknown",
+				resourceRequest: "unsupported",
 			},
 		},
 		sprites: {
@@ -525,7 +525,7 @@ test("minVcpu passes on the baseline and rejects with baseline and request state
 	assert.deepEqual(result.accepted, ["vercel"]);
 	assert.equal(
 		reasonFor(result, "e2b"),
-		"minVcpu: requires at least 4 vCPU, e2b baseline is 2 vCPU and CreateSandboxOptions.resources is unknown on this substrate, so a larger size cannot be guaranteed",
+		"minVcpu: requires at least 4 vCPU, e2b baseline is 2 vCPU and CreateSandboxOptions.resources is unsupported on this substrate, so a larger size cannot be guaranteed",
 	);
 	// Past the ceiling the honored request stops helping, and the reason says
 	// which number ran out.
@@ -549,7 +549,7 @@ test("minVcpu carries the required and actual values for the dashboard", () => {
 	assert.equal(failures[0].required, "at least 4 vCPU");
 	assert.equal(
 		failures[0].actual,
-		"baseline 2 vCPU, ceiling 8 vCPU, resource requests unknown",
+		"baseline 2 vCPU, ceiling 8 vCPU, resource requests unsupported",
 	);
 });
 
@@ -597,7 +597,7 @@ test("minMemoryMib compares against the substrate's real baseline in MiB", () =>
 	assert.deepEqual(result.accepted, ["vercel"]);
 	assert.equal(
 		reasonFor(result, "e2b"),
-		"minMemoryMib: requires at least 512 MiB, e2b baseline is 478 MiB and CreateSandboxOptions.resources is unknown on this substrate, so a larger size cannot be guaranteed",
+		"minMemoryMib: requires at least 512 MiB, e2b baseline is 478 MiB and CreateSandboxOptions.resources is unsupported on this substrate, so a larger size cannot be guaranteed",
 	);
 });
 

@@ -28,7 +28,7 @@ import { deletionConfirmation, deletionStorageWarning, VERCEL_SNAPSHOT_CLEANUP_U
  * Visibility rules (driven by the live `state` so the bar never
  * offers an impossible transition):
  *   - wake:    visible when state === "sleeping"
- *   - sleep:   visible when state === "ready" (i.e. running)
+ *   - sleep:   visible when ready AND manual pause is explicitly supported
  *   - active:  visible when !active && !archived
  *   - archive: visible when !archived (soft delete, recoverable)
  *   - destroy: visible when archived OR when `allowDestroy` is true
@@ -133,7 +133,7 @@ export function MachineActions({
 	}, [run]);
 
 	const canWake = state === "sleeping" && (capabilities?.canWake ?? true);
-	const canSleep = state === "ready" && (capabilities?.canSleep ?? true);
+	const canSleep = state === "ready" && capabilities?.canSleep === true;
 	const canSetActive = !active && !archived;
 	const canArchive = !archived;
 	const canUnarchive = archived;
@@ -224,6 +224,13 @@ export function MachineActions({
 					title={error}
 				>
 					{error.slice(0, 80)}
+				</p>
+			) : null}
+			{state === "ready" && capabilities?.canSleep === false ? (
+				<p className="basis-full text-right text-[10px] text-[var(--ret-text-muted)]">
+					{providerKind === "sprites"
+						? "Sprites manages automatic idle suspension; active work or traffic can keep it running. Manual pause is unavailable."
+						: "Manual pause is unavailable on this provider. This page does not stop compute."}
 				</p>
 			) : null}
 			{canDestroy && deletionStorageWarning(providerKind) ? (

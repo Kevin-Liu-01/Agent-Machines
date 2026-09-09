@@ -75,6 +75,13 @@ Replaceable does not mean identical. Every provider and runtime declares what it
 
 Most products lock you into one runtime *or* one cloud. Agent Machines routes both axes independently. Every substrate implements a single `MachineProvider` interface (`provision` / `state` / `wake` / `sleep` / `destroy` / `exec` / `streamExec`), so the rest of the system is provider-agnostic.
 
+The shared interface does not promise identical operations. E2B supports manual
+pause/resume; Vercel saves and restores filesystem snapshots. Sprites manages
+idle suspension automatically, and neither Sprites nor the Dedalus public
+adapter exposes manual pause. Unsupported Sleep requests fail before changing
+Worker intent. Resource requests are also not allocation guarantees: E2B sizing
+is template-defined, and the dashboard reports observed resources separately.
+
 | Axis | Options | Abstraction |
 |------|---------|-------------|
 | **Agent runtime** | Hermes, OpenClaw, Claude Code, Codex CLI | bootstrap phase recipes + launch commands |
@@ -363,8 +370,25 @@ cannot serve -- `agent: "codex"` with `model: "anthropic/..."` -- is refused by
 formats and the model-id namespacing rule.
 
 The key is displayed once and stored only as a SHA-256 hash. Rotating it
-invalidates the previous key immediately. Set `bootstrap: false` on the client
-only when you intend to bootstrap the machine yourself.
+invalidates the previous key immediately. `bootstrap: false` skips the separate
+bootstrap request used by legacy servers. The current hosted server always
+includes bootstrap in its launch journal; that option does not disable the
+server-owned bootstrap.
+
+`await am.create()` waits for the launch journal to report success and a final
+machine placement before returning; it does not bootstrap an already-ready
+Worker again. `await agent.run()` waits for the completed run's result. Queued or
+running operations are not reported as ready or converted to empty responses.
+Legacy synchronous servers remain supported. The client submits each action
+once and polls its operation ID; it does not automatically replay failed or
+timed-out requests.
+
+The default total deadline is five minutes per `create()` or `run()`, including
+HTTP requests and journal reads. Configure `new AgentMachines({ timeoutMs:
+600_000, pollIntervalMs: 1_000 })`, or pass `{ timeoutMs, signal }` as the second
+argument to `create()` or `run()`. Aborting or timing out stops the local wait,
+not work already accepted by the server. Inspect the Worker and its operation
+history in the dashboard before deciding to submit again.
 
 ### The multiplexer (no control plane required)
 

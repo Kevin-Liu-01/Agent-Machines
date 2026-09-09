@@ -21,7 +21,7 @@ it("invariant_configuration_is_not_applied_until_the_operation_completes", async
 	expect(fetchMock).toHaveBeenCalledExactlyOnceWith("/api/dashboard/machines/chosen%2Fmachine", expect.objectContaining({ method: "PATCH", body: JSON.stringify({ model: "selected-model" }) }));
 	expect(finished).toBe(false); expect(messages).toEqual(["Runtime update queued…"]);
 	complete({ operation: { id: "operation-1", status: "succeeded" }, worker: { status: { phase: "running" } } });
-	expect(await request).toBe("Runtime configuration applied.");
+	expect(await request).toBe("Configured for new runs. Relaunch an already-open CLI to use it there.");
 });
 it("invariant_backend_validation_details_are_not_replaced_with_generic_success", async () => {
 	fetchMock.mockResolvedValue(Response.json({ error: "model_required", message: "Choose a Claude model." }, { status: 400 }));
@@ -48,6 +48,6 @@ it("invariant_pause_during_reconciliation_is_not_reported_as_applied", async () 
 });
 it("invariant_already_reconciled_operations_do_not_need_another_wait", async () => {
 	fetchMock.mockResolvedValue(Response.json({ ok: true, operation: { id: "operation-1", status: "succeeded" } }));
-	expect(await requestMachineRuntimeUpdate("target", { model: "next-model" })).toBe("Runtime configuration applied.");
+	expect(await requestMachineRuntimeUpdate("target", { model: "next-model" })).toBe("Configured for new runs. Relaunch an already-open CLI to use it there.");
 	expect(mocks.wait).not.toHaveBeenCalled();
 });

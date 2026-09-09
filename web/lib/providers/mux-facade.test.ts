@@ -411,7 +411,7 @@ describe("machineId scoping", () => {
 	});
 
 	it("reuses one connect across calls, and drops the handle on sleep and destroy", async () => {
-		const { binding, calls } = fakeBinding();
+		const { binding, calls } = fakeBinding({ park: true });
 		const provider = createMuxBackedProvider(binding);
 		await provider.exec("sbx-1", "one");
 		await provider.exec("sbx-1", "two");
@@ -521,6 +521,16 @@ describe("streamExec capability gate", () => {
 });
 
 describe("lifecycle", () => {
+	it("rejects manual pause before connect or state reads when no park operation exists", async () => {
+		const { binding, calls } = fakeBinding();
+		const provider = createMuxBackedProvider(binding);
+		expect(provider.capabilities.canSleep).toBe(false);
+		await expect(provider.sleep("sbx-1")).rejects.toMatchObject({ kind: "not_supported" });
+		expect(calls).toEqual([]);
+		expect(binding.substrate.connect).not.toHaveBeenCalled();
+		expect(binding.describe).not.toHaveBeenCalled();
+	});
+
 	it("wakes through the handle then re-reads state", async () => {
 		const { binding, calls } = fakeBinding();
 		const provider = createMuxBackedProvider(binding);
@@ -532,6 +542,7 @@ describe("lifecycle", () => {
 	it("parks and removes by id when the substrate supplies id-addressed ops", async () => {
 		const { binding, calls } = fakeBinding({ park: true, remove: true });
 		const provider = createMuxBackedProvider(binding);
+		expect(provider.capabilities.canSleep).toBe(true);
 		await provider.sleep("sbx-1");
 		await provider.destroy("sbx-1");
 		// No connect: on e2b and vercel, connecting resumes a parked sandbox, so
@@ -603,7 +614,7 @@ describe("capabilities", () => {
 			pty: "native",
 			canProvision: true,
 			canWake: true,
-			canSleep: true,
+			canSleep: false,
 			canDestroy: true,
 			canExec: true,
 			hasPersistentDisk: true,
@@ -622,5 +633,14 @@ describe("capabilities", () => {
 		});
 		expect(derived.runtime).toBe("ephemeral-session");
 		expect(derived.hasPersistentDisk).toBe(false);
+	});
+
+	it("derives manual pause from the operation, not persistence kind", () => {
+		for (const persistence of ["none", "filesystem-snapshot", "memory-snapshot", "always-on"] as const) {
+			const { binding } = fakeBinding();
+			const capabilities = { ...binding.substrate.capabilities, persistence };
+			expect(toProviderCapabilities(capabilities).canSleep).toBe(false);
+			expect(toProviderCapabilities(capabilities, { park: async () => {} }).canSleep).toBe(true);
+		}
 	});
 });

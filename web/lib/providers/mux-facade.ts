@@ -382,13 +382,13 @@ export function asMachineProviderError(
 
 /**
  * Derive the control-plane capability record from the substrate's declared mux
- * capabilities instead of restating it per adapter. All four substrates are
- * persistent machines that can be provisioned, woken, parked, destroyed and
- * exec'd against; the axes the mux declares (persistence model, streaming)
- * are what actually vary.
+ * capabilities and actual operations instead of restating it per adapter.
+ * Persistent storage does not imply a manual pause operation: some providers
+ * manage idle suspension themselves and expose no public park API.
  */
 export function toProviderCapabilities(
 	capabilities: SandboxCapabilities,
+	operations: Pick<MuxSubstrateBinding, "park"> = {},
 ): ProviderCapabilities {
 	return {
 		runtime:
@@ -398,7 +398,7 @@ export function toProviderCapabilities(
 		pty: capabilities.pty,
 		canProvision: true,
 		canWake: true,
-		canSleep: true,
+		canSleep: typeof operations.park === "function",
 		canDestroy: true,
 		canExec: true,
 		hasPersistentDisk: capabilities.persistence !== "none",
@@ -549,7 +549,7 @@ export function createMuxBackedProvider(
 
 	const provider: MachineProvider = {
 		kind,
-		capabilities: toProviderCapabilities(substrate.capabilities),
+		capabilities: toProviderCapabilities(substrate.capabilities, binding),
 		get hasCredentials(): boolean {
 			return substrate.ready().ok;
 		},
@@ -597,13 +597,11 @@ export function createMuxBackedProvider(
 		},
 
 		async sleep(machineId: string): Promise<ProviderMachineSummary> {
+			if (typeof binding.park !== "function") {
+				throw new MachineProviderError(kind, "not_supported", "This provider does not support manual pause. No compute was stopped.");
+			}
 			try {
-				if (binding.park) {
-					await binding.park(machineId);
-				} else {
-					const sandbox = await attach(machineId, "sleep");
-					await sandbox.sleep();
-				}
+				await binding.park(machineId);
 			} catch (error) {
 				throw fail("sleep", machineId, error);
 			} finally {

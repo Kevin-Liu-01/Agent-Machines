@@ -69,14 +69,22 @@ export async function agentArtifactsPresent(
 		return probe.stdout.trim() === "ok";
 	}
 
-	const hermesBin = `${appHome}/venv/bin/hermes`;
 	const envFile = `${appHome}/.env`;
 	const probe = await provider.exec(
 		machine.id,
-		`test -x ${hermesBin} && test -f ${envFile} && echo ok || echo missing`,
+		[
+			pathExports(home),
+			// The pinned uv tool install exposes ~/.local/bin/hermes, while
+			// older Workers use the durable venv and pre-baked images use /opt.
+			// These are the same paths accepted by the managed Hermes launcher.
+			`export PATH=${appHome}/venv/bin:/opt/hermes/bin:$PATH`,
+			'test -x "$(command -v hermes)"',
+			`test -f ${envFile}`,
+			"echo ok",
+		].join(" && "),
 		{ timeoutMs: 15_000 },
 	);
-	return probe.stdout.trim() === "ok";
+	return probe.exitCode === 0 && probe.stdout.trim() === "ok";
 }
 
 /** True when gateway/CLI files are absent but the machine should already be bootstrapped. */

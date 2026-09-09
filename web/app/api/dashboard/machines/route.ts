@@ -21,6 +21,7 @@ import { getUserConfig } from "@/lib/user-config/clerk";
 import {
 	PROVIDER_LABEL,
 	type MachineRef,
+	type MachineSpec,
 	type ProviderKind,
 } from "@/lib/user-config/schema";
 
@@ -33,7 +34,7 @@ type LiveMachine = Omit<MachineRef, "apiKey"> & {
 	providerLabel: string;
 	capabilities: ProviderCapabilities | null;
 	live:
-		| { ok: true; state: string; rawPhase: string; lastError: string | null }
+		| { ok: true; state: string; rawPhase: string; lastError: string | null; spec: Partial<MachineSpec> }
 		| { ok: false; reason: string };
 };
 
@@ -93,6 +94,8 @@ async function probe(
 				state: summary.state,
 				rawPhase: summary.rawPhase,
 				lastError: summary.lastError,
+				// Stored machine.spec is requested intent, never observed size.
+				spec: summary.spec ?? {},
 			},
 		};
 	} catch (err) {

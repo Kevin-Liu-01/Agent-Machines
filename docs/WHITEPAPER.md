@@ -291,9 +291,8 @@ common lifecycle and event boundary; it does not erase runtime differences.
 
 ### 6.2 Sandbox plane
 
-Four provider adapters implement provision, describe, execution, PTY where
-available, persistence, reattachment, public URL where available, sleep/wake,
-and teardown:
+Four provider adapters implement provision, describe, execution, persistence,
+reattachment, and teardown, plus PTY, public URLs, and pause/resume where supported:
 
 - E2B;
 - Sprites.dev;
@@ -302,6 +301,12 @@ and teardown:
 
 Capabilities are explicit. Unknown capability rejects a constraint that
 depends on it. Provider-specific lifecycle controls appear only when supported.
+E2B supports manual pause/resume; Vercel restores filesystem snapshots, not live
+processes. Sprites manages automatic idle suspension. Neither Sprites nor the
+Dedalus public adapter provides a manual pause operation. Unsupported pause
+requests must fail before a journal claims that compute stopped. Requested
+resources remain distinct from provider-reported allocation; E2B resources are
+defined by its template rather than create-time sizing fields.
 
 ### 6.3 Model plane
 

@@ -83,9 +83,8 @@ function spritesBinding(creds: SpritesCreds): MuxSubstrateBinding {
 	requireNoWake("sprites", "remove", provider.remove);
 	// No park() binding: the Sprites SDK has no suspend/pause (sprites
 	// auto-suspend on their own schedule) and the mux omits the member rather
-	// than stubbing a false claim. The facade's sleep fallback
-	// (connect + handle.sleep()) is a state read on this substrate -- the same
-	// no-op the deleted adapter always performed.
+	// than stubbing a false claim. The facade advertises canSleep: false and
+	// rejects manual pause without connecting or pretending compute stopped.
 	return {
 		kind: "sprites",
 		substrate: provider,

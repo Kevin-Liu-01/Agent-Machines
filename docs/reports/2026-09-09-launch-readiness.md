@@ -1,7 +1,8 @@
 # Launch-readiness audit — September 9, 2026
 
-Status: deployed release under end-to-end verification. This report distinguishes checked-in
-fixes from deployed evidence; it is not a blanket production-readiness claim.
+Status: deployed release under end-to-end verification, with a further corrective
+candidate in verification. This report distinguishes checked-in fixes from deployed
+evidence; it is not a blanket production-readiness claim.
 
 ## Observed end-to-end behavior
 
@@ -15,6 +16,9 @@ its own test credentials through onboarding, and reached the scoped Console.
 Bootstrap completed at 07:41:05 UTC, about 95 seconds after bootstrap started;
 the cold install included browser downloads. No instant-start claim is made.
 Provider inspection confirmed pause-on-timeout with implicit auto-resume disabled.
+At 08:40:44 UTC, a non-waking provider inspection found that same retained E2B
+source paused after its 08:39:30 deadline, rather than deleted. No post-timeout
+filesystem read or implicit wake was performed in that check.
 
 Its first managed task completed and automatically exported `release-proof.txt`:
 
@@ -27,6 +31,48 @@ Its first managed task completed and automatically exported `release-proof.txt`:
 - Reloading the Console restored both turns and all six execution events.
 - The native Sessions page independently displayed the saved Claude conversation,
   Bash command, read-back result, and answer from its JSONL history.
+
+### Migration, continued work, and configuration changes
+
+The account subsequently moved that Worker from E2B to Sprites through the hosted
+Fleet UI, keeping the source for independent comparison. The move completed at
+08:01:17 UTC. The stable Worker identity, output artifact, committed/staged/unstaged
+Git state, untracked files, canonical memory, and original native session bytes
+were independently compared. Dependency caches were intentionally excluded.
+Deployment changed from `520a853` to `a1a976a` during migration startup; this was
+not an immutable single-revision test. Full scope and hashes are recorded in the
+[hosted migration audit](2026-09-09-hosted-migration-audit.md).
+
+On Sprites, a new managed run correctly recalled the earlier conversation and
+read the transferred output from the new home directory. The native terminal
+also launched Claude successfully. This proves logical conversation continuity
+and saved native history, not native `--resume` of the original session, nor
+process or RAM migration.
+
+On deployed `a1a976a`, selecting Opus 4.8 reconciled runtime configuration. A new
+managed run independently reported `claude-opus-4-8` and returned the requested
+`MODEL-SWITCH-VERIFIED` response. An already-open native CLI stayed on its earlier
+model; the next candidate explicitly tells users to relaunch that CLI. Existing
+interactive sessions are not silently interrupted.
+
+A separate E2B Worker then verified deferred configuration while truly paused:
+
+- Pause operation `ae31766d-a569-41dd-b37b-ae0c820f3019` reached provider state
+  `paused`, with `onTimeout: pause` and `autoResume: false`.
+- Model operation `3edbedf7-eae9-408a-883a-060229e2c552` changed the desired model
+  to Opus 4.8 but left the provider paused and observed model at Sonnet 4.6.
+  Passive machine reads did not wake it.
+- Explicit wake `65593d0c-1870-4281-9c49-e0cd7ced9e01` resumed the same sandbox
+  and applied Opus 4.8 to the runtime model file and observed machine record.
+  The pre-pause fixture retained SHA-256
+  `b5b2bfb792e5d72398ba8e9ed926bfd126399dce60c6bb4d7b686eeced840120`.
+
+This test is distinct from the earlier Sprites pause defect: the deployed UI
+offered manual Sleep, while its adapter performed a no-op and reported success.
+The false sleeping intent was explicitly returned to running. The corrective
+candidate derives manual-pause support from a real provider operation, rejects
+unsupported requests before journaling or connecting, and withholds the button.
+Sprites automatic idle suspension is not presented as a manual stop guarantee.
 
 Public desktop and mobile checks passed on both domains: no failed images,
 page errors, or horizontal overflow. Registry checks showed the exact target and
@@ -109,6 +155,38 @@ restored by waking it.
 - Passive page reads do not wake compute or undo an explicit Pause. Missing
   sandboxes receive a terminal missing-state message instead of an endless
   “waking” state.
+- The hosted SDK waits for asynchronous provision and bootstrap, resolves the
+  final placement after failover, and waits for journaled run results. It uses
+  bounded waits, respects local aborts, and does not replay mutations. A real
+  new-Worker SDK test completed creation in about 60 seconds and its first task
+  in about 13 seconds, issuing one provision POST and one run POST, with no
+  redundant bootstrap. The initial failed client attempt still created its
+  Worker remotely; that resource was identified and retained for the pause test,
+  not lost or blindly retried. Local timeout is not remote cancellation.
+- Native model pickers use their own authenticated catalogs, normalize duplicate
+  aliases, and exclude incompatible or non-text APIs. Public fallback models are
+  suggestions, not verified availability. Custom opaque text-model IDs remain
+  intact, and stale requests cannot replace a different Worker's catalog.
+- Fleet resources distinguish requested intent from observed provider allocation.
+  E2B uses template-defined resources; ignored create-time sizing options were
+  removed. Missing allocation observations display unknown rather than requested
+  values as if they were provisioned.
+- Credential-entry fields use password inputs and disable browser text correction;
+  endpoint URLs and ordinary labels stay readable. Blank saved-key fields retain
+  the existing secret, with regression coverage for isolated key replacement.
+- Hermes readiness resolves the same executable paths as its managed launcher.
+  A real runtime switch installed the current uv-based CLI successfully, but the
+  deployed readiness check searched only an obsolete virtualenv location and
+  blocked runs. The corrected probe accepts the installed executable, retains
+  legacy layouts, and still rejects missing or non-executable installations.
+  Paid Hermes/OpenClaw task verification is pending deployment of this fix.
+- Archived machines accept explicit deletion without enabling other lifecycle
+  actions. Deletion validates the exact requested sandbox placement before
+  changing intent. A retained source whose legacy ID now identifies a migrated
+  Worker's destination fails closed instead of deleting that destination.
+  This protects the destination; it does not implement automatic cleanup of
+  that conflicting legacy source. Executable route/kernel/driver regressions
+  cover both archived deletion and the retained-source hazard.
 
 ## Verification boundaries
 
@@ -135,11 +213,14 @@ changes passed `pnpm check`: **802 SDK tests**, **1,281 web tests** (37 explicit
 platform-specific skips), typechecks, production build, and SDK package verification.
 The model picker now waits for a journaled runtime update instead of only changing
 the stored label; paused configuration changes are deferred until explicit wake.
-These follow-up changes still require deployment and a live switching check.
-
-Post-deployment pause/resume and cross-provider migration must still be recorded
-against the release's exact revision before
-this report can be treated as a launch sign-off.
+Revision `a1a976a` subsequently became ready on the production aliases. Actual
+switching and pause/wake evidence is recorded above; migration's deployment
+transition is explicitly scoped. The additional SDK, catalog, allocation, and
+manual-pause corrections, Hermes readiness, and archived-deletion protections
+passed the final aggregate `pnpm check` at approximately 08:41 UTC: **845
+SDK/source tests**, **1,393 web tests** (37 explicit platform-specific skips),
+both typechecks, a 204-page production build, and isolated SDK package
+verification. Deployment and post-deployment UI/runtime checks remain pending.
 
 ## Production authentication remains a separate check
 
@@ -149,7 +230,17 @@ September 9, the public `.com` sign-in page still loaded
 does not establish that this Vercel Production deployment uses its keys.
 At 07:24 UTC, a fresh read of this Vercel project's Production environment still
 classified both Clerk keys as development keys (values withheld).
+An independent environment refresh at 08:27 UTC found the same classification.
 No Clerk instance or user identity was silently switched. Production key
 connection and a fresh-account test on that deployment remain outstanding.
+
+The remaining configuration handoff is to set the existing production instance's
+`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` in this Vercel project's
+Production environment, then deploy again. Secrets must not be pasted into
+reports or chat. Account configuration and machine ownership are keyed by Clerk
+user ID; switching instances must not assume that development users, saved keys,
+or Worker ownership automatically transfer. Confirm the intended production
+owner identity before updating any owner/API-user environment mapping, and test
+a new production account separately.
 
 No API keys, passwords, browser sessions, or cookies belong in this report.

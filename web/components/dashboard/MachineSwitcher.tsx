@@ -25,7 +25,7 @@ import {
 	type ProviderKind,
 } from "@/lib/user-config/schema";
 import type { ProviderCapabilities } from "@/lib/providers";
-import { compactSpec } from "@/lib/fleet/view-model";
+import { compactSpec, reportedMachineSpec } from "@/lib/fleet/view-model";
 
 /**
  * Persistent machine switcher in the dashboard header.
@@ -59,7 +59,7 @@ type LiveMachine = {
 	archived?: boolean;
 	capabilities: ProviderCapabilities | null;
 	live:
-		| { ok: true; state: string; rawPhase: string; lastError: string | null }
+		| { ok: true; state: string; rawPhase: string; lastError: string | null; spec?: Partial<MachineSpec> }
 		| { ok: false; reason: string };
 };
 
@@ -284,7 +284,7 @@ export function MachineSwitcher({
 							const isActive = machine.id === data?.activeMachineId;
 							const isViewing = machine.id === displayed?.id;
 							const stateName = machine.live.ok ? machine.live.state : "unknown";
-							const specText = compactSpec(machine.spec);
+							const specText = `Actual: ${compactSpec(reportedMachineSpec(machine.live))}`;
 							return (
 								<li
 									key={machine.id}

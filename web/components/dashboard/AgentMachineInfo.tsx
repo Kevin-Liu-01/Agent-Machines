@@ -133,20 +133,22 @@ export function MachineInfoPanel({
 				) : null}
 			</div>
 			{spec ? (
-				<dl className="grid grid-cols-3 gap-1">
-					<SpecCell label="vCPU" value={`${normalizeMachineSpec(spec).vcpu ?? "—"}`} />
-					<SpecCell label="memory" value={specMemoryGib(spec)} />
-					<SpecCell label="storage" value={`${normalizeMachineSpec(spec).storageGib ?? "—"} GiB`} />
+				<dl className="grid grid-cols-3 gap-1" aria-label="Requested sizing">
+					<SpecCell label="requested vCPU" value={`${normalizeMachineSpec(spec).vcpu ?? "—"}`} />
+					<SpecCell label="requested memory" value={specMemoryGib(spec)} />
+					<SpecCell label="requested storage" value={`${normalizeMachineSpec(spec).storageGib ?? "—"} GiB`} />
 				</dl>
 			) : null}
 			<p className="text-[11px] leading-relaxed text-[var(--ret-text-dim)]">
-				Provisions an isolated{" "}
-				<code className="font-mono text-[10px] text-[var(--ret-text)]">
-					/home/machine
-				</code>{" "}
-				volume, a dedicated gateway port, and the agent runtime — bootstrapped
-				on spin-up.
+				Creates a cloud workspace and prepares the selected runtime. Requested
+				sizing is intent; the provider-reported allocation appears after launch.
 			</p>
+			{provider === "e2b" ? (
+				<p className="text-[11px] leading-relaxed text-[var(--ret-amber)]">
+					E2B allocation is defined by its template. Sizing requests do not resize
+					the sandbox; a larger allocation requires a suitable E2B template.
+				</p>
+			) : null}
 		</div>
 	);
 }

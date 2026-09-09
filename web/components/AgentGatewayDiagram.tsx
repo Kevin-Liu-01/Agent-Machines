@@ -34,8 +34,8 @@ const BENTOS: ReadonlyArray<BentoItem> = [
 	},
 	{
 		kicker: "03 / container",
-		title: "/home/machine persists",
-		body: "Sleep pauses compute; the filesystem survives. Chats, skills, memory, crons, sessions, artifacts -- all on disk, not in RAM.",
+		title: "Worker state persists",
+		body: "Chats, memory, schedules, sessions, and artifacts live on disk. Pause and recovery are provider-specific; file migration does not transfer running processes or RAM.",
 		span: "normal",
 		diagram: "container",
 	},

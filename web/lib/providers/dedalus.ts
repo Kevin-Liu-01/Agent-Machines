@@ -78,10 +78,8 @@ function dedalusBinding(creds: DedalusCreds): MuxSubstrateBinding {
 	requireNoWake("dedalus", "remove", provider.remove);
 	// No park() binding: POST /sleep is an HMAC-gated internal lifecycle route
 	// (public keys 401 "missing internal route signature"), so the mux omits
-	// park() rather than stubbing a false claim. The facade's sleep fallback
-	// (connect + handle.sleep()) reaches the mux handle's sleep(), which
-	// carries the identical 401-swallow-and-rely-on-autosleep behavior the
-	// deleted adapter had.
+	// park() rather than stubbing a false claim. The facade advertises
+	// canSleep: false and rejects manual pause before connecting.
 	return {
 		kind: "dedalus",
 		substrate: provider,

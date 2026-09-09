@@ -54,7 +54,7 @@ type MachineInput = {
 	createdAt: string;
 	archived?: boolean;
 	live:
-		| { ok: true; state: string; rawPhase: string; lastError: string | null }
+		| { ok: true; state: string; rawPhase: string; lastError: string | null; spec?: Partial<MachineSpec> }
 		| { ok: false; reason: string };
 };
 
@@ -81,6 +81,13 @@ export function normalizeMachineSpec(
 		...(typeof spec?.memoryMib === "number" ? { memoryMib: spec.memoryMib } : {}),
 		...(typeof spec?.storageGib === "number" ? { storageGib: spec.storageGib } : {}),
 	};
+}
+
+/** Only provider-reported allocation. Never substitute stored request intent. */
+export function reportedMachineSpec(
+	live: { ok?: boolean; error?: string; spec?: Partial<MachineSpec> | null } | null | undefined,
+): Partial<MachineSpec> | undefined {
+	return !live || live.ok === false || live.error ? undefined : normalizeMachineSpec(live.spec);
 }
 
 /** "2.0 GiB", or an em-dash when the record has no numeric memoryMib. */
@@ -121,11 +128,11 @@ export function formatResourceRow(
 		cpu: typeof vcpu === "number" ? `${vcpu} vCPU` : "— vCPU",
 		mem:
 			memoryMib === undefined
-				? "— MB"
+				? "— MiB"
 				: memoryMib >= 1024
-					? `${(memoryMib / 1024).toFixed(1)} GB`
-					: `${memoryMib} MB`,
-		disk: storageGib === undefined ? "— GB" : `${storageGib.toFixed(1)} GB`,
+					? `${(memoryMib / 1024).toFixed(1)} GiB`
+					: `${memoryMib} MiB`,
+		disk: storageGib === undefined ? "— GiB" : `${storageGib.toFixed(1)} GiB`,
 	};
 }
 
@@ -245,7 +252,7 @@ export function toFleetStreamCard(
 	logLines: LogLine[],
 	opts: { active: boolean; headline?: string | null; logsLoaded?: boolean },
 ): FleetStreamCardModel {
-	const resources = formatResourceRow(machine.spec);
+	const resources = formatResourceRow(reportedMachineSpec(machine.live));
 	const meta = agentMetaForKind(machine.agentKind);
 	const { lines, lastActivityAt, streamActive } = buildTerminalLines(
 		machine,

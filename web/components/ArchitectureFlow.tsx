@@ -429,11 +429,11 @@ const INITIAL_NODES: Node<NodeData>[] = [
 			eyebrow: "provider",
 			title: "Dedalus Machines",
 			subtitle: "default VM provider",
-			body: "Provisions, wakes, sleeps, and runs commands. Second-billed; ~30s cold boot, <5s warm.",
+			body: "Provisions persistent machines and runs commands. Manual pause is not available through the public adapter; startup time depends on provisioning and runtime setup.",
 			bullets: [
-				"provision / wake / sleep",
+				"provision / inspect / connect",
 				"state / command / destroy",
-				"second-billed VM",
+				"provider-managed lifecycle",
 			],
 			mark: "dedalus",
 			tone: "provider",
@@ -467,11 +467,11 @@ const INITIAL_NODES: Node<NodeData>[] = [
 		data: {
 			eyebrow: "active runtime",
 			title: "persistent Linux machine",
-			subtitle: "/home/machine is the durable volume",
-			body: "The product boundary. A resumable VM with persistent disk: sleep stops compute, the filesystem survives. Everything below this row lives on this machine.",
+			subtitle: "Worker state lives in the provider's home directory",
+			body: "The Worker keeps its files and runtime state on persistent storage. Manual pause, automatic idle suspension, and snapshot recovery depend on the provider.",
 			bullets: [
-				"1 vCPU / 2 GiB / 10 GiB default",
-				"sleep / wake by the second",
+				"observed allocation, separate from requested size",
+				"capability-gated pause and resume",
 				"gateway + agents + tools + state on disk",
 			],
 			tone: "machine",
@@ -1012,8 +1012,8 @@ export function ArchitectureFlow() {
 			<div className="mt-5 grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] md:grid-cols-4">
 				<MachineNote
 					label="machine state"
-					value="/home/machine persists"
-					body="Sleep pauses compute. Disk remains the source of truth."
+					value="provider-specific persistence"
+					body="Pause and recovery depend on the provider. Worker files remain the source of truth."
 				/>
 				<MachineNote
 					label="path split"

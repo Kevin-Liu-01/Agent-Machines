@@ -230,11 +230,11 @@ const CAPABILITIES: SandboxCapabilities = {
 		// concurrently running sandboxes" (Pro 100, extra concurrency
 		// purchasable to 1,100).
 		maxConcurrentSandboxes: 20,
-		// "unknown", not "honored": create() below does forward cpuCount and
-		// memoryMB, but docs/MUX-RESULTS.md finding 10 records that E2B ignored
-		// the sizing request on this plan, so a larger machine is not something
-		// routing may promise.
-		resourceRequest: "unknown",
+		// E2B 2.37 SandboxOpts / SandboxApi.createSandbox do not forward CPU
+		// or memory sizing. Those options belong to template builds, not
+		// sandbox creation. A template defines the allocation; resources here
+		// cannot resize it, regardless of the account plan.
+		resourceRequest: "unsupported",
 	},
 };
 
@@ -790,15 +790,9 @@ export function createE2bProvider(
 					lifecycle: { onTimeout: "pause", autoResume: false },
 					envs: options.env,
 					metadata: options.name ? { name: options.name } : undefined,
-					// Both are optional upstream: omit rather than pass
-					// undefined so E2B keeps its own defaults.
+					// Allocation is defined by the template. Do not pass ignored
+					// cpuCount/memoryMB fields as if they honored a sizing request.
 					...(options.template ? { template: options.template } : {}),
-					...(options.resources?.vcpu
-						? { cpuCount: options.resources.vcpu }
-						: {}),
-					...(options.resources?.memoryMib
-						? { memoryMB: Math.round(options.resources.memoryMib) }
-						: {}),
 				});
 				return createHandle(sdk, key, sandbox.sandboxId, sandbox);
 			} catch (error) {

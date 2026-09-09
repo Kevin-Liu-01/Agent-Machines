@@ -31,7 +31,7 @@ import { getEffectiveUserId } from "@/lib/user-config/identity";
 import { deletionStorageWarning } from "@/lib/dashboard/deletion-warning";
 
 import { forgetHostedPlacement } from "@/lib/mux/placements";
-import { MachineProviderError, getProvider } from "@/lib/providers";
+import { MachineProviderError, getProvider, type ProviderCapabilities } from "@/lib/providers";
 import {
 	getUserConfigById,
 	setOperationalUserConfigById,
@@ -73,8 +73,10 @@ export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
 	if (!found) return Response.json({ error: "not_found" }, { status: 404 });
 	const { config, machine } = found;
 	let live: unknown = null;
+	let capabilities: ProviderCapabilities | null = null;
 	try {
 		const provider = getProvider(machine.providerKind, config.providers);
+		capabilities = provider.capabilities;
 		live = await provider.state(machine.id);
 	} catch (err) {
 		const reason =
@@ -84,7 +86,7 @@ export async function GET(_req: Request, ctx: Ctx): Promise<Response> {
 	const { apiKey, ...rest } = machine;
 	return Response.json({
 		ok: true,
-		machine: { ...rest, hasApiKey: Boolean(apiKey) },
+		machine: { ...rest, hasApiKey: Boolean(apiKey), capabilities },
 		live,
 	});
 }

@@ -46,7 +46,7 @@ import { cn } from "@/lib/cn";
 import { withMachineId } from "@/lib/dashboard/api-url";
 import { agentLabel, agentLaunchCommand, isCliAgent } from "@/lib/dashboard/agent-launch";
 import { formatAge, formatBytes } from "@/lib/dashboard/format";
-import { normalizeMachineSpec, specMemoryGib } from "@/lib/fleet/view-model";
+import { compactSpec, normalizeMachineSpec, reportedMachineSpec, specMemoryGib } from "@/lib/fleet/view-model";
 import type {
 	GatewaySummary,
 	LiveDataEnvelope,
@@ -63,12 +63,14 @@ import {
 	AGENT_LABEL,
 	PROVIDER_LABEL,
 	type AgentKind,
+	type MachineSpec,
 } from "@/lib/user-config/schema";
 
 type MachineRouteResponse =
 	| {
 			ok: true;
 			live?: {
+				spec?: Partial<MachineSpec>;
 				state?: string;
 				rawPhase?: string;
 				lastError?: string | null;
@@ -110,6 +112,8 @@ type LaunchStep = {
 };
 
 type SnapshotState = {
+	allocation: Partial<MachineSpec> | null;
+	allocationMachineId: string | null;
 	machineState: string | null;
 	machineRawPhase: string | null;
 	machineError: string | null;
@@ -144,6 +148,8 @@ type ObservabilitySurface = {
 };
 
 const EMPTY_SNAPSHOT: SnapshotState = {
+	allocation: null,
+	allocationMachineId: null,
 	machineState: null,
 	machineRawPhase: null,
 	machineError: null,
@@ -323,10 +329,11 @@ export function AgentViewScreen() {
 					]);
 
 				setSnapshot((prev) => {
-					const next: SnapshotState = { ...prev, fetchedAt: new Date().toISOString() };
+					const next: SnapshotState = { ...prev, allocation: null, allocationMachineId: machineId, fetchedAt: new Date().toISOString() };
 
 					if (machineRes.status === "fulfilled" && machineRes.value.ok) {
 						const live = machineRes.value.live;
+						next.allocation = reportedMachineSpec(live) ?? null;
 						next.machineState = live?.state ?? live?.rawPhase ?? "unknown";
 						next.machineRawPhase = live?.rawPhase ?? live?.state ?? "unknown";
 						next.machineError = live?.lastError ?? live?.error ?? null;
@@ -604,6 +611,7 @@ export function AgentViewScreen() {
 	const logStatus = snapshot.logs?.status ?? "live";
 
 	if (!machine) return null;
+	const allocation = snapshot.allocationMachineId === machineId ? snapshot.allocation : null;
 	const runtimeProfile = runtimeProfileFor(machine.agentKind);
 	const launchCommand = agentLaunchCommand(machine.agentKind, machine.model);
 	const launchTerminalHref = `${base}/terminal?launch=1`;
@@ -914,23 +922,24 @@ export function AgentViewScreen() {
 				</div>
 
 				<div className="grid gap-4 xl:grid-cols-[minmax(360px,0.8fr)_minmax(0,1.2fr)]">
-					<Panel title="Machine Spec" icon={<Cpu size={13} />}>
+					<Panel title="Actual allocation" icon={<Cpu size={13} />}>
 						<div className="grid gap-3 sm:grid-cols-3">
-							<Metric label="vCPU" value={String(normalizeMachineSpec(machine.spec).vcpu ?? "—")} icon={<Cpu size={14} />} />
+							<Metric label="vCPU" value={String(normalizeMachineSpec(allocation).vcpu ?? "—")} icon={<Cpu size={14} />} />
 							<Metric
 								label="RAM"
-								value={specMemoryGib(machine.spec)}
+								value={specMemoryGib(allocation)}
 								icon={<MemoryStick size={14} />}
 							/>
 							<Metric
 								label="Disk"
-								value={`${normalizeMachineSpec(machine.spec).storageGib ?? "—"} GiB`}
+								value={`${normalizeMachineSpec(allocation).storageGib ?? "—"} GiB`}
 								icon={<HardDrive size={14} />}
 							/>
 						</div>
 						<KeyGrid
 							rows={[
 								["machine id", machineId],
+								["requested sizing", compactSpec(machine.spec)],
 								["provider", PROVIDER_LABEL[machine.providerKind]],
 								["bootstrap", machine.bootstrapState.phase],
 								["env profile", machine.environmentProfileId ?? "none"],

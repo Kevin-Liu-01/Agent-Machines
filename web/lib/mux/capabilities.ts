@@ -119,7 +119,7 @@ export const SUBSTRATE_CAPABILITIES: readonly SubstrateCapability[] = [
 			maxDiskGib: 9,
 			maxRuntimeMs: 3600000,
 			maxConcurrentSandboxes: 20,
-			resourceRequest: "unknown",
+			resourceRequest: "unsupported",
 		},
 		credentials: ["E2B_API_KEY"],
 		measured: { createMs: 265, execMs: 122 },

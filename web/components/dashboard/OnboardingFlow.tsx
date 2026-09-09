@@ -92,7 +92,7 @@ const PROVIDERS_META: Record<
 	dedalus: {
 		name: "Dedalus Machines",
 		tagline:
-			"Linux machines with persistent disk, manual sleep and wake, and preview tunnels.",
+			"Linux machines with persistent disk and preview tunnels. Manual pause is not available through the public adapter.",
 		keyLabel: "Dedalus API key",
 		keyPlaceholder: "dsk-live-...",
 		keyHint: "Get one at dedaluslabs.ai/dashboard/api-keys",
@@ -136,7 +136,7 @@ const COMPARISON_ROWS: ReadonlyArray<{
 }> = [
 	{ label: "Type", dedalus: "Persistent VM", e2b: "Pausable sandbox", sprites: "Persistent sandbox", vercel: "Persistent microVM" },
 	{ label: "Environment", dedalus: "Linux", e2b: "Linux", sprites: "Linux", vercel: "Linux" },
-	{ label: "Sleep / wake", dedalus: "Manual", e2b: "Pause / resume", sprites: "Auto-sleep / auto-wake", vercel: "Stop / auto-resume" },
+	{ label: "Sleep / wake", dedalus: "No manual pause", e2b: "Pause / resume", sprites: "Automatic idle suspension", vercel: "Snapshot / resume" },
 	{ label: "First launch", dedalus: "Includes runtime setup", e2b: "Includes runtime setup", sprites: "Includes runtime setup", vercel: "Includes runtime setup" },
 	{ label: "Storage", dedalus: "Persistent disk", e2b: "Retained across pause", sprites: "Persistent filesystem", vercel: "Filesystem snapshots" },
 	{ label: "Workspace URLs", dedalus: "Preview tunnels", e2b: "Per-port host", sprites: "Per-sprite URL", vercel: "Per-port URL" },
@@ -997,6 +997,9 @@ function KeyStep({
 				<input
 					type="password"
 					autoComplete="off"
+					autoCapitalize="none"
+					autoCorrect="off"
+					spellCheck={false}
 					placeholder={meta.keyPlaceholder}
 					value={value}
 					onChange={(e) => onChange(e.target.value)}
@@ -1041,6 +1044,9 @@ function KeyStep({
 								<input
 									type="password"
 									autoComplete="off"
+									autoCapitalize="none"
+									autoCorrect="off"
+									spellCheck={false}
 									placeholder={req.hint}
 									value={aiKeys[field]}
 									onChange={(e) => onAiKeyChange(field, e.target.value)}

@@ -24,6 +24,8 @@ export async function requestMachineRuntimeUpdate(
 	});
 	const phase = completed?.worker?.status?.phase;
 	const deferred = phase ? phase === "sleeping" : body.deferredUntilWake;
-	const result = deferred ? "Saved for next wake. The Worker remains paused." : "Runtime configuration applied.";
+	const result = deferred
+		? "Saved for next wake. The Worker remains paused."
+		: "Configured for new runs. Relaunch an already-open CLI to use it there.";
 	return body.metadataWarning ? `${result} ${body.metadataWarning}` : result;
 }

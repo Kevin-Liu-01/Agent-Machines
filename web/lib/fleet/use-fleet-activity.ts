@@ -19,7 +19,7 @@ type LiveMachine = {
 	createdAt: string;
 	archived?: boolean;
 	live:
-		| { ok: true; state: string; rawPhase: string; lastError: string | null }
+		| { ok: true; state: string; rawPhase: string; lastError: string | null; spec?: Partial<MachineSpec> }
 		| { ok: false; reason: string };
 };
 

@@ -25,7 +25,7 @@ import {
 import type { LoadoutDisplayBadge } from "@/lib/fleet/loadout-badges";
 import { resolveMachineLoadoutBadges } from "@/lib/fleet/loadout-badges";
 import type { FleetLoadoutSnapshot } from "@/lib/fleet/use-fleet-loadout";
-import { compactSpec, type FleetStreamCardModel } from "@/lib/fleet/view-model";
+import { compactSpec, reportedMachineSpec, type FleetStreamCardModel } from "@/lib/fleet/view-model";
 import type { ProviderCapabilities } from "@/lib/providers";
 import {
 	AGENT_LABEL,
@@ -52,7 +52,7 @@ type LiveMachine = {
 	bootstrapState: BootstrapState;
 	migrationState?: MigrationState | null;
 	live:
-		| { ok: true; state: string; rawPhase: string; lastError: string | null }
+		| { ok: true; state: string; rawPhase: string; lastError: string | null; spec?: Partial<MachineSpec> }
 		| { ok: false; reason: string };
 };
 
@@ -224,7 +224,7 @@ export function MachineFleetCard({
 				</div>
 
 				<div className="mt-3 grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-3">
-					<InfoCell icon={Cpu} label="shape" value={compactSpec(machine.spec)} />
+					<InfoCell icon={Cpu} label="actual allocation" value={compactSpec(reportedMachineSpec(machine.live))} />
 					<InfoCell icon={Network} label="connection" value={connection} />
 					<InfoCell icon={Clock3} label="activity" value={card.lastActivityLabel ?? card.uptime} />
 				</div>
