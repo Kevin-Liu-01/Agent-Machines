@@ -29,13 +29,19 @@ From the repository root, using Node `^20.19` or `>=22.12` and pnpm 10.30.0:
 ```bash
 corepack enable
 pnpm install --frozen-lockfile
-cp web/.env.local.example web/.env.local
+cp -n web/.env.local.example web/.env.local
 pnpm web
 ```
 
-Open <http://localhost:3210>.
+The copy preserves an existing local env file. Open
+<http://127.0.0.1:3210/dashboard>. With the example's `ALLOW_DEV_AUTH=1` and no
+Clerk keys, `next dev` renders the dashboard as a synthetic development user.
+Configuration is file-backed; this is not account creation or real sign-in.
+Restart the server after env changes. The bypass works only when
+`NODE_ENV=development`, never in a production build.
 
-For authenticated routes, configure Clerk:
+For real local authentication, set `ALLOW_DEV_AUTH=0` and configure a Clerk
+development instance:
 
 ```txt
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=...
@@ -56,8 +62,23 @@ Its API and POST exclusions do not exempt those requests from Vercel's
 whole-domain redirect. Verify Clerk DNS and certificates before testing login. See the
 [hosted authentication setup](../docs/LAUNCH.md#hosted-authentication-domain).
 
-For a local preview, the example enables `ALLOW_DEV_AUTH=1`, which works only
-under `next dev`. Set it to `0` and configure Clerk when testing actual sign-up.
+The production Clerk proxy is active at
+`https://agent-machines.dev/__clerk`, same-site but cross-origin from the public
+`www` app. Production uses that exact `NEXT_PUBLIC_CLERK_PROXY_URL`, and Clerk's
+domain proxy setting is enabled. Vercel's apex redirect is unset; the app handles
+`/__clerk` and sends other apex paths to `www` with HTTP 307. The server and app
+redirect were deployed before changing platform routing or activating clients.
+Real Chrome verified GitHub login through onboarding, a Codex `gpt-5.6-sol`
+Worker on Daytona, a completed task, and artifact read-back. The exact fixture
+was stopped with its files retained, not deleted. Google/X login remains
+unverified; see the
+[production verification report](../docs/reports/2026-09-09-production-auth-readiness.md).
+Clerk's primary domain, keys, and existing user identities were not migrated
+for this repair.
+Keep `NEXT_PUBLIC_CLERK_PROXY_URL` unset locally and in previews. See the
+[rollout and rollback procedure](../docs/LAUNCH.md#same-site-clerk-proxy-rollout).
+No completed production login is implied by local dashboard availability.
+
 Supabase with all [`supabase/migrations`](supabase/migrations) applied is required
 for the hosted operation journal and durable metrics. The local development
 session uses a file-backed configuration store.

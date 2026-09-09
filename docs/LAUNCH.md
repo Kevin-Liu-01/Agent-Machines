@@ -27,6 +27,20 @@ committed sources and leave marketplace snapshots unchanged. An intentional
 catalog update uses `pnpm --dir web refresh-catalog`; review and commit both
 `knowledge/` and `web/data/` before building the release.
 
+## Local development is not production authentication
+
+Run `pnpm web` from the repository root and open
+`http://127.0.0.1:3210/dashboard`. Preserve an existing ignored `web/.env.local`;
+copy the example only for a new checkout. With `ALLOW_DEV_AUTH=1` and Clerk keys
+left blank, `next dev` uses the synthetic development user and file-backed
+configuration. Restart the development server after changing its environment.
+
+The bypass requires `NODE_ENV=development`; it does not grant access in a
+production build. A rendered local dashboard or HTTP 200 under this bypass is
+not a sign-in test. To test real local Clerk authentication, disable the bypass
+and configure a Clerk development instance. Keep the production proxy URL unset
+locally and in previews.
+
 ## Configure the deployment
 
 - Use Clerk production keys for the production domain. Verify the allowed
@@ -59,7 +73,9 @@ primary domain `agent-machines.dev`. Vercel redirects both `agent-machines.com`
 and `www.agent-machines.com` to this origin with HTTP 308, preserving paths and
 queries. This is a whole-domain redirect, including public pages and APIs; it
 supersedes the earlier policy that kept marketing and API requests on `.com`.
-The existing `.dev` apex-to-`www` HTTP 307 redirect remains unchanged.
+The `.dev` apex's blanket Vercel redirect is now unset. The application serves
+the active `/__clerk` proxy there and redirects every other apex path to `www`
+with HTTP 307; the public canonical stays `www`.
 
 SDKs and other API clients must target `https://www.agent-machines.dev` directly
 (for example, `AGENT_MACHINES_URL=https://www.agent-machines.dev`). HTTP 308
@@ -82,6 +98,51 @@ use the exact callback URL shown in the production Clerk connection settings;
 do not substitute the marketing homepage. Enable only the scopes needed for
 sign-in. Verify each selected provider through its real consent and callback
 flow after credentials, DNS, and certificates are configured.
+
+### Same-site Clerk proxy rollout
+
+The apex proxy is active in production on source `37de0ac`, using the official
+`clerkFrontendApiProxy` helper without removing session or SDK authorization
+checks. Real Chrome verified GitHub login, onboarding, a Codex `gpt-5.6-sol`
+Worker on Daytona, its completed task, and artifact read-back. The exact fixture
+was stopped and retained for inspection, not deleted. Google/X login remains
+separate proof. See the
+[production auth and Worker evidence](reports/2026-09-09-production-auth-readiness.md).
+Follow [Clerk's proxy guidance](https://clerk.com/docs/guides/dashboard/dns-domains/proxy-fapi).
+
+Clerk requires the exact configured apex domain `agent-machines.dev`; both its
+UI and Backend API rejected the proposed `www` proxy. The corrected URL is
+`https://agent-machines.dev/__clerk`, same-site but cross-origin from the public
+`https://www.agent-machines.dev` application. Do not change Clerk's primary
+domain, keys, or user identities to accommodate the earlier URL.
+
+The completed activation used this order; preserve it when repeating the rollout:
+
+1. **Server before routing.** Deploy the apex `/__clerk`
+   handler plus the application's HTTP 307 apex-to-`www` redirect for every other
+   path. Require the exact apex origin, production `.dev` Clerk keys,
+   `NODE_ENV=production`, and `VERCEL_ENV=production`. Keep client proxy settings
+   unset and Clerk's domain proxy configuration unchanged.
+2. **Expose and verify the handler.** Only after that deployment is Ready, remove
+   Vercel's blanket apex redirect. Verify that apex `/__clerk` reaches the proxy
+   while other apex paths still redirect to `www` with their paths and queries.
+   Check forwarding, local/preview/wrong-host exclusions, and retained session
+   and API authorization gates; never expose the server secret.
+3. **Activate after verification.** Configure and verify
+   `https://agent-machines.dev/__clerk` in the production Clerk domain UI. Set
+   `NEXT_PUBLIC_CLERK_PROXY_URL` to that exact URL in Vercel Production and
+   redeploy. The current saved callback for all three social providers is
+   `https://agent-machines.dev/__clerk/v1/oauth_callback`. Verify browser loading,
+   sessions, each required OAuth callback, and a fresh account's completed Worker
+   task; successful activation alone does not complete that final check.
+
+For rollback after activation, remove the production client setting and redeploy,
+restore Clerk's previous domain proxy configuration, and retain the handler
+until no active client or configuration references it. Only then restore the
+blanket Vercel apex-to-`www` redirect before removing the app handler and redirect.
+Before activation, the same routing ordering applies if Vercel's rule was already
+removed. Direct-CNAME rollback does not fix this network's DNS failure. Preserve
+the existing keys, CNAMEs, identities, and authentication gates.
 
 ## Follow a new account to its first result
 

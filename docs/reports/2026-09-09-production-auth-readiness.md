@@ -1,5 +1,107 @@
 # Production authentication follow-up — September 9, 2026
 
+## Current operation — GitHub account-to-Worker flow passed
+
+Source `37de0ac` is deployed as Production/Ready deployment
+`dpl_5KdVA5itYcmqkTVhNXu2KpjNkETD`
+(`agent-machines-3shnftf6o-kl01s-projects.vercel.app`), with
+`NEXT_PUBLIC_CLERK_PROXY_URL=https://agent-machines.dev/__clerk`.
+Clerk's production domain UI reports the apex proxy enabled. The public app
+remains `https://www.agent-machines.dev`: this is **same-site, not same-origin**.
+The exact production-key, environment, and origin gates retain session and SDK
+authentication; no primary-domain, key, or existing user-identity migration was
+used to repair browser access.
+
+Vercel's blanket apex redirect was cleared only after the application's
+apex-to-`www` redirect deployment was Ready. The apex domain's platform redirect
+is now `null`; `/__clerk` reaches the handler, while other apex paths use the
+application's HTTP 307 redirect. Checks covered `/`, a docs URL with encoded and
+repeated query parameters, a `_next` static asset path, and `/__clerk-extra`;
+each redirected to the corresponding `www` path with its query preserved.
+
+The actual Frontend API environment GET and client OPTIONS requests returned
+HTTP 200 with `Access-Control-Allow-Origin: https://www.agent-machines.dev` and
+`Access-Control-Allow-Credentials: true`. ClerkJS 6.31.0 and UI 1.32.1 assets
+returned HTTP 200. In real Chrome, the sign-in form rendered; GitHub consent
+requested only read access to email and profile, returned through the apex
+callback, and reached authenticated **Pick your agent** onboarding as
+`Kevin-Liu-01`. The subsequent onboarding and first completed Worker task are
+verified below.
+
+The exact saved callback for GitHub, Google, and X is now
+`https://agent-machines.dev/__clerk/v1/oauth_callback`; all three saves were
+verified. Google and X real OAuth flows remain untested, and no paid X API call
+was made. See the [social login report](2026-09-09-social-login-setup.md).
+
+The full web suite passed 1,716 tests with 37 explicit skips. Separately, 128
+focused tests and TypeScript passed; these counts are not additive. The
+[rollout and rollback procedure](../LAUNCH.md#same-site-clerk-proxy-rollout)
+records the dependency order needed to keep the active proxy reachable.
+
+### First production Worker and artifact — passed
+
+The authenticated account selected the Coding Agent preset, Codex CLI, and
+Daytona. Existing, explicitly approved Daytona and OpenAI credentials were
+entered through the onboarding UI. Launch completed and automatically opened
+the authenticated runtime Console with Codex `gpt-5.6-sol` ready.
+
+| Evidence | Observed value |
+| --- | --- |
+| Machine | `b99cf49a-f0dd-4f13-9785-58bec785b3ce` (`Coding Agent-653158`) |
+| Observed Daytona allocation | 1 vCPU, 2 GiB RAM, 10 GiB disk |
+| Managed UI task | `97bdc0b1-2d17-40f6-a981-109e6424a07b`, completed in 41.5 seconds |
+| Native Codex session | `01a0883b-5aeb-7cd1-9b9c-9d8809120c49` |
+| Artifact | `auth-launch-verification.md`, 428 bytes |
+| Artifact path | `/home/daytona/.agent-machines/artifacts/auth-launch-verification.md` |
+
+The artifact was opened and independently read back through the authenticated
+Artifacts UI. Its preview contained the expected runtime, current directory,
+and non-secret file information. This verifies the actual sequence: production
+GitHub login, preset selection, provider-key save, launch, runtime Console,
+completed task, and inspected artifact. It does not verify Google or X login,
+every runtime/provider pairing, or later lifecycle persistence.
+
+Independent production checks passed and the bounded authentication-error scan
+found zero errors. However, one `GET /api/dashboard/chats` returned HTTP 502 at
+22:13:10 UTC, then recovered on the next poll while the task completed. The cause
+was not established. This is not a zero-5xx or long-term reliability claim.
+
+The UI deletion confirmation timed out in browser automation; deletion was not
+completed or claimed. Cleanup instead preserved this exact fixture for the
+owner to inspect. A fresh SDK lookup matched its ID, name, and `started` state;
+one `sandbox.stop(40)` call succeeded, and an independent fresh GET confirmed
+`stopped`. The machine was **stopped, not deleted**. Its filesystem and verified
+artifact are retained, and explicit wake remains available. No other resource
+or credential was changed. This is recoverable retention, not provider-absence
+proof or a guarantee of zero storage charges.
+
+### Local verification and preceding failure
+
+Public DNS, TLS, and Clerk verification pass. The preceding local-router checks
+(`192.168.1.254` and its IPv6 upstream) returned `NXDOMAIN` for
+`clerk.agent-machines.dev`, despite public resolver success. The working apex
+proxy repaired the tested browser flow without claiming that the router's DNS
+cache was corrected or changing system DNS settings.
+
+Separately, the local development server at `http://127.0.0.1:3210` is running
+with the existing ignored `ALLOW_DEV_AUTH=1` setting and no Clerk keys. The real
+Chrome dashboard renders, and the checked local health, page, and API requests
+returned HTTP 200. This is the development-only synthetic-user path, not Clerk
+sign-in, production authorization, or new-account proof.
+
+### Rejected initial proxy URL — historical
+
+Stage A commit `7dcd3ae` became Ready on Vercel, but its proposed
+`https://www.agent-machines.dev/__clerk` URL was not activated. Clerk's configured
+primary domain is exactly the apex `agent-machines.dev`. The production UI
+rejected the full `www` proxy URL, and the Backend API also rejected it with
+`form_param_format_invalid`: **Cannot be on a different domain**. A Ready
+deployment does not establish that Clerk accepts its proxy configuration.
+
+That earlier web gate passed 1,679 tests with 37 skips and TypeScript, but did
+not establish proxy activation. The corrected apex implementation and verified
+operation at the top of this report supersede that rejected configuration.
+
 ## Initial inspection — historical
 
 The later DNS and domain follow-up below supersedes the missing-DNS state and
@@ -140,19 +242,18 @@ no credits were purchased and no billable API calls were made. Google project
 At this earlier checkpoint, creation of persistent OAuth credentials, storage
 of provider secrets in Clerk, and Google's support/contact email awaited
 action-time user confirmation. The approved configuration above supersedes
-that preparation-only state; live login remains unverified.
+that preparation-only state; live login had not yet been verified then.
 
 ## Remaining launch proof
 
-- Resolve the browser's local DNS discrepancy and verify that production sign-in loads.
-- Verify the configured provider connections through their actual consent and
-  callback flows after DNS and certificates are ready; keep permissions limited
-  to sign-in and resolve any paid X profile-read boundary before testing it.
+- Verify Google and X through their actual consent and callback flows; keep
+  permissions limited to sign-in and resolve the paid X profile-read boundary
+  before testing it. GitHub consent, callback, and authenticated onboarding are
+  already verified.
 - Confirm the intended production owner mapping; do not infer automatic
   migration of development users, keys, or Worker ownership.
-- Exercise a fresh production account through onboarding, credential setup,
-  Worker creation, a completed real task, and inspection of its output.
 - Complete the separately requested, still-pending QA administrator cleanup.
 
-This report is not a declaration that production authentication or the complete
-new-account-to-completed-Worker flow is working.
+The tested GitHub account-to-completed-Worker-and-artifact flow passed. Google/X
+login, the recovered chats 502's cause, and the separate cleanup items remain
+outside that success claim.
