@@ -1,5 +1,21 @@
 # Post-authentication release checks — September 9, 2026
 
+## Deployment checkpoint
+
+Commit `e38fe69cca0bcfe0170c175a74599167dff14f88` was pushed to `origin/main`.
+Vercel deployment `dpl_73cgANhLTpuuAhZLFf712RXLKdY5`
+(`agent-machines-8wrssto4j-kl01s-projects.vercel.app`) became Production/Ready
+and was independently resolved through the canonical production alias.
+Health and the apex Clerk proxy returned 200, unsigned machine access returned
+401, the wrong-origin proxy returned 404, and the `.com`/apex redirects retained
+the expected target and query. The restored owner's dashboard displayed
+**Not measured** for empty latency history. Local health and the real local
+dashboard also passed after the release build.
+
+The subsequent explicit startup-reload and two-Worker terminal pass is tracked
+in the [terminal isolation report](2026-09-09-terminal-isolation.md), including
+a newly reproduced one-shot history bug and its scoped correction.
+
 ## Local candidate changes and gate
 
 Three reproduced or directly inspected issues were addressed:

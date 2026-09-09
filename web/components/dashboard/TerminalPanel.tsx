@@ -31,6 +31,7 @@ const SCROLLBACK_KEY = "agent-machines:terminal:scrollback";
 const MAX_HISTORY = 200;
 const MAX_SCROLLBACK = 100;
 const OUTPUT_COLLAPSE_LINES = 25;
+const UNCONFIRMED_COMMAND = "Completion was not confirmed. The command may still be running on this Worker; inspect it before retrying.";
 
 const COMMAND_GROUPS: ReadonlyArray<{
 	label: string;
@@ -147,6 +148,15 @@ type Props = {
 
 export function TerminalPanel({ initialCommand }: Props) {
 	const machineCtx = useOptionalMachineContext();
+	const machineId = machineCtx?.machineId;
+	if (!machineId) return <p role="status">Select a Worker before opening its one-shot terminal.</p>;
+	// A machine switch owns a new set of hooks, timers, drafts, and streams.
+	return <MachineTerminalPanel key={machineId} machineId={machineId} initialCommand={initialCommand} />;
+}
+
+function MachineTerminalPanel({ machineId, initialCommand }: Props & { machineId: string }) {
+	const historyKey = `${HISTORY_KEY}:${encodeURIComponent(machineId)}`;
+	const scrollbackKey = `${SCROLLBACK_KEY}:${encodeURIComponent(machineId)}`;
 	const [input, setInput] = useState(initialCommand ?? "");
 	const [entries, setEntries] = useState<Entry[]>([]);
 	const [history, setHistory] = useState<string[]>([]);
@@ -154,64 +164,67 @@ export function TerminalPanel({ initialCommand }: Props) {
 	const [submitting, setSubmitting] = useState(false);
 	const [runningIds, setRunningIds] = useState<Set<string>>(new Set());
 	const [error, setError] = useState<string | null>(null);
+	const [restored, setRestored] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const scrollRef = useRef<HTMLDivElement>(null);
-	const hasAutoRun = useRef(false);
+	const entriesRef = useRef(entries);
+	entriesRef.current = entries;
+	const active = useRef(true);
+	const requests = useRef(new Set<AbortController>());
 
 	useEffect(() => {
+		active.current = true;
+		return () => {
+			active.current = false;
+			for (const request of requests.current) request.abort();
+			requests.current.clear();
+		};
+	}, []);
+
+	useEffect(() => {
+		// Never assign old, unscoped storage to whichever Worker opens first.
 		try {
-			const rawHistory = window.sessionStorage.getItem(HISTORY_KEY);
+			const rawHistory = window.sessionStorage.getItem(historyKey);
 			if (rawHistory) {
-				const parsed = JSON.parse(rawHistory) as string[];
-				if (Array.isArray(parsed)) setHistory(parsed.slice(-MAX_HISTORY));
+				const parsed: unknown = JSON.parse(rawHistory);
+				if (Array.isArray(parsed)) setHistory(parsed.filter((item): item is string => typeof item === "string").slice(-MAX_HISTORY));
 			}
-			const rawScroll = window.sessionStorage.getItem(SCROLLBACK_KEY);
+		} catch {}
+		try {
+			const rawScroll = window.sessionStorage.getItem(scrollbackKey);
 			if (rawScroll) {
-				const parsed = JSON.parse(rawScroll) as Entry[];
+				const parsed: unknown = JSON.parse(rawScroll);
 				if (Array.isArray(parsed)) {
-					// Mark any previously-running entries as done on restore
-					setEntries(parsed.slice(-MAX_SCROLLBACK).map((e) =>
+					setEntries(parsed.filter(isStoredEntry).slice(-MAX_SCROLLBACK).map((e) =>
 						e.state === "running" || e.state === "pending"
-							? { ...e, state: "done" as EntryState }
+							? { ...e, state: "error" as EntryState, exitCode: null, error: UNCONFIRMED_COMMAND }
 							: e,
 					));
 				}
 			}
 		} catch {}
-	}, []);
+		setRestored(true);
+	}, [historyKey, scrollbackKey]);
 
 	useEffect(() => {
-		if (hasAutoRun.current) return;
-		hasAutoRun.current = true;
-		const timer = setTimeout(() => {
-			setEntries((current) => {
-				if (current.length === 0) {
-					void executeStreaming(STARTUP_COMMAND, true);
-				}
-				return current;
-			});
-		}, 200);
-		return () => clearTimeout(timer);
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []);
-
-	useEffect(() => {
+		if (!restored) return;
 		try {
 			window.sessionStorage.setItem(
-				SCROLLBACK_KEY,
+				scrollbackKey,
 				JSON.stringify(entries.slice(-MAX_SCROLLBACK)),
 			);
 		} catch {}
-	}, [entries]);
+	}, [entries, restored, scrollbackKey]);
 
 	useEffect(() => {
+		if (!restored) return;
 		try {
 			window.sessionStorage.setItem(
-				HISTORY_KEY,
+				historyKey,
 				JSON.stringify(history.slice(-MAX_HISTORY)),
 			);
 		} catch {}
-	}, [history]);
+	}, [history, restored, historyKey]);
 
 	useEffect(() => {
 		const el = scrollRef.current;
@@ -222,7 +235,10 @@ export function TerminalPanel({ initialCommand }: Props) {
 	const executeStreaming = useCallback(
 		async (commandRaw: string, silent = false): Promise<void> => {
 			const command = commandRaw.trim();
-			if (!command) return;
+			if (!command || !active.current) return;
+			const controller = new AbortController();
+			requests.current.add(controller);
+			const isCurrent = () => active.current && !controller.signal.aborted;
 
 			if (!silent) {
 				setHistoryCursor(null);
@@ -255,11 +271,14 @@ export function TerminalPanel({ initialCommand }: Props) {
 				const response = await fetch("/api/dashboard/exec/stream", {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ command, machineId: machineCtx?.machineId }),
+					body: JSON.stringify({ command, machineId }),
+					signal: controller.signal,
 				});
+				if (!isCurrent()) return;
 
 				if (!response.ok || !response.body) {
 					const detail = await response.json().catch(() => ({})) as { message?: string; error?: string };
+					if (!isCurrent()) return;
 					const message = detail.message ?? detail.error ?? `HTTP ${response.status}`;
 					setEntries((prev) =>
 						prev.map((e) =>
@@ -285,6 +304,7 @@ export function TerminalPanel({ initialCommand }: Props) {
 
 				while (true) {
 					const { value, done } = await reader.read();
+					if (!isCurrent()) return;
 					if (done) break;
 					buffer += decoder.decode(value, { stream: true });
 
@@ -308,15 +328,16 @@ export function TerminalPanel({ initialCommand }: Props) {
 					}
 				}
 
-				// Finalize: if still running, mark done
+				// EOF alone is not proof of a completed process.
 				setEntries((prev) =>
 					prev.map((e) =>
-						e.id === tempId && e.state === "running"
-							? { ...e, state: "done" as EntryState, finishedAt: new Date().toISOString() }
+						e.id === tempId && (e.state === "running" || e.state === "pending")
+							? { ...e, state: "error" as EntryState, exitCode: null, error: UNCONFIRMED_COMMAND, finishedAt: new Date().toISOString() }
 							: e,
 					),
 				);
 			} catch (err) {
+				if (!isCurrent()) return;
 				const message = err instanceof Error ? err.message : "fetch failed";
 				setError(message);
 				setEntries((prev) =>
@@ -327,17 +348,30 @@ export function TerminalPanel({ initialCommand }: Props) {
 					),
 				);
 			} finally {
-				setRunningIds((prev) => { const next = new Set(prev); next.delete(tempId); return next; });
-				if (!silent) {
-					setSubmitting(false);
-					setInput("");
-					setTimeout(() => inputRef.current?.focus(), 0);
+				requests.current.delete(controller);
+				if (isCurrent()) {
+					setRunningIds((prev) => { const next = new Set(prev); next.delete(tempId); return next; });
+					if (!silent) {
+						setSubmitting(false);
+						setInput("");
+						setTimeout(() => { if (isCurrent()) inputRef.current?.focus(); }, 0);
+					}
 				}
 			}
 		},
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-		[],
+		[machineId],
 	);
+
+	useEffect(() => {
+		if (!restored || entries.length > 0) return;
+		const timer = setTimeout(() => {
+			if (entriesRef.current.length === 0) void executeStreaming(STARTUP_COMMAND, true);
+		}, 200);
+		return () => clearTimeout(timer);
+		// Only the initial restored state decides whether to show startup diagnostics.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [restored, executeStreaming]);
 
 	const handleStreamEvent = useCallback(
 		(entryId: string, event: string, data: Record<string, unknown>) => {
@@ -376,14 +410,16 @@ export function TerminalPanel({ initialCommand }: Props) {
 					);
 					break;
 
-				case "done":
+				case "done": {
+					const validExit = typeof data.exitCode === "number" && Number.isInteger(data.exitCode);
 					setEntries((prev) =>
 						prev.map((e) =>
 							e.id === entryId
 								? {
 										...e,
-										state: "done" as EntryState,
-										exitCode: (data.exitCode as number) ?? 0,
+										state: (validExit ? "done" : "error") as EntryState,
+										exitCode: validExit ? data.exitCode as number : null,
+										error: validExit ? undefined : UNCONFIRMED_COMMAND,
 										stdout: (data.stdout as string) ?? e.stdout,
 										stderr: (data.stderr as string) ?? e.stderr,
 										elapsedMs: (data.elapsedMs as number) ?? e.elapsedMs,
@@ -393,6 +429,7 @@ export function TerminalPanel({ initialCommand }: Props) {
 						),
 					);
 					break;
+				}
 
 				case "error":
 					setEntries((prev) =>
@@ -427,6 +464,7 @@ export function TerminalPanel({ initialCommand }: Props) {
 	const runAllDiagnostics = useCallback(async () => {
 		const commands = COMMAND_GROUPS.flatMap((g) => g.items.map((i) => i.command));
 		for (const cmd of commands) {
+			if (!active.current) break;
 			await executeStreaming(cmd, true);
 		}
 	}, [executeStreaming]);
@@ -472,7 +510,7 @@ export function TerminalPanel({ initialCommand }: Props) {
 	function clearScrollback(): void {
 		setEntries([]);
 		try {
-			window.sessionStorage.removeItem(SCROLLBACK_KEY);
+			window.sessionStorage.removeItem(scrollbackKey);
 		} catch {}
 	}
 
@@ -633,6 +671,16 @@ export function TerminalPanel({ initialCommand }: Props) {
 }
 
 /* ─── Entry row ──────────────────────────────────────────────────────── */
+
+function isStoredEntry(value: unknown): value is Entry {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+	const entry = value as Record<string, unknown>;
+	return ["id", "startedAt", "finishedAt", "command", "stdout", "stderr"].every((field) => typeof entry[field] === "string")
+		&& typeof entry.elapsedMs === "number" && Number.isFinite(entry.elapsedMs)
+		&& (entry.exitCode === null || (typeof entry.exitCode === "number" && Number.isInteger(entry.exitCode)))
+		&& ["pending", "running", "done", "error"].includes(entry.state as string)
+		&& (entry.error === undefined || typeof entry.error === "string");
+}
 
 function EntryRow({ entry }: { entry: Entry }) {
 	const [expanded, setExpanded] = useState(true);
