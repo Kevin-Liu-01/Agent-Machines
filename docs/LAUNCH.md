@@ -33,16 +33,18 @@ provider/model credential was created. See the
 See the [cleanup record](reports/2026-09-09-qa-cleanup.md).
 
 The latest local candidate `pnpm check` completed with exit 0: 863 SDK/source
-tests and 1,786 web tests across 167 files passed, with 37 explicit skips; both
+tests and 1,787 web tests across 167 files passed, with 37 explicit skips; both
 TypeScript checks, the Next.js production build, and isolated SDK packaging
 passed. This does not replace deployed checks or mark every checklist item
 below passed. Preserve earlier lifecycle/migration evidence with its original commit and verification
 limits; map remaining checks explicitly rather than infer them from a working
 login or a completed model response.
 
-The final live startup-reload and native PTY switch checks passed. They also
-reproduced a separate one-shot terminal history isolation bug; its correction
-and deployed verification are tracked in the
+The final live startup-reload, native PTY switch, and corrected one-shot terminal
+isolation checks passed. These checks reproduced and closed a per-Worker history
+bug, including an interrupted-command test that preserved the other Worker's
+draft without claiming an unconfirmed command succeeded. Exact deployed scope,
+startup-diagnostic follow-up, and fixture cleanup are tracked in the
 [terminal isolation report](reports/2026-09-09-terminal-isolation.md).
 
 ## Reproduce the build

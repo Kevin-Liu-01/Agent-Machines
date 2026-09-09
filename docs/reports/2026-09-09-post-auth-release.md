@@ -14,7 +14,12 @@ dashboard also passed after the release build.
 
 The subsequent explicit startup-reload and two-Worker terminal pass is tracked
 in the [terminal isolation report](2026-09-09-terminal-isolation.md), including
-a newly reproduced one-shot history bug and its scoped correction.
+a reproduced one-shot history bug and its deployed correction. Final source
+`e4627ce1b4534d7d2784c1e6e69a1671629b80f6` passed the full gate and its real
+production startup-diagnostic retest on the independently verified Ready
+deployment `dpl_BLRgrQviNshVj9pZaAfCK7X9hbkk`. The corrected startup command
+returned the actual Worker home and filenames with exit 0 in 554 ms. This is
+one observed command duration, not a terminal latency guarantee.
 
 ## Local candidate changes and gate
 
@@ -82,10 +87,25 @@ an exhaustive authorization audit or evidence of provider-absence cleanup.
 
 ## Retention and remaining boundaries
 
-Fresh non-waking reads at 22:53:28 UTC confirmed the owner's Daytona proof
-machine stopped and the old E2B QA resource paused. Their disks remain retained
-and may incur storage charges. The local server at `http://127.0.0.1:3210`
-remains available. No unexpected task-owned long-running process was found.
+The owner's Daytona proof machine was deliberately woken for the final
+two-Worker checks, then stopped through its normal UI. Final non-waking reads
+at 23:36:44 UTC confirmed it stopped, the disposable startup/terminal fixture
+absent (404), and the old E2B QA resource paused. The original 428-byte artifact
+was independently verified intact before the final stop; its checksum and
+exact machine IDs are recorded in the terminal report. Retained original and
+old-QA disks may incur storage charges.
+
+After the release build, the existing local dev compiler returned 500 with
+unresolved SDK exports that already existed on disk. Stale resolution across
+the SDK's remove/rebuild window was the leading diagnosis, not a proven
+upstream cause. Restarting only the task-owned dev process restored health
+and dashboard HTTP 200 and a real browser-rendered dashboard. No cache or user
+files were deleted, no SDK rebuild was repeated, and the existing local-only
+development-auth configuration was preserved. The server remains available at
+`http://127.0.0.1:3210/dashboard`. Completed gate/dead-process ledger entries
+were pruned; the replacement development server is registered and retained.
+Unrelated concurrent `media/` files were left untouched and excluded from this
+release's commits.
 
 The approved six-field QA credential-copy cleanup and annual schedule disable
 are documented [separately](2026-09-09-qa-cleanup.md). They do not establish a
