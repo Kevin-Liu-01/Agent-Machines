@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { BrandMark } from "@/components/BrandMark";
 import { ClerkAppProvider } from "@/components/ClerkAppProvider";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
+import { SignInAvailability } from "@/components/SignInAvailability";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { WingBackground } from "@/components/WingBackground";
 import { AUTH_REDIRECTS, signInCleanupRedirect, type AuthSearchParams } from "@/lib/auth/redirects";
@@ -54,6 +55,7 @@ export default async function SignInPage({ searchParams, params }: {
 					</p>
 				</div>
 				{CLERK_READY ? (
+					<SignInAvailability>
 					<SignIn
 						routing="path"
 						path="/sign-in"
@@ -112,6 +114,7 @@ export default async function SignInPage({ searchParams, params }: {
 							},
 						}}
 					/>
+					</SignInAvailability>
 				) : (
 					<a
 						href="/"

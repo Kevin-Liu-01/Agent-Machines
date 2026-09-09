@@ -358,6 +358,14 @@ allocation remained unknown rather than being displayed as zero.
 
 ## Production authentication remains a separate check
 
+**20:11 UTC follow-up:** the production keys and owner mapping have since changed.
+The confirmed Clerk primary domain is `.dev`, but its DNS is unverified and
+social-provider credentials still require setup. See the
+[production authentication follow-up](2026-09-09-production-auth-readiness.md)
+for the new evidence, code-side candidate corrections, and remaining launch proof.
+The development-key observations below remain historical evidence, not the latest
+configuration.
+
 The owner reports an existing production Clerk instance. At 06:59 UTC on
 September 9, the public `.com` sign-in page still loaded
 `loving-seasnail-3.clerk.accounts.dev`. Existing production instance availability

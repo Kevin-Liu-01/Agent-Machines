@@ -31,6 +31,9 @@ catalog update uses `pnpm --dir web refresh-catalog`; review and commit both
 
 - Use Clerk production keys for the production domain. Verify the allowed
   origins, sign-in redirect, and sign-up settings in the same Clerk instance.
+  Publish its required DNS records and verify that Clerk has issued the Frontend
+  API and Account Portal certificates. A production key by itself does not make
+  the authentication domain reachable.
 - Configure Supabase and apply `web/supabase/migrations/001` through the latest
   migration in filename order. The operation journal requires migration 009;
   migration 010 removes the retired Dedalus model gateway.
@@ -48,6 +51,22 @@ The complete configuration template is
 [`web/.env.local.example`](../web/.env.local.example). Active sandbox providers
 are Daytona, E2B, Sprites, and Vercel. Retired provider records remain identifiable
 for safety, but cannot supply a new launch, API call, or automatic conversion.
+
+### Hosted authentication domain
+
+The hosted Clerk primary domain is `agent-machines.dev`. With this exact
+production instance configured, `.com` GET/HEAD requests to `/sign-in`,
+`/onboarding`, and `/dashboard` (including nested routes) move to
+`https://www.agent-machines.dev` before Clerk processes them. Public marketing
+and existing API URLs remain on their original hosts; API credentials and POST
+bodies must not be forwarded across origins. Local development and other Clerk
+instances do not activate this hosted-domain policy.
+
+Keep `redirect_url` destinations relative and validated. OAuth providers instead
+use the exact callback URL shown in the production Clerk connection settings;
+do not substitute the marketing homepage. Enable only the scopes needed for
+sign-in. Verify each selected provider through its real consent and callback
+flow after credentials, DNS, and certificates are configured.
 
 ## Follow a new account to its first result
 

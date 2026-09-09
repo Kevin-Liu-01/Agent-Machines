@@ -37,6 +37,24 @@ const CLERK_CONFIGURED = Boolean(
 		process.env.CLERK_SECRET_KEY,
 );
 
+function isPrimaryProductionClerkKey(key: string | undefined): boolean {
+	if (!key?.startsWith("pk_live_")) return false;
+	const encoded = key.slice("pk_live_".length);
+	if (/[^A-Za-z0-9+/=]/.test(encoded)) return false;
+	try {
+		const decoded = atob(encoded);
+		return decoded === "clerk.agent-machines.dev$" &&
+			btoa(decoded).replace(/=+$/, "") === encoded.replace(/=+$/, "");
+	} catch {
+		return false;
+	}
+}
+
+const USE_PRIMARY_AUTH_HOST =
+	process.env.NODE_ENV === "production" &&
+	CLERK_CONFIGURED &&
+	isPrimaryProductionClerkKey(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+
 const DEV_BYPASS =
 	process.env.NODE_ENV === "development" &&
 	process.env.ALLOW_DEV_AUTH === "1";
@@ -78,6 +96,20 @@ export default async function proxy(
 	request: NextRequest,
 	event: NextFetchEvent,
 ) {
+	// Production sessions belong to .dev. Move browser auth pages before Clerk
+	// touches .com, but never forward API credentials or server-action bodies.
+	if (
+		USE_PRIMARY_AUTH_HOST &&
+		(request.method === "GET" || request.method === "HEAD") &&
+		(request.nextUrl.hostname === "agent-machines.com" ||
+			request.nextUrl.hostname === "www.agent-machines.com") &&
+		/^\/(sign-in|dashboard|onboarding)(\/|$)/.test(request.nextUrl.pathname)
+	) {
+		const destination = new URL("https://www.agent-machines.dev");
+		destination.pathname = request.nextUrl.pathname;
+		destination.search = request.nextUrl.search;
+		return NextResponse.redirect(destination);
+	}
 	if (CLERK_CONFIGURED) return guarded(request, event);
 	if (!isProtectedPage(request) && !isProtectedApi(request)) {
 		return NextResponse.next();

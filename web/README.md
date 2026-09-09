@@ -42,6 +42,12 @@ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=...
 CLERK_SECRET_KEY=...
 ```
 
+The hosted production Clerk instance uses `agent-machines.dev`. Browser auth and
+dashboard pages on `.com` redirect to `www.agent-machines.dev` when this exact
+production instance is configured; public pages and API endpoints do not move.
+Verify Clerk DNS and certificates before testing login. See the
+[hosted authentication setup](../docs/LAUNCH.md#hosted-authentication-domain).
+
 For a local preview, the example enables `ALLOW_DEV_AUTH=1`, which works only
 under `next dev`. Set it to `0` and configure Clerk when testing actual sign-up.
 Supabase with all [`supabase/migrations`](supabase/migrations) applied is required
