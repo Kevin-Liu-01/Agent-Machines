@@ -6,6 +6,30 @@ deleted, migrated, or relabeled. Deletion removes disposable provider disks;
 checked-in evidence and private verification screenshots remain, not recoverable
 copies of every sandbox filesystem.
 
+## Approved administrator cleanup — completed at 22:37 UTC
+
+The owner explicitly approved removing the two development QA accounts' saved
+credential copies and disabling their annual test schedule. Immediately before
+each write, fresh Clerk reads matched the exact QA identity and metadata
+fingerprint. One `PATCH /v1/users/{id}/metadata` was issued per account; neither
+write was replayed. Independent GETs verified the complete expected metadata.
+
+| QA user | Removed server-only secret fields |
+| --- | --- |
+| `user_3J583f03iTTmxiyOeSVDHQHe48i` | Daytona, E2B, and Sprites `apiKey`; Anthropic model key |
+| `user_3J4rO7BDLBYI7e2QrMDljAQsiVD` | E2B `apiKey`; Anthropic model key |
+
+Schedule `1125a99f-fdb8-42dc-8145-90fa097f1ba7` on the second account now has
+`enabled: false`. Its expression, target, history, and every other field were
+preserved. Public and unsafe metadata, non-secret provider settings, and all
+unrelated private metadata were independently confirmed unchanged.
+
+These six field removals do not revoke the original keys at their providers,
+delete users or disks, or change the production owner's configuration. The old
+E2B resource remains retained; its latest non-waking observation was `paused`.
+The production proof Worker `b99cf49a-f0dd-4f13-9785-58bec785b3ce` remains stopped
+with its artifact retained. No already-running task was canceled by this cleanup.
+
 ## Hosted cleanup on `d1eb6d9`
 
 The isolated QA account was pinned to `user_3J583f03iTTmxiyOeSVDHQHe48i`. Before
@@ -36,7 +60,7 @@ fixture `24b471d1-4025-4f0f-808c-e22099d6f38a` was independently matched to
 provider GET confirmed HTTP 404 at 10:48:02 UTC. Both local adapter fixtures are
 now removed; their verification evidence remains.
 
-## Retained at this checkpoint
+## Retained at the earlier checkpoint — historical
 
 - The old, separate Clerk QA account's schedule `1125a99f-fdb8-42dc-8145-90fa097f1ba7`
   remains enabled; its next matching date is September 9, 2027. Its E2B placement
@@ -75,9 +99,9 @@ reported `configured: false`, and the old bearer alone returned HTTP 401.
 This revokes the disposable Agent Machines SDK credential, not the owner-supplied
 Daytona or model-provider credentials used by the deployment.
 
-Saved vendor/model credential copies in the two disposable Clerk QA accounts are
-a separate cleanup item, not covered by SDK-key revocation. Removing those copies
-and disabling the old QA-only schedule through administrator access remains
-pending explicit approval. The exact QA user IDs are
+At this earlier checkpoint, saved vendor/model credential copies in the two
+disposable Clerk QA accounts were a separate cleanup item, not covered by SDK-key
+revocation. The administrator cleanup above subsequently removed those copies
+and disabled the old QA-only schedule after explicit approval. The exact QA IDs are
 `user_3J583f03iTTmxiyOeSVDHQHe48i` and `user_3J4rO7BDLBYI7e2QrMDljAQsiVD`.
 The owner's actual account and Vercel Production environment are excluded.

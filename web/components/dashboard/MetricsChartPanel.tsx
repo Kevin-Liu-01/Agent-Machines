@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
 	Area,
 	AreaChart,
@@ -64,6 +64,19 @@ type LatencySample = {
 	ms: number;
 };
 
+type LatencyStats = ReturnType<typeof stats>;
+
+type MetricsSnapshot = {
+	machineId: string | null;
+	gateway: GatewaySummary | null;
+	logs: LogsPayload | null;
+	latencyHistory: LatencySample[];
+};
+
+function emptyMetrics(machineId: string | null): MetricsSnapshot {
+	return { machineId, gateway: null, logs: null, latencyHistory: [] };
+}
+
 const LEVEL_COLORS = {
 	info: "var(--ret-purple)",
 	warn: "var(--ret-amber)",
@@ -85,64 +98,92 @@ type Props = {
 };
 
 export function MetricsChartPanel({ pollMs = POLL_MS, activeMachineId }: Props) {
-	const [gateway, setGateway] = useState<GatewaySummary | null>(null);
-	const [logs, setLogs] = useState<LogsPayload | null>(null);
-	const latencyRef = useRef<LatencySample[]>([]);
-	const [latencyHistory, setLatencyHistory] = useState<LatencySample[]>([]);
+	const machineId = activeMachineId ?? null;
+	const [metrics, setMetrics] = useState(() => emptyMetrics(machineId));
+	// Do not display the previous machine even during the render before the
+	// new effect resets its state. One snapshot owns all machine-scoped data.
+	const { gateway, logs, latencyHistory } = metrics.machineId === machineId
+		? metrics
+		: emptyMetrics(machineId);
 
 	useEffect(() => {
 		let stopped = false;
-		let interval: number;
+		let gatewayUnavailable = false, logsUnavailable = false;
+		let gatewayInFlight = false, logsInFlight = false;
+		const controller = new AbortController();
+		setMetrics((current) => current.machineId === machineId ? current : emptyMetrics(machineId));
 
-		async function tick(): Promise<void> {
+		async function pollGateway(): Promise<void> {
+			if (stopped || gatewayUnavailable || gatewayInFlight) return;
+			gatewayInFlight = true;
 			try {
-				const [gwRes, logsRawRes] = await Promise.all([
-					fetch("/api/dashboard/gateway", { cache: "no-store" }).catch(() => null),
-					fetch(withMachineId("/api/dashboard/logs?n=200", activeMachineId), {
-						cache: "no-store",
-					}).catch(() => null),
-				]);
+				const response = await fetch(withMachineId("/api/dashboard/gateway", machineId), {
+					cache: "no-store", signal: controller.signal,
+				});
 				if (stopped) return;
-
-				if (gwRes?.status === 404 || logsRawRes?.status === 404) {
-					window.clearInterval(interval);
-					stopped = true;
+				if (response.status === 404) {
+					// Native CLI runtimes have no gateway. Logs remain independent.
+					gatewayUnavailable = true;
+					setMetrics((current) => stopped ? current : { ...current, gateway: null });
 					return;
 				}
-
-				const gw = gwRes?.ok
-					? ((await gwRes.json()) as GatewaySummary)
-					: null;
-				const logsRes = logsRawRes?.ok
-					? ((await logsRawRes.json()) as LiveDataEnvelope<LogsPayload>)
-					: null;
-
-				setGateway(gw);
-				setLogs(logsRes?.ok ? logsRes.data : null);
-
-				if (gw && Number.isFinite(gw.latencyMs)) {
-					const next = [
-						...latencyRef.current,
-						{ at: Date.now(), ms: gw.latencyMs },
-					].slice(-HISTORY_MAX);
-					latencyRef.current = next;
-					setLatencyHistory(next);
-				}
+				if (!response.ok) return;
+				const gw = (await response.json()) as GatewaySummary;
+				if (stopped) return;
+				setMetrics((current) => stopped || current.machineId !== machineId ? current : {
+					...current,
+					gateway: gw,
+					latencyHistory: gw && Number.isFinite(gw.latencyMs)
+						? [...current.latencyHistory, { at: Date.now(), ms: gw.latencyMs }].slice(-HISTORY_MAX)
+						: current.latencyHistory,
+				});
 			} catch {
-				// Swallow -- the panel renders whatever data it last had,
-				// so a transient network blip doesn't blank the charts.
+				// Preserve this machine's last observation on a transient read failure.
+			} finally {
+				gatewayInFlight = false;
 			}
 		}
 
-		void tick();
-		interval = window.setInterval(() => {
-			if (document.visibilityState === "visible") void tick();
+		async function pollLogs(): Promise<void> {
+			if (stopped || logsUnavailable || logsInFlight) return;
+			logsInFlight = true;
+			try {
+				const response = await fetch(withMachineId("/api/dashboard/logs?n=200", machineId), {
+					cache: "no-store", signal: controller.signal,
+				});
+				if (stopped) return;
+				if (response.status === 404) {
+					logsUnavailable = true;
+					setMetrics((current) => stopped ? current : { ...current, logs: null });
+					return;
+				}
+				if (!response.ok) return;
+				const result = (await response.json()) as LiveDataEnvelope<LogsPayload>;
+				if (stopped) return;
+				setMetrics((current) => stopped || current.machineId !== machineId ? current : {
+					...current, logs: result?.ok ? result.data : null,
+				});
+			} catch {
+				// A failed log read must not discard a gateway observation.
+			} finally {
+				logsInFlight = false;
+			}
+		}
+
+		function tick() {
+			void pollGateway();
+			void pollLogs();
+		}
+		tick();
+		const interval = window.setInterval(() => {
+			if (document.visibilityState === "visible") tick();
 		}, pollMs);
 		return () => {
 			stopped = true;
+			controller.abort();
 			window.clearInterval(interval);
 		};
-	}, [pollMs, activeMachineId]);
+	}, [pollMs, machineId]);
 
 	const latencyStats = useMemo(() => stats(latencyHistory), [latencyHistory]);
 	const buckets = useMemo(
@@ -220,7 +261,7 @@ function LatencyChart({
 	stats,
 }: {
 	history: LatencySample[];
-	stats: { min: number; max: number; avg: number; last: number };
+	stats: LatencyStats;
 }) {
 	const data = history.map((s, idx) => ({ idx, ms: s.ms }));
 	return (
@@ -229,10 +270,10 @@ function LatencyChart({
 			hint={`${history.length}/${HISTORY_MAX} samples`}
 			footer={
 				<>
-					<Stat label="last" value={`${stats.last} ms`} />
-					<Stat label="avg" value={`${stats.avg} ms`} />
-					<Stat label="min" value={`${stats.min} ms`} />
-					<Stat label="max" value={`${stats.max} ms`} />
+					<Stat label="last" value={stats ? `${stats.last} ms` : "Not measured"} />
+					<Stat label="avg" value={stats ? `${stats.avg} ms` : "Not measured"} />
+					<Stat label="min" value={stats ? `${stats.min} ms` : "Not measured"} />
+					<Stat label="max" value={stats ? `${stats.max} ms` : "Not measured"} />
 				</>
 			}
 		>
@@ -466,7 +507,7 @@ function LegendChip({ color, label }: { color: string; label: string }) {
 
 function stats(history: LatencySample[]) {
 	if (history.length === 0) {
-		return { min: 0, max: 0, avg: 0, last: 0 };
+		return null;
 	}
 	const xs = history.map((s) => s.ms);
 	const min = Math.round(Math.min(...xs));
@@ -531,7 +572,7 @@ function agentBreakdown(lines: LogLine[]): PieSlice[] {
 	for (const line of lines) {
 		const source = KNOWN_AGENTS.has(line.source ?? "")
 			? (line.source as string)
-			: "hermes";
+			: "other";
 		counts.set(source, (counts.get(source) ?? 0) + 1);
 	}
 	return Array.from(counts.entries()).map(([name, value]) => ({

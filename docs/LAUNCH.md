@@ -6,6 +6,40 @@ that Clerk, Supabase, the selected sandbox, and the model provider are wired
 together on the deployed domain. Record the commit, deployment URL, runtime,
 provider, Worker ID, and result for each live run. Never record keys or tokens.
 
+## September 9 evidence checkpoint
+
+The production GitHub new-account → onboarding → Codex/Daytona Worker → completed
+task → inspected artifact flow passed on source `37de0ac`. Google and X then
+passed real consent/callback, authenticated Fleet access, and full reload on
+documentation-only release `32a8648`, retaining the same stopped Worker. No X
+credit purchase or auto-recharge change was made; this is not a free-login claim.
+The [production report](reports/2026-09-09-production-auth-readiness.md) and
+[social-login report](reports/2026-09-09-social-login-setup.md) retain exact scope.
+
+The approved old-QA credential-copy removal and annual test-schedule disable
+completed at 22:37 UTC; retained disks were not deleted. On `32a8648`, bounded
+live cross-account UI/API checks passed: a second ordinary account had an empty
+Fleet and no provider/model credentials, while the known owner's Worker,
+artifacts, chats, logs, sessions, recipe, and operation were unavailable without
+foreign data. Owner-side UI supplied positive controls for the real recipe,
+machine binding, and succeeded operation. This is not an exhaustive
+authorization audit.
+
+One explicitly approved temporary SDK key was created through Settings for the
+read-only API checks, then revoked through the UI. An independent request with
+the old bearer returned HTTP 401 afterward; no second-account Worker or
+provider/model credential was created. See the
+[post-auth release evidence](reports/2026-09-09-post-auth-release.md).
+See the [cleanup record](reports/2026-09-09-qa-cleanup.md).
+
+The latest local candidate `pnpm check` completed with exit 0: 863 SDK/source
+tests and 1,770 web tests across 166 files passed, with 37 explicit skips; both
+TypeScript checks, the Next.js production build, and isolated SDK packaging
+passed. This does not replace deployed checks or mark every checklist item
+below passed. Preserve earlier lifecycle/migration evidence with its original commit and verification
+limits; map remaining checks explicitly rather than infer them from a working
+login or a completed model response.
+
 ## Reproduce the build
 
 Use Node `^20.19` or `>=22.12` and the pinned pnpm 10.30.0 from the repository root:
@@ -26,6 +60,12 @@ No check above creates a sandbox or calls a model. Builds prepare local data fro
 committed sources and leave marketplace snapshots unchanged. An intentional
 catalog update uses `pnpm --dir web refresh-catalog`; review and commit both
 `knowledge/` and `web/data/` before building the release.
+
+For a separate, potentially billable managed-response check, use the
+[explicit-fixture smoke procedure](SMOKE.md). It requires an exact machine,
+runtime, origin, and paid-run opt-in, and never selects or provisions a fleet.
+The retired matrix script is not a release gate. A successful smoke response is
+not proof of signup, tool execution, artifacts, or persistence.
 
 ## Local development is not production authentication
 
@@ -105,8 +145,9 @@ The apex proxy is active in production on source `37de0ac`, using the official
 `clerkFrontendApiProxy` helper without removing session or SDK authorization
 checks. Real Chrome verified GitHub login, onboarding, a Codex `gpt-5.6-sol`
 Worker on Daytona, its completed task, and artifact read-back. The exact fixture
-was stopped and retained for inspection, not deleted. Google/X login remains
-separate proof. See the
+was stopped and retained for inspection, not deleted. Subsequent Google/X consent,
+callback, and authenticated full-reload checks passed on `32a8648`; they did not
+create another Worker or repeat the paid task. See the
 [production auth and Worker evidence](reports/2026-09-09-production-auth-readiness.md).
 Follow [Clerk's proxy guidance](https://clerk.com/docs/guides/dashboard/dns-domains/proxy-fapi).
 

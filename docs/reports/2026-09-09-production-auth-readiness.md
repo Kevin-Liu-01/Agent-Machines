@@ -1,5 +1,38 @@
 # Production authentication follow-up — September 9, 2026
 
+## Subsequent production checks — Google, X, and QA cleanup
+
+Documentation-only commit `32a8648` became Production/Ready deployment
+`dpl_HPFRP8YoTpuouXsfEMcxpi45k43L`. Real Chrome then separately signed out and
+completed Google and X OAuth consent through the configured apex callback.
+Both returned to the authenticated Fleet; a full reload still showed the same
+stopped `Coding Agent-653158` Worker. Google requested name/profile and email.
+X showed its required read/email/offline permissions and an unverified-developer
+warning; no posting permission was requested or used.
+
+One X sign-in was exercised against existing prepaid access. The console showed
+$4.76 before and after the check; this is not proof that profile lookups are free.
+No credits were purchased and auto-recharge remained off. X documents metered
+[user-profile reads](https://docs.x.com/x-api/getting-started/pricing).
+
+At 22:37 UTC, the owner-approved administrator cleanup removed six saved secret
+fields from the two old development QA accounts and disabled their annual test
+schedule. Fresh reads proved the exact changes and preservation of unrelated
+metadata. See the [cleanup record](2026-09-09-qa-cleanup.md).
+
+A separate ordinary account completed interactive Princeton sign-in. Its
+hydrated Fleet was empty (zero machines), and Settings reported no SDK key,
+no configured credentials, and empty provider/model credential statuses.
+Direct links to the first account's known Worker, Artifacts, Logs, and Console
+pages returned the application's 404 page. After separate explicit approval,
+a temporary SDK key exercised read-only cross-account API checks: machine,
+session, Worker recipe, and existing operation reads were rejected, and
+artifacts/chats/logs returned no data. The key was revoked in Settings; an
+independent request using it then returned 401. No second-account Worker or
+provider/model credentials were added. See the exact bounded checks in the
+[post-auth release record](2026-09-09-post-auth-release.md); this is not an
+exhaustive authorization audit.
+
 ## Current operation — GitHub account-to-Worker flow passed
 
 Source `37de0ac` is deployed as Production/Ready deployment
@@ -28,10 +61,11 @@ callback, and reached authenticated **Pick your agent** onboarding as
 `Kevin-Liu-01`. The subsequent onboarding and first completed Worker task are
 verified below.
 
-The exact saved callback for GitHub, Google, and X is now
+The exact saved callback for GitHub, Google, and X is
 `https://agent-machines.dev/__clerk/v1/oauth_callback`; all three saves were
-verified. Google and X real OAuth flows remain untested, and no paid X API call
-was made. See the [social login report](2026-09-09-social-login-setup.md).
+verified. At this initial GitHub checkpoint Google and X had not been exercised;
+the subsequent real-flow checks above supersede that boundary. See the
+[social login report](2026-09-09-social-login-setup.md).
 
 The full web suite passed 1,716 tests with 37 explicit skips. Separately, 128
 focused tests and TypeScript passed; these counts are not additive. The
@@ -246,14 +280,13 @@ that preparation-only state; live login had not yet been verified then.
 
 ## Remaining launch proof
 
-- Verify Google and X through their actual consent and callback flows; keep
-  permissions limited to sign-in and resolve the paid X profile-read boundary
-  before testing it. GitHub consent, callback, and authenticated onboarding are
-  already verified.
+- The bounded ordinary-account UI/API isolation checks passed, including the
+  existing operation journal and temporary SDK key revocation. All three
+  configured social sign-in flows reached the authenticated production app.
 - Confirm the intended production owner mapping; do not infer automatic
   migration of development users, keys, or Worker ownership.
-- Complete the separately requested, still-pending QA administrator cleanup.
 
-The tested GitHub account-to-completed-Worker-and-artifact flow passed. Google/X
-login, the recovered chats 502's cause, and the separate cleanup items remain
-outside that success claim.
+The tested GitHub account-to-completed-Worker-and-artifact flow, subsequent
+Google/X login, bounded second-account UI/API isolation, and approved QA
+administrator cleanup passed. The recovered chats 502's cause and an exhaustive
+authorization audit remain outside that success claim.

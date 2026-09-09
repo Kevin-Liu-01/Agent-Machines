@@ -22,9 +22,20 @@ the apex callback, and reached authenticated **Pick your agent** onboarding as
 `Kevin-Liu-01`. The account then completed preset/provider setup, launched a
 Codex `gpt-5.6-sol` Worker on Daytona, completed a real task in 41.5 seconds, and
 independently read its 428-byte artifact in the authenticated Artifacts UI.
-Google and X actual OAuth flows remain untested, and no paid X API call was made.
+Google and X had not yet been exercised at that initial checkpoint.
 Exact machine/run IDs, the recovered chats 502, and cleanup status are in the
 [production authentication report](2026-09-09-production-auth-readiness.md).
+
+On the subsequent documentation-only `32a8648` deployment, real Chrome completed
+separate Google and X sign-outs, consent, callbacks, and authenticated Fleet
+reloads. Both retained access to the same stopped Worker. Google consent was
+name/profile plus email; X displayed its configured read/email/offline access
+and unverified-developer warning. No posting action was performed.
+
+The X test used existing prepaid access. The balance displayed $4.76 before and
+afterward, with auto-recharge off and no purchase. Do not infer free login from
+that unchanged balance: X documents metered user-profile reads. The earlier
+no-X-API-test statement is historical, not the final verification state.
 
 ## Observed Clerk status
 
@@ -107,12 +118,12 @@ host in Vercel. See the [domain canonicalization report](2026-09-09-domain-canon
 
 ## Remaining proof
 
-Google and X production consent and callbacks remain unverified; resolve any
-paid X profile-read boundary before testing it. The tested GitHub account,
-onboarding, Worker creation, completed task, and artifact path passed. An
+All three configured providers completed real consent/callback sign-in. The
+tested GitHub account, onboarding, Worker creation, completed task, and artifact
+path passed. Cross-account isolation remains a separate check. An
 independent fresh SDK read confirmed the exact fixture stopped after one stop
 call. It remains recoverable with its output retained; it was not deleted.
-No paid X API test was performed.
+The X login verification performed no credit purchase or auto-recharge change.
 
 No credentials were saved in the repository. This report contains no secrets
 or private contact data.

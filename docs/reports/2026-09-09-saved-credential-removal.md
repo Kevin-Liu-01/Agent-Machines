@@ -1,5 +1,23 @@
 # Saved credential removal — September 9, 2026
 
+## Current cleanup follow-up — completed at 22:37 UTC
+
+After explicit owner approval, administrator access removed the six saved secret
+fields from the two old development QA accounts and disabled their exact annual
+test schedule. One metadata PATCH per account was followed by fresh reads proving
+the selected removals, disabled schedule, and unchanged unrelated metadata.
+The [cleanup report](2026-09-09-qa-cleanup.md) records exact users, fields, and
+retained-resource boundaries; the private receipt is
+`/tmp/agent-machines-launch-20260909/qa-admin-cleanup-receipt.json`.
+
+This closes the separately approved administrator-cleanup item. It does not
+revoke original vendor keys, change production owner credentials, delete disks,
+or prove the Settings button's real-browser removal flow: cleanup used Clerk
+administrator metadata PATCH, not the user-facing DELETE route described below.
+The original implementation and deterministic test evidence remain distinct.
+
+## Original product gap
+
 The final QA cleanup found a product gap: blank Settings inputs intentionally
 preserved existing provider/model credentials, but there was no explicit removal
 control. The privacy page nevertheless directed users to remove keys from setup.
@@ -47,9 +65,10 @@ web tests (37 explicit platform-specific skips), both typechecks, production bui
 and isolated SDK package verification. The [launch audit](2026-09-09-launch-readiness.md)
 keeps these checks separate from earlier real Worker execution.
 
-No administrator cleanup request or live credential-removal call was made while
-implementing this correction. The separately requested permission to clear the
-two disposable QA accounts and disable the older QA-only schedule remains
-outstanding. This feature is not used to bypass that approval. Existing QA SDK
+At the implementation checkpoint, no administrator cleanup request or live
+credential-removal call was made while implementing this correction. The separately requested permission to clear the
+two disposable QA accounts and disable the older QA-only schedule was still
+outstanding. The approved 22:37 UTC follow-up above supersedes that status;
+this feature was not used to bypass approval. Existing QA SDK
 key revocation and provider-resource cleanup are recorded separately in the
 [cleanup audit](2026-09-09-qa-cleanup.md).

@@ -1,213 +1,113 @@
 #!/usr/bin/env node
 
-const DEFAULT_BASE_URL = "http://localhost:3210";
+import { randomUUID } from "node:crypto";
+
 const AGENTS = ["hermes", "openclaw", "claude-code", "codex"];
-const PING = "AM_PING";
+const PROVIDERS = ["daytona", "e2b", "sprites", "vercel"];
+const HELP = [
+	"Managed runtime smoke check: one explicitly selected, already-ready fixture.",
+	"",
+	"Build the SDK first: pnpm build:sdk",
+	"Run from the repo root:",
+	"  pnpm --dir web smoke:agents --base-url https://www.agent-machines.dev --machine-id <exact-id> --agent <runtime> --allow-paid-run",
+	"",
+	"Runtimes: " + AGENTS.join(", "),
+	"Set AGENT_MACHINES_API_KEY privately for hosted access. Never pass keys in argv.",
+	"Local development may use http://127.0.0.1:3210 with its existing dev session.",
+	"No default host, fleet discovery, provision, wake, repair, runtime switch, or deletion.",
+	"This submits one potentially billable managed task, not an artifact or launch proof.",
+	"Timeout/failure does not cancel accepted remote work: inspect its journal before retrying.",
+	"See docs/SMOKE.md and docs/LAUNCH.md for scope and cleanup requirements.",
+].join("\n");
 
-const baseUrl = process.env.AGENT_MACHINES_BASE_URL || DEFAULT_BASE_URL;
+class SmokeError extends Error {
+	constructor(message, exitCode = 1) {
+		super(message);
+		this.exitCode = exitCode;
+	}
+}
 
-function jsonFetch(path, init) {
-	return fetch(`${baseUrl}${path}`, init).then(async (response) => {
-		const text = await response.text();
-		let body = {};
-		try {
-			body = text ? JSON.parse(text) : {};
-		} catch {
-			body = { raw: text };
+function optionsFrom(argv) {
+	if (argv[0] === "--") argv = argv.slice(1);
+	if (argv.length === 1 && argv[0] === "--help") return null;
+	const options = {};
+	const flags = new Set(["--base-url", "--machine-id", "--agent", "--allow-paid-run"]);
+	for (let index = 0; index < argv.length; index++) {
+		const flag = argv[index];
+		if (!flags.has(flag) || Object.hasOwn(options, flag)) {
+			throw new SmokeError("Unknown or duplicate option. See --help.", 2);
 		}
-		return { response, body };
-	});
-}
-
-function sleep(ms) {
-	return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function shellFor(agentKind) {
-	const common =
-		"cd ~/agent-machines 2>/dev/null || cd ~; " +
-		"source ~/.agent-machines/.agent-env 2>/dev/null || true; ";
-	switch (agentKind) {
-		case "hermes":
-			return common +
-				"export HERMES_HOME=\"$HOME/.agent-machines\"; " +
-				"export PATH=\"$HOME/.agent-machines/venv/bin:$PATH\"; " +
-				"echo AM_KIND=hermes; command -v hermes; hermes --version; " +
-				"timeout 75s hermes chat --query \"reply exactly AM_HERMES_OK\" --quiet";
-		case "openclaw":
-			return common +
-				"export PATH=\"$HOME/.npm-global/bin:$PATH\"; " +
-				"export OPENCLAW_STATE_DIR=\"$HOME/.openclaw\"; export OPENCLAW_NO_RESPAWN=1; " +
-				"echo AM_KIND=openclaw; command -v openclaw; (openclaw --version || openclaw --help | head -20); " +
-				"timeout 75s openclaw infer model run --prompt \"reply exactly AM_OPENCLAW_OK\" --json";
-		case "claude-code":
-			return common +
-				"echo AM_KIND=claude-code; command -v claude; claude --version; " +
-				"timeout 75s claude -p \"reply exactly AM_CLAUDE_OK\" < /dev/null";
-		case "codex":
-			return common +
-				"echo AM_KIND=codex; command -v codex; codex --version; " +
-				"timeout 75s codex exec \"reply exactly AM_CODEX_OK\" < /dev/null";
-		default:
-			throw new Error(`unknown agent kind: ${agentKind}`);
+		if (flag === "--allow-paid-run") options[flag] = true;
+		else {
+			const value = argv[++index];
+			if (!value || value.startsWith("--")) throw new SmokeError("Missing option value. See --help.", 2);
+			options[flag] = value;
+		}
 	}
-}
-
-function expectedMarker(agentKind) {
-	switch (agentKind) {
-		case "hermes":
-			return "AM_HERMES_OK";
-		case "openclaw":
-			return "AM_OPENCLAW_OK";
-		case "claude-code":
-			return "AM_CLAUDE_OK";
-		case "codex":
-			return "AM_CODEX_OK";
-		default:
-			return "";
+	if (options["--allow-paid-run"] !== true ||
+		!AGENTS.includes(options["--agent"]) ||
+		!/^[A-Za-z0-9_-]{1,200}$/.test(options["--machine-id"] ?? "")) {
+		throw new SmokeError("An exact fixture ID, supported runtime, and --allow-paid-run are required. See --help.", 2);
 	}
-}
-
-function scoreMachine(machine, agentKind) {
-	let score = 0;
-	if (machine.agentKind === agentKind) score += 100;
-	if (!machine.archived) score += 30;
-	if (machine.live?.state === "ready") score += 30;
-	if (machine.bootstrapState?.phase === "succeeded") score += 25;
-	if (machine.apiUrl) score += 5;
-	if (machine.bootstrapState?.phase === "failed") score -= 40;
-	if (machine.archived) score -= 50;
-	return score;
-}
-
-function candidatesFor(machines, agentKind) {
-	const candidates = machines
-		.filter((machine) => machine.agentKind === agentKind && !machine.archived)
-		.sort((a, b) => scoreMachine(b, agentKind) - scoreMachine(a, agentKind));
-	return candidates;
-}
-
-function clean(text) {
-	return String(text || "")
-		.replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "")
-		.replace(/\x1b?\](?:10|11|12);rgb:[0-9a-fA-F]{1,4}\/[0-9a-fA-F]{1,4}\/[0-9a-fA-F]{1,4}(?:\x07|\x1b\\)?/g, "")
-		.slice(-1800);
-}
-
-function execOutput(body) {
-	return `${body.stdout || ""}\n${body.stderr || ""}`;
-}
-
-function isOffline(response, body) {
-	return response.status === 503 || body?.error === "machine_offline";
-}
-
-async function getMachines() {
-	const { response, body } = await jsonFetch("/api/dashboard/machines");
-	if (!response.ok) {
-		throw new Error(`machines API failed: HTTP ${response.status} ${JSON.stringify(body).slice(0, 200)}`);
+	let url;
+	try { url = new URL(options["--base-url"]); }
+	catch { throw new SmokeError("An explicit --base-url origin is required. See --help.", 2); }
+	const local = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+	if (url.username || url.password || url.search || url.hash || url.pathname !== "/" ||
+		(url.protocol !== "https:" && !(local && url.protocol === "http:"))) {
+		throw new SmokeError("Use an HTTPS origin (or local HTTP), without credentials, path, query, or fragment.", 2);
 	}
-	return Array.isArray(body.machines) ? body.machines : [];
-}
-
-async function execOnMachine(machineId, command, timeoutMs = 120_000) {
-	const started = Date.now();
-	const { response, body } = await jsonFetch("/api/dashboard/exec", {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ machineId, command, timeoutMs }),
-	});
-	return { response, body, elapsedMs: body.elapsedMs ?? Date.now() - started };
-}
-
-async function wakeMachine(machineId) {
-	return jsonFetch(`/api/dashboard/machines/${encodeURIComponent(machineId)}/wake`, {
-		method: "POST",
-	});
-}
-
-async function ensureExecutable(machine) {
-	const attempts = [];
-	for (let i = 0; i < 5; i++) {
-		const run = await execOnMachine(machine.id, `printf ${PING}`, 20_000);
-		const output = execOutput(run.body);
-		attempts.push({
-			httpStatus: run.response.status,
-			exitCode: run.body.exitCode ?? null,
-			ok: run.response.ok && run.body.ok === true && output.includes(PING),
-			error: run.body.error ?? null,
-			message: run.body.message ?? null,
-			output: clean(output),
-		});
-		if (attempts.at(-1).ok) return { ok: true, attempts };
-		if (!isOffline(run.response, run.body)) break;
-		await wakeMachine(machine.id).catch(() => null);
-		await sleep(5_000);
-	}
-	return { ok: false, attempts };
-}
-
-async function pickExecutableMachine(machines, agentKind) {
-	const probes = [];
-	for (const machine of candidatesFor(machines, agentKind)) {
-		const probe = await ensureExecutable(machine);
-		probes.push({
-			machineId: machine.id,
-			machineName: machine.name,
-			providerKind: machine.providerKind,
-			liveState: machine.live?.state ?? null,
-			bootstrapPhase: machine.bootstrapState?.phase ?? null,
-			attempts: probe.attempts,
-		});
-		if (probe.ok) return { machine, probes };
-	}
-	return { machine: null, probes };
+	const apiKey = process.env.AGENT_MACHINES_API_KEY?.trim() || "";
+	if (!local && !apiKey) throw new SmokeError("Set AGENT_MACHINES_API_KEY privately for this hosted account.", 2);
+	return { baseUrl: url.origin, machineId: options["--machine-id"], agent: options["--agent"], apiKey };
 }
 
 async function run() {
-	const machines = await getMachines();
-	const results = [];
-
-	for (const agentKind of AGENTS) {
-		const { machine, probes } = await pickExecutableMachine(machines, agentKind);
-		if (!machine) {
-			results.push({ agentKind, ok: false, reason: "no_usable_machine", probes });
-			continue;
-		}
-
-		const marker = expectedMarker(agentKind);
-		const command = shellFor(agentKind);
-		const { response: execResponse, body: execBody, elapsedMs } = await execOnMachine(
-			machine.id,
-			command,
-			120_000,
-		);
-		const output = execOutput(execBody);
-		results.push({
-			agentKind,
-			machineId: machine.id,
-			machineName: machine.name,
-			providerKind: machine.providerKind,
-			liveState: machine.live?.state ?? null,
-			bootstrapPhase: machine.bootstrapState?.phase ?? null,
-			probes,
-			httpStatus: execResponse.status,
-			exitCode: execBody.exitCode ?? null,
-			elapsedMs,
-			ok: execResponse.ok && execBody.ok === true && output.includes(marker),
-			marker,
-			output: clean(output),
-			error: execBody.error ?? null,
-			message: execBody.message ?? null,
+	const options = optionsFrom(process.argv.slice(2));
+	if (!options) { console.log(HELP); return; }
+	// Reuse the supported SDK's deadline, operation validation, no-redirect and
+	// single-submission behavior; do not maintain another runtime launcher here.
+	let sdk;
+	try { sdk = await import("agent-machines"); }
+	catch { throw new SmokeError("Build the workspace SDK with pnpm build:sdk before this check."); }
+	const { baseUrl, machineId, agent, apiKey } = options;
+	let inspected;
+	try {
+		const response = await fetch(baseUrl + "/api/dashboard/machines/" + encodeURIComponent(machineId), {
+			headers: apiKey ? { Authorization: "Bearer " + apiKey } : {},
+			redirect: "error",
+			signal: AbortSignal.timeout(15_000),
 		});
+		if (!response.ok) throw new Error("inspection failed");
+		inspected = await response.json();
+	} catch {
+		throw new SmokeError("Fixture inspection failed. Check the canonical origin, account access, and exact machine ID. No run submitted.");
 	}
-
-	const failed = results.filter((result) => !result.ok);
-	console.log(JSON.stringify({ ok: failed.length === 0, baseUrl, results }, null, 2));
-	process.exitCode = failed.length === 0 ? 0 : 1;
+	const machine = inspected?.machine;
+	if (inspected?.ok !== true || machine?.id !== machineId || machine.agentKind !== agent ||
+		machine.archived || !PROVIDERS.includes(machine.providerKind) ||
+		machine.bootstrapState?.phase !== "succeeded" || inspected.live?.state !== "ready" ||
+		typeof machine.model !== "string" || !machine.model.trim()) {
+		throw new SmokeError("Fixture identity/runtime or ready state did not match. Inspect it in the dashboard; no run, wake, or repair submitted.");
+	}
+	const marker = "AM_SMOKE_" + randomUUID().replaceAll("-", "");
+	const client = new sdk.AgentMachines({ baseUrl, apiKey, timeoutMs: 90_000 });
+	const route = sdk.resolveAgentRoute({ agent, sandbox: machine.providerKind, model: machine.model });
+	let result;
+	try {
+		result = await client.run(machineId, route, "Reply exactly " + marker + ". Do not use tools or change files.");
+	} catch {
+		// Server/provider errors can contain private diagnostics. Keep them out of
+		// CLI output and never replay a mutation after an ambiguous response.
+		throw new SmokeError("Managed run failed or its outcome is uncertain. Inspect this Worker's operation journal before retrying; accepted work may still be running.");
+	}
+	if (result.agent !== agent || result.text.trim() !== marker) {
+		throw new SmokeError("Managed run did not return the expected runtime and exact response marker. No retry submitted.");
+	}
+	console.log(JSON.stringify({ ok: true, proof: "managed-response", machineId, agent, marker }));
 }
 
 run().catch((error) => {
-	console.error(error instanceof Error ? error.stack : error);
-	process.exitCode = 1;
+	console.error(error instanceof SmokeError ? error.message : "Smoke check failed. Inspect the fixture before retrying; no automatic retry was submitted.");
+	process.exitCode = error instanceof SmokeError ? error.exitCode : 1;
 });

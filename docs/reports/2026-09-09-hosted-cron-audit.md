@@ -1,5 +1,20 @@
 # Hosted cron launch audit — September 9, 2026
 
+## Current cleanup follow-up — annual test schedule disabled
+
+At 22:37 UTC, the approved administrator cleanup set only the enabled flag of
+cron `1125a99f-fdb8-42dc-8145-90fa097f1ba7` to `false` under the verified old QA
+account `user_3J4rO7BDLBYI7e2QrMDljAQsiVD`. Its expression, target, prior run
+history, and unrelated metadata were preserved and independently reread. The
+same approved operation removed that account's saved test credential copies;
+see the [cleanup record](2026-09-09-qa-cleanup.md).
+
+The annual schedule is no longer enabled for September 9, 2027. No extra model
+run or global scheduler tick was used to verify the change, and no already-running
+task was canceled. The old E2B resource remains retained; its latest non-waking
+observation was paused. Disabling the schedule is not Worker deletion or
+provider-absence proof. The earlier identity/approval blockers below are historical.
+
 ## Scope and isolation
 
 The audit used the authenticated hosted application and a dedicated disposable E2B Worker. No commands, lifecycle changes, or scheduled tasks were run on the main launch QA machine.
@@ -39,7 +54,7 @@ The audit used the authenticated hosted application and a dedicated disposable E
 
 Run history is bounded to the most recent 100 returned scheduled operations. Disabling or deleting a schedule prevents future or queued execution; it is not a claim to cancel a task that has already begun executing. Existing completed journal evidence is retained when a schedule is deleted.
 
-## Cleanup status
+## Earlier cleanup attempts — historical
 
 The disposable Worker and test cron were initially retained after post-deployment verification. Permanent cleanup was subsequently authorized for only cron `1125a99f-fdb8-42dc-8145-90fa097f1ba7`, Worker `ed074605-68c0-422b-ba2e-b97af47812c9`, and machine `inhhzbntovc0yik89pe4f` under the old QA account `user_3J4rO7BDLBYI7e2QrMDljAQsiVD`.
 

@@ -1,6 +1,63 @@
 # Launch-readiness audit — September 9, 2026
 
-Latest completed hosted runtime/history verification: `48408dc`. Real Claude execution,
+## Current follow-up — production flow and approved cleanup
+
+The earlier development-Clerk, missing-DNS, and OAuth-setup blockers below have
+been resolved. Source `37de0ac` activated the exact-apex Clerk proxy and passed
+the real GitHub new-account → onboarding → Codex `gpt-5.6-sol` on Daytona →
+completed task → independently inspected 428-byte artifact flow. That exact
+Worker is stopped with its filesystem retained, not deleted.
+
+Documentation-only `32a8648` then became Production/Ready. Real Google and X
+consent and callbacks each reached the authenticated Fleet, and a full reload
+retained the same stopped Worker. No credits were purchased or auto-recharge
+settings changed for X; a successful login is not a cost-free profile-read
+claim. See the [production authentication report](2026-09-09-production-auth-readiness.md)
+and [social-login report](2026-09-09-social-login-setup.md).
+
+At 22:37 UTC, approved administrator cleanup removed six saved credential fields
+from the two old development QA accounts and disabled their exact annual test
+schedule. Independent reads verified the changes and preservation of unrelated
+metadata. Earlier pending-approval statements below are historical. This did not
+revoke vendor keys, delete users or retained disks, or change production owner
+credentials. The [cleanup report](2026-09-09-qa-cleanup.md) records the boundary.
+
+The latest local candidate passed the complete `pnpm check` with exit 0:
+**863 SDK/source tests** and **1,770 web tests across 166 files**, with 37 explicit
+skips, both TypeScript checks, the Next.js production build, and isolated SDK
+packaging. Local gates do not imply that subsequent source changes are already
+deployed. The
+[explicit-fixture smoke command](../SMOKE.md) now requires an exact machine,
+runtime, origin, and paid-run opt-in; the obsolete automatic provider matrix is
+not a release gate.
+
+A second ordinary production account passed bounded live cross-account UI/API
+checks on `32a8648`. Fleet was empty and hydrated Settings showed no configured
+provider/model credentials. Known owner Worker, artifact, logs, and Console
+pages returned not-found. The independently authenticated read-only API checks
+returned an empty own Fleet and no foreign settings data; the known owner's
+machine, native sessions, recipe, and operation returned HTTP 404. Foreign
+artifact/chat/log endpoints returned HTTP 200 with explicit `ok: false` and no
+foreign data, not successful access. The owner's UI independently confirmed the
+real recipe, its machine binding, and the succeeded task operation. An
+unsupported runs GET returned HTTP 405 and is not counted as isolation proof.
+
+The owner explicitly approved creating one temporary SDK key through the second
+account's Settings UI for those read-only checks. It was subsequently revoked
+through the UI; a fresh request using its old bearer returned HTTP 401, and the
+temporary value was cleared from memory. No Worker or provider/model credential
+was created for that account. This bounded tested-resource result is not an
+exhaustive authorization audit. See the
+[post-auth release report](2026-09-09-post-auth-release.md).
+
+Intended owner mapping and the full [launch checklist](../LAUNCH.md) require explicit evidence;
+the successful account-to-task path is not an all-capabilities signoff. The one
+self-recovered chats GET 502 also remains unexplained; separate malformed-POST
+validation work must not be represented as its established cause or repair.
+
+## Earlier hosted runtime/history verification
+
+The earlier hosted runtime/history checkpoint was `48408dc`. Real Claude execution,
 independently verified file output, sleep/wake persistence, non-waking passive
 reads, and native browser-terminal launch passed after correcting an incompatible
 preinstalled CLI and a stale completed-phase health check. E2B-to-Daytona state
@@ -302,7 +359,8 @@ cover current-session ownership, exact selected-field deletion, fresh persistenc
 verification, cancellation, ambiguous responses, and preventing accidental
 re-saving from pending inputs. An independent security review found no concrete
 blocker. These deterministic tests are not a live Clerk deletion claim; the
-approval-gated QA cleanup remains separate. See the
+then-approval-gated QA cleanup was completed separately at 22:37 UTC, as recorded
+in the current follow-up above. See the
 [saved-credential removal audit](2026-09-09-saved-credential-removal.md).
 
 ## Daytona replacement
@@ -356,7 +414,10 @@ glyph in dark and light themes, no horizontal overflow, current provider copy,
 and correct September 9 chart labels in an America/Los_Angeles browser. Unknown
 allocation remained unknown rather than being displayed as zero.
 
-## Production authentication remains a separate check
+## Production authentication checkpoints — historical
+
+The current follow-up above and the production authentication report supersede
+the development-key, missing-DNS, and pending-provider-setup state in this section.
 
 **20:11 UTC follow-up:** the production keys and owner mapping have since changed.
 The confirmed Clerk primary domain is `.dev`, but its DNS is unverified and
@@ -380,7 +441,8 @@ user identity was independently checked before any QA credential cleanup.
 No Clerk instance or user identity was silently switched. Production key
 connection and a fresh-account test on that deployment remain outstanding.
 
-The remaining configuration handoff is to set the existing production instance's
+At that earlier checkpoint, the remaining configuration handoff was to set the
+existing production instance's
 `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` in this Vercel project's
 Production environment, then deploy again. Secrets must not be pasted into
 reports or chat. Account configuration and machine ownership are keyed by Clerk

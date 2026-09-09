@@ -1,7 +1,7 @@
 /**
  * GET / POST /api/dashboard/chats
  *
- * Reads + writes chat history on the user's active Dedalus machine
+ * Reads + writes chat history on the user's selected, owned machine
  * (under `~/.agent-machines/chats/`). The machine is the storage layer
  * because the persistent volume already survives sleep/wake and the
  * agent itself can `cat` the same files for context.
@@ -16,7 +16,6 @@ import { getEffectiveUserId } from "@/lib/user-config/identity";
 import {
 	deleteChat,
 	listChats,
-	loadChat,
 	saveChat,
 	type ChatRecord,
 } from "@/lib/storage/machine-chats";
@@ -57,22 +56,41 @@ export async function POST(request: Request): Promise<Response> {
 	if (!userId) {
 		return Response.json({ error: "unauthorized" }, { status: 401 });
 	}
-	let body: ChatRecord;
+	let parsed: unknown;
 	try {
-		body = (await request.json()) as ChatRecord;
+		parsed = await request.json();
 	} catch {
 		return Response.json({ error: "invalid_json" }, { status: 400 });
 	}
-	const machineId = (body as Record<string, unknown>).machineId as string | undefined;
-	const handle = await withActiveMachine(machineId);
-	if ("ok" in handle) {
-		return Response.json(handle, { status: 503 });
+	if (!isObject(parsed)) {
+		return Response.json({ error: "invalid_chat_body" }, { status: 400 });
 	}
-	if (!body.id || typeof body.id !== "string") {
+	if (typeof parsed.id !== "string" || !parsed.id.trim()) {
 		return Response.json({ error: "id_required" }, { status: 422 });
 	}
-	if (!Array.isArray(body.messages)) {
+	if (!Array.isArray(parsed.messages)) {
 		return Response.json({ error: "messages_required" }, { status: 422 });
+	}
+	if (!parsed.messages.every(isMessage)) {
+		return Response.json({ error: "invalid_messages" }, { status: 400 });
+	}
+	for (const field of ["title", "machineId", "model", "createdAt"] as const) {
+		if (parsed[field] != null && typeof parsed[field] !== "string") {
+			return Response.json({ error: `invalid_${field}` }, { status: 400 });
+		}
+	}
+	if (parsed.sessionPackageIds !== undefined && (
+		!Array.isArray(parsed.sessionPackageIds)
+		|| !parsed.sessionPackageIds.every((id) => typeof id === "string")
+	)) {
+		return Response.json({ error: "invalid_sessionPackageIds" }, { status: 400 });
+	}
+	// Validate before resolving a machine or issuing any storage command. Keep
+	// message evidence intact; server-owned summary fields are recomputed below.
+	const body = parsed as ChatRecord;
+	const handle = await withActiveMachine(body.machineId ?? undefined);
+	if ("ok" in handle) {
+		return Response.json(handle, { status: 503 });
 	}
 	const now = new Date().toISOString();
 	const record: ChatRecord = {
@@ -127,6 +145,15 @@ function derivedTitle(messages: ChatRecord["messages"]): string {
 	return text.length > 0 ? text : "untitled chat";
 }
 
-// `loadChat` is referenced by the [id] route only; re-exporting from
-// here would force the route into the same chunk for no reason.
-void loadChat;
+function isObject(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isMessage(value: unknown): value is ChatRecord["messages"][number] {
+	return isObject(value)
+		&& typeof value.id === "string"
+		&& (value.role === "user" || value.role === "assistant" || value.role === "system")
+		&& typeof value.content === "string"
+		&& typeof value.createdAt === "number"
+		&& Number.isFinite(value.createdAt);
+}

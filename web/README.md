@@ -70,14 +70,28 @@ domain proxy setting is enabled. Vercel's apex redirect is unset; the app handle
 redirect were deployed before changing platform routing or activating clients.
 Real Chrome verified GitHub login through onboarding, a Codex `gpt-5.6-sol`
 Worker on Daytona, a completed task, and artifact read-back. The exact fixture
-was stopped with its files retained, not deleted. Google/X login remains
-unverified; see the
+was stopped with its files retained, not deleted. Google and X subsequently passed
+real consent/callback and authenticated Fleet reloads on documentation-only release
+`32a8648`, showing the same stopped Worker. No X credits were purchased and
+auto-recharge was unchanged; login is not claimed free. See the
 [production verification report](../docs/reports/2026-09-09-production-auth-readiness.md).
 Clerk's primary domain, keys, and existing user identities were not migrated
 for this repair.
 Keep `NEXT_PUBLIC_CLERK_PROXY_URL` unset locally and in previews. See the
 [rollout and rollback procedure](../docs/LAUNCH.md#same-site-clerk-proxy-rollout).
 No completed production login is implied by local dashboard availability.
+
+The approved removal of old development-QA credential copies and disabling of
+their annual test cron completed at 22:37 UTC; retained disks are separate.
+Bounded live cross-account UI/API checks passed on `32a8648`: a second ordinary
+account had an empty Fleet and no provider/model credentials; known owner
+resources returned not-found or explicit unavailable results without foreign
+data. One approved temporary SDK key enabled the read-only checks, then was
+revoked in Settings; the old bearer independently returned HTTP 401. No Worker
+or provider/model key was created for that account. This is not an exhaustive
+authorization audit. See the
+[post-auth release evidence](../docs/reports/2026-09-09-post-auth-release.md) and
+[full launch checklist](../docs/LAUNCH.md).
 
 Supabase with all [`supabase/migrations`](supabase/migrations) applied is required
 for the hosted operation journal and durable metrics. The local development
@@ -113,11 +127,16 @@ pnpm --dir web test              # compile SDK; dashboard unit and route tests
 pnpm --dir web sync-data         # regenerate committed web/data from knowledge/
 pnpm --dir web refresh-catalog   # explicit remote Cursor marketplace refresh
 pnpm check                      # full repository release check
+pnpm --dir web smoke:agents --help # read-only usage for explicit-fixture smoke
 ```
 
 Run these from the repository root. Builds and typechecks never fetch marketplace
 data; refresh it explicitly and review the resulting snapshot before committing.
 See the [launch procedure](../docs/LAUNCH.md) for deployment and new-account proof.
+The [runtime smoke procedure](../docs/SMOKE.md) uses one exact, already-ready
+fixture and requires explicit paid-run opt-in. It does not provision, wake, or
+select other machines, and its response marker is not full launch proof. The
+legacy provider-matrix shell entry point now exits with deprecation guidance.
 
 ## Public routes
 

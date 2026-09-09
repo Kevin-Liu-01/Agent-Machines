@@ -5,14 +5,38 @@ records the verified Vercel domain configuration and HTTP redirect behavior;
 it does not establish successful Clerk authentication or a completed account
 and Worker flow.
 
-## Exact configuration change
+## Current follow-up — apex proxy exception
+
+The later production proxy rollout on `37de0ac` supersedes the blanket apex
+redirect in the original table below. The `agent-machines.dev` Vercel domain
+redirect is now `null`. The application serves `/__clerk` and its descendants
+on that apex, and redirects other apex paths to `www.agent-machines.dev` with
+HTTP 307. Both `.com` domains still use Vercel's whole-domain HTTP 308 redirects;
+the public and API canonical origin remains `https://www.agent-machines.dev`.
+
+The application handler and redirect were Ready before the blanket Vercel apex
+rule was removed. Clerk's enabled proxy URL is `https://agent-machines.dev/__clerk`;
+all three saved OAuth callbacks use
+`https://agent-machines.dev/__clerk/v1/oauth_callback`. The proxy
+is same-site but cross-origin from the public `www` app. See the
+[activation and rollback order](../LAUNCH.md#same-site-clerk-proxy-rollout).
+Do not restore a blanket apex redirect while active Clerk clients depend on
+this handler.
+
+GitHub account-to-completed-Worker proof subsequently passed on `37de0ac`;
+Google/X consent, callback, and authenticated reload passed on documentation-only
+`32a8648`. These separate checks are recorded in the
+[production authentication report](2026-09-09-production-auth-readiness.md),
+not inferred from a domain's verified status.
+
+## Original configuration change — 21:25 UTC checkpoint
 
 Only the `agent-machines.com` and `www.agent-machines.com` domain records in
 Vercel project `prj_zQsrv2PEzKRJwOQpWCIhKhPLcKdU` were patched. Each was set to
 `redirect: www.agent-machines.dev` and `redirectStatusCode: 308`. Both update
 responses reported `verified: true`.
 
-| Domain | Resulting behavior |
+| Domain | Behavior at this original checkpoint |
 | --- | --- |
 | `agent-machines.com` | HTTP 308 to `www.agent-machines.dev` |
 | `www.agent-machines.com` | HTTP 308 to `www.agent-machines.dev` |
@@ -64,6 +88,10 @@ The web typecheck (including the SDK build and offline data sync) passed, and
 `git diff --check` was clean. No tracked generated files changed.
 
 ## Reversal and remaining proof
+
+The following rollback concerns only the two `.com` domain records. The later
+active apex proxy requires the coordinated rollback linked above; its exception
+must not be removed merely to reproduce the historical table.
 
 The prior configuration can be restored in the same Vercel project's domain
 settings: remove the `www.agent-machines.com` redirect to restore its deployment
