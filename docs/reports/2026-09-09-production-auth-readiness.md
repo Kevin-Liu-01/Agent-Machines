@@ -32,11 +32,12 @@ The Clerk dashboard supplied these records for the `agent-machines.dev` zone:
 No DNS record, certificate configuration, Clerk instance, user identity,
 credential, or provider permission was changed during this inspection.
 
-## Code-side corrections — release candidate
+## Code-side corrections — deployed and browser-verified
 
-These corrections are local candidate changes at the time of this report. The
-deployment recorded above predates them; it is not evidence that the corrections
-are live. Deployment and rendered verification must follow the release checks.
+Commit `2965f0d877a480ae2d49f7ba39a65a5321d1b285` was pushed to `origin/main`.
+At 20:36 UTC, deployment `dpl_9M8FXTv7mjr8VQko6gx46F7Wy2XK`
+(`agent-machines-dmdvxyvir-kl01s-projects.vercel.app`) was Production/Ready and
+served both public domains. This deployment supersedes the one recorded above.
 
 Public marketing stays on `.com`. Browser sign-in, onboarding, and dashboard
 requests must use `https://www.agent-machines.dev` when the configured production
@@ -72,6 +73,22 @@ Independent review found no concrete security or functional blockers.
 
 These checks verify the code-side behavior, not live OAuth registration, DNS,
 or a completed production account flow. No authentication bypass was used.
+
+### Rendered production verification
+
+In the user's Chrome browser, opening
+`https://www.agent-machines.com/sign-in?redirect_url=%2Fdashboard%2Fworkers`
+landed on the corresponding `www.agent-machines.dev` URL with the query intact.
+The loading indicator appeared, followed by the recovery message after Clerk's
+script load failed. Screenshots and the rendered accessibility tree confirmed
+the error heading, retry button, and home link in both light and dark themes.
+Clicking **Try again** reloaded the same `.dev` sign-in URL without losing its
+requested Worker destination.
+
+The independent DNS lookup still returned `NXDOMAIN`. These checks demonstrate
+recovery from an unavailable authentication service, not a successful login.
+Provider creation forms and the Clerk DNS page were retained for the owner;
+no credentials were created or stored and no forms were submitted.
 
 ## Social login preparation, not completion
 

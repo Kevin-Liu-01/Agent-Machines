@@ -362,7 +362,7 @@ allocation remained unknown rather than being displayed as zero.
 The confirmed Clerk primary domain is `.dev`, but its DNS is unverified and
 social-provider credentials still require setup. See the
 [production authentication follow-up](2026-09-09-production-auth-readiness.md)
-for the new evidence, code-side candidate corrections, and remaining launch proof.
+for the new evidence, deployed code-side corrections, and remaining launch proof.
 The development-key observations below remain historical evidence, not the latest
 configuration.
 
