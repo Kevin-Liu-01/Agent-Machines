@@ -31,6 +31,13 @@ beforeEach(() => {
 function patch(body: unknown, id = "chosen-machine") { return PATCH(new Request(`https://example.invalid/api/dashboard/machines/${id}`, { method: "PATCH", body: JSON.stringify(body) }), { params: Promise.resolve({ id }) }); }
 function unchanged() { expect(mocks.save).not.toHaveBeenCalled(); expect(mocks.submit).not.toHaveBeenCalled(); expect(mocks.after).not.toHaveBeenCalled(); }
 
+it("rejects retired gateways without advertising a supported Dedalus provider", async () => {
+	const response = await patch({ gatewayProfileId: "dedalus-default" });
+	expect(response.status).toBe(400);
+	expect(await response.json()).toMatchObject({ error: "unsupported_gateway", message: expect.stringContaining("providers and model gateways are retired") });
+	unchanged();
+});
+
 describe.each(["hermes", "openclaw", "claude-code", "codex"] as const)("%s machine model intent", (agentKind) => {
 	it("invariant_model_change_journals_the_owned_target_without_relabeling_it", async () => {
 		target.agentKind = agentKind;

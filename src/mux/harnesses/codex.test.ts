@@ -13,6 +13,10 @@
  */
 
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { chmodSync, existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 import type { MuxAgentEvent } from "../events.js";
 import { MuxError, type UpstreamKeys } from "../types.js";
@@ -639,6 +643,58 @@ test("runCommand with sessionId resumes via codex exec resume", () => {
 	assert.ok(rest.startsWith("codex exec resume 'thr_abc123' --json"));
 	assert.ok(/ -;? \}?$/.test(command));
 });
+
+for (const sessionId of [undefined, "thread 'quoted'; $(do-not-run)"]) {
+	test(`invariant_${sessionId ? "resumed" : "new"}_run_preserves_workspace_at_the_executable_boundary`, () => {
+		const dir = mkdtempSync(join(tmpdir(), "am-codex-argv-"));
+		try {
+			const marker = join(dir, "injected");
+			const cwd = `/workspace/owner's project; $(touch ${marker})`;
+			const prompt = "Keep the exact prompt: 'quotes' $(do-not-run)\nnext line";
+			const executable = join(dir, "codex");
+			// Model the observed 0.128 parser boundary: -C belongs to the
+			// top-level command or exec, but is not accepted after resume.
+			// The live help-only proof separately checks the vendor binary.
+			writeFileSync(executable, `#!/usr/bin/env node
+const fs = require("node:fs");
+const argv = process.argv.slice(2);
+const resume = argv.indexOf("resume");
+if (resume >= 0 && argv.slice(resume).some(arg => arg === "-C" || arg === "--cd")) {
+  process.stderr.write("error: unexpected argument '-C' found\\n");
+  process.exit(2);
+}
+process.stdout.write(JSON.stringify({ argv, prompt: fs.readFileSync(0, "utf8"), key: process.env.CODEX_API_KEY }));
+`);
+			chmodSync(executable, 0o700);
+			const run = codexHarness.runCommand(prompt, KEYS, {
+				model: "gpt-5.3-codex",
+				cwd,
+				sessionId,
+				extraArgs: ["--color", "never"],
+			});
+			const result = spawnSync("bash", ["-c", run.command], {
+				env: { ...process.env, ...run.env, HOME: dir, PATH: `${dir}:${process.env.PATH}` },
+				encoding: "utf8",
+				timeout: 5_000,
+			});
+			assert.equal(result.status, 0, result.stderr);
+			const parsed = JSON.parse(result.stdout) as { argv: string[]; prompt: string; key: string };
+			assert.equal(parsed.argv[parsed.argv.indexOf("-C") + 1], cwd);
+			assert.equal(parsed.argv[parsed.argv.indexOf("-m") + 1], "gpt-5.3-codex");
+			assert.equal(parsed.prompt, prompt);
+			assert.equal(parsed.key, KEYS.openai);
+			assert.deepEqual(parsed.argv.slice(-3), ["--color", "never", "-"]);
+			for (const flag of ["--json", "--skip-git-repo-check", "--dangerously-bypass-approvals-and-sandbox"]) {
+				assert.ok(parsed.argv.includes(flag));
+			}
+			if (sessionId) assert.equal(parsed.argv[parsed.argv.indexOf("resume") + 1], sessionId);
+			assert.equal(existsSync(marker), false, "Quoted workspace text cannot execute a shell command");
+			assert.ok(!run.command.includes(KEYS.openai!));
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+}
 
 test("runCommand without an OpenAI key fails closed", () => {
 	assert.throws(

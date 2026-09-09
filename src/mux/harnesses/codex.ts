@@ -357,7 +357,6 @@ function baseFlags(
 		...configArgs,
 	];
 	if (options.model) flags.push("-m", shq(options.model));
-	if (options.cwd) flags.push("-C", shq(options.cwd));
 	if (options.extraArgs?.length) flags.push(...options.extraArgs);
 	return flags;
 }
@@ -409,9 +408,13 @@ export const codexHarness: HarnessAdapter = {
 		options: HarnessRunOptions = {},
 	): HarnessCommand {
 		const resolved = requireUpstream("codex", keys);
+		// --cd is a global/exec option, not an exec-resume option. Place
+		// it before the subcommand so both new and resumed runs preserve
+		// their workspace (0.128 rejects `exec resume ... -C <path>`).
+		const codex = options.cwd ? `codex -C ${shq(options.cwd)}` : "codex";
 		const exec = options.sessionId
-			? `codex exec resume ${shq(options.sessionId)}`
-			: "codex exec";
+			? `${codex} exec resume ${shq(options.sessionId)}`
+			: `${codex} exec`;
 		const flags = baseFlags(options, upstreamArgs(resolved)).join(" ");
 		const command = withAmNode(
 			`echo ${toBase64(prompt)} | base64 -d | ${exec} ${flags} -`,

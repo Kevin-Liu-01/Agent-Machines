@@ -93,7 +93,21 @@ export const openclawHarness: HarnessAdapter = {
 	requiredUpstream: "any",
 
 	isInstalledCommand(): string {
-		return withAmNode("command -v openclaw >/dev/null 2>&1");
+		// Images can ship an executable old CLI (Daytona: 2026.2.1) without
+		// batch configuration or our headless session protocol. Probe the actual
+		// capabilities, preserving compatible newer versions without a repin.
+		const probes: Array<[string, string[]]> = [
+			["config set", ["--batch-file", "--strict-json", "--merge"]],
+			["agent", ["--local", "--session-key", "--message", "--model", "--json"]],
+			["models auth paste-api-key", ["--provider"]],
+		];
+		const checks = probes.map(([command, flags]) => {
+			const help = `AM_OPENCLAW_HELP=$(if command -v timeout >/dev/null 2>&1; then timeout 4s openclaw ${command} --help; else openclaw ${command} --help; fi)`;
+			return `${help} && ${flags.map(flag => `printf '%s\\n' "$AM_OPENCLAW_HELP" | grep -Eq '(^|[[:space:],])${flag}([[:space:],=]|$)'`).join(" && ")}`;
+		});
+		// No stdin, auth/config writes, gateway startup, or model call. Prevent
+		// the CLI's optional respawn so timeout also bounds the probed process.
+		return withAmNode(`(export OPENCLAW_NO_RESPAWN=1; command -v openclaw >/dev/null 2>&1 && ${checks.join(" && ")}) </dev/null`);
 	},
 
 	installCommand(): string {

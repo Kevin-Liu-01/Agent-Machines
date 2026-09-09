@@ -79,3 +79,10 @@ it("refuses signed-out Worker creation without reading or saving account state",
 	expect(mocks.config).not.toHaveBeenCalled();
 	expect(mocks.save).not.toHaveBeenCalled();
 });
+
+it("rejects retired gateways without advertising a supported Dedalus provider", async () => {
+	const response = await POST(request(payload(false, { gatewayProfileId: "dedalus-default" })));
+	expect(response.status).toBe(400);
+	expect(await response.json()).toMatchObject({ error: "unsupported_gateway", message: expect.stringContaining("providers and model gateways are retired") });
+	expect(mocks.save).not.toHaveBeenCalled();
+});

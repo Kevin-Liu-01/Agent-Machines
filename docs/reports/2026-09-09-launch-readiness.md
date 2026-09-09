@@ -1,9 +1,12 @@
 # Launch-readiness audit — September 9, 2026
 
-Status: Daytona is deployed through `7b16b67`. Initial hosted creation passed,
-but real execution and repair exposed an incompatible preinstalled Claude CLI
-and a stale completed-phase health check. The shared readiness correction has
-passed the aggregate gate and awaits deployment. This report distinguishes
+Status: Daytona is deployed through `6bbfdfd`. Real hosted Claude execution,
+independently verified file output, sleep/wake persistence, non-waking passive
+reads, and native browser-terminal launch passed after correcting an incompatible
+preinstalled CLI and a stale completed-phase health check. E2B-to-Daytona state
+migration and a real Claude task afterward also passed. OpenClaw switching exposed
+an incompatible preinstalled configuration command and remains under verification.
+This report distinguishes
 checked-in fixes from deployed evidence; it is not a blanket production-readiness
 claim.
 
@@ -251,7 +254,8 @@ At approximately 09:54 UTC, the Claude capability/installer and SVG corrections
 passed `pnpm check`: **855 SDK/source tests**, **1,481 web tests** (37 explicit
 platform-specific skips), both typechecks, production build, and isolated package
 verification. The separate no-model installer proof succeeded on the same Daytona
-image. An explicit hosted repair and actual paid task remain to be verified.
+image. Hosted repair later exposed the cached-phase bypass described below and
+in the [Claude compatibility audit](2026-09-09-daytona-claude-compatibility.md).
 
 At approximately 10:08 UTC, shared bootstrap readiness, configuration-failure
 propagation, native gateway-finalization rejection, and sampled-allocation display
@@ -259,6 +263,14 @@ corrections passed `pnpm check`: **855 SDK/source tests**, **1,507 web tests**
 (37 explicit platform-specific skips), both typechecks, production build, and
 isolated SDK package verification. Unmeasured intervals and unknown allocation
 are no longer displayed as zero; this does not change collector or billing math.
+
+At approximately 10:36 UTC, the OpenClaw capability checks, Codex resume-workspace
+argument correction, remaining active provider-copy cleanup, and chart calendar-date
+fix passed the complete `pnpm check` gate: **863 SDK/source tests**, **1,524 web
+tests** (37 explicit platform-specific skips), both typechecks, production build,
+and isolated SDK package verification. The actual pinned OpenClaw CLI also completed
+the full configuration sequence in an isolated fake-key home without a model call.
+Hosted OpenClaw repair and execution remain separate post-deployment checks.
 
 ## Daytona replacement
 
@@ -282,10 +294,23 @@ QA stopped the 2 GiB fixture at 09:24:25 UTC. Stopped disk may still incur stora
 charges. Production Daytona credentials were saved server-side in the scoped
 Vercel project. Real hosted creation completed in 50.344 seconds with independently
 verified requested allocation, but its first Claude task failed on the image's
-old CLI before model execution. The existing Worker will be repaired and retested;
-it is not being blindly replaced. Details, deployment IDs, and scope are in the
+old CLI before model execution. On deployed `6bbfdfd`, normal hosted repair then
+upgraded that same Worker's CLI, and a real Claude task completed in 17.130 seconds.
+Independent reads verified its exact 31-byte output and SHA-256, then verified
+the same bytes after hosted sleep/wake. Passive dashboard reads did not wake the
+stopped sandbox. The browser Terminal also reached the native Claude 2.1.220
+prompt with Sonnet 4.6 and the correct project directory. Details, deployment IDs,
+failed attempts, and scope are in the
 [hosted Daytona audit](2026-09-09-hosted-daytona-audit.md). No secret is included in
 the repository or this report.
+
+The separate [E2B-to-Daytona migration](2026-09-09-daytona-live-migration.md)
+preserved the stable Worker ID, file hashes, canonical documents, native history,
+and Git state. A subsequent real Claude task read the transferred file correctly;
+its native JSONL independently contained the tool results. OpenClaw switching on
+the first hosted Daytona Worker failed before model execution because the base
+image's CLI lacks the required batch-configuration flag; that path is not yet
+claimed as passing.
 
 ## Production authentication remains a separate check
 
@@ -296,6 +321,8 @@ does not establish that this Vercel Production deployment uses its keys.
 At 07:24 UTC, a fresh read of this Vercel project's Production environment still
 classified both Clerk keys as development keys (values withheld).
 An independent environment refresh at 08:27 UTC found the same classification.
+At 10:22 UTC, the real dashboard DOM still loaded its Clerk script from that
+development hostname after a fresh navigation on the `6bbfdfd` deployment.
 No Clerk instance or user identity was silently switched. Production key
 connection and a fresh-account test on that deployment remain outstanding.
 

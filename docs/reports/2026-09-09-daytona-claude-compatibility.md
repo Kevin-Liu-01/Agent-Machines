@@ -41,3 +41,11 @@ The final readiness invariant now lives at the deeper shared `runWebBootstrap` b
 Independent review also found that a later terminal-state rewrite could hide a preceding configuration failure in the generated shell. The configuration now runs in a standalone subshell whose exit status is checked before the rewrite. Executable environment-write and selected-model-write regressions failed before the correction and now pass, alongside installer-failure and success controls. These guards preserve the actual configuration failure even when an older healthy CLI and stale environment still exist.
 
 The focused 81-test web suite, additional native-model and credential-isolation checks, TypeScript, and whitespace checks passed. The original hosted Worker has not been modified out of band; deployed repair and a real managed task remain unverified until the next release check.
+
+## Deployed normal repair and actual Claude task passed
+
+On release `6bbfdfd54ae43d2938aceb6d9dc7900dc74cc71c`, explicit hosted bootstrap operation `e04f0cae-b70e-4918-8162-9e5cf276f4c1` repaired the original machine at 10:11:15 UTC. No out-of-band upgrade was applied to that hosted target. The following real native-Anthropic Claude task succeeded at 10:11:34 through managed operation `badaec80-4492-4184-bc64-0b8e3a419ff5`, taking 17.130 seconds end to end.
+
+The task produced `/home/daytona/agent-machines/daytona-proof.txt`: 31 bytes, `DAYTONA-HOSTED-WORKER-VERIFIED` followed by a newline, SHA-256 `62271826347d9ef2b053af25d7c516217bc339e1a758572c1325640121a56ec5`. The coordinated hosted sleep/wake test retained that exact file and the same Worker/placement; independent provider reads passed at 10:16:58. Native Terminal inspection at 10:19 showed Claude Code `2.1.220`, Sonnet 4.6, in `~/agent-machines`, after its real first-use theme/key/trust prompts. This was not unattended first-use terminal onboarding.
+
+Before the separate runtime-switch test, an independent adapter read at 10:20:44 again verified the exact bytes/hash on the original hosted machine, observed 2048 MiB allocation, Claude runtime, successful bootstrap, and matching Worker placement. This closes the specific hosted repair and real Claude execution failure; it is not a claim that every runtime/provider combination has been tested.

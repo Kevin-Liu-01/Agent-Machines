@@ -125,7 +125,11 @@ export const DashboardBarChart = memo(function DashboardBarChart({
 
 export function formatDayShort(value: string): string {
 	const d = new Date(value);
-	return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+	// SQL date buckets are calendar dates, not instants in the viewer's zone.
+	return d.toLocaleDateString("en-US", {
+		month: "short", day: "numeric",
+		...(/^\d{4}-\d{2}-\d{2}$/.test(value) ? { timeZone: "UTC" } : {}),
+	});
 }
 
 export function formatDayOfWeek(value: string): string {

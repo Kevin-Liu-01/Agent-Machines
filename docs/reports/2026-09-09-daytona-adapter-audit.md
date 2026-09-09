@@ -9,9 +9,11 @@ Verified on 2026-09-09 with `@daytona/sdk` 0.211.2 and explicitly authorized dis
 | `c5b11be3-342d-45c0-8f01-61c10a13f381` | Default-snapshot lifecycle / command / PTY proof | 1 vCPU, 1 GiB RAM, 3 GiB disk | `/home/daytona` |
 | `24b471d1-4025-4f0f-808c-e22099d6f38a` | Explicitly authorized sizing proof; handed to runtime QA | 1 vCPU, 2 GiB RAM, 3 GiB disk | `/home/daytona` |
 
-Both were created private, non-ephemeral, with automatic deletion disabled (`autoDeleteInterval: -1`), no lifetime expiry (`ttlMinutes: 0`), and no automatic stop/pause. They have not been deleted. Running resources continue to consume compute; stopped resources retain their files and may consume storage. Their IDs are recorded for subsequent migration proof and explicit cleanup.
+Both were created private, non-ephemeral, with automatic deletion disabled (`autoDeleteInterval: -1`), no lifetime expiry (`ttlMinutes: 0`), and no automatic stop/pause. Running resources consume compute; stopped resources retain their files and may consume storage. Their IDs were recorded for subsequent runtime proof and explicit cleanup.
 
-After the local checks, the first resource was explicitly parked through the adapter. A fresh non-waking description confirmed `sleeping` / vendor `stopped`, with its original allocation intact. The second resource was handed to runtime QA; that agent subsequently parked it and confirmed `stopped` at 09:24:25 UTC. Both resources are stopped, not deleted.
+After the local checks, the first resource was explicitly parked through the adapter. A fresh non-waking description confirmed `sleeping` / vendor `stopped`, with its original allocation intact. The second resource was handed to runtime QA; that agent subsequently parked it and confirmed `stopped` at 09:24:25 UTC, before later explicitly authorized compatibility checks.
+
+At 10:31:29 UTC, the first fixture (`c5b11be3-342d-45c0-8f01-61c10a13f381`) was explicitly deleted after independently matching its exact ID, QA name, and stopped state. A new provider description confirmed `destroyed`. Its disposable disk was removed; the proof reports remain. The second fixture was retained for runtime compatibility testing, not included in that deletion.
 
 ## Passed against the actual provider
 

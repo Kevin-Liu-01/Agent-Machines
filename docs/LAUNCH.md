@@ -85,8 +85,9 @@ Exercise each capability claimed for the launch on a disposable test Worker:
   Worker remains associated with the same workspace and durable files.
 - Migrate to another credentialed provider. Verify the destination runs a
   command and the original file checksum matches before accepting cutover.
-  Application-level handoff restarts processes from durable state; it does not
-  transfer RAM or native runtime sessions across providers.
+  Application-level handoff restarts processes from durable state and can copy
+  supported saved runtime histories; it does not transfer RAM or a live native
+  process/session across providers.
 - Add a scheduled job, observe one real scheduled dispatch, and inspect its
   output and history. Disable or remove the test schedule afterward.
 - Trigger a recoverable failure, such as an invalid test model credential.

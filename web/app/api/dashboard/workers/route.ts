@@ -59,7 +59,7 @@ export async function POST(request: Request): Promise<Response> {
 		return Response.json(
 			{
 				error: "unsupported_gateway",
-				message: "Dedalus is supported only as a sandbox substrate, not as a model gateway.",
+				message: "Dedalus providers and model gateways are retired. Choose a configured model upstream.",
 			},
 			{ status: 400 },
 		);

@@ -150,7 +150,7 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
 				{
 					error: "unsupported_gateway",
 					message:
-						"Dedalus is a sandbox provider only; choose Vercel AI Gateway or OpenRouter.",
+						"Dedalus providers and model gateways are retired. Choose a configured model upstream.",
 				},
 				{ status: 400 },
 			);

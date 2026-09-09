@@ -37,6 +37,13 @@ function patch(body: unknown, id = "worker-1") {
 }
 function unchanged() { expect(mocks.apply).not.toHaveBeenCalled(); expect(mocks.after).not.toHaveBeenCalled(); }
 
+it("rejects retired gateways without advertising a supported Dedalus provider", async () => {
+	const response = await patch({ gatewayProfileId: "dedalus-default" });
+	expect(response.status).toBe(400);
+	expect(await response.json()).toMatchObject({ error: "unsupported_gateway", message: expect.stringContaining("providers and model gateways are retired") });
+	unchanged();
+});
+
 describe.each(["hermes", "openclaw"] as const)("%s journal selection", (runtime) => {
 	it("invariant_changed_custom_model_remains_opaque_and_is_journaled_once", async () => {
 		worker.spec.runtime = runtime;

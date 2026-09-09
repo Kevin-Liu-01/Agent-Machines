@@ -68,7 +68,7 @@ export function routerPresetById(id: string | null | undefined): RouterPreset | 
 
 export const DEFAULT_ROUTER_ID = "vercel-ai-gateway";
 
-/** Dedalus is a sandbox substrate only; its historical model-router ids are retired. */
+/** Dedalus providers and model gateways are retired; reject historical router IDs. */
 export function isRemovedDedalusRouter(value: unknown): boolean {
 	if (typeof value === "string") return value.trim().toLowerCase().includes("dedalus");
 	if (!value || typeof value !== "object") return false;

@@ -1025,6 +1025,7 @@ function configureOpenClaw(
 		"set -e",
 		`mkdir -p ${p.HOME}/.npm-cache ${p.HOME}/.tmp ${p.OPENCLAW_HOME}/logs`,
 		openClawEnv(p),
+		`${getHarness("openclaw").isInstalledCommand()} || { echo 'OpenClaw is missing required configuration or headless capabilities; bootstrap must install a compatible CLI.' >&2; exit 1; }`,
 		writeRemoteFile(batchPath, batch),
 		`openclaw config set --batch-file ${batchPath}`,
 		providerSetup,
@@ -1348,7 +1349,7 @@ function configureHealthProbe(agent: string, p: BootstrapPaths): string | null {
 		case "codex":
 			return `command -v codex >/dev/null 2>&1 && codex --version >/dev/null 2>&1 && test -s ${p.APP_HOME}/.agent-env && echo ok || echo broken`;
 		case "openclaw":
-			return `${openClawEnv(p)} && command -v openclaw >/dev/null 2>&1 && test -s ${p.OPENCLAW_HOME}/.env && echo ok || echo broken`;
+			return `${openClawEnv(p)} && ${getHarness("openclaw").isInstalledCommand()} && test -s ${p.OPENCLAW_HOME}/.env && echo ok || echo broken`;
 		case "hermes":
 			return `test -s ${p.HERMES_HOME}/.env && echo ok || echo broken`;
 		default:

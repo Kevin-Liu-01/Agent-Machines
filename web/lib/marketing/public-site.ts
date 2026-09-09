@@ -94,7 +94,7 @@ export const PRODUCT_FEATURES: ReadonlyArray<ProductFeature> = [
 		badges: ["runtime root", "logs", "cron", "artifacts"],
 		metrics: [
 			{ label: "Runtime root", value: "~/.agent-machines", detail: "disk-backed state" },
-			{ label: "Provider lanes", value: "4", detail: "E2B, Sprites, Dedalus, Vercel" },
+			{ label: "Provider lanes", value: "4", detail: "E2B, Sprites, Daytona, Vercel" },
 			{ label: "Surfaces", value: "7", detail: "chat, terminal, logs, usage, cron, loadout, files" },
 		],
 		steps: [
@@ -208,7 +208,7 @@ export const PRODUCT_FEATURES: ReadonlyArray<ProductFeature> = [
 		description:
 			"Keep disk-backed runtime state across sleep and wake, using the checkpoint behavior of the selected provider.",
 		longDescription:
-			"Persistent state is the baseline. E2B and Vercel checkpoint differently from Sprites and Dedalus, so Agent Machines reports the selected lane's persistence behavior and never presents manual fork controls that the control plane does not expose.",
+			"Persistence is provider-specific: E2B can preserve memory and files through pause, Vercel uses filesystem snapshots, Sprites retain disk state, and Daytona stop/start preserves files rather than running processes. The dashboard exposes only the controls supported by each adapter.",
 		icon: "git-branch",
 		badges: ["disk-backed", "provider-specific", "artifacts"],
 		metrics: [
@@ -272,7 +272,7 @@ export const AGENT_TEMPLATES: ReadonlyArray<AgentTemplate> = [
 		icon: "git-branch",
 		runtime: "Codex CLI or Claude Code",
 		modelPath: "OpenAI, Anthropic, or router profile",
-		providerLane: "Vercel Sandbox, E2B, or Dedalus",
+		providerLane: "Vercel Sandbox, E2B, or Daytona",
 		loadout: ["repo search", "tests", "lint", "security notes"],
 		metrics: [
 			{ label: "Best for", value: "diffs", detail: "review and regression checks" },
@@ -297,7 +297,7 @@ export const AGENT_TEMPLATES: ReadonlyArray<AgentTemplate> = [
 		icon: "code",
 		runtime: "Codex CLI or Claude Code",
 		modelPath: "OpenAI, Anthropic, or router profile",
-		providerLane: "Vercel Sandbox, E2B, or Dedalus",
+		providerLane: "Vercel Sandbox, E2B, or Daytona",
 		loadout: ["terminal", "patch", "test runner", "artifact capture"],
 		metrics: [
 			{ label: "Best for", value: "features", detail: "scoped implementation" },
@@ -322,7 +322,7 @@ export const AGENT_TEMPLATES: ReadonlyArray<AgentTemplate> = [
 		icon: "search",
 		runtime: "Hermes",
 		modelPath: "Router profile or OpenAI-compatible endpoint",
-		providerLane: "Vercel Sandbox, E2B, Sprites, or Dedalus",
+		providerLane: "Vercel Sandbox, E2B, Sprites, or Daytona",
 		loadout: ["web search", "page extract", "citations", "report artifacts"],
 		metrics: [
 			{ label: "Best for", value: "briefs", detail: "cited research reports" },
@@ -347,7 +347,7 @@ export const AGENT_TEMPLATES: ReadonlyArray<AgentTemplate> = [
 		icon: "bar-chart",
 		runtime: "Hermes or Claude Code",
 		modelPath: "Router profile or native provider key",
-		providerLane: "E2B, Vercel Sandbox, or Dedalus",
+		providerLane: "E2B, Vercel Sandbox, or Daytona",
 		loadout: ["SQL MCP", "CSV tools", "charts", "artifact capture"],
 		metrics: [
 			{ label: "Best for", value: "analysis", detail: "questions over data" },
@@ -372,7 +372,7 @@ export const AGENT_TEMPLATES: ReadonlyArray<AgentTemplate> = [
 		icon: "mouse",
 		runtime: "OpenClaw",
 		modelPath: "Anthropic, OpenAI, or router profile",
-		providerLane: "Vercel Sandbox, E2B, or Dedalus",
+		providerLane: "Vercel Sandbox, E2B, or Daytona",
 		loadout: ["browser", "screenshots", "vision", "terminal"],
 		metrics: [
 			{ label: "Best for", value: "browser", detail: "visual workflows" },
@@ -397,7 +397,7 @@ export const AGENT_TEMPLATES: ReadonlyArray<AgentTemplate> = [
 		icon: "life-buoy",
 		runtime: "Hermes or OpenClaw",
 		modelPath: "Router profile or native provider key",
-		providerLane: "Sprites, E2B, Vercel Sandbox, or Dedalus",
+		providerLane: "Sprites, E2B, Vercel Sandbox, or Daytona",
 		loadout: ["helpdesk MCP", "knowledge base", "browser", "handoff notes"],
 		metrics: [
 			{ label: "Best for", value: "tickets", detail: "triage and response drafts" },
@@ -422,7 +422,7 @@ export const AGENT_TEMPLATES: ReadonlyArray<AgentTemplate> = [
 		icon: "terminal",
 		runtime: "Hermes or Codex CLI",
 		modelPath: "Router profile or native provider key",
-		providerLane: "Dedalus, E2B, or Vercel Sandbox",
+		providerLane: "Daytona, E2B, or Vercel Sandbox",
 		loadout: ["terminal", "cloud CLIs", "logs", "approvals"],
 		metrics: [
 			{ label: "Best for", value: "runbooks", detail: "repeatable ops tasks" },
@@ -447,7 +447,7 @@ export const AGENT_TEMPLATES: ReadonlyArray<AgentTemplate> = [
 		icon: "activity",
 		runtime: "OpenClaw or Hermes",
 		modelPath: "Router profile or native provider key",
-		providerLane: "Vercel Sandbox, E2B, or Dedalus",
+		providerLane: "Vercel Sandbox, E2B, or Daytona",
 		loadout: ["browser", "screenshots", "console logs", "accessibility checks"],
 		metrics: [
 			{ label: "Best for", value: "flows", detail: "end-to-end product checks" },
@@ -472,7 +472,7 @@ export const AGENT_TEMPLATES: ReadonlyArray<AgentTemplate> = [
 		icon: "book",
 		runtime: "Hermes",
 		modelPath: "Router profile or OpenAI-compatible endpoint",
-		providerLane: "Sprites, E2B, Vercel Sandbox, or Dedalus",
+		providerLane: "Sprites, E2B, Vercel Sandbox, or Daytona",
 		loadout: ["memory", "search", "docs", "artifact index"],
 		metrics: [
 			{ label: "Best for", value: "memory", detail: "reusable context" },
@@ -497,7 +497,7 @@ export const AGENT_TEMPLATES: ReadonlyArray<AgentTemplate> = [
 		icon: "shield",
 		runtime: "Codex CLI or Claude Code",
 		modelPath: "OpenAI, Anthropic, or router profile",
-		providerLane: "E2B, Vercel Sandbox, or Dedalus",
+		providerLane: "E2B, Vercel Sandbox, or Daytona",
 		loadout: ["dependency audit", "secret checks", "config review", "threat model"],
 		metrics: [
 			{ label: "Best for", value: "audit", detail: "focused risk review" },
@@ -522,7 +522,7 @@ export const AGENT_TEMPLATES: ReadonlyArray<AgentTemplate> = [
 		icon: "database",
 		runtime: "Hermes or Claude Code",
 		modelPath: "Router profile or native provider key",
-		providerLane: "E2B, Vercel Sandbox, or Dedalus",
+		providerLane: "E2B, Vercel Sandbox, or Daytona",
 		loadout: ["spreadsheets", "CSV", "charts", "report artifacts"],
 		metrics: [
 			{ label: "Best for", value: "reports", detail: "structured financial analysis" },
@@ -547,7 +547,7 @@ export const AGENT_TEMPLATES: ReadonlyArray<AgentTemplate> = [
 		icon: "route",
 		runtime: "Hermes",
 		modelPath: "Router profile or OpenAI-compatible endpoint",
-		providerLane: "Sprites, E2B, Vercel Sandbox, or Dedalus",
+		providerLane: "Sprites, E2B, Vercel Sandbox, or Daytona",
 		loadout: ["web search", "source extraction", "notes", "brief artifacts"],
 		metrics: [
 			{ label: "Best for", value: "markets", detail: "source-backed strategy" },

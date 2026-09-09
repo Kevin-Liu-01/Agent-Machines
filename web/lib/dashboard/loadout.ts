@@ -1256,7 +1256,7 @@ export const TRUSTED_ADDONS: ReadonlyArray<TrustedAddOn> = [
 		kind: "provider",
 		provider: "Sprites",
 		description:
-			"Sprites.dev compute with public URL proxy. Live MachineProvider alongside Dedalus and E2B.",
+			"Sprites.dev compute with public URL proxy. Provider adapter alongside Daytona, E2B, and Vercel Sandbox.",
 		source: "sprites.dev",
 		command: null,
 	},

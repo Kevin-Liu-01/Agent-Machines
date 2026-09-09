@@ -60,8 +60,9 @@ export async function agentArtifactsPresent(
 		const probe = await provider.exec(
 			machine.id,
 			[
+				`export HOME=${home}`,
 				pathExports(home),
-				"command -v openclaw >/dev/null 2>&1",
+				getHarness("openclaw").isInstalledCommand(),
 				`test -f ${openclawHome}/.env`,
 				"echo ok",
 			].join(" && "),
