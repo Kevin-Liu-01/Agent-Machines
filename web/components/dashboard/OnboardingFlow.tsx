@@ -64,11 +64,11 @@ type Props = {
 type Step = "agent" | "preset" | "provider" | "key" | "boot";
 
 const STEPS: ReadonlyArray<{ id: Step; label: string; hint: string }> = [
-	{ id: "agent", label: "Agent", hint: "personality" },
-	{ id: "preset", label: "Preset", hint: "memory + abilities" },
+	{ id: "agent", label: "Agent", hint: "how it works" },
+	{ id: "preset", label: "Preset", hint: "starting instructions" },
 	{ id: "provider", label: "Provider", hint: "where it runs" },
-	{ id: "key", label: "Key", hint: "provider token" },
-	{ id: "boot", label: "Boot", hint: "spin up rig" },
+	{ id: "key", label: "Keys", hint: "connect accounts" },
+	{ id: "boot", label: "Launch", hint: "prepare your Worker" },
 ];
 
 /** Sentinel preset id for "start blank, no preset". */
@@ -92,7 +92,7 @@ const PROVIDERS_META: Record<
 	dedalus: {
 		name: "Dedalus Machines",
 		tagline:
-			"Linux VMs with sleep/wake, persistent disk, cloudflared previews. The original.",
+			"Linux machines with persistent disk, manual sleep and wake, and preview tunnels.",
 		keyLabel: "Dedalus API key",
 		keyPlaceholder: "dsk-live-...",
 		keyHint: "Get one at dedaluslabs.ai/dashboard/api-keys",
@@ -100,7 +100,7 @@ const PROVIDERS_META: Record<
 	sprites: {
 		name: "Sprites",
 		tagline:
-			"Persistent Linux sandboxes on Sprites.dev. Auto-sleep, instant wake, checkpoints, public URLs. Runs on Fly.io infrastructure.",
+			"Linux sandboxes with persistent files, automatic idle sleep, wake on use, and checkpoints.",
 		keyLabel: "Sprites token",
 		keyPlaceholder: "Your Sprites API token",
 		keyHint: "Get one at sprites.dev/account",
@@ -108,7 +108,7 @@ const PROVIDERS_META: Record<
 	e2b: {
 		name: "E2B Sandbox",
 		tagline:
-			"Full Linux sandboxes with pause/resume, snapshots, and public URLs. Best for stable agent work with fast cold starts.",
+			"Linux sandboxes with pause and resume, filesystem and memory snapshots, and per-port URLs.",
 		keyLabel: "E2B API key",
 		keyPlaceholder: "e2b_...",
 		keyHint: "Get one at e2b.dev/dashboard",
@@ -116,10 +116,10 @@ const PROVIDERS_META: Record<
 	vercel: {
 		name: "Vercel Sandbox",
 		tagline:
-			"Persistent Firecracker microVMs on Vercel. Auto-snapshots on stop, resume by name, port URLs, getOrCreate + fork.",
+			"Linux microVMs that save filesystem snapshots on stop. Resume the saved workspace; running processes must restart.",
 		keyLabel: "Vercel access token",
 		keyPlaceholder: "token…",
-		keyHint: "Account settings → tokens. On Vercel deploys, OIDC is automatic.",
+		keyHint: "Use a Vercel access token with its Team ID and Project ID, or credentials already configured for your account.",
 		secondaryFields: [
 			{ label: "Team ID", placeholder: "team_…", field: "teamId" },
 			{ label: "Project ID", placeholder: "prj_…", field: "projectId" },
@@ -135,14 +135,14 @@ const COMPARISON_ROWS: ReadonlyArray<{
 	vercel: string;
 }> = [
 	{ label: "Type", dedalus: "Persistent VM", e2b: "Pausable sandbox", sprites: "Persistent sandbox", vercel: "Persistent microVM" },
-	{ label: "OS", dedalus: "Ubuntu", e2b: "Debian 12", sprites: "Linux", vercel: "Amazon Linux 2023" },
+	{ label: "Environment", dedalus: "Linux", e2b: "Linux", sprites: "Linux", vercel: "Linux" },
 	{ label: "Sleep / wake", dedalus: "Manual", e2b: "Pause / resume", sprites: "Auto-sleep / auto-wake", vercel: "Stop / auto-resume" },
-	{ label: "Cold start", dedalus: "~30s", e2b: "Instant", sprites: "~5s", vercel: "Sub-second resume" },
-	{ label: "Storage", dedalus: "Persistent disk", e2b: "Persists across pause", sprites: "Persistent ext4", vercel: "Auto snapshots (default)" },
-	{ label: "Public URLs", dedalus: "Preview URLs", e2b: "Per-port host", sprites: "Per-sprite URL", vercel: "sandbox.domain(port)" },
-	{ label: "Snapshots", dedalus: "\u2014", e2b: "Full snapshots", sprites: "~300ms checkpoints", vercel: "Unlimited auto snapshots" },
-	{ label: "Max lifetime", dedalus: "Unlimited", e2b: "24h (Pro) / 1h", sprites: "Unlimited", vercel: "5h session / named forever" },
-	{ label: "Best for", dedalus: "Production agents", e2b: "Fast iteration", sprites: "Always-on services", vercel: "Vercel-native agents" },
+	{ label: "First launch", dedalus: "Includes runtime setup", e2b: "Includes runtime setup", sprites: "Includes runtime setup", vercel: "Includes runtime setup" },
+	{ label: "Storage", dedalus: "Persistent disk", e2b: "Retained across pause", sprites: "Persistent filesystem", vercel: "Filesystem snapshots" },
+	{ label: "Workspace URLs", dedalus: "Preview tunnels", e2b: "Per-port host", sprites: "Per-sprite URL", vercel: "Per-port URL" },
+	{ label: "Snapshots", dedalus: "Not exposed", e2b: "Filesystem and memory", sprites: "Checkpoints", vercel: "Filesystem only" },
+	{ label: "Limits", dedalus: "Account-dependent", e2b: "Plan-dependent", sprites: "Account-dependent", vercel: "Plan-dependent" },
+	{ label: "Credentials", dedalus: "API key", e2b: "API key", sprites: "API token", vercel: "Token, team, and project" },
 ];
 
 const AGENT_DESC: Record<
@@ -158,57 +158,57 @@ const AGENT_DESC: Record<
 	hermes: {
 		name: "Hermes",
 		mark: "nous",
-		tagline: "Self-improving. Memory + cron. MCP-native.",
+		tagline: "Research and ongoing tasks with saved context.",
 		bullets: [
-			"USER.md + MEMORY.md persist on /home/machine",
-			"FTS5 sessions DB indexes every chat for instant recall",
-			"Cron schedules survive sleeps; wake the VM on tick",
+			"Keeps memory files in the Worker's home directory",
+			"Saves conversation history for inspection in Sessions",
+			"Recurring work starts only after you configure and enable a schedule",
 		],
 		links: [
-			{ label: "github", href: "https://github.com/NousResearch/hermes-agent" },
-			{ label: "docs", href: "https://hermes-agent.nousresearch.com/docs/" },
+			{ label: "Source", href: "https://github.com/NousResearch/hermes-agent" },
+			{ label: "Documentation", href: "https://hermes-agent.nousresearch.com/docs/" },
 		],
 	},
 	openclaw: {
 		name: "OpenClaw",
 		mark: "openclaw",
-		tagline: "Computer use. Browser + shell + vision.",
+		tagline: "Browser and shell tasks with saved context.",
 		bullets: [
-			"Persistent computer-use state under /home/machine/.openclaw",
-			"Browser + screenshot + click-by-coordinates on the VM",
-			"Bootstrappable from the UI like Hermes, with the same fleet controls",
+			"Keeps runtime state in .openclaw under the Worker's home directory",
+			"Uses browser tools when installed and configured",
+			"Runs from the Console or terminal; its optional HTTP gateway is separate",
 		],
 		links: [
-			{ label: "github", href: "https://github.com/openclaw/openclaw" },
-			{ label: "ddls cookbook", href: "https://github.com/dedalus-labs/openclaw-ddls" },
+			{ label: "Source", href: "https://github.com/openclaw/openclaw" },
+			{ label: "Legacy integration example", href: "https://github.com/dedalus-labs/openclaw-ddls" },
 		],
 	},
 	"claude-code": {
 		name: "Claude Code",
 		mark: "claudecode",
-		tagline: "Edit repos. Run shell. Use SDK.",
+		tagline: "Edit, debug, and test with Claude Code.",
 		bullets: [
-			"Terminal coding agent with deep repo awareness and multi-step tool use",
-			"Headless runs via claude -p for automation and cron workflows",
-			"Agent SDK for programmatic control from TypeScript or Python",
+			"Uses the native Claude Code CLI in your Worker's workspace",
+			"Run tasks from the Console or work in an interactive terminal",
+			"API-key setup supports automated runs; terminal sign-in is a separate step",
 		],
 		links: [
-			{ label: "github", href: "https://github.com/anthropics/claude-code" },
-			{ label: "docs", href: "https://code.claude.com/docs/" },
+			{ label: "Source", href: "https://github.com/anthropics/claude-code" },
+			{ label: "Documentation", href: "https://code.claude.com/docs/" },
 		],
 	},
 	codex: {
 		name: "Codex CLI",
 		mark: "codex",
-		tagline: "Ship tasks. Sandbox runs. CI-ready.",
+		tagline: "Write code and run tests with Codex.",
 		bullets: [
-			"Terminal coding agent with sandbox isolation and workspace-write modes",
-			"Non-interactive runs via codex exec for CI/CD pipelines and automation",
-			"JSONL output for programmatic parsing and integration",
+			"Uses the native Codex CLI in your Worker's workspace",
+			"Run tasks from the Console or work in an interactive terminal",
+			"Keeps native session history for inspection in Sessions",
 		],
 		links: [
-			{ label: "github", href: "https://github.com/openai/codex" },
-			{ label: "docs", href: "https://developers.openai.com/codex/" },
+			{ label: "Source", href: "https://github.com/openai/codex" },
+			{ label: "Documentation", href: "https://developers.openai.com/codex/" },
 		],
 	},
 };
@@ -471,7 +471,7 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 									aria-describedby="onboarding-model-help"
 									className="w-full rounded border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-3 py-2 text-sm outline-none focus:border-[var(--ret-purple)]"
 								/>
-								<p id="onboarding-model-help" className="text-xs leading-relaxed text-[var(--ret-text-muted)]">Leave blank to use a model for your connected provider. For Google or a custom endpoint, enter the exact model ID it supports.</p>
+								<p id="onboarding-model-help" className="text-xs leading-relaxed text-[var(--ret-text-muted)]">Leave blank to choose a model for your connected AI provider. For Google or a custom endpoint, enter the exact model ID it supports.</p>
 							</div>
 							<KeyStep
 								agent={agent}
@@ -593,15 +593,15 @@ function AgentStep({
 	return (
 		<div className="space-y-5">
 			<div>
-				<ReticleLabel>step 1 . agent</ReticleLabel>
+				<ReticleLabel>Step 1 · Agent</ReticleLabel>
 				<h1 className="ret-display mt-1 text-2xl">
 					Pick your agent
 				</h1>
 				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
-					Both run on the same machine, persist to the same /home/machine
-					filesystem, expose the same OpenAI-compatible API, and read the
-					same skills + tools. They differ in personality and native toolset.
-					You can swap later from the navbar -- the disk doesn't care.
+					Choose one of four agent runtimes. Claude Code and Codex use their
+					native CLIs; tools and HTTP support differ by runtime. No agent HTTP
+					gateway is required to use the Console. Memory and runtime files live
+					in your Worker&rsquo;s home directory, whose path depends on the provider.
 				</p>
 			</div>
 			<div className="grid gap-3 md:grid-cols-2">
@@ -697,12 +697,14 @@ function PresetStep({
 	return (
 		<div className="space-y-5">
 			<div>
-				<ReticleLabel>step 2 . preset</ReticleLabel>
-				<h1 className="ret-display mt-1 text-2xl">Pick a memory preset</h1>
+				<ReticleLabel>Step 2 · Preset</ReticleLabel>
+				<h1 className="ret-display mt-1 text-2xl">Choose a starting specialist</h1>
 				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
-					A preset seeds your agent&rsquo;s Memory -- its persona plus a curated set of
-					skills and MCP servers, imported into your library. Start from one and
-					refine it later in Memory, or start blank and add from the Registry.
+					A preset supplies specialist memory, instructions, and selected skills
+					and MCP servers. Connected tools may still need credentials or setup;
+					selection is not verification. Refine the instructions in Memory and
+					manage tools in the Registry after launch. Recurring work runs only
+					when you configure and enable a schedule.
 				</p>
 			</div>
 			<div className="grid gap-3 md:grid-cols-2">
@@ -737,7 +739,7 @@ function PresetStep({
 								{preset.description}
 							</p>
 							<p className="mt-auto font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
-								{skillCount} skills . {mcpCount} mcp servers
+								Selected · Skills: {skillCount} · MCP servers: {mcpCount}
 							</p>
 						</button>
 					);
@@ -761,11 +763,11 @@ function PresetStep({
 						) : null}
 					</div>
 					<p className="text-[12px] text-[var(--ret-text-dim)]">
-						No preset. Your library starts empty -- add skills and MCP servers
-						yourself from the Registry, and shape your Memory from there.
+						No specialist preset selected. Start with basic instructions and
+						choose your own tools from the bundled Registry catalog.
 					</p>
 					<p className="mt-auto font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
-						0 skills . 0 mcp servers
+						No specialist tools selected
 					</p>
 				</button>
 			</div>
@@ -792,7 +794,7 @@ function ProviderComparison({ selected }: { selected: ProviderKind }) {
 	return (
 		<ReticleFrame>
 			<div className="border-b border-[var(--ret-border)] px-4 py-2">
-				<ReticleLabel>compare</ReticleLabel>
+				<ReticleLabel>Compare capabilities · Launch time and limits vary</ReticleLabel>
 			</div>
 			<div className="overflow-x-auto">
 				<table className="w-full text-[12px]">
@@ -863,14 +865,15 @@ function ProviderPickStep({
 	return (
 		<div className="space-y-5">
 			<div>
-				<ReticleLabel>step 3 . provider</ReticleLabel>
+				<ReticleLabel>Step 3 · Provider</ReticleLabel>
 				<h1 className="ret-display mt-1 text-2xl">
 					Pick where it runs
 				</h1>
 				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
-					The infrastructure provider hosting your agent&rsquo;s VM.
-					Choose any configured lane; the Worker remains the same. Current
-					health and provider-specific lifecycle support stay visible.
+					Choose the cloud provider that will host your Worker. Connect its
+					account in the next step if needed. Storage, sleep, and recovery
+					capabilities differ by provider. The first launch also installs and
+					configures your chosen runtime.
 				</p>
 			</div>
 			<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -971,13 +974,14 @@ function KeyStep({
 	return (
 		<div className="space-y-5">
 			<div>
-				<ReticleLabel>step 4 . keys</ReticleLabel>
+				<ReticleLabel>Step 4 · Keys</ReticleLabel>
 				<h1 className="ret-display mt-1 text-2xl">
 					Bring your keys
 				</h1>
 				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
-					Infrastructure key provisions the {PROVIDER_LABEL[provider]} machine.
-					AI provider keys power {AGENT_LABEL[agent]}. Credentials are saved privately to your account.
+					Your {PROVIDER_LABEL[provider]} key creates the machine. Your AI provider
+					key powers {AGENT_LABEL[agent]}. Credentials are saved privately to your
+					account. Your providers bill you directly for machine and model usage.
 				</p>
 			</div>
 			{/* What you're about to boot — same panels as the spin-up form. */}
@@ -985,7 +989,7 @@ function KeyStep({
 				<AgentInfoPanel agentKind={agent} readiness={readiness} />
 				<MachineInfoPanel provider={provider} configured={substrateReady} />
 			</div>
-			<ReticleLabel>infrastructure</ReticleLabel>
+			<ReticleLabel>Cloud provider</ReticleLabel>
 			<label className="flex flex-col gap-1.5">
 				<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					{meta.keyLabel}
@@ -1001,7 +1005,7 @@ function KeyStep({
 				<span className="text-[10px] text-[var(--ret-text-muted)]">
 					{hasKey
 						? "On file. Leave blank to keep the existing key."
-						: "Required to provision."}
+						: "Required to create the machine."}
 				</span>
 			</label>
 			{meta.secondaryFields?.map((f) => (
@@ -1021,7 +1025,7 @@ function KeyStep({
 			))}
 			{agentReqs.length > 0 ? (
 				<>
-					<ReticleLabel>agent inference · {AGENT_LABEL[agent]}</ReticleLabel>
+					<ReticleLabel>AI connection · {AGENT_LABEL[agent]}</ReticleLabel>
 					{agentUsesRouter(agent) ? (
 						<p className="text-[11px] text-[var(--ret-text-dim)]">Add at least one AI provider key below. You do not need all four.</p>
 					) : null}
@@ -1046,8 +1050,8 @@ function KeyStep({
 										{onFile
 										? "On file. Leave blank to keep."
 										: req.required
-											? "Required for headless bootstrap."
-											: "Optional — improves upstream selection."}
+											? "Required for automated setup."
+											: "Optional if another supported AI connection is available."}
 									{req.signupUrl ? (
 										<>
 											{" "}
@@ -1068,14 +1072,14 @@ function KeyStep({
 					{(agent === "claude-code" || agent === "codex") ? (
 						<p className="text-[10px] text-[var(--ret-text-muted)]">
 							Subscription sign-in ({agent === "claude-code" ? "claude auth login" : "codex login"}) is
-							interactive-only — run it in the machine terminal after boot. API keys enable headless setup.
+							interactive. This setup requires an API key; you can sign in separately in the terminal after launch.
 						</p>
 					) : null}
 				</>
 			) : null}
 			{!agentCredsOk ? (
 				<p className="text-[11px] text-[var(--ret-amber)]">
-					Add the required AI provider key(s) above before booting {AGENT_LABEL[agent]}.
+					Add a supported AI provider key above before launching {AGENT_LABEL[agent]}.
 				</p>
 			) : null}
 			{provider === "vercel" && value.trim() && !substrateReady ? (
@@ -1127,23 +1131,23 @@ function BootStep({
 	const machineReady = Boolean(machineId) || phase === "bootstrapping" || phase === "running" || done;
 	const steps = [
 		{ id: "create", label: "Save Worker and queue launch", isDone: (phase !== null && phase !== "pending") || machineReady },
-		{ id: "machine", label: `Provision ${PROVIDER_LABEL[provider]} workspace`, isDone: machineReady },
-		{ id: "agent", label: `Install loadout and start ${AGENT_LABEL[agent]}`, isDone: done },
-		{ id: "ready", label: "Verify runtime and open workspace", isDone: done },
+		{ id: "machine", label: `Create ${PROVIDER_LABEL[provider]} workspace`, isDone: machineReady },
+		{ id: "agent", label: `Prepare memory and configure ${AGENT_LABEL[agent]}`, isDone: done },
+		{ id: "ready", label: "Check runtime readiness and open Console", isDone: done },
 	];
 	return (
 		<div className="space-y-5">
 			<div>
-				<ReticleLabel>step 5 . launch</ReticleLabel>
+				<ReticleLabel>Step 5 · Launch</ReticleLabel>
 				<h1 className="ret-display mt-1 text-2xl">
 					{done ? "Your Worker is ready" : "Launching your Worker"}
 				</h1>
 				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
 					{done
-						? "Opening your live workspace…"
+						? "Opening the Console so you can give your Worker its first task…"
 						: isCliAgent
-							? `This creates a ${PROVIDER_LABEL[provider]} machine, saves your selected loadout, and bootstraps the ${AGENT_LABEL[agent]} environment.`
-							: `This creates a ${PROVIDER_LABEL[provider]} machine, saves your selected loadout, bootstraps ${AGENT_LABEL[agent]}, and wires the gateway back into your account.`}
+							? `Creating a ${PROVIDER_LABEL[provider]} machine, preparing your memory, and configuring the native ${AGENT_LABEL[agent]} CLI. Selected tools may need additional setup.`
+							: `Creating a ${PROVIDER_LABEL[provider]} machine, preparing your memory, and connecting ${AGENT_LABEL[agent]} to your chosen AI provider. Selected tools may need additional setup.`}
 				</p>
 			</div>
 
@@ -1207,12 +1211,12 @@ function BootStep({
 
 			{machineId ? (
 				<p className="font-mono text-[10px] text-[var(--ret-text-muted)]">
-					machine id .{" "}
+					Machine ID ·{" "}
 					<span className="text-[var(--ret-text)]">{machineId}</span>
 				</p>
 			) : (
 				<p className="text-[10px] text-[var(--ret-text-muted)]">
-					<BrailleSpinner /> waiting for machine id...
+					<BrailleSpinner /> Waiting for the machine to be created…
 				</p>
 			)}
 
@@ -1249,7 +1253,7 @@ function RigPreview({
 	return (
 		<div className="space-y-4 px-5 py-6">
 			<div className="flex items-center justify-between gap-2">
-				<ReticleLabel>your rig</ReticleLabel>
+				<ReticleLabel>Your Worker</ReticleLabel>
 				{bootPhase ? (
 					<ReticleBadge variant={bootDone ? "success" : "warning"}>
 						{bootDone ? "ready" : bootPhase}
@@ -1272,8 +1276,8 @@ function RigPreview({
 					</div>
 				</div>
 				<div className="grid grid-cols-2 gap-px bg-[var(--ret-border)]">
-					<Tally label="skills" value={skillIds.length} />
-					<Tally label="mcp servers" value={mcpIds.length} />
+					<Tally label="selected skills" value={skillIds.length} />
+					<Tally label="selected MCP servers" value={mcpIds.length} />
 				</div>
 			</ReticleFrame>
 
@@ -1291,7 +1295,7 @@ function RigPreview({
 					<p className="mt-0.5 text-[10px] text-[var(--ret-text-dim)]">
 						{preset
 							? preset.description
-							: "No preset -- your library starts empty; add from the Registry."}
+							: "No specialist preset selected. The bundled Registry catalog remains available."}
 					</p>
 				</div>
 			</ReticleFrame>
@@ -1300,7 +1304,7 @@ function RigPreview({
 				<ReticleFrame>
 					<div className="border-b border-[var(--ret-border)] px-4 py-2">
 						<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-							mcp servers . {mcpIds.length}
+							Selected MCP servers · {mcpIds.length}
 						</p>
 					</div>
 					<ul className="divide-y divide-[var(--ret-border)]">
@@ -1320,7 +1324,7 @@ function RigPreview({
 				<ReticleFrame>
 					<div className="flex items-center justify-between border-b border-[var(--ret-border)] px-4 py-2">
 						<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-							skill spotlight
+							Selected skill preview
 						</p>
 						<span className="font-mono text-[10px] tabular-nums text-[var(--ret-text-muted)]">
 							{spotlight.length} / {skillIds.length}

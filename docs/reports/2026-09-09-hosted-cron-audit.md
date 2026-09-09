@@ -18,7 +18,7 @@ The audit used the authenticated hosted application and a dedicated disposable E
 4. Independently read `/home/user/.agent-machines/artifacts/cron-launch-proof.txt` through the machine-scoped exec API. Its exact contents were `AGENT-MACHINES-CRON-PROOF-20260909` followed by a newline.
 5. Independently read the on-box `~/.agent-machines/cron/runs.jsonl`. It recorded the cron ID, native Claude runtime, E2B substrate, model, start/end timestamps, and exit code 0.
 6. Calendar-pinned the same cron to `2026-09-09T06:20:00Z` with a different output file, then observed the normal production scheduler without invoking the global internal tick endpoint. The native runtime started at `06:20:30.698Z` and finished at `06:20:46.565Z` with exit code 0. Independent exec readback at `06:29:19Z` confirmed `/home/user/.agent-machines/artifacts/cron-scheduled-proof.txt` contains exactly `AGENT-MACHINES-SCHEDULED-PROOF-20260909` followed by a newline, and the second on-box run record matches those timestamps.
-7. The existing deployment still returned `lastStatus: running` and `lastSummary: dispatched` after that successful automatic completion. This directly reproduces the status-projection defect fixed below; verification of the new deployment's run-history display is pending.
+7. The existing deployment still returned `lastStatus: running` and `lastSummary: dispatched` after that successful automatic completion. This directly reproduced the status-projection defect fixed below; the new deployment was verified as described below.
 
 ## Reproduced defects and fixes
 
@@ -41,4 +41,26 @@ Run history is bounded to the most recent 100 returned scheduled operations. Dis
 
 ## Cleanup status
 
-The disposable Worker and test cron remain temporarily available for verifying the next deployed dashboard/history changes. Cleanup is pending and must target only the IDs listed above.
+The disposable Worker and test cron remain intentionally retained after post-deployment verification. The Worker was explicitly paused through the hosted lifecycle API and independently confirmed paused; its legacy E2B kill-on-timeout policy has not been changed. Cleanup awaits approval and must target only the IDs listed above. No other account's selection or Worker was modified.
+
+## Post-deployment verification
+
+Verified release `520a853199560a6a18d696624a6c7322814392da`, deployment `dpl_FgKKEp6rmqiP7hfzXhUHYxeBVxjE`, on the authenticated `www.agent-machines.com` dashboard at approximately `07:28–07:33Z`.
+
+1. Before any Wake, E2B's non-waking status API confirmed the machine paused. Visiting its artifact page displayed **Machine paused**, the explicit **Wake machine** button, and the legacy timeout warning. Three pairs of actual chat/artifact GETs returned `machine_asleep` for the correct machine. Provider state remained paused at `07:29:22Z`.
+2. `/api/dashboard/crons` returned `lastStatus: success`, `lastSummary: Completed successfully`, and both actual completed runs. The Cron page displayed the same status, both expandable history entries, their output, exact operation IDs, and exit code 0. It did not require waking compute to read the journal.
+3. The manual operation `168a68f4-2439-4708-9a19-e9b64e2f8d28` and scheduled operation `044b5d60-f315-4595-8adf-f77d820be80f` each independently appeared as `succeeded`, exit code 0, with finished timestamps in the Worker's control-plane operation endpoint. History matched those records, rather than only stale cron metadata.
+4. Clicking **Wake machine** explicitly submitted operation `5e74c29c-6a3b-4969-8dd0-72928a72758a`, which succeeded at `07:30:10.851Z`. The same machine resumed; no new Worker was provisioned.
+5. The artifact page discovered both original shell-created proof files without adding an upload index or metadata. Both previews showed the expected contents. Authenticated, explicitly machine-scoped downloads returned HTTP 200 with the original exact bytes and no inventory warnings:
+
+   | File | Bytes | SHA-256 |
+   | --- | ---: | --- |
+   | cron-launch-proof.txt | 35 | 1a8e9ddfe5304178426d050fa9f7755adcd7b8f7125935bfa5a4f7beed9c85c5 |
+   | cron-scheduled-proof.txt | 40 | 392ebdf72bcd969ff18660d9286b01e9c2685b31ed50884a0dc6afa6cd2257cf |
+
+6. Explicit hosted Sleep operation `0e3fc7b7-2681-4130-acfb-8a9223e5c24f` succeeded at `07:31:42.778Z`. Worker desired/observed state both became sleeping; independent E2B reads at `07:31:55Z` and `07:32:36Z` confirmed paused. Reopening the artifact page and reading artifacts again did not wake it. The browser was then returned to `about:blank`.
+7. The journal still contained exactly the original two paid runs. No cron rerun or additional model call was needed for these checks.
+
+Screenshots are retained in `/tmp/agent-machines-launch-20260909/`: `release-paused-artifacts.png`, `release-cron-artifacts.png`, `release-cron-expanded-history.png`, and `release-repaused-artifacts.png`. They contain only the dedicated QA account and synthetic evidence.
+
+The browser reported no application page errors during this flow. Its console did warn that Clerk development keys are deployed on the live site, plus warnings about Clerk structural CSS and a deprecated Three.js clock. Those warnings are reported separately rather than misrepresented as production authentication readiness. Two screenshot-automation expressions initially failed due to command quoting; the corrected expression expanded the actual history controls successfully and made no server-side mutation.

@@ -21,6 +21,7 @@ import {
 	headerPopoverTitle,
 } from "@/lib/dashboard/header-chrome";
 import { cn } from "@/lib/cn";
+import { requestMachineRuntimeUpdate } from "@/lib/dashboard/machine-runtime-update";
 
 const POLL_MS = 8000;
 
@@ -44,8 +45,8 @@ type Props = {
 };
 
 /**
- * Header control to change the inference model on the active machine
- * (and the draft for the next provision).
+ * Change the viewed Worker's model through a reconciled lifecycle operation.
+ * Only when no Worker is selected does this edit the next-provision draft.
  */
 export function ModelSwitcher({ activeMachineId, surface = "header" }: Props) {
 	const router = useRouter();
@@ -53,6 +54,7 @@ export function ModelSwitcher({ activeMachineId, surface = "header" }: Props) {
 	const [open, setOpen] = useState(false);
 	const [pending, setPending] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [notice, setNotice] = useState<string | null>(null);
 	const [catalog, setCatalog] = useState<readonly ModelOption[]>(MODEL_CATALOG);
 	const [catalogSource, setCatalogSource] = useState("local fallback");
 	const rootRef = useRef<HTMLDivElement>(null);
@@ -70,6 +72,11 @@ export function ModelSwitcher({ activeMachineId, surface = "header" }: Props) {
 	}, []);
 
 	const targetId = activeMachineId ?? data?.activeMachineId ?? null;
+	const targetRef = useRef(targetId);
+	targetRef.current = targetId;
+	const mountedRef = useRef(true);
+	useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
+	useEffect(() => { setPending(null); setError(null); setNotice(null); }, [targetId]);
 
 	const refreshCatalog = useCallback(async () => {
 		try {
@@ -128,29 +135,32 @@ export function ModelSwitcher({ activeMachineId, surface = "header" }: Props) {
 		}
 		setPending(modelId);
 		setError(null);
+		setNotice(null);
+		const selectedTarget = targetId;
+		const isCurrent = () => mountedRef.current && targetRef.current === selectedTarget;
 		try {
-			await fetch("/api/dashboard/admin/setup", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ draftModel: modelId }),
-			});
-			if (targetId) {
-				const response = await fetch(`/api/dashboard/machines/${targetId}`, {
-					method: "PATCH",
+			if (selectedTarget) {
+				const message = await requestMachineRuntimeUpdate(selectedTarget, { model: modelId }, (progress) => { if (isCurrent()) setNotice(progress); });
+				if (isCurrent()) setNotice(message);
+			} else {
+				const response = await fetch("/api/dashboard/admin/setup", {
+					method: "POST",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ model: modelId }),
+					body: JSON.stringify({ draftModel: modelId }),
 				});
-				if (!response.ok) {
-					throw new Error(`machine HTTP ${response.status}`);
-				}
+				const body = await response.json().catch(() => ({}));
+				if (!response.ok) throw new Error(body.message ?? body.error ?? `Draft update failed (HTTP ${response.status}).`);
+				if (isCurrent()) setNotice("Default model saved for your next Worker.");
 			}
+			if (!isCurrent()) return;
 			await refresh();
+			if (!isCurrent()) return;
 			router.refresh();
 			setOpen(false);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "model switch failed");
+			if (isCurrent()) { setNotice(null); setError(err instanceof Error ? err.message : "Model switch failed."); }
 		} finally {
-			setPending(null);
+			if (isCurrent()) setPending(null);
 		}
 	}
 
@@ -285,11 +295,6 @@ export function ModelSwitcher({ activeMachineId, surface = "header" }: Props) {
 							</li>
 						))}
 					</ul>
-					{error ? (
-						<p className="border-t border-[var(--ret-red)]/35 bg-[var(--ret-red)]/10 px-3 py-2 text-[11px] text-[var(--ret-red)]">
-							{error}
-						</p>
-					) : null}
 					<p className="border-t border-[var(--ret-border)] px-3 py-2 text-[11px] leading-relaxed text-[var(--ret-text-muted)]">
 						{targetId
 							? `Live list from ${catalogSource}.`
@@ -297,6 +302,8 @@ export function ModelSwitcher({ activeMachineId, surface = "header" }: Props) {
 					</p>
 				</div>
 			) : null}
+			{notice ? <p role="status" className="mt-1 text-[11px] leading-relaxed text-[var(--ret-text-dim)]">{notice}</p> : null}
+			{error ? <p role="alert" className="mt-1 text-[11px] leading-relaxed text-[var(--ret-red)]">{error}</p> : null}
 		</div>
 	);
 }

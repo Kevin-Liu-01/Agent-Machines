@@ -8,11 +8,10 @@ export function BetaBanner() {
 			<div className="mx-auto flex max-w-[1600px] items-center gap-3">
 				<p className="text-[11px] text-[var(--ret-text-muted)]">
 					<ReticleBadge variant="accent" className="mr-2 inline-flex">
-						DEV
+						EARLY ACCESS
 					</ReticleBadge>
-					Agent Machines is under active development. Expect breaking
-					changes, incomplete features, and data that may not persist
-					between updates.
+					Some integrations require additional setup, and provider limits
+					still apply. Back up important work.
 				</p>
 			</div>
 		</div>

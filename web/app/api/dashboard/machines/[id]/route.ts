@@ -2,7 +2,8 @@
  * GET / PATCH / DELETE /api/dashboard/machines/[id]
  *
  *   GET    -- single machine + live state
- *   PATCH  -- mutate stored fields (name, model, apiUrl, apiKey)
+ *   PATCH  -- journal model/router changes for runtime reconciliation;
+ *             mutate stored metadata (name, apiUrl, apiKey)
  *             or set this machine as active via { active: true }.
  *             agentKind is NOT patchable: relabeling without installing was
  *             the trap (a Hermes box labeled OpenClaw with no OpenClaw on
@@ -20,7 +21,12 @@
 import { after } from "next/server";
 
 import { isRemovedDedalusRouter } from "@/lib/agents/upstreams";
+import { DEFAULT_ROUTER_ID } from "@/lib/agents/upstreams";
+import { initialWorkerModel, modelForEndpoint } from "@/lib/agents/model-endpoint";
+import { validateAgentCredentials } from "@/lib/agents/credentials";
+import { modelEndpointForSelection } from "@/lib/bootstrap/runner";
 import { submitMachineIntent } from "@/lib/control-plane/adopt-machine";
+import { createHostedControlPlane } from "@/lib/control-plane/service";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
 import { deletionStorageWarning } from "@/lib/dashboard/deletion-warning";
 
@@ -34,7 +40,7 @@ import type { MachineRef, UserConfig } from "@/lib/user-config/schema";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 300;
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -89,13 +95,18 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
 	const { id } = await ctx.params;
 	const found = await find(userId, id);
 	if (!found) return Response.json({ error: "not_found" }, { status: 404 });
-	const { config } = found;
+	const { config, machine } = found;
 
 	let body: PatchBody;
 	try {
 		body = (await request.json()) as PatchBody;
 	} catch {
 		return Response.json({ error: "invalid_json" }, { status: 400 });
+	}
+	if (!body || typeof body !== "object" || Array.isArray(body)
+		|| (body.model !== undefined && typeof body.model !== "string")
+		|| (body.gatewayProfileId !== undefined && body.gatewayProfileId !== null && typeof body.gatewayProfileId !== "string")) {
+		return Response.json({ error: "invalid_body" }, { status: 400 });
 	}
 
 	const patch: Partial<MachineRef> = {};
@@ -156,6 +167,85 @@ export async function PATCH(request: Request, ctx: Ctx): Promise<Response> {
 
 	if (Object.keys(patch).length === 0 && !setActive) {
 		return Response.json({ error: "no_changes" }, { status: 422 });
+	}
+
+	if (body.model !== undefined || body.gatewayProfileId !== undefined) {
+		if (machine.archived) return Response.json({ error: "not_found" }, { status: 404 });
+		if (machine.bootstrapState.phase === "running" || machine.migrationState?.phase === "running") {
+			return Response.json({ error: "operation_running", message: "Wait for the current bootstrap or migration before changing runtime configuration." }, { status: 409 });
+		}
+		const gatewayProfileId = body.gatewayProfileId !== undefined
+			? patch.gatewayProfileId ?? DEFAULT_ROUTER_ID
+			: machine.gatewayProfileId;
+		let model: string;
+		try {
+			const endpoint = modelEndpointForSelection({ agentKind: machine.agentKind, gatewayProfileId }, config);
+			model = initialWorkerModel(machine.agentKind, endpoint, body.model, machine.model);
+			// Native CLIs must not silently replace an explicit incompatible choice
+			// with a default while the picker claims to have applied that choice.
+			if (body.model?.trim() && (machine.agentKind === "claude-code" || machine.agentKind === "codex")
+				&& model !== modelForEndpoint(body.model.trim(), endpoint)) {
+				throw new Error(`Choose a model supported by ${machine.agentKind}.`);
+			}
+		} catch (error) {
+			return Response.json({ error: "model_required", message: error instanceof Error ? error.message : "Choose a model for this endpoint." }, { status: 400 });
+		}
+		const credentialCheck = validateAgentCredentials(machine.agentKind, config);
+		if (!credentialCheck.ok) return Response.json({ error: "missing_agent_credentials", message: credentialCheck.message }, { status: 409 });
+		try {
+			const linked = config.workers.find((worker) => worker.lastMachineId === id);
+			const managed = await createHostedControlPlane(userId).store.getWorker(linked?.id ?? id);
+			if (managed?.desiredState === "deleted") return Response.json({ error: "worker_deleted", message: "This Worker is being deleted." }, { status: 409 });
+			// Existing desired state stays authoritative. Legacy adoption has no
+			// desired state yet, so inspect without waking before choosing one.
+			let legacyDesiredState: "sleeping" | "running" | undefined;
+			if (!managed) {
+				const observed = await getProvider(machine.providerKind, config.providers).state(id);
+				if (observed.state !== "sleeping" && observed.state !== "ready") {
+					return Response.json({ error: "machine_not_ready", message: "Verify the machine is running or paused before changing its runtime configuration." }, { status: 409 });
+				}
+				legacyDesiredState = observed.state === "sleeping" ? "sleeping" : "running";
+			}
+			const submitted = await submitMachineIntent(userId, id, {
+				...(legacyDesiredState ? { desiredState: legacyDesiredState } : {}),
+				idempotencyKey: request.headers.get("idempotency-key") ?? `model:${id}:${crypto.randomUUID()}`,
+				spec: { model, gatewayProfileId, ...(patch.environmentProfileId !== undefined ? { environmentProfileId: patch.environmentProfileId } : {}) },
+			});
+			// The driver updates observed model/router fields only after bootstrap
+			// succeeds. Never erase that drift signal by pre-writing their labels.
+			delete patch.model;
+			delete patch.gatewayProfileId;
+			delete patch.environmentProfileId;
+			let updated = machine;
+			let metadataWarning: string | undefined;
+			if (Object.keys(patch).length > 0 || setActive) {
+				try {
+					const next = await setOperationalUserConfigById(userId, config, {
+						...(setActive ? { activeMachineId: id } : {}),
+						...(Object.keys(patch).length ? { patchMachine: { id, patch } } : {}),
+					});
+					updated = next.machines.find((entry) => entry.id === id) ?? machine;
+				} catch {
+					metadataWarning = "Runtime update was accepted, but other metadata changes could not be saved. Retry those separately.";
+				}
+			}
+			const operation = submitted.accepted.operation;
+			const deferredUntilWake = submitted.accepted.worker.desiredState === "sleeping";
+			if (operation.status !== "succeeded" && operation.status !== "failed") {
+				after(async () => { await submitted.controlPlane.reconcileNext(submitted.accepted.worker.id); });
+			}
+			const { apiKey, ...rest } = updated;
+			return Response.json({
+				ok: operation.status !== "failed", machine: { ...rest, hasApiKey: Boolean(apiKey) },
+				requested: { model, gatewayProfileId }, operation, deferredUntilWake, metadataWarning,
+				statusUrl: `/api/dashboard/control-plane/operations/${operation.id}`,
+				message: operation.status === "failed" ? operation.error ?? "Runtime update failed."
+					: deferredUntilWake ? "Configuration saved for the next wake. The Worker remains paused."
+						: operation.status === "succeeded" ? "Runtime configuration is reconciled." : "Runtime update queued. The current model remains shown until configuration succeeds.",
+			}, { status: operation.status === "failed" ? 502 : operation.status === "succeeded" ? 200 : 202 });
+		} catch (error) {
+			return Response.json({ error: "runtime_update_failed", message: error instanceof Error ? error.message : "Could not submit runtime configuration." }, { status: 502 });
+		}
 	}
 
 	const next = await setOperationalUserConfigById(userId, config, {

@@ -1,19 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useOptionalMachineContext } from "@/components/dashboard/MachineProvider";
 import { RouterSelect } from "@/components/dashboard/RouterSelect";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { DEFAULT_ROUTER_ID } from "@/lib/agents/upstreams";
 import { cn } from "@/lib/cn";
+import { requestMachineRuntimeUpdate } from "@/lib/dashboard/machine-runtime-update";
 
 type Status = "idle" | "saving" | "saved" | "error";
 
 /**
  * Per-machine "change router" control. Switches the machine's model upstream
- * (gateway profile / router preset) and persists it via PATCH. Takes effect on
- * the next bootstrap / wake of the agent.
+ * (gateway profile / router preset) through a journaled runtime update.
+ * Paused Workers retain the desired change until their next explicit wake.
  */
 export function MachineRouterCard() {
 	const ctx = useOptionalMachineContext();
@@ -25,6 +26,14 @@ export function MachineRouterCard() {
 	const [aiConfigured, setAiConfigured] = useState<Record<string, boolean>>({});
 	const [status, setStatus] = useState<Status>("idle");
 	const [detail, setDetail] = useState<string>("");
+	const targetRef = useRef(machineId);
+	targetRef.current = machineId;
+	const mountedRef = useRef(true);
+	useEffect(() => { mountedRef.current = true; return () => { mountedRef.current = false; }; }, []);
+	useEffect(() => {
+		setValue(ctx?.machine?.gatewayProfileId ?? DEFAULT_ROUTER_ID);
+		setStatus("idle"); setDetail("");
+	}, [machineId, ctx?.machine?.gatewayProfileId]);
 
 	useEffect(() => {
 		let alive = true;
@@ -45,27 +54,21 @@ export function MachineRouterCard() {
 	}, []);
 
 	const save = async (id: string) => {
-		if (!machineId) return;
+		if (!machineId || status === "saving") return;
+		const selectedTarget = machineId;
+		const previous = value;
+		const isCurrent = () => mountedRef.current && targetRef.current === selectedTarget;
 		setValue(id);
 		setStatus("saving");
 		setDetail("");
 		try {
-			const r = await fetch(`/api/dashboard/machines/${machineId}`, {
-				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ gatewayProfileId: id }),
-			});
-			if (!r.ok) {
-				const e = (await r.json().catch(() => ({}))) as { error?: string; message?: string };
-				setStatus("error");
-				setDetail(e.message ?? e.error ?? `HTTP ${r.status}`);
-				return;
-			}
-			setStatus("saved");
-			setDetail("Saved — re-bootstrap or wake the machine to apply it to the running agent.");
+			const message = await requestMachineRuntimeUpdate(selectedTarget, { gatewayProfileId: id }, (progress) => { if (isCurrent()) setDetail(progress); });
+			if (isCurrent()) { setStatus("saved"); setDetail(message); }
 		} catch (err) {
-			setStatus("error");
-			setDetail(err instanceof Error ? err.message : "save failed");
+			if (isCurrent()) {
+				setValue(previous); setStatus("error");
+				setDetail(err instanceof Error ? err.message : "Runtime update failed.");
+			}
 		}
 	};
 
@@ -86,6 +89,7 @@ export function MachineRouterCard() {
 			/>
 			{status !== "idle" && detail ? (
 				<p
+					role={status === "error" ? "alert" : "status"}
 					className={cn(
 						"font-mono text-[10px] tracking-[0.04em]",
 						status === "error" ? "text-[var(--ret-red)]" : "text-[var(--ret-text-dim)]",

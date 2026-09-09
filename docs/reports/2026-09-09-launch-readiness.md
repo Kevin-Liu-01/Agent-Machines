@@ -1,9 +1,39 @@
 # Launch-readiness audit — September 9, 2026
 
-Status: release-candidate preparation. This report distinguishes checked-in
+Status: deployed release under end-to-end verification. This report distinguishes checked-in
 fixes from deployed evidence; it is not a blanket production-readiness claim.
 
 ## Observed end-to-end behavior
+
+Revision `520a853` was deployed to the production `.com` and `.dev` aliases.
+A fresh, isolated account completed the actual sign-up UI using Clerk's supported
+development-instance testing token and test-email verification. This verifies
+the deployed flow, not production-instance authentication.
+
+The account selected a Coding Agent, E2B, Claude Code, and Sonnet 4.6, supplied
+its own test credentials through onboarding, and reached the scoped Console.
+Bootstrap completed at 07:41:05 UTC, about 95 seconds after bootstrap started;
+the cold install included browser downloads. No instant-start claim is made.
+Provider inspection confirmed pause-on-timeout with implicit auto-resume disabled.
+
+Its first managed task completed and automatically exported `release-proof.txt`:
+
+- Exact content: `agent-machines-release-520a853` followed by one newline.
+- Size: 31 bytes.
+- SHA-256: `71d7083bff44fe246cedfe2171b7970ca64113ca502683903d0a5f8f9367836d`.
+- A fresh browser actually clicked the download link and saved matching bytes.
+  An earlier recorded browser canceled the download; this was not reproduced
+  in the independent unrecorded browser, and security headers were unchanged.
+- Reloading the Console restored both turns and all six execution events.
+- The native Sessions page independently displayed the saved Claude conversation,
+  Bash command, read-back result, and answer from its JSONL history.
+
+Public desktop and mobile checks passed on both domains: no failed images,
+page errors, or horizontal overflow. Registry checks showed the exact target and
+command before execution; clearing the target disabled execution. Usage with no
+observations displayed unknown cost rather than zero.
+
+### Earlier revision and the timeout defect
 
 On the earlier deployed revision `a4c051d`, an isolated Clerk test account
 provisioned a Claude Code Worker on E2B. A native terminal task and a managed
@@ -100,8 +130,15 @@ web tests** (37 explicit platform-specific skips), both typechecks, the producti
 Next.js build, and isolated SDK import/require package verification. Linux-only
 evidence is recorded separately above and in the focused reports.
 
-Post-deployment signup, output retrieval, pause/resume, and cross-provider
-migration must still be recorded against the release's exact revision before
+At 07:56 UTC, the follow-up model/router reconciliation and onboarding-copy
+changes passed `pnpm check`: **802 SDK tests**, **1,281 web tests** (37 explicit
+platform-specific skips), typechecks, production build, and SDK package verification.
+The model picker now waits for a journaled runtime update instead of only changing
+the stored label; paused configuration changes are deferred until explicit wake.
+These follow-up changes still require deployment and a live switching check.
+
+Post-deployment pause/resume and cross-provider migration must still be recorded
+against the release's exact revision before
 this report can be treated as a launch sign-off.
 
 ## Production authentication remains a separate check
