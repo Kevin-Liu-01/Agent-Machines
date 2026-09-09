@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -28,6 +28,31 @@ function fixture(phases: BootstrapPhaseId[]) {
 }
 
 describe("Daytona user-space bootstrap", () => {
+	it.each(["incompatible", "compatible"] as const)("revalidates a completed configuration phase against a %s CLI", async (cliState) => {
+		const temporary = mkdtempSync(join(tmpdir(), "am-daytona-resume-"));
+		const { machine, config } = fixture([]);
+		const phases: BootstrapPhaseId[] = [];
+		mkdirSync(join(temporary, ".agent-machines"));
+		writeFileSync(join(temporary, ".agent-machines/.agent-env"), "# configuration already exists\n");
+		const prelude = `export HOME='${temporary}';
+claude() { if [ "$1" = --help ]; then echo '--print --output-format --verbose --include-partial-messages --dangerously-skip-permissions --model --resume'; if [ '${cliState}' = compatible ] || [ -f "$HOME/pinned-installed" ]; then echo --bare; fi; else echo '2.1.19 fixture'; fi; }
+npm() { touch "$HOME/pinned-installed"; }
+curl() { echo 'Unexpected download' >&2; return 77; }
+`;
+		const exec = vi.fn(async (_id: string, command: string) => {
+			// Execute both the completed-phase probe and any emitted installation;
+			// returning a canned "broken" here would hide this exact regression.
+			const result = spawnSync("bash", ["-c", prelude + command.replaceAll("/home/daytona", temporary)], { encoding: "utf8", timeout: 15000 });
+			return { stdout: result.stdout ?? "", stderr: result.stderr ?? "", exitCode: result.status ?? 1 };
+		});
+		try {
+			await runWebBootstrap({ machine, config, provider: { kind: "daytona", exec } as unknown as MachineProvider,
+				onState: async (state) => { if (state.current === "configure-hermes") phases.push(state.current); } });
+			expect(existsSync(join(temporary, "pinned-installed"))).toBe(cliState === "incompatible");
+			expect(phases).toEqual(cliState === "incompatible" ? ["configure-hermes"] : []);
+		} finally { rmSync(temporary, { recursive: true, force: true }); }
+	});
+
 	it.each(["missing", "incompatible", "compatible"] as const)("executes user-space bootstrap with a %s preinstalled CLI", async (cliState) => {
 		const temporary = mkdtempSync(join(tmpdir(), "am-daytona-bootstrap-"));
 		const calls = join(temporary, "calls");
@@ -57,9 +82,10 @@ pgrep() { return 1; }
 systemctl() { echo forbidden-systemd >> "$AM_FIXTURE_CALLS"; return 77; }
 `;
 		const exec = vi.fn(async (_id: string, command: string) => {
-			if (!command.includes("--- phase:")) return { stdout: "broken", stderr: "", exitCode: 0 };
-			expect(selected).toContain(phase);
-			executed.push(command);
+			if (command.includes("--- phase:")) {
+				expect(selected).toContain(phase);
+				executed.push(command);
+			}
 			const result = spawnSync("bash", ["-c", prelude + command.replaceAll("/home/daytona", temporary)], { encoding: "utf8", timeout: 15_000 });
 			return { stdout: result.stdout ?? "", stderr: result.stderr || result.error?.message || "", exitCode: result.status ?? 1 };
 		});
@@ -80,13 +106,15 @@ systemctl() { echo forbidden-systemd >> "$AM_FIXTURE_CALLS"; return 77; }
 		}
 	});
 
-	it("does not enter the systemd gateway repair path for a native Daytona runtime", async () => {
+	it("rejects native gateway finalization before writes or gateway operations", async () => {
 		const { machine, config } = fixture([]);
 		const exec = vi.fn();
+		const onState = vi.fn();
 		await expect(finalizeGatewayBootstrap({ machine, config,
 			provider: { kind: "daytona", exec } as unknown as MachineProvider,
-			onState: vi.fn(),
-		})).resolves.toEqual({ apiUrl: null, apiKey: "fixture-worker-token" });
+			onState,
+		})).rejects.toThrow(/no HTTP agent gateway/);
 		expect(exec).not.toHaveBeenCalled();
+		expect(onState).not.toHaveBeenCalled();
 	});
 });

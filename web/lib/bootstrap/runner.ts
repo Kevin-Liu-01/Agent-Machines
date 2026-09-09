@@ -9,6 +9,7 @@
  */
 
 import { getHarness } from "agent-machines/mux";
+import { agentArtifactsPresent } from "./runtime-readiness";
 
 import type { MachineProvider } from "@/lib/providers";
 import { validateAgentCredentials } from "@/lib/agents/credentials";
@@ -193,6 +194,9 @@ export async function runWebBootstrap({
 			await runPhase(phase, machine, provider, config, apiKey, paths);
 			completed.push(phase);
 		}
+		if (!(await agentArtifactsPresent(machine, provider))) {
+			throw new Error("Runtime readiness check failed after bootstrap. Repair the selected runtime before running work.");
+		}
 		const apiUrl = await exposeGateway(machine, provider, config, paths, apiKey);
 		await onState({
 			phase: "succeeded",
@@ -289,6 +293,9 @@ export async function finalizeGatewayBootstrap({
 	config: UserConfig;
 	onState: StateSink;
 }): Promise<BootstrapResult> {
+	if (machine.agentKind === "claude-code" || machine.agentKind === "codex") {
+		throw new Error("Native CLI Workers have no HTTP agent gateway to finalize. Use normal Worker bootstrap to repair the runtime.");
+	}
 	const paths = pathsFor(machine.providerKind);
 	const apiKey = await resolveGatewayApiKey(machine, provider, paths);
 	const startedAt = machine.bootstrapState.startedAt ?? new Date().toISOString();
@@ -633,7 +640,17 @@ function commandFor(
 			// and "EOF && ..." never terminates one (the writeRemoteFile rule).
 			// The rewrite keeps the tmux console honest after an agent swap --
 			// terminal-session.ts relaunches the REMEMBERED desiredAgentKind.
-			return [configured, terminalAgentRewriteCommand(agent, p.APP_HOME)].join("\n");
+			// A failed element of configure's && list does not trigger set -e.
+			// Capture its status before a successful terminal rewrite can hide it.
+			// The subshell also keeps Hermes' closing heredoc on its own line.
+			return [
+				"(",
+				configured,
+				")",
+				"AM_CONFIGURE_STATUS=$?",
+				'if [ "$AM_CONFIGURE_STATUS" -ne 0 ]; then exit "$AM_CONFIGURE_STATUS"; fi',
+				terminalAgentRewriteCommand(agent, p.APP_HOME),
+			].join("\n");
 		}
 		case "register-cursor-mcp":
 			// buildMcpRegisterShell writes into hermes' config.yaml via the hermes
@@ -1327,7 +1344,7 @@ function writeRemoteFile(path: string, content: string): string {
 function configureHealthProbe(agent: string, p: BootstrapPaths): string | null {
 	switch (agent) {
 		case "claude-code":
-			return `command -v claude >/dev/null 2>&1 && claude --version >/dev/null 2>&1 && test -s ${p.APP_HOME}/.agent-env && echo ok || echo broken`;
+			return `export HOME=${p.HOME}; export PATH=${p.APP_HOME}/node/bin:${p.APP_HOME}/pkgs/node_modules/.bin:${p.NPM_PREFIX}/bin:${p.HOME}/.local/bin:$PATH; ${getHarness("claude-code").isInstalledCommand()} && test -s ${p.APP_HOME}/.agent-env && echo ok || echo broken`;
 		case "codex":
 			return `command -v codex >/dev/null 2>&1 && codex --version >/dev/null 2>&1 && test -s ${p.APP_HOME}/.agent-env && echo ok || echo broken`;
 		case "openclaw":

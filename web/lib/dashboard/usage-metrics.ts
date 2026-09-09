@@ -4,8 +4,9 @@
  */
 
 export type UsageResourceSeries<TBucket> = {
-	total: number;
+	total: number | null;
 	buckets: TBucket[];
+	evidence: "no_intervals" | "unknown" | "partial" | "sampled";
 };
 
 export type UsageResources = {
@@ -19,8 +20,8 @@ export type UsageMachineRow = {
 	vcpu?: number;
 	memoryMib?: number;
 	awakeSeconds: number;
-	cpuVcpuSeconds: number;
-	memoryGibSeconds?: number;
+	cpuVcpuSeconds: number | null;
+	memoryGibSeconds?: number | null;
 	costFormatted?: string;
 	costNote?: string;
 };
@@ -38,9 +39,9 @@ export type NormalizedUsage = {
 };
 
 const EMPTY_RESOURCES: UsageResources = {
-	cpu: { total: 0, buckets: [] },
-	memory: { total: 0, buckets: [] },
-	storage: { total: 0, buckets: [] },
+	cpu: { total: null, buckets: [], evidence: "unknown" },
+	memory: { total: null, buckets: [], evidence: "unknown" },
+	storage: { total: null, buckets: [], evidence: "unknown" },
 };
 
 function asFiniteNumber(value: unknown, fallback = 0): number {
@@ -48,82 +49,37 @@ function asFiniteNumber(value: unknown, fallback = 0): number {
 	return typeof parsed === "number" && Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function parseCpuResource(raw: unknown): UsageResources["cpu"] {
-	if (!raw || typeof raw !== "object") {
-		return { ...EMPTY_RESOURCES.cpu };
-	}
+function parseResource<TBucket>(
+	raw: unknown,
+	totalKey: string,
+	valueKey: string,
+	makeBucket: (date: string, value: number) => TBucket,
+): UsageResourceSeries<TBucket> {
+	if (!raw || typeof raw !== "object") return { total: null, buckets: [], evidence: "unknown" };
 	const o = raw as Record<string, unknown>;
-	const buckets = Array.isArray(o.buckets)
-		? o.buckets
-				.map((b) => {
-					if (!b || typeof b !== "object") return null;
-					const row = b as Record<string, unknown>;
-					const date = typeof row.date === "string" ? row.date : "";
-					if (!date) return null;
-					return {
-						date,
-						vcpuSeconds: asFiniteNumber(row.vcpuSeconds),
-					};
-				})
-				.filter((b): b is { date: string; vcpuSeconds: number } => b !== null)
-		: [];
-	const total = asFiniteNumber(
-		o.totalVcpuSeconds,
-		buckets.reduce((n, b) => n + b.vcpuSeconds, 0),
-	);
-	return { total, buckets };
-}
-
-function parseMemoryResource(raw: unknown): UsageResources["memory"] {
-	if (!raw || typeof raw !== "object") {
-		return { ...EMPTY_RESOURCES.memory };
+	if (o.evidence === "no_intervals" || o.evidence === "unknown") {
+		return { total: null, buckets: [], evidence: o.evidence };
 	}
-	const o = raw as Record<string, unknown>;
-	const buckets = Array.isArray(o.buckets)
-		? o.buckets
-				.map((b) => {
-					if (!b || typeof b !== "object") return null;
-					const row = b as Record<string, unknown>;
-					const date = typeof row.date === "string" ? row.date : "";
-					if (!date) return null;
-					return {
-						date,
-						gibSeconds: asFiniteNumber(row.gibSeconds),
-					};
-				})
-				.filter((b): b is { date: string; gibSeconds: number } => b !== null)
-		: [];
-	const total = asFiniteNumber(
-		o.totalGibSeconds,
-		buckets.reduce((n, b) => n + b.gibSeconds, 0),
-	);
-	return { total, buckets };
-}
-
-function parseStorageResource(raw: unknown): UsageResources["storage"] {
-	if (!raw || typeof raw !== "object") {
-		return { ...EMPTY_RESOURCES.storage };
+	const explicitEvidence = o.evidence === "sampled" || o.evidence === "partial";
+	const buckets: TBucket[] = [];
+	let sum = 0;
+	let discarded = false;
+	for (const row of Array.isArray(o.buckets) ? o.buckets : []) {
+		const value = asFiniteNumber(row?.[valueKey], -1);
+		if (typeof row?.date !== "string" || !row.date || value < 0 || (value === 0 && !explicitEvidence)) {
+			discarded = true;
+			continue;
+		}
+		buckets.push(makeBucket(row.date, value));
+		sum += value;
 	}
-	const o = raw as Record<string, unknown>;
-	const buckets = Array.isArray(o.buckets)
-		? o.buckets
-				.map((b) => {
-					if (!b || typeof b !== "object") return null;
-					const row = b as Record<string, unknown>;
-					const date = typeof row.date === "string" ? row.date : "";
-					if (!date) return null;
-					return {
-						date,
-						gibHours: asFiniteNumber(row.gibHours),
-					};
-				})
-				.filter((b): b is { date: string; gibHours: number } => b !== null)
-		: [];
-	const total = asFiniteNumber(
-		o.totalGibHours,
-		buckets.reduce((n, b) => n + b.gibHours, 0),
-	);
-	return { total, buckets };
+	const amount = asFiniteNumber(o[totalKey], buckets.length ? sum : -1);
+	const total = Number.isFinite(amount) && (amount > 0 || (amount === 0 && explicitEvidence)) ? amount : null;
+	return {
+		total,
+		buckets: total === null ? [] : buckets,
+		evidence: total === null ? "unknown" : o.evidence === "partial" || discarded ? "partial" : "sampled",
+	};
 }
 
 function parseResources(raw: unknown): UsageResources {
@@ -136,9 +92,9 @@ function parseResources(raw: unknown): UsageResources {
 	}
 	const o = raw as Record<string, unknown>;
 	return {
-		cpu: parseCpuResource(o.cpu),
-		memory: parseMemoryResource(o.memory),
-		storage: parseStorageResource(o.storage),
+		cpu: parseResource(o.cpu, "totalVcpuSeconds", "vcpuSeconds", (date, vcpuSeconds) => ({ date, vcpuSeconds })),
+		memory: parseResource(o.memory, "totalGibSeconds", "gibSeconds", (date, gibSeconds) => ({ date, gibSeconds })),
+		storage: parseResource(o.storage, "totalGibHours", "gibHours", (date, gibHours) => ({ date, gibHours })),
 	};
 }
 
@@ -170,12 +126,10 @@ function parseMachineBreakdown(raw: unknown): UsageMachineRow[] {
 						? o.memory_mib
 						: undefined,
 			awakeSeconds: asFiniteNumber(o.awakeSeconds ?? o.awake_seconds),
-			cpuVcpuSeconds: asFiniteNumber(
-				o.cpuVcpuSeconds ?? o.cpu_vcpu_seconds,
-			),
-			memoryGibSeconds: asFiniteNumber(
-				o.memoryGibSeconds ?? o.memory_gib_seconds,
-			),
+			cpuVcpuSeconds: asFiniteNumber(o.cpuVcpuSeconds ?? o.cpu_vcpu_seconds) > 0
+				? asFiniteNumber(o.cpuVcpuSeconds ?? o.cpu_vcpu_seconds) : null,
+			memoryGibSeconds: asFiniteNumber(o.memoryGibSeconds ?? o.memory_gib_seconds) > 0
+				? asFiniteNumber(o.memoryGibSeconds ?? o.memory_gib_seconds) : null,
 			costFormatted: typeof o.costFormatted === "string" ? o.costFormatted : "Unknown",
 			costNote: typeof o.costNote === "string" ? o.costNote : undefined,
 		});
@@ -241,48 +195,50 @@ export type DailyUsageRow = {
 export function buildUsageResourcesFromDailyRows(
 	rows: DailyUsageRow[],
 ): UsageResources {
-	const dailyMap = new Map<
-		string,
-		{ vcpuSeconds: number; gibSeconds: number; gibHours: number }
-	>();
-	for (const r of rows) {
-		const existing = dailyMap.get(r.bucket_date) ?? {
-			vcpuSeconds: 0,
-			gibSeconds: 0,
-			gibHours: 0,
+	function series<TBucket>(key: keyof DailyUsageRow, makeBucket: (date: string, value: number) => TBucket): UsageResourceSeries<TBucket> {
+		const daily = new Map<string, number>();
+		let unknown = false;
+		for (const row of rows) {
+			// A first sample observes a state, not an elapsed interval. Historical
+			// positive rollups without duration metadata remain readable.
+			const duration = asFiniteNumber(row.awake_seconds, -1);
+			if (duration === 0) continue;
+			const value = asFiniteNumber(row[key], -1);
+			// The collector uses zero for unknown allocation. Allocated resources
+			// over a positive interval cannot establish a true zero measurement.
+			if (value <= 0) { unknown = true; continue; }
+			daily.set(row.bucket_date, (daily.get(row.bucket_date) ?? 0) + value);
+		}
+		return {
+			total: daily.size ? [...daily.values()].reduce((sum, value) => sum + value, 0) : null,
+			buckets: [...daily].map(([date, value]) => makeBucket(date, value)),
+			evidence: daily.size ? unknown ? "partial" : "sampled" : unknown ? "unknown" : "no_intervals",
 		};
-		existing.vcpuSeconds += asFiniteNumber(r.cpu_vcpu_seconds);
-		existing.gibSeconds += asFiniteNumber(r.memory_gib_seconds);
-		existing.gibHours += asFiniteNumber(r.storage_gib_hours);
-		dailyMap.set(r.bucket_date, existing);
 	}
-
-	const cpuBuckets: UsageResources["cpu"]["buckets"] = [];
-	const memBuckets: UsageResources["memory"]["buckets"] = [];
-	const storageBuckets: UsageResources["storage"]["buckets"] = [];
-	let totalVcpu = 0;
-	let totalMem = 0;
-	let totalStorage = 0;
-
-	for (const [date, totals] of dailyMap) {
-		cpuBuckets.push({ date, vcpuSeconds: totals.vcpuSeconds });
-		memBuckets.push({ date, gibSeconds: totals.gibSeconds });
-		storageBuckets.push({ date, gibHours: totals.gibHours });
-		totalVcpu += totals.vcpuSeconds;
-		totalMem += totals.gibSeconds;
-		totalStorage += totals.gibHours;
-	}
-
 	return {
-		cpu: { total: totalVcpu, buckets: cpuBuckets },
-		memory: { total: totalMem, buckets: memBuckets },
-		storage: { total: totalStorage, buckets: storageBuckets },
+		cpu: series("cpu_vcpu_seconds", (date, vcpuSeconds) => ({ date, vcpuSeconds })),
+		memory: series("memory_gib_seconds", (date, gibSeconds) => ({ date, gibSeconds })),
+		storage: series("storage_gib_hours", (date, gibHours) => ({ date, gibHours })),
 	};
 }
 
-export function fmtUsageHours(seconds: number): string {
-	const h = seconds / 3600;
-	return h >= 10 ? h.toFixed(0) : h.toFixed(1);
+export function usageResourceNote(series: UsageResourceSeries<unknown> | undefined): string {
+	switch (series?.evidence) {
+		case "no_intervals": return "No measured interval yet";
+		case "partial": return "Known samples only · partial";
+		case "sampled": return "Sampled intervals only";
+		default: return "Allocation unknown";
+	}
+}
+
+export function fmtUsageAmount(value: number | null): string {
+	if (value === null || !Number.isFinite(value)) return "–";
+	if (value > 0 && value < 0.1) return "<0.1";
+	return value.toFixed(1);
+}
+
+export function fmtUsageHours(seconds: number | null): string {
+	return fmtUsageAmount(seconds === null ? null : seconds / 3600);
 }
 
 export function fmtActiveTime(seconds: number): string {

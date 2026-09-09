@@ -41,9 +41,12 @@ import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
 	cpuChartBuckets,
+	fmtUsageHours,
+	fmtUsageAmount,
 	memoryChartBuckets,
 	normalizeMachineUsagePayload,
 	storageChartBuckets,
+	usageResourceNote,
 	type NormalizedMachineUsage,
 } from "@/lib/dashboard/usage-metrics";
 import { cn } from "@/lib/cn";
@@ -337,10 +340,11 @@ export default function MachineOverviewPage() {
 						title="CPU"
 						total={
 							usageResources
-								? (usageResources.cpu.total / 3600).toFixed(1)
+								? fmtUsageHours(usageResources.cpu.total)
 								: "–"
 						}
 						unit="vCPU-hrs"
+						note={usageResourceNote(usageResources?.cpu)}
 						data={cpuBuckets}
 						color="var(--ret-purple)"
 						loading={usageLoading}
@@ -349,10 +353,11 @@ export default function MachineOverviewPage() {
 						title="Memory"
 						total={
 							usageResources
-								? (usageResources.memory.total / 3600).toFixed(1)
+								? fmtUsageHours(usageResources.memory.total)
 								: "–"
 						}
 						unit="GiB-hrs"
+						note={usageResourceNote(usageResources?.memory)}
 						data={memBuckets}
 						color="var(--ret-amber)"
 						loading={usageLoading}
@@ -361,10 +366,11 @@ export default function MachineOverviewPage() {
 						title="Storage"
 						total={
 							usageResources
-								? usageResources.storage.total.toFixed(1)
+								? fmtUsageAmount(usageResources.storage.total)
 								: "–"
 						}
 						unit="GiB-hrs"
+						note={usageResourceNote(usageResources?.storage)}
 						data={storageBuckets}
 						color="var(--ret-red)"
 						loading={usageLoading}
@@ -482,6 +488,7 @@ function UsageChartRow({
 	title,
 	total,
 	unit,
+	note,
 	data,
 	color,
 	loading,
@@ -489,6 +496,7 @@ function UsageChartRow({
 	title: string;
 	total: string;
 	unit: string;
+	note: string;
 	data: Array<{ date: string; value: number }>;
 	color: string;
 	loading: boolean;
@@ -505,6 +513,7 @@ function UsageChartRow({
 						{unit}
 					</span>
 				</p>
+				{!loading && <p className="mt-1 text-[10px] text-[var(--ret-text-muted)]">{note}</p>}
 			</div>
 			<div className="min-w-0 flex-1">
 				{loading ? (

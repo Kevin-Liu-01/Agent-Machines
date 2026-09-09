@@ -72,32 +72,34 @@ export async function GET(request: NextRequest) {
 		string,
 		{
 			awakeSeconds: number;
-			cpuVcpuSeconds: number;
-			memoryGibSeconds: number;
+			rows: DailyUsageRow[];
 		}
 	>();
 	for (const r of usageRows) {
 		if (!r.machine_id) continue;
 		const existing = machineMap.get(r.machine_id) ?? {
 			awakeSeconds: 0,
-			cpuVcpuSeconds: 0,
-			memoryGibSeconds: 0,
+			rows: [],
 		};
 		existing.awakeSeconds += Number(r.awake_seconds) || 0;
-		existing.cpuVcpuSeconds += Number(r.cpu_vcpu_seconds) || 0;
-		existing.memoryGibSeconds += Number(r.memory_gib_seconds) || 0;
+		existing.rows.push(r);
 		machineMap.set(r.machine_id, existing);
 	}
 
 	const machineBreakdown = [...machineMap.entries()].map(
-		([machineId, stats]) => ({
-			machineId,
-			awakeSeconds: stats.awakeSeconds,
-			cpuVcpuSeconds: stats.cpuVcpuSeconds,
-			memoryGibSeconds: stats.memoryGibSeconds,
-			costFormatted: estimatesByMachine.get(machineId)?.costFormatted ?? "Unknown",
-			costNote: estimatesByMachine.get(machineId)?.costNote ?? "No usable cost observations for this machine.",
-		}),
+		([machineId, stats]) => {
+			const sampled = buildUsageResourcesFromDailyRows(stats.rows);
+			return {
+				machineId,
+				awakeSeconds: stats.awakeSeconds,
+				// This compact table has no partial-series label. Do not present
+				// a known subtotal as complete machine allocation.
+				cpuVcpuSeconds: sampled.cpu.evidence === "sampled" ? sampled.cpu.total : null,
+				memoryGibSeconds: sampled.memory.evidence === "sampled" ? sampled.memory.total : null,
+				costFormatted: estimatesByMachine.get(machineId)?.costFormatted ?? "Unknown",
+				costNote: estimatesByMachine.get(machineId)?.costNote ?? "No usable cost observations for this machine.",
+			};
+		},
 	);
 
 	return Response.json({
@@ -105,14 +107,17 @@ export async function GET(request: NextRequest) {
 		days,
 		resources: {
 			cpu: {
+				evidence: resources.cpu.evidence,
 				totalVcpuSeconds: resources.cpu.total,
 				buckets: resources.cpu.buckets,
 			},
 			memory: {
+				evidence: resources.memory.evidence,
 				totalGibSeconds: resources.memory.total,
 				buckets: resources.memory.buckets,
 			},
 			storage: {
+				evidence: resources.storage.evidence,
 				totalGibHours: resources.storage.total,
 				buckets: resources.storage.buckets,
 			},

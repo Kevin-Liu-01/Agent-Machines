@@ -48,6 +48,28 @@ and installs the shared pinned CLI only when the existing executable is
 incompatible. The failed attempt and its existing Worker are retained; the
 follow-up must reuse that Worker rather than provision another one blindly.
 
+The first corrective deployment, `7b16b676c49081fe48dbd175501eab85455f24c4`, became
+ready at approximately 09:56 UTC (`dpl_J2UGmS7roqNr4C1LJ93aU9JWiTmr`). The real
+readiness endpoint correctly rejected the old CLI. Explicit repair operation
+`1ffb40dd-8d1c-4a76-bbc9-bb4f78e41849` nevertheless reported success while the
+next managed request returned HTTP 409 `runtime_not_ready`, without a model call.
+
+This exposed a second completion boundary: the cached `configure-hermes` phase
+still used the older name/version-only health probe and skipped the new installer.
+The shared readiness check prevented paid execution but the lifecycle journal
+incorrectly claimed readiness. The follow-up fixes the resumed-phase probe and
+adds a regression that starts with a fully completed bootstrap and incompatible
+preinstalled CLI, rather than only testing a fresh installation.
+
+The final check is enforced inside the shared bootstrap routine before its first
+success state, including direct migration callers. Native CLIs cannot mark
+bootstrap complete through gateway finalization. Configuration-write failures
+also propagate before a separate terminal-state rewrite can hide the error.
+At approximately 10:08 UTC, the aggregate gate passed with 855 SDK/source tests,
+1,507 web tests, 37 explicit platform-specific skips, both typechecks, production
+build, and isolated SDK packaging. Runtime evidence after that deployment remains
+separate from these tests.
+
 ## Remaining checks at this checkpoint
 
 Real Claude tool execution after the corrective deployment, hosted stop/start

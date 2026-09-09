@@ -85,14 +85,17 @@ export async function GET(
 		days,
 		resources: {
 			cpu: {
+				evidence: resources.cpu.evidence,
 				totalVcpuSeconds: resources.cpu.total,
 				buckets: resources.cpu.buckets,
 			},
 			memory: {
+				evidence: resources.memory.evidence,
 				totalGibSeconds: resources.memory.total,
 				buckets: resources.memory.buckets,
 			},
 			storage: {
+				evidence: resources.storage.evidence,
 				totalGibHours: resources.storage.total,
 				buckets: resources.storage.buckets,
 			},

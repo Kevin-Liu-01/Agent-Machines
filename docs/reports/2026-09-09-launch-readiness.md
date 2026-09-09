@@ -1,8 +1,9 @@
 # Launch-readiness audit — September 9, 2026
 
-Status: Daytona revision `556efba` is deployed. Initial hosted creation passed,
-but the real task exposed an incompatible preinstalled Claude CLI; its correction
-has passed the aggregate gate and awaits deployment. This report distinguishes
+Status: Daytona is deployed through `7b16b67`. Initial hosted creation passed,
+but real execution and repair exposed an incompatible preinstalled Claude CLI
+and a stale completed-phase health check. The shared readiness correction has
+passed the aggregate gate and awaits deployment. This report distinguishes
 checked-in fixes from deployed evidence; it is not a blanket production-readiness
 claim.
 
@@ -251,6 +252,13 @@ passed `pnpm check`: **855 SDK/source tests**, **1,481 web tests** (37 explicit
 platform-specific skips), both typechecks, production build, and isolated package
 verification. The separate no-model installer proof succeeded on the same Daytona
 image. An explicit hosted repair and actual paid task remain to be verified.
+
+At approximately 10:08 UTC, shared bootstrap readiness, configuration-failure
+propagation, native gateway-finalization rejection, and sampled-allocation display
+corrections passed `pnpm check`: **855 SDK/source tests**, **1,507 web tests**
+(37 explicit platform-specific skips), both typechecks, production build, and
+isolated SDK package verification. Unmeasured intervals and unknown allocation
+are no longer displayed as zero; this does not change collector or billing math.
 
 ## Daytona replacement
 

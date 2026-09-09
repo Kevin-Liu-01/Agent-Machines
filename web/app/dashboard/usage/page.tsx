@@ -15,13 +15,14 @@ import {
 	RANGE_OPTIONS_USAGE,
 } from "@/components/dashboard/TimeRangeSelector";
 import {
-	avgPerDay,
 	cpuChartBuckets,
 	fmtActiveTime,
 	fmtUsageHours,
+	fmtUsageAmount,
 	memoryChartBuckets,
 	normalizeUsagePayload,
 	storageChartBuckets,
+	usageResourceNote,
 	type NormalizedUsage,
 } from "@/lib/dashboard/usage-metrics";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
@@ -74,7 +75,7 @@ export default function UsagePage() {
 		? fmtUsageHours(resources.memory.total)
 		: "–";
 	const storageHours = resources
-		? resources.storage.total.toFixed(1)
+		? fmtUsageAmount(resources.storage.total)
 		: "–";
 
 	const cpuBuckets = useMemo(
@@ -129,16 +130,19 @@ export default function UsagePage() {
 							/>
 							<StatCard
 								label="CPU allocation"
+								subtext={usageResourceNote(resources?.cpu)}
 								value={cpuHours}
 								unit="vCPU-hrs"
 							/>
 							<StatCard
 								label="Memory allocation"
+								subtext={usageResourceNote(resources?.memory)}
 								value={memHours}
 								unit="GiB-hrs"
 							/>
 							<StatCard
 								label="Storage allocation"
+								subtext={usageResourceNote(resources?.storage)}
 								value={storageHours}
 								unit="GiB-hrs"
 							/>
@@ -170,7 +174,7 @@ export default function UsagePage() {
 							title="CPU allocation"
 							total={cpuHours}
 							unit="vCPU-hrs"
-							avgLabel={`${resources ? avgPerDay(resources.cpu.total / 3600, days) : "–"} avg/day`}
+							avgLabel={usageResourceNote(resources?.cpu)}
 							data={cpuBuckets}
 							color="var(--ret-purple)"
 							loading={loading}
@@ -179,7 +183,7 @@ export default function UsagePage() {
 							title="Memory allocation"
 							total={memHours}
 							unit="GiB-hrs"
-							avgLabel={`${resources ? avgPerDay(resources.memory.total / 3600, days) : "–"} avg/day`}
+							avgLabel={usageResourceNote(resources?.memory)}
 							data={memBuckets}
 							color="var(--ret-amber)"
 							loading={loading}
@@ -188,7 +192,7 @@ export default function UsagePage() {
 							title="Storage allocation"
 							total={storageHours}
 							unit="GiB-hrs"
-							avgLabel={`${resources ? avgPerDay(resources.storage.total, days) : "–"} avg/day`}
+							avgLabel={usageResourceNote(resources?.storage)}
 							data={storageBuckets}
 							color="var(--ret-red)"
 							loading={loading}

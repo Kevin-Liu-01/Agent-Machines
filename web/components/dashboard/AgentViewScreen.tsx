@@ -1384,29 +1384,29 @@ function launchStatusClass(status: LaunchStatus): string {
 function usageSummary(usage: NormalizedMachineUsage | null) {
 	if (!usage) {
 		return {
-			active: "none",
-			cpu: "0.0 vCPU-hr",
-			memory: "0.0 GiB-hr",
-			storage: "0.0 GiB-hr",
+			active: "Unknown",
+			cpu: "Unknown",
+			memory: "Unknown",
+			storage: "Unknown",
 			hasUsage: false,
 		};
 	}
-	const cpuHours = usage.resources.cpu.total / 3600;
-	const memoryHours = usage.resources.memory.total / 3600;
+	const cpuHours = usage.resources.cpu.total === null ? null : usage.resources.cpu.total / 3600;
+	const memoryHours = usage.resources.memory.total === null ? null : usage.resources.memory.total / 3600;
 	const storageHours = usage.resources.storage.total;
 	return {
-		active: formatResourceHours(cpuHours, "vCPU-hr"),
-		cpu: formatResourceHours(cpuHours, "vCPU-hr"),
-		memory: formatResourceHours(memoryHours, "GiB-hr"),
-		storage: formatResourceHours(storageHours, "GiB-hr"),
-		hasUsage: cpuHours > 0 || memoryHours > 0 || storageHours > 0,
+		active: formatResourceHours(cpuHours, "vCPU-hr", usage.resources.cpu.evidence),
+		cpu: formatResourceHours(cpuHours, "vCPU-hr", usage.resources.cpu.evidence),
+		memory: formatResourceHours(memoryHours, "GiB-hr", usage.resources.memory.evidence),
+		storage: formatResourceHours(storageHours, "GiB-hr", usage.resources.storage.evidence),
+		hasUsage: (cpuHours ?? 0) > 0 || (memoryHours ?? 0) > 0 || (storageHours ?? 0) > 0,
 	};
 }
 
-function formatResourceHours(value: number, unit: string): string {
-	if (value === 0) return `0 ${unit}`;
-	if (value < 0.1) return `<0.1 ${unit}`;
-	return `${value.toFixed(1)} ${unit}`;
+function formatResourceHours(value: number | null, unit: string, evidence: string): string {
+	if (value === null) return evidence === "no_intervals" ? "No interval yet" : "Unknown";
+	const amount = value === 0 ? "0" : value < 0.1 ? "<0.1" : value.toFixed(1);
+	return `${amount} ${unit}${evidence === "partial" ? " · partial" : ""}`;
 }
 
 function collectFootnote(state: CollectState): string {
