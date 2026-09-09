@@ -11,11 +11,29 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { Buffer } from "node:buffer";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { MuxError, type UpstreamKeys } from "../types.js";
 import { claudeCodeHarness } from "./claude-code.js";
 
 const KEYS: UpstreamKeys = { anthropic: "sk-ant-test-key-123" };
 const SESSION = "5c1f6a3e-1c9c-4a3e-9a51-2f9d3f9d2b1a";
+
+test("install probe rejects preinstalled Claude without required headless capabilities", () => {
+	const home = mkdtempSync(join(tmpdir(), "am-claude-capability-"));
+	const bin = join(home, ".agent-machines/pkgs/node_modules/.bin");
+	mkdirSync(bin, { recursive: true });
+	const flags = "--bare --print --output-format --verbose --include-partial-messages --dangerously-skip-permissions --model --resume";
+	try {
+		for (const [help, expected] of [[flags.replace("--bare ", ""), 1], [flags, 0]] as const) {
+			writeFileSync(join(bin, "claude"), `#!/bin/sh\ncase "$1" in --help) printf '%s\\n' '${help}';; --version) echo '2.1.19 (fixture)';; *) echo 'Unexpected model invocation' >&2; exit 77;; esac\n`, { mode: 0o755 });
+			const result = spawnSync("/bin/bash", ["-c", claudeCodeHarness.isInstalledCommand()], { env: { HOME: home, PATH: "/usr/bin:/bin" }, encoding: "utf8", timeout: 5000 });
+			assert.equal(result.status, expected, `Actual probe must ${expected ? "reject an old CLI" : "accept required capabilities"}: ${result.stderr}`);
+		}
+	} finally { rmSync(home, { recursive: true, force: true }); }
+});
 
 // --- recorded lines -------------------------------------------------------
 
@@ -459,10 +477,8 @@ test("interactiveCommand: model flag when given, missing key throws", () => {
 });
 
 test("install/probe/version commands", () => {
-	assert.equal(
-		claudeCodeHarness.isInstalledCommand(),
-		'{ export PATH="$HOME/.agent-machines/node/bin:$HOME/.agent-machines/pkgs/node_modules/.bin:$PATH"; command -v claude; }',
-	);
+	assert.match(claudeCodeHarness.isInstalledCommand(), /claude --help/);
+	assert.match(claudeCodeHarness.isInstalledCommand(), /--bare/);
 	assert.equal(
 		claudeCodeHarness.versionCommand(),
 		'{ export PATH="$HOME/.agent-machines/node/bin:$HOME/.agent-machines/pkgs/node_modules/.bin:$PATH"; claude --version; }',

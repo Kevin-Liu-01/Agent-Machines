@@ -1034,7 +1034,7 @@ function configureCliAgent(
 	const isClaude = agent === "claude-code";
 	const selectedModel = runtimeModel(agent, machine.model);
 	const configDir = isClaude ? `${p.HOME}/.claude` : `${p.HOME}/.codex`;
-	const pathLine = `export PATH=${p.NPM_PREFIX}/bin:${p.HOME}/.local/bin:$PATH`;
+	const pathLine = `export PATH=${p.APP_HOME}/node/bin:${p.APP_HOME}/pkgs/node_modules/.bin:${p.NPM_PREFIX}/bin:${p.HOME}/.local/bin:$PATH`;
 
 	// .agent-env carries the native key. Base-URL handling differs per CLI:
 	//  - Claude reads ANTHROPIC_API_KEY and appends `/v1/messages` itself, so the
@@ -1045,7 +1045,7 @@ function configureCliAgent(
 	//    var — setting only OPENAI_API_KEY leaves the WebSocket unauthenticated
 	//    (401 "missing bearer"). So we omit the base URL and register below.
 	const envLines = [
-		`export PATH=${p.NPM_PREFIX}/bin:${p.HOME}/.local/bin:$PATH`,
+		pathLine,
 		`export ${isClaude ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY"}=${upstreamApiKey}`,
 		`export ${isClaude ? "AM_CLAUDE_CODE_MODEL" : "AM_CODEX_MODEL"}=${shell(selectedModel)}`,
 	];
@@ -1061,16 +1061,14 @@ function configureCliAgent(
 	const modelWrite = `mkdir -p ${p.APP_HOME}/state && ${writeRemoteFile(`${p.APP_HOME}/state/${nativeCliModelFilename(agent)}`, `${selectedModel}\n`)}`;
 
 	if (isClaude) {
-		const aptWait = isSandbox ? "" : `${WAIT_FOR_APT} && `;
-		const claudeInstall = isSandbox
-			? `NPM_CONFIG_CACHE=${p.NPM_CACHE} npm install -g @anthropic-ai/claude-code --prefix=${p.NPM_PREFIX} --no-audit --no-fund --loglevel=error`
-			: `${aptWait}curl -fsSL https://claude.ai/install.sh | bash`;
+		const harness = getHarness("claude-code");
 		return [
 			"set -e",
 			`export HOME=${p.HOME}`,
 			pathLine,
 			`mkdir -p ${configDir} ${p.APP_HOME} ${p.NPM_PREFIX} ${p.NPM_CACHE}`,
-			`if ! command -v claude >/dev/null 2>&1 || ! claude --version >/dev/null 2>&1; then ${claudeInstall}; fi`,
+			`if ! ${harness.isInstalledCommand()}; then ${harness.installCommand()}; fi`,
+			`${harness.isInstalledCommand()} || { echo 'Claude Code is missing required headless capabilities; bootstrap must install a compatible CLI.' >&2; exit 1; }`,
 			envWrite,
 			modelWrite,
 			`chmod 600 ${p.APP_HOME}/.agent-env`,

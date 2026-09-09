@@ -52,3 +52,22 @@ describe("Hermes artifact readiness uses supported launch paths", () => {
 		expect(await agentArtifactsPresent(f.machine, f.provider)).toBe(false);
 	});
 });
+
+describe("Claude readiness checks its actual headless protocol", () => {
+	it.each(["old", "compatible", "failed-help", "missing-env"] as const)("checks a %s preinstalled CLI without invoking a model", async (mode) => {
+		const root = mkdtempSync(join(tmpdir(), "am-claude-readiness-")); roots.push(root);
+		const bin = join(root, ".agent-machines/pkgs/node_modules/.bin");
+		mkdirSync(bin, { recursive: true });
+		const flags = `${mode === "old" ? "" : "--bare "}--print --output-format --verbose --include-partial-messages --dangerously-skip-permissions --model --resume`;
+		writeFileSync(join(bin, "claude"), `#!/bin/sh\n[ "$1" = --help ] || exit 77\nprintf '%s\\n' '${flags}'\nexit ${mode === "failed-help" ? 1 : 0}\n`, { mode: 0o755 });
+		if (mode !== "missing-env") writeFileSync(join(root, ".agent-machines/.agent-env"), "# fixture\n");
+		const exec = vi.fn(async (_id: string, command: string) => {
+			try { return { stdout: execFileSync("/bin/bash", ["-c", command.replaceAll("/home/daytona", root)], { env: { HOME: root, PATH: "/usr/bin:/bin", NODE_ENV: "test" }, encoding: "utf8", timeout: 5000 }), stderr: "", exitCode: 0 }; }
+			catch (error) { const result = error as { stdout?: string; stderr?: string; status?: number }; return { stdout: String(result.stdout ?? ""), stderr: String(result.stderr ?? ""), exitCode: result.status ?? 1 }; }
+		});
+		const ready = await agentArtifactsPresent({ id: "qa-claude", providerKind: "daytona", agentKind: "claude-code" } as MachineRef, { exec } as unknown as MachineProvider);
+		expect(ready).toBe(mode === "compatible");
+		expect(exec).toHaveBeenCalledTimes(1);
+		expect(exec.mock.calls[0][0]).toBe("qa-claude");
+	});
+});

@@ -4,6 +4,7 @@
 
 import type { MachineProvider } from "@/lib/providers";
 import type { MachineRef } from "@/lib/user-config/schema";
+import { getHarness } from "agent-machines/mux";
 
 import { finalizeGatewayBootstrap } from "./runner";
 
@@ -31,14 +32,15 @@ export async function agentArtifactsPresent(
 		const probe = await provider.exec(
 			machine.id,
 			[
+				`export HOME=${home}`,
 				pathExports(home),
-				"command -v claude >/dev/null 2>&1",
+				getHarness("claude-code").isInstalledCommand(),
 				`test -f ${appHome}/.agent-env`,
 				"echo ok",
 			].join(" && "),
 			{ timeoutMs: 15_000 },
 		);
-		return probe.stdout.trim() === "ok";
+		return probe.exitCode === 0 && probe.stdout.trim() === "ok";
 	}
 
 	if (machine.agentKind === "codex") {

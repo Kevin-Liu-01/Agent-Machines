@@ -23,7 +23,7 @@ function worker() {
 	mkdirSync(join(app, "state"), { recursive: true });
 	mkdirSync(bin, { recursive: true });
 	for (const cli of ["claude", "codex"]) {
-		writeFileSync(join(bin, cli), '#!/bin/bash\nprintf "%s\\0" "$@" > "$AM_ARGS_FILE"\n', { mode: 0o755 });
+		writeFileSync(join(bin, cli), '#!/bin/bash\nif [ "$1" = --help ]; then echo "--bare --print --output-format --verbose --include-partial-messages --dangerously-skip-permissions --model --resume"; exit 0; fi\nprintf "%s\\0" "$@" > "$AM_ARGS_FILE"\n', { mode: 0o755 });
 	}
 	writeFileSync(join(app, ".agent-env"), `export PATH=${shellArgument(bin)}:"$PATH"\n`);
 	const env = { ...process.env, HOME: home, PATH: `${bin}:${process.env.PATH}`, AM_ARGS_FILE: join(root, "args"), AM_MARKER: join(root, "injected"), AM_TMUX_STATE: join(root, "tmux"), AM_CRON_PROMPT: "" };

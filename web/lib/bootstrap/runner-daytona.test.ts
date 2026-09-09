@@ -28,7 +28,7 @@ function fixture(phases: BootstrapPhaseId[]) {
 }
 
 describe("Daytona user-space bootstrap", () => {
-	it("executes system setup, Node detection and native CLI installation in the sandbox user's HOME", async () => {
+	it.each(["missing", "incompatible", "compatible"] as const)("executes user-space bootstrap with a %s preinstalled CLI", async (cliState) => {
 		const temporary = mkdtempSync(join(tmpdir(), "am-daytona-bootstrap-"));
 		const calls = join(temporary, "calls");
 		const selected: BootstrapPhaseId[] = ["system-deps", "install-node", "configure-hermes"];
@@ -44,7 +44,13 @@ export AM_FIXTURE_CALLS='${calls}'
 sudo() { printf 'sudo %s\\n' "$*" >> "$AM_FIXTURE_CALLS"; AM_FIXTURE_SUDO=1 "$@"; }
 apt-get() { if [ "\${AM_FIXTURE_SUDO:-}" != 1 ]; then echo forbidden-direct-apt >> "$AM_FIXTURE_CALLS"; return 77; fi; }
 node() { printf 'node %s\\n' "$*" >> "$AM_FIXTURE_CALLS"; echo v22.0.0; }
-claude() { [ -f "$HOME/cli-installed" ] || return 1; echo 'Claude Code fixture'; }
+claude() {
+  if [ '${cliState}' = missing ] && [ ! -f "$HOME/cli-installed" ]; then return 1; fi
+  if [ "$1" = --help ]; then
+    printf '%s\\n' '--print --output-format --verbose --include-partial-messages --dangerously-skip-permissions --model --resume'
+    if [ '${cliState}' = compatible ] || [ -f "$HOME/cli-installed" ]; then echo --bare; fi
+  else echo 'Claude Code fixture'; fi
+}
 npm() { printf 'npm %s\\n' "$*" >> "$AM_FIXTURE_CALLS"; touch "$HOME/cli-installed"; }
 curl() { echo forbidden-root-installer >> "$AM_FIXTURE_CALLS"; return 77; }
 pgrep() { return 1; }
@@ -65,7 +71,8 @@ systemctl() { echo forbidden-systemd >> "$AM_FIXTURE_CALLS"; return 77; }
 			expect(actualCalls).toContain("sudo apt-get update");
 			expect(actualCalls).toContain("sudo apt-get install");
 			expect(actualCalls).toContain("node --version");
-			expect(actualCalls).toContain(`npm install -g @anthropic-ai/claude-code --prefix=${temporary}/.npm-global`);
+			if (cliState === "compatible") expect(actualCalls).not.toContain("npm install");
+			else expect(actualCalls).toContain(`npm install --prefix ${temporary}/.agent-machines/pkgs --no-fund --no-audit @anthropic-ai/claude-code@2.1.220`);
 			expect(actualCalls).not.toContain("forbidden-");
 			expect(readFileSync(join(temporary, ".agent-machines/state/claude-code-model"), "utf8")).toBe("claude-sonnet-4-6\n");
 		} finally {

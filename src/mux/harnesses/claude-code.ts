@@ -246,7 +246,12 @@ export const claudeCodeHarness: HarnessAdapter = {
 	requiredUpstream: "anthropic",
 
 	isInstalledCommand(): string {
-		return withAmNode("command -v claude");
+		// Some base images ship an executable old CLI (Daytona: 2.1.19) that
+		// lacks --bare. Check the protocol we actually invoke, not just its name
+		// or a guessed version threshold. Compatible newer installs stay intact.
+		const flags = ["--bare", "--print", "--output-format", "--verbose", "--include-partial-messages", "--dangerously-skip-permissions", "--model", "--resume"];
+		const help = "AM_CLAUDE_HELP=$(if command -v timeout >/dev/null 2>&1; then timeout 10s claude --help; else claude --help; fi)";
+		return withAmNode(`(command -v claude >/dev/null 2>&1 && ${help} && ${flags.map(flag => `printf '%s\\n' "$AM_CLAUDE_HELP" | grep -Eq '(^|[[:space:],])${flag}([[:space:],=]|$)'`).join(" && ")})`);
 	},
 
 	installCommand(): string {

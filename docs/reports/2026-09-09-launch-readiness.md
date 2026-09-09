@@ -1,9 +1,10 @@
 # Launch-readiness audit — September 9, 2026
 
-Status: revision `ebc9459a` is deployed and checked; the Daytona replacement
-candidate has passed the aggregate release gate and awaits deployment. This report
-distinguishes checked-in fixes from deployed evidence; it is not a blanket
-production-readiness claim.
+Status: Daytona revision `556efba` is deployed. Initial hosted creation passed,
+but the real task exposed an incompatible preinstalled Claude CLI; its correction
+has passed the aggregate gate and awaits deployment. This report distinguishes
+checked-in fixes from deployed evidence; it is not a blanket production-readiness
+claim.
 
 ## Observed end-to-end behavior
 
@@ -245,6 +246,12 @@ tests**, **1,473 web tests** (37 platform-specific skips), both typechecks,
 production build, and isolated package verification. These counts establish the
 candidate gate, not a hosted Daytona success claim.
 
+At approximately 09:54 UTC, the Claude capability/installer and SVG corrections
+passed `pnpm check`: **855 SDK/source tests**, **1,481 web tests** (37 explicit
+platform-specific skips), both typechecks, production build, and isolated package
+verification. The separate no-model installer proof succeeded on the same Daytona
+image. An explicit hosted repair and actual paid task remain to be verified.
+
 ## Daytona replacement
 
 The active provider set is Daytona, E2B, Sprites, and Vercel Sandbox. New Dedalus
@@ -265,8 +272,12 @@ figures are not reused. Full evidence and scope are in the
 Both disposable local Daytona fixtures were stopped after their checks; runtime
 QA stopped the 2 GiB fixture at 09:24:25 UTC. Stopped disk may still incur storage
 charges. Production Daytona credentials were saved server-side in the scoped
-Vercel project; hosted provisioning and real model execution on the new provider
-remain pending deployment. No secret is included in the repository or this report.
+Vercel project. Real hosted creation completed in 50.344 seconds with independently
+verified requested allocation, but its first Claude task failed on the image's
+old CLI before model execution. The existing Worker will be repaired and retested;
+it is not being blindly replaced. Details, deployment IDs, and scope are in the
+[hosted Daytona audit](2026-09-09-hosted-daytona-audit.md). No secret is included in
+the repository or this report.
 
 ## Production authentication remains a separate check
 

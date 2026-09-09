@@ -38,7 +38,7 @@ const FOOTER_GROUPS = [
 				external: true,
 			},
 			{
-				label: "DCS",
+				label: "Daytona docs",
 				href: "https://www.daytona.io/docs/",
 				external: true,
 			},

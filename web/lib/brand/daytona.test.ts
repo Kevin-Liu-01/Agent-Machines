@@ -29,6 +29,20 @@ function component(file: string) {
 }
 
 describe("official Daytona provider branding (actual TSX)", () => {
+	it("names the Daytona documentation link without the retired provider acronym", () => {
+		const tree = component("components/Footer.tsx").Footer({});
+		function elements(value: unknown): Element[] {
+			if (Array.isArray(value)) return value.flatMap(elements);
+			if (!value || typeof value !== "object" || !("props" in value)) return [];
+			const node = value as Element;
+			return [node, ...elements(node.props.children)];
+		}
+		const links = elements(tree).filter((node) => node.props.href === "https://www.daytona.io/docs/");
+		expect(links).toHaveLength(1);
+		expect(links[0].props.label).toBe("Daytona docs");
+		expect(JSON.stringify(tree)).not.toMatch(/"DCS"|Dedalus/);
+	});
+
 	it("labels the landing fleet as illustrative and does not display inherited Daytona resource or region data", () => {
 		const tree = component("components/FleetDemo.tsx").FleetDemo({});
 		function elements(value: unknown): Element[] {
