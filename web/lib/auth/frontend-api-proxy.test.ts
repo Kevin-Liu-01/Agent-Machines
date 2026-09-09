@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFile } from "node:fs/promises";
 import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import { NextRequest } from "next/server";
 
@@ -24,7 +25,8 @@ vi.mock("@clerk/nextjs/server", async (importOriginal) => {
 	};
 });
 
-const origin = "https://www.agent-machines.dev";
+const origin = "https://agent-machines.dev";
+const appOrigin = "https://www.agent-machines.dev";
 const productionPublishableKey = `pk_live_${btoa("clerk.agent-machines.dev$")}`;
 
 beforeEach(() => {
@@ -91,13 +93,20 @@ describe("production Clerk Frontend API proxy", () => {
 
 	it("streams the request body and preserves session and origin headers", async () => {
 		const body = "strategy=email_code&email_address=fixture%40example.com";
-		await request(`${origin}/__clerk/v1/client/sign_ins`, {
+		mocks.fetch.mockResolvedValue(new Response("clerk-fixture", {
+			headers: {
+				"access-control-allow-origin": appOrigin,
+				"access-control-allow-credentials": "true",
+				"set-cookie": "__client=fixture; Path=/; Secure; HttpOnly; SameSite=None",
+			},
+		}));
+		const response = await request(`${origin}/__clerk/v1/client/sign_ins`, {
 			method: "POST",
 			body,
 			headers: {
 				"content-type": "application/x-www-form-urlencoded",
 				cookie: "__client=fixture",
-				origin,
+				origin: appOrigin,
 				"x-forwarded-for": "192.0.2.10",
 			},
 		});
@@ -105,9 +114,12 @@ describe("production Clerk Frontend API proxy", () => {
 		expect(await new Response(options.body).text()).toBe(body);
 		const headers = new Headers(options.headers);
 		expect(headers.get("cookie")).toBe("__client=fixture");
-		expect(headers.get("origin")).toBe(origin);
+		expect(headers.get("origin")).toBe(appOrigin);
 		expect(headers.get("content-type")).toBe("application/x-www-form-urlencoded");
 		expect(headers.get("x-forwarded-for")).toBe("192.0.2.10");
+		expect(response?.headers.get("access-control-allow-origin")).toBe(appOrigin);
+		expect(response?.headers.get("access-control-allow-credentials")).toBe("true");
+		expect(response?.headers.get("set-cookie")).toBe("__client=fixture; Path=/; Secure; HttpOnly; SameSite=None");
 	});
 
 	it("pins the upstream and proxy origin despite supplied routing and IP headers", async () => {
@@ -118,7 +130,7 @@ describe("production Clerk Frontend API proxy", () => {
 		const response = await request(`${origin}/__clerk//attacker.example/v1/client?upstream=https%3A%2F%2Fattacker.example`, {
 			headers: {
 				host: "attacker.example",
-				"x-forwarded-host": "attacker.example, www.agent-machines.dev",
+				"x-forwarded-host": "attacker.example, agent-machines.dev",
 				"x-forwarded-proto": "http",
 				"clerk-proxy-url": "https://attacker.example/__clerk",
 				"clerk-secret-key": "attacker-supplied",
@@ -141,19 +153,19 @@ describe("production Clerk Frontend API proxy", () => {
 	});
 
 	it.each([
-		"http://www.agent-machines.dev",
-		"https://www.agent-machines.dev:444",
-		"https://agent-machines.dev",
+		"http://agent-machines.dev",
+		"https://agent-machines.dev:444",
+		"https://www.agent-machines.dev",
 		"https://agent-machines.com",
 		"https://www.agent-machines.com",
 		"https://attacker.example",
-		"https://www.agent-machines.dev.attacker.example",
+		"https://agent-machines.dev.attacker.example",
 		"https://agent-machines-preview.vercel.app",
 		"http://localhost:3210",
 		"http://127.0.0.1:3210",
 	])("returns 404 on unapproved origin %s even with canonical forwarded headers", async (unapprovedOrigin) => {
 		const response = await request(`${unapprovedOrigin}/__clerk/v1/client`, {
-			headers: { host: "www.agent-machines.dev", "x-forwarded-host": "www.agent-machines.dev", "x-forwarded-proto": "https" },
+			headers: { host: "agent-machines.dev", "x-forwarded-host": "agent-machines.dev", "x-forwarded-proto": "https" },
 		});
 		expect(response?.status).toBe(404);
 		expect(response?.headers.get("cache-control")).toBe("no-store");
@@ -185,20 +197,101 @@ describe("production Clerk Frontend API proxy", () => {
 	});
 
 	it.each(["/__clerk-extra/v1/client", "/api/__clerk/v1/client"])("does not proxy a similarly named route %s", async (path) => {
-		await request(`${origin}${path}`);
+		await request(`${appOrigin}${path}`);
 		expect(mocks.frontendApiProxy).not.toHaveBeenCalled();
 		expect(mocks.middleware).toHaveBeenCalledOnce();
 	});
 
 	it("keeps anonymous dashboard APIs closed and browser pages behind sign-in", async () => {
 		for (const path of ["/api/dashboard/machines", "/api/chat"]) {
-			expect((await request(`${origin}${path}`))?.status).toBe(401);
+			expect((await request(`${appOrigin}${path}`))?.status).toBe(401);
 		}
-		const response = await request(`${origin}/dashboard`);
+		const response = await request(`${appOrigin}/dashboard`);
 		expect(response?.status).toBe(307);
-		expect(response?.headers.get("location")).toBe(`${origin}/sign-in?redirect_url=%2Fdashboard`);
+		expect(response?.headers.get("location")).toBe(`${appOrigin}/sign-in?redirect_url=%2Fdashboard`);
 		expect(mocks.frontendApiProxy).not.toHaveBeenCalled();
 		expect(mocks.auth).toHaveBeenCalledTimes(3);
 		expect(mocks.fetch).not.toHaveBeenCalled();
+	});
+});
+
+describe("production apex app redirect", () => {
+	it("keeps the host-scoped matcher statically extractable by the installed Next build", async () => {
+		const { loadBindings } = await import("next/dist/build/swc");
+		const { parseModule } = await import("next/dist/build/analysis/parse-module");
+		const { extractExportedConstValue } = await import("next/dist/build/analysis/extract-const-value");
+		const { config } = await import("../../proxy");
+		const source = await readFile(new URL("../../proxy.ts", import.meta.url), "utf8");
+		await loadBindings();
+		const ast = await parseModule("proxy.ts", source);
+		expect(extractExportedConstValue(ast, "config")).toEqual({ value: config });
+	});
+
+	it.each(["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])(
+		"preserves the original 307 for %s and the full encoded path/query", async (method) => {
+			const path = "/dashboard/worker%20one?return=%2Fsetup%3Fa%3D1&label=a%2Bb+%26+c&tag=one&tag=two";
+			const response = await request(`${origin}${path}`, {
+				method,
+				...(method === "POST" ? { body: "fixture=body", headers: { "next-action": "fixture" } } : {}),
+			});
+			expect(response?.status).toBe(307);
+			expect(response?.headers.get("location")).toBe(`${appOrigin}${path}`);
+			expect(mocks.frontendApiProxy).not.toHaveBeenCalled();
+			expect(mocks.middleware).not.toHaveBeenCalled();
+			expect(mocks.fetch).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each([
+		"/", "/sign-in", "/api/dashboard/machines", "/api/health",
+		"/__clerk-extra/v1/client", "/__clerk.js", "/api/__clerk/v1/client",
+		"/_next/static/chunks/app.js", "/_next/static/css/app.css",
+		"/_next/data/build-id/pricing.json",
+		"/favicon.ico", "/assets/logo.svg", "/fonts/font.woff2", "/robots.txt",
+	])("matches and redirects non-proxy apex path %s, including assets", async (path) => {
+		const { config } = await import("../../proxy");
+		expect(unstable_doesMiddlewareMatch({ config, nextConfig: {}, url: `${origin}${path}` })).toBe(true);
+		const response = await request(`${origin}${path}`);
+		expect(response?.status).toBe(307);
+		expect(response?.headers.get("location")).toBe(`${appOrigin}${path}`);
+		expect(mocks.middleware).not.toHaveBeenCalled();
+	});
+
+	it.each(["/_next/static/chunks/app.js", "/favicon.ico", "/assets/logo.svg"])(
+		"does not add middleware overhead to other hosts' asset %s", async (path) => {
+			const { config } = await import("../../proxy");
+			for (const otherOrigin of [appOrigin, "http://localhost:3210", "https://agent-machines-preview.vercel.app", "https://agent-machinesXdev"]) {
+				expect(unstable_doesMiddlewareMatch({ config, nextConfig: {}, url: `${otherOrigin}${path}` })).toBe(false);
+			}
+		},
+	);
+
+	it.each([appOrigin, "http://localhost:3210", "https://agent-machines-preview.vercel.app", "https://agent-machines.dev.attacker.example"])(
+		"does not redirect runtime origin %s when Host and forwarded headers claim the apex", async (otherOrigin) => {
+			expect(await request(`${otherOrigin}/pricing`, {
+				headers: { host: "agent-machines.dev", "x-forwarded-host": "agent-machines.dev", "x-forwarded-proto": "https" },
+			})).toBeUndefined();
+			expect(mocks.middleware).toHaveBeenCalledOnce();
+		},
+	);
+
+	it("never allows supplied host headers to choose the redirect target", async () => {
+		const response = await request(`${origin}/pricing?fixture=1`, {
+			headers: { host: "attacker.example", "x-forwarded-host": "attacker.example", "x-forwarded-proto": "http" },
+		});
+		expect(response?.headers.get("location")).toBe(`${appOrigin}/pricing?fixture=1`);
+	});
+
+	it.each([
+		["NODE_ENV", "development"], ["NODE_ENV", "test"],
+		["VERCEL_ENV", "preview"], ["VERCEL_ENV", undefined],
+		["NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", `pk_test_${btoa("clerk.agent-machines.dev$")}`],
+		["NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", `pk_live_${btoa("clerk.other-app.dev$")}`],
+		["CLERK_SECRET_KEY", ""],
+	])("keeps the apex redirect disabled with nonproduction auth config: %s (%#)", async (name, value) => {
+		vi.stubEnv(name, value);
+		const response = await request(`${origin}/pricing`);
+		expect(response?.headers.get("location") ?? null).toBeNull();
+		expect(mocks.frontendApiProxy).not.toHaveBeenCalled();
 	});
 });

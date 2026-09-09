@@ -1,5 +1,5 @@
 import { clerkFrontendApiProxy, clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import type { NextFetchEvent, NextRequest } from "next/server";
+import type { NextFetchEvent, NextRequest, ProxyConfig } from "next/server";
 import { NextResponse } from "next/server";
 
 /**
@@ -55,7 +55,7 @@ const USE_PRIMARY_AUTH_HOST =
 	CLERK_CONFIGURED &&
 	isPrimaryProductionClerkKey(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
 
-const PRIMARY_AUTH_ORIGIN = "https://www.agent-machines.dev";
+const CLERK_PROXY_ORIGIN = "https://agent-machines.dev";
 const CLERK_PROXY_ENABLED =
 	USE_PRIMARY_AUTH_HOST && process.env.VERCEL_ENV === "production";
 
@@ -101,7 +101,7 @@ export default async function proxy(
 	event: NextFetchEvent,
 ) {
 	if (/^\/__clerk(\/|$)/.test(request.nextUrl.pathname)) {
-		if (!CLERK_PROXY_ENABLED || request.nextUrl.origin !== PRIMARY_AUTH_ORIGIN) {
+		if (!CLERK_PROXY_ENABLED || request.nextUrl.origin !== CLERK_PROXY_ORIGIN) {
 			return new NextResponse(null, {
 				status: 404,
 				headers: { "cache-control": "no-store" },
@@ -110,7 +110,7 @@ export default async function proxy(
 		const headers = new Headers(request.headers);
 		// Clerk derives its public proxy URL from these headers. Pin that URL
 		// after validating the request origin, regardless of supplied headers.
-		headers.set("x-forwarded-host", "www.agent-machines.dev");
+		headers.set("x-forwarded-host", "agent-machines.dev");
 		headers.set("x-forwarded-proto", "https");
 		// Vercel overwrites X-Forwarded-For. Do not let a client-supplied
 		// Cloudflare header take precedence in Clerk's client-IP selection.
@@ -122,6 +122,16 @@ export default async function proxy(
 		// server-only secret, and rewrites redirects. Client activation is a
 		// separate deployment via NEXT_PUBLIC_CLERK_PROXY_URL after verification.
 		return clerkFrontendApiProxy(new Request(request, { headers }));
+	}
+	// Clerk requires its proxy on the primary apex domain. Keep every other
+	// apex request on the canonical www app, retaining the previous platform
+	// redirect's 307 method/body semantics and exact path/query.
+	if (CLERK_PROXY_ENABLED && request.nextUrl.hostname === "agent-machines.dev") {
+		const incoming = new URL(request.url);
+		const destination = new URL("https://www.agent-machines.dev");
+		destination.pathname = incoming.pathname;
+		destination.search = incoming.search;
+		return NextResponse.redirect(destination);
 	}
 	// Production sessions belong to .dev. Move browser auth pages before Clerk
 	// touches .com, but never forward API credentials or server-action bodies.
@@ -165,9 +175,13 @@ export default async function proxy(
 	);
 }
 
-export const config = {
+export const config: ProxyConfig = {
 	matcher: [
 		"/__clerk/:path*",
+		{
+			source: "/:path*",
+			has: [{ type: "host", value: "agent-machines\\.dev" }],
+		},
 		"/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
 		"/(api|trpc)(.*)",
 	],
