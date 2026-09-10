@@ -1,6 +1,6 @@
 "use client";
 
-import { Cpu, HardDrive, MemoryStick } from "lucide-react";
+import { Cpu, HardDrive, MemoryStick } from "@/components/ui/icons";
 import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/cn";

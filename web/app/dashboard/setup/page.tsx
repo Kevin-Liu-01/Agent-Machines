@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { SandboxRouterPanel } from "@/components/dashboard/SandboxRouterPanel";
 import { SetupWizard } from "@/components/dashboard/SetupWizard";
+import { cn } from "@/lib/cn";
 import { resolveRoute } from "@/lib/mux/route";
 import {
 	getUserConfigForRequest,
@@ -13,15 +14,12 @@ export default async function SetupPage() {
 	const config = await getUserConfigForRequest();
 	const { route, skipped } = resolveRoute(config);
 	return (
-		<div className="flex flex-col">
+		<div className={cn("flex min-w-0 flex-col")}>
 			<PageHeader
-				kicker="SETUP"
+				kicker="Setup"
 				title="Set up your Worker"
-				description="Connect your sandbox and model accounts, choose an agent, and launch a persistent workspace. Your credentials stay private."
+				description="Connect your accounts, choose an agent, and launch a persistent workspace."
 			/>
-			<div className="px-5 pb-6 md:px-7">
-				<SandboxRouterPanel route={route} skipped={skipped} />
-			</div>
 			<SetupWizard
 				initialConfig={toPublicConfig(config)}
 				defaults={{
@@ -32,6 +30,10 @@ export default async function SetupPage() {
 					hasOwnerMachine: config.machines.length > 0,
 				}}
 			/>
+			<section aria-labelledby="setup-routing-heading" className={cn("space-y-3 px-5 pb-7 pt-2 md:px-7")}>
+				<h2 id="setup-routing-heading" className={cn("text-lg font-semibold text-[var(--ret-text)]")}>Routing preferences</h2>
+				<SandboxRouterPanel route={route} skipped={skipped} />
+			</section>
 		</div>
 	);
 }

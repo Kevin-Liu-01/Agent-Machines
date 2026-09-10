@@ -11,7 +11,7 @@ import {
 	Server,
 	Sparkles,
 	Zap,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { useEffect, useMemo, useState } from "react";
 
 import { ReticleButton } from "@/components/reticle/ReticleButton";

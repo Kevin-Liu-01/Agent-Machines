@@ -32,7 +32,7 @@ export function RouterSelect({
 	onChange,
 	aiConfigured,
 	disabled,
-	label = "model router (Vercel first)",
+	label = "Model router (Vercel first)",
 }: Props) {
 	const native = agentKind ? requiredNativeUpstream(agentKind) : null;
 
@@ -41,7 +41,7 @@ export function RouterSelect({
 		return (
 			<p
 				className={cn(
-					"font-mono text-[10px] tracking-[0.04em]",
+					"text-sm leading-relaxed",
 					ok ? "text-[var(--ret-text-muted)]" : "text-[var(--ret-amber)]",
 				)}
 			>
@@ -55,13 +55,13 @@ export function RouterSelect({
 	if (!agentUsesRouter(agentKind ?? "hermes")) return null;
 
 	return (
-		<div className="grid gap-1">
-			<label className="grid w-full max-w-[280px] gap-1">
-				<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+		<div className={cn("grid min-w-0 gap-2")}>
+			<label className={cn("grid w-full min-w-0 gap-2")}>
+				<span className={cn("text-sm font-medium text-[var(--ret-text)]")}>
 					{label}
 				</span>
 				{disabled ? (
-					<div className="border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1.5 font-mono text-[11px] text-[var(--ret-text-muted)]">
+					<div className={cn("border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-3 py-2.5 text-sm text-[var(--ret-text-muted)]")}>
 						{ROUTER_PRESETS.find((p) => p.id === value)?.label ?? value}
 					</div>
 				) : (
@@ -77,7 +77,7 @@ export function RouterSelect({
 				)}
 			</label>
 			{!aiConfigured[ROUTER_PRESETS.find((p) => p.id === value)?.source ?? ""] ? (
-				<span className="font-mono text-[10px] text-[var(--ret-amber)]">
+				<span className={cn("text-sm leading-relaxed text-[var(--ret-amber)]")}>
 					This router has no key. Add one in Settings. Bootstrap can use fallbacks.
 				</span>
 			) : null}

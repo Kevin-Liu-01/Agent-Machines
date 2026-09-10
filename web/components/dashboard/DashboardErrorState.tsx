@@ -6,6 +6,7 @@ import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { SchematicPanel } from "@/components/reticle/SchematicPanel";
 import { ERROR_ART } from "@/lib/dashboard/category-art";
+import { cn } from "@/lib/cn";
 
 export type DashboardErrorStateProps = {
 	error: Error & { digest?: string };
@@ -31,27 +32,26 @@ export function DashboardErrorState({
 	}, [error, scope]);
 
 	return (
-		<ReticleFrame className="p-6">
-			<div className="flex flex-col items-center gap-4 py-8 text-center">
-				<SchematicPanel src={ERROR_ART.server} className="w-full max-w-xs" />
-				<h2 className="ret-display text-lg">Something broke rendering {scope}</h2>
-				<p className="max-w-[52ch] text-[13px] text-[var(--ret-text-dim)]">
-					The rest of the dashboard is still live. Retry to re-render this
-					panel, or head back to the fleet overview.
+		<ReticleFrame className={cn("mx-auto w-full max-w-2xl px-5 py-8 sm:p-10")}>
+			<div className={cn("flex min-w-0 flex-col items-center gap-4 text-center")}>
+				<SchematicPanel src={ERROR_ART.server} className={cn("w-full max-w-[260px]")} />
+				<h2 className={cn("ret-display text-2xl text-[var(--ret-text)]")}>Couldn’t load {scope}</h2>
+				<p className={cn("max-w-[52ch] text-base leading-7 text-[var(--ret-text-dim)]")}>
+					Try loading this view again, or return to the fleet overview.
 				</p>
 				{error.digest ? (
-					<p className="font-mono text-[10px] text-[var(--ret-text-muted)]">
-						ref {error.digest}
+					<p className={cn("max-w-full break-all font-mono text-xs text-[var(--ret-text-muted)]")}>
+						Reference: {error.digest}
 					</p>
 				) : null}
 				{process.env.NODE_ENV !== "production" && error.message ? (
-					<pre className="max-w-full overflow-x-auto whitespace-pre-wrap break-words border border-[var(--ret-border)] bg-[var(--ret-surface)] px-3 py-2 text-left font-mono text-[11px] text-[var(--ret-red)]">
+					<pre className={cn("max-w-full overflow-x-auto whitespace-pre-wrap break-words border border-[var(--ret-border)] bg-[var(--ret-surface)] px-3 py-2 text-left font-mono text-xs leading-5 text-[var(--ret-red)]")}>
 						{error.message}
 					</pre>
 				) : null}
 				<div className="flex flex-wrap items-center justify-center gap-2">
 					<ReticleButton onClick={reset} variant="primary" size="sm">
-						Retry
+						Try again
 					</ReticleButton>
 					<ReticleButton as="a" href="/dashboard" variant="secondary" size="sm">
 						Back to overview

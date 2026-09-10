@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, X } from "lucide-react";
+import { ArrowUpRight, X } from "@/components/ui/icons";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 

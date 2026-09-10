@@ -1,7 +1,7 @@
 "use client";
 
 import { ClerkFailed, ClerkLoaded, ClerkLoading } from "@clerk/nextjs";
-import { ArrowLeft, LoaderCircle, RotateCw, ShieldAlert } from "lucide-react";
+import { ArrowLeft, LoaderCircle, RotateCw, ShieldAlert } from "@/components/ui/icons";
 import type { ReactNode } from "react";
 
 /** Keep a failed authentication script from leaving an empty sign-in page. */

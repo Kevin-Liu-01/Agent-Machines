@@ -2,7 +2,9 @@ import type { ReactNode } from "react";
 
 import { BrandMark } from "@/components/BrandMark";
 import { Logo, type Mark } from "@/components/Logo";
+import { SquareTerminal } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
+import { LANDING_INSET } from "@/lib/marketing/layout";
 
 const FOOTER_GROUPS = [
 	{
@@ -73,13 +75,13 @@ export function Footer() {
 		<footer className="relative border-t border-[var(--ret-border)] bg-[var(--ret-bg)] text-xs text-[var(--ret-text-muted)]">
 			<div className="mx-auto w-full max-w-[var(--ret-content-max)]">
 				<div className="grid border-x border-[var(--ret-border)] md:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))]">
-					<div className="flex min-h-[220px] flex-col justify-between border-b border-[var(--ret-border)] p-6 md:border-b-0 md:border-r md:p-7">
+					<div className={cn(LANDING_INSET, "flex min-h-[220px] flex-col justify-between border-b border-[var(--ret-border)] py-8 md:border-b-0 md:border-r")}>
 						<div>
 							<BrandMark size={30} gap="tight" withLabel={false} />
 							<p className="mt-5 max-w-[24ch] text-[24px] font-semibold leading-[1.05] text-[var(--ret-text)]">
 								Run workers. Inspect everything.
 							</p>
-							<p className="mt-4 max-w-[34ch] text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
+							<p className={cn("mt-4 max-w-[34ch] text-sm leading-6 text-[var(--ret-text-dim)]")}>
 								Run the runtime. Read logs. Track usage.
 								Keep tools and artifacts visible.
 							</p>
@@ -96,9 +98,9 @@ export function Footer() {
 					{FOOTER_GROUPS.map((group) => (
 						<div
 							key={group.label}
-							className="border-b border-[var(--ret-border)] p-6 md:border-b-0 md:border-r md:p-7 last:md:border-r-0"
+							className={cn(LANDING_INSET, "border-b border-[var(--ret-border)] py-8 md:border-b-0 md:border-r last:md:border-r-0")}
 						>
-							<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+							<p className={cn("text-sm font-medium text-[var(--ret-text-muted)]")}>
 								{group.label}
 							</p>
 							<nav className="mt-5 grid gap-3" aria-label={group.label}>
@@ -127,9 +129,9 @@ export function Footer() {
 						<FooterBadge label="Tools" mark="tools" muted />
 					</StackBlock>
 				</div>
-				<div className="flex flex-col gap-3 border-x border-t border-[var(--ret-border)] px-6 py-4 font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--ret-text-muted)] md:flex-row md:items-center md:justify-between md:px-7">
+				<div className={cn(LANDING_INSET, "flex flex-col gap-3 border-x border-t border-[var(--ret-border)] py-5 text-sm text-[var(--ret-text-muted)] md:flex-row md:items-center md:justify-between")}>
 					<span>Copyright 2026 Agent Machines</span>
-					<span>MIT . Reticle / Sigil UI</span>
+					<span>MIT · Reticle / Sigil UI</span>
 				</div>
 				<div className="relative overflow-hidden border-x border-t border-[var(--ret-border)] px-5 pb-12 pt-9 md:pb-14">
 					<div
@@ -168,7 +170,7 @@ function FooterLink({
 			href={href}
 			target={external ? "_blank" : undefined}
 			rel={external ? "noreferrer" : undefined}
-			className="group flex min-h-8 items-center justify-between gap-3 border-b border-[var(--ret-border)] pb-2 text-[13px] text-[var(--ret-text-dim)] transition-colors last:border-b-0 hover:text-[var(--ret-text)]"
+			className={cn("group flex min-h-9 items-center justify-between gap-3 border-b border-[var(--ret-border)]/40 pb-2 text-sm text-[var(--ret-text-dim)] transition-colors duration-150 last:border-b-0 hover:text-[var(--ret-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-text)] motion-reduce:transition-none")}
 		>
 			<span>{label}</span>
 			<span
@@ -189,11 +191,11 @@ function StackBlock({
 	children: ReactNode;
 }) {
 	return (
-		<div className="border-b border-[var(--ret-border)] p-6 md:border-b-0 md:border-r md:p-7 last:md:border-r-0">
-			<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+		<div className={cn(LANDING_INSET, "border-b border-[var(--ret-border)] py-6 md:border-b-0 md:border-r last:md:border-r-0")}>
+			<p className={cn("text-sm font-medium text-[var(--ret-text-muted)]")}>
 				{label}
 			</p>
-			<div className="mt-4 flex flex-wrap gap-2 font-mono text-[10px] uppercase tracking-[0.12em]">
+			<div className={cn("mt-4 flex flex-wrap gap-2 text-sm")}>
 				{children}
 			</div>
 		</div>
@@ -251,30 +253,6 @@ function FooterBadgeMark({ mark }: { mark: FooterMark }) {
 
 	switch (mark) {
 		case "tools":
-			return (
-				<svg
-					aria-hidden="true"
-					viewBox="0 0 16 16"
-					className={className}
-					fill="none"
-				>
-					<rect
-						x="2.5"
-						y="3"
-						width="11"
-						height="10"
-						rx="1.25"
-						stroke="currentColor"
-						strokeWidth="1.25"
-					/>
-					<path
-						d="m5.1 6.1 1.9 1.9-1.9 1.9M8.6 10h2.4"
-						stroke="currentColor"
-						strokeLinecap="square"
-						strokeLinejoin="round"
-						strokeWidth="1.25"
-					/>
-				</svg>
-			);
+			return <SquareTerminal aria-hidden="true" className={className} />;
 	}
 }

@@ -86,7 +86,7 @@
 	--ret-rail-offset: 4rem;
 
 	/* Scrollbar — thin square thumb, subtle track (see site-wide block below) */
-	--ret-scrollbar-size: 6px;
+	--ret-scrollbar-size: 2px;
 	--ret-scrollbar-track: #ebebec;
 	--ret-scrollbar-thumb: #919191;
 	--ret-scrollbar-thumb-hover: #767676;
@@ -195,7 +195,8 @@ body {
 	color: var(--ret-text);
 	font-family: var(--font-sans);
 	font-feature-settings: "ss01", "cv11", "tnum";
-	font-size: 14px;
+	/* Keep rem-based type and spacing at the browser's readable default. */
+	font-size: 100%;
 	line-height: 1.5;
 	-webkit-font-smoothing: antialiased;
 	text-rendering: optimizeLegibility;
@@ -584,7 +585,7 @@ details[open] .ret-details-chevron {
 }
 
 /*
- * Site-wide scrollbars — thin square thumb (~#919191), subtle track. One global
+ * Site-wide scrollbars — 2px square thumb (~#919191), subtle track. One global
  * block per css-ui-enforcement; no per-component scrollbar CSS.
  */
 * {
@@ -612,6 +613,16 @@ details[open] .ret-details-chevron {
 
 *::-webkit-scrollbar-corner {
 	background: var(--ret-scrollbar-track);
+}
+
+/* Native "thin" overrides pixel sizing in Chromium/WebKit. Apply this to the
+ * root page, nested regions, and portals; Firefox keeps its native thin fallback.
+ * Zero specificity lets intentional hidden-scrollbar utilities keep working. */
+@supports selector(::-webkit-scrollbar) {
+	* {
+		scrollbar-width: auto;
+		scrollbar-color: auto;
+	}
 }
 
 .ret-scrollbar-hidden {

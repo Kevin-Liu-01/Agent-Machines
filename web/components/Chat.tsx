@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Brain, ChevronRight } from "lucide-react";
+import { Brain, ChevronRight } from "@/components/ui/icons";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 

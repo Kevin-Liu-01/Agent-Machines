@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Brain, ChevronLeft, RefreshCcw, Rocket, Server, Trash2 } from "lucide-react";
+import { Brain, ChevronLeft, RefreshCcw, Rocket, Server, Trash2 } from "@/components/ui/icons";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 

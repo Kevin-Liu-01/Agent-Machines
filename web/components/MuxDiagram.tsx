@@ -1,307 +1,98 @@
-import {
-	GitFork,
-	KeyRound,
-	Network,
-	Route,
-	ShieldCheck,
-	TerminalSquare,
-	type LucideIcon,
-} from "lucide-react";
+import type { ReactNode } from "react";
+import { Braces, GitFork, KeyRound, Network, Route, ShieldCheck, TerminalSquare, type LucideIcon } from "@/components/ui/icons";
 
 import { Logo, type Mark } from "@/components/Logo";
 import { cn } from "@/lib/cn";
-import {
-	HARNESS_CAPABILITIES,
-	SUBSTRATE_CAPABILITIES,
-} from "@/lib/mux/capabilities";
+import { HARNESS_CAPABILITIES, SUBSTRATE_CAPABILITIES } from "@/lib/mux/capabilities";
 
-/**
- * A literal view of the mux's two decisions: select an agent runtime, then
- * place it on a compatible sandbox. Brand marks identify the replaceable
- * machinery while the center backplane explains the policy Agent Machines
- * owns. The solid provider rail is the primary route; dashed rails are
- * failover candidates.
- */
-
-const HARNESS_MARKS: Record<
-	(typeof HARNESS_CAPABILITIES)[number]["kind"],
-	Mark
-> = {
-	"claude-code": "claudecode",
-	codex: "codex",
-	openclaw: "openclaw",
-	hermes: "nous",
+const HARNESS_MARKS: Record<(typeof HARNESS_CAPABILITIES)[number]["kind"], Mark> = {
+	"claude-code": "claudecode", codex: "codex", openclaw: "openclaw", hermes: "nous",
 };
-
-const SUBSTRATE_MARKS: Record<
-	(typeof SUBSTRATE_CAPABILITIES)[number]["kind"],
-	Mark
-> = {
-	e2b: "e2b",
-	sprites: "sprites",
-	vercel: "vercel",
-	daytona: "daytona",
-	dedalus: "retired",
+const SUBSTRATE_MARKS: Record<(typeof SUBSTRATE_CAPABILITIES)[number]["kind"], Mark> = {
+	e2b: "e2b", sprites: "sprites", vercel: "vercel", daytona: "daytona", dedalus: "retired",
 };
-
-const ROUTER_CHECKS: ReadonlyArray<{
-	icon: LucideIcon;
-	label: string;
-}> = [
-	{ icon: KeyRound, label: "Credentials verified." },
-	{ icon: Network, label: "Constraints matched." },
-	{ icon: ShieldCheck, label: "Failure contained." },
-	{ icon: GitFork, label: "Failover automatic." },
+const ROUTER_CHECKS: ReadonlyArray<{ icon: LucideIcon; title: string; body: string }> = [
+	{ icon: KeyRound, title: "Credential presence", body: "Consider configured provider lanes." },
+	{ icon: Network, title: "Workload compatibility", body: "Match the capabilities the job needs." },
+	{ icon: ShieldCheck, title: "Provider health", body: "Account for recent routing outcomes." },
+	{ icon: GitFork, title: "Eligible backups", body: "Retry routing-safe creation failures." },
 ];
 
+/** A routing explanation, not live telemetry or a promise that every lane is eligible. */
 export function MuxDiagram({ className }: { className?: string }) {
 	return (
-		<figure
-			className={cn(
-				"relative m-0 overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-surface)]/35",
-				className,
-			)}
-		>
-			<div
-				aria-hidden="true"
-				className="pointer-events-none absolute inset-0 bg-[linear-gradient(var(--ret-border)_1px,transparent_1px),linear-gradient(90deg,var(--ret-border)_1px,transparent_1px)] bg-[size:32px_32px] opacity-[0.16]"
-			/>
-
-			<div className="relative grid gap-4 p-4 sm:p-5 lg:grid-cols-[minmax(190px,1fr)_48px_minmax(190px,0.86fr)_48px_minmax(190px,1fr)] lg:items-stretch lg:gap-0 lg:p-6">
-				<Plane
-					label="Agent runtimes"
-					detail="Harness and model path"
-					className="lg:pr-0"
-				>
+		<figure className={cn("m-0", className)}>
+			<div className={cn("grid gap-7 lg:grid-cols-[minmax(0,1fr)_32px_minmax(0,1.1fr)_32px_minmax(0,1fr)] lg:gap-0")}>
+				<Plane title="Agent runtimes" detail="How the Worker does the job" icon={Braces}>
 					{HARNESS_CAPABILITIES.map((runtime) => (
-						<MachineNode
-							key={runtime.kind}
-							mark={HARNESS_MARKS[runtime.kind]}
-							label={runtime.label}
-							detail={upstreamLabel(runtime.requiredUpstream)}
-						/>
+						<MachineNode key={runtime.kind} mark={HARNESS_MARKS[runtime.kind]} label={runtime.label} detail={upstreamLabel(runtime.requiredUpstream)} />
 					))}
 				</Plane>
-
-				<FanInRail />
-
-				<RouterCore />
-
-				<FanOutRail />
-
-				<Plane
-					label="Sandbox providers"
-					detail="Placement and terminal"
-					className="lg:pl-0"
-				>
-					{SUBSTRATE_CAPABILITIES.map((substrate, index) => (
-						<MachineNode
-							key={substrate.kind}
-							mark={SUBSTRATE_MARKS[substrate.kind]}
-							label={substrate.label}
-							detail={ptyLabel(substrate.pty)}
-							active={index === 0}
-							badge={index === 0 ? "Primary" : "Failover"}
-						/>
+				<RouteRail />
+				<div className={cn("flex min-w-0 flex-col justify-center rounded-lg border border-[var(--ret-border)]/60 bg-[var(--ret-bg-soft)] p-5 md:p-6 lg:mt-[76px]")}>
+					<div className={cn("flex flex-col items-center gap-4 text-center")}><Logo mark="am" size={44} /><h3 className={cn("text-xl font-semibold tracking-tight text-[var(--ret-text)]")}>One routing decision</h3></div>
+					<ul className={cn("mt-7 grid grid-cols-2 gap-x-4 gap-y-6")}>
+						{ROUTER_CHECKS.map(({ icon: Icon, title }) => (
+							<li key={title} className={cn("flex flex-col items-center gap-2 text-center")}><Icon size={26} className={cn("text-[var(--ret-text-secondary)]")} aria-hidden="true" /><p className={cn("max-w-[16ch] text-sm font-medium leading-relaxed text-[var(--ret-text)]")}>{title}</p></li>
+						))}
+					</ul>
+					<p className={cn("mt-7 border-t border-[var(--ret-border)]/40 pt-4 text-center text-sm text-[var(--ret-text-dim)]")}>The Worker stays yours.</p>
+				</div>
+				<RouteRail outgoing />
+				<Plane title="Sandbox providers" detail="Where the Worker runs" icon={TerminalSquare}>
+					{SUBSTRATE_CAPABILITIES.map((provider, index) => (
+						<MachineNode key={provider.kind} mark={SUBSTRATE_MARKS[provider.kind]} label={provider.label} detail={ptyLabel(provider.pty)} badge={index === 0 ? "Primary" : "Backup"} />
 					))}
 				</Plane>
 			</div>
-
-			<figcaption className="sr-only">
-				Agent Machines selects one of four agent runtimes and places it on one
-				of four sandbox providers. Credentials and constraints are checked
-				before routing. The primary lane is solid and failover lanes are dashed.
+			<figcaption className={cn("mt-6 border-t border-[var(--ret-border)]/40 pt-4 text-sm leading-relaxed text-[var(--ret-text-dim)]")}>
+				<div className={cn("flex flex-wrap items-center justify-between gap-x-6 gap-y-2")}><span className={cn("flex items-center gap-2 font-medium text-[var(--ret-text-secondary)]")}><Route size={17} aria-hidden="true" />Routing illustration</span><p>Primary and backup lanes are examples, not live status.</p></div>
+				<details className={cn("group mt-3")}>
+					<summary className={cn("w-fit cursor-pointer rounded-sm py-2 text-sm font-medium text-[var(--ret-text-secondary)] hover:text-[var(--ret-text)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--ret-text)]")}>How placement works</summary>
+					<div className={cn("pt-3")}><p className={cn("max-w-[90ch]")}>Actual placement depends on configuration, capabilities, and provider health. Preflight checks key presence, not vendor credential validity.</p><ul className={cn("mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4")}>{ROUTER_CHECKS.map(({ icon: Icon, title, body }) => <li key={title}><p className={cn("flex items-center gap-2 font-medium text-[var(--ret-text-secondary)]")}><Icon size={18} aria-hidden="true" />{title}</p><p className={cn("mt-1")}>{body}</p></li>)}</ul></div>
+				</details>
 			</figcaption>
 		</figure>
 	);
 }
 
-function Plane({
-	label,
-	detail,
-	children,
-	className,
-}: {
-	label: string;
-	detail: string;
-	children: React.ReactNode;
-	className?: string;
-}) {
+function Plane({ title, detail, icon: Icon, children }: { title: string; detail: string; icon: LucideIcon; children: ReactNode }) {
 	return (
-		<section className={cn("relative z-10 flex min-w-0 flex-col", className)}>
-			<div className="mb-3 flex min-h-9 items-end justify-between gap-3 border-b border-[var(--ret-border)] pb-2">
-				<h3 className="font-mono text-[9px] font-medium uppercase tracking-[0.2em] text-[var(--ret-text)]">
-					{label}
-				</h3>
-				<span className="text-right font-mono text-[8px] uppercase tracking-[0.12em] text-[var(--ret-text-muted)]">
-					{detail}
-				</span>
-			</div>
-			<div className="grid flex-1 grid-rows-4 gap-2.5">{children}</div>
+		<section className={cn("flex min-w-0 flex-col")}>
+			<div className={cn("min-h-[76px] pb-5")}><h3 className={cn("flex items-center gap-2.5 text-lg font-semibold text-[var(--ret-text)]")}><Icon size={21} aria-hidden="true" />{title}</h3><p className={cn("mt-1.5 text-sm text-[var(--ret-text-dim)]")}>{detail}</p></div>
+			<ul className={cn("grid flex-1 auto-rows-fr gap-3 sm:grid-cols-2 lg:grid-cols-1")}>{children}</ul>
 		</section>
 	);
 }
 
-function MachineNode({
-	mark,
-	label,
-	detail,
-	active = false,
-	badge,
-}: {
-	mark: Mark;
-	label: string;
-	detail: string;
-	active?: boolean;
-	badge?: "Primary" | "Failover";
-}) {
+function MachineNode({ mark, label, detail, badge }: { mark: Mark; label: string; detail: string; badge?: string }) {
 	return (
-		<div
-			className={cn(
-				"group relative flex min-h-[62px] items-center gap-3 overflow-hidden border bg-[var(--ret-bg)] px-3.5 py-3 transition-colors",
-				active
-					? "border-[var(--ret-text-secondary)]"
-					: "border-[var(--ret-border)] hover:border-[var(--ret-border-hover)]",
-			)}
-		>
-			{active ? (
-				<span
-					aria-hidden="true"
-					className="absolute inset-y-0 left-0 w-px bg-[var(--ret-text)] shadow-[0_0_12px_var(--ret-text-secondary)]"
-				/>
-			) : null}
-			<span className="grid size-8 shrink-0 place-items-center border border-[var(--ret-border)] bg-[var(--ret-surface)] text-[var(--ret-text)]">
-				<Logo mark={mark} size={17} />
-			</span>
-			<span className="min-w-0 flex-1">
-				<span className="block truncate text-[13px] font-semibold text-[var(--ret-text)]">
-					{label}
-				</span>
-				<span className="mt-0.5 block truncate font-mono text-[9px] uppercase tracking-[0.08em] text-[var(--ret-text-muted)]">
-					{detail}
-				</span>
-			</span>
-			{badge ? (
-				<span
-					className={cn(
-						"shrink-0 font-mono text-[8px] uppercase tracking-[0.12em]",
-						active
-							? "text-[var(--ret-text)]"
-							: "text-[var(--ret-text-muted)]",
-					)}
-				>
-					{badge}
-				</span>
-			) : null}
-		</div>
+		<li className={cn("flex min-w-0 items-center gap-3 rounded-md border border-[var(--ret-border)]/50 bg-[var(--ret-bg-mid)] px-4 py-4")}>
+			<span className={cn("grid size-10 shrink-0 place-items-center text-[var(--ret-text)]")}><Logo mark={mark} size={27} /></span>
+			<div className={cn("min-w-0 flex-1")}><p className={cn("text-base font-semibold text-[var(--ret-text)]")}>{label}</p><p className={cn("mt-1 text-sm leading-relaxed text-[var(--ret-text-dim)]")}>{detail}</p></div>
+			{badge ? <span className={cn("shrink-0 self-start text-xs text-[var(--ret-text-muted)]")}>{badge}</span> : null}
+		</li>
 	);
 }
 
-function RouterCore() {
+function RouteRail({ outgoing = false }: { outgoing?: boolean }) {
 	return (
-		<section className="relative z-10 flex min-h-[330px] flex-col items-center justify-center overflow-hidden border border-[var(--ret-text-secondary)] bg-[var(--ret-bg)] px-4 py-6 text-center lg:mt-[48px] lg:min-h-0">
-			<div className="relative grid size-12 place-items-center rounded-full border border-[var(--ret-text-secondary)] bg-[var(--ret-surface)] text-[var(--ret-text)] shadow-[0_0_32px_color-mix(in_srgb,var(--ret-text)_8%,transparent)]">
-				<Route size={20} strokeWidth={1.5} aria-hidden="true" />
-			</div>
-			<div className="relative mt-4 font-mono text-[8px] uppercase tracking-[0.24em] text-[var(--ret-text-muted)]">
-				Placement engine
-			</div>
-			<h3 className="relative mt-1.5 text-[17px] font-semibold tracking-[-0.02em] text-[var(--ret-text)]">
-				Route one Worker.
-			</h3>
-			<p className="relative mt-2 max-w-[23ch] text-[11px] leading-relaxed text-[var(--ret-text-dim)]">
-				Select a compatible runtime and sandbox, then preserve the Worker above
-				them.
-			</p>
-
-			<div className="relative mt-5 grid w-full gap-px border border-[var(--ret-border)] bg-[var(--ret-border)] text-left">
-				{ROUTER_CHECKS.map(({ icon: Icon, label }) => (
-					<div
-						key={label}
-						className="flex items-center gap-2 bg-[var(--ret-bg)] px-2.5 py-2"
-					>
-						<Icon
-							size={12}
-							strokeWidth={1.6}
-							className="shrink-0 text-[var(--ret-text-secondary)]"
-							aria-hidden="true"
-						/>
-						<span className="text-[9.5px] font-medium text-[var(--ret-text-dim)]">
-							{label}
-						</span>
-					</div>
-				))}
-			</div>
-
-			<div className="relative mt-4 flex items-center gap-2 font-mono text-[8px] uppercase tracking-[0.14em] text-[var(--ret-text-muted)]">
-				<TerminalSquare size={11} strokeWidth={1.5} aria-hidden="true" />
-				Fail-closed. Failover-ready.
-			</div>
-		</section>
-	);
-}
-
-function FanInRail() {
-	return (
-		<div
-			aria-hidden="true"
-			className="relative z-0 hidden pt-[48px] lg:block"
-		>
-			<svg className="h-full w-full overflow-visible" viewBox="0 0 48 310" preserveAspectRatio="none">
-				{[31, 114, 197, 279].map((y) => (
-					<path
-						key={y}
-						d={`M0 ${y} H20 L48 155`}
-						fill="none"
-						stroke="currentColor"
-						strokeWidth="1"
-						vectorEffect="non-scaling-stroke"
-						className="text-[var(--ret-border-hover)]"
-					/>
-				))}
-				<circle cx="47" cy="155" r="2" fill="currentColor" className="text-[var(--ret-text-secondary)]" />
-			</svg>
-		</div>
-	);
-}
-
-function FanOutRail() {
-	return (
-		<div
-			aria-hidden="true"
-			className="relative z-0 hidden pt-[48px] lg:block"
-		>
-			<svg className="h-full w-full overflow-visible" viewBox="0 0 48 310" preserveAspectRatio="none">
-				{[31, 114, 197, 279].map((y, index) => (
-					<path
-						key={y}
-						d={`M0 155 L28 ${y} H48`}
-						fill="none"
-						stroke="currentColor"
-						strokeWidth={index === 0 ? "1.5" : "1"}
-						strokeDasharray={index === 0 ? undefined : "4 4"}
-						vectorEffect="non-scaling-stroke"
-						className={
-							index === 0
-								? "text-[var(--ret-text-secondary)]"
-								: "text-[var(--ret-border-hover)]"
-						}
-					/>
-				))}
-				<circle cx="1" cy="155" r="2" fill="currentColor" className="text-[var(--ret-text-secondary)]" />
+		<div aria-hidden="true" className={cn("hidden pt-[76px] lg:block")}>
+			<svg viewBox="0 0 32 400" preserveAspectRatio="none" className={cn("h-full w-full text-[var(--ret-border-hover)]")}>
+				{[48, 149, 251, 352].map((y, index) => <path key={y} d={outgoing ? `M0 200 H12 V${y} H32` : `M0 ${y} H20 V200 H32`} stroke="currentColor" strokeWidth="1" strokeDasharray={outgoing && index > 0 ? "3 5" : undefined} fill="none" vectorEffect="non-scaling-stroke" />)}
 			</svg>
 		</div>
 	);
 }
 
 function upstreamLabel(upstream: "anthropic" | "openai" | "any") {
-	if (upstream === "anthropic") return "Anthropic upstream";
-	if (upstream === "openai") return "OpenAI upstream";
-	return "Route-compatible upstream";
+	if (upstream === "anthropic") return "Anthropic models";
+	if (upstream === "openai") return "OpenAI models";
+	return "Compatible model routes";
 }
 
 function ptyLabel(pty: "native" | "tmux" | "none") {
-	if (pty === "native") return "Native PTY";
-	if (pty === "tmux") return "PTY via tmux";
-	return "No interactive PTY";
+	if (pty === "native") return "Native terminal";
+	if (pty === "tmux") return "Terminal via tmux";
+	return "No interactive terminal";
 }

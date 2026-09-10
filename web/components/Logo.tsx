@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { ServerOff } from "lucide-react";
+import { ServerOff } from "@/components/ui/icons";
 
 import { VercelMark } from "@/components/VercelMark";
 import { CODEX_THEME_ASSETS } from "@/lib/brand/logo-assets";

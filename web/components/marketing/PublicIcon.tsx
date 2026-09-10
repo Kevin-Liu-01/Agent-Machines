@@ -25,7 +25,7 @@ import {
 	Terminal,
 	Zap,
 	type LucideIcon,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 import type { PublicIconName } from "@/lib/marketing/public-site";
 

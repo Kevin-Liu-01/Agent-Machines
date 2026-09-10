@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useId, useRef, useState, type KeyboardEvent } from "react";
 import {
 	Activity,
 	ArrowUpRight,
@@ -21,12 +24,13 @@ import {
 	Sparkles,
 	SquareTerminal,
 	type LucideIcon,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
-import { ReticleFrame } from "@/components/reticle/ReticleFrame";
+import { cn } from "@/lib/cn";
 import {
 	DASHBOARD_CAPABILITIES,
 	DASHBOARD_CAPABILITY_GROUPS,
+	type DashboardCapabilityGroup,
 } from "@/lib/dashboard/capabilities";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -51,61 +55,103 @@ const ICONS: Record<string, LucideIcon> = {
 	"api-access": KeyRound,
 };
 
+const GROUP_ICONS: Record<DashboardCapabilityGroup, LucideIcon> = {
+	build: PackageOpen,
+	operate: ServerCog,
+	observe: Activity,
+	automate: Plug2,
+};
+
 export function CapabilityMap({ hasMachine }: { hasMachine: boolean }) {
+	const [selectedGroup, setSelectedGroup] = useState<DashboardCapabilityGroup>("build");
+	const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+	const id = useId();
+
+	function onCategoryKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+		if (event.altKey || event.ctrlKey || event.metaKey) return;
+		const count = DASHBOARD_CAPABILITY_GROUPS.length;
+		let next: number;
+		switch (event.key) {
+			case "ArrowRight": next = (index + 1) % count; break;
+			case "ArrowLeft": next = (index - 1 + count) % count; break;
+			case "Home": next = 0; break;
+			case "End": next = count - 1; break;
+			default: return;
+		}
+		event.preventDefault();
+		setSelectedGroup(DASHBOARD_CAPABILITY_GROUPS[next]!.id);
+		tabRefs.current[next]?.focus();
+	}
+
 	return (
-		<section aria-labelledby="capability-map-title" className="space-y-3">
-			<div className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--ret-border)] pb-3">
-				<div>
-					<p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--ret-purple)]">
-						product map
-					</p>
-					<h2 id="capability-map-title" className="ret-display mt-1 text-lg">
-						The Worker's control surface
-					</h2>
-					<p className="mt-1 max-w-[72ch] text-[12px] text-[var(--ret-text-dim)]">
-						These are the working abilities around a durable Worker: compose it, operate it, inspect its evidence, and extend it. Provider-dependent controls only appear when the selected sandbox supports them.
-					</p>
-				</div>
-				<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+		<section aria-labelledby={`${id}-title`} className={cn("space-y-4")}>
+			<div className={cn("flex flex-wrap items-baseline justify-between gap-3")}>
+				<h2 id={`${id}-title`} className={cn("text-2xl font-medium tracking-tight text-[var(--ret-text)]")}>
+					Worker capabilities
+				</h2>
+				<span className={cn("shrink-0 text-[13px] tabular-nums text-[var(--ret-text-muted)]")}>
 					{DASHBOARD_CAPABILITIES.length} operational surfaces
 				</span>
 			</div>
 
-			<div className="grid gap-3 xl:grid-cols-2">
+			<div role="tablist" aria-label="Capability category" aria-orientation="horizontal" className={cn("grid grid-cols-2 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-4")}>
+				{DASHBOARD_CAPABILITY_GROUPS.map((group, index) => {
+					const selected = group.id === selectedGroup;
+					const Icon = GROUP_ICONS[group.id];
+					return (
+						<button
+							key={group.id}
+							ref={(element) => { tabRefs.current[index] = element; }}
+							type="button"
+							role="tab"
+							id={`${id}-tab-${group.id}`}
+							aria-controls={`${id}-panel-${group.id}`}
+							aria-selected={selected}
+							tabIndex={selected ? 0 : -1}
+							onClick={() => setSelectedGroup(group.id)}
+							onKeyDown={(event) => onCategoryKeyDown(event, index)}
+							className={cn(
+								"flex min-h-14 min-w-0 items-center gap-2 border-b-2 px-3 py-3 text-left text-base font-medium outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ret-purple)] sm:px-4",
+								selected ? "border-[var(--ret-purple)] bg-[var(--ret-purple-glow)] text-[var(--ret-text)]" : "border-transparent bg-[var(--ret-bg)] text-[var(--ret-text-muted)] hover:bg-[var(--ret-surface)] hover:text-[var(--ret-text)] active:bg-[var(--ret-bg-soft)]",
+							)}
+						>
+							<Icon aria-hidden="true" size={20} className={cn("shrink-0", selected && "text-[var(--ret-purple)]")} />
+							<span>{group.label}</span>
+							<span aria-hidden="true" className={cn("ml-auto text-[13px] font-normal tabular-nums text-[var(--ret-text-muted)]")}>{DASHBOARD_CAPABILITIES.filter((item) => item.group === group.id).length}</span>
+						</button>
+					);
+				})}
+			</div>
+
+			<div>
 				{DASHBOARD_CAPABILITY_GROUPS.map((group) => {
 					const capabilities = DASHBOARD_CAPABILITIES.filter((item) => item.group === group.id);
+					const selected = group.id === selectedGroup;
 					return (
-						<ReticleFrame key={group.id} corners={false} className="overflow-hidden">
-							<div className="flex items-baseline justify-between gap-3 border-b border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-3 py-2.5">
-								<h3 className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text)]">{group.label}</h3>
-								<p className="text-[10px] italic text-[var(--ret-text-muted)]">{group.description}</p>
-							</div>
-							<div className="grid sm:grid-cols-2">
-								{capabilities.map((capability, index) => {
+						<div key={group.id} role="tabpanel" id={`${id}-panel-${group.id}`} aria-labelledby={`${id}-tab-${group.id}`} hidden={!selected} tabIndex={selected ? 0 : -1} className={cn("space-y-3 outline-none focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}>
+							<p className={cn("text-[14px] leading-relaxed text-[var(--ret-text-muted)]")}>{group.description}</p>
+							<div className={cn("grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-2")}>
+								{capabilities.map((capability) => {
 									const Icon = ICONS[capability.id] ?? PackageOpen;
 									const waiting = capability.requiresMachine && !hasMachine;
 									return (
 										<Link
 											key={capability.id}
 											href={capability.href}
-											className={`group relative min-h-32 border-[var(--ret-border)] p-3 transition-colors hover:bg-[var(--ret-surface)] ${index % 2 === 0 ? "sm:border-r" : ""} ${index < capabilities.length - 2 ? "border-b" : index === capabilities.length - 2 && capabilities.length % 2 === 0 ? "border-b sm:border-b-0" : ""}`}
+											className={cn("group grid min-w-0 grid-cols-[24px_minmax(0,1fr)_20px] content-start gap-x-3 gap-y-2 bg-[var(--ret-bg)] p-4 outline-none hover:bg-[var(--ret-surface)] active:bg-[var(--ret-bg-soft)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ret-purple)] sm:p-5 sm:last:odd:col-span-2")}
 										>
-											<div className="flex items-start justify-between gap-3">
-												<span className="flex h-7 w-7 items-center justify-center border border-[var(--ret-border)] bg-[var(--ret-bg)] text-[var(--ret-purple)]">
-													<Icon size={14} strokeWidth={1.65} />
-												</span>
-												<ArrowUpRight size={13} className="text-[var(--ret-text-muted)] transition-colors group-hover:text-[var(--ret-purple)]" />
-											</div>
-											<h4 className="mt-2 text-[12px] font-medium text-[var(--ret-text)]">{capability.label}</h4>
-											<p className="mt-1 text-[10px] leading-relaxed text-[var(--ret-text-dim)]">{capability.description}</p>
-											<p className={`mt-2 font-mono text-[8px] uppercase tracking-[0.16em] ${waiting ? "text-[var(--ret-amber)]" : "text-[var(--ret-green)]"}`}>
+											<Icon aria-hidden="true" size={24} className={cn("row-span-3 mt-0.5 text-[var(--ret-purple)]")} />
+											<h3 className={cn("min-w-0 text-[18px] font-medium leading-snug text-[var(--ret-text)]")}>{capability.label}</h3>
+											<ArrowUpRight aria-hidden="true" size={20} className={cn("row-span-3 mt-0.5 text-[var(--ret-text-muted)] group-hover:text-[var(--ret-purple)] motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.23,1,0.32,1)] pointer-fine:motion-safe:[@media(hover:hover)]:group-[:hover:not(:disabled):not(:focus-visible)]:translate-x-0.5 group-focus-visible:transition-none")} />
+											<p className={cn("col-start-2 text-[13px] leading-relaxed first-letter:uppercase", waiting ? "text-[var(--ret-amber)]" : "text-[var(--ret-green)]")}>
 												{waiting ? "launch a machine first" : capability.proof}
 											</p>
+											<p className={cn("col-start-2 text-[14px] leading-relaxed text-[var(--ret-text-dim)]")}>{capability.description}</p>
 										</Link>
 									);
 								})}
 							</div>
-						</ReticleFrame>
+						</div>
 					);
 				})}
 			</div>

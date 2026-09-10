@@ -6,6 +6,7 @@ import { Logo } from "@/components/Logo";
 import { TerminalStream } from "@/components/fleet/TerminalStream";
 import { ServiceIcon, type ServiceSlug } from "@/components/ServiceIcon";
 import { ToolIcon } from "@/components/ToolIcon";
+import { Server } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import type { FleetToolBadge } from "@/lib/fleet/agent-styling";
 import type { FleetStreamCardModel } from "@/lib/fleet/view-model";
@@ -55,21 +56,10 @@ export function FleetCardBody({
 	return (
 		<>
 			<div className="flex items-center gap-1.5 px-3 py-2">
-				<svg
-					viewBox="0 0 24 24"
-					fill="none"
-					stroke="currentColor"
-					strokeWidth="2"
-					strokeLinecap="round"
-					strokeLinejoin="round"
-					className="h-3 w-3 text-[var(--ret-text-muted)]"
+				<Server
+					className="h-3.5 w-3.5 text-[var(--ret-text-muted)]"
 					aria-hidden="true"
-				>
-					<rect x="2" y="2" width="20" height="8" rx="2" />
-					<rect x="2" y="14" width="20" height="8" rx="2" />
-					<line x1="6" y1="6" x2="6.01" y2="6" />
-					<line x1="6" y1="18" x2="6.01" y2="18" />
-				</svg>
+				/>
 				<span className="text-[9px] font-medium uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
 					machine
 				</span>

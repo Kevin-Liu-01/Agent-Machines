@@ -30,7 +30,7 @@ import {
 	Terminal,
 	Zap,
 	type LucideIcon,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import Link from "next/link";
 import { type CSSProperties, type ReactNode } from "react";
 

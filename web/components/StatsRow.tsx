@@ -1,405 +1,154 @@
-"use client";
-
-import type { CSSProperties } from "react";
+import Link from "next/link";
+import { ArrowRight, Braces, FileCode2, GitFork, KeyRound, Radio, Route, TerminalSquare, type LucideIcon } from "@/components/ui/icons";
 
 import { CopyCodeButton } from "@/components/CopyCodeButton";
-import { Logo, type Mark } from "@/components/Logo";
+import { Logo } from "@/components/Logo";
 import { MuxDiagram } from "@/components/MuxDiagram";
-import { ReticleLabel } from "@/components/reticle/ReticleLabel";
-import { ToolIcon } from "@/components/ToolIcon";
-import type { ToolCategory } from "@/lib/dashboard/loadout";
 import { cn } from "@/lib/cn";
+import { LANDING_BODY, LANDING_EYEBROW, LANDING_INSET, LANDING_SECTION_SPACE, LANDING_SPLIT, LANDING_TITLE } from "@/lib/marketing/layout";
+import { highlightTypeScript } from "@/lib/marketing/sdk-syntax.server";
+import syntax from "@/lib/marketing/sdk-syntax.module.css";
 
 const INSTALL_CODE = "npm i agent-machines";
 
-const CODE_TEXT = `import { createMux } from "agent-machines"
+// One source for the displayed example and clipboard contents.
+export const SDK_EXAMPLE = `import { createMux } from "agent-machines";
 
-const mux = createMux() // agent-machines.json: keys + routes
+// Reads your configuration and environment keys.
+const mux = createMux();
 
-const machine = await mux.create({
+const worker = await mux.create({
   agent: "claude-code",
-  sandbox: "auto", // e2b -> sprites -> vercel
+  sandbox: "auto", // Use your configured provider lanes.
   name: "reviewer",
-})
+});
 
-for await (const event of machine.run("review my repo")) {
-  if (event.type === "text") process.stdout.write(event.delta)
+for await (const event of worker.run("Review my repo")) {
+  if (event.type === "text") {
+    process.stdout.write(event.delta);
+  }
 }`;
 
-type CodeTone =
-	| "boolean"
-	| "class"
-	| "comment"
-	| "identifier"
-	| "keyword"
-	| "method"
-	| "operator"
-	| "property"
-	| "punctuation"
-	| "string";
-
-const CODE_LINES: ReadonlyArray<{
-	no: string;
-	indent?: number;
-	parts: ReadonlyArray<{ text: string; tone?: CodeTone }>;
-}> = [
-	{
-		no: "01",
-		parts: [
-			{ text: "import", tone: "keyword" },
-			{ text: " ", tone: "punctuation" },
-			{ text: "{", tone: "punctuation" },
-			{ text: " createMux ", tone: "class" },
-			{ text: "}", tone: "punctuation" },
-			{ text: " ", tone: "punctuation" },
-			{ text: "from", tone: "keyword" },
-			{ text: " \"agent-machines\"", tone: "string" },
-		],
-	},
-	{ no: "02", parts: [{ text: "" }] },
-	{
-		no: "03",
-		parts: [
-			{ text: "const", tone: "keyword" },
-			{ text: " mux", tone: "identifier" },
-			{ text: " = ", tone: "operator" },
-			{ text: "createMux", tone: "method" },
-			{ text: "()", tone: "punctuation" },
-			{ text: " // agent-machines.json: keys + routes", tone: "comment" },
-		],
-	},
-	{ no: "04", parts: [{ text: "" }] },
-	{
-		no: "05",
-		parts: [
-			{ text: "const", tone: "keyword" },
-			{ text: " machine", tone: "identifier" },
-			{ text: " = ", tone: "operator" },
-			{ text: "await", tone: "keyword" },
-			{ text: " mux", tone: "identifier" },
-			{ text: ".create", tone: "method" },
-			{ text: "({", tone: "punctuation" },
-		],
-	},
-	{
-		no: "06",
-		indent: 1,
-		parts: [
-			{ text: "agent", tone: "property" },
-			{ text: ": ", tone: "punctuation" },
-			{ text: "\"claude-code\"", tone: "string" },
-			{ text: ",", tone: "punctuation" },
-		],
-	},
-	{
-		no: "07",
-		indent: 1,
-		parts: [
-			{ text: "sandbox", tone: "property" },
-			{ text: ": ", tone: "punctuation" },
-			{ text: "\"auto\"", tone: "string" },
-			{ text: ",", tone: "punctuation" },
-			{ text: " // e2b -> sprites -> vercel", tone: "comment" },
-		],
-	},
-	{
-		no: "08",
-		indent: 1,
-		parts: [
-			{ text: "name", tone: "property" },
-			{ text: ": ", tone: "punctuation" },
-			{ text: "\"reviewer\"", tone: "string" },
-			{ text: ",", tone: "punctuation" },
-		],
-	},
-	{ no: "09", parts: [{ text: "})", tone: "punctuation" }] },
-	{ no: "10", parts: [{ text: "" }] },
-	{
-		no: "11",
-		parts: [
-			{ text: "for await", tone: "keyword" },
-			{ text: " (", tone: "punctuation" },
-			{ text: "const", tone: "keyword" },
-			{ text: " event", tone: "identifier" },
-			{ text: " of", tone: "keyword" },
-			{ text: " machine", tone: "identifier" },
-			{ text: ".run", tone: "method" },
-			{ text: "(", tone: "punctuation" },
-			{ text: "\"review my repo\"", tone: "string" },
-			{ text: "))", tone: "punctuation" },
-			{ text: " {", tone: "punctuation" },
-		],
-	},
-	{
-		no: "12",
-		indent: 1,
-		parts: [
-			{ text: "if", tone: "keyword" },
-			{ text: " (event.type", tone: "identifier" },
-			{ text: " === ", tone: "operator" },
-			{ text: "\"text\"", tone: "string" },
-			{ text: ") ", tone: "punctuation" },
-			{ text: "process.stdout", tone: "identifier" },
-			{ text: ".write", tone: "method" },
-			{ text: "(event.delta)", tone: "punctuation" },
-		],
-	},
-	{ no: "13", parts: [{ text: "}", tone: "punctuation" }] },
+const FEATURES: ReadonlyArray<{ icon: LucideIcon; title: string }> = [
+	{ icon: Braces, title: "One typed API" },
+	{ icon: GitFork, title: "Eligible creation failover" },
+	{ icon: Radio, title: "Events + terminal access" },
 ];
 
-const PIPELINE: ReadonlyArray<{
-	icon?: ToolCategory;
-	mark?: Mark;
-	kicker: string;
-	title: string;
-	body: string;
-	code: string;
-}> = [
-	{
-		mark: "npm",
-		kicker: "01",
-		title: "Install the package",
-		body: "One dependency. Substrate SDKs load lazily, only for routes you use.",
-		code: INSTALL_CODE,
-	},
-	{
-		icon: "filesystem",
-		kicker: "02",
-		title: "Drop in one JSON",
-		body: "Keys and routes in agent-machines.json. Missing keys just narrow the route.",
-		code: `{ "sandboxes": { "primary": "e2b", "backups": ["sprites"] } }`,
-	},
-	{
-		icon: "delegate",
-		kicker: "03",
-		title: "Create with failover",
-		body: "Primary first, backups on transient failure. Every attempt is recorded.",
-		code: `mux.create({ agent, sandbox: "auto" })`,
-	},
-	{
-		icon: "shell",
-		kicker: "04",
-		title: "Stream everything",
-		body: "Normalized events from any agent, or a real PTY when you want a terminal.",
-		code: "for await (const event of machine.run(prompt))",
-	},
+const PIPELINE: ReadonlyArray<{ icon: LucideIcon; title: string; code: string }> = [
+	{ icon: TerminalSquare, title: "Install the SDK", code: INSTALL_CODE },
+	{ icon: KeyRound, title: "Connect your providers", code: "agent-machines.json" },
+	{ icon: Route, title: "Create the Worker", code: 'mux.create({ sandbox: "auto" })' },
+	{ icon: Radio, title: "Run and inspect", code: "worker.run(prompt)" },
 ];
+
+const ACTION = cn(
+	"inline-flex min-h-11 items-center justify-center gap-2 rounded-md px-4 text-sm font-medium",
+	"transition-colors duration-150 hover:bg-[var(--ret-surface-hover)]",
+	"focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--ret-text)] focus-visible:transition-none motion-reduce:transition-none",
+);
+
+const EXAMPLE_PANEL = "grid min-w-0 grid-rows-[auto_1fr_auto] overflow-hidden rounded-lg border border-[var(--ret-border)]/60 lg:row-span-3 lg:grid-rows-subgrid";
+const EXAMPLE_HEADER = "grid content-center gap-3 border-b border-[var(--ret-border)]/40 px-5 py-4 md:px-6";
+const EXAMPLE_FOOTER = "flex items-center gap-3 border-t border-[var(--ret-border)]/40 px-5 py-5 md:px-6";
 
 export function StatsRow() {
 	return (
-		<div className="overflow-hidden border-y border-[var(--ret-border)]">
-			<div className="grid min-h-[600px] grid-cols-1 items-stretch gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[minmax(420px,0.45fr)_minmax(0,0.55fr)] xl:grid-cols-[560px_minmax(0,1fr)]">
-				<div className="relative flex flex-col justify-between overflow-hidden bg-[var(--ret-bg)] px-5 py-8 md:px-8 md:py-10 lg:px-10">
-					<div
-						aria-hidden="true"
-						className="ret-circuit-texture pointer-events-none absolute inset-x-0 bottom-0 h-1/2 opacity-[0.10] mix-blend-multiply invert dark:opacity-[0.16] dark:mix-blend-screen dark:invert-0"
-						style={{ "--ret-circuit-size": "360px 480px" } as CSSProperties}
-					/>
-					<div>
-						<ReticleLabel>SDK</ReticleLabel>
-						<h2 className="ret-display mt-3 max-w-[12ch] text-3xl tracking-tight md:text-5xl lg:text-[60px] lg:leading-[0.95]">
-							Create the worker in code.
-						</h2>
-						<p className="mt-5 max-w-[54ch] text-[14px] leading-relaxed text-[var(--ret-text-dim)]">
-							One typed client, two multiplexed planes. Pick the agent; the
-							router places it on your primary sandbox and fails over to
-							backups. Runs stream as normalized events, terminals attach as
-							real PTYs.
-						</p>
+		<div className={cn("bg-[var(--ret-bg)]")}>
+			<section aria-labelledby="sdk-heading" className={cn(LANDING_INSET, LANDING_SECTION_SPACE)}>
+				<header className={cn(LANDING_SPLIT, "mb-8 items-end")}>
+				<div className={cn("min-w-0")}>
+					<div className={cn(LANDING_EYEBROW)}>
+						<Logo mark="typescript" size={20} />
+						TypeScript SDK
 					</div>
-
-					<div className="relative z-10 mt-8 grid gap-3">
-						<div className="grid grid-cols-2 gap-px border border-[var(--ret-border)] bg-[var(--ret-border)]">
-							<RouteFacet label="agent" value="Claude Code" mark="claudecode" />
-							<RouteFacet label="route" value="e2b -> sprites" mark="e2b" />
-							<RouteFacet label="events" value="Streamed" />
-							<RouteFacet label="terminal" value="PTY" />
-						</div>
-						<div className="grid gap-px border border-[var(--ret-border)] bg-[var(--ret-border)]">
-							{[
-								"typed client",
-								"harness x substrate route",
-								"primary -> backup failover",
-								"observable attempts",
-							].map((item, index) => (
-								<div
-									key={item}
-									className="grid grid-cols-[40px_minmax(0,1fr)] bg-[var(--ret-bg)] px-3 py-2.5 text-[12px]"
-								>
-									<span className="font-mono text-[10px] text-[var(--ret-text-muted)]">
-										{String(index + 1).padStart(2, "0")}
-									</span>
-									<span className="font-medium text-[var(--ret-text)]">
-										{item}
-									</span>
-								</div>
-							))}
-						</div>
+					<h2 id="sdk-heading" className={cn(LANDING_TITLE, "max-w-[20ch]")}>
+						Create the Worker in code.
+					</h2>
+				</div>
+				<div>
+					<p className={cn(LANDING_BODY, "max-w-[48ch]")}>One client. Choose an agent, give it a job, and stream the result.</p>
+					<div className={cn("mt-4 flex flex-wrap gap-2")}>
+						<Link href="/docs" className={cn(ACTION, "border border-[var(--ret-border)]/60 text-[var(--ret-text)]")}>Read the SDK docs <ArrowRight size={16} aria-hidden="true" /></Link>
+						<Link href="/dashboard" className={cn(ACTION, "text-[var(--ret-text-dim)]")}>Try the dashboard <ArrowRight size={16} aria-hidden="true" /></Link>
 					</div>
 				</div>
-
-				<div className="flex items-center bg-[var(--ret-bg)] p-4 md:p-7 lg:p-9">
+				</header>
+				<div className={cn(LANDING_SPLIT, "items-stretch lg:grid-rows-[auto_1fr_auto] lg:gap-y-0 xl:gap-y-0")}>
 					<CodePanel />
+					<WorkerExample />
 				</div>
-			</div>
+				<ul className={cn("mt-6 grid gap-4 sm:grid-cols-3")}>
+					{FEATURES.map(({ icon: Icon, title }) => <li key={title} className={cn("flex items-center gap-3 text-base text-[var(--ret-text-dim)]")}><Icon size={22} className={cn("shrink-0 text-[var(--ret-text)]")} aria-hidden="true" />{title}</li>)}
+				</ul>
+			</section>
 
-			<div className="border-b border-[var(--ret-border)] bg-[var(--ret-bg)] px-5 py-6 md:px-8 md:py-8">
-				<div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
-					<span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
-						Two planes. One route.
-					</span>
-					<span className="font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--ret-text-muted)]">
-						4 runtimes × 4 providers · 1 durable Worker
-					</span>
-				</div>
-				<MuxDiagram className="mt-4" />
-				<p className="mt-4 max-w-[90ch] text-[12.5px] leading-relaxed text-[var(--ret-text-dim)]">
-					Every runtime installs through the provider&apos;s own execution and PTY
-					primitives. Add a sandbox and it inherits every runtime; add a runtime
-					and it can route across every compatible sandbox.
-				</p>
-			</div>
+			<section aria-labelledby="routing-heading" className={cn(LANDING_INSET, LANDING_SECTION_SPACE, "border-t border-[var(--ret-border)]/40")}>
+				<header className={cn(LANDING_SPLIT, "mb-8 items-end")}>
+					<div className={cn("min-w-0")}>
+						<p className={cn(LANDING_EYEBROW)}><Route size={18} aria-hidden="true" /> Runtime and infrastructure</p>
+						<h2 id="routing-heading" className={cn(LANDING_TITLE)}>Two planes. One route.</h2>
+					</div>
+					<div className={cn("min-w-0")}>
+						<p className={cn(LANDING_BODY, "max-w-[48ch]")}>Choose the agent. Route the compute. Keep the Worker.</p>
+						<p className={cn("mt-4 text-sm text-[var(--ret-text-dim)]")}><span className={cn("font-semibold text-[var(--ret-text)]")}>4 runtimes</span> <span aria-hidden="true">×</span> <span className={cn("font-semibold text-[var(--ret-text)]")}>4 providers</span></p>
+					</div>
+				</header>
+				<MuxDiagram />
+			</section>
 
-			<div className="grid grid-cols-1 gap-px bg-[var(--ret-border)] md:grid-cols-2 xl:grid-cols-4">
-				{PIPELINE.map((step) => (
-					<PipelineCell key={step.kicker} step={step} />
-				))}
-			</div>
+			<section aria-label="SDK setup steps" className={cn(LANDING_INSET, LANDING_SECTION_SPACE, "border-t border-[var(--ret-border)]/40")}>
+				<ol className={cn("grid gap-6 sm:grid-cols-2 xl:grid-cols-4 xl:gap-8")}>
+					{PIPELINE.map(({ icon: Icon, title, code }, index) => (
+						<li key={title} className={cn("relative flex min-w-0 flex-col pb-8")}>
+							<Icon size={22} strokeWidth={1.5} className={cn("mb-4 text-[var(--ret-text-secondary)]")} aria-hidden="true" />
+							<h3 className={cn("text-lg font-semibold text-[var(--ret-text)]")}>{title}</h3>
+							<code className={cn("mt-4 block break-words rounded-md bg-[var(--ret-bg-soft)] px-3 py-2.5 font-mono text-sm leading-relaxed text-[var(--ret-text-secondary)]")}>{code}</code>
+							<span aria-hidden="true" className={cn("absolute bottom-0 right-0 text-xl tabular-nums text-[var(--ret-text)]/20")}>{String(index + 1).padStart(2, "0")}</span>
+						</li>
+					))}
+				</ol>
+			</section>
 		</div>
 	);
 }
 
-function RouteFacet({
-	label,
-	value,
-	mark,
-}: {
-	label: string;
-	value: string;
-	mark?: Mark;
-}) {
+function WorkerExample() {
 	return (
-		<div className="bg-[var(--ret-bg)] px-3 py-3">
-			<div className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
-				{label}
+		<figure className={cn(EXAMPLE_PANEL, "m-0 bg-[var(--ret-bg-soft)]")}>
+			<figcaption className={cn(EXAMPLE_HEADER)}><span className={cn("flex items-center gap-2 text-sm font-medium text-[var(--ret-text)]")}><Braces size={18} aria-hidden="true" />Example configuration</span><p className={cn("text-sm leading-6 text-[var(--ret-text-dim)]")}>The Worker described in <code className={cn("font-mono")}>reviewer.ts</code>.</p></figcaption>
+			<div className={cn("flex min-w-0 flex-col justify-center px-5 py-8 md:px-6")}>
+				<div className={cn("flex items-center gap-4")}><Logo mark="am" size={44} /><div><p className={cn("text-sm text-[var(--ret-text-dim)]")}>Worker</p><h3 className={cn("mt-1 text-3xl font-semibold tracking-tight")}>reviewer</h3></div></div>
+				<dl className={cn("mt-8 space-y-6")}>
+					<div><dt className={cn("mb-2 text-sm text-[var(--ret-text-dim)]")}>Agent runtime</dt><dd className={cn("flex items-center gap-3 text-lg font-medium")}><Logo mark="claudecode" size={25} />Claude Code</dd></div>
+					<div><dt className={cn("mb-2 text-sm text-[var(--ret-text-dim)]")}>Sandbox placement</dt><dd><p className={cn("flex items-center gap-3 text-lg font-medium")}><Route size={25} aria-hidden="true" />Automatic</p><div className={cn("mt-3 flex flex-wrap gap-2")}>{(["e2b", "sprites", "vercel", "daytona"] as const).map(mark => <span key={mark} className={cn("grid size-10 place-items-center rounded-md border border-[var(--ret-border)]/40 bg-[var(--ret-bg)]")}><Logo mark={mark} size={24} /></span>)}</div></dd></div>
+				</dl>
 			</div>
-			<div className="mt-1 flex items-center gap-1.5 text-[13px] font-semibold text-[var(--ret-text)]">
-				{mark ? <Logo mark={mark} size={13} /> : null}
-				<span>{value}</span>
-			</div>
-		</div>
+			<div className={cn(EXAMPLE_FOOTER)}><TerminalSquare size={24} className={cn("shrink-0 text-[var(--ret-text-dim)]")} aria-hidden="true" /><div><p className={cn("text-sm text-[var(--ret-text-dim)]")}>Task</p><p className={cn("mt-1 text-lg font-medium")}>Review my repo</p></div><ArrowRight size={20} className={cn("ml-auto shrink-0 text-[var(--ret-text-muted)]")} aria-hidden="true" /></div>
+		</figure>
 	);
 }
 
 function CodePanel() {
 	return (
-		<div className="relative flex min-h-[440px] w-full flex-col overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg)] xl:min-h-[480px]">
-			<div
-				aria-hidden="true"
-				className="ret-circuit-texture pointer-events-none absolute inset-0 opacity-[0.12] mix-blend-multiply invert dark:opacity-[0.2] dark:mix-blend-screen dark:invert-0"
-				style={{ "--ret-circuit-size": "320px 426px" } as CSSProperties}
-			/>
-			<div className="relative z-10 flex items-center justify-between border-b border-[var(--ret-border)] bg-[var(--ret-bg)]/86 px-3 py-2 backdrop-blur-sm">
-				<div className="flex items-center gap-2">
-					<ToolIcon name="code" size={13} className="text-[var(--ret-text-dim)]" />
-					<span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
-						agent-machines.ts
-					</span>
-				</div>
-				<span className="font-mono text-[10px] text-[var(--ret-text-muted)]">
-					{"route -> machine -> stream"}
+		<div className={cn(EXAMPLE_PANEL, "bg-[var(--ret-bg-mid)]")}>
+			<div className={cn(EXAMPLE_HEADER)}>
+			<div className={cn("flex flex-wrap items-center justify-between gap-3")}>
+				<span className={cn("inline-flex min-w-0 items-center gap-2.5 text-sm text-[var(--ret-text-dim)]")}><Logo mark="npm" size={22} /><code className={cn("break-words font-mono text-sm text-[var(--ret-text)]")}>{INSTALL_CODE}</code></span>
+				<CopyCodeButton text={INSTALL_CODE} label="Copy install command" />
+			</div>
+			<div className={cn("flex items-center justify-between gap-3")}>
+				<span className={cn("flex min-w-0 items-center gap-2 text-sm text-[var(--ret-text-dim)]")}><FileCode2 size={17} aria-hidden="true" /><span className={cn("truncate")}>reviewer.ts</span></span>
+				<CopyCodeButton text={SDK_EXAMPLE} label="Copy SDK example" />
+			</div>
+			</div>
+			<pre tabIndex={0} aria-label="TypeScript Worker example" className={cn("m-0 min-w-0 overflow-x-auto py-5 font-mono text-sm leading-7 text-[var(--ret-text)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ret-text)]")}>
+				<span className={cn("flex min-w-max pr-5 md:pr-6")}>
+					<span aria-hidden="true" className={cn("pointer-events-none sticky left-0 mr-5 shrink-0 select-none border-r border-[var(--ret-border)]/30 bg-[var(--ret-bg-mid)] pl-5 pr-3 text-right tabular-nums text-[var(--ret-text-muted)] md:pl-6")}>{SDK_EXAMPLE.split("\n").map((_, index) => index + 1).join("\n")}</span>
+					<code className={cn(syntax.code, "block")}>{highlightTypeScript(SDK_EXAMPLE)}</code>
 				</span>
-			</div>
-			<div className="relative z-10 flex justify-end border-b border-[var(--ret-border)] bg-[var(--ret-bg)]/78 px-3 py-2 backdrop-blur-sm">
-				<CopyCodeButton text={CODE_TEXT} />
-			</div>
-			<pre className="relative z-10 m-0 flex-1 overflow-hidden bg-[var(--ret-bg)]/82 px-3 py-5 font-mono text-[12px] leading-6 text-[var(--ret-text)] backdrop-blur-sm md:px-6 md:py-6 md:text-[12.5px]">
-				<code className="block">
-					{CODE_LINES.map((line) => (
-						<span key={line.no} className="block min-w-0 whitespace-pre-wrap break-words">
-							<span className="mr-4 select-none text-[var(--ret-text-muted)]">
-								{line.no}
-							</span>
-							<span aria-hidden="true">
-								{"\t".repeat(line.indent ?? 0)}
-							</span>
-							{line.parts.map((part, i) => (
-								<span key={`${line.no}-${i}`} className={codeTone(part.tone)}>
-									{part.text}
-								</span>
-							))}
-						</span>
-					))}
-				</code>
 			</pre>
-			<div className="relative z-10 grid grid-cols-3 gap-px border-t border-[var(--ret-border)] bg-[var(--ret-border)]">
-				<CodeMeter label="keys" value="json / env" />
-				<CodeMeter label="route" value="primary -> backups" />
-				<CodeMeter label="stream" value="ndjson events" />
-			</div>
-		</div>
-	);
-}
-
-function codeTone(tone: (typeof CODE_LINES)[number]["parts"][number]["tone"]) {
-	return cn(
-		tone === "boolean" && "font-semibold text-[var(--ret-text)]",
-		tone === "class" && "font-semibold text-[var(--ret-text)]",
-		tone === "comment" && "text-[var(--ret-text-muted)]",
-		tone === "identifier" && "text-[var(--ret-text)]",
-		tone === "keyword" && "font-semibold text-[var(--ret-text)]",
-		tone === "method" && "font-medium text-[var(--ret-text)]",
-		tone === "operator" && "text-[var(--ret-text-muted)]",
-		tone === "property" && "text-[var(--ret-text-secondary)]",
-		tone === "punctuation" && "text-[var(--ret-text-dim)]",
-		tone === "string" && "text-[var(--ret-text-secondary)]",
-	);
-}
-
-function CodeMeter({ label, value }: { label: string; value: string }) {
-	return (
-		<div className="bg-[var(--ret-bg)]/90 px-3 py-2 backdrop-blur-sm">
-			<div className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
-				{label}
-			</div>
-			<div className="mt-1 font-mono text-[11px] text-[var(--ret-text)]">
-				{value}
-			</div>
-		</div>
-	);
-}
-
-function PipelineCell({ step }: { step: (typeof PIPELINE)[number] }) {
-	return (
-		<div className="group relative min-h-[250px] overflow-hidden bg-[var(--ret-bg)] p-5 transition-colors duration-300 [transition-timing-function:var(--ret-ease-out)] hover:bg-[var(--ret-bg-soft)] md:p-6">
-			<div
-				aria-hidden="true"
-				className="ret-circuit-texture pointer-events-none absolute inset-y-0 right-0 w-1/2 opacity-0 mix-blend-multiply invert transition-opacity duration-200 group-hover:opacity-[0.12] dark:mix-blend-screen dark:invert-0 dark:group-hover:opacity-[0.2]"
-				style={{ "--ret-circuit-size": "300px 400px" } as CSSProperties}
-			/>
-			<div className="relative z-10 mb-8 flex items-center justify-between">
-				<div className="flex h-11 w-11 items-center justify-center border border-[var(--ret-border)] bg-[var(--ret-surface)] text-[var(--ret-text)] transition-transform duration-300 [transition-timing-function:var(--ret-ease-out)] group-hover:-translate-y-1">
-					{step.mark ? (
-						<Logo mark={step.mark} size={15} />
-					) : step.icon ? (
-						<ToolIcon name={step.icon} size={15} />
-					) : null}
-				</div>
-				<span className="font-mono text-[10px] uppercase tracking-[0.24em] text-[var(--ret-text-muted)]">
-					{step.kicker}
-				</span>
-			</div>
-			<div className="relative z-10">
-				<h3 className="text-[17px] font-semibold tracking-tight text-[var(--ret-text)]">
-					{step.title}
-				</h3>
-				<p className="mt-2 text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
-					{step.body}
-				</p>
-				<div className="mt-7 border border-[var(--ret-border)] bg-[var(--ret-surface)] px-3 py-2.5 font-mono text-[11px] text-[var(--ret-text-secondary)]">
-					{step.code}
-				</div>
-			</div>
+			<p className={cn(EXAMPLE_FOOTER, "text-sm leading-6 text-[var(--ret-text-dim)]")}><KeyRound size={18} className={cn("shrink-0")} aria-hidden="true" />Bring your own model and sandbox credentials. Only eligible provider lanes are considered.</p>
 		</div>
 	);
 }

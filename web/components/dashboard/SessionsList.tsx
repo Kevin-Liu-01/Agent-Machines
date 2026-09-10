@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageSquare, Terminal, X } from "lucide-react";
+import { MessageSquare, Terminal, X } from "@/components/ui/icons";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 

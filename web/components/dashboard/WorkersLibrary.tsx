@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Bot, Brain, Plug2, Plus, Rocket, Sparkles } from "lucide-react";
+import { ArrowRight, Bot, Brain, Plug2, Plus, Rocket, Sparkles } from "@/components/ui/icons";
 import { useCallback, useEffect, useState } from "react";
 
 import { Logo, type Mark } from "@/components/Logo";
@@ -123,30 +123,30 @@ export function WorkersLibrary({ presets, initialPresetId }: { presets: Preset[]
 			: "preset:";
 
 	return (
-		<div className="space-y-6">
+		<div className={cn("space-y-8")}>
 			{loadWarning ? (
-				<div className="border border-[var(--ret-amber)]/30 bg-[var(--ret-amber)]/5 px-3 py-2 font-mono text-[10px] text-[var(--ret-amber)]">
+				<div className={cn("border border-[var(--ret-amber)]/30 bg-[var(--ret-amber)]/5 px-3 py-2 font-mono text-[12px] text-[var(--ret-amber)]")}>
 					{loadWarning}
-					<button type="button" className="ml-2 underline underline-offset-2" onClick={() => void load()}>
-						retry
+					<button type="button" className={cn("ml-2 min-h-8 underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-amber)]")} onClick={() => void load()}>
+						Retry
 					</button>
 				</div>
 				) : null}
 			{createError && !seed ? (
-				<div role="alert" className="border border-[var(--ret-red)]/35 bg-[var(--ret-red)]/5 px-3 py-2 font-mono text-[10px] text-[var(--ret-red)]">
+				<div role="alert" className={cn("border border-[var(--ret-red)]/35 bg-[var(--ret-red)]/5 px-3 py-2 font-mono text-[12px] text-[var(--ret-red)]")}>
 					{createError}
 				</div>
 			) : null}
 			{/* Curated presets -- deployable defaults shipped with Agent Machines. */}
-			<section className="space-y-3">
-				<div className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--ret-border)] pb-3">
+			<section className={cn("space-y-4")}>
+				<div className={cn("flex flex-wrap items-end justify-between gap-3 border-b border-[var(--ret-border)] pb-3")}>
 					<div>
-						<span className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--ret-purple)]">
-							ready to configure . {presets.length}
-						</span>
-						<h2 className="ret-display mt-1 text-lg">Pick the responsibility, not the infrastructure</h2>
-						<p className="mt-1 max-w-[66ch] text-[11px] text-[var(--ret-text-dim)]">
-							Each template creates a durable Worker with memory, abilities, and an inspectable loadout. Deploy it to any configured sandbox without making the sandbox its identity.
+						<div className={cn("flex items-center gap-3")}>
+							<h2 className={cn("text-xl font-medium tracking-tight text-[var(--ret-text)]")}>Agent templates</h2>
+							<ReticleBadge>{presets.length} templates</ReticleBadge>
+						</div>
+						<p className={cn("mt-2 max-w-[66ch] text-[16px] leading-relaxed text-[var(--ret-text-dim)]")}>
+							Start with a responsibility, memory, and abilities. Inspect the loadout, then deploy your Worker to a configured sandbox.
 						</p>
 					</div>
 					<ReticleButton
@@ -154,10 +154,10 @@ export function WorkersLibrary({ presets, initialPresetId }: { presets: Preset[]
 						size="sm"
 						onClick={() => setSeed({ name: "", sourceValue: firstSource })}
 					>
-						<Plus className="h-3.5 w-3.5" strokeWidth={1.75} /> Custom agent
+						<Plus className={cn("h-4 w-4")} strokeWidth={1.75} /> Custom agent
 					</ReticleButton>
 				</div>
-				<div className="grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] md:grid-cols-2 xl:grid-cols-3">
+				<div className={cn("grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] md:grid-cols-2 xl:grid-cols-3")}>
 					{presets.map((preset) => {
 						const skillCount = preset.skillIds.filter((id) => id !== "*").length;
 						const mcpCount = preset.mcpServerIds.filter((id) => id !== "*").length;
@@ -166,39 +166,39 @@ export function WorkersLibrary({ presets, initialPresetId }: { presets: Preset[]
 								key={preset.id}
 								type="button"
 								onClick={() => setSeed({ name: preset.name, sourceValue: `preset:${preset.id}` })}
-								className="group flex min-h-60 h-full flex-col bg-[var(--ret-bg)] p-4 text-left transition-colors hover:bg-[var(--ret-surface)]"
+								className={cn("group flex h-full min-h-64 min-w-0 flex-col bg-[var(--ret-bg)] p-4 text-left outline-none hover:bg-[var(--ret-surface)] active:bg-[var(--ret-bg-soft)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ret-purple)] sm:p-5")}
 							>
-								<div className="mb-2 flex items-center justify-between gap-2">
-									<div className="flex min-w-0 items-center gap-2">
-										{presetBrand(preset.brand, 16) ?? (
-											<Sparkles className="h-4 w-4 shrink-0 text-[var(--ret-text-dim)]" strokeWidth={1.75} />
+								<div className={cn("mb-3 flex flex-wrap items-center justify-between gap-2")}>
+									<div className={cn("flex min-w-0 items-center gap-2")}>
+										{presetBrand(preset.brand, 20) ?? (
+											<Sparkles className={cn("h-4 w-4 shrink-0 text-[var(--ret-text-dim)]")} strokeWidth={1.75} />
 										)}
-										<span className="truncate text-[13px] text-[var(--ret-text)]">{preset.name}</span>
+										<span className={cn("text-[18px] font-medium text-[var(--ret-text)]")}>{preset.name}</span>
 									</div>
 									<ReticleBadge variant="default">{preset.category}</ReticleBadge>
 								</div>
-								<p className="line-clamp-3 min-h-[3.9em] text-[11px] leading-relaxed text-[var(--ret-text-dim)]">
+								<p className={cn("line-clamp-3 min-h-[3.9em] text-[16px] leading-relaxed text-[var(--ret-text-dim)]")}>
 									{preset.longDescription}
 								</p>
-								<div className="mt-3 flex flex-wrap gap-1">
+								<div className={cn("mt-4 flex flex-wrap gap-1.5")}>
 									{preset.loadout.slice(0, 4).map((item) => (
-										<span key={item} className="border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.12em] text-[var(--ret-text-muted)]">
+										<span key={item} className={cn("border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1 text-[12px] text-[var(--ret-text-dim)]")}>
 											{item}
 										</span>
 									))}
 								</div>
-								<div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] text-[var(--ret-text-muted)]">
+								<div className={cn("mb-4 mt-4 flex flex-wrap gap-x-3 gap-y-2 text-[14px] text-[var(--ret-text-muted)]")}>
 									<span>{AGENT_LABEL[preset.agentKind]}</span>
-									<span className="flex items-center gap-1">
-										<Sparkles className="h-3 w-3" strokeWidth={1.75} /> {skillCount} skills
+									<span className={cn("flex items-center gap-1")}>
+										<Sparkles className={cn("h-4 w-4")} strokeWidth={1.75} /> {skillCount} skills
 									</span>
-									<span className="flex items-center gap-1">
-										<Plug2 className="h-3 w-3" strokeWidth={1.75} /> {mcpCount} MCP
+									<span className={cn("flex items-center gap-1")}>
+										<Plug2 className={cn("h-4 w-4")} strokeWidth={1.75} /> {mcpCount} MCP
 									</span>
 								</div>
-								<div className="mt-auto flex items-center justify-between gap-3 border-t border-[var(--ret-border)] pt-3 font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ret-purple)]">
-									<span>Create agent</span>
-									<ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" strokeWidth={1.75} />
+								<div className={cn("mt-auto flex items-center justify-between gap-3 border-t border-[var(--ret-border)] pt-3 text-[14px] font-medium text-[var(--ret-purple)]")}>
+									<span>Configure agent</span>
+									<ArrowRight aria-hidden="true" className={cn("h-4 w-4 shrink-0 motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.23,1,0.32,1)] pointer-fine:motion-safe:[@media(hover:hover)]:group-[:hover:not(:disabled):not(:focus-visible)]:translate-x-0.5 group-focus-visible:transition-none")} strokeWidth={1.75} />
 								</div>
 							</button>
 						);
@@ -207,43 +207,45 @@ export function WorkersLibrary({ presets, initialPresetId }: { presets: Preset[]
 			</section>
 
 			{/* The user's own workers. */}
-			<section className="space-y-3">
-				<span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
-					your agents . {workers?.length ?? "…"}
-				</span>
+			<section className={cn("space-y-4")}>
+				<div className={cn("flex items-center gap-3 border-b border-[var(--ret-border)] pb-3")}>
+					<h2 className={cn("text-xl font-medium tracking-tight text-[var(--ret-text)]")}>Your agents</h2>
+					<ReticleBadge>{workers?.length ?? "…"} saved</ReticleBadge>
+				</div>
 				{workers === null ? (
-					<ReticleFrame className="px-4 py-8 text-center">
-						<BrailleSpinner name="orbit" label="loading your agents" className="text-[11px] text-[var(--ret-text-muted)]" />
+					<ReticleFrame className={cn("px-4 py-8 text-center")}>
+						<BrailleSpinner name="orbit" label="loading your agents" className={cn("text-[14px] text-[var(--ret-text-muted)]")} />
 					</ReticleFrame>
 				) : workers.length === 0 ? (
-					<ReticleFrame className="px-4 py-8 text-center">
-						<p className="text-[13px] text-[var(--ret-text-dim)]">No saved agents yet.</p>
-						<p className="mt-1 text-[11px] text-[var(--ret-text-muted)]">
-							Start from a template above (or an existing Memory) to package a runtime
-							+ model + memory you can deploy onto any machine.
+					<ReticleFrame className={cn("flex flex-col items-center px-4 py-8 text-center sm:py-10")}>
+						<Bot aria-hidden="true" className={cn("mb-3 h-5 w-5 text-[var(--ret-text-muted)]")} strokeWidth={1.75} />
+						<p className={cn("text-[18px] font-medium text-[var(--ret-text)]")}>No saved agents yet</p>
+						<p className={cn("mt-2 max-w-[56ch] text-[16px] leading-relaxed text-[var(--ret-text-dim)]")}>
+							Choose a template above, or use Custom agent to start from an existing memory. Your runtime, model, and memory stay together when you deploy.
 						</p>
 					</ReticleFrame>
 				) : (
-					<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+					<div className={cn("grid gap-3 md:grid-cols-2 xl:grid-cols-3")}>
 						{workers.map((w) => (
-							<Link key={w.id} href={`/dashboard/workers/${w.id}`} className="group">
-								<ReticleFrame className="h-full p-4 transition-colors group-hover:bg-[var(--ret-surface)]">
-									<div className="mb-2 flex items-center justify-between gap-2">
-										<div className="flex min-w-0 items-center gap-2">
-											<Bot className="h-4 w-4 shrink-0 text-[var(--ret-text-dim)]" strokeWidth={1.75} />
-											<span className="truncate text-[13px] text-[var(--ret-text)]">{w.name}</span>
+							<Link key={w.id} href={`/dashboard/workers/${w.id}`} className={cn("group min-w-0 outline-none focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}>
+								<ReticleFrame className={cn("h-full p-4 group-hover:bg-[var(--ret-surface)] group-active:bg-[var(--ret-bg-soft)] sm:p-5")}>
+									<div className={cn("mb-2 flex items-center justify-between gap-2")}>
+										<div className={cn("flex min-w-0 items-center gap-2")}>
+											<Bot className={cn("h-4 w-4 shrink-0 text-[var(--ret-text-dim)]")} strokeWidth={1.75} />
+											<span className={cn("truncate text-[18px] font-medium text-[var(--ret-text)]")}>{w.name}</span>
 										</div>
 										<ReticleBadge variant={w.lastMachineId ? "success" : "default"}>
 											{w.lastMachineId ? "deployed" : "draft"}
 										</ReticleBadge>
 									</div>
-									<div className="flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] text-[var(--ret-text-muted)]">
+									<div className={cn("flex flex-wrap gap-x-3 gap-y-1 text-[14px] text-[var(--ret-text-muted)]")}>
 										<span>{AGENT_LABEL[w.agentKind]}</span>
-										<span className="truncate">{w.model}</span>
+										<span className={cn("truncate")}>{w.model}</span>
 									</div>
-									<p className="mt-2 flex items-center gap-1.5 truncate font-mono text-[10px] text-[var(--ret-text-dim)]">
-										<Brain className="h-3 w-3 shrink-0" strokeWidth={1.75} />
-										{bundleNames[w.memoryBundleId] ?? "memory"}
+									<p className={cn("mt-3 flex items-center gap-2 border-t border-[var(--ret-border)] pt-3 text-[14px] text-[var(--ret-text-dim)]")}>
+										<Brain className={cn("h-4 w-4 shrink-0")} strokeWidth={1.75} />
+										<span className={cn("min-w-0 flex-1 truncate")}>{bundleNames[w.memoryBundleId] ?? "Memory"}</span>
+										<ArrowRight aria-hidden="true" className={cn("h-4 w-4 shrink-0 text-[var(--ret-text-muted)] motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.23,1,0.32,1)] pointer-fine:motion-safe:[@media(hover:hover)]:group-[:hover:not(:disabled):not(:focus-visible)]:translate-x-0.5 group-focus-visible:transition-none")} strokeWidth={1.75} />
 									</p>
 								</ReticleFrame>
 							</Link>
@@ -269,8 +271,8 @@ export function WorkersLibrary({ presets, initialPresetId }: { presets: Preset[]
 }
 
 const fieldCls = cn(
-	"w-full border border-[var(--ret-border)] bg-[var(--ret-bg)] px-2.5 py-1.5",
-	"font-mono text-[12px] text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)]",
+	"min-h-10 w-full border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2",
+	"font-mono text-[16px] text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)]",
 	"focus:border-[var(--ret-accent)] focus:outline-none",
 );
 
@@ -312,22 +314,23 @@ function CreateWorkerModal({
 	}
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-[12dvh]">
-			<div className="w-full max-w-[520px] border border-[var(--ret-border)] bg-[var(--ret-bg)] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
-				<p className="mb-3 font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">Create agent</p>
-				<div className="flex flex-col gap-2">
-					<input className={fieldCls} placeholder="agent name (e.g. code-reviewer)" value={name} autoFocus onChange={(e) => setName(e.target.value)} />
-					<label className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">Runtime</label>
+		<div className={cn("fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 sm:pt-[12dvh]")}>
+			<div className={cn("w-full max-w-[520px] border border-[var(--ret-border)] bg-[var(--ret-bg)] p-4 shadow-[0_24px_80px_rgba(0,0,0,0.5)] sm:p-6")}>
+				<h2 className={cn("mb-5 text-xl font-medium tracking-tight text-[var(--ret-text)]")}>Create agent</h2>
+				<div className={cn("flex flex-col gap-2")}>
+					<label htmlFor="create-worker-name" className={cn("text-[14px] text-[var(--ret-text-dim)]")}>Agent name</label>
+					<input id="create-worker-name" className={cn(fieldCls)} placeholder="e.g. code-reviewer" value={name} autoFocus onChange={(e) => setName(e.target.value)} />
+					<label className={cn("mt-2 text-[14px] text-[var(--ret-text-muted)]")}>Runtime</label>
 					<ReticleSelect
 						ariaLabel="Runtime"
 						value={agentKind}
 						onChange={(v) => setAgentKind(v as AgentKind)}
 						options={AGENT_KINDS.map((k) => ({ value: k, label: AGENT_LABEL[k] }))}
 					/>
-					<label htmlFor="create-worker-model" className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">Model ID (optional)</label>
+					<label htmlFor="create-worker-model" className={cn("mt-2 text-[14px] text-[var(--ret-text-muted)]")}>Model ID (optional)</label>
 					<input
 						id="create-worker-model"
-						className={fieldCls}
+						className={cn(fieldCls)}
 						value={model}
 						onChange={(event) => setModel(event.target.value)}
 						placeholder="Automatic for supported providers"
@@ -335,10 +338,10 @@ function CreateWorkerModal({
 						autoComplete="off"
 						spellCheck={false}
 					/>
-					<p id="create-worker-model-help" className="text-[11px] leading-relaxed text-[var(--ret-text-dim)]">
+					<p id="create-worker-model-help" className={cn("text-[14px] leading-relaxed text-[var(--ret-text-dim)]")}>
 						Leave blank for an automatic model on OpenAI, Anthropic, OpenRouter, or Vercel AI Gateway. Google and custom endpoints require the exact model ID they support.
 					</p>
-					<label className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">Start from</label>
+					<label className={cn("mt-2 text-[14px] text-[var(--ret-text-muted)]")}>Start from</label>
 					<ReticleSelect
 						ariaLabel="Start from"
 						value={sourceValue}
@@ -347,13 +350,13 @@ function CreateWorkerModal({
 						placeholder="Pick a preset or memory"
 					/>
 				</div>
-				{error ? <p role="alert" className="mt-3 text-[12px] text-[var(--ret-red)]">{error}</p> : null}
-				<div className="mt-3 flex items-center gap-2">
+				{error ? <p role="alert" className={cn("mt-3 text-[12px] text-[var(--ret-red)]")}>{error}</p> : null}
+				<div className={cn("mt-5 flex items-center gap-3 border-t border-[var(--ret-border)] pt-4")}>
 					<ReticleButton variant="primary" size="sm" disabled={!name.trim() || busy} onClick={() => onSubmit(name.trim(), agentKind, parseSource(sourceValue), model.trim() || undefined)}>
-						<Rocket className="h-3.5 w-3.5" strokeWidth={1.75} /> {busy ? "creating…" : "Create agent"}
+						<Rocket className={cn("h-4 w-4")} strokeWidth={1.75} /> {busy ? "Creating…" : "Create agent"}
 					</ReticleButton>
-					<button type="button" onClick={onCancel} className="font-mono text-[11px] text-[var(--ret-text-muted)] hover:text-[var(--ret-text)]">
-						cancel
+					<button type="button" onClick={onCancel} className={cn("min-h-10 px-2 text-[14px] text-[var(--ret-text-muted)] hover:text-[var(--ret-text)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-purple)]")}>
+						Cancel
 					</button>
 				</div>
 			</div>

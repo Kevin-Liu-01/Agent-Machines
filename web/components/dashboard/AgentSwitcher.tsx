@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Logo } from "@/components/Logo";
+import { ChevronDown } from "@/components/ui/icons";
 import {
 	headerControlKicker,
 	headerControlTrigger,
@@ -302,16 +303,13 @@ export function AgentSwitcher({
 					)}
 				>
 					<span className={sidebar ? "sr-only" : "hidden sm:inline"}>Swap</span>
-					<svg
-						viewBox="0 0 10 10"
+					<ChevronDown
 						className={cn(
-							"h-2 w-2 transition-transform",
+							"h-3.5 w-3.5 shrink-0",
 							open ? "rotate-180" : "",
 						)}
-						fill="currentColor"
-					>
-						<path d="M5 7 L1 3 H9 z" />
-					</svg>
+						aria-hidden="true"
+					/>
 				</span>
 			</button>
 			{open ? (

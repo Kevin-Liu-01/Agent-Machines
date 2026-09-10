@@ -1,14 +1,11 @@
 import type { ReactNode } from "react";
 
-import { BrandHomeLockup } from "@/components/BrandHomeLockup";
-import { DASHBOARD_SHELL_HEADER_ROW } from "@/lib/dashboard/shell-chrome";
 import { cn } from "@/lib/cn";
 import type { PublicUserConfig } from "@/lib/user-config/schema";
 
 import { DashboardConfigProvider } from "./DashboardConfigProvider";
+import { DashboardChrome } from "./DashboardChrome";
 import { DashboardReticleProvider } from "./DashboardReticleProvider";
-import { MobileDashboardNav, SidebarNav } from "./SidebarNav";
-import { StatusHeader } from "./StatusHeader";
 
 type Props = {
 	children: ReactNode;
@@ -21,28 +18,13 @@ export function DashboardShell({ children, config }: Props) {
 	return (
 		<DashboardConfigProvider config={config}>
 			<DashboardReticleProvider>
-		<div className="relative grid min-h-[100dvh] bg-[var(--ret-bg-soft)] lg:grid-cols-[220px_1fr]">
-			<aside className="sticky top-0 z-30 hidden h-[100dvh] self-start border-r border-[var(--ret-border)] bg-[var(--ret-bg)] lg:flex lg:flex-col">
-				<div
-					className={cn(
-						DASHBOARD_SHELL_HEADER_ROW,
-						"bg-[var(--ret-bg)] px-3",
-					)}
+				<a
+					href="#dashboard-content"
+					className={cn("sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:m-0 focus:h-auto focus:w-auto focus:overflow-visible focus:bg-[var(--ret-bg)] focus:px-4 focus:py-3 focus:text-sm focus:text-[var(--ret-text)] focus:[clip:auto] focus:outline-2 focus:outline-[var(--ret-text)]")}
 				>
-					<BrandHomeLockup density="sidebar" className="w-full" />
-				</div>
-				<div className="min-h-0 flex-1 overflow-y-auto">
-					<SidebarNav setupComplete={setupComplete} machines={config.machines} />
-				</div>
-			</aside>
-			<div className="relative z-10 flex min-h-[100dvh] min-w-0 flex-col bg-[var(--ret-bg)]">
-				<StatusHeader machines={config.machines} />
-				<MobileDashboardNav setupComplete={setupComplete} machines={config.machines} />
-				<main className="flex-1">
-					{children}
-				</main>
-			</div>
-		</div>
+					Skip to content
+				</a>
+				<DashboardChrome machines={config.machines} setupComplete={setupComplete}>{children}</DashboardChrome>
 			</DashboardReticleProvider>
 		</DashboardConfigProvider>
 	);

@@ -52,7 +52,10 @@ describe("official Daytona provider branding (actual TSX)", () => {
 			return [node, ...elements(node.props.children)];
 		}
 		const nodes = elements(tree);
-		expect(nodes.find((node) => node.type === "p")?.props.children).toBe("Illustrative fleet — sample activity and uptime, not live Workers or provider benchmarks.");
+		const disclaimer = nodes.find((node) => node.type === "p"
+			&& typeof node.props.children === "string"
+			&& node.props.children.includes("not live Workers or provider benchmarks"));
+		expect(disclaimer?.props.children).toBe("Illustrative activity and uptime, not live Workers or provider benchmarks. Open a card for the runtime’s documentation.");
 		const cards = nodes.filter((node) => node.props.card);
 		expect(cards).toHaveLength(AGENTS.length);
 		for (const node of cards) {

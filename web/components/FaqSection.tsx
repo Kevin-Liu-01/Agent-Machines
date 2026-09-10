@@ -1,41 +1,43 @@
-import { ReticleLabel } from "@/components/reticle/ReticleLabel";
+import { MessageSquare } from "@/components/ui/icons";
+import { cn } from "@/lib/cn";
+import { LANDING_BODY, LANDING_EYEBROW, LANDING_INSET, LANDING_SECTION_SPACE, LANDING_SPLIT, LANDING_TITLE } from "@/lib/marketing/layout";
 import { FAQ } from "@/lib/seo/config";
 
 export function FaqSection() {
 	return (
-		<>
-			<div className="flex items-baseline justify-between gap-3 px-4 md:px-5">
+		<section aria-labelledby="faq-heading" className={cn(LANDING_INSET, LANDING_SECTION_SPACE)}>
+			<header data-landing-header className={cn(LANDING_SPLIT, "items-end pb-8")}>
 				<div>
-					<ReticleLabel>FAQ</ReticleLabel>
-					<h2 className="ret-display mt-2 text-xl md:text-2xl">
-						Common questions about Agent Machines.
+					<p className={cn(LANDING_EYEBROW)}><MessageSquare className={cn("size-4")} aria-hidden="true" />Common questions</p>
+					<h2 id="faq-heading" className={cn(LANDING_TITLE, "max-w-[20ch]")}>
+						Before your first Worker.
 					</h2>
 				</div>
-				<p className="hidden text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)] md:block">
-					{FAQ.length} answers
+				<p className={cn(LANDING_BODY, "max-w-[48ch]")}>
+					How Workers run, what stays with them, and how to get started.
 				</p>
-			</div>
+			</header>
 
-			<dl className="mt-5 grid gap-px overflow-hidden bg-[var(--ret-border)]">
+			<dl className={cn("divide-y divide-[var(--ret-border)]/30 border-y border-[var(--ret-border)]/30")}>
 				{FAQ.map(({ question, answer }, i) => (
 					<div
 						key={question}
-						className="grid gap-3 bg-[var(--ret-bg)] px-5 py-5 md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] md:gap-8"
+						className={cn(LANDING_SPLIT, "relative items-start py-7")}
 					>
-						<dt className="flex items-baseline gap-3 border-l-2 border-l-[var(--ret-purple)]/30 pl-3 md:pl-4">
-							<span className="tabular-nums text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
+						<dt>
+							<span aria-hidden="true" className={cn("pointer-events-none absolute bottom-2 right-0 font-sans text-sm tabular-nums text-[var(--ret-text-muted)]/30")}>
 								{String(i + 1).padStart(2, "0")}
 							</span>
-							<h3 className="text-[15px] font-semibold leading-snug tracking-tight text-[var(--ret-text)] md:text-[16px]">
+							<h3 className={cn("max-w-[42ch] text-lg font-semibold leading-7 tracking-tight text-[var(--ret-text)]")}>
 								{question}
 							</h3>
 						</dt>
-						<dd className="text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
+						<dd className={cn(LANDING_BODY)}>
 							{answer}
 						</dd>
 					</div>
 				))}
 			</dl>
-		</>
+		</section>
 	);
 }

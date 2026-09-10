@@ -60,7 +60,7 @@ describe("onboarding wording and unchanged picker values (actual TSX)", () => {
 		for (const button of elements(tree).filter((node) => node.type === "button")) (button.props.onClick as () => void)();
 		expect(picked).toEqual(["coding-agent", "__none__"]);
 		const copy = text(tree).replace(/\s+/g, " ");
-		expect(copy).toContain("Selected · Skills: 2 · MCP servers: 1");
+		expect(copy).toContain("Skills: 2 · MCP servers: 1");
 		expect(copy).toContain("Connected tools may still need credentials or setup");
 		expect(copy).toContain("No specialist preset selected");
 		expect(copy).toContain("bundled Registry catalog");

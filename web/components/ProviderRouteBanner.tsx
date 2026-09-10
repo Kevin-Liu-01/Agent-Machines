@@ -1,4 +1,4 @@
-import { ArrowRight } from "lucide-react";
+import { ArrowRight } from "@/components/ui/icons";
 
 import { Logo, type Mark } from "@/components/Logo";
 import { cn } from "@/lib/cn";

@@ -12,7 +12,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ChevronRight, CircleDot } from "lucide-react";
+import { ChevronRight, CircleDot } from "@/components/ui/icons";
 
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ToolIcon } from "@/components/ToolIcon";

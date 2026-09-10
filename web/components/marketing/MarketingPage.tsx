@@ -3,7 +3,7 @@ import {
 	CheckCircle2,
 	Circle,
 	Terminal as TerminalIcon,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 

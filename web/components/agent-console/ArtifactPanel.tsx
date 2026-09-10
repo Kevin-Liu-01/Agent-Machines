@@ -13,7 +13,7 @@
  */
 
 import { useCallback, useMemo, useState } from "react";
-import { FileDiff, FileText } from "lucide-react";
+import { FileDiff, FileText } from "@/components/ui/icons";
 
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { cn } from "@/lib/cn";

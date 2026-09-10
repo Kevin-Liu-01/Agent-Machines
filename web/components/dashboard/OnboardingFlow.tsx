@@ -1,8 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { BrandMark } from "@/components/BrandMark";
 import { AgentInfoPanel, MachineInfoPanel } from "@/components/dashboard/AgentMachineInfo";
@@ -16,8 +15,8 @@ import { WingBackground } from "@/components/WingBackground";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
-import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Check, CheckCircle2, ChevronDown, KeyRound, PackageOpen, ShieldCheck } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import { waitForControlPlaneOperation } from "@/lib/control-plane/client";
 import { onboardingProviderReady, onboardingWorkspaceUrl, submitOnboardingLaunch, type OnboardingLaunch } from "@/lib/onboarding/launch";
@@ -221,11 +220,15 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 	const router = useRouter();
 	const initialPreset = resolveSelectedPreset(presets, initialPresetId);
 	const [step, setStep] = useState<Step>("agent");
+	const stepContentRef = useRef<HTMLDivElement | null>(null);
+	const previousStepRef = useRef<Step>(step);
 	const [agent, setAgent] = useState<AgentKind>(
 		initialPreset?.agentKind ?? initialConfig.draftAgentKind ?? "hermes",
 	);
 	const [provider, setProvider] = useState<ProviderKind>(
-		initialConfig.draftProviderKind ?? "daytona",
+		initialConfig.draftProviderKind && PROVIDER_KINDS.includes(initialConfig.draftProviderKind)
+			? initialConfig.draftProviderKind
+			: "daytona",
 	);
 	const [routerId, setRouterId] = useState<string>(DEFAULT_ROUTER_ID);
 	const [model, setModel] = useState("");
@@ -369,6 +372,16 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 	};
 	const agentReadiness = agentUpstreamReadiness(agent, routerId, effectiveAiConfigured);
 
+	// A new step starts at its heading, including when the last button was below
+	// the fold. Initial entry and edits within the same step keep their focus.
+	useEffect(() => {
+		if (previousStepRef.current === step) return;
+		previousStepRef.current = step;
+		const heading = stepContentRef.current?.querySelector<HTMLHeadingElement>("h1");
+		heading?.focus({ preventScroll: true });
+		heading?.scrollIntoView({ behavior: "instant", block: "start" });
+	}, [step]);
+
 	// Open the exact machine just launched, even if another tab changed selection.
 	useEffect(() => {
 		if (!bootDone || !bootMachineId) return;
@@ -384,49 +397,49 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 	}
 
 	return (
-		<main className="relative min-h-[100dvh] overflow-hidden bg-[var(--ret-bg)] text-[var(--ret-text)]">
+		<main className={cn("relative min-h-[100dvh] overflow-hidden bg-[var(--ret-bg)] text-[var(--ret-text)]")}>
 			{/*
 			  Ambient brand backdrop. Light mode = cloud-lines plate,
 			  dark mode = nyx-lines plate. The kit-builder reads as a
 			  designed surface, never a cold form.
 			*/}
 			<WingBackground variant="cloud" />
-			<header className="relative z-10 border-b border-[var(--ret-border)] bg-[var(--ret-bg)]/85 px-6 py-4 backdrop-blur">
-				<div className="mx-auto flex max-w-[var(--ret-content-max)] items-center justify-between gap-4">
-					<a href="/" className="group flex items-center gap-2.5">
+			<header className={cn("relative z-10 h-12 border-b border-[var(--ret-border)] bg-[var(--ret-bg)]/85 px-4 backdrop-blur sm:px-6")}>
+				<div className={cn("mx-auto flex h-full max-w-[var(--ret-content-max)] items-center justify-between gap-3")}>
+					<a href="/" className={cn("group flex min-w-0 items-center gap-2.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}>
 						<BrandMark size={20} gap="tight" withLabel={false} />
 						<span
-							className="text-[18px] leading-none tracking-tight text-[var(--ret-text)] transition-colors group-hover:text-[var(--ret-purple)]"
+							className={cn("truncate text-[18px] leading-none tracking-tight text-[var(--ret-text)] group-hover:text-[var(--ret-purple)]")}
 							style={{ fontFamily: "var(--font-display-serif)" }}
 						>
 							agent-machines
 						</span>
 					</a>
-					<div className="flex items-center gap-3">
+					<div className={cn("flex shrink-0 items-center gap-3")}>
 						<ThemeToggle />
 						<a
 							href="/dashboard"
-							className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)] hover:text-[var(--ret-text)]"
+							className={cn("flex min-h-9 items-center gap-1.5 text-sm text-[var(--ret-text-muted)] outline-none hover:text-[var(--ret-text)] focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}
 						>
-					skip →
+					Skip <ArrowRight size={16} aria-hidden="true" />
 					</a>
 					</div>
 				</div>
 			</header>
 
-			<div className="relative z-10 mx-auto grid max-w-[var(--ret-content-max)] gap-px bg-[var(--ret-border)] lg:grid-cols-[1.4fr_1fr]">
-				<section className="bg-[var(--ret-bg)] p-6">
+			<div className={cn("relative z-10 mx-auto grid max-w-[var(--ret-content-max)] gap-px bg-[var(--ret-border)] xl:grid-cols-[minmax(0,1fr)_320px]")}>
+				<section className={cn("min-w-0 bg-[var(--ret-bg)] px-4 py-6 sm:p-8")}>
 					<StepRail step={step} />
 
 					{error && step !== "boot" ? (
-					<ReticleFrame className="mt-4 border-[var(--ret-red)]/50 bg-[var(--ret-red)]/5 p-3">
-						<p className="text-[11px] text-[var(--ret-red)]">
+					<ReticleFrame className={cn("mt-4 border-[var(--ret-red)]/50 bg-[var(--ret-red)]/5 p-3")}>
+						<p role="alert" className={cn("text-[14px] text-[var(--ret-red)]")}>
 							{error}
 						</p>
 					</ReticleFrame>
 					) : null}
 
-					<div className="mt-6">
+					<div ref={stepContentRef} className={cn("mt-6")}>
 						{step === "agent" ? (
 							<AgentStep value={agent} onPick={(a) => setAgent(a)} onNext={next} />
 						) : null}
@@ -453,9 +466,11 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 							/>
 						) : null}
 						{step === "key" ? (
-							<div className="grid gap-4">
+							<div className={cn("grid gap-4")}>
+							<KeyStep
+								connectionOptions={<>
 							{agentUsesRouter(agent) ? (
-								<div className="border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3">
+								<div className={cn("border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3")}>
 									<RouterSelect
 										agentKind={agent}
 										value={routerId}
@@ -464,8 +479,8 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 									/>
 								</div>
 							) : null}
-							<div className="grid gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3">
-								<label htmlFor="onboarding-model" className="text-sm font-medium">Model <span className="font-normal text-[var(--ret-text-muted)]">(optional)</span></label>
+							<div className={cn("grid gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3")}>
+								<label htmlFor="onboarding-model" className={cn("text-sm font-medium")}>Model <span className={cn("font-normal text-[var(--ret-text-muted)]")}>(optional)</span></label>
 								<input
 									id="onboarding-model"
 									value={model}
@@ -473,11 +488,11 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 									placeholder="Choose automatically for my connection"
 									maxLength={200}
 									aria-describedby="onboarding-model-help"
-									className="w-full rounded border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-3 py-2 text-sm outline-none focus:border-[var(--ret-purple)]"
+									className={cn("w-full rounded border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-3 py-3 text-base outline-none focus:border-[var(--ret-purple)]")}
 								/>
-								<p id="onboarding-model-help" className="text-xs leading-relaxed text-[var(--ret-text-muted)]">Leave blank to choose a model for your connected AI provider. For Google or a custom endpoint, enter the exact model ID it supports.</p>
+								<p id="onboarding-model-help" className={cn("text-sm leading-relaxed text-[var(--ret-text-muted)]")}>Leave blank to choose a model for your connected AI provider. For Google or a custom endpoint, enter the exact model ID it supports.</p>
 							</div>
-							<KeyStep
+								</>}
 								agent={agent}
 								provider={provider}
 								config={initialConfig}
@@ -518,13 +533,7 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 					</div>
 				</section>
 
-				<aside className="relative hidden overflow-hidden bg-[var(--ret-bg-soft)] lg:block">
-					<div
-						aria-hidden="true"
-						className="pointer-events-none absolute -right-8 -top-8 flex h-[420px] w-[420px] items-start justify-end opacity-[0.07] dark:opacity-[0.10]"
-					>
-						<Logo mark="am" size={360} tone="auto" />
-					</div>
+				<aside aria-label="Your Worker configuration" className={cn("relative min-w-0 bg-[var(--ret-bg-soft)]")}>
 					<RigPreview
 						agent={agent}
 						provider={provider}
@@ -542,25 +551,27 @@ function StepRail({ step }: { step: Step }) {
 	const order = STEPS.map((s) => s.id);
 	const i = order.indexOf(step);
 	return (
-		<ol className="grid grid-cols-2 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-5">
+		<ol aria-label="Setup progress" className={cn("grid grid-cols-5 gap-2 border-b border-[var(--ret-border)] pb-5")}>
 			{STEPS.map((s, idx) => {
 				const isActive = idx === i;
 				const isDone = idx < i;
 				return (
 					<li
 						key={s.id}
+						aria-current={isActive ? "step" : undefined}
+						title={s.hint}
 						className={cn(
-							"flex items-center gap-2 bg-[var(--ret-bg)] px-2.5 py-2",
+							"flex min-w-0 flex-col items-center gap-2 py-2 text-center sm:flex-row sm:text-left",
 							isActive
-								? "bg-[var(--ret-purple-glow)]"
+								? "text-[var(--ret-purple)]"
 								: isDone
-									? "opacity-90"
-									: "opacity-60",
+									? "text-[var(--ret-text)]"
+									: "text-[var(--ret-text-muted)]",
 						)}
 					>
 						<span
 							className={cn(
-								"flex h-4 w-4 items-center justify-center border font-mono text-[9px] tabular-nums",
+								"flex h-7 w-7 shrink-0 items-center justify-center border text-[13px] tabular-nums",
 								isDone
 									? "border-[var(--ret-green)]/40 bg-[var(--ret-green)]/10 text-[var(--ret-green)]"
 									: isActive
@@ -568,13 +579,13 @@ function StepRail({ step }: { step: Step }) {
 										: "border-[var(--ret-border)] text-[var(--ret-text-muted)]",
 							)}
 						>
-							{isDone ? "ok" : idx + 1}
+							{isDone ? <><Check size={16} aria-hidden="true" /><span className={cn("sr-only")}>Completed</span></> : idx + 1}
 						</span>
-						<span className="min-w-0">
-							<p className="truncate text-[11px] text-[var(--ret-text)]">
+						<span className={cn("min-w-0")}>
+							<p className={cn("text-[13px] font-medium sm:text-sm")}>
 								{s.label}
 							</p>
-							<p className="truncate text-[10px] text-[var(--ret-text-muted)]">
+							<p className={cn("sr-only")}>
 								{s.hint}
 							</p>
 						</span>
@@ -595,20 +606,25 @@ function AgentStep({
 	onNext: () => void;
 }) {
 	return (
-		<div className="space-y-5">
+		<div className={cn("space-y-5")}>
 			<div>
-				<ReticleLabel>Step 1 · Agent</ReticleLabel>
-				<h1 className="ret-display mt-1 text-2xl">
+				<p className={cn("text-sm text-[var(--ret-text-muted)]")}>Step 1 · Agent</p>
+				<h1 tabIndex={-1} className={cn("ret-display mt-1 scroll-mt-6 text-[30px] leading-tight outline-none")}>
 					Pick your agent
 				</h1>
-				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
-					Choose one of four agent runtimes. Claude Code and Codex use their
+				<p className={cn("mt-2 max-w-[60ch] text-base leading-relaxed text-[var(--ret-text-dim)]")}>
+					Choose one of four agent runtimes for your Worker.
+				</p>
+				<details className={cn("mt-3 text-sm text-[var(--ret-text-muted)]")}>
+					<summary className={cn("w-fit cursor-pointer outline-none hover:text-[var(--ret-text)] focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}>How the runtimes work</summary>
+					<p className={cn("mt-2 max-w-[65ch] leading-relaxed")}>Claude Code and Codex use their
 					native CLIs; tools and HTTP support differ by runtime. No agent HTTP
 					gateway is required to use the Console. Memory and runtime files live
 					in your Worker&rsquo;s home directory, whose path depends on the provider.
-				</p>
+					</p>
+				</details>
 			</div>
-			<div className="grid gap-3 md:grid-cols-2">
+			<div className={cn("grid gap-3 md:grid-cols-2")}>
 				{(Object.keys(AGENT_DESC) as AgentKind[]).map((kind) => {
 					const meta = AGENT_DESC[kind];
 					const selected = value === kind;
@@ -616,7 +632,7 @@ function AgentStep({
 						<div
 							key={kind}
 							className={cn(
-								"flex flex-col border transition-colors",
+								"flex min-w-0 flex-col border",
 								selected
 									? "border-[var(--ret-purple)] bg-[var(--ret-purple-glow)]"
 									: "border-[var(--ret-border)] bg-[var(--ret-bg)] hover:border-[var(--ret-border-hover)]",
@@ -624,54 +640,55 @@ function AgentStep({
 						>
 							<button
 								type="button"
+								aria-pressed={selected}
 								onClick={() => onPick(kind)}
-								className="group flex flex-col gap-3 p-4 text-left"
+								className={cn("group flex flex-1 flex-col gap-3 p-5 text-left outline-none active:bg-[var(--ret-surface)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ret-purple)]")}
 							>
-								<div className="flex items-center justify-between gap-2">
-									<div className="flex items-center gap-2">
-										<Logo mark={meta.mark} size={20} />
-										<h2 className="text-[14px] font-medium text-[var(--ret-text)]">
+								<div className={cn("flex items-center justify-between gap-2")}>
+									<div className={cn("flex items-center gap-2")}>
+										<Logo mark={meta.mark} size={28} />
+										<h2 className={cn("text-[18px] font-medium text-[var(--ret-text)]")}>
 											{meta.name}
 										</h2>
 									</div>
 									{selected ? (
-										<ReticleBadge variant="accent">selected</ReticleBadge>
+										<CheckCircle2 size={20} aria-hidden="true" className={cn("shrink-0 text-[var(--ret-purple)]")} />
 									) : null}
 								</div>
-								<p className="text-[12px] text-[var(--ret-text-dim)]">
+								<p className={cn("text-base leading-relaxed text-[var(--ret-text-dim)]")}>
 									{meta.tagline}
 								</p>
-								<ul className="space-y-0.5 text-[10px] text-[var(--ret-text-muted)]">
+							</button>
+							<details className={cn("border-t border-[var(--ret-border)] px-5 py-3 text-sm text-[var(--ret-text-muted)]")}>
+								<summary className={cn("cursor-pointer outline-none hover:text-[var(--ret-text)] focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}>{meta.name} details</summary>
+								<ul className={cn("mt-3 list-disc space-y-2 pl-4 text-sm leading-relaxed text-[var(--ret-text-muted)]")}>
 									{meta.bullets.map((b) => (
-										<li key={b} className="flex items-start gap-1.5">
-											<span>.</span>
-											<span>{b}</span>
-										</li>
+										<li key={b}>{b}</li>
 									))}
 								</ul>
-							</button>
 							{/* Source links sit OUTSIDE the picker button so clicking
 							    them opens the link instead of selecting the agent. */}
-							<div className="flex flex-wrap gap-1.5 border-t border-[var(--ret-border)] px-4 py-2">
+							<div className={cn("mt-3 flex flex-wrap gap-x-4 gap-y-2")}>
 								{meta.links.map((l) => (
 									<a
 										key={l.href}
 										href={l.href}
 										target="_blank"
 										rel="noreferrer"
-										className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)] transition-colors hover:text-[var(--ret-purple)]"
+										className={cn("text-[14px] text-[var(--ret-text-muted)] motion-safe:transition-[color,background-color,border-color] motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.23,1,0.32,1)] focus-visible:transition-none hover:text-[var(--ret-purple)]")}
 									>
-									{l.label} →
+									{l.label} <ArrowUpRight size={14} aria-hidden="true" className={cn("inline")} />
 								</a>
 								))}
 							</div>
+							</details>
 						</div>
 					);
 				})}
 			</div>
-			<div className="flex justify-end">
+			<div className={cn("flex justify-end")}>
 				<ReticleButton variant="primary" size="md" onClick={onNext}>
-					Continue →
+					Continue <ArrowRight size={18} aria-hidden="true" />
 				</ReticleButton>
 			</div>
 		</div>
@@ -699,19 +716,23 @@ function PresetStep({
 	onNext: () => void;
 }) {
 	return (
-		<div className="space-y-5">
+		<div className={cn("space-y-5")}>
 			<div>
-				<ReticleLabel>Step 2 · Preset</ReticleLabel>
-				<h1 className="ret-display mt-1 text-2xl">Choose a starting specialist</h1>
-				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
-					A preset supplies specialist memory, instructions, and selected skills
-					and MCP servers. Connected tools may still need credentials or setup;
-					selection is not verification. Refine the instructions in Memory and
-					manage tools in the Registry after launch. Recurring work runs only
-					when you configure and enable a schedule.
+				<p className={cn("text-sm text-[var(--ret-text-muted)]")}>Step 2 · Preset</p>
+				<h1 tabIndex={-1} className={cn("ret-display mt-1 scroll-mt-6 text-[30px] leading-tight outline-none")}>Choose a starting specialist</h1>
+				<p className={cn("mt-2 max-w-[60ch] text-base leading-relaxed text-[var(--ret-text-dim)]")}>
+					Start with specialist instructions and selected tools, or build from a blank Worker.
 				</p>
+				<p className={cn("mt-3 max-w-[65ch] text-sm leading-relaxed text-[var(--ret-text-muted)]")}>
+					Connected tools may still need credentials or setup; selection is not verification.
+					Recurring work runs only when you configure and enable a schedule.
+				</p>
+				<details className={cn("mt-3 text-sm text-[var(--ret-text-muted)]")}>
+					<summary className={cn("w-fit cursor-pointer outline-none hover:text-[var(--ret-text)] focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}>What a preset includes</summary>
+					<p className={cn("mt-2 max-w-[65ch] leading-relaxed")}>A preset supplies specialist memory, instructions, and selected skills and MCP servers. Refine the instructions in Memory and manage tools in the Registry after launch.</p>
+				</details>
 			</div>
-			<div className="grid gap-3 md:grid-cols-2">
+			<div className={cn("grid gap-3 md:grid-cols-2")}>
 				{presets.map((preset) => {
 					const selected = preset.id === selectedId;
 					const skillCount = preset.skillIds.filter((id) => id !== "*").length;
@@ -720,67 +741,67 @@ function PresetStep({
 						<button
 							key={preset.id}
 							type="button"
+							aria-pressed={selected}
 							onClick={() => onPick(preset.id)}
 							className={cn(
-								"flex flex-col gap-2 border p-4 text-left transition-colors",
+								"flex min-w-0 flex-col gap-3 border p-5 text-left outline-none active:bg-[var(--ret-surface)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ret-purple)]",
 								selected
 									? "border-[var(--ret-purple)] bg-[var(--ret-purple-glow)]"
 									: "border-[var(--ret-border)] bg-[var(--ret-bg)] hover:border-[var(--ret-border-hover)]",
 							)}
 						>
-							<div className="flex items-center justify-between gap-2">
-								<div className="flex min-w-0 items-center gap-2">
-									<PresetBrand brand={preset.brand} size={16} />
-									<h2 className="text-[14px] font-medium text-[var(--ret-text)]">
+							<div className={cn("flex items-center justify-between gap-2")}>
+								<div className={cn("flex min-w-0 items-center gap-2")}>
+									<PresetBrand brand={preset.brand} size={28} />
+									<h2 className={cn("text-[18px] font-medium text-[var(--ret-text)]")}>
 										{preset.name}
 									</h2>
 								</div>
 								{selected ? (
-									<ReticleBadge variant="accent">selected</ReticleBadge>
+									<CheckCircle2 size={20} aria-hidden="true" className={cn("shrink-0 text-[var(--ret-purple)]")} />
 								) : null}
 							</div>
-							<p className="text-[12px] text-[var(--ret-text-dim)]">
+							<p className={cn("text-base leading-relaxed text-[var(--ret-text-dim)]")}>
 								{preset.description}
 							</p>
-							<p className="mt-auto font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
-								Selected · Skills: {skillCount} · MCP servers: {mcpCount}
+							<p className={cn("mt-auto text-[14px] text-[var(--ret-text-muted)]")}>
+								Skills: {skillCount} · MCP servers: {mcpCount}
 							</p>
 						</button>
 					);
 				})}
 				<button
 					type="button"
+					aria-pressed={selectedId === NO_PRESET}
 					onClick={() => onPick(NO_PRESET)}
 					className={cn(
-						"flex flex-col gap-2 border p-4 text-left transition-colors",
+						"flex min-w-0 flex-col gap-3 border p-5 text-left outline-none active:bg-[var(--ret-surface)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ret-purple)]",
 						selectedId === NO_PRESET
 							? "border-[var(--ret-purple)] bg-[var(--ret-purple-glow)]"
 							: "border-dashed border-[var(--ret-border)] bg-[var(--ret-bg)] hover:border-[var(--ret-border-hover)]",
 					)}
 				>
-					<div className="flex items-center justify-between gap-2">
-						<h2 className="text-[14px] font-medium text-[var(--ret-text)]">
-							Start blank
-						</h2>
+					<div className={cn("flex items-center justify-between gap-2")}>
+						<div className={cn("flex items-center gap-2")}><PackageOpen size={28} aria-hidden="true" className={cn("text-[var(--ret-purple)]")} /><h2 className={cn("text-[18px] font-medium text-[var(--ret-text)]")}>Start blank</h2></div>
 						{selectedId === NO_PRESET ? (
-							<ReticleBadge variant="accent">selected</ReticleBadge>
+							<CheckCircle2 size={20} aria-hidden="true" className={cn("shrink-0 text-[var(--ret-purple)]")} />
 						) : null}
 					</div>
-					<p className="text-[12px] text-[var(--ret-text-dim)]">
+					<p className={cn("text-base leading-relaxed text-[var(--ret-text-dim)]")}>
 						No specialist preset selected. Start with basic instructions and
 						choose your own tools from the bundled Registry catalog.
 					</p>
-					<p className="mt-auto font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
+					<p className={cn("mt-auto text-[14px] text-[var(--ret-text-muted)]")}>
 						No specialist tools selected
 					</p>
 				</button>
 			</div>
-			<div className="flex items-center justify-between gap-2">
+			<div className={cn("flex items-center justify-between gap-2")}>
 				<ReticleButton variant="ghost" size="md" onClick={onBack}>
-					← Back
+					<ArrowLeft size={18} aria-hidden="true" /> Back
 				</ReticleButton>
 				<ReticleButton variant="primary" size="md" onClick={onNext}>
-					Continue →
+					Continue <ArrowRight size={18} aria-hidden="true" />
 				</ReticleButton>
 			</div>
 		</div>
@@ -796,29 +817,32 @@ function ProviderComparison({ selected }: { selected: ProviderKind }) {
 	];
 
 	return (
-		<ReticleFrame>
-			<div className="border-b border-[var(--ret-border)] px-4 py-2">
-				<ReticleLabel>Compare capabilities · Launch time and limits vary</ReticleLabel>
-			</div>
-			<div className="overflow-x-auto">
-				<table className="w-full text-[12px]">
+		<details className={cn("group/comparison min-w-0 border border-[var(--ret-border)]")}>
+			<summary className={cn("flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-4 text-base font-medium outline-none hover:bg-[var(--ret-surface)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ret-purple)] [&::-webkit-details-marker]:hidden")}>
+				Compare provider capabilities
+				<ChevronDown size={20} aria-hidden="true" className={cn("shrink-0 text-[var(--ret-text-muted)] group-open/comparison:rotate-180")} />
+			</summary>
+			<div role="region" aria-label="Provider capability comparison" tabIndex={0} className={cn("overflow-x-auto border-t border-[var(--ret-border)] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ret-purple)]")}>
+				<table className={cn("w-full min-w-[720px] text-sm leading-relaxed")}>
+					<caption className={cn("px-4 py-3 text-left text-sm text-[var(--ret-text-muted)]")}>Launch time and limits vary</caption>
 					<thead>
-						<tr className="border-b border-[var(--ret-border)]">
-							<th className="px-3 py-2 text-left font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+						<tr className={cn("border-b border-[var(--ret-border)]")}>
+							<th scope="col" className={cn("px-3 py-2 text-left text-[14px] font-medium text-[var(--ret-text-muted)]")}>
 								Feature
 							</th>
 							{COLS.map((col) => (
 								<th
 									key={col.key}
+									scope="col"
 									className={cn(
-										"px-3 py-2 text-left font-mono text-[10px] uppercase tracking-[0.18em]",
+										"px-3 py-2 text-left text-[14px] ",
 										selected === col.key
 											? "bg-[var(--ret-purple-glow)] text-[var(--ret-purple)]"
 											: "text-[var(--ret-text-muted)]",
 									)}
 								>
-									<span className="inline-flex items-center gap-1.5">
-										<Logo mark={providerLogoMark(col.key as ProviderKind)} size={12} tone="auto" />
+									<span className={cn("inline-flex items-center gap-1.5")}>
+										<Logo mark={providerLogoMark(col.key as ProviderKind)} size={20} tone="auto" />
 										{col.label}
 									</span>
 								</th>
@@ -827,10 +851,10 @@ function ProviderComparison({ selected }: { selected: ProviderKind }) {
 					</thead>
 					<tbody>
 						{COMPARISON_ROWS.map((row) => (
-							<tr key={row.label} className="border-b border-[var(--ret-border)] last:border-b-0">
-								<td className="whitespace-nowrap px-3 py-1.5 text-[var(--ret-text-muted)]">
+							<tr key={row.label} className={cn("border-b border-[var(--ret-border)] last:border-b-0")}>
+								<th scope="row" className={cn("whitespace-nowrap px-3 py-3 text-left font-medium text-[var(--ret-text-muted)]")}>
 									{row.label}
-								</td>
+								</th>
 								{COLS.map((col) => (
 									<td
 										key={col.key}
@@ -841,7 +865,7 @@ function ProviderComparison({ selected }: { selected: ProviderKind }) {
 												: "text-[var(--ret-text-dim)]",
 										)}
 									>
-										<span className="font-mono text-[11px]">{row[col.key]}</span>
+										<span className={cn("text-[14px]")}>{row[col.key]}</span>
 									</td>
 								))}
 							</tr>
@@ -849,7 +873,7 @@ function ProviderComparison({ selected }: { selected: ProviderKind }) {
 					</tbody>
 				</table>
 			</div>
-		</ReticleFrame>
+		</details>
 	);
 }
 
@@ -867,20 +891,20 @@ function ProviderPickStep({
 	onNext: () => void;
 }) {
 	return (
-		<div className="space-y-5">
+		<div className={cn("space-y-5")}>
 			<div>
-				<ReticleLabel>Step 3 · Provider</ReticleLabel>
-				<h1 className="ret-display mt-1 text-2xl">
+				<p className={cn("text-sm text-[var(--ret-text-muted)]")}>Step 3 · Provider</p>
+				<h1 tabIndex={-1} className={cn("ret-display mt-1 scroll-mt-6 text-[30px] leading-tight outline-none")}>
 					Pick where it runs
 				</h1>
-				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
+				<p className={cn("mt-1 max-w-[60ch] text-base leading-relaxed text-[var(--ret-text-dim)]")}>
 					Choose the cloud provider that will host your Worker. Connect its
 					account in the next step if needed. Storage, sleep, and recovery
 					capabilities differ by provider. The first launch also installs and
 					configures your chosen runtime.
 				</p>
 			</div>
-			<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+			<div className={cn("grid gap-3 sm:grid-cols-2")}>
 				{PROVIDER_KINDS.map((kind) => {
 					const meta = PROVIDERS_META[kind];
 					const selected = value === kind;
@@ -889,47 +913,45 @@ function ProviderPickStep({
 						<button
 							key={kind}
 							type="button"
+							aria-pressed={selected}
 							onClick={() => onPick(kind)}
 							className={cn(
-								"group flex flex-col gap-3 border p-4 text-left transition-colors",
+								"group flex min-w-0 flex-col gap-3 border p-5 text-left outline-none active:bg-[var(--ret-surface)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ret-purple)]",
 								selected
 									? "border-[var(--ret-purple)] bg-[var(--ret-purple-glow)]"
 									: "border-[var(--ret-border)] bg-[var(--ret-bg)] hover:border-[var(--ret-border-hover)]",
 							)}
 						>
-							<div className="flex items-center justify-between gap-2">
-								<div className="flex items-center gap-2">
-									<Logo mark={providerLogoMark(kind)} size={18} tone="auto" />
-									<h2 className="text-[13px] font-medium text-[var(--ret-text)]">
+							<div className={cn("flex items-center justify-between gap-2")}>
+								<div className={cn("flex items-center gap-2")}>
+									<Logo mark={providerLogoMark(kind)} size={28} tone="auto" />
+									<h2 className={cn("text-[18px] font-medium text-[var(--ret-text)]")}>
 										{meta.name}
 									</h2>
 								</div>
-								<div className="flex items-center gap-1.5">
+								<div className={cn("flex items-center gap-1.5")}>
 									{hasCreds ? (
-										<ReticleBadge variant="success">key on file</ReticleBadge>
+										<ReticleBadge className={cn("text-[13px]")} variant="success">Key on file</ReticleBadge>
 									) : null}
 									{selected ? (
-										<ReticleBadge variant="accent">selected</ReticleBadge>
+										<CheckCircle2 size={20} aria-hidden="true" className={cn("shrink-0 text-[var(--ret-purple)]")} />
 									) : null}
 								</div>
 							</div>
-							<p className="text-[12px] text-[var(--ret-text-dim)]">
+							<p className={cn("text-base leading-relaxed text-[var(--ret-text-dim)]")}>
 								{meta.tagline}
 							</p>
-							<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-								provider: {kind}
-							</span>
 						</button>
 					);
 				})}
 			</div>
 			<ProviderComparison selected={value} />
-			<div className="flex items-center justify-between gap-2">
+			<div className={cn("flex items-center justify-between gap-2")}>
 				<ReticleButton variant="ghost" size="md" onClick={onBack}>
-					← Back
+					<ArrowLeft size={18} aria-hidden="true" /> Back
 				</ReticleButton>
 				<ReticleButton variant="primary" size="md" onClick={onNext}>
-					Continue →
+					Continue <ArrowRight size={18} aria-hidden="true" />
 				</ReticleButton>
 			</div>
 		</div>
@@ -937,6 +959,7 @@ function ProviderPickStep({
 }
 
 function KeyStep({
+	connectionOptions,
 	agent,
 	provider,
 	config,
@@ -955,6 +978,7 @@ function KeyStep({
 	onBack,
 	onProvision,
 }: {
+	connectionOptions?: ReactNode;
 	agent: AgentKind;
 	provider: ProviderKind;
 	config: PublicUserConfig;
@@ -976,26 +1000,23 @@ function KeyStep({
 	const meta = PROVIDERS_META[provider];
 	const agentReqs = agentCredentialRequirements(agent);
 	return (
-		<div className="space-y-5">
+		<div className={cn("space-y-5")}>
 			<div>
-				<ReticleLabel>Step 4 · Keys</ReticleLabel>
-				<h1 className="ret-display mt-1 text-2xl">
+				<p className={cn("text-sm text-[var(--ret-text-muted)]")}>Step 4 · Keys</p>
+				<h1 tabIndex={-1} className={cn("ret-display mt-1 scroll-mt-6 text-[30px] leading-tight outline-none")}>
 					Bring your keys
 				</h1>
-				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
+				<p className={cn("mt-1 max-w-[60ch] text-base leading-relaxed text-[var(--ret-text-dim)]")}>
 					Your {PROVIDER_LABEL[provider]} key creates the machine. Your AI provider
 					key powers {AGENT_LABEL[agent]}. Credentials are saved privately to your
 					account. Your providers bill you directly for machine and model usage.
 				</p>
 			</div>
-			{/* What you're about to boot — same panels as the spin-up form. */}
-			<div className="grid gap-3 md:grid-cols-2">
-				<AgentInfoPanel agentKind={agent} readiness={readiness} />
-				<MachineInfoPanel provider={provider} configured={substrateReady} />
-			</div>
-			<ReticleLabel>Cloud provider</ReticleLabel>
-			<label className="flex flex-col gap-1.5">
-				<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+			<fieldset className={cn("min-w-0 space-y-4 border border-[var(--ret-border)] p-4 sm:p-5")}>
+			<legend className={cn("flex items-center gap-2 px-2 text-[18px] font-medium")}><Logo mark={providerLogoMark(provider)} size={24} /> Cloud provider</legend>
+			<p className={cn("text-sm leading-relaxed text-[var(--ret-text-muted)]")}>{meta.keyHint}</p>
+			<label className={cn("flex flex-col gap-1.5")}>
+				<span className={cn("text-[14px] text-[var(--ret-text-muted)]")}>
 					{meta.keyLabel}
 				</span>
 				<input
@@ -1007,17 +1028,17 @@ function KeyStep({
 					placeholder={meta.keyPlaceholder}
 					value={value}
 					onChange={(e) => onChange(e.target.value)}
-					className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-[12px] text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)] focus:border-[var(--ret-purple)] focus:outline-none"
+					className={cn("border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-3 text-base text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)] focus:border-[var(--ret-purple)] focus:outline-none")}
 				/>
-				<span className="text-[10px] text-[var(--ret-text-muted)]">
+				<span className={cn("text-[14px] text-[var(--ret-text-muted)]")}>
 					{hasKey
 						? "On file. Leave blank to keep the existing key."
 						: "Required to create the machine."}
 				</span>
 			</label>
 			{meta.secondaryFields?.map((f) => (
-				<label key={f.field} className="flex flex-col gap-1.5">
-					<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				<label key={f.field} className={cn("flex flex-col gap-1.5")}>
+					<span className={cn("text-[14px] text-[var(--ret-text-muted)]")}>
 						{f.label}
 					</span>
 					<input
@@ -1026,22 +1047,23 @@ function KeyStep({
 						placeholder={f.placeholder}
 						value={secondary[f.field] ?? ""}
 						onChange={(e) => onSecondaryChange(f.field, e.target.value)}
-						className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-[12px] text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)] focus:border-[var(--ret-purple)] focus:outline-none"
+						className={cn("border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-3 text-base text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)] focus:border-[var(--ret-purple)] focus:outline-none")}
 					/>
 				</label>
 			))}
+			</fieldset>
 			{agentReqs.length > 0 ? (
-				<>
-					<ReticleLabel>AI connection · {AGENT_LABEL[agent]}</ReticleLabel>
+				<fieldset className={cn("min-w-0 space-y-4 border border-[var(--ret-border)] p-4 sm:p-5")}>
+					<legend className={cn("flex items-center gap-2 px-2 text-[18px] font-medium")}><KeyRound size={24} aria-hidden="true" className={cn("text-[var(--ret-purple)]")} /> AI connection · {AGENT_LABEL[agent]}</legend>
 					{agentUsesRouter(agent) ? (
-						<p className="text-[11px] text-[var(--ret-text-dim)]">Add at least one AI provider key below. You do not need all four.</p>
+						<p className={cn("text-[14px] text-[var(--ret-text-dim)]")}>Add at least one AI provider key below. You do not need all four.</p>
 					) : null}
 					{agentReqs.map((req) => {
 						const field = req.field as OnboardingAiKeyField;
 						const onFile = config.aiProviders[field]?.configured ?? false;
 						return (
-							<label key={req.field} className="flex flex-col gap-1.5">
-								<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+							<label key={req.field} className={cn("flex flex-col gap-1.5")}>
+								<span className={cn("text-[14px] text-[var(--ret-text-muted)]")}>
 									{req.label}
 									{req.required ? " *" : ""}
 								</span>
@@ -1054,9 +1076,9 @@ function KeyStep({
 									placeholder={req.hint}
 									value={aiKeys[field]}
 									onChange={(e) => onAiKeyChange(field, e.target.value)}
-									className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-[12px] text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)] focus:border-[var(--ret-purple)] focus:outline-none"
+									className={cn("border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-3 text-base text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)] focus:border-[var(--ret-purple)] focus:outline-none")}
 								/>
-								<span className="text-[10px] text-[var(--ret-text-muted)]">
+								<span className={cn("text-[14px] text-[var(--ret-text-muted)]")}>
 										{onFile
 										? "On file. Leave blank to keep."
 										: req.required
@@ -1069,7 +1091,7 @@ function KeyStep({
 												href={req.signupUrl}
 												target="_blank"
 												rel="noopener noreferrer"
-												className="text-[var(--ret-purple)] underline-offset-2 hover:underline"
+												className={cn("text-[var(--ret-purple)] underline-offset-2 hover:underline")}
 											>
 												Get a key
 											</a>
@@ -1080,24 +1102,31 @@ function KeyStep({
 						);
 					})}
 					{(agent === "claude-code" || agent === "codex") ? (
-						<p className="text-[10px] text-[var(--ret-text-muted)]">
+						<p className={cn("text-[14px] text-[var(--ret-text-muted)]")}>
 							Subscription sign-in ({agent === "claude-code" ? "claude auth login" : "codex login"}) is
 							interactive. This setup requires an API key; you can sign in separately in the terminal after launch.
 						</p>
 					) : null}
-				</>
+				</fieldset>
 			) : null}
+			<div className={cn("grid gap-4")}>{connectionOptions}</div>
+			{/* Readiness and provider-specific sizing warnings remain visible. */}
+			<div className={cn("grid gap-3 md:grid-cols-2")}>
+				<AgentInfoPanel agentKind={agent} readiness={readiness} />
+				<MachineInfoPanel provider={provider} configured={substrateReady} />
+			</div>
 			{!agentCredsOk ? (
-				<p className="text-[11px] text-[var(--ret-amber)]">
+				<p className={cn("text-[14px] text-[var(--ret-amber)]")}>
 					Add a supported AI provider key above before launching {AGENT_LABEL[agent]}.
 				</p>
 			) : null}
 			{provider === "vercel" && value.trim() && !substrateReady ? (
-				<p className="text-[11px] text-[var(--ret-amber)]">A Vercel access token needs both a Team ID and a Project ID before launch.</p>
+				<p className={cn("text-[14px] text-[var(--ret-amber)]")}>A Vercel access token needs both a Team ID and a Project ID before launch.</p>
 			) : null}
-			<div className="flex items-center justify-between gap-2">
+			<p className={cn("flex items-start gap-2 text-sm leading-relaxed text-[var(--ret-text-muted)]")}><ShieldCheck size={18} aria-hidden="true" className={cn("mt-0.5 shrink-0")} /> Launch saves these credentials and creates a cloud workspace. Your providers bill you directly.</p>
+			<div className={cn("flex flex-wrap items-center justify-between gap-3 border-t border-[var(--ret-border)] pt-4")}>
 				<ReticleButton variant="ghost" size="md" onClick={onBack} disabled={busy}>
-					← Back
+					<ArrowLeft size={18} aria-hidden="true" /> Back
 				</ReticleButton>
 				<ReticleButton
 					variant="primary"
@@ -1106,9 +1135,9 @@ function KeyStep({
 					disabled={busy || !canProvision}
 				>
 					{busy ? (
-						<BrailleSpinner name="braille" label="Saving..." className="text-sm" />
+						<BrailleSpinner name="braille" label="Saving..." className={cn("text-sm")} />
 					) : (
-						<>Launch Worker →</>
+						<>Launch Worker <ArrowRight size={18} aria-hidden="true" /></>
 					)}
 				</ReticleButton>
 			</div>
@@ -1146,13 +1175,13 @@ function BootStep({
 		{ id: "ready", label: "Check runtime readiness and open Console", isDone: done },
 	];
 	return (
-		<div className="space-y-5">
+		<div className={cn("space-y-5")}>
 			<div>
-				<ReticleLabel>Step 5 · Launch</ReticleLabel>
-				<h1 className="ret-display mt-1 text-2xl">
-					{done ? "Your Worker is ready" : "Launching your Worker"}
+				<p className={cn("text-sm text-[var(--ret-text-muted)]")}>Step 5 · Launch</p>
+				<h1 tabIndex={-1} className={cn("ret-display mt-1 scroll-mt-6 text-[30px] leading-tight outline-none")}>
+					{done ? "Your Worker is ready" : error ? "Launch needs attention" : "Launching your Worker"}
 				</h1>
-				<p className="mt-1 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
+				<p className={cn("mt-1 max-w-[60ch] text-base leading-relaxed text-[var(--ret-text-dim)]")}>
 					{done
 						? "Opening the Console so you can give your Worker its first task…"
 						: isCliAgent
@@ -1162,9 +1191,9 @@ function BootStep({
 			</div>
 
 			{error ? (
-				<ReticleFrame className="border-[var(--ret-red)]/50 bg-[var(--ret-red)]/5 p-3">
-					<p className="text-[11px] text-[var(--ret-red)]">{error}</p>
-					<div className="mt-2 flex gap-2">
+				<ReticleFrame className={cn("border-[var(--ret-red)]/50 bg-[var(--ret-red)]/5 p-3")}>
+					<p role="alert" className={cn("break-words text-sm leading-relaxed text-[var(--ret-red)]")}>{error}</p>
+					<div className={cn("mt-2 flex gap-2")}>
 						<ReticleButton variant="secondary" size="sm" onClick={onRetry} disabled={busy}>
 							Retry
 						</ReticleButton>
@@ -1176,17 +1205,17 @@ function BootStep({
 			) : null}
 
 			<ReticleFrame>
-				<ol className="divide-y divide-[var(--ret-border)]">
+				<ol className={cn("divide-y divide-[var(--ret-border)]")}>
 					{steps.map((s, idx) => {
 						const active = !s.isDone && (idx === 0 || steps[idx - 1].isDone);
 						return (
 							<li
 								key={s.id}
-								className="flex items-center gap-3 px-4 py-2.5 text-[12px]"
+								className={cn("flex items-center gap-3 px-4 py-2.5 text-[16px]")}
 							>
 								<span
 									className={cn(
-										"flex h-5 w-5 items-center justify-center border font-mono text-[10px]",
+										"flex h-5 w-5 items-center justify-center border text-[14px]",
 										s.isDone
 											? "border-[var(--ret-green)]/40 bg-[var(--ret-green)]/10 text-[var(--ret-green)]"
 											: active
@@ -1194,7 +1223,7 @@ function BootStep({
 												: "border-[var(--ret-border)] text-[var(--ret-text-muted)]",
 									)}
 								>
-									{s.isDone ? "ok" : active ? <BrailleSpinner /> : "."}
+									{s.isDone ? <Check size={16} aria-label="Completed" /> : active && busy ? <BrailleSpinner /> : idx + 1}
 								</span>
 								<span
 									className={cn(
@@ -1209,7 +1238,7 @@ function BootStep({
 									{s.label}
 								</span>
 								{idx === 1 && phase ? (
-									<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+									<span className={cn("text-[14px] text-[var(--ret-text-muted)]")}>
 										{phase}
 									</span>
 								) : null}
@@ -1220,13 +1249,13 @@ function BootStep({
 			</ReticleFrame>
 
 			{machineId ? (
-				<p className="font-mono text-[10px] text-[var(--ret-text-muted)]">
+				<p className={cn("break-all font-mono text-[13px] text-[var(--ret-text-muted)]")}>
 					Machine ID ·{" "}
-					<span className="text-[var(--ret-text)]">{machineId}</span>
+					<span className={cn("text-[var(--ret-text)]")}>{machineId}</span>
 				</p>
 			) : (
-				<p className="text-[10px] text-[var(--ret-text-muted)]">
-					<BrailleSpinner /> Waiting for the machine to be created…
+				<p className={cn("text-[14px] text-[var(--ret-text-muted)]")}>
+					{busy ? <><BrailleSpinner /> Waiting for the machine to be created…</> : "No machine ID is available yet."}
 				</p>
 			)}
 
@@ -1261,48 +1290,48 @@ function RigPreview({
 	const spotlight = skillIds.slice(0, 8);
 
 	return (
-		<div className="space-y-4 px-5 py-6">
-			<div className="flex items-center justify-between gap-2">
-				<ReticleLabel>Your Worker</ReticleLabel>
+		<div className={cn("space-y-5 px-4 py-6 sm:px-6 xl:sticky xl:top-0")}>
+			<div className={cn("flex items-center justify-between gap-2")}>
+				<h2 className={cn("text-xl font-medium tracking-tight")}>Your Worker</h2>
 				{bootPhase ? (
-					<ReticleBadge variant={bootDone ? "success" : "warning"}>
+					<ReticleBadge className={cn("text-[13px]")} variant={bootDone ? "success" : "warning"}>
 						{bootDone ? "ready" : bootPhase}
 					</ReticleBadge>
 				) : null}
 			</div>
 			<ReticleFrame>
-				<div className="flex items-center gap-3 border-b border-[var(--ret-border)] px-4 py-3">
+				<div className={cn("flex items-center gap-3 border-b border-[var(--ret-border)] px-4 py-3")}>
 					<Logo mark={meta.mark} size={28} />
 					<div>
-						<p className="text-[14px] font-medium text-[var(--ret-text)]">
+						<p className={cn("text-lg font-medium text-[var(--ret-text)]")}>
 							{meta.name}
 						</p>
-						<p className="text-[10px] text-[var(--ret-text-muted)]">
+						<p className={cn("text-[14px] text-[var(--ret-text-muted)]")}>
 							{meta.tagline}
 						</p>
-						<p className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-							on {PROVIDER_LABEL[provider]}
+						<p className={cn("mt-2 flex items-center gap-2 text-sm text-[var(--ret-text-muted)]")}>
+							<Logo mark={providerLogoMark(provider)} size={18} /> on {PROVIDER_LABEL[provider]}
 						</p>
 					</div>
 				</div>
-				<div className="grid grid-cols-2 gap-px bg-[var(--ret-border)]">
+				<div className={cn("grid grid-cols-2 gap-px bg-[var(--ret-border)]")}>
 					<Tally label="selected skills" value={skillIds.length} />
 					<Tally label="selected MCP servers" value={mcpIds.length} />
 				</div>
 			</ReticleFrame>
 
 			<ReticleFrame>
-				<div className="flex items-center gap-2 border-b border-[var(--ret-border)] px-4 py-2">
-					<PresetBrand brand={preset?.brand} size={14} />
-					<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-						memory preset
+				<div className={cn("flex items-center gap-2 border-b border-[var(--ret-border)] px-4 py-2")}>
+					<PresetBrand brand={preset?.brand} size={20} />
+					<p className={cn("text-[14px] text-[var(--ret-text-muted)]")}>
+						Memory preset
 					</p>
 				</div>
-				<div className="px-4 py-3">
-					<p className="text-[12px] text-[var(--ret-text)]">
+				<div className={cn("px-4 py-3")}>
+					<p className={cn("text-lg font-medium text-[var(--ret-text)]")}>
 						{preset ? preset.name : "Blank start"}
 					</p>
-					<p className="mt-0.5 text-[10px] text-[var(--ret-text-dim)]">
+					<p className={cn("mt-0.5 text-[14px] text-[var(--ret-text-dim)]")}>
 						{preset
 							? preset.description
 							: "No specialist preset selected. The bundled Registry catalog remains available."}
@@ -1311,46 +1340,41 @@ function RigPreview({
 			</ReticleFrame>
 
 			{mcpIds.length > 0 ? (
-				<ReticleFrame>
-					<div className="border-b border-[var(--ret-border)] px-4 py-2">
-						<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				<details className={cn("border border-[var(--ret-border)] bg-[var(--ret-bg)]")}>
+					<summary className={cn("cursor-pointer px-4 py-3 text-sm outline-none hover:bg-[var(--ret-surface)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ret-purple)]")}>
 							Selected MCP servers · {mcpIds.length}
-						</p>
-					</div>
-					<ul className="divide-y divide-[var(--ret-border)]">
+					</summary>
+					<ul className={cn("divide-y divide-[var(--ret-border)]")}>
 						{mcpIds.map((name) => (
 							<li
 								key={name}
-								className="px-4 py-2 font-mono text-[11px] text-[var(--ret-text)]"
+								className={cn("break-all px-4 py-2 font-mono text-[13px] text-[var(--ret-text)]")}
 							>
 								{name}
 							</li>
 						))}
 					</ul>
-				</ReticleFrame>
+				</details>
 			) : null}
 
 			{spotlight.length > 0 ? (
-				<ReticleFrame>
-					<div className="flex items-center justify-between border-b border-[var(--ret-border)] px-4 py-2">
-						<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-							Selected skill preview
-						</p>
-						<span className="font-mono text-[10px] tabular-nums text-[var(--ret-text-muted)]">
+				<details className={cn("border border-[var(--ret-border)] bg-[var(--ret-bg)]")}>
+					<summary className={cn("cursor-pointer px-4 py-3 text-sm outline-none hover:bg-[var(--ret-surface)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ret-purple)]")}>
+						Selected skill preview <span className={cn("ml-1 text-[13px] tabular-nums text-[var(--ret-text-muted)]")}>
 							{spotlight.length} / {skillIds.length}
 						</span>
-					</div>
-					<ul className="divide-y divide-[var(--ret-border)]">
+					</summary>
+					<ul className={cn("divide-y divide-[var(--ret-border)]")}>
 						{spotlight.map((skillId) => (
 							<li
 								key={skillId}
-								className="px-4 py-1.5 font-mono text-[11px] text-[var(--ret-text)]"
+								className={cn("break-all px-4 py-2 font-mono text-[13px] text-[var(--ret-text)]")}
 							>
-								<span className="text-[var(--ret-text-muted)]">.</span> {skillId}
+								{skillId}
 							</li>
 						))}
 					</ul>
-				</ReticleFrame>
+				</details>
 			) : null}
 		</div>
 	);
@@ -1358,11 +1382,11 @@ function RigPreview({
 
 function Tally({ label, value }: { label: string; value: number }) {
 	return (
-		<div className="flex flex-col gap-0.5 bg-[var(--ret-bg)] px-3 py-2">
-			<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+		<div className={cn("flex flex-col gap-0.5 bg-[var(--ret-bg)] px-3 py-2")}>
+			<p className={cn("text-[13px] leading-relaxed text-[var(--ret-text-muted)] first-letter:uppercase")}>
 				{label}
 			</p>
-			<p className="font-mono text-base tabular-nums text-[var(--ret-text)]">
+			<p className={cn("text-xl tabular-nums text-[var(--ret-text)]")}>
 				{value}
 			</p>
 		</div>

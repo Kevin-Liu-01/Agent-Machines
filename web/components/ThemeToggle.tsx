@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Monitor, Moon, Sun, type LucideIcon } from "lucide-react";
+import { Monitor, Moon, Sun, type LucideIcon } from "@/components/ui/icons";
 
 import { cn } from "@/lib/cn";
 

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Logo } from "@/components/Logo";
+import { ChevronDown } from "@/components/ui/icons";
 import {
 	MODEL_CATALOG,
 	type ModelOption,
@@ -324,20 +325,12 @@ export function ModelSwitcher({ activeMachineId, surface = "header" }: Props) {
 
 function Chevron({ open }: { open: boolean }) {
 	return (
-		<svg
-			viewBox="0 0 12 12"
+		<ChevronDown
 			className={cn(
-				"h-2.5 w-2.5 shrink-0 text-[var(--ret-text-muted)] transition-transform",
+				"h-3.5 w-3.5 shrink-0 text-[var(--ret-text-muted)]",
 				open && "rotate-180",
 			)}
-			fill="none"
-			stroke="currentColor"
-			strokeWidth="1.5"
-			strokeLinecap="round"
-			strokeLinejoin="round"
-			aria-hidden
-		>
-			<path d="M2.5 4.5 L6 8 L9.5 4.5" />
-		</svg>
+			aria-hidden="true"
+		/>
 	);
 }

@@ -1,8 +1,8 @@
 "use client";
 
-import { Search } from "lucide-react";
+import { SearchOutline } from "@/components/ui/icons";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 
@@ -58,15 +58,23 @@ const GROUP_LABEL: Record<Group, string> = {
 
 const GROUP_ORDER: Group[] = ["surfaces", "navigate", "machines", "actions"];
 
-const NAV_ITEMS: ReadonlyArray<{ label: string; href: string; keywords: string }> = [
+const NAV_ITEMS: ReadonlyArray<{ label: string; href: string; keywords: string; hint?: string }> = [
 	{ label: "Overview", href: "/dashboard", keywords: "home dashboard fleet activity" },
 	{ label: "Machines", href: "/dashboard/machines", keywords: "fleet containers list deploy" },
+	{ label: "Agent templates", href: "/dashboard/agents", keywords: "agents presets workers library specialist catalog" },
 	{ label: "Usage", href: "/dashboard/usage", keywords: "cost billing resources spend" },
 	{ label: "Benchmarks", href: "/dashboard/benchmarks", keywords: "speed latency providers compare" },
 	{ label: "Learning", href: "/dashboard/benchmarks#learning", keywords: "learn self learning adaptive routing recommendations bandit policy runtime substrate model" },
+	{ label: "Console", href: "/dashboard/chat", keywords: "chat agent talk conversation", hint: "Active machine or fleet" },
+	{ label: "Terminal", href: "/dashboard/terminal", keywords: "shell cli pty tmux command", hint: "Active machine or fleet" },
+	{ label: "Logs", href: "/dashboard/logs", keywords: "tail output", hint: "Active machine or fleet" },
+	{ label: "Sessions", href: "/dashboard/sessions", keywords: "history runs", hint: "Active machine or fleet" },
+	{ label: "Artifacts", href: "/dashboard/artifacts", keywords: "files output", hint: "Active machine or fleet" },
+	{ label: "Memory", href: "/dashboard/memory", keywords: "bundles context persistent identity" },
+	{ label: "Loadouts", href: "/dashboard/loadout", keywords: "skills mcp tools capabilities" },
 	{ label: "Skills", href: "/dashboard/skills", keywords: "library skill.md capabilities" },
-	{ label: "MCPs", href: "/dashboard/mcps", keywords: "servers tools integrations" },
-	{ label: "Cron", href: "/dashboard/cron", keywords: "schedule jobs automation" },
+	{ label: "MCP servers", href: "/dashboard/mcps", keywords: "mcps servers tools integrations" },
+	{ label: "Schedules", href: "/dashboard/cron", keywords: "cron schedule jobs automation" },
 	{ label: "Registry", href: "/dashboard/registry", keywords: "add install browse" },
 	{ label: "Settings", href: "/dashboard/settings", keywords: "config keys credentials router model agent loadout secrets" },
 	{ label: "Setup", href: "/dashboard/setup", keywords: "wizard provision new machine" },
@@ -135,7 +143,13 @@ function scoreCommand(query: string, command: Command): number | null {
 	return Math.max(label ?? 0, (auxScore ?? 0) * 0.6);
 }
 
-export function CommandPalette() {
+type Props = {
+	className?: string;
+	/** Hide the search text while retaining the icon and keyboard shortcut. */
+	compact?: boolean;
+};
+
+export function CommandPalette({ className, compact = false }: Props = {}) {
 	const router = useRouter();
 	const pathname = usePathname();
 	const [mounted, setMounted] = useState(false);
@@ -143,7 +157,12 @@ export function CommandPalette() {
 	const [query, setQuery] = useState("");
 	const [selected, setSelected] = useState(0);
 	const [data, setData] = useState<MachinesPayload | null>(null);
+	const dialogId = useId();
+	const resultsId = `${dialogId}-results`;
+	const triggerRef = useRef<HTMLButtonElement>(null);
+	const dialogRef = useRef<HTMLDialogElement>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
+	const closeButtonRef = useRef<HTMLButtonElement>(null);
 	const selectedRef = useRef<HTMLButtonElement>(null);
 
 	useEffect(() => setMounted(true), []);
@@ -151,23 +170,38 @@ export function CommandPalette() {
 	// Global Cmd/Ctrl+K toggles the palette from anywhere on the dashboard.
 	useEffect(() => {
 		function onKey(event: KeyboardEvent) {
-			if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+			if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.isComposing && event.key.toLowerCase() === "k") {
 				event.preventDefault();
-				setOpen((v) => !v);
+				if (!event.repeat) setOpen((v) => !v);
 			}
 		}
 		window.addEventListener("keydown", onKey);
 		return () => window.removeEventListener("keydown", onKey);
 	}, []);
 
+	// Native modal focus containment/inertness; no timer or opening animation.
+	useEffect(() => {
+		if (!mounted || !open || !dialogRef.current) return;
+		const dialog = dialogRef.current;
+		const previousFocus = document.activeElement instanceof HTMLElement
+			? document.activeElement : triggerRef.current;
+		dialog.showModal();
+		inputRef.current?.focus();
+		return () => {
+			if (dialog.open) dialog.close();
+			if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+			else triggerRef.current?.focus({ preventScroll: true });
+		};
+	}, [mounted, open]);
+
 	// Lazily load machines whenever the palette opens; reset query+cursor.
 	useEffect(() => {
 		if (!open) return;
 		setQuery("");
 		setSelected(0);
-		const focusTimer = window.setTimeout(() => inputRef.current?.focus(), 20);
+		const controller = new AbortController();
 		let stopped = false;
-		fetch("/api/dashboard/machines", { cache: "no-store" })
+		fetch("/api/dashboard/machines", { cache: "no-store", signal: controller.signal })
 			.then((r) => (r.ok ? (r.json() as Promise<MachinesPayload>) : null))
 			.then((payload) => {
 				if (!stopped && payload) setData(payload);
@@ -175,7 +209,7 @@ export function CommandPalette() {
 			.catch(() => {});
 		return () => {
 			stopped = true;
-			window.clearTimeout(focusTimer);
+			controller.abort();
 		};
 	}, [open]);
 
@@ -210,6 +244,7 @@ export function CommandPalette() {
 				id: `nav:${item.href}`,
 				group: "navigate",
 				label: item.label,
+				hint: item.hint,
 				keywords: item.keywords,
 				href: item.href,
 			});
@@ -230,7 +265,7 @@ export function CommandPalette() {
 		list.push({
 			id: "action:spin-up",
 			group: "actions",
-			label: "Spin up new machine",
+			label: "Create a Worker",
 			keywords: "deploy provision create new bootstrap",
 			href: "/dashboard/setup",
 		});
@@ -280,6 +315,7 @@ export function CommandPalette() {
 
 	const onInputKeyDown = useCallback(
 		(event: ReactKeyboardEvent<HTMLInputElement>) => {
+			if (event.nativeEvent.isComposing) return;
 			if (event.key === "ArrowDown") {
 				event.preventDefault();
 				setSelected((i) => (visible.length ? (i + 1) % visible.length : 0));
@@ -299,44 +335,63 @@ export function CommandPalette() {
 		[visible, selected, activate, close],
 	);
 
+	const onDialogKeyDown = useCallback((event: ReactKeyboardEvent<HTMLDialogElement>) => {
+		if (event.key !== "Tab" || event.altKey || event.ctrlKey || event.metaKey || event.nativeEvent.isComposing) return;
+		const input = inputRef.current;
+		const closeButton = closeButtonRef.current;
+		if (!input || !closeButton) return;
+		// Native dialogs may send boundary Tab presses to browser chrome. Keep
+		// this two-control cycle explicit, including after pointer-focused results.
+		event.preventDefault();
+		const active = document.activeElement;
+		const next = active === input ? closeButton
+			: active === closeButton ? input
+				: event.shiftKey ? closeButton : input;
+		next.focus({ preventScroll: true });
+	}, []);
+
 	const triggerLabel = "Search machines & actions";
 
 	return (
 		<>
 			<button
+				ref={triggerRef}
 				type="button"
 				onClick={() => setOpen(true)}
 				aria-label={triggerLabel}
+				aria-haspopup="dialog"
+				aria-expanded={open}
+				aria-controls={open ? dialogId : undefined}
+				aria-keyshortcuts="Meta+K Control+K"
 				title={`${triggerLabel} (Cmd/Ctrl+K)`}
 				className={cn(
-					"flex w-full min-w-0 items-center justify-between gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] px-2.5 py-1 text-[12px] leading-none transition-colors",
-					"hover:border-[var(--ret-purple)]/45 hover:bg-[var(--ret-surface)]",
+					"inline-flex h-9 w-full min-w-0 items-center gap-2 rounded-md border border-[var(--ret-border)] bg-[var(--ret-bg)] px-2.5 text-sm leading-none",
+					"cursor-pointer text-[var(--ret-text-muted)] transition-[color,background-color,border-color] duration-150 ease-[var(--ret-ease-out)] hover:border-[var(--ret-border-hover)] hover:bg-[var(--ret-surface)] hover:text-[var(--ret-text)]",
+					"focus-visible:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-text)] motion-reduce:transition-none",
+					className,
 				)}
 			>
-				<span className="flex min-w-0 items-center gap-2 text-[var(--ret-text-muted)]">
-					<Search className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
-					<span className="hidden truncate md:inline">Search…</span>
-				</span>
-				<kbd className="hidden shrink-0 items-center gap-0.5 border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-1 font-mono text-[10px] text-[var(--ret-text-muted)] xl:inline-flex">
+				<SearchOutline className={cn("size-4 shrink-0")} aria-hidden="true" />
+				<span className={cn("min-w-0 flex-1 truncate text-left", compact ? "hidden" : "hidden sm:inline")}>Search…</span>
+				<kbd aria-hidden="true" className={cn("ml-auto inline-flex h-6 shrink-0 items-center rounded-sm border border-[var(--ret-border)]/60 bg-[var(--ret-bg-soft)] px-1 font-sans text-xs text-[var(--ret-text-muted)]")}>
 					⌘K
 				</kbd>
 			</button>
 
 			{mounted && open
 				? createPortal(
-						<div
-							role="dialog"
+						<dialog
+							ref={dialogRef}
+							id={dialogId}
 							aria-modal="true"
 							aria-label="Command palette"
-							className="fixed inset-0 z-[100] flex items-start justify-center bg-black/50 px-4 pt-[12dvh] backdrop-blur-sm"
-							onMouseDown={close}
+							className={cn("fixed inset-x-0 bottom-auto top-[8dvh] m-0 mx-auto max-h-[80dvh] w-[calc(100%_-_2rem)] max-w-[560px] flex-col overflow-hidden rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)] p-0 text-[var(--ret-text)] shadow-xl open:flex backdrop:bg-black/50")}
+							onCancel={(event) => { event.preventDefault(); close(); }}
+							onKeyDown={onDialogKeyDown}
+							onClick={(event) => { if (event.target === event.currentTarget) close(); }}
 						>
-							<div
-								className="flex max-h-[70dvh] w-full max-w-[560px] flex-col overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg)] shadow-[0_24px_80px_rgba(0,0,0,0.45)]"
-								onMouseDown={(e) => e.stopPropagation()}
-							>
-								<div className="flex items-center gap-2 border-b border-[var(--ret-border)] px-3 py-2.5">
-									<Search className="h-4 w-4 shrink-0 text-[var(--ret-text-muted)]" strokeWidth={1.75} />
+								<div className={cn("flex shrink-0 items-center gap-3 border-b border-[var(--ret-border)] px-4 py-3")}>
+									<SearchOutline className={cn("size-5 shrink-0 text-[var(--ret-text-muted)]")} aria-hidden="true" />
 									<input
 										ref={inputRef}
 										value={query}
@@ -345,19 +400,25 @@ export function CommandPalette() {
 											setSelected(0);
 										}}
 										onKeyDown={onInputKeyDown}
+										role="combobox"
+										aria-label="Search machines, pages, and actions"
+										aria-expanded="true"
+										aria-controls={resultsId}
+										aria-autocomplete="list"
+										aria-activedescendant={visible[selected] ? `${resultsId}-${selected}` : undefined}
 										placeholder="Search machines, pages, actions…"
-										className="flex-1 bg-transparent text-[14px] text-[var(--ret-text)] outline-none placeholder:text-[var(--ret-text-muted)]"
+										className={cn("min-h-9 min-w-0 flex-1 bg-transparent text-base text-[var(--ret-text)] outline-none placeholder:text-[var(--ret-text-muted)]")}
 										autoComplete="off"
 										spellCheck={false}
 									/>
-									<kbd className="border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-1 font-mono text-[10px] text-[var(--ret-text-muted)]">
-										esc
-									</kbd>
+									<button ref={closeButtonRef} type="button" onClick={close} aria-label="Close search (Esc)" className={cn("inline-flex min-h-9 shrink-0 items-center rounded-sm px-2 text-xs text-[var(--ret-text-muted)] hover:bg-[var(--ret-surface)] focus-visible:outline-2 focus-visible:outline-[var(--ret-text)]")}>
+										Esc
+									</button>
 								</div>
 
-								<div className="min-h-0 flex-1 overflow-y-auto py-1">
+								<div id={resultsId} role="listbox" tabIndex={-1} aria-label="Search results" className={cn("min-h-0 flex-1 overflow-y-auto overscroll-contain py-2")}>
 									{visible.length === 0 ? (
-										<p className="px-3 py-6 text-center text-[12px] text-[var(--ret-text-muted)]">
+										<p role="status" className={cn("px-4 py-8 text-center text-sm text-[var(--ret-text-muted)]")}>
 											No matches for “{query}”.
 										</p>
 									) : (
@@ -369,40 +430,44 @@ export function CommandPalette() {
 											return (
 												<div key={command.id}>
 													{showHeader ? (
-														<p className="px-3 pb-1 pt-2 font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+														<p aria-hidden="true" className={cn("px-4 pb-1 pt-3 text-xs font-medium text-[var(--ret-text-muted)]")}>
 															{command.group === "surfaces" && contextMachine
 																? `On ${contextMachine.name}`
 																: GROUP_LABEL[command.group]}
 														</p>
 													) : null}
 													<button
+														id={`${resultsId}-${index}`}
+														role="option"
+														aria-selected={isSelected}
+														tabIndex={-1}
 														ref={isSelected ? selectedRef : undefined}
 														type="button"
 														onMouseMove={() => setSelected(index)}
 														onClick={() => activate(command)}
 														className={cn(
-															"flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition-colors",
+															"flex min-h-11 w-full items-center justify-between gap-3 px-4 py-2.5 text-left focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ret-text)]",
 															isSelected
 																? "bg-[var(--ret-purple-glow)]"
 																: "hover:bg-[var(--ret-surface)]",
 														)}
 													>
 														<span className="min-w-0 flex-1">
-															<span className="block truncate text-[13px] text-[var(--ret-text)]">
+															<span className={cn("block truncate text-sm text-[var(--ret-text)]")}>
 																{command.label}
 															</span>
 															{command.hint ? (
-																<span className="block truncate font-mono text-[10px] text-[var(--ret-text-muted)]">
+																<span className={cn("mt-1 block truncate text-xs text-[var(--ret-text-muted)]")}>
 																	{command.hint}
 																</span>
 															) : null}
 														</span>
-														<span className="shrink-0 font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
+														<span aria-hidden="true" className={cn("shrink-0 text-xs text-[var(--ret-text-muted)]")}>
 															{command.group === "machines"
-																? "open"
+																? "Open"
 																: command.group === "actions"
-																	? "run"
-																	: "go"}
+																	? "Set up"
+																	: "Go"}
 														</span>
 													</button>
 												</div>
@@ -411,12 +476,11 @@ export function CommandPalette() {
 									)}
 								</div>
 
-								<div className="flex items-center justify-between border-t border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-3 py-1.5 font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
-									<span>↑↓ navigate · ↵ open · esc close</span>
+								<div className={cn("flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-4 py-3 text-xs text-[var(--ret-text-muted)]")}>
+									<span>↑↓ Navigate · ↵ Open · Esc Close</span>
 									<span>{visible.length} result{visible.length === 1 ? "" : "s"}</span>
 								</div>
-							</div>
-						</div>,
+						</dialog>,
 						document.body,
 					)
 				: null}

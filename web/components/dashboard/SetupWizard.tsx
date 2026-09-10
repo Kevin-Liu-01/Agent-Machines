@@ -3,13 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 
-import { Logo } from "@/components/Logo";
+import { Logo, type Mark } from "@/components/Logo";
+import {
+	ArrowLeft, ArrowRight, Bot, Check, CheckCircle2, KeyRound, ListChecks,
+	Rocket, Server, SlidersHorizontal, TriangleAlert, type IconComponent,
+} from "@/components/ui/icons";
 import { providerLogoMark } from "@/lib/fleet/logos";
-import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
-import { ReticleHatch } from "@/components/reticle/ReticleHatch";
-import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { cn } from "@/lib/cn";
 import { waitForControlPlaneOperation } from "@/lib/control-plane/client";
 import {
@@ -37,44 +38,44 @@ type Props = {
 	defaults: WizardDefaults;
 };
 
-type StepDef = { id: SetupStep; label: string; hint: string };
+type StepDef = { id: SetupStep; label: string; hint: string; icon: IconComponent };
 
 const STEPS: ReadonlyArray<StepDef> = [
-	{ id: "api-key", label: "Credentials", hint: "provider key(s)" },
-	{ id: "agent", label: "Agent", hint: "personality" },
-	{ id: "provider", label: "Provider", hint: "where it runs" },
-	{ id: "spec", label: "Spec", hint: "size + model" },
-	{ id: "review", label: "Review", hint: "confirm" },
-	{ id: "provisioned", label: "Done", hint: "machine live" },
+	{ id: "api-key", label: "Credentials", hint: "Connect accounts", icon: KeyRound },
+	{ id: "agent", label: "Agent", hint: "Choose a runtime", icon: Bot },
+	{ id: "provider", label: "Provider", hint: "Choose a home", icon: Server },
+	{ id: "spec", label: "Resources", hint: "Size and model", icon: SlidersHorizontal },
+	{ id: "review", label: "Review", hint: "Confirm details", icon: ListChecks },
+	{ id: "provisioned", label: "Ready", hint: "Open your Worker", icon: CheckCircle2 },
 ];
 
 const AGENTS_DESC: Record<
 	AgentKind,
-	{ name: string; tagline: string; logo: "nous" | "am" | "anthropic" | "openai" }
+	{ name: string; tagline: string; logo: Mark }
 > = {
 	hermes: {
 		name: "Hermes",
 		tagline:
-			"Nous Research's self-improving agent. Persistent memory, automation scheduling, MCP-native, OpenAI-compatible API.",
+			"Nous Research's agent, with memory, tools, and recurring work in a persistent workspace.",
 		logo: "nous",
 	},
 	openclaw: {
 		name: "OpenClaw",
 		tagline:
-			"Persistent computer-use agent. Browser, shell, filesystem, screenshots, and vision on the same durable machine.",
-		logo: "nous",
+			"A computer-use agent with a browser, shell, files, and visual tools on one machine.",
+		logo: "openclaw",
 	},
 	"claude-code": {
 		name: "Claude Code",
 		tagline:
-			"Anthropic's terminal coding agent. Deep repo awareness, multi-step tool use, headless via claude -p, Agent SDK.",
-		logo: "anthropic",
+			"Anthropic's coding agent for understanding repositories, editing files, and using development tools.",
+		logo: "claudecode",
 	},
 	codex: {
-		name: "Codex CLI",
+		name: "Codex",
 		tagline:
-			"OpenAI's terminal coding agent. Sandbox isolation, workspace-write mode, non-interactive runs via codex exec.",
-		logo: "openai",
+			"OpenAI's coding agent for working with a project's files, commands, and development workflow.",
+		logo: "codex",
 	},
 };
 
@@ -100,7 +101,7 @@ const PROVIDERS_DESC: Record<
 	e2b: {
 		name: "E2B Sandbox",
 		tagline:
-			"Full Linux sandboxes with pause/resume, snapshots, and public URLs. Best for stable agent work with fast cold starts.",
+			"Linux sandboxes with pause and resume, snapshots, and public preview URLs.",
 		ready: true,
 		keyHint: "e2b_...",
 	},
@@ -112,6 +113,19 @@ const PROVIDERS_DESC: Record<
 		keyHint: "vercel token",
 	},
 };
+
+const FIELD_INPUT = cn(
+	"min-h-11 w-full rounded-sm border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2.5 font-mono text-base text-[var(--ret-text)]",
+	"placeholder:text-[var(--ret-text-muted)] focus:border-[var(--ret-purple)] focus:outline-2 focus:outline-offset-2 focus:outline-[var(--ret-purple)]",
+);
+
+const CHOICE_CARD = cn(
+	"group relative flex h-full flex-col gap-4 rounded-sm border bg-[var(--ret-bg)] p-5 text-left",
+	"focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-purple)]",
+	"disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[var(--ret-bg)]",
+);
+
+const CHOICE_TAG = cn("inline-flex shrink-0 items-center gap-1.5 rounded-sm px-2 py-1 text-sm leading-5");
 
 export function SetupWizard({ initialConfig, defaults }: Props) {
 	const router = useRouter();
@@ -212,7 +226,7 @@ export function SetupWizard({ initialConfig, defaults }: Props) {
 	}, [router]);
 
 	return (
-		<div className="space-y-6 px-5 py-5">
+		<div className={cn("space-y-7 px-5 py-6 md:px-7")}>
 			<StepRail
 				active={activeStep}
 				completed={completedSteps}
@@ -220,11 +234,10 @@ export function SetupWizard({ initialConfig, defaults }: Props) {
 			/>
 
 			{error ? (
-			<ReticleFrame className="border-[var(--ret-red)]/50 bg-[var(--ret-red)]/5 p-4">
-				<p className="text-[11px] text-[var(--ret-red)]">
-					error: {error}
-				</p>
-			</ReticleFrame>
+				<div role="alert" className={cn("flex items-start gap-3 rounded-sm border border-[var(--ret-red)]/35 bg-[var(--ret-red)]/5 p-4 text-base leading-7 text-[var(--ret-red)]")}>
+					<TriangleAlert className={cn("mt-1 h-5 w-5 shrink-0")} aria-hidden="true" />
+					<p className={cn("min-w-0 break-words")}>{error}</p>
+				</div>
 			) : null}
 
 			{activeStep === "api-key" ? (
@@ -291,6 +304,7 @@ export function SetupWizard({ initialConfig, defaults }: Props) {
 			{activeStep === "provisioned" ? (
 				<ProvisionedStep
 					config={config}
+					onConfigure={() => setActiveStep("agent")}
 					onChat={() => router.push("/dashboard/chat")}
 					onMachines={() => router.push("/dashboard/machines")}
 				/>
@@ -309,44 +323,47 @@ function StepRail({
 	onJump: (step: SetupStep) => void;
 }) {
 	return (
-		<ol className="grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-3 lg:grid-cols-6">
-			{STEPS.map((step, idx) => {
+		<ol aria-label="Worker setup progress" className={cn("grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6")}>
+			{STEPS.map((step) => {
 				const isActive = step.id === active;
 				const isDone = completed.has(step.id);
 				const reachable = isActive || isDone;
 				return (
-					<li
-						key={step.id}
-						className={cn(
-							"flex items-center gap-3 bg-[var(--ret-bg)] px-3 py-3",
-							reachable
-								? "cursor-pointer hover:bg-[var(--ret-surface)]"
-								: "cursor-not-allowed opacity-60",
-						)}
-						onClick={() => {
-							if (reachable) onJump(step.id);
-						}}
-					>
-						<span
+					<li key={step.id} className={cn("min-w-0")}>
+						<button
+							type="button"
+							disabled={!reachable}
+							aria-current={isActive ? "step" : undefined}
 							className={cn(
-								"flex h-5 w-5 items-center justify-center border font-mono text-[10px]",
-								isDone
-									? "border-[var(--ret-green)]/40 bg-[var(--ret-green)]/10 text-[var(--ret-green)]"
-									: isActive
-										? "border-[var(--ret-purple)]/40 bg-[var(--ret-purple-glow)] text-[var(--ret-purple)]"
-										: "border-[var(--ret-border)] text-[var(--ret-text-muted)]",
+								"flex h-full w-full items-start gap-2.5 rounded-sm border p-3 text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-purple)] disabled:cursor-not-allowed disabled:opacity-45",
+								isActive ? "border-[var(--ret-purple)]/45 bg-[var(--ret-purple-glow)]" : "border-transparent",
+								reachable && !isActive && "hover:bg-[var(--ret-surface)]",
 							)}
+							onClick={() => {
+								if (reachable) onJump(step.id);
+							}}
 						>
-							{isDone ? "ok" : idx + 1}
-						</span>
-						<div className="min-w-0">
-							<p className="font-mono text-[11px] text-[var(--ret-text)]">
-								{step.label}
-							</p>
-						<p className="text-[10px] text-[var(--ret-text-muted)]">
-							{step.hint}
-						</p>
-						</div>
+							<span
+								className={cn(
+									"mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center",
+									isDone
+										? "text-[var(--ret-green)]"
+										: isActive
+											? "text-[var(--ret-purple)]"
+											: "text-[var(--ret-text-muted)]",
+								)}
+							>
+								{isDone ? <Check className={cn("h-5 w-5")} aria-hidden="true" /> : <step.icon className={cn("h-5 w-5")} aria-hidden="true" />}
+							</span>
+							<div className={cn("min-w-0")}>
+								<p className={cn("text-sm font-semibold leading-6 text-[var(--ret-text)]")}>
+									{step.label}
+								</p>
+								<p className={cn("text-sm leading-5 text-[var(--ret-text-muted)]")}>
+									{step.hint}
+								</p>
+							</div>
+						</button>
 					</li>
 				);
 			})}
@@ -364,16 +381,11 @@ function StepShell({
 	children: React.ReactNode;
 }) {
 	return (
-		<ReticleFrame>
-			<ReticleHatch
-				className="h-1.5 border-b border-[var(--ret-border)]"
-				pitch={6}
-			/>
-			<div className="space-y-4 p-5">
+		<ReticleFrame corners={false} className={cn("rounded-sm border-[var(--ret-border)]/60")}>
+			<div className={cn("space-y-6 p-5 md:p-7")}>
 				<header>
-					<ReticleLabel>step</ReticleLabel>
-					<h2 className="ret-display mt-1 text-base">{title}</h2>
-					<p className="mt-1 max-w-[68ch] text-[12px] text-[var(--ret-text-dim)]">
+					<h2 className={cn("text-xl font-semibold tracking-tight text-[var(--ret-text)]")}>{title}</h2>
+					<p className={cn("mt-2 max-w-[70ch] text-base leading-7 text-[var(--ret-text-dim)]")}>
 						{description}
 					</p>
 				</header>
@@ -482,11 +494,11 @@ function CredentialsStep({
 
 	return (
 		<StepShell
-			title="Bring API keys for the providers you'll use"
-			description="Infrastructure keys provision the machine. AI provider keys power the agent's LLM inference. Each is stored in Clerk private metadata, never exposed to the browser."
+			title="Connect your accounts"
+			description="Provider keys create the machine; model keys power the agent. Saved keys stay in your private account settings. Leave a field blank to keep its existing value."
 		>
-			<ReticleLabel>infrastructure providers</ReticleLabel>
-			<div className="mt-2 grid gap-4 lg:grid-cols-2">
+			<h3 className={cn("flex items-center gap-2 text-lg font-semibold text-[var(--ret-text)]")}><Server className={cn("h-5 w-5 text-[var(--ret-text-muted)]")} aria-hidden="true" />Sandbox providers</h3>
+			<div className={cn("grid gap-x-6 gap-y-5 lg:grid-cols-2")}>
 				<KeyField
 					label="Daytona API key"
 					placeholder="Daytona API key"
@@ -527,7 +539,7 @@ function CredentialsStep({
 				/>
 				<KeyField
 					label="Sprites token"
-					placeholder="kevin-liu-553/..."
+					placeholder="Sprites token"
 					value={state.sprites}
 					onChange={(v) => setState((s) => ({ ...s, sprites: v }))}
 					hint={
@@ -563,11 +575,11 @@ function CredentialsStep({
 				/>
 			</div>
 
-			<ReticleLabel className="mt-5">ai provider keys</ReticleLabel>
-			<p className="mt-1 text-[12px] text-[var(--ret-text-dim)]">
+			<h3 className={cn("flex items-center gap-2 border-t border-[var(--ret-border)]/50 pt-6 text-lg font-semibold text-[var(--ret-text)]")}><Bot className={cn("h-5 w-5 text-[var(--ret-text-muted)]")} aria-hidden="true" />Model providers</h3>
+			<p className={cn("text-base leading-7 text-[var(--ret-text-dim)]")}>
 				Hermes and OpenClaw use Vercel first. OpenRouter runs second. Claude Code needs Anthropic. Codex needs OpenAI.
 			</p>
-			<div className="mt-2 grid gap-4 lg:grid-cols-2">
+			<div className={cn("grid gap-x-6 gap-y-5 lg:grid-cols-2")}>
 				<KeyField
 					label="Vercel AI Gateway key"
 					placeholder="vck_..."
@@ -625,14 +637,14 @@ function CredentialsStep({
 						: "Optional. Enables cursor-bridge MCP for code work."
 				}
 			/>
-			<div className="flex flex-wrap items-center justify-end gap-2">
+			<div className={cn("flex flex-wrap items-center justify-end gap-2")}>
 				<ReticleButton
 					variant="ghost"
 					size="sm"
 					onClick={() => onSave({}, undefined, undefined)}
 					disabled={busy || !anyConfigured}
 				>
-					Skip (use existing)
+					Use saved keys
 				</ReticleButton>
 				<ReticleButton
 					variant="primary"
@@ -644,6 +656,7 @@ function CredentialsStep({
 					}}
 				>
 					{busy ? "Saving..." : "Save and continue"}
+					<ArrowRight className={cn("h-4 w-4")} aria-hidden="true" />
 				</ReticleButton>
 			</div>
 		</StepShell>
@@ -673,9 +686,9 @@ function KeyField({
 	};
 }) {
 	return (
-		<div className="flex flex-col gap-2">
-			<label className="flex flex-col gap-1.5">
-				<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+		<div className={cn("flex flex-col gap-2")}>
+			<label className={cn("flex flex-col gap-1.5")}>
+				<span className={cn("text-sm text-[var(--ret-text-muted)] leading-6")}>
 					{label}
 				</span>
 				<input
@@ -687,15 +700,15 @@ function KeyField({
 					placeholder={placeholder}
 					value={value}
 					onChange={(e) => onChange(e.target.value)}
-					className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-[12px] text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)] focus:border-[var(--ret-purple)] focus:outline-none"
+					className={FIELD_INPUT}
 				/>
-			<span className="text-[10px] text-[var(--ret-text-muted)]">
+			<span className={cn("text-sm text-[var(--ret-text-muted)] leading-6")}>
 				{hint}
 			</span>
 		</label>
 		{secondary ? (
-				<label className="flex flex-col gap-1.5">
-					<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				<label className={cn("flex flex-col gap-1.5")}>
+					<span className={cn("text-sm text-[var(--ret-text-muted)] leading-6")}>
 						{secondary.label}
 					</span>
 					<input
@@ -704,7 +717,7 @@ function KeyField({
 						placeholder={secondary.placeholder}
 						value={secondary.value}
 						onChange={(e) => secondary.onChange(e.target.value)}
-						className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-[12px] text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)] focus:border-[var(--ret-purple)] focus:outline-none"
+						className={FIELD_INPUT}
 					/>
 				</label>
 			) : null}
@@ -723,10 +736,10 @@ function AgentStep({
 }) {
 	return (
 		<StepShell
-			title="Pick your agent"
-			description="The personality and toolset baked into the gateway. You can switch later from the navbar; switching after provisioning rewrites SOUL.md and restarts the gateway."
+			title="Choose your agent"
+			description="Choose the runtime your Worker will use. You can change it later from the Worker's controls."
 		>
-			<div className="grid gap-4 md:grid-cols-2">
+			<div className={cn("grid gap-4 md:grid-cols-2")}>
 				{AGENT_KINDS.map((kind) => {
 					const meta = AGENTS_DESC[kind];
 					const selected = value === kind;
@@ -735,30 +748,31 @@ function AgentStep({
 							key={kind}
 							type="button"
 							disabled={busy}
+							aria-pressed={selected}
 							onClick={() => void onSelect(kind)}
 							className={cn(
-								"group relative flex flex-col gap-3 border bg-[var(--ret-bg)] p-4 text-left transition-colors",
+								CHOICE_CARD,
 								selected
 									? "border-[var(--ret-purple)] bg-[var(--ret-purple-glow)]"
 									: "border-[var(--ret-border)] hover:border-[var(--ret-border-hover)] hover:bg-[var(--ret-surface)]",
 							)}
 						>
-							<div className="flex items-center justify-between gap-3">
-								<div className="flex items-center gap-2">
-									<Logo mark={meta.logo} size={18} />
-									<h3 className="font-mono text-[13px] text-[var(--ret-text)]">
+							<div className={cn("flex flex-wrap items-center justify-between gap-3")}>
+								<div className={cn("flex min-w-0 items-center gap-2")}>
+									<Logo mark={meta.logo} size={28} tone="auto" />
+									<h3 className={cn("text-lg text-[var(--ret-text)] font-semibold")}>
 										{meta.name}
 									</h3>
 								</div>
 								{selected ? (
-									<ReticleBadge variant="accent">selected</ReticleBadge>
+									<span className={cn(CHOICE_TAG, "bg-[var(--ret-purple-glow)] text-[var(--ret-purple)]")}><Check className={cn("h-3.5 w-3.5")} aria-hidden="true" />Selected</span>
 								) : null}
 							</div>
-							<p className="text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
+							<p className={cn("text-base leading-relaxed text-[var(--ret-text-dim)]")}>
 								{meta.tagline}
 							</p>
-							<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-								agent: {kind}
+							<span className={cn("text-sm text-[var(--ret-text-muted)] leading-6")}>
+								Runtime: {kind}
 							</span>
 						</button>
 					);
@@ -781,10 +795,10 @@ function ProviderStep({
 }) {
 	return (
 		<StepShell
-			title="Pick the provider"
-			description="Choose the replaceable compute beneath this Worker. E2B, Sprites, Vercel Sandbox, and Daytona each declare their real lifecycle and persistence capabilities; current health is surfaced instead of assuming a universal default."
+			title="Choose where it runs"
+			description="Each provider has different pause, persistence, and preview capabilities. A saved key means one is on file—not that the provider has validated it."
 		>
-			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+			<div className={cn("grid gap-4 md:grid-cols-2")}>
 				{PROVIDER_KINDS.map((kind) => {
 					const meta = PROVIDERS_DESC[kind];
 					const selected = value === kind;
@@ -794,37 +808,38 @@ function ProviderStep({
 							key={kind}
 							type="button"
 							disabled={busy || !meta.ready}
+							aria-pressed={selected}
 							onClick={() => {
 								if (meta.ready) void onSelect(kind);
 							}}
 							className={cn(
-								"flex flex-col gap-3 border bg-[var(--ret-bg)] p-4 text-left transition-colors",
+								CHOICE_CARD,
 								selected
 									? "border-[var(--ret-purple)] bg-[var(--ret-purple-glow)]"
 									: "border-[var(--ret-border)] hover:border-[var(--ret-border-hover)]",
 								!meta.ready && "cursor-not-allowed opacity-60 hover:border-[var(--ret-border)]",
 							)}
 						>
-							<div className="flex items-center justify-between gap-3">
-								<div className="flex items-center gap-2">
-									<Logo mark={providerLogoMark(kind)} size={18} tone="auto" />
-									<h3 className="font-mono text-[13px] text-[var(--ret-text)]">
+							<div className={cn("flex flex-wrap items-center justify-between gap-3")}>
+								<div className={cn("flex min-w-0 items-center gap-2")}>
+									<Logo mark={providerLogoMark(kind)} size={28} tone="auto" />
+									<h3 className={cn("text-lg text-[var(--ret-text)] font-semibold")}>
 										{meta.name}
 									</h3>
 								</div>
 								{!meta.ready ? (
-									<ReticleBadge variant="warning">pr4</ReticleBadge>
+									<span className={cn(CHOICE_TAG, "text-[var(--ret-amber)]")}>Unavailable</span>
 								) : selected ? (
-									<ReticleBadge variant="accent">selected</ReticleBadge>
+									<span className={cn(CHOICE_TAG, "bg-[var(--ret-purple-glow)] text-[var(--ret-purple)]")}><Check className={cn("h-3.5 w-3.5")} aria-hidden="true" />Selected</span>
 								) : (
-									<ReticleBadge variant="success">ready</ReticleBadge>
+									<span className={cn(CHOICE_TAG, "text-[var(--ret-text-muted)]")}>Available</span>
 								)}
 							</div>
-							<p className="text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
+							<p className={cn("text-base leading-relaxed text-[var(--ret-text-dim)]")}>
 								{meta.tagline}
 							</p>
-							<div className="flex items-center justify-between gap-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-								<span>provider: {kind}</span>
+							<div className={cn("flex items-center justify-between gap-2 text-sm text-[var(--ret-text-muted)] leading-6")}>
+								<span>Provider: {kind}</span>
 								<span
 									className={cn(
 										"px-1.5 py-px",
@@ -833,7 +848,7 @@ function ProviderStep({
 											: "border border-[var(--ret-amber)]/40 text-[var(--ret-amber)]",
 									)}
 								>
-									{hasCreds ? "key on file" : "no key"}
+									{hasCreds ? "Key on file" : "No key"}
 								</span>
 							</div>
 						</button>
@@ -868,10 +883,10 @@ function SpecStep({
 
 	return (
 		<StepShell
-			title="Size the box"
-			description="Defaults: 1 vCPU, 2 GiB RAM, 10 GiB disk -- enough for Hermes + cursor-bridge at idle. Bump RAM if you plan to schedule heavy crons."
+			title="Choose resources and model"
+			description="These are requested resources. Provider limits and actual allocation can differ; check the Worker's allocation after launch."
 		>
-			<div className="grid gap-4 md:grid-cols-4">
+			<div className={cn("grid gap-5 sm:grid-cols-2 xl:grid-cols-4")}>
 				<NumField
 					label="vCPU"
 					value={vcpu}
@@ -881,7 +896,7 @@ function SpecStep({
 					hint={`default ${defaults.vcpu ?? DEFAULT_MACHINE_SPEC.vcpu}`}
 				/>
 				<NumField
-					label="memory (MiB)"
+					label="Memory (MiB)"
 					value={memory}
 					onChange={setMemory}
 					min={512}
@@ -890,7 +905,7 @@ function SpecStep({
 					hint={`default ${defaults.memoryMib ?? DEFAULT_MACHINE_SPEC.memoryMib}`}
 				/>
 				<NumField
-					label="storage (GiB)"
+					label="Storage (GiB)"
 					value={storage}
 					onChange={setStorage}
 					min={5}
@@ -898,13 +913,13 @@ function SpecStep({
 					hint={`default ${defaults.storageGib ?? DEFAULT_MACHINE_SPEC.storageGib}`}
 				/>
 				<TextField
-					label="model id"
+					label="Model ID"
 					value={chosenModel}
 					onChange={setChosenModel}
 					hint={`default ${defaultModel}`}
 				/>
 			</div>
-			<div className="flex justify-end">
+			<div className={cn("flex justify-end")}>
 				<ReticleButton
 					variant="primary"
 					size="sm"
@@ -917,6 +932,7 @@ function SpecStep({
 					}
 				>
 					{busy ? "Saving..." : "Save and review"}
+					<ArrowRight className={cn("h-4 w-4")} aria-hidden="true" />
 				</ReticleButton>
 			</div>
 		</StepShell>
@@ -941,8 +957,8 @@ function NumField({
 	hint: string;
 }) {
 	return (
-		<label className="flex flex-col gap-1.5">
-			<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+		<label className={cn("flex flex-col gap-1.5")}>
+			<span className={cn("text-sm text-[var(--ret-text-muted)] leading-6")}>
 				{label}
 			</span>
 			<input
@@ -952,9 +968,9 @@ function NumField({
 				step={step ?? 1}
 				value={value}
 				onChange={(e) => onChange(Number(e.target.value))}
-				className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-[12px] text-[var(--ret-text)] focus:border-[var(--ret-purple)] focus:outline-none"
+				className={FIELD_INPUT}
 			/>
-		<span className="text-[10px] text-[var(--ret-text-muted)]">
+		<span className={cn("text-sm text-[var(--ret-text-muted)] leading-6")}>
 			{hint}
 		</span>
 	</label>
@@ -973,17 +989,17 @@ function TextField({
 	hint: string;
 }) {
 	return (
-		<label className="flex flex-col gap-1.5">
-			<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+		<label className={cn("flex flex-col gap-1.5")}>
+			<span className={cn("text-sm text-[var(--ret-text-muted)] leading-6")}>
 				{label}
 			</span>
 			<input
 				type="text"
 				value={value}
 				onChange={(e) => onChange(e.target.value)}
-				className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-[12px] text-[var(--ret-text)] focus:border-[var(--ret-purple)] focus:outline-none"
+				className={FIELD_INPUT}
 			/>
-		<span className="text-[10px] text-[var(--ret-text-muted)]">
+		<span className={cn("text-sm text-[var(--ret-text-muted)] leading-6")}>
 			{hint}
 		</span>
 	</label>
@@ -1006,35 +1022,36 @@ function ReviewStep({
 	const providerHasKey = config.providers[providerKind].configured;
 	return (
 		<StepShell
-			title="Confirm and provision"
-			description="Provisioning hits the chosen provider, saves the new machine ID, then runs browser-driven bootstrap so the selected agent gateway is written back to the machine record."
+			title="Review your Worker"
+			description="Launching creates a sandbox on your provider account, saves the machine, and prepares the selected runtime. Provider charges may apply."
 		>
-			<dl className="grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-2">
-				<Row label="agent" value={config.draftAgentKind} />
-				<Row label="provider" value={providerKind} />
+			<dl className={cn("grid gap-x-6 gap-y-1 sm:grid-cols-2")}>
+				<Row label="Agent" value={config.draftAgentKind} />
+				<Row label="Provider" value={providerKind} />
 				<Row
-					label="spec"
-					value={`${config.draftSpec.vcpu} vCPU . ${memGib} GiB RAM . ${config.draftSpec.storageGib} GiB disk`}
+					label="Requested resources"
+					value={`${config.draftSpec.vcpu} vCPU · ${memGib} GiB RAM · ${config.draftSpec.storageGib} GiB disk`}
 				/>
-				<Row label="model" value={config.draftModel} />
+				<Row label="Model" value={config.draftModel} />
 				<Row
 					label={`${providerKind} key`}
 					value={providerHasKey ? "on file" : "missing"}
 					tone={providerHasKey ? "ok" : "warn"}
 				/>
 				<Row
-					label="cursor key"
+					label="Cursor key"
 					value={config.hasCursorKey ? "on file" : "not provided"}
 					tone="muted"
 				/>
 				<Row
-					label="existing machines"
+					label="Existing machines"
 					value={String(config.machines.length)}
 					tone="muted"
 				/>
 			</dl>
-			<div className="flex flex-wrap items-center justify-end gap-2">
+			<div className={cn("flex flex-wrap items-center justify-end gap-2")}>
 				<ReticleButton variant="ghost" size="sm" onClick={onBack} disabled={busy}>
+					<ArrowLeft className={cn("h-4 w-4")} aria-hidden="true" />
 					Back
 				</ReticleButton>
 				<ReticleButton
@@ -1043,6 +1060,7 @@ function ReviewStep({
 					onClick={() => void onProvision()}
 					disabled={busy || !providerHasKey}
 				>
+					<Rocket className={cn("h-4 w-4")} aria-hidden="true" />
 					{busy
 						? "Provisioning + bootstrapping..."
 						: providerHasKey
@@ -1072,55 +1090,76 @@ function Row({
 					? "text-[var(--ret-text-muted)]"
 					: "text-[var(--ret-text)]";
 	return (
-		<div className="flex items-center justify-between gap-3 bg-[var(--ret-bg)] px-3 py-2 font-mono text-[12px]">
-			<dt className="text-[var(--ret-text-muted)]">{label}</dt>
-			<dd className={cn("truncate text-right", valueClass)}>{value}</dd>
+		<div className={cn("flex min-w-0 flex-col gap-1 border-b border-[var(--ret-border)]/35 py-4 text-base leading-7")}>
+			<dt className={cn("text-sm text-[var(--ret-text-muted)]")}>{label}</dt>
+			<dd className={cn("min-w-0 break-words font-medium", valueClass)}>{value}</dd>
 		</div>
 	);
 }
 
 function ProvisionedStep({
 	config,
+	onConfigure,
 	onChat,
 	onMachines,
 }: {
 	config: PublicUserConfig;
+	onConfigure: () => void;
 	onChat: () => void;
 	onMachines: () => void;
 }) {
-	const active = config.machines.find((m) => m.id === config.activeMachineId);
+	const active = config.machines.find((m) => m.id === config.activeMachineId && !m.archived);
+	if (!active) {
+		return (
+			<StepShell
+				title="No active Worker"
+				description="Your saved setup is still here, but no active machine is linked to it. Configure a Worker or choose an existing one from your fleet."
+			>
+				<dl className={cn("grid gap-x-6 gap-y-1 sm:grid-cols-2")}>
+					<Row label="Saved agent" value={AGENTS_DESC[config.draftAgentKind].name} />
+					<Row label="Saved provider" value={PROVIDERS_DESC[config.draftProviderKind].name} />
+				</dl>
+				<div className={cn("flex flex-wrap justify-end gap-2")}>
+					<ReticleButton variant="secondary" size="sm" onClick={onMachines}>
+						<Server className={cn("h-4 w-4")} aria-hidden="true" />
+						Open machines
+					</ReticleButton>
+					<ReticleButton variant="primary" size="sm" onClick={onConfigure}>
+						Configure Worker
+						<ArrowRight className={cn("h-4 w-4")} aria-hidden="true" />
+					</ReticleButton>
+				</div>
+			</StepShell>
+		);
+	}
 	return (
 		<StepShell
-			title="Machine bootstrapped"
-			description="Saved to your Clerk metadata with a bootstrapped agent gateway URL/key. You can open chat now or manage the machine from fleet controls."
+			title="Your Worker is ready"
+			description="The launch operation completed. Open chat to start working, or inspect the machine in your fleet."
 		>
-			<div className="space-y-3">
-				<dl className="grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-2">
+			<div className={cn("space-y-3")}>
+				<dl className={cn("grid gap-x-6 gap-y-1 sm:grid-cols-2")}>
 					<Row
-						label="active machine id"
-						value={
-							active?.id
-								? active.id
-								: config.activeMachineId
-									? config.activeMachineId
-									: "--"
-						}
+						label="Active machine ID"
+						value={active.id}
 						tone="ok"
 					/>
-					<Row label="agent" value={active?.agentKind ?? config.draftAgentKind} />
-					<Row label="provider" value={active?.providerKind ?? config.draftProviderKind} />
-					<Row label="total machines" value={String(config.machines.length)} />
+					<Row label="Agent" value={AGENTS_DESC[active.agentKind].name} />
+					<Row label="Provider" value={PROVIDERS_DESC[active.providerKind].name} />
+					<Row label="Total machines" value={String(config.machines.length)} />
 				</dl>
-			<p className="border border-dashed border-[var(--ret-border)] bg-[var(--ret-surface)] p-3 text-[11px] text-[var(--ret-text-dim)]">
-				Gateway status is saved on the machine record. If the tunnel expires,
-				open chat and click Bootstrap agent to refresh the gateway URL/key.
+			<p className={cn("border border-dashed border-[var(--ret-border)] bg-[var(--ret-surface)] p-3 text-sm text-[var(--ret-text-dim)] leading-6")}>
+				Runtime status and recovery controls are available on the machine.
+				If the agent needs attention, inspect its status before starting work.
 			</p>
-				<div className="flex flex-wrap justify-end gap-2">
+				<div className={cn("flex flex-wrap justify-end gap-2")}>
 					<ReticleButton variant="secondary" size="sm" onClick={onMachines}>
+						<Server className={cn("h-4 w-4")} aria-hidden="true" />
 						Open machines
 					</ReticleButton>
 					<ReticleButton variant="primary" size="sm" onClick={onChat}>
 						Open chat
+						<ArrowRight className={cn("h-4 w-4")} aria-hidden="true" />
 					</ReticleButton>
 				</div>
 			</div>

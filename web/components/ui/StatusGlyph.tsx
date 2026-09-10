@@ -1,4 +1,4 @@
-import { Check, Circle, TriangleAlert, X } from "lucide-react";
+import { Check, Circle, TriangleAlert, X } from "@/components/ui/icons";
 
 import { cn } from "@/lib/cn";
 

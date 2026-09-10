@@ -16,7 +16,7 @@ export function DashboardPageBody({
 	className?: string;
 }) {
 	return (
-		<div className={cn("space-y-4 px-4 py-4 sm:px-5", className)}>
+		<div className={cn("min-w-0 space-y-5 px-4 py-5 sm:px-5 sm:py-6", className)}>
 			{children}
 		</div>
 	);

@@ -15,7 +15,7 @@ import {
 	Route,
 	ScrollText,
 	SquareTerminal,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 

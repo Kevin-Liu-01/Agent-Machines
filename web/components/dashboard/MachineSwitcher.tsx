@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Logo } from "@/components/Logo";
+import { ChevronDown } from "@/components/ui/icons";
 import {
 	MachineActions,
 	type MachineState as MachineActionState,
@@ -233,20 +234,13 @@ export function MachineSwitcher({
 						state={displayed.live.ok ? displayed.live.state : "unknown"}
 					/>
 				) : null}
-				<svg
-					viewBox="0 0 12 12"
+				<ChevronDown
 					className={cn(
-						"h-2.5 w-2.5 shrink-0 transition-transform",
+						"h-3.5 w-3.5 shrink-0",
 						open ? "rotate-180" : "rotate-0",
 					)}
-					fill="none"
-					stroke="currentColor"
-					strokeWidth="1.5"
-					strokeLinecap="round"
-					strokeLinejoin="round"
-				>
-					<path d="M2.5 4.5 L6 8 L9.5 4.5" />
-				</svg>
+					aria-hidden="true"
+				/>
 			</button>
 
 			{open ? (

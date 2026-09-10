@@ -15,14 +15,14 @@ import {
 	Terminal,
 	Volume2,
 	type LucideIcon,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 import { cn } from "@/lib/cn";
 import type { ToolCategory } from "@/lib/dashboard/loadout";
 
 /**
  * Functional category icon used when a tool has no third-party brand.
- * Generic actions come from the same Lucide family used across the rest
+ * Generic actions come from the same filled icon family used across the rest
  * of the interface; branded tools continue to use ServiceIcon.
  */
 

@@ -8,6 +8,7 @@ import { listMcpServers } from "@/lib/dashboard/mcps";
 import { listSkills } from "@/lib/dashboard/skills";
 import { getUserConfigForRequest } from "@/lib/user-config/clerk";
 import { activeMachine } from "@/lib/user-config/schema";
+import { cn } from "@/lib/cn";
 
 export const dynamic = "force-dynamic";
 
@@ -42,11 +43,11 @@ export default async function OverviewPage() {
 	const tools = mcps.reduce((acc, server) => acc + server.tools.length, 0);
 
 	return (
-		<div className="flex flex-col">
+		<div className={cn("flex flex-col")}>
 			<PageHeader
-				kicker="WORKER SYSTEM"
-				title="Your durable digital workforce"
-				description="Take a useful Worker off the shelf or assemble one from modular primitives. Keep its identity, responsibility, memory, files, schedules, and evidence while the runtime, model, and sandbox change underneath it."
+				kicker="Worker system"
+				title="Your Worker workspace"
+				description="Launch a Worker, open its tools, and inspect the work it leaves behind."
 			/>
 			<DashboardPageBody>
 				<WorkerSystemMap />

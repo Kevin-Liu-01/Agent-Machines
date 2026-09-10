@@ -9,7 +9,7 @@ import {
 	HardDrive,
 	KeyRound,
 	X,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { type ReactNode, useEffect, useState } from "react";
 
 import { AgentSwitcher } from "@/components/dashboard/AgentSwitcher";

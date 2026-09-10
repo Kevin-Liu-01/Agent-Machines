@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight } from "@/components/ui/icons";
 
 import { useOptionalMachineContext } from "@/components/dashboard/MachineProvider";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";

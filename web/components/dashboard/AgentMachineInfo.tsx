@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink } from "@/components/ui/icons";
 
 import { Logo } from "@/components/Logo";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
@@ -67,19 +67,19 @@ export function AgentInfoPanel({
 }) {
 	const meta = getAgentMeta(agentKind);
 	return (
-		<div className="grid min-w-0 content-start gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3">
-			<div className="flex min-w-0 flex-wrap items-center gap-2">
-				<Logo mark={meta.logoMark} size={14} className="shrink-0" />
-				<span className="min-w-0 text-[13px] text-[var(--ret-text)]">{meta.name}</span>
-				<span className="font-mono text-[10px] text-[var(--ret-text-muted)]">
+		<div className={cn("grid min-w-0 content-start gap-3 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-4")}>
+			<div className={cn("flex min-w-0 flex-wrap items-center gap-2")}>
+				<Logo mark={meta.logoMark} size={24} className={cn("shrink-0")} />
+				<span className={cn("min-w-0 text-[18px] font-medium text-[var(--ret-text)]")}>{meta.name}</span>
+				<span className={cn("text-[14px] text-[var(--ret-text-muted)]")}>
 					by {meta.by}
 				</span>
-				<ReticleBadge>{meta.operationModel}</ReticleBadge>
+				<ReticleBadge className={cn("text-[13px]")}>{meta.operationModel}</ReticleBadge>
 			</div>
-			<p className="text-[11px] leading-relaxed text-[var(--ret-text-dim)]">
+			<p className={cn("text-[14px] leading-relaxed text-[var(--ret-text-dim)]")}>
 				{meta.capabilities}
 			</p>
-			<dl className="grid gap-1">
+			<dl className={cn("grid gap-1")}>
 				<InfoRow label="runtime" value={meta.runCmd} mono />
 				{meta.headlessCmd ? (
 					<InfoRow label="headless" value={meta.headlessCmd} mono />
@@ -87,8 +87,8 @@ export function AgentInfoPanel({
 				<InfoRow label="upstream" value={upstreamSummary(agentKind)} />
 			</dl>
 			{readiness ? (
-				<p className={cn("flex items-start gap-1.5 font-mono text-[10px] leading-relaxed", READINESS_TONE[readiness.status])}>
-					<StatusGlyph status={READINESS_GLYPH[readiness.status]} size={11} className="mt-0.5" />
+				<p className={cn("flex items-start gap-1.5 text-[14px] leading-relaxed", READINESS_TONE[readiness.status])}>
+					<StatusGlyph status={READINESS_GLYPH[readiness.status]} size={18} className={cn("mt-0.5 shrink-0")} />
 					{readiness.detail}
 				</p>
 			) : null}
@@ -96,9 +96,9 @@ export function AgentInfoPanel({
 				href={meta.docsUrl}
 				target="_blank"
 				rel="noreferrer"
-				className="w-fit font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)] hover:text-[var(--ret-purple)]"
+				className={cn("flex w-fit items-center gap-1.5 text-sm text-[var(--ret-text-muted)] outline-none hover:text-[var(--ret-purple)] focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}
 			>
-				docs <ExternalLink className="inline h-2.5 w-2.5" strokeWidth={1.75} aria-hidden />
+				Documentation <ExternalLink size={16} aria-hidden="true" />
 			</a>
 		</div>
 	);
@@ -116,36 +116,36 @@ export function MachineInfoPanel({
 	configured?: boolean;
 }) {
 	return (
-		<div className="grid min-w-0 content-start gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3">
-			<div className="flex min-w-0 flex-wrap items-center gap-2">
-				<Logo mark={PROVIDER_MARK[provider]} size={14} className="shrink-0" />
-				<span className="text-[13px] text-[var(--ret-text)]">
+		<div className={cn("grid min-w-0 content-start gap-3 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-4")}>
+			<div className={cn("flex min-w-0 flex-wrap items-center gap-2")}>
+				<Logo mark={PROVIDER_MARK[provider]} size={24} className={cn("shrink-0")} />
+				<span className={cn("text-[18px] font-medium text-[var(--ret-text)]")}>
 					{PROVIDER_LABEL[provider]}
 				</span>
-				<ReticleBadge>substrate</ReticleBadge>
+				<ReticleBadge className={cn("text-[13px]")}>Workspace</ReticleBadge>
 				{configured === false ? (
-					<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-red)]">
-						key missing
+					<span className={cn("text-[14px] text-[var(--ret-red)]")}>
+						Key missing
 					</span>
 				) : configured === true ? (
-					<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-green)]">
-						key ready
+					<span className={cn("text-[14px] text-[var(--ret-green)]")}>
+						Key ready
 					</span>
 				) : null}
 			</div>
 			{spec ? (
-				<dl className="grid grid-cols-3 gap-1" aria-label="Requested sizing">
+				<dl className={cn("grid grid-cols-3 gap-1")} aria-label="Requested sizing">
 					<SpecCell label="requested vCPU" value={`${normalizeMachineSpec(spec).vcpu ?? "—"}`} />
 					<SpecCell label="requested memory" value={specMemoryGib(spec)} />
 					<SpecCell label="requested storage" value={`${normalizeMachineSpec(spec).storageGib ?? "—"} GiB`} />
 				</dl>
 			) : null}
-			<p className="text-[11px] leading-relaxed text-[var(--ret-text-dim)]">
+			<p className={cn("text-[14px] leading-relaxed text-[var(--ret-text-dim)]")}>
 				Creates a cloud workspace and prepares the selected runtime. Requested
 				sizing is intent; the provider-reported allocation appears after launch.
 			</p>
 			{provider === "e2b" ? (
-				<p className="text-[11px] leading-relaxed text-[var(--ret-amber)]">
+				<p className={cn("text-[14px] leading-relaxed text-[var(--ret-amber)]")}>
 					E2B allocation is defined by its template. Sizing requests do not resize
 					the sandbox; a larger allocation requires a suitable E2B template.
 				</p>
@@ -158,15 +158,15 @@ export function MachineInfoPanel({
  *  every provisioning entry point so the "add a key" affordance is identical. */
 export function GateBanner({ message }: { message: string }) {
 	return (
-		<div className="flex flex-wrap items-center justify-between gap-2 border border-[var(--ret-red)]/40 bg-[var(--ret-red)]/5 px-3 py-2">
-			<p className="min-w-0 text-[11px] leading-relaxed text-[var(--ret-red)]">
+		<div className={cn("flex flex-wrap items-center justify-between gap-2 border border-[var(--ret-red)]/40 bg-[var(--ret-red)]/5 px-3 py-2")}>
+			<p className={cn("min-w-0 text-[14px] leading-relaxed text-[var(--ret-red)]")}>
 				! {message}
 			</p>
 			<Link
 				href="/dashboard/settings"
-				className="shrink-0 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-red)] underline underline-offset-2 hover:text-[var(--ret-text)]"
+				className={cn("shrink-0 text-sm text-[var(--ret-red)] underline underline-offset-2 outline-none hover:text-[var(--ret-text)] focus-visible:ring-2 focus-visible:ring-[var(--ret-red)]")}
 			>
-				add a key in settings →
+				Add a key in Settings <ExternalLink size={16} aria-hidden="true" className={cn("inline")} />
 			</Link>
 		</div>
 	);
@@ -182,14 +182,14 @@ function InfoRow({
 	mono?: boolean;
 }) {
 	return (
-		<div className="grid min-w-0 grid-cols-[4.5rem_minmax(0,1fr)] items-baseline gap-2">
-			<dt className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+		<div className={cn("grid min-w-0 grid-cols-[5rem_minmax(0,1fr)] items-baseline gap-3")}>
+			<dt className={cn("text-sm text-[var(--ret-text-muted)] first-letter:uppercase")}>
 				{label}
 			</dt>
 			<dd
 				className={cn(
-					"min-w-0 break-words text-[11px] text-[var(--ret-text-dim)]",
-					mono && "font-mono text-[10px] text-[var(--ret-text)]",
+					"min-w-0 break-words text-[14px] text-[var(--ret-text-dim)]",
+					mono && "font-mono text-[var(--ret-text)]",
 				)}
 				title={value}
 			>
@@ -201,11 +201,11 @@ function InfoRow({
 
 function SpecCell({ label, value }: { label: string; value: string }) {
 	return (
-		<div className="flex flex-col gap-0.5">
-			<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+		<div className={cn("flex flex-col gap-0.5")}>
+			<span className={cn("text-[13px] text-[var(--ret-text-muted)] first-letter:uppercase")}>
 				{label}
 			</span>
-			<span className="font-mono text-[11px] text-[var(--ret-text)]">{value}</span>
+			<span className={cn("text-[14px] text-[var(--ret-text)]")}>{value}</span>
 		</div>
 	);
 }

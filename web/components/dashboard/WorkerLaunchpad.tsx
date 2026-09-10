@@ -1,12 +1,11 @@
 "use client";
 
-import { ArrowRight, Check, CloudCog, LoaderCircle } from "lucide-react";
+import { ArrowRight, Check, CloudCog, LoaderCircle } from "@/components/ui/icons";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { Logo } from "@/components/Logo";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
-import { ReticleLabel } from "@/components/reticle/ReticleLabel";
 import { validateAgentCredentials } from "@/lib/agents/credentials";
 import { cn } from "@/lib/cn";
 import { agentLogoMark, providerLogoMark } from "@/lib/fleet/logos";
@@ -97,27 +96,26 @@ export function WorkerLaunchpad() {
 	}
 
 	return (
-		<div id="launch-worker" className="scroll-mt-20">
-		<ReticleFrame className="overflow-hidden bg-[var(--ret-bg)]">
-			<div className="flex flex-col gap-3 border-b border-[var(--ret-border)] px-4 py-4 sm:flex-row sm:items-end sm:justify-between">
+		<div id="launch-worker" className={cn("scroll-mt-20")}>
+		<ReticleFrame className={cn("overflow-hidden bg-[var(--ret-bg)]")}>
+			<div className={cn("flex flex-col gap-3 border-b border-[var(--ret-border)] p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5")}>
 				<div>
-					<div className="flex items-center gap-2">
-						<CloudCog className="h-3.5 w-3.5 text-[var(--ret-purple)]" strokeWidth={1.75} />
-						<ReticleLabel>new worker</ReticleLabel>
-					</div>
-					<h2 className="ret-display mt-2 text-xl">Assemble the machinery.</h2>
-					<p className="mt-1 max-w-[62ch] text-[12px] text-[var(--ret-text-dim)]">
-						Choose the replaceable runtime and sandbox. The sandbox click creates the durable Worker, provisions its home, and opens the live console.
+					<h2 className={cn("flex items-center gap-2 text-xl font-medium tracking-tight text-[var(--ret-text)]")}>
+						<CloudCog aria-hidden="true" className={cn("h-5 w-5 shrink-0 text-[var(--ret-purple)]")} strokeWidth={1.75} />
+						Configure a Worker
+					</h2>
+					<p className={cn("mt-2 max-w-[62ch] text-[16px] leading-relaxed text-[var(--ret-text-dim)]")}>
+						Choose a runtime, then a sandbox. The sandbox click creates the Worker, provisions its home, and opens the live console.
 					</p>
 				</div>
-				<div className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
-					one intent · live-migration policy
+				<div className={cn("shrink-0 border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1 font-mono text-[14px] text-[var(--ret-text-muted)]")}>
+					Live migration policy
 				</div>
 			</div>
 
-			<div className="grid border-b border-[var(--ret-border)] lg:grid-cols-[112px_1fr]">
+			<div className={cn("grid border-b border-[var(--ret-border)] lg:grid-cols-[112px_1fr]")}>
 				<StepMarker number="01" label="Runtime" active={!runtime} complete={Boolean(runtime)} />
-				<div className="grid grid-cols-1 gap-px bg-[var(--ret-border)] sm:grid-cols-2 xl:grid-cols-4">
+				<div className={cn("grid grid-cols-1 gap-px bg-[var(--ret-border)] sm:grid-cols-2 xl:grid-cols-4")}>
 					{RUNTIMES.map((item) => {
 						const selected = runtime === item.id;
 						return (
@@ -132,29 +130,31 @@ export function WorkerLaunchpad() {
 									setError(null);
 								}}
 								className={cn(
-									"group min-h-28 bg-[var(--ret-bg)] p-4 text-left outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--ret-purple)]",
+									"group min-h-28 bg-[var(--ret-bg)] p-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ret-purple)] disabled:cursor-wait disabled:opacity-60 enabled:active:bg-[var(--ret-purple-glow)]",
 									selected
 										? "bg-[var(--ret-purple-glow)]"
-										: "hover:bg-[var(--ret-surface)]",
+										: "enabled:hover:bg-[var(--ret-surface)]",
 								)}
 							>
-								<div className="flex items-center justify-between gap-3">
-									<div className="flex items-center gap-2.5">
-										<Logo mark={agentLogoMark(item.id)} size={18} />
-										<span className="text-[13px] text-[var(--ret-text)]">{AGENT_LABEL[item.id]}</span>
+								<div className={cn("flex items-center justify-between gap-3")}>
+									<div className={cn("flex items-center gap-2.5")}>
+										<Logo mark={agentLogoMark(item.id)} size={22} />
+										<span className={cn("text-[18px] font-medium text-[var(--ret-text)]")}>{AGENT_LABEL[item.id]}</span>
 									</div>
-									{selected ? <Check className="h-3.5 w-3.5" strokeWidth={2} /> : null}
+									<span aria-hidden="true" className={cn("flex h-5 w-5 shrink-0 items-center justify-center border", selected ? "border-[var(--ret-purple)] bg-[var(--ret-purple)] text-[var(--ret-bg)]" : "border-[var(--ret-border-hover)]")}>
+										{selected ? <Check className={cn("h-3 w-3")} strokeWidth={2} /> : null}
+									</span>
 								</div>
-								<p className="mt-3 text-[11px] leading-relaxed text-[var(--ret-text-muted)]">{item.detail}</p>
+								<p className={cn("mt-3 text-[16px] leading-relaxed text-[var(--ret-text-dim)]")}>{item.detail}</p>
 							</button>
 						);
 					})}
 				</div>
 			</div>
 
-			<div className="grid lg:grid-cols-[112px_1fr]">
+			<div className={cn("grid lg:grid-cols-[112px_1fr]")}>
 				<StepMarker number="02" label="Sandbox" active={Boolean(runtime)} complete={Boolean(sandbox)} />
-				<div className="grid grid-cols-1 gap-px bg-[var(--ret-border)] sm:grid-cols-2 xl:grid-cols-4">
+				<div className={cn("grid grid-cols-1 gap-px bg-[var(--ret-border)] sm:grid-cols-2 xl:grid-cols-4")}>
 					{SANDBOXES.map((item) => {
 						const selected = sandbox === item.id;
 						const configured = config?.providers[item.id]?.configured ?? false;
@@ -166,29 +166,29 @@ export function WorkerLaunchpad() {
 								disabled={!runtime || !config || busy}
 								onClick={() => void launch(item.id)}
 								className={cn(
-									"group min-h-28 bg-[var(--ret-bg)] p-4 text-left outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-[var(--ret-purple)] disabled:cursor-not-allowed disabled:opacity-45",
+									"group min-h-28 bg-[var(--ret-bg)] p-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ret-purple)] disabled:cursor-not-allowed disabled:opacity-60 enabled:active:bg-[var(--ret-purple-glow)]",
 									selected
 										? "bg-[var(--ret-purple-glow)]"
-										: "hover:bg-[var(--ret-surface)]",
+										: "enabled:hover:bg-[var(--ret-surface)]",
 								)}
 							>
-								<div className="flex items-center justify-between gap-3">
-									<div className="flex items-center gap-2.5">
-										<Logo mark={providerLogoMark(item.id)} size={18} />
-										<span className="text-[13px] text-[var(--ret-text)]">{PROVIDER_LABEL[item.id]}</span>
+								<div className={cn("flex items-center justify-between gap-3")}>
+									<div className={cn("flex items-center gap-2.5")}>
+										<Logo mark={providerLogoMark(item.id)} size={22} />
+										<span className={cn("text-[18px] font-medium text-[var(--ret-text)]")}>{PROVIDER_LABEL[item.id]}</span>
 									</div>
 									{busy && selected ? (
-										<LoaderCircle className="h-3.5 w-3.5 animate-spin" strokeWidth={1.75} />
+										<LoaderCircle aria-hidden="true" className={cn("h-5 w-5 shrink-0 text-[var(--ret-purple)]")} strokeWidth={1.75} />
 									) : (
-										<ArrowRight className="h-3.5 w-3.5 text-[var(--ret-text-muted)]" strokeWidth={1.75} />
+										<ArrowRight aria-hidden="true" className={cn("h-5 w-5 shrink-0 text-[var(--ret-text-muted)] motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.23,1,0.32,1)] pointer-fine:motion-safe:[@media(hover:hover)]:group-[:hover:not(:disabled):not(:focus-visible)]:translate-x-0.5 group-focus-visible:transition-none")} strokeWidth={1.75} />
 									)}
 								</div>
-								<p className="mt-3 text-[11px] leading-relaxed text-[var(--ret-text-muted)]">{item.detail}</p>
+								<p className={cn("mt-3 text-[16px] leading-relaxed text-[var(--ret-text-dim)]")}>{item.detail}</p>
 								<p className={cn(
-									"mt-2 font-mono text-[9px] uppercase tracking-[0.16em]",
+									"mt-3 font-mono text-[14px]",
 									configured ? "text-[var(--ret-green)]" : "text-[var(--ret-text-muted)]",
 								)}>
-									{configured ? "ready · click to launch" : "key required"}
+									{busy && selected ? "Launching…" : !config ? "Loading configuration…" : !runtime ? "Select a runtime first" : configured ? "Ready · click to launch" : "Key required"}
 								</p>
 							</button>
 						);
@@ -197,8 +197,8 @@ export function WorkerLaunchpad() {
 			</div>
 
 			{error ? (
-				<div className="border-t border-[var(--ret-red)]/35 bg-[var(--ret-red)]/5 px-4 py-3 text-[11px] text-[var(--ret-red)]">
-					{error} <a href="/dashboard/settings" className="underline underline-offset-2">Open settings</a>
+				<div role="alert" className={cn("border-t border-[var(--ret-red)]/35 bg-[var(--ret-red)]/5 px-4 py-3 text-[16px] leading-relaxed text-[var(--ret-red)] sm:px-5")}>
+					{error} <a href="/dashboard/settings" className={cn("underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-red)]")}>Open Settings</a>
 				</div>
 			) : null}
 		</ReticleFrame>
@@ -222,8 +222,8 @@ function StepMarker({
 			"flex items-center justify-between gap-3 border-b border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-4 py-3 lg:block lg:border-b-0 lg:border-r",
 			active ? "text-[var(--ret-text)]" : "text-[var(--ret-text-muted)]",
 		)}>
-			<span className="font-mono text-[10px] tracking-[0.2em]">{complete ? "OK" : number}</span>
-			<p className="font-mono text-[9px] uppercase tracking-[0.2em] lg:mt-2">{label}</p>
+			<span className={cn("font-mono text-[13px] tabular-nums", complete && "text-[var(--ret-green)]")}>{complete ? "OK" : number}</span>
+			<p className={cn("text-[16px] font-medium lg:mt-2")}>{label}</p>
 		</div>
 	);
 }

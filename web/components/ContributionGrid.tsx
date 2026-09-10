@@ -3,8 +3,7 @@
 import { useMemo, useState } from "react";
 
 import { Logo, type Mark } from "@/components/Logo";
-import { ReticleBadge } from "@/components/reticle/ReticleBadge";
-import { ReticleLabel } from "@/components/reticle/ReticleLabel";
+import { Activity, CalendarDays, History, MousePointerClick, Plus, X } from "@/components/ui/icons";
 import {
 	ServiceIcon,
 	SERVICE_LABEL,
@@ -12,8 +11,9 @@ import {
 	type ServiceSlug,
 } from "@/components/ServiceIcon";
 import { ToolIcon } from "@/components/ToolIcon";
-import { HEATMAP_CELL_PX, HeatmapGridCell, HeatmapGridSlot, heatmapGridStyle } from "@/components/heatmap/HeatmapGridCell";
+import { HeatmapGridCell, HeatmapGridSlot, heatmapGridStyle } from "@/components/heatmap/HeatmapGridCell";
 import { cn } from "@/lib/cn";
+import { LANDING_BODY, LANDING_EYEBROW, LANDING_INSET, LANDING_SECTION_SPACE, LANDING_SPLIT, LANDING_TITLE } from "@/lib/marketing/layout";
 import {
 	generateContributionGrid,
 	type ContributionDay,
@@ -39,18 +39,18 @@ const PARTNER_HUE: Record<PartnerKey, string> = {
 };
 
 const PARTNER_LABEL: Record<PartnerKey, string> = {
-	am: "agent-machines",
-	daytona: "daytona",
-	nous: "nous",
-	cursor: "cursor",
-	openclaw: "openclaw",
-	anthropic: "anthropic",
-	openai: "openai",
-	e2b: "e2b",
-	sprites: "sprites",
-	vercel: "vercel",
-	"claude-code": "claude code",
-	codex: "codex cli",
+	am: "Agent Machines",
+	daytona: "Daytona",
+	nous: "Nous",
+	cursor: "Cursor",
+	openclaw: "OpenClaw",
+	anthropic: "Anthropic",
+	openai: "OpenAI",
+	e2b: "E2B",
+	sprites: "Sprites",
+	vercel: "Vercel",
+	"claude-code": "Claude Code",
+	codex: "Codex",
 };
 
 const LOGO_PARTNERS = new Set<PartnerKey>([
@@ -89,7 +89,7 @@ const ALL_PARTNERS: ReadonlyArray<PartnerKey> = [
 
 const KIND_LABEL: Record<ContributionEvent["kind"], string> = {
 	skill: "skill",
-	mcp: "mcp",
+	mcp: "MCP",
 	cron: "cron",
 	cursor: "cursor",
 	wake: "wake",
@@ -114,9 +114,10 @@ function PartnerIcon({ partner, size }: { partner: PartnerKey; size: number }) {
 	const slug = SERVICE_PARTNER[partner];
 	if (slug) return <ServiceIcon slug={slug} size={size} />;
 	return (
-		<span
-			className="shrink-0"
-			style={{ width: size, height: size, background: PARTNER_HUE[partner] }}
+		<Activity
+			className={cn("shrink-0")}
+			size={size}
+			style={{ color: PARTNER_HUE[partner] }}
 			aria-hidden="true"
 		/>
 	);
@@ -140,14 +141,14 @@ function BrandChip({
 			onClick={onClick}
 			aria-pressed={active}
 			className={cn(
-				"ret-pressable group flex min-h-8 items-center gap-1 border px-1.5 py-0.5 text-[10px]",
+				"group flex min-h-10 items-center gap-2 rounded-sm border px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-purple)]",
 				active
-					? "border-[var(--ret-purple)]/55 bg-[var(--ret-purple-glow)] text-[var(--ret-purple)] shadow-[0_0_10px_var(--ret-purple-glow)]"
-					: "border-dashed border-[var(--ret-border)] bg-[var(--ret-bg-soft)] text-[var(--ret-text-dim)] hover:border-solid hover:border-[var(--ret-purple)]/45 hover:text-[var(--ret-text)]",
+					? "border-[var(--ret-purple)]/55 bg-[var(--ret-purple-glow)] text-[var(--ret-purple)]"
+					: "border-[var(--ret-border)]/50 bg-[var(--ret-bg-soft)] text-[var(--ret-text-dim)] hover:border-[var(--ret-purple)]/45 hover:text-[var(--ret-text)]",
 			)}
 		>
-			<ServiceIcon slug={slug} size={11} />
-			<span className={active ? "text-[var(--ret-purple)]" : "text-[var(--ret-text)]"}>
+			<ServiceIcon slug={slug} size={18} />
+			<span className={cn(active ? "text-[var(--ret-purple)]" : "text-[var(--ret-text)]")}>
 				{SERVICE_LABEL[slug]}
 			</span>
 			<span className={cn("tabular-nums", active ? "text-[var(--ret-purple)]" : "text-[var(--ret-text-muted)]")}>
@@ -158,10 +159,10 @@ function BrandChip({
 				className={cn(
 					active
 						? "text-[var(--ret-purple)]"
-						: "text-[var(--ret-text-muted)] opacity-0 transition-opacity group-hover:opacity-100",
+						: "text-[var(--ret-text-muted)]",
 				)}
 			>
-				{active ? "x" : "+"}
+				{active ? <X className={cn("h-3.5 w-3.5")} /> : <Plus className={cn("h-3.5 w-3.5")} />}
 			</span>
 		</button>
 	);
@@ -173,35 +174,34 @@ function EventRow({ event }: { event: ContributionEvent }) {
 			return (
 				<Logo
 					mark={event.brand as Mark}
-					size={12}
+					size={18}
 					tone={COLOR_LOGO_PARTNERS.has(event.brand as PartnerKey) ? "native" : undefined}
 				/>
 			);
 		}
 		if (event.brand && isServiceSlug(event.brand)) {
-			return <ServiceIcon slug={event.brand} size={12} />;
+			return <ServiceIcon slug={event.brand} size={18} />;
 		}
 		if (event.category) {
-			return <ToolIcon name={event.category} size={12} className="text-[var(--ret-text-muted)]" />;
+			return <ToolIcon name={event.category} size={18} className={cn("text-[var(--ret-text-muted)]")} />;
 		}
-		return <span className="h-2 w-2 border border-[var(--ret-border)]" aria-hidden="true" />;
+		return <Activity className={cn("h-[18px] w-[18px] text-[var(--ret-text-muted)]")} aria-hidden="true" />;
 	}
 	return (
-		<li className="border-l border-[var(--ret-border)] pl-2">
-			<p className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+		<li className={cn("space-y-1.5 border-l border-[var(--ret-border)]/50 pl-4")}>
+			<p className={cn("flex items-center gap-2 text-sm text-[var(--ret-text-muted)]")}>
 				{icon()}
 				{KIND_LABEL[event.kind]}
 			</p>
-			<p className="text-[12px] text-[var(--ret-text)]">{event.label}</p>
+			<p className={cn("break-words text-base leading-6 text-[var(--ret-text)]")}>{event.label}</p>
 			{event.detail ? (
-				<p className="font-mono text-[10px] text-[var(--ret-text-dim)]">{event.detail}</p>
+				<p className={cn("break-words text-sm leading-6 text-[var(--ret-text-dim)]")}>{event.detail}</p>
 			) : null}
 		</li>
 	);
 }
 
 const INTENSITY_OPACITY = [0.06, 0.32, 0.55, 0.78, 1] as const;
-const CELL_PX = HEATMAP_CELL_PX;
 
 function CellSwatch({
 	day,
@@ -226,7 +226,7 @@ function CellSwatch({
 			title={`${day.date}, ${day.events.length} events on ${day.partner}`}
 			onClick={() => onSelect(day)}
 			onMouseEnter={() => onSelect(day)}
-			className={cn(isEmpty && "bg-[var(--ret-surface)]/20")}
+			className={cn("focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-purple)] focus-visible:transition-none motion-reduce:transition-none", isEmpty && "bg-[var(--ret-surface)]/20")}
 		/>
 	);
 }
@@ -237,7 +237,7 @@ function MonthLabels({ weeks }: { weeks: ContributionDay[][] }) {
 		const first = week[0];
 		if (!first) return null;
 		const date = new Date(`${first.date}T00:00:00Z`);
-		const month = date.toLocaleString("en-US", { month: "short", timeZone: "UTC" }).toUpperCase();
+		const month = date.toLocaleString("en-US", { month: "short", timeZone: "UTC" });
 		const key = `${date.getUTCFullYear()}-${date.getUTCMonth()}`;
 		if (monthsSeen.has(key)) return null;
 		monthsSeen.add(key);
@@ -245,7 +245,7 @@ function MonthLabels({ weeks }: { weeks: ContributionDay[][] }) {
 	});
 	return (
 		<div
-			className="grid w-full gap-[3px]"
+			className={cn("grid w-full gap-[3px]")}
 			style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }}
 		>
 			{weeks.map((_, weekIdx) => {
@@ -253,7 +253,7 @@ function MonthLabels({ weeks }: { weeks: ContributionDay[][] }) {
 				return (
 					<div
 						key={weekIdx}
-						className="min-w-0 truncate text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]"
+						className={cn("min-w-0 text-xs leading-6 text-[var(--ret-text-muted)]")}
 					>
 						{tag?.label ?? ""}
 					</div>
@@ -280,13 +280,13 @@ function PartnerSwatch({
 			onClick={onClick}
 			aria-pressed={active}
 			className={cn(
-				"ret-pressable group flex min-h-8 items-center gap-2 border px-2 py-1 text-[10px] uppercase tracking-[0.18em]",
+				"group flex min-h-10 items-center gap-2 rounded-sm border px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-purple)]",
 				active
-					? "border-[var(--ret-purple)]/55 bg-[var(--ret-purple-glow)] text-[var(--ret-purple)] shadow-[0_0_12px_var(--ret-purple-glow)]"
-					: "border-dashed border-[var(--ret-border)] text-[var(--ret-text-dim)] hover:border-solid hover:border-[var(--ret-purple)]/50 hover:bg-[var(--ret-surface)] hover:text-[var(--ret-text)]",
+					? "border-[var(--ret-purple)]/55 bg-[var(--ret-purple-glow)] text-[var(--ret-purple)]"
+					: "border-[var(--ret-border)]/50 text-[var(--ret-text-dim)] hover:border-[var(--ret-purple)]/50 hover:bg-[var(--ret-surface)] hover:text-[var(--ret-text)]",
 			)}
 		>
-			<PartnerIcon partner={partner} size={12} />
+			<PartnerIcon partner={partner} size={20} />
 			<span>{PARTNER_LABEL[partner]}</span>
 			<span className={cn("tabular-nums", active ? "text-[var(--ret-purple)]" : "text-[var(--ret-text-muted)]")}>
 				{count}
@@ -294,10 +294,10 @@ function PartnerSwatch({
 			<span
 				aria-hidden="true"
 				className={cn(
-					active ? "text-[var(--ret-purple)]" : "text-[var(--ret-text-muted)] opacity-0 transition-opacity group-hover:opacity-100",
+					active ? "text-[var(--ret-purple)]" : "text-[var(--ret-text-muted)]",
 				)}
 			>
-				{active ? "x" : "+"}
+				{active ? <X className={cn("h-3.5 w-3.5")} /> : <Plus className={cn("h-3.5 w-3.5")} />}
 			</span>
 		</button>
 	);
@@ -368,40 +368,47 @@ export function ContributionGrid() {
 	}
 
 	return (
-		<div className="flex h-full flex-col bg-[var(--ret-bg)]">
-			{/* Header */}
-			<div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--ret-border)] px-3 py-2">
-				<div className="flex items-center gap-2">
-					<ReticleLabel>Sample activity · 6 months</ReticleLabel>
-					<ReticleBadge>{totalActive} active days</ReticleBadge>
+		<section aria-labelledby="contribution-title" className={cn(LANDING_INSET, LANDING_SECTION_SPACE, "space-y-8 bg-[var(--ret-bg)]")}>
+			<header className={cn(LANDING_SPLIT, "items-end")}>
+				<div>
+					<p className={cn(LANDING_EYEBROW)}><History className={cn("h-4 w-4")} aria-hidden="true" />Sample history</p>
+					<h2 id="contribution-title" className={cn(LANDING_TITLE)}>A history you can inspect.</h2>
+				</div>
+				<p className={cn(LANDING_BODY, "max-w-xl")}>
+					Explore six months of generated activity. This is sample data, not your Workers’ history, live uptime, or benchmark results.
+				</p>
+			</header>
+			<div className={cn("flex flex-wrap items-center justify-between gap-4")}>
+				<div className={cn("flex flex-wrap items-center gap-x-4 gap-y-2 text-sm")}>
+					<span className={cn("flex items-center gap-2 font-medium text-[var(--ret-text)]")}><CalendarDays className={cn("h-4 w-4")} aria-hidden="true" />Six-month sample</span>
+					<span className={cn("tabular-nums text-[var(--ret-text-muted)]")}>{totalActive} active days</span>
 				</div>
 				{hasFilter ? (
 					<button
 						type="button"
 						onClick={clearFilters}
-						className="group flex items-center gap-1.5 bg-[var(--ret-purple-glow)] px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-[var(--ret-purple)] transition-colors hover:bg-[var(--ret-purple)]/15"
+						className={cn("flex min-h-10 items-center gap-2 rounded-sm bg-[var(--ret-purple-glow)] px-3 py-2 text-sm text-[var(--ret-purple)] hover:bg-[var(--ret-purple)]/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-purple)]")}
 						title="Clear filter"
 					>
-						<span className="h-1.5 w-1.5 animate-pulse bg-[var(--ret-purple)]" />
-						filtered: {filterLabel}
-						<span aria-hidden="true">x</span>
+						Clear filter: {filterLabel}
+						<X className={cn("h-4 w-4")} aria-hidden="true" />
 					</button>
 				) : (
-					<p className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-						<span aria-hidden="true" className="text-[var(--ret-purple)]">→
-						</span>
-						tap a cell . click a chip to filter
+					<p className={cn("flex items-center gap-2 text-sm text-[var(--ret-text-muted)]")}>
+						<MousePointerClick className={cn("h-4 w-4 shrink-0")} aria-hidden="true" />
+						Choose a day, or filter the activity below.
 					</p>
 				)}
 			</div>
 
 			{/* Main body: grid left, day detail right */}
-			<div className="grid flex-1 gap-px bg-[var(--ret-border)] md:grid-cols-[1fr_minmax(0,200px)]">
-				<div className="flex flex-col bg-[var(--ret-bg)]">
+			<div className={cn("grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_300px]")}>
+				<div className={cn("min-w-0 space-y-7")}>
 					{/* Cell grid */}
-					<div className="border-b border-[var(--ret-border)] px-3 py-3">
+					<div role="region" aria-label="Sample activity calendar" tabIndex={0} className={cn("overflow-x-auto pb-3 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--ret-purple)]")}>
+						<div className={cn("min-w-[620px]")}>
 						<MonthLabels weeks={weeks} />
-						<div className="mt-1 grid w-full gap-[3px]" style={heatmapGridStyle(weeks.length)}>
+						<div className={cn("mt-2 grid w-full gap-[3px]")} style={heatmapGridStyle(weeks.length)}>
 							{weeks.flatMap((week, weekIdx) =>
 								Array.from({ length: 7 }, (_, dayIdx) => {
 									const day = week[dayIdx];
@@ -434,30 +441,27 @@ export function ContributionGrid() {
 								}),
 							)}
 						</div>
+						</div>
 					</div>
 
 					{/* Agent filter */}
-					<div className="border-b border-[var(--ret-border)] px-3 py-2.5">
-						<div className="flex items-baseline justify-between gap-2">
-							<p className="flex items-center gap-1 text-[9px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
-								<span aria-hidden="true" className="text-[var(--ret-purple)]">→
-								</span>
-								filter by agent . {ALL_PARTNERS.length}
-							</p>
-							<div className="flex items-center gap-1 text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-								<span>less</span>
+					<div className={cn("space-y-3 border-t border-[var(--ret-border)]/40 pt-5")}>
+						<div className={cn("flex flex-wrap items-center justify-between gap-3")}>
+							<h3 className={cn("text-base font-semibold text-[var(--ret-text)]")}>Agents and platforms</h3>
+							<div className={cn("flex items-center gap-1.5 text-xs text-[var(--ret-text-muted)]")}>
+								<span>Less</span>
 								{INTENSITY_OPACITY.map((o, idx) => (
 									<span
 										key={idx}
-										className="h-2 w-2"
+										className={cn("h-2.5 w-2.5")}
 										style={{ background: "var(--ret-text)", opacity: o }}
 										aria-hidden="true"
 									/>
 								))}
-								<span>more</span>
+								<span>More</span>
 							</div>
 						</div>
-						<div className="mt-2 flex flex-wrap gap-1.5">
+						<div className={cn("flex flex-wrap gap-2")}>
 							{ALL_PARTNERS.map((partner) => (
 								<PartnerSwatch
 									key={partner}
@@ -472,24 +476,20 @@ export function ContributionGrid() {
 
 					{/* Service filter */}
 					{brandStats.slugs.length > 0 ? (
-						<div className="px-3 py-2.5">
-							<div className="flex items-baseline justify-between gap-2">
-								<p className="flex items-center gap-1 text-[9px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
-									<span aria-hidden="true" className="text-[var(--ret-purple)]">→
-									</span>
-									filter by service . {brandStats.slugs.length}
-								</p>
+						<div className={cn("space-y-3")}>
+							<div className={cn("flex items-center justify-between gap-3")}>
+								<h3 className={cn("text-base font-semibold text-[var(--ret-text)]")}>Services and tools</h3>
 								{brandFilter ? (
 									<button
 										type="button"
 										onClick={() => setBrandFilter(null)}
-										className="text-[9px] uppercase tracking-[0.18em] text-[var(--ret-purple)] hover:underline"
+										className={cn("flex min-h-10 items-center gap-2 rounded-sm px-2 text-sm text-[var(--ret-purple)] hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-purple)]")}
 									>
-										clear filter x
+										Clear service filter <X className={cn("h-4 w-4")} aria-hidden="true" />
 									</button>
 								) : null}
 							</div>
-							<div className="mt-2 flex flex-wrap gap-1">
+							<div className={cn("flex flex-wrap gap-2")}>
 								{brandStats.slugs.map((slug) => (
 									<BrandChip
 										key={slug}
@@ -503,18 +503,11 @@ export function ContributionGrid() {
 							</div>
 						</div>
 					) : null}
-
-					{/* Hatch fill: fills remaining vertical space */}
-					<div
-						className="min-h-[12px] flex-1"
-						style={{ backgroundImage: "repeating-linear-gradient(135deg, var(--ret-rail) 0 1px, transparent 1px 5px)" }}
-						aria-hidden="true"
-					/>
 				</div>
 
 				<DayDetail day={selected} />
 			</div>
-		</div>
+		</section>
 	);
 }
 
@@ -528,36 +521,34 @@ function DayDetail({ day }: { day: ContributionDay }) {
 		timeZone: "UTC",
 	});
 	return (
-		<aside className="flex flex-col gap-3 bg-[var(--ret-bg)] px-3 py-3">
-			<div className="flex items-baseline justify-between gap-2">
-				<p className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+		<aside aria-label="Selected sample day" className={cn("flex min-w-0 flex-col gap-5 rounded-sm border border-[var(--ret-border)]/40 bg-[var(--ret-surface)]/40 p-5")}>
+			<div className={cn("flex items-center justify-between gap-3")}>
+				<p className={cn("text-sm leading-6 text-[var(--ret-text-dim)]")}>
 					{formatted}
 				</p>
-				<PartnerIcon partner={day.partner} size={14} />
+				<PartnerIcon partner={day.partner} size={24} />
 			</div>
-			<div className="flex items-baseline gap-2">
-				<p className="text-base tabular-nums text-[var(--ret-text)]">
+			<div className={cn("flex items-baseline gap-2")}>
+				<p className={cn("text-3xl font-semibold tabular-nums text-[var(--ret-text)]")}>
 					{day.events.length}
 				</p>
-				<p className="text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				<p className={cn("text-sm text-[var(--ret-text-muted)]")}>
 					{day.events.length === 1 ? "event" : "events"}
 				</p>
 			</div>
 			{day.events.length === 0 ? (
-				<p className="text-[11px] text-[var(--ret-text-dim)]">
+				<p className={cn("text-base leading-7 text-[var(--ret-text-dim)]")}>
 					No activity in this sample day.
 				</p>
 			) : (
-				<ul className="flex flex-col gap-2">
+				<ul className={cn("flex flex-col gap-5")}>
 					{day.events.map((event, idx) => (
 						<EventRow key={`${day.date}-${idx}`} event={event} />
 					))}
 				</ul>
 			)}
-			<p className="mt-auto pt-3 text-[10px] leading-relaxed text-[var(--ret-text-muted)]">
-				<span className="text-[var(--ret-purple)]">→</span> Illustrative activity,
-				not a live uptime or benchmark record. Hover to preview a sample day;
-				click to inspect its events.
+			<p className={cn("mt-auto border-t border-[var(--ret-border)]/40 pt-4 text-sm leading-6 text-[var(--ret-text-muted)]")}>
+				Hover to preview a sample day, or select one to inspect its events.
 			</p>
 		</aside>
 	);

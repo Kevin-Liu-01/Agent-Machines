@@ -6,7 +6,7 @@ import {
 	Server,
 	SlidersHorizontal,
 	type LucideIcon,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 import { Logo, type Mark } from "@/components/Logo";
 import { CircuitArt } from "@/components/reticle/CircuitArt";

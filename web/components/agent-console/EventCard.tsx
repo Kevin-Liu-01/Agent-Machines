@@ -21,7 +21,7 @@ import {
 	FilePenLine,
 	FileText,
 	SquareTerminal,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { StatusGlyph } from "@/components/ui/StatusGlyph";

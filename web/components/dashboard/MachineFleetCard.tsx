@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Clock3, Cpu, Network, Route, SquareTerminal } from "lucide-react";
+import { ArrowRight, Brain, Clock3, Cpu, FolderOpen, MessagesSquare, Network, Pencil, Route, ScrollText, SquareTerminal } from "@/components/ui/icons";
 import { useMemo } from "react";
 
 import { Logo, type Mark } from "@/components/Logo";
@@ -101,8 +101,8 @@ function StateBadge({ state }: { state: string }) {
 					? "border-[var(--ret-purple)]/40 bg-[var(--ret-purple-glow)] text-[var(--ret-purple)]"
 					: "border-[var(--ret-border)] text-[var(--ret-text-muted)]";
 	return (
-		<span className={cn("inline-flex items-center gap-1 border px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.14em]", toneClass)}>
-			<span className="h-1 w-1 rounded-full bg-current" />
+		<span className={cn("inline-flex items-center gap-1.5 border px-2 py-1 font-mono text-[12px] uppercase tracking-[0.06em]", toneClass)}>
+			<span className={cn("h-1 w-1 rounded-full bg-current")} />
 			{state}
 		</span>
 	);
@@ -127,21 +127,21 @@ function LoadoutRail({
 	mcpCount: number;
 }) {
 	return (
-		<div className="flex min-w-0 items-center justify-between gap-3 border-t border-[var(--ret-border)] px-3 py-2">
-			<div className="flex min-w-0 items-center gap-1.5">
+		<div className={cn("flex min-w-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--ret-border)] px-4 py-3")}>
+			<div className={cn("flex min-w-0 items-center gap-1.5")}>
 				{tools.slice(0, 6).map((tool, index) => (
-					<span key={`${tool.kind}-${index}`} className="flex h-6 w-6 shrink-0 items-center justify-center border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] text-[var(--ret-text-dim)]">
+					<span key={`${tool.kind}-${index}`} className={cn("flex h-8 w-8 shrink-0 items-center justify-center border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] text-[var(--ret-text-dim)]")}>
 						{tool.kind === "service" ? (
-							<ServiceIcon slug={tool.slug} size={12} tone="mono" />
+							<ServiceIcon slug={tool.slug} size={16} tone="mono" />
 						) : tool.kind === "mark" ? (
-							<Logo mark={tool.mark as Mark} size={12} />
+							<Logo mark={tool.mark as Mark} size={16} />
 						) : (
-							<ToolIcon name={tool.name} size={12} />
+							<ToolIcon name={tool.name} size={16} />
 						)}
 					</span>
 				))}
 			</div>
-			<p className="shrink-0 font-mono text-[8px] uppercase tracking-[0.14em] text-[var(--ret-text-muted)]">
+			<p className={cn("shrink-0 font-mono text-[12px] text-[var(--ret-text-muted)]")}>
 				{skillCount} skills · {mcpCount} MCP
 			</p>
 		</div>
@@ -192,68 +192,68 @@ export function MachineFleetCard({
 
 	return (
 		<article className={cn(
-			"group flex min-w-0 flex-col border bg-[var(--ret-bg)] transition-colors",
+			"group flex min-w-0 flex-col border bg-[var(--ret-bg)]",
 			focused ? "border-[var(--ret-purple)] ring-1 ring-[var(--ret-purple)]/20" : active ? "border-[var(--ret-purple)]/35" : "border-[var(--ret-border)] hover:border-[var(--ret-border-hover)]",
 			machine.archived && "opacity-70",
 		)}>
-			<div className="flex flex-wrap items-center gap-1.5 border-b border-[var(--ret-border)] px-3 py-2">
+			<div className={cn("flex flex-wrap items-center gap-2 border-b border-[var(--ret-border)] px-4 py-3")}>
 				<StateBadge state={state} />
 				{active ? <ReticleBadge variant="accent">active</ReticleBadge> : null}
 				{machine.archived ? <ReticleBadge variant="default">archived</ReticleBadge> : null}
 				<BootstrapPhaseBadge state={machine.bootstrapState} />
 				<MigrationPhaseBadge state={machine.migrationState} />
-				<span className="ml-auto font-mono text-[9px] text-[var(--ret-text-muted)]">{card.shortId}</span>
+				<span className={cn("ml-auto font-mono text-[12px] text-[var(--ret-text-muted)]")}>{card.shortId}</span>
 			</div>
 
-			<div className="p-3">
-				<div className="flex min-w-0 items-start justify-between gap-3">
-					<div className="flex min-w-0 items-center gap-2.5">
-						<span className="flex h-9 w-9 shrink-0 items-center justify-center border border-[var(--ret-border)] bg-[var(--ret-bg-soft)]">
-							<Logo mark={agentLogoMark(machine.agentKind)} size={17} />
+			<div className={cn("p-4")}>
+				<div className={cn("flex min-w-0 items-start justify-between gap-3")}>
+					<div className={cn("flex min-w-0 items-center gap-2.5")}>
+						<span className={cn("flex h-11 w-11 shrink-0 items-center justify-center border border-[var(--ret-border)] bg-[var(--ret-bg-soft)]")}>
+							<Logo mark={agentLogoMark(machine.agentKind)} size={22} />
 						</span>
-						<div className="min-w-0">
-							<Link href={base} className="block truncate text-[14px] font-medium text-[var(--ret-text)] hover:text-[var(--ret-purple)]">
+						<div className={cn("min-w-0")}>
+							<Link href={base} title={machine.name} className={cn("block truncate text-[18px] font-medium leading-snug text-[var(--ret-text)] outline-none hover:text-[var(--ret-purple)] focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}>
 								{machine.name}
 							</Link>
-							<p className="mt-0.5 truncate text-[10px] text-[var(--ret-text-muted)]">
+							<p className={cn("mt-1 text-[14px] leading-relaxed text-[var(--ret-text-muted)]")}>
 								{AGENT_LABEL[machine.agentKind]} on {machine.providerLabel}
 							</p>
 						</div>
 					</div>
-					<Logo mark={providerLogoMark(machine.providerKind)} size={16} />
+					<Logo mark={providerLogoMark(machine.providerKind)} size={20} />
 				</div>
 
-				<div className="mt-3 grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-3">
+				<div className={cn("mt-4 grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-3")}>
 					<InfoCell icon={Cpu} label="actual allocation" value={compactSpec(reportedMachineSpec(machine.live))} />
-					<InfoCell icon={Network} label="connection" value={connection} />
-					<InfoCell icon={Clock3} label="activity" value={card.lastActivityLabel ?? card.uptime} />
+					<InfoCell icon={Network} label="Connection" value={connection} />
+					<InfoCell icon={Clock3} label="Activity" value={card.lastActivityLabel ?? card.uptime} />
 				</div>
 
-				<div className="mt-3 flex min-w-0 items-start gap-2 border-l border-[var(--ret-purple)] bg-[var(--ret-purple-glow)] px-3 py-2">
+				<div className={cn("mt-4 flex min-w-0 items-start gap-3 border-l border-[var(--ret-purple)] bg-[var(--ret-purple-glow)] px-3 py-3")}>
 					<ActivityMark />
-					<div className="min-w-0 flex-1">
-						<p className="font-mono text-[8px] uppercase tracking-[0.16em] text-[var(--ret-purple)]">latest signal</p>
-						<p className="mt-0.5 line-clamp-2 text-[10px] leading-relaxed text-[var(--ret-text-dim)]">{activity}</p>
+					<div className={cn("min-w-0 flex-1")}>
+						<p className={cn("text-[14px] font-medium text-[var(--ret-purple)]")}>Latest signal</p>
+						<p className={cn("mt-1 line-clamp-2 text-[16px] leading-relaxed text-[var(--ret-text-dim)]")}>{activity}</p>
 					</div>
 				</div>
 
-				<div className="mt-3 flex min-w-0 items-center gap-2 border-t border-[var(--ret-border)] pt-3">
-					{modelMark ? <Logo mark={modelMark} size={13} /> : <BrainMark />}
-					<span className="min-w-0 flex-1 truncate font-mono text-[9px] text-[var(--ret-text-muted)]">{machine.model}</span>
-					<span className="font-mono text-[8px] uppercase tracking-[0.14em] text-[var(--ret-text-muted)]">{card.region}</span>
+				<div className={cn("mt-4 flex min-w-0 items-center gap-2 border-t border-[var(--ret-border)] pt-3")}>
+					{modelMark ? <Logo mark={modelMark} size={16} /> : <Brain aria-hidden="true" size={16} className={cn("shrink-0 text-[var(--ret-text-muted)]")} strokeWidth={1.75} />}
+					<span className={cn("min-w-0 flex-1 truncate font-mono text-[13px] text-[var(--ret-text-muted)]")} title={machine.model}>{machine.model}</span>
+					<span className={cn("font-mono text-[12px] text-[var(--ret-text-muted)]")}>{card.region}</span>
 				</div>
 			</div>
 
 			<LoadoutRail {...loadoutBadges} />
 
 			{providerMessage ? (
-				<p className="border-t border-[var(--ret-border)] bg-[var(--ret-amber)]/5 px-3 py-2 text-[9px] text-[var(--ret-amber)]">
+				<p className={cn("border-t border-[var(--ret-border)] bg-[var(--ret-amber)]/5 px-4 py-3 text-[14px] leading-relaxed text-[var(--ret-amber)]")}>
 					{providerMessage.slice(0, 220)}
 				</p>
 			) : null}
 
 			{editing ? (
-				<div className="border-t border-[var(--ret-border)]">
+				<div className={cn("border-t border-[var(--ret-border)]")}>
 					<EditPanel
 						machineId={machine.id}
 						name={machine.name}
@@ -265,28 +265,28 @@ export function MachineFleetCard({
 					/>
 				</div>
 			) : (
-				<div className="border-t border-[var(--ret-border)] px-3 py-2.5">
+				<div className={cn("mt-auto border-t border-[var(--ret-border)] px-4 py-3")}>
 					{!machine.archived ? (
-						<div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[9px] uppercase tracking-[0.14em]">
-							<SurfaceLink href={`${base}/console`} label="console" />
-							<SurfaceLink href={`${base}/terminal`} label="terminal" icon={SquareTerminal} />
-							<SurfaceLink href={`${base}/logs`} label="logs" />
-							<SurfaceLink href={`${base}/artifacts`} label="files" />
-							<span className="inline-flex items-center gap-1 text-[var(--ret-purple)]">
-								<Route size={11} />
+						<div className={cn("mb-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px]")}>
+							<SurfaceLink href={`${base}/console`} label="Console" icon={MessagesSquare} />
+							<SurfaceLink href={`${base}/terminal`} label="Terminal" icon={SquareTerminal} />
+							<SurfaceLink href={`${base}/logs`} label="Logs" icon={ScrollText} />
+							<SurfaceLink href={`${base}/artifacts`} label="Files" icon={FolderOpen} />
+							<span className={cn("inline-flex items-center gap-1 text-[var(--ret-purple)]")}>
+								<Route aria-hidden="true" size={16} strokeWidth={1.75} />
 								<SubstrateMoveMenu machineId={machine.id} migrationState={machine.migrationState} bootstrapRunning={machine.bootstrapState.phase === "running"} />
 							</span>
 						</div>
 					) : null}
-					<div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--ret-border)] pt-2">
-						<div className="flex flex-wrap items-center gap-1.5">
+					<div className={cn("flex flex-wrap items-center justify-between gap-3 border-t border-[var(--ret-border)] pt-3")}>
+						<div className={cn("flex flex-wrap items-center gap-1.5")}>
 							{onInteract && !machine.archived ? (
 								<ReticleButton variant="primary" size="sm" onClick={onInteract}>Interact</ReticleButton>
 							) : null}
 							<ReticleButton as="a" href={base} variant={onInteract ? "ghost" : "primary"} size="sm">
-								Inspect <ArrowRight size={12} />
+								Inspect <ArrowRight aria-hidden="true" size={16} strokeWidth={1.75} />
 							</ReticleButton>
-							<ReticleButton variant="ghost" size="sm" onClick={onToggleEdit}>Edit</ReticleButton>
+							<ReticleButton variant="ghost" size="sm" onClick={onToggleEdit}><Pencil aria-hidden="true" size={16} strokeWidth={1.75} /> Edit</ReticleButton>
 						</div>
 						<MachineActions
 							machineId={machine.id}
@@ -307,27 +307,23 @@ export function MachineFleetCard({
 
 function InfoCell({ icon: Icon, label, value }: { icon: typeof Cpu; label: string; value: string }) {
 	return (
-		<div className="min-w-0 bg-[var(--ret-bg-soft)] px-2.5 py-2">
-			<p className="flex items-center gap-1 font-mono text-[8px] uppercase tracking-[0.14em] text-[var(--ret-text-muted)]">
-				<Icon size={10} /> {label}
+		<div className={cn("min-w-0 bg-[var(--ret-bg-soft)] px-3 py-3")}>
+			<p className={cn("flex items-center gap-1.5 text-[12px] text-[var(--ret-text-muted)]")}>
+				<Icon aria-hidden="true" size={14} className={cn("shrink-0")} strokeWidth={1.75} /> {label.charAt(0).toUpperCase() + label.slice(1)}
 			</p>
-			<p className="mt-1 truncate font-mono text-[9px] text-[var(--ret-text)]" title={value}>{value}</p>
+			<p className={cn("mt-2 break-words font-mono text-[13px] leading-relaxed text-[var(--ret-text)]")} title={value}>{value}</p>
 		</div>
 	);
 }
 
 function ActivityMark() {
-	return <span aria-hidden="true" className="mt-1 h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-[var(--ret-purple)]" />;
-}
-
-function BrainMark() {
-	return <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full border border-[var(--ret-text-muted)]" />;
+	return <span aria-hidden="true" className={cn("mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--ret-purple)]")} />;
 }
 
 function SurfaceLink({ href, label, icon: Icon }: { href: string; label: string; icon?: typeof Cpu }) {
 	return (
-		<Link href={href} className="inline-flex items-center gap-1 text-[var(--ret-text-muted)] transition-colors hover:text-[var(--ret-purple)]">
-			{Icon ? <Icon size={11} /> : null}
+		<Link href={href} className={cn("inline-flex min-h-9 items-center gap-1.5 text-[var(--ret-text-muted)] outline-none hover:text-[var(--ret-purple)] active:text-[var(--ret-text)] focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}>
+			{Icon ? <Icon aria-hidden="true" size={16} strokeWidth={1.75} /> : null}
 			{label}
 		</Link>
 	);

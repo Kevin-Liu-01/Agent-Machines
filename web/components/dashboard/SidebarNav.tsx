@@ -25,7 +25,7 @@ import {
 	SquareTerminal,
 	Store,
 	UsersRound,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 import { cn } from "@/lib/cn";
 import type { AgentKind, PublicMachineRef } from "@/lib/user-config/schema";
@@ -39,7 +39,7 @@ import { ModelSwitcher } from "./ModelSwitcher";
  *
  * Fleet view groups top-down by frequency of use: FLEET (operate the fleet),
  * LIBRARY (what's installed), ACCOUNT (keys + provisioning). Machine view
- * splits WORK (what you do) and LIVE (what's running). Icons are lucide;
+ * splits WORK (what you do) and LIVE (what's running). Icons use the shared filled family;
  * rows are icon + label, with section headers carrying the one-line hint.
  */
 
@@ -48,7 +48,7 @@ type NavItem = {
 	label: string;
 	icon: LucideIcon;
 	dot?: boolean;
-	badge?: "live" | "new";
+	badge?: "live";
 	/**
 	 * Match the active state on an exact path only. Required for any row
 	 * whose href is a prefix of its siblings (the section root "Overview" /
@@ -68,6 +68,8 @@ type NavSection = {
 type Props = {
 	setupComplete: boolean;
 	machines: PublicMachineRef[];
+	compact?: boolean;
+	onExpand?: () => void;
 };
 
 // Fleet view, top-down: operate the fleet, then what's installed on it,
@@ -76,9 +78,9 @@ type Props = {
 const FLEET_ITEMS: ReadonlyArray<NavItem> = [
 	{ href: "/dashboard", label: "Overview", icon: LayoutGrid, exact: true },
 	{ href: "/dashboard/machines", label: "Machines", icon: Server },
-	{ href: "/dashboard/agents", label: "Agent templates", icon: UsersRound, badge: "new" },
+	{ href: "/dashboard/agents", label: "Agent templates", icon: UsersRound },
 	{ href: "/dashboard/usage", label: "Usage", icon: BarChart3 },
-	{ href: "/dashboard/benchmarks", label: "Benchmarks", icon: Gauge, badge: "new" },
+	{ href: "/dashboard/benchmarks", label: "Benchmarks", icon: Gauge },
 ];
 
 const OPERATE_ITEMS: ReadonlyArray<NavItem> = [
@@ -90,11 +92,11 @@ const OPERATE_ITEMS: ReadonlyArray<NavItem> = [
 ];
 
 const EXTEND_ITEMS: ReadonlyArray<NavItem> = [
-	{ href: "/dashboard/memory", label: "Memory", icon: Brain, badge: "new" },
+	{ href: "/dashboard/memory", label: "Memory", icon: Brain },
 	{ href: "/dashboard/loadout", label: "Loadouts", icon: Boxes },
 	{ href: "/dashboard/skills", label: "Skills", icon: Sparkles },
-	{ href: "/dashboard/mcps", label: "MCPs", icon: Plug2 },
-	{ href: "/dashboard/cron", label: "Cron", icon: Clock },
+	{ href: "/dashboard/mcps", label: "MCP servers", icon: Plug2 },
+	{ href: "/dashboard/cron", label: "Schedules", icon: Clock },
 	{ href: "/dashboard/registry", label: "Registry", icon: Store },
 ];
 
@@ -112,7 +114,7 @@ function machineWorkItems(base: string): ReadonlyArray<NavItem> {
 	return [
 		{ href: base, label: "Overview", icon: LayoutGrid, exact: true },
 		{ href: `${base}/view`, label: "View", icon: Activity, badge: "live" },
-		{ href: `${base}/console`, label: "Console", icon: MessagesSquare, badge: "new" },
+		{ href: `${base}/console`, label: "Console", icon: MessagesSquare },
 		{ href: `${base}/terminal`, label: "Terminal", icon: SquareTerminal },
 		{ href: `${base}/agents`, label: "Agents", icon: Bot },
 		{ href: `${base}/loadout`, label: "Loadout", icon: Boxes },
@@ -129,7 +131,7 @@ function machineLiveItems(base: string): ReadonlyArray<NavItem> {
 
 const MACHINE_PATH_RE = /^\/dashboard\/machines\/([^/]+)/;
 
-export function SidebarNav({ setupComplete, machines }: Props) {
+export function SidebarNav({ setupComplete, machines, compact = false, onExpand }: Props) {
 	const pathname = usePathname();
 	const machineMatch = MACHINE_PATH_RE.exec(pathname);
 
@@ -139,22 +141,26 @@ export function SidebarNav({ setupComplete, machines }: Props) {
 		const machineName = machine?.name ?? machineId.slice(0, 12);
 		const base = `/dashboard/machines/${machineId}`;
 		const sections: NavSection[] = [
-			{ id: "work", label: "WORK", hint: "what you do", items: machineWorkItems(base) },
-			{ id: "live", label: "LIVE", hint: "what's running", items: machineLiveItems(base) },
+			{ id: "work", label: "Work", hint: "Workspace", items: machineWorkItems(base) },
+			{ id: "live", label: "Live", hint: "Runtime activity", items: machineLiveItems(base) },
 		];
 		return (
 			<nav
 				aria-label="Machine dashboard"
-				className="flex min-w-0 flex-col gap-5 overflow-x-hidden px-3 pb-6 pt-4 text-[13px]"
+				className={cn("flex min-w-0 flex-col overflow-x-hidden pb-5 pt-3 text-sm", compact ? "gap-3 px-2" : "gap-5 px-3")}
 			>
-				<MachineScopeHeader
+				{compact ? (
+					<button type="button" onClick={onExpand} aria-label={`Show controls for ${machineName}`} title={`Show controls for ${machineName}`} className={cn("grid min-h-10 place-items-center rounded-sm text-[var(--ret-text-muted)] hover:bg-[var(--ret-surface)] focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]")}>
+						<SlidersHorizontal className={cn("size-[18px]")} aria-hidden="true" />
+					</button>
+				) : <MachineScopeHeader
 					machineId={machineId}
 					machineName={machineName}
 					machine={machine}
 					machines={machines}
-				/>
+				/>}
 				{sections.map((section) => (
-					<Section key={section.id} section={section} pathname={pathname} />
+					<Section key={section.id} section={section} pathname={pathname} compact={compact} />
 				))}
 			</nav>
 		);
@@ -162,13 +168,13 @@ export function SidebarNav({ setupComplete, machines }: Props) {
 
 	const setupItem: NavItem = { ...SETUP_ITEM, dot: !setupComplete };
 	const sections: NavSection[] = [
-		{ id: "fleet", label: "FLEET", hint: "build & route", items: FLEET_ITEMS },
-		{ id: "operate", label: "OPERATE", hint: "active machine", items: OPERATE_ITEMS },
-		{ id: "extend", label: "EXTEND", hint: "memory & abilities", items: EXTEND_ITEMS },
+		{ id: "fleet", label: "Fleet", hint: "Build & route", items: FLEET_ITEMS },
+		{ id: "operate", label: "Operate", hint: "Active machine", items: OPERATE_ITEMS },
+		{ id: "extend", label: "Extend", hint: "Memory & tools", items: EXTEND_ITEMS },
 		{
 			id: "account",
-			label: "ACCOUNT",
-			hint: "keys & config",
+			label: "Account",
+			hint: "Keys & setup",
 			items: [...ACCOUNT_ITEMS, setupItem],
 		},
 	];
@@ -176,10 +182,10 @@ export function SidebarNav({ setupComplete, machines }: Props) {
 	return (
 		<nav
 			aria-label="Dashboard"
-			className="flex min-w-0 flex-col gap-5 overflow-x-hidden px-3 pb-6 pt-4 text-[13px]"
+			className={cn("flex min-w-0 flex-col overflow-x-hidden pb-5 pt-3 text-sm", compact ? "gap-3 px-2" : "gap-5 px-3")}
 		>
 			{sections.map((section) => (
-				<Section key={section.id} section={section} pathname={pathname} />
+				<Section key={section.id} section={section} pathname={pathname} compact={compact} />
 			))}
 		</nav>
 	);
@@ -212,9 +218,9 @@ export function MobileDashboardNav({ setupComplete, machines }: Props) {
 	return (
 		<nav
 			aria-label={machineMatch ? "Machine dashboard sections" : "Dashboard sections"}
-			className="border-b border-[var(--ret-border)] bg-[var(--ret-bg)] lg:hidden"
+			className={cn("min-w-0 max-w-full overflow-hidden border-b border-[var(--ret-border)] bg-[var(--ret-bg)] lg:hidden")}
 		>
-			<div className="ret-scrollbar-hidden flex gap-px overflow-x-auto px-2 py-2">
+			<div className={cn("ret-scrollbar-hidden flex gap-1 overflow-x-auto overscroll-x-contain px-3 py-2")}>
 				{items.map((item) => {
 					const active = item.exact
 						? pathname === item.href
@@ -243,21 +249,20 @@ function MachineScopeHeader({
 		<div className="flex min-w-0 flex-col gap-3">
 			<Link
 				href="/dashboard/machines"
-				className="group flex items-center gap-2 px-3 pb-1 text-[11px] text-[var(--ret-text-muted)] transition-colors hover:text-[var(--ret-text)]"
+				className={cn("group flex min-h-9 items-center gap-2 rounded-sm px-3 text-sm text-[var(--ret-text-muted)] transition-[color,background-color] duration-150 ease-[var(--ret-ease-out)] hover:bg-[var(--ret-surface)] hover:text-[var(--ret-text)] focus-visible:transition-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ret-text)] motion-reduce:transition-none")}
 			>
-				<ChevronLeft className="h-3.5 w-3.5 shrink-0" strokeWidth={1.75} />
+				<ChevronLeft className={cn("size-4 shrink-0")} strokeWidth={1.75} aria-hidden="true" />
 				<span className="truncate">Fleet</span>
 			</Link>
 
 			<div className="min-w-0 px-3">
 				<p
-					className="block max-w-full truncate text-[18px] leading-none tracking-tight text-[var(--ret-text)]"
-					style={{ fontFamily: "var(--font-display-serif)" }}
+					className={cn("block max-w-full truncate text-lg font-semibold leading-6 tracking-tight text-[var(--ret-text)]")}
 					title={machineName}
 				>
 					{machineName}
 				</p>
-				<p className="mt-1 truncate font-mono text-[9px] text-[var(--ret-text-muted)]">
+				<p className={cn("mt-1 truncate font-mono text-xs leading-5 text-[var(--ret-text-muted)]")}>
 					{machineId.slice(0, 18)}
 				</p>
 			</div>
@@ -279,19 +284,19 @@ function MachineScopeHeader({
 function Section({
 	section,
 	pathname,
+	compact,
 }: {
 	section: NavSection;
 	pathname: string;
+	compact: boolean;
 }) {
 	return (
-		<div className="flex flex-col gap-0.5">
-			<div className="flex items-baseline justify-between gap-2 px-3 pb-1.5">
-				{/* Section headers stay mono+tracked-uppercase: that's
-				    the kicker pattern, not body copy. */}
-				<p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
+		<div role="group" aria-label={section.label} className={cn("flex flex-col gap-0.5", compact && "border-t border-[var(--ret-border)]/60 pt-3 first:border-t-0 first:pt-0")}>
+			<div className={cn(compact ? "sr-only" : "flex items-baseline justify-between gap-2 px-2 pb-1.5")}>
+				<p className={cn("text-sm font-medium text-[var(--ret-text)]")}>
 					{section.label}
 				</p>
-				<p className="text-[10px] italic text-[var(--ret-text-muted)]">
+				<p className={cn("text-xs leading-5 text-[var(--ret-text-muted)]")}>
 					{section.hint}
 				</p>
 			</div>
@@ -299,20 +304,23 @@ function Section({
 				const active = item.exact
 					? pathname === item.href
 					: pathname === item.href || pathname.startsWith(`${item.href}/`);
-				return <Row key={item.href} item={item} active={active} />;
+				return <Row key={item.href} item={item} active={active} compact={compact} />;
 			})}
 		</div>
 	);
 }
 
-function Row({ item, active }: { item: NavItem; active: boolean }) {
+function Row({ item, active, compact }: { item: NavItem; active: boolean; compact: boolean }) {
 	const Icon = item.icon;
 	return (
 		<Link
 			href={item.href}
 			aria-current={active ? "page" : undefined}
+			title={compact ? `${item.label}${item.dot ? " · Needs setup" : ""}` : undefined}
 			className={cn(
-				"group relative flex items-center gap-3 px-3 py-1.5 transition-colors",
+				"group relative flex items-center gap-2.5 rounded-md py-2 transition-[color,background-color] duration-150 ease-[var(--ret-ease-out)]",
+				compact ? "min-h-10 justify-center px-2" : "min-h-9 px-2",
+				"focus-visible:transition-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ret-text)] motion-reduce:transition-none",
 				active
 					? "bg-[var(--ret-purple-glow)] text-[var(--ret-purple)]"
 					: "text-[var(--ret-text-dim)] hover:bg-[var(--ret-surface)] hover:text-[var(--ret-text)]",
@@ -328,33 +336,29 @@ function Row({ item, active }: { item: NavItem; active: boolean }) {
 				)}
 			/>
 			<Icon
+				aria-hidden="true"
 				strokeWidth={1.75}
 				className={cn(
-					"h-3.5 w-3.5 shrink-0",
+					"size-[18px] shrink-0",
 					active
 						? "text-[var(--ret-purple)]"
 						: "text-[var(--ret-text-muted)] group-hover:text-[var(--ret-text-dim)]",
 				)}
 			/>
-			<span className="flex-1 truncate">{item.label}</span>
+			<span className={cn(compact ? "sr-only" : "flex-1 truncate")}>{item.label}</span>
 			{item.dot ? (
-				<span
-					aria-label="needs setup"
-					className="h-1.5 w-1.5 shrink-0 bg-[var(--ret-amber)]"
-				/>
+				<>
+					<span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full bg-[var(--ret-amber)]", compact && "absolute right-2 top-2")} />
+					<span className={cn("sr-only")}>Needs setup</span>
+				</>
 			) : null}
 			{item.badge === "live" ? (
-				<span className="flex shrink-0 items-center gap-1 text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				<span className={cn("flex shrink-0 items-center gap-1.5 text-xs text-[var(--ret-text-muted)]", compact && "absolute right-2 top-2")}>
 					<span
 						aria-hidden="true"
-						className="h-1 w-1 animate-pulse rounded-full bg-[var(--ret-green)]"
+						className={cn("size-1 rounded-full bg-[var(--ret-green)]")}
 					/>
-					live
-				</span>
-			) : null}
-			{item.badge === "new" ? (
-				<span className="shrink-0 border border-[var(--ret-purple)]/45 bg-[var(--ret-purple-glow)] px-1 text-[8px] uppercase tracking-[0.22em] text-[var(--ret-purple)]">
-					new
+					<span className={cn(compact && "sr-only")}>Live</span>
 				</span>
 			) : null}
 		</Link>
@@ -368,13 +372,15 @@ function MobileRow({ item, active }: { item: NavItem; active: boolean }) {
 			href={item.href}
 			aria-current={active ? "page" : undefined}
 			className={cn(
-				"group flex min-h-11 shrink-0 items-center gap-2 border px-3 text-[12px] transition-colors",
+				"group flex min-h-11 shrink-0 items-center gap-2 rounded-sm border px-3 text-sm transition-[color,background-color,border-color] duration-150 ease-[var(--ret-ease-out)]",
+				"focus-visible:transition-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ret-text)] motion-reduce:transition-none",
 				active
 					? "border-[var(--ret-purple)]/45 bg-[var(--ret-purple-glow)] text-[var(--ret-purple)]"
 					: "border-[var(--ret-border)] bg-[var(--ret-bg-soft)] text-[var(--ret-text-dim)] hover:text-[var(--ret-text)]",
 			)}
 		>
 			<Icon
+				aria-hidden="true"
 				strokeWidth={1.75}
 				className={cn(
 					"h-4 w-4 shrink-0",
@@ -383,18 +389,13 @@ function MobileRow({ item, active }: { item: NavItem; active: boolean }) {
 			/>
 			<span className="whitespace-nowrap">{item.label}</span>
 			{item.dot ? (
-				<span
-					aria-label="needs setup"
-					className="h-1.5 w-1.5 shrink-0 bg-[var(--ret-amber)]"
-				/>
+				<>
+					<span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full bg-[var(--ret-amber)]")} />
+					<span className={cn("sr-only")}>Needs setup</span>
+				</>
 			) : null}
 			{item.badge === "live" ? (
 				<span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--ret-green)]" aria-label="live" />
-			) : null}
-			{item.badge === "new" ? (
-				<span className="shrink-0 border border-[var(--ret-purple)]/45 px-1 font-mono text-[8px] uppercase tracking-[0.18em]">
-					new
-				</span>
 			) : null}
 		</Link>
 	);

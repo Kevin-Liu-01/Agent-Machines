@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown } from "lucide-react";
+import { ChevronDown } from "@/components/ui/icons";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { cn } from "@/lib/cn";

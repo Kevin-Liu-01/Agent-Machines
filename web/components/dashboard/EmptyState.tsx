@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { SchematicPanel } from "@/components/reticle/SchematicPanel";
+import { cn } from "@/lib/cn";
 
 type Props = {
 	title: string;
@@ -30,9 +31,9 @@ export function EmptyState({
 	artSrc,
 }: Props) {
 	return (
-		<div className="mx-auto max-w-2xl px-6 py-16">
+		<div className={cn("mx-auto w-full max-w-2xl px-4 py-8 sm:px-5 sm:py-12")}>
 			<ReticleFrame>
-				<div className="p-10 text-center">
+				<div className={cn("px-5 py-8 text-center sm:p-10")}>
 					{artSlug || artSrc ? (
 						<SchematicPanel
 							slug={artSlug}
@@ -40,17 +41,14 @@ export function EmptyState({
 							className="mx-auto mb-7 w-full max-w-[260px]"
 						/>
 					) : null}
-					<p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
-						Nothing here yet
-					</p>
-					<h2 className="mt-3 text-xl font-semibold tracking-tight">
+					<h2 className={cn("text-2xl font-semibold tracking-tight text-[var(--ret-text)]")}>
 						{title}
 					</h2>
-					<p className="mx-auto mt-3 max-w-[52ch] text-sm leading-relaxed text-[var(--ret-text-dim)]">
+					<p className={cn("mx-auto mt-3 max-w-[52ch] text-base leading-7 text-[var(--ret-text-dim)]")}>
 						{description}
 					</p>
 					{hint ? (
-						<pre className="mx-auto mt-5 inline-block border border-[var(--ret-border)] bg-[var(--ret-surface)] px-4 py-2 text-left font-mono text-[12px] text-[var(--ret-text-dim)]">
+						<pre className={cn("mx-auto mt-5 max-w-full overflow-x-auto whitespace-pre-wrap break-words border border-[var(--ret-border)] bg-[var(--ret-surface)] px-4 py-3 text-left font-mono text-xs leading-5 text-[var(--ret-text-dim)]")}>
 							{hint}
 						</pre>
 					) : null}

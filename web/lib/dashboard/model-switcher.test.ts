@@ -39,6 +39,7 @@ function mountPicker(options: { catalog?: Array<{id:string;label:string}>; machi
 	const imports: Record<string, unknown> = {
 		react, "react/jsx-runtime": { jsx, jsxs: jsx }, "next/navigation": { useRouter: () => ({ refresh: refreshRouter }) },
 		"@/components/Logo": { Logo: () => null }, "@/lib/cn": { cn: () => "" },
+		"@/components/ui/icons": { ChevronDown: () => null },
 		"@/lib/dashboard/model-catalog": { MODEL_CATALOG: catalog, groupedModelCatalog: (models: unknown[]) => [{ group: "fixture", label: "Models", models }], modelDisplayLabel: (id: string) => id, modelOptionFromId: (value: unknown) => value, modelProviderMark: () => null },
 		"@/lib/dashboard/runtime-model-catalog": runtimeCatalog,
 		"@/lib/dashboard/sidebar-popover": { useSidebarPopoverStyle: () => undefined },

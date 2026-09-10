@@ -1,312 +1,217 @@
+import { Expand, Fingerprint } from "@/components/ui/icons";
 import Image from "next/image";
 import type { ReactNode } from "react";
 
-import { Logo } from "@/components/Logo";
-import { ReticleBadge } from "@/components/reticle/ReticleBadge";
-import { ReticleLabel } from "@/components/reticle/ReticleLabel";
-import { ServiceIcon } from "@/components/ServiceIcon";
+import { Logo, type Mark } from "@/components/Logo";
+import { PublicIcon } from "@/components/marketing/PublicIcon";
+import { ServiceIcon, type ServiceSlug } from "@/components/ServiceIcon";
+import { cn } from "@/lib/cn";
+import { LANDING_BODY, LANDING_EYEBROW, LANDING_INSET, LANDING_SECTION_SPACE, LANDING_SPLIT, LANDING_TITLE } from "@/lib/marketing/layout";
+import type { PublicIconName } from "@/lib/marketing/public-site";
 
-const RUNTIMES = [
-	{ mark: "nous" as const, label: "Hermes" },
-	{ mark: "openclaw" as const, label: "OpenClaw" },
-	{ mark: "claudecode" as const, label: "Claude Code" },
-	{ mark: "codex" as const, label: "Codex" },
+const PROVIDERS = [
+	{ icon: "e2b" as const, label: "E2B" },
+	{ icon: "sprites" as const, label: "Sprites" },
+	{ icon: "daytona" as const, label: "Daytona" },
+	{ icon: "vercel" as const, label: "Vercel" },
 ];
 
-const SUBSTRATES = [
-	{ kind: "service" as const, icon: "e2b" as const, label: "E2B" },
-	{ kind: "service" as const, icon: "sprites" as const, label: "Sprites" },
-	{ kind: "logo" as const, icon: "daytona" as const, label: "Daytona" },
-	{ kind: "service" as const, icon: "vercel" as const, label: "Vercel" },
-];
+const STAGES = [
+	{ id: "showcase-setup", label: "Configure", icon: "bot" },
+	{ id: "showcase-agents", label: "Run", icon: "terminal" },
+	{ id: "showcase-fleet", label: "Inspect", icon: "layers" },
+] as const;
 
-export function ProductShowcase() {
-	return (
-		<section className="relative overflow-hidden">
-			<header className="grid gap-px border-b border-[var(--ret-border)] bg-[var(--ret-border)] lg:grid-cols-[minmax(300px,0.42fr)_minmax(0,0.58fr)]">
-				<div className="bg-[var(--ret-bg)] px-5 py-8 md:px-8 md:py-10">
-					<ReticleLabel>PRODUCT EVIDENCE</ReticleLabel>
-					<h2 className="ret-display mt-3 max-w-[15ch] text-3xl md:text-5xl">
-						Configure it, run it, and inspect the result.
-					</h2>
-				</div>
-				<div className="grid grid-cols-3 gap-px bg-[var(--ret-border)]">
-					<Fact label="identity" value="worker-owned" />
-					<Fact label="transport" value="live PTY" />
-					<Fact label="machinery" value="replaceable" />
-				</div>
-			</header>
-
-			<div className="grid items-stretch gap-px bg-[var(--ret-border)] lg:grid-cols-2">
-				<EvidenceScreen
-					src="/screenshots/dashboard-conversation-claude.png"
-					label="Claude Code on Sprites"
-					caption="The live PTY, the agent reply, runtime detection, usage, and logs in one machine-scoped view."
-					alt="Claude Code answering a question inside a live Agent Machines worker console"
-				/>
-				<EvidenceScreen
-					src="/screenshots/dashboard-worker-configure.png"
-					label="Worker configuration"
-					caption="Choose a recipe, runtime, and name before any infrastructure is created."
-					alt="Worker configuration dialog in the Agent Machines dashboard"
-				/>
-				<EvidenceScreen
-					src="/screenshots/dashboard-conversation-openclaw.png"
-					label="OpenClaw on E2B"
-					caption="A real OpenClaw run on E2B, with the selected model and durable Worker state visible in the session."
-					alt="OpenClaw answering a question inside a live E2B Worker console"
-				/>
-				<EvidenceScreen
-					src="/screenshots/dashboard-live-fleet.png"
-					label="Live fleet"
-					caption="Provider, runtime, model, health, loadout, and migration controls are visible on each machine."
-					alt="Agent Machines fleet with Codex and Claude Code workers"
-				/>
-				<EvidenceScreen
-					src="/screenshots/dashboard-provider-routing.png"
-					label="Provider routing"
-					caption="The setup flow shows the primary lane, backups, capabilities, and measured command latency."
-					alt="Sandbox provider routing and setup status in Agent Machines"
-					className="lg:col-span-2"
-					mediaClassName="lg:aspect-[12/5]"
-				/>
-				<EvidenceScreen
-					src="/screenshots/console-hermes.png"
-					label="Hermes console"
-					caption="A persistent generalist with memory, tools, and scheduled work."
-					alt="Hermes running in the Agent Machines browser console"
-				/>
-				<EvidenceScreen
-					src="/screenshots/console-codex.png"
-					label="Codex CLI console"
-					caption="A coding runtime attached to the same durable Worker control surface."
-					alt="Codex CLI running in the Agent Machines browser console"
-				/>
-			</div>
-
-			<div className="grid gap-px border-t border-[var(--ret-border)] bg-[var(--ret-border)] xl:grid-cols-[minmax(0,1.45fr)_minmax(340px,0.55fr)]">
-				<div className="bg-[var(--ret-bg)] p-4 md:p-7">
-					<div className="mb-5 flex items-end justify-between gap-4">
-						<div>
-							<ReticleLabel>DURABLE CORE · MODULAR STACK</ReticleLabel>
-							<h3 className="mt-2 text-xl font-semibold tracking-tight text-[var(--ret-text)] md:text-2xl">
-								Keep the Worker. Swap the machinery.
-							</h3>
-						</div>
-						<ReticleBadge>one durable identity</ReticleBadge>
-					</div>
-					<DualRouteDiagram />
-				</div>
-				<div className="bg-[var(--ret-bg)] p-4 md:p-7">
-					<ReticleLabel>RESPONSIBILITY LOOP</ReticleLabel>
-					<h3 className="mt-2 text-xl font-semibold tracking-tight text-[var(--ret-text)] md:text-2xl">
-						Intent to supervised work.
-					</h3>
-					<LifecycleDiagram />
-				</div>
-			</div>
-		</section>
-	);
-}
-
-function Fact({ label, value }: { label: string; value: string }) {
-	return (
-		<div className="flex min-h-28 flex-col justify-end bg-[var(--ret-bg)] p-4 md:p-5">
-			<span className="font-mono text-[9px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
-				{label}
-			</span>
-			<strong className="mt-2 text-sm font-semibold text-[var(--ret-text)] md:text-base">
-				{value}
-			</strong>
-		</div>
-	);
-}
-
-function EvidenceScreen({
-	src,
-	label,
-	caption,
-	alt,
-	className = "",
-	mediaClassName = "",
-}: {
+type ProductScreen = {
 	src: string;
 	label: string;
 	caption: string;
 	alt: string;
-	className?: string;
-	mediaClassName?: string;
-}) {
+	icon?: PublicIconName;
+	runtime?: Mark;
+	provider?: ServiceSlug;
+};
+
+const SETUP_SCREENS: readonly ProductScreen[] = [
+	{
+		src: "/screenshots/dashboard-worker-configure.png",
+		label: "Worker configuration",
+		caption: "A specialist, an agent, and a place to run.",
+		alt: "Worker configuration dialog with a name, runtime, and specialist recipe",
+		icon: "bot",
+	},
+	{
+		src: "/screenshots/dashboard-provider-routing.png",
+		label: "Provider routing",
+		caption: "Primary and backup providers. This older capture includes retired Dedalus; current providers appear below.",
+		alt: "Earlier provider-routing screen with primary and backup choices, including the now-retired Dedalus provider",
+		icon: "route",
+	},
+];
+
+const AGENT_SCREENS: readonly ProductScreen[] = [
+	{
+		src: "/screenshots/dashboard-conversation-claude.png",
+		label: "Claude Code on Sprites",
+		caption: "Conversation, terminal, and logs in one workspace.",
+		alt: "Claude Code answering a question inside an Agent Machines Worker console on Sprites",
+		runtime: "claudecode",
+		provider: "sprites",
+	},
+	{
+		src: "/screenshots/dashboard-conversation-openclaw.png",
+		label: "OpenClaw on E2B",
+		caption: "The selected model and stored context, in the session.",
+		alt: "OpenClaw answering a question about its runtime and persistent state inside an E2B Worker",
+		runtime: "openclaw",
+		provider: "e2b",
+	},
+	{
+		src: "/screenshots/console-hermes.png",
+		label: "Hermes console",
+		caption: "The native agent, inside your browser.",
+		alt: "Hermes running in the Agent Machines browser console",
+		runtime: "nous",
+	},
+	{
+		src: "/screenshots/console-codex.png",
+		label: "Codex CLI console",
+		caption: "Your project and terminal, attached to the Worker.",
+		alt: "Codex CLI running in the Agent Machines browser terminal",
+		runtime: "codex",
+	},
+];
+
+const FLEET_SCREEN: ProductScreen = {
+	src: "/screenshots/dashboard-live-fleet.png",
+	label: "Fleet overview",
+	caption: "Providers, models, health, and controls—with sessions, logs, and artifacts one step away.",
+	alt: "Agent Machines fleet showing Codex and Claude Code Workers and their machine controls",
+	icon: "layers",
+};
+
+const SCREEN_LINK = cn(
+	"group flex min-w-0 border border-[var(--ret-border)]/30 bg-[var(--ret-bg-soft)]/20",
+	"hover:border-[var(--ret-border-hover)] focus-visible:border-[var(--ret-purple)]",
+	"focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--ret-purple)]",
+	"motion-safe:transition-[border-color] motion-safe:duration-150 motion-safe:[transition-timing-function:var(--ret-ease-out)] focus-visible:transition-none",
+);
+
+export function ProductShowcase() {
 	return (
-		<figure className={`group flex min-w-0 bg-[var(--ret-bg)] p-3 md:p-5 ${className}`}>
-			<div className="flex w-full flex-col overflow-hidden border border-[var(--ret-border-hover)] bg-[#08090b] shadow-[0_20px_70px_rgba(0,0,0,0.22)]">
-				<div className="flex h-9 items-center justify-between border-b border-white/10 px-3">
-					<div className="flex gap-1.5" aria-hidden="true">
-						<span className="h-1.5 w-1.5 bg-white/25" />
-						<span className="h-1.5 w-1.5 bg-white/15" />
-						<span className="h-1.5 w-1.5 bg-white/10" />
-					</div>
-					<figcaption className="font-mono text-[9px] uppercase tracking-[0.18em] text-white/45">
-						{label}
-					</figcaption>
+		<section id="product-showcase" aria-labelledby="product-showcase-heading" className={cn(LANDING_INSET, LANDING_SECTION_SPACE, "bg-[var(--ret-bg)]")}>
+			<header data-landing-header className={cn(LANDING_SPLIT, "items-end border-b border-[var(--ret-border)]/25 pb-8")}>
+				<div>
+					<p className={cn(LANDING_EYEBROW)}><PublicIcon name="layers" className={cn("size-4")} />Inside the product</p>
+					<h2 id="product-showcase-heading" className={cn(LANDING_TITLE, "max-w-[20ch]")}>
+						Configure. Run. Inspect.
+					</h2>
 				</div>
-				<div className={`relative aspect-[16/10] overflow-hidden ${mediaClassName}`}>
-					<Image
-						src={src}
-						fill
-						alt={alt}
-						className="object-cover object-top transition-transform duration-500 [transition-timing-function:var(--ret-ease-out)] group-hover:scale-[1.01]"
-						sizes="(min-width: 1024px) 50vw, 100vw"
-					/>
-				</div>
-				<div className="flex min-h-[64px] items-start border-t border-white/10 bg-[#08090b] px-3 py-3 md:min-h-[72px] md:px-4 md:py-4">
-					<p className="max-w-[78ch] text-[10px] leading-relaxed text-white/70">
-						{caption}
+				<div>
+					<p className={cn(LANDING_BODY, "max-w-[48ch]")}>Follow a Worker from its first configuration to the sessions, files, and activity you can inspect.</p>
+					<nav aria-label="Product walkthrough" className={cn("flex flex-wrap gap-x-6 gap-y-2")}>
+						{STAGES.map((stage) => (
+							<a
+								key={stage.id}
+								href={`#${stage.id}`}
+								className={cn("flex min-h-11 items-center gap-2 text-base text-[var(--ret-text-dim)] hover:text-[var(--ret-text)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--ret-purple)]")}
+							>
+								<PublicIcon name={stage.icon} className={cn("h-5 w-5 shrink-0")} />
+								{stage.label}
+							</a>
+						))}
+					</nav>
+					<p className={cn("mt-2 max-w-[48ch] text-sm leading-6 text-[var(--ret-text-muted)]")}>
+						Recorded product views, not live status. Versions may differ.
 					</p>
 				</div>
-			</div>
-		</figure>
-	);
-}
+			</header>
 
-function DualRouteDiagram() {
-	return (
-		<div className="relative border border-[var(--ret-border)] bg-[var(--ret-bg-soft)]">
-			<svg
-				viewBox="0 0 1200 430"
-				role="img"
-				aria-labelledby="dual-route-title dual-route-desc"
-				className="hidden h-auto w-full text-[var(--ret-text)] md:block"
-			>
-				<title id="dual-route-title">Agent Machines dual routing diagram</title>
-				<desc id="dual-route-desc">
-					A durable Worker intent keeps its identity and responsibility while four agent runtimes and four machine substrates remain replaceable implementations.
-				</desc>
-				<g
-					fill="none"
-					stroke="var(--ret-border-hover)"
-					strokeWidth="1.5"
-					strokeLinecap="square"
-					strokeLinejoin="miter"
-					vectorEffect="non-scaling-stroke"
-				>
-					<path d="M135 110L170 145H720L757 182" />
-					<path d="M335 110L370 145" />
-					<path d="M535 110L500 145" />
-					<path d="M735 110L700 145" />
-					<path d="M135 320L170 285H720L757 248" />
-					<path d="M335 320L370 285" />
-					<path d="M535 320L500 285" />
-					<path d="M735 320L700 285" />
-					<path d="M930 215H1005" />
-				</g>
-				<g fill="var(--ret-bg)" stroke="var(--ret-border-hover)" strokeWidth="1.5">
-					{[35, 235, 435, 635].map((x) => (
-						<rect key={`top-${x}`} x={x} y="50" width="200" height="60" />
-					))}
-					{[35, 235, 435, 635].map((x) => (
-						<rect key={`bottom-${x}`} x={x} y="320" width="200" height="60" />
-					))}
-					<rect x="760" y="165" width="170" height="100" stroke="var(--ret-purple)" />
-					<rect x="1005" y="165" width="160" height="100" />
-				</g>
-				<g fill="var(--ret-text-muted)" fontFamily="var(--font-mono)" fontSize="14" letterSpacing="2">
-					<text x="35" y="28">RUNTIME</text>
-					<text x="35" y="410">SUBSTRATE</text>
-				</g>
-				<g fill="currentColor" fontFamily="var(--font-sans)" fontSize="17" fontWeight="600" textAnchor="middle">
-					{RUNTIMES.map((runtime, index) => (
-						<text key={runtime.label} x={135 + index * 200} y="87">{runtime.label}</text>
-					))}
-					{SUBSTRATES.map((substrate, index) => (
-						<text key={substrate.label} x={135 + index * 200} y="357">{substrate.label}</text>
-					))}
-					<text x="845" y="207">Worker intent</text>
-					<text x="845" y="230" fill="var(--ret-text-muted)" fontSize="13" fontWeight="400">identity + responsibility</text>
-					<text x="1085" y="207">Running</text>
-					<text x="1085" y="230">Worker</text>
-				</g>
-				<g fill="var(--ret-purple)">
-					<rect x="753" y="178" width="8" height="8" transform="rotate(45 757 182)" />
-					<rect x="753" y="244" width="8" height="8" transform="rotate(45 757 248)" />
-					<rect x="926" y="211" width="8" height="8" transform="rotate(45 930 215)" />
-				</g>
-			</svg>
-			<div className="grid gap-2 p-3 md:hidden">
-				<MobileBank label="runtime">
-					{RUNTIMES.map((runtime) => (
-						<div key={runtime.label} className="flex min-w-0 items-center gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] px-2 py-2">
-							<Logo mark={runtime.mark} size={13} tone="native" />
-							<span className="truncate text-[10px] font-medium text-[var(--ret-text)]">{runtime.label}</span>
-						</div>
-					))}
-				</MobileBank>
-				<FlowConnector />
-				<div className="border border-[var(--ret-purple)] bg-[var(--ret-bg)] px-3 py-3 text-center">
-					<strong className="text-xs text-[var(--ret-text)]">Worker intent</strong>
-					<p className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-[var(--ret-text-muted)]">identity + responsibility</p>
+			<WalkthroughSection stage={STAGES[0]}>
+				<div className={cn("grid items-stretch gap-6 md:grid-cols-2 lg:gap-10 xl:gap-12")}>
+					{SETUP_SCREENS.map((screen) => <EvidenceScreen key={screen.src} screen={screen} />)}
 				</div>
-				<FlowConnector />
-				<MobileBank label="substrate">
-					{SUBSTRATES.map((substrate) => (
-						<div key={substrate.label} className="flex min-w-0 items-center gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] px-2 py-2">
-							{substrate.kind === "service" ? <ServiceIcon slug={substrate.icon} size={13} /> : <Logo mark={substrate.icon} size={13} />}
-							<span className="truncate text-[10px] font-medium text-[var(--ret-text)]">{substrate.label}</span>
-						</div>
-					))}
-				</MobileBank>
-				<FlowConnector />
-				<div className="border border-[var(--ret-border-hover)] bg-[var(--ret-bg)] px-3 py-3 text-center text-xs font-semibold text-[var(--ret-text)]">
-					Running Worker
+			</WalkthroughSection>
+
+			<WalkthroughSection stage={STAGES[1]}>
+				<div className={cn("grid items-stretch gap-6 md:grid-cols-2 lg:gap-10 xl:gap-12")}>
+					{AGENT_SCREENS.map((screen) => <EvidenceScreen key={screen.src} screen={screen} />)}
 				</div>
-			</div>
-		</div>
+			</WalkthroughSection>
+
+			<WalkthroughSection stage={STAGES[2]}>
+				<EvidenceScreen screen={FLEET_SCREEN} sizes="100vw" wide />
+			</WalkthroughSection>
+
+			<footer className={cn("flex flex-col gap-5 border-t border-[var(--ret-border)]/25 pt-6")}>
+				<div className={cn("flex flex-wrap items-center gap-x-6 gap-y-3")}>
+					<span className={cn("text-sm text-[var(--ret-text-muted)]")}>Current providers</span>
+					<ul className={cn("flex flex-wrap gap-x-5 gap-y-3")}>
+						{PROVIDERS.map((provider) => (
+							<li key={provider.label} className={cn("flex items-center gap-2 text-sm text-[var(--ret-text)]")}>
+								<ServiceIcon slug={provider.icon} size={20} />
+								{provider.label}
+							</li>
+						))}
+					</ul>
+				</div>
+				<p className={cn("flex items-start gap-2 text-sm leading-6 text-[var(--ret-text-muted)]")}>
+					<Fingerprint className={cn("mt-0.5 h-5 w-5 shrink-0")} aria-hidden="true" />
+					Migration moves saved state—not running processes or RAM.
+				</p>
+			</footer>
+		</section>
 	);
 }
 
-function MobileBank({ label, children }: { label: string; children: ReactNode }) {
+function WalkthroughSection({
+	stage,
+	children,
+}: {
+	stage: (typeof STAGES)[number];
+	children: ReactNode;
+}) {
 	return (
-		<div>
-			<div className="mb-1.5 font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">{label}</div>
-			<div className="grid grid-cols-2 gap-1">{children}</div>
-		</div>
+		<section aria-labelledby={stage.id} className={cn("py-7 md:py-9")}>
+			<h3 id={stage.id} className={cn("mb-4 flex scroll-mt-24 items-center gap-2 text-xl font-semibold tracking-tight text-[var(--ret-text)]")}>
+				<PublicIcon name={stage.icon} className={cn("h-5 w-5 shrink-0 text-[var(--ret-text-muted)]")} />
+				{stage.label}
+			</h3>
+			{children}
+		</section>
 	);
 }
 
-function FlowConnector() {
-	return <span aria-hidden="true" className="mx-auto h-4 w-px bg-[var(--ret-border-hover)]" />;
-}
-
-function LifecycleDiagram() {
-	const steps = ["describe", "compose", "provision", "run", "supervise"];
+function EvidenceScreen({ screen, sizes = "(min-width: 768px) 50vw, 100vw", wide = false }: { screen: ProductScreen; sizes?: string; wide?: boolean }) {
 	return (
-		<div className="mt-5 border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-4">
-			<ol className="relative grid gap-3">
-				{steps.map((step, index) => (
-					<li key={step} className="relative grid grid-cols-[28px_minmax(0,1fr)] items-center gap-3">
-						{index < steps.length - 1 ? (
-							<span className="absolute left-[13px] top-7 h-[calc(100%+12px)] w-px bg-[var(--ret-border-hover)]" aria-hidden="true" />
-						) : null}
-						<span className="relative z-10 flex h-7 w-7 items-center justify-center border border-[var(--ret-border-hover)] bg-[var(--ret-bg)] font-mono text-[9px] text-[var(--ret-text-muted)]">
-							{String(index + 1).padStart(2, "0")}
+		<a
+			href={screen.src}
+			target="_blank"
+			rel="noopener noreferrer"
+			aria-label={`${screen.label}: view full-size screenshot (opens in a new tab)`}
+			className={SCREEN_LINK}
+		>
+			<figure className={cn("flex min-w-0 flex-1 flex-col")}>
+				<div className={cn("relative w-full border-b border-[var(--ret-border)]/25 bg-[var(--ret-bg-soft)]", wide ? "aspect-[16/9]" : "aspect-[3/2]")}>
+					<Image src={screen.src} fill alt={screen.alt} className={cn("object-contain")} sizes={sizes} />
+				</div>
+				<figcaption className={cn("flex flex-1 flex-col px-4 py-4 sm:px-5")}>
+					<div className={cn("flex items-center gap-3")}>
+						<span className={cn("flex h-6 w-6 shrink-0 items-center justify-center text-[var(--ret-text)]")}>
+							{screen.runtime ? (
+								<Logo mark={screen.runtime} size={24} tone={screen.runtime === "codex" ? "auto" : "native"} />
+							) : (
+								<PublicIcon name={screen.icon ?? "file"} className={cn("h-5 w-5 text-[var(--ret-text-muted)]")} />
+							)}
 						</span>
-						<span className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2.5 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-text)]">
-							{step}
-						</span>
-					</li>
-				))}
-			</ol>
-			<div className="mt-5 grid grid-cols-4 gap-px bg-[var(--ret-border)]">
-				{SUBSTRATES.map((substrate) => (
-					<div key={substrate.label} className="flex min-h-10 items-center justify-center bg-[var(--ret-bg)]" title={substrate.label}>
-						{substrate.kind === "service" ? (
-							<ServiceIcon slug={substrate.icon} size={14} />
-						) : (
-							<Logo mark={substrate.icon} size={14} />
-						)}
+						<h4 className={cn("min-w-0 flex-1 text-lg font-semibold tracking-tight text-[var(--ret-text)]")}>{screen.label}</h4>
+						{screen.provider ? <span className={cn("shrink-0 text-[var(--ret-text-dim)]")}><ServiceIcon slug={screen.provider} size={20} /></span> : null}
+						<Expand className={cn("h-5 w-5 shrink-0 text-[var(--ret-text-muted)] group-hover:text-[var(--ret-text)]")} aria-hidden="true" />
+						<span className={cn("sr-only")}>View full size</span>
 					</div>
-				))}
-			</div>
-		</div>
+					<p className={cn("mt-2 max-w-[75ch] text-base leading-7 text-[var(--ret-text-dim)]")}>{screen.caption}</p>
+				</figcaption>
+			</figure>
+		</a>
 	);
 }

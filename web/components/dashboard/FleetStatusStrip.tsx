@@ -58,7 +58,7 @@ export function FleetStatusStrip() {
 
 	return (
 		<div
-			className="hidden shrink-0 items-center gap-2 whitespace-nowrap text-[12px] text-[var(--ret-text-muted)] md:flex"
+			className={cn("flex shrink-0 items-center gap-2 whitespace-nowrap text-sm text-[var(--ret-text-muted)]")}
 			title={`${running} running of ${total} machines`}
 		>
 			<span

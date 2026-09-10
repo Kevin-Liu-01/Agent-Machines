@@ -28,7 +28,7 @@ export function DashboardPanel({
 	className?: string;
 }) {
 	return (
-		<section className={cn(VARIANT_CLASS[variant], className)}>
+		<section className={cn("min-w-0", VARIANT_CLASS[variant], className)}>
 			{children}
 		</section>
 	);

@@ -28,7 +28,7 @@ import {
 	SquareTerminal,
 	Terminal,
 	Wifi,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 

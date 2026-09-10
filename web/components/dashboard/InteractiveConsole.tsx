@@ -835,6 +835,10 @@ export function InteractiveConsole({
 
 			term = new Terminal({
 				cursorBlink: true,
+				// xterm renders its own scrollbar; use the same global size as native scroll areas.
+				overviewRuler: {
+					width: Number.parseFloat(getComputedStyle(hostRef.current).getPropertyValue("--ret-scrollbar-size")) || 2,
+				},
 				fontSize: window.innerWidth < 640 ? 10 : 12,
 				fontFamily:
 					'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',

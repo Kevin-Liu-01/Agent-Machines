@@ -4,7 +4,7 @@ import {
 	Fingerprint,
 	Network,
 	type LucideIcon,
-} from "lucide-react";
+} from "@/components/ui/icons";
 
 import { cn } from "@/lib/cn";
 

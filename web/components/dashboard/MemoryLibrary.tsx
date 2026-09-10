@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Brain, Download, Plus, Wrench, Plug2, Sparkles } from "lucide-react";
+import { Brain, Download, Plus, Wrench, Plug2, Sparkles } from "@/components/ui/icons";
 import { useCallback, useEffect, useState } from "react";
 
 import { ReticleButton } from "@/components/reticle/ReticleButton";

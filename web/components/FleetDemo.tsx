@@ -3,6 +3,9 @@
 import { AGENTS } from "@/lib/agents";
 import { agentMetaForKind, fleetHue, fleetTools } from "@/lib/fleet/agent-styling";
 import { FleetStreamCard } from "@/components/fleet/FleetStreamCard";
+import { Layers } from "@/components/ui/icons";
+import { cn } from "@/lib/cn";
+import { LANDING_BODY, LANDING_EYEBROW, LANDING_INSET, LANDING_SECTION_SPACE, LANDING_SPLIT, LANDING_TITLE } from "@/lib/marketing/layout";
 import type { FleetStreamCardModel } from "@/lib/fleet/view-model";
 import type { AgentKind } from "@/lib/user-config/schema";
 import { DEFAULT_MODEL } from "@/lib/user-config/schema";
@@ -110,11 +113,17 @@ function landingCard(agentId: AgentKind): FleetStreamCardModel {
 
 export function FleetDemo() {
 	return (
-		<div className="px-1 py-1.5">
-			<p className="px-2 pb-2 text-xs leading-relaxed text-[var(--ret-text-muted)]">
-				Illustrative fleet — sample activity and uptime, not live Workers or provider benchmarks.
-			</p>
-			<div className="grid w-full grid-cols-2 gap-1.5 md:grid-cols-4">
+		<section aria-labelledby="fleet-demo-title" className={cn(LANDING_INSET, LANDING_SECTION_SPACE, "space-y-8")}>
+			<header className={cn(LANDING_SPLIT, "items-end")}>
+				<div>
+					<p className={cn(LANDING_EYEBROW)}><Layers className={cn("h-4 w-4")} aria-hidden="true" />Sample fleet</p>
+					<h2 id="fleet-demo-title" className={cn(LANDING_TITLE)}>A workspace for each specialist.</h2>
+				</div>
+				<p className={cn(LANDING_BODY, "max-w-xl")}>
+					Illustrative activity and uptime, not live Workers or provider benchmarks. Open a card for the runtime’s documentation.
+				</p>
+			</header>
+			<div className={cn("grid w-full grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 [&>a]:min-w-0 [&>a]:focus-visible:outline-2 [&>a]:focus-visible:outline-offset-4 [&>a]:focus-visible:outline-[var(--ret-purple)]")}>
 				{AGENTS.map((agent, idx) => (
 					<FleetStreamCard
 						key={agent.id}
@@ -125,6 +134,6 @@ export function FleetDemo() {
 					/>
 				))}
 			</div>
-		</div>
+		</section>
 	);
 }

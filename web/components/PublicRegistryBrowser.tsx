@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Search, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, Search, SlidersHorizontal } from "@/components/ui/icons";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { RegistryLogo } from "@/components/dashboard/RegistryLogo";

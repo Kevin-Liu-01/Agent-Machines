@@ -10,7 +10,7 @@ import {
 	Plus,
 	Sparkles,
 	Wrench,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import { useCallback, useEffect, useState } from "react";
 
 import { ReticleButton } from "@/components/reticle/ReticleButton";

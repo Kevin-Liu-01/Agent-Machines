@@ -49,6 +49,9 @@ importers:
       '@fly/sprites':
         specifier: ^0.1.0
         version: 0.1.0
+      '@phosphor-icons/react':
+        specifier: 2.1.10
+        version: 2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@react-three/drei':
         specifier: ^10.7.7
         version: 10.7.7(@react-three/fiber@9.7.0(@types/react@19.2.18)(immer@11.1.15)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.184.0))(@types/react@19.2.18)(@types/three@0.184.1)(immer@11.1.15)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(three@0.184.0)
@@ -82,9 +85,6 @@ importers:
       e2b:
         specifier: ^2.37.0
         version: 2.37.0
-      lucide-react:
-        specifier: ^1.17.0
-        version: 1.28.0(react@19.2.8)
       next:
         specifier: ^16.2.6
         version: 16.2.12(@opentelemetry/api@1.9.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -115,6 +115,9 @@ importers:
       three:
         specifier: ^0.184.0
         version: 0.184.0
+      vfile:
+        specifier: 6.0.3
+        version: 6.0.3
       ws:
         specifier: ^8.21.3
         version: 8.21.3
@@ -946,6 +949,13 @@ packages:
   '@opentelemetry/semantic-conventions@1.43.0':
     resolution: {integrity: sha512-eSYWTm620tTk45EKSedaUL8MFYI8hW164hIXsgIHyxu3VobUB3fFCu5t0hQby6OoWRPsG1KkKUG2M5UadiLiVg==}
     engines: {node: '>=14'}
+
+  '@phosphor-icons/react@2.1.10':
+    resolution: {integrity: sha512-vt8Tvq8GLjheAZZYa+YG/pW7HDbov8El/MANW8pOAz4eGxrwhnbfrQZq0Cp4q8zBEu8NIhHdnr+r8thnfRSNYA==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      react: '>= 16.8'
+      react-dom: '>= 16.8'
 
   '@protobufjs/aspromise@1.1.2':
     resolution: {integrity: sha512-j+gKExEuLmKwvz3OgROXtrJ2UG2x8Ch2YZUxahh+s1F2HZ+wAceUNLkvy6zKCPVRkU++ZWQrdxsUeQXmcg4uoQ==}
@@ -2565,11 +2575,6 @@ packages:
   lru-cache@11.5.2:
     resolution: {integrity: sha512-4pfM1Ff0x50o0tQwb5ucw/RzNyD0/YJME6IVcStalZuMWxdt3sR3huStTtxz4PUmvZfRguvDejasvQ2kifR11g==}
     engines: {node: 20 || >=22}
-
-  lucide-react@1.28.0:
-    resolution: {integrity: sha512-fARAFJULsGuDDydjp6+6blekG/sBIM29TerzLjc9bQUKAcEfrSc4ZQKb25KRz4OMKd87cZTb5dgq0w/T6KufVg==}
-    peerDependencies:
-      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   maath@0.10.8:
     resolution: {integrity: sha512-tRvbDF0Pgqz+9XUa4jjfgAQ8/aPKmQdWXilFu2tMy4GWj4NOsx99HlULO4IeREfbO3a0sA145DZYyvXPkybm0g==}
@@ -4459,6 +4464,11 @@ snapshots:
 
   '@opentelemetry/semantic-conventions@1.43.0': {}
 
+  '@phosphor-icons/react@2.1.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+    dependencies:
+      react: 19.2.8
+      react-dom: 19.2.8(react@19.2.8)
+
   '@protobufjs/aspromise@1.1.2': {}
 
   '@protobufjs/base64@1.1.2': {}
@@ -6039,10 +6049,6 @@ snapshots:
       highlight.js: 11.11.1
 
   lru-cache@11.5.2: {}
-
-  lucide-react@1.28.0(react@19.2.8):
-    dependencies:
-      react: 19.2.8
 
   maath@0.10.8(@types/three@0.184.1)(three@0.184.0):
     dependencies:

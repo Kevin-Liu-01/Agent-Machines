@@ -15,7 +15,7 @@ import {
 	Rocket,
 	Terminal,
 	Zap,
-} from "lucide-react";
+} from "@/components/ui/icons";
 import dynamic from "next/dynamic";
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 
@@ -389,10 +389,10 @@ function FeatureCell({ Icon, label, value, logos }: Feat) {
 				<Icon size={18} strokeWidth={1.6} />
 			</span>
 			<div className="relative z-10 min-w-0 pr-2">
-				<div className="truncate font-mono text-[11px] uppercase tracking-[0.12em] text-[var(--ret-text)]">
+				<div className={cn("truncate text-sm font-medium text-[var(--ret-text)]")}>
 					{label}
 				</div>
-				<div className="truncate text-[11px] text-[var(--ret-text-dim)]">{value}</div>
+				<div className={cn("truncate text-[13px] text-[var(--ret-text-dim)]")}>{value}</div>
 			</div>
 			<FeatureLogoStack slugs={logos} />
 		</div>
@@ -689,11 +689,10 @@ export function HeroBlock() {
 								<span className="ml-3 h-px flex-1 border-t border-dashed border-[var(--ret-border)] md:ml-4" />
 							</span>
 						</h1>
-						<p className="max-w-[76ch] text-[15px] leading-snug text-[var(--ret-text-dim)]">
-							Describe a responsibility or start from a proven specialist.{" "}
-							<strong className="font-medium text-[var(--ret-text)]">
-								Agent Machines gives the Worker memory, tools, permissions, files,
-								schedules, and a cloud home. The Worker stays portable as the machinery changes.
+						<p className={cn("max-w-[60ch] text-base leading-relaxed text-[var(--ret-text-dim)]")}>
+							Choose a specialist. Give it a job.{" "}
+							<strong className={cn("font-medium text-[var(--ret-text)]")}>
+								Your Worker keeps its memory, tools, and files—even when the machinery changes.
 							</strong>
 						</p>
 						<div className="flex flex-wrap items-center gap-2.5">

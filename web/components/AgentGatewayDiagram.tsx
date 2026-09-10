@@ -1,4 +1,4 @@
-import { ArrowRight, Box, Network, UserRound } from "lucide-react";
+import { ArrowRight, Box, Network, UserRound } from "@/components/ui/icons";
 
 import { Logo } from "@/components/Logo";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
