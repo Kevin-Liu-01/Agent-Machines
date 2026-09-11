@@ -3,6 +3,7 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 
 import { Logo, type Mark } from "@/components/Logo";
+import { BearingIcon } from "@/components/marketing/MechanicalDetails";
 import { PublicIcon } from "@/components/marketing/PublicIcon";
 import { ServiceIcon, type ServiceSlug } from "@/components/ServiceIcon";
 import { cn } from "@/lib/cn";
@@ -173,9 +174,13 @@ function WalkthroughSection({
 }) {
 	return (
 		<section aria-labelledby={stage.id} className={cn("py-7 md:py-9")}>
-			<h3 id={stage.id} className={cn("mb-4 flex scroll-mt-24 items-center gap-2 text-xl font-semibold tracking-tight text-[var(--ret-text)]")}>
-				<PublicIcon name={stage.icon} className={cn("h-5 w-5 shrink-0 text-[var(--ret-text-muted)]")} />
+			<h3 id={stage.id} className={cn("mb-5 flex scroll-mt-24 items-center gap-3 text-xl font-semibold tracking-tight text-[var(--ret-text)]")}>
+				<BearingIcon gear={stage.id === "showcase-agents"}>
+					<PublicIcon name={stage.icon} className={cn("size-5")} />
+				</BearingIcon>
 				{stage.label}
+				<span aria-hidden="true" className={cn("ml-3 h-px min-w-4 flex-1 bg-[var(--ret-border)]/20")} />
+				<span aria-hidden="true" className={cn("size-1 shrink-0 rotate-45 border border-[var(--ret-text-muted)]/35")} />
 			</h3>
 			{children}
 		</section>

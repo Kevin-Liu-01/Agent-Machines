@@ -1,15 +1,16 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const mocks = vi.hoisted(() => ({ userId: vi.fn(), from: vi.fn(), queries: [] as Array<{ table: string; filters: unknown[][] }> }));
+const mocks = vi.hoisted(() => ({ userId: vi.fn(), admin: vi.fn(), from: vi.fn(), queries: [] as Array<{ table: string; filters: unknown[][] }> }));
 vi.mock("@/lib/user-config/identity", () => ({ getEffectiveUserId: mocks.userId }));
-vi.mock("@/lib/supabase/client", () => ({ supabaseAdmin: () => ({ from: mocks.from }) }));
+vi.mock("@/lib/supabase/client", () => ({ supabaseAdmin: mocks.admin }));
 import { GET } from "@/app/api/dashboard/metrics/usage/route";
 import { GET as getMachineUsage } from "@/app/api/dashboard/metrics/machines/[id]/usage/route";
 import { normalizeMachineUsagePayload } from "@/lib/dashboard/usage-metrics";
 
 describe("usage route evidence boundary", () => {
 	beforeEach(() => {
+		mocks.admin.mockReset().mockImplementation(() => ({ from: mocks.from }));
 		mocks.userId.mockResolvedValue("tenant-a");
 		mocks.queries.length = 0;
 		mocks.from.mockImplementation((table: string) => {
@@ -40,6 +41,36 @@ describe("usage route evidence boundary", () => {
 		mocks.userId.mockResolvedValue(null);
 		expect((await GET(new NextRequest("https://example.test/api/dashboard/metrics/usage"))).status).toBe(401);
 		expect(mocks.queries).toHaveLength(0);
+		expect(mocks.admin).not.toHaveBeenCalled();
+	});
+	it("reports missing metrics storage after authentication without fabricating empty usage", async () => {
+		mocks.admin.mockImplementation(() => { throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY/SUPABASE_SECRET_KEY. Add them to .env.local (see .env.local.example)."); });
+		const response = await GET(new NextRequest("https://example.test/api/dashboard/metrics/usage"));
+		expect(response.status).toBe(503);
+		expect(response.headers.get("Cache-Control")).toBe("no-store");
+		expect(await response.json()).toEqual({ ok: false, error: "config_missing", reason: "config_missing", message: "Usage storage is not configured" });
+		expect(mocks.queries).toHaveLength(0);
+	});
+	it("sanitizes constructor and transport exceptions instead of exposing storage details", async () => {
+		mocks.admin.mockImplementationOnce(() => { throw new Error("Invalid URL https://private-db.test?secret=service-key"); });
+		const unavailable = await GET(new NextRequest("https://example.test/api/dashboard/metrics/usage"));
+		expect(unavailable.status).toBe(503);
+		expect(await unavailable.json()).toEqual({ ok: false, error: "unavailable", reason: "unavailable", message: "Usage data is unavailable" });
+		mocks.from.mockImplementationOnce(() => { throw new Error("postgres://service-key@private-db.test"); });
+		const failed = await GET(new NextRequest("https://example.test/api/dashboard/metrics/usage"));
+		expect(failed.status).toBe(502);
+		expect(await failed.json()).toEqual({ ok: false, error: "unavailable", reason: "unavailable", message: "Usage data is unavailable" });
+	});
+	it.each(["machine_usage_daily", "machine_metrics", "machines"])("sanitizes a returned %s query error and never returns usage data", async tableWithError => {
+		mocks.from.mockImplementation((table: string) => {
+			const chain = { select: () => chain, order: () => chain, limit: () => chain, eq: () => chain, gte: () => chain,
+				then: (resolve: (value: unknown) => unknown) => Promise.resolve({ data: [], error: table === tableWithError ? { message: "private schema details and service-key" } : null }).then(resolve),
+			};
+			return chain;
+		});
+		const response = await GET(new NextRequest("https://example.test/api/dashboard/metrics/usage"));
+		expect(response.status).toBe(502);
+		expect(await response.json()).toEqual({ ok: false, error: "unavailable", reason: "unavailable", message: "Usage data is unavailable" });
 	});
 	it.each(["fleet", "machine"])("invariant_%s_usage_exposes_unknown_storage_without_altering_sampled_cpu_or_cost", async (scope) => {
 		const response = scope === "fleet"

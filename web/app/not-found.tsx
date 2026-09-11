@@ -17,10 +17,9 @@ export default function NotFound() {
 				<p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
 					Error 404
 				</p>
-				<h1 className="ret-display mt-2 text-2xl">This page slipped off-grid</h1>
+				<h1 className="ret-display mt-2 text-3xl">Page not found</h1>
 				<p className="mx-auto mt-3 max-w-[46ch] text-sm leading-relaxed text-[var(--ret-text-dim)]">
-					The page you&apos;re looking for isn&apos;t on any machine. Check the
-					address, or head back to the fleet.
+					Check the address, or return home to find what you need.
 				</p>
 				<div className="mt-6 flex flex-wrap items-center justify-center gap-2">
 					<ReticleButton as="a" href="/dashboard" variant="primary" size="sm">

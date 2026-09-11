@@ -16,7 +16,7 @@ export function DashboardPageBody({
 	className?: string;
 }) {
 	return (
-		<div className={cn("min-w-0 space-y-5 px-4 py-5 sm:px-5 sm:py-6", className)}>
+		<div data-dashboard-body className={cn("min-w-0 space-y-4 px-[var(--dashboard-gutter,20px)] py-4 sm:py-5", className)}>
 			{children}
 		</div>
 	);

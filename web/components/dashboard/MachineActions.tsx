@@ -220,21 +220,21 @@ export function MachineActions({
 			{error ? (
 				<p
 					role="alert"
-					className="basis-full text-right font-mono text-[10px] text-[var(--ret-red)]"
+					className="basis-full text-right text-sm leading-6 text-[var(--ret-red)]"
 					title={error}
 				>
-					{error.slice(0, 80)}
+					{error}
 				</p>
 			) : null}
 			{state === "ready" && capabilities?.canSleep === false ? (
-				<p className="basis-full text-right text-[10px] text-[var(--ret-text-muted)]">
+				<p className="basis-full text-right text-sm leading-6 text-[var(--ret-text-muted)]">
 					{providerKind === "sprites"
 						? "Sprites manages automatic idle suspension; active work or traffic can keep it running. Manual pause is unavailable."
 						: "Manual pause is unavailable on this provider. This page does not stop compute."}
 				</p>
 			) : null}
 			{canDestroy && deletionStorageWarning(providerKind) ? (
-				<p className="basis-full text-right text-[10px] text-[var(--ret-text-muted)]">
+				<p className="basis-full text-right text-sm leading-6 text-[var(--ret-text-muted)]">
 					{deletionStorageWarning(providerKind)}{" "}
 					<a href={VERCEL_SNAPSHOT_CLEANUP_URL} target="_blank" rel="noreferrer" className="underline">Snapshot cleanup</a>
 				</p>
@@ -244,7 +244,7 @@ export function MachineActions({
 }
 
 function call(action: Action, machineId: string): Promise<Response> {
-	const base = `/api/dashboard/machines/${machineId}`;
+	const base = `/api/dashboard/machines/${encodeURIComponent(machineId)}`;
 	switch (action) {
 		case "wake":
 			return fetch(`${base}/wake`, { method: "POST" });
@@ -296,8 +296,8 @@ function ActionButton({
 			onClick={onClick}
 			disabled={disabled}
 			className={cn(
-				"inline-flex items-center gap-1 border border-transparent font-mono uppercase tracking-[0.18em] transition-colors",
-				compact ? "px-1 py-0.5 text-[9px]" : "px-1.5 py-0.5 text-[10px]",
+				"inline-flex items-center gap-1 rounded-md border border-transparent capitalize transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-purple)] disabled:cursor-not-allowed",
+				compact ? "min-h-9 px-2 py-1 text-sm" : "min-h-10 px-3 py-2 text-sm",
 				toneClass,
 				disabled && "opacity-50",
 				pending && "border-current/30",
@@ -305,7 +305,7 @@ function ActionButton({
 			aria-label={label}
 		>
 			{pending ? (
-				<BrailleSpinner name="braille" className="text-[10px]" />
+				<BrailleSpinner name="braille" className="text-sm" />
 			) : null}
 			<span>{label}</span>
 		</button>

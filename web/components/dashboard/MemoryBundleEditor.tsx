@@ -11,13 +11,14 @@ import {
 	Sparkles,
 	Wrench,
 } from "@/components/ui/icons";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleSelect } from "@/components/reticle/ReticleSelect";
-import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
+import { DashboardLoadingState } from "@/components/dashboard/DashboardLoadingState";
+import { EmptyState } from "@/components/dashboard/EmptyState";
 import { cn } from "@/lib/cn";
 import { OnMachineMemory } from "@/components/dashboard/OnMachineMemory";
 import type { MemoryBundle, MemoryBundleSource } from "@/lib/user-config/schema";
@@ -25,7 +26,7 @@ import type { MemoryBundle, MemoryBundleSource } from "@/lib/user-config/schema"
 type Ability = { id: string; name: string; description: string };
 type Abilities = { skills: Ability[]; tools: Ability[]; mcps: Ability[] };
 
-type MachineOpt = { id: string; name: string };
+type MachineOpt = { id: string; name: string; archived?: boolean };
 
 const WILDCARD = "*";
 
@@ -62,19 +63,31 @@ export function MemoryBundleEditor({ bundleId }: { bundleId: string }) {
 	const [available, setAvailable] = useState<Abilities | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [saving, setSaving] = useState(false);
-	const [savedAt, setSavedAt] = useState<number | null>(null);
+	const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
+	const [actionError, setActionError] = useState<string | null>(null);
+	const [exporting, setExporting] = useState(false);
 	const [exportText, setExportText] = useState<string | null>(null);
 	const [exportName, setExportName] = useState("memory.md");
 	const [machines, setMachines] = useState<MachineOpt[]>([]);
+	const [machineStatus, setMachineStatus] = useState<"loading" | "ready" | "error">("loading");
+	const [machineRetry, setMachineRetry] = useState(0);
 	const [installTarget, setInstallTarget] = useState("");
 	const [installMsg, setInstallMsg] = useState<string | null>(null);
 	const [installing, setInstalling] = useState(false);
+	const requestBusy = useRef(false);
+	const loadRequest = useRef<AbortController | null>(null);
+	const dirty = Boolean(bundle && savedSnapshot !== JSON.stringify(bundle));
+	const actionBusy = saving || exporting || installing;
 
 	const load = useCallback(async () => {
+		loadRequest.current?.abort();
+		const controller = new AbortController();
+		loadRequest.current = controller;
 		setError(null);
 		try {
 			const r = await fetch(`/api/dashboard/memory/${encodeURIComponent(bundleId)}`, {
 				cache: "no-store",
+				signal: controller.signal,
 			});
 			const body = (await r.json()) as {
 				ok?: boolean;
@@ -83,37 +96,51 @@ export function MemoryBundleEditor({ bundleId }: { bundleId: string }) {
 				available?: Abilities;
 				error?: string;
 			};
+			if (controller.signal.aborted) return;
 			if (!r.ok || !body.ok || !body.bundle) throw new Error(body.error ?? `HTTP ${r.status}`);
 			setBundle(body.bundle);
+			setSavedSnapshot(JSON.stringify(body.bundle));
 			setAbilities(body.abilities ?? { skills: [], tools: [], mcps: [] });
 			setAvailable(body.available ?? { skills: [], tools: [], mcps: [] });
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "load_failed");
+			if (!controller.signal.aborted) setError(err instanceof Error ? err.message : "Could not load this memory bundle.");
 		}
 	}, [bundleId]);
 
 	useEffect(() => {
 		void load();
+		return () => loadRequest.current?.abort();
 	}, [load]);
 
 	useEffect(() => {
-		fetch("/api/dashboard/machines", { cache: "no-store" })
-			.then((r) => (r.ok ? (r.json() as Promise<{ machines?: MachineOpt[] }>) : null))
-			.then((j) => {
-				const list = j?.machines ?? [];
-				setMachines(list);
-				if (list[0]) setInstallTarget(list[0].id);
+		const controller = new AbortController();
+		setMachineStatus("loading");
+		fetch("/api/dashboard/machines", { cache: "no-store", signal: controller.signal })
+			.then(async (r) => {
+				const body = await r.json() as { machines?: MachineOpt[] };
+				if (!r.ok || !Array.isArray(body.machines)) throw new Error("Machine list unavailable.");
+				return body;
 			})
-			.catch(() => {});
-	}, []);
+			.then((j) => {
+				if (controller.signal.aborted) return;
+				const list = (j.machines ?? []).filter(machine => !machine.archived);
+				setMachines(list);
+				setInstallTarget(current => list.some(machine => machine.id === current) ? current : list[0]?.id ?? "");
+				setMachineStatus("ready");
+			})
+			.catch(() => { if (!controller.signal.aborted) { setMachines([]); setInstallTarget(""); setMachineStatus("error"); } });
+		return () => controller.abort();
+	}, [machineRetry]);
 
 	const setDoc = (key: keyof MemoryBundle["docs"], value: string) => {
 		setBundle((b) => (b ? { ...b, docs: { ...b.docs, [key]: value } } : b));
 	};
 
 	const save = useCallback(async () => {
-		if (!bundle) return;
+		if (!bundle || bundle.id !== bundleId || requestBusy.current) return;
+		requestBusy.current = true;
 		setSaving(true);
+		setActionError(null);
 		try {
 			const r = await fetch(`/api/dashboard/memory/${encodeURIComponent(bundleId)}`, {
 				method: "PATCH",
@@ -127,28 +154,39 @@ export function MemoryBundleEditor({ bundleId }: { bundleId: string }) {
 					mcpServerIds: bundle.mcpServerIds,
 				}),
 			});
-			if (r.ok) {
-				setSavedAt(Date.now());
-				await load();
-			}
+			const body = await r.json() as { ok?: boolean; bundle?: MemoryBundle; error?: string };
+			if (!r.ok || !body.ok || body.bundle?.id !== bundleId || typeof body.bundle.name !== "string" || typeof body.bundle.description !== "string" || !body.bundle.docs || DOC_FIELDS.some(field => typeof body.bundle?.docs[field.key] !== "string") || !Array.isArray(body.bundle.skillIds) || !Array.isArray(body.bundle.toolIds) || !Array.isArray(body.bundle.mcpServerIds)) throw new Error(body.error ?? "Could not save this bundle. Your edits are still here.");
+			setSavedSnapshot(JSON.stringify(body.bundle));
+			// New edits made while the request was pending remain in the editor.
+			setBundle(current => current === bundle ? body.bundle! : current);
+		} catch (failure) {
+			setActionError(failure instanceof Error ? failure.message : "Could not save this bundle. Your edits are still here.");
 		} finally {
+			requestBusy.current = false;
 			setSaving(false);
 		}
-	}, [bundle, bundleId, load]);
+	}, [bundle, bundleId]);
 
 	const doExport = useCallback(async () => {
-		const r = await fetch(`/api/dashboard/memory/${encodeURIComponent(bundleId)}/export`, {
-			method: "POST",
-		});
-		const body = (await r.json()) as { ok?: boolean; prompt?: string; filename?: string };
-		if (body.ok && body.prompt) {
+		if (requestBusy.current || dirty) return;
+		requestBusy.current = true;
+		setExporting(true);
+		setActionError(null);
+		try {
+			const r = await fetch(`/api/dashboard/memory/${encodeURIComponent(bundleId)}/export`, { method: "POST" });
+			const body = (await r.json()) as { ok?: boolean; prompt?: string; filename?: string; error?: string };
+			if (!r.ok || !body.ok || typeof body.prompt !== "string") throw new Error(body.error ?? "Could not export this bundle. Please try again.");
 			setExportText(body.prompt);
 			setExportName(body.filename ?? "memory.md");
-		}
-	}, [bundleId]);
+		} catch (failure) {
+			setActionError(failure instanceof Error ? failure.message : "Could not export this bundle. Please try again.");
+		} finally { requestBusy.current = false; setExporting(false); }
+	}, [bundleId, dirty]);
 
 	const doInstall = useCallback(async () => {
-		if (!installTarget) return;
+		if (requestBusy.current || dirty || machineStatus !== "ready" || !machines.some(machine => machine.id === installTarget && !machine.archived)) return;
+		if (!window.confirm("Install the saved memory on this machine? This replaces its existing memory documents.")) return;
+		requestBusy.current = true;
 		setInstalling(true);
 		setInstallMsg(null);
 		try {
@@ -158,28 +196,24 @@ export function MemoryBundleEditor({ bundleId }: { bundleId: string }) {
 				body: JSON.stringify({ machineId: installTarget }),
 			});
 			const body = (await r.json()) as { ok?: boolean; message?: string; error?: string };
-			setInstallMsg(body.ok ? "Installed to machine." : body.message ?? body.error ?? "install_failed");
+			setInstallMsg(r.ok && body.ok ? "Installed to machine." : body.message ?? body.error ?? "Installation failed. Try again.");
 		} catch (err) {
 			setInstallMsg(err instanceof Error ? err.message : "install_failed");
 		} finally {
+			requestBusy.current = false;
 			setInstalling(false);
 		}
-	}, [bundleId, installTarget]);
+	}, [bundleId, installTarget, dirty, machines, machineStatus]);
 
 	if (error) {
 		return (
-			<div className="px-5 py-8">
-				<p className="font-mono text-[12px] text-[var(--ret-red)]">{error}</p>
-				<Link href="/dashboard/memory" className="mt-2 inline-block font-mono text-[11px] text-[var(--ret-accent)] hover:underline">
-					← back to Memory
-				</Link>
-			</div>
+			<EmptyState title="Could not load this memory bundle" description={error} onRetry={() => void load()} action={{ label: "Back to Memory", href: "/dashboard/memory" }} />
 		);
 	}
-	if (!bundle || !abilities || !available) {
+	if (!bundle || bundle.id !== bundleId || !abilities || !available) {
 		return (
-			<div className="px-5 py-12">
-				<BrailleSpinner name="orbit" label="loading bundle" className="text-[11px] text-[var(--ret-text-muted)]" />
+			<div className="px-5 py-6">
+				<DashboardLoadingState label="Loading memory bundle…" variant="editor" />
 			</div>
 		);
 	}
@@ -189,10 +223,11 @@ export function MemoryBundleEditor({ bundleId }: { bundleId: string }) {
 			{/* Header */}
 			<div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--ret-border)] px-5 py-4">
 				<div className="flex min-w-0 items-center gap-3">
-					<Link href="/dashboard/memory" className="text-[var(--ret-text-muted)] hover:text-[var(--ret-text)]">
+					<Link href="/dashboard/memory" aria-label="Back to Memory" className="grid size-11 shrink-0 place-items-center rounded text-[var(--ret-text-muted)] hover:text-[var(--ret-text)] focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]">
 						<ChevronLeft className="h-4 w-4" strokeWidth={1.75} />
 					</Link>
 					<input
+						aria-label="Memory bundle name"
 						value={bundle.name}
 						onChange={(e) => setBundle({ ...bundle, name: e.target.value })}
 						className="min-w-0 border-0 bg-transparent text-[18px] tracking-tight text-[var(--ret-text)] focus:outline-none"
@@ -200,27 +235,27 @@ export function MemoryBundleEditor({ bundleId }: { bundleId: string }) {
 					/>
 					<ReticleBadge variant={SOURCE_BADGE[bundle.source]}>{bundle.source}</ReticleBadge>
 				</div>
-				<div className="flex items-center gap-2">
-					{savedAt ? (
-						<span className="font-mono text-[10px] text-[var(--ret-text-muted)]">saved</span>
-					) : null}
-					<ReticleButton variant="secondary" size="sm" onClick={() => void doExport()}>
-						<Download className="h-3.5 w-3.5" strokeWidth={1.75} /> Export
+				<div className="flex flex-wrap items-center gap-2">
+					<span role="status" className="text-sm text-[var(--ret-text-muted)]">{saving ? "Saving…" : dirty ? "Unsaved changes" : "Saved"}</span>
+					<ReticleButton variant="secondary" size="sm" onClick={() => void doExport()} disabled={actionBusy || dirty}>
+						<Download className="h-3.5 w-3.5" aria-hidden="true" /> {exporting ? "Exporting…" : "Export"}
 					</ReticleButton>
-					<ReticleButton variant="primary" size="sm" onClick={() => void save()} disabled={saving}>
+					<ReticleButton variant="primary" size="sm" onClick={() => void save()} disabled={actionBusy}>
 						{saving ? "saving…" : "Save"}
 					</ReticleButton>
 				</div>
 			</div>
 
-			<div className="space-y-5 px-5 py-5">
+			<div className="space-y-6 px-[var(--dashboard-gutter,20px)] py-8">
+				{actionError ? <p role="alert" className="rounded-md border border-[var(--ret-red)]/30 p-3 text-sm text-[var(--ret-red)]">{actionError}</p> : null}
 				<input
+					aria-label="Memory bundle description"
 					value={bundle.description}
 					onChange={(e) => setBundle({ ...bundle, description: e.target.value })}
 					placeholder="short description…"
 					className={cn(
 						"w-full border border-[var(--ret-border)] bg-[var(--ret-bg)] px-2.5 py-1.5",
-						"text-[12px] text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)]",
+						"text-sm text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)]",
 						"focus:border-[var(--ret-accent)] focus:outline-none",
 					)}
 				/>
@@ -242,12 +277,12 @@ export function MemoryBundleEditor({ bundleId }: { bundleId: string }) {
 				{/* Abilities */}
 				<section className="space-y-3">
 					<div className="flex items-baseline justify-between gap-2 border-b border-[var(--ret-border)] pb-1.5">
-						<span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
+						<span className="text-xs font-medium text-[var(--ret-text-muted)]">
 							Abilities
 						</span>
 						<Link
 							href="/dashboard/registry"
-							className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ret-accent)] hover:underline"
+							className="flex items-center gap-1 text-xs font-medium text-[var(--ret-accent)] hover:underline"
 						>
 							<Plus className="h-3 w-3" strokeWidth={1.75} /> add from registry
 						</Link>
@@ -303,22 +338,24 @@ export function MemoryBundleEditor({ bundleId }: { bundleId: string }) {
 
 				{/* Install + on-machine */}
 				<section className="space-y-3">
-					<SectionLabel label="Install" hint="write this memory into an agent on a machine" />
+					<SectionLabel label="Install" hint="Replaces this machine's memory documents" />
+					{dirty ? <p className="text-sm text-[var(--ret-amber)]">Save changes before exporting or installing.</p> : null}
+					{machineStatus === "loading" ? <p role="status" className="text-sm text-[var(--ret-text-muted)]">Loading installation targets…</p> : machineStatus === "error" ? <div role="alert" className="text-sm text-[var(--ret-red)]">Could not load your machines. <button type="button" onClick={() => setMachineRetry(value => value + 1)} className="min-h-11 underline focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]">Retry machine list</button></div> : !machines.length ? <p className="text-sm text-[var(--ret-text-muted)]">You can edit memory without a machine. <Link href="/dashboard/setup" className="inline-flex min-h-11 items-center underline focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]">Set up a machine</Link> to install it.</p> : null}
 					<ReticleFrame className="flex flex-wrap items-center gap-2 p-3">
 						<HardDriveDownload className="h-4 w-4 text-[var(--ret-text-dim)]" strokeWidth={1.75} />
 						<ReticleSelect
 							ariaLabel="Install target machine"
 							className="w-52"
 							value={installTarget}
-							onChange={setInstallTarget}
+							onChange={value => { if (!requestBusy.current) { setInstallTarget(value); setInstallMsg(null); } }}
 							placeholder={machines.length === 0 ? "no machines" : "pick a machine"}
 							options={machines.map((m) => ({ value: m.id, label: m.name }))}
 						/>
-						<ReticleButton variant="secondary" size="sm" disabled={!installTarget || installing} onClick={() => void doInstall()}>
+						<ReticleButton variant="secondary" size="sm" disabled={!installTarget || actionBusy || dirty || machineStatus !== "ready"} onClick={() => void doInstall()}>
 							{installing ? "installing…" : "Install to machine"}
 						</ReticleButton>
 						{installMsg ? (
-							<span className="font-mono text-[10px] text-[var(--ret-text-muted)]">{installMsg}</span>
+							<span role="status" className="text-sm text-[var(--ret-text-muted)]">{installMsg}</span>
 						) : null}
 					</ReticleFrame>
 					<OnMachineMemory machineId={installTarget || null} bundle={bundle} />
@@ -335,7 +372,7 @@ export function MemoryBundleEditor({ bundleId }: { bundleId: string }) {
 function SectionLabel({ label, hint }: { label: string; hint: string }) {
 	return (
 		<div className="flex items-baseline justify-between gap-2 border-b border-[var(--ret-border)] pb-1.5">
-			<span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">{label}</span>
+			<span className="text-xs font-medium text-[var(--ret-text-muted)]">{label}</span>
 			<span className="font-mono text-[9px] text-[var(--ret-text-muted)]">{hint}</span>
 		</div>
 	);
@@ -355,15 +392,16 @@ function DocField({
 	return (
 		<div>
 			<div className="mb-1 flex items-baseline justify-between gap-2">
-				<span className="text-[12px] text-[var(--ret-text)]">{label}</span>
+				<span className="text-sm text-[var(--ret-text)]">{label}</span>
 				<span className="font-mono text-[9px] text-[var(--ret-text-muted)]">{hint}</span>
 			</div>
 			<textarea
+				aria-label={label}
 				value={value}
 				onChange={(e) => onChange(e.target.value)}
 				className={cn(
 					"min-h-[110px] w-full resize-y border border-[var(--ret-border)] bg-[var(--ret-bg)] px-2.5 py-2",
-					"font-mono text-[11px] leading-relaxed text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)]",
+					"font-mono text-[13px] leading-relaxed text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)]",
 					"focus:border-[var(--ret-accent)] focus:outline-none",
 				)}
 				placeholder={`${label}…`}
@@ -394,13 +432,13 @@ function AbilityColumn({
 	return (
 		<ReticleFrame className="flex flex-col p-3">
 			<div className="mb-2 flex items-center justify-between gap-2">
-				<span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				<span className="flex items-center gap-1.5 text-xs font-medium text-[var(--ret-text-muted)]">
 					{icon} {title}{" "}
 					<span className="text-[var(--ret-text-dim)]">
 						{selectedCount}/{items.length}
 					</span>
 				</span>
-				<label className="flex cursor-pointer items-center gap-1 font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
+				<label className="flex cursor-pointer items-center gap-1 text-xs font-medium text-[var(--ret-text-muted)]">
 					<input
 						type="checkbox"
 						checked={all}
@@ -412,7 +450,7 @@ function AbilityColumn({
 			</div>
 			<div className="max-h-44 space-y-0.5 overflow-y-auto">
 				{items.length === 0 ? (
-					<p className="font-mono text-[10px] text-[var(--ret-text-muted)]">
+					<p className="font-mono text-xs text-[var(--ret-text-muted)]">
 						{emptyFromRegistry ? (
 							<>
 								none imported --{" "}
@@ -428,7 +466,7 @@ function AbilityColumn({
 					items.map((it) => (
 						<label
 							key={it.id}
-							className="flex cursor-pointer items-center gap-1.5 truncate font-mono text-[10px] text-[var(--ret-text-dim)]"
+							className="flex cursor-pointer items-center gap-1.5 truncate font-mono text-xs text-[var(--ret-text-dim)]"
 							title={it.description}
 						>
 							<input
@@ -461,7 +499,7 @@ function ExportModal({ text, filename, onClose }: { text: string; filename: stri
 		<div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-[8dvh]">
 			<div className="flex max-h-[80dvh] w-full max-w-[720px] flex-col border border-[var(--ret-border)] bg-[var(--ret-bg)] shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
 				<div className="flex items-center justify-between border-b border-[var(--ret-border)] px-4 py-2.5">
-					<span className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
+					<span className="text-xs font-medium text-[var(--ret-text-muted)]">
 						pastable prompt
 					</span>
 					<div className="flex items-center gap-2">
@@ -483,7 +521,7 @@ function ExportModal({ text, filename, onClose }: { text: string; filename: stri
 						<ReticleButton variant="secondary" size="sm" onClick={download}>
 							<Download className="h-3.5 w-3.5" strokeWidth={1.75} /> .md
 						</ReticleButton>
-						<button type="button" onClick={onClose} className="font-mono text-[11px] text-[var(--ret-text-muted)] hover:text-[var(--ret-text)]">
+						<button type="button" onClick={onClose} className="font-mono text-[13px] text-[var(--ret-text-muted)] hover:text-[var(--ret-text)]">
 							close
 						</button>
 					</div>
@@ -491,7 +529,7 @@ function ExportModal({ text, filename, onClose }: { text: string; filename: stri
 				<textarea
 					readOnly
 					value={text}
-					className="min-h-[50dvh] flex-1 resize-none border-0 bg-[var(--ret-bg)] p-4 font-mono text-[11px] leading-relaxed text-[var(--ret-text-dim)] focus:outline-none"
+					className="min-h-[50dvh] flex-1 resize-none border-0 bg-[var(--ret-bg)] p-4 font-mono text-[13px] leading-relaxed text-[var(--ret-text-dim)] focus:outline-none"
 				/>
 			</div>
 		</div>

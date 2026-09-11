@@ -7,6 +7,7 @@ import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleHatch } from "@/components/reticle/ReticleHatch";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
+import { DashboardLoadingState } from "@/components/dashboard/DashboardLoadingState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { cn } from "@/lib/cn";
 import { artifactContentType, artifactUrl } from "@/lib/storage/artifact-links";
@@ -92,6 +93,7 @@ function MachineArtifacts({ machineId }: { machineId?: string }) {
 		pendingRefresh.current?.abort();
 		const controller = new AbortController();
 		pendingRefresh.current = controller;
+		setError(null);
 		try {
 			const params = machineId ? `?machineId=${encodeURIComponent(machineId)}` : "";
 			const response = await fetch(`/api/dashboard/artifacts${params}`, {
@@ -100,6 +102,7 @@ function MachineArtifacts({ machineId }: { machineId?: string }) {
 			});
 			const body = (await response.json()) as ListResponse;
 			if (controller.signal.aborted) return;
+			if (!body || typeof body.ok !== "boolean" || (body.ok && (!response.ok || !Array.isArray(body.artifacts) || !body.machineId))) throw new Error("Could not load files. Please try again.");
 			if (body.ok) {
 				setResolvedMachineId(body.machineId);
 				setArtifacts(body.artifacts);
@@ -223,16 +226,17 @@ function MachineArtifacts({ machineId }: { machineId?: string }) {
 	const dropDisabled = uploading || !machineState.ok || !targetMachineId;
 
 	return (
-		<div className="space-y-6 px-5 py-5">
+		<div className="space-y-6 px-[var(--dashboard-gutter,20px)] py-8">
 			{error ? (
 			<ReticleFrame className="border-[var(--ret-red)]/40 bg-[var(--ret-red)]/5 p-3">
-				<p className="text-[11px] text-[var(--ret-red)]">
+				<p role="alert" className="text-sm text-[var(--ret-red)]">
 					{error}
 				</p>
+				<ReticleButton variant="secondary" className="mt-3" onClick={() => void refresh()}>Retry files</ReticleButton>
 			</ReticleFrame>
 			) : null}
 
-			<MachineStateBanner state={machineState} onWake={targetMachineId ? wake : undefined} waking={waking} />
+			<MachineStateBanner state={machineState} machineId={targetMachineId} onWake={targetMachineId ? wake : undefined} waking={waking} />
 			{warnings.map((warning) => <p key={warning} role="status" className="text-sm text-[var(--ret-amber)]">{warning}</p>)}
 
 			<UploadZone
@@ -252,18 +256,8 @@ function MachineArtifacts({ machineId }: { machineId?: string }) {
 				}}
 			/>
 
-			{!machineState.ok && machineState.reason === null ? (
-				<section className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-					{[0, 1, 2].map((i) => (
-						<ReticleFrame key={i}>
-							<div className="space-y-2 p-3">
-								<Skeleton className="h-3 w-2/3" />
-								<Skeleton className="h-32 w-full" />
-								<Skeleton className="h-2 w-1/2" />
-							</div>
-						</ReticleFrame>
-					))}
-				</section>
+			{!machineState.ok && machineState.reason === null && !error ? (
+				<DashboardLoadingState label="Loading workspace files…" />
 			) : null}
 
 			{artifacts.length === 0 && machineState.ok ? (
@@ -274,11 +268,12 @@ function MachineArtifacts({ machineId }: { machineId?: string }) {
 					/>
 					<div className="space-y-3 p-6 text-center">
 						<h3 className="ret-display text-base">No artifacts yet</h3>
-						<p className="mx-auto max-w-[60ch] text-[12px] text-[var(--ret-text-dim)]">
-							Upload a file, or ask your Worker to save an output under{" "}
+						<p className="mx-auto max-w-[60ch] text-sm text-[var(--ret-text-dim)]">
+							Upload a file or save an output to{" "}
 							<code className="font-mono">~/.agent-machines/artifacts/</code>{" "}
-							. Files in this directory appear here automatically and stay on this Worker's disk.
+							. Files stay on this Worker's disk.
 						</p>
+						{targetMachineId ? <ReticleButton as="a" href={`/dashboard/machines/${encodeURIComponent(targetMachineId)}/console`} variant="secondary">Open agent console</ReticleButton> : null}
 					</div>
 				</ReticleFrame>
 			) : null}
@@ -302,19 +297,21 @@ function MachineArtifacts({ machineId }: { machineId?: string }) {
 
 function MachineStateBanner({
 	state,
+	machineId,
 	onWake,
 	waking,
 }: {
 	state: { ok: boolean; reason: string | null; message: string | null };
+	machineId?: string;
 	onWake?: () => Promise<void>;
 	waking: boolean;
 }) {
-	if (state.ok) return null;
+	if (state.ok || state.reason === null) return null;
 	if (state.reason === "machine_asleep") {
 		return (
 			<ReticleFrame className="border-[var(--ret-amber)]/40 bg-[var(--ret-amber)]/5 p-3">
-				<p className="text-[11px] text-[var(--ret-amber)]">Machine paused.</p>
-				<p className="mt-1 text-[10px] text-[var(--ret-text-muted)]">{state.message ?? "Artifacts remain on its disk. Wake the machine when you want to access them."}</p>
+				<p className="text-[13px] text-[var(--ret-amber)]">Machine paused.</p>
+				<p className="mt-1 text-xs text-[var(--ret-text-muted)]">{state.message ?? "Artifacts remain on its disk. Wake the machine when you want to access them."}</p>
 				{onWake ? <ReticleButton className="mt-3" disabled={waking} onClick={() => void onWake()}>{waking ? "Waking…" : "Wake machine"}</ReticleButton> : null}
 			</ReticleFrame>
 		);
@@ -322,10 +319,10 @@ function MachineStateBanner({
 	if (state.reason === "machine_starting") {
 		return (
 		<ReticleFrame className="border-[var(--ret-amber)]/40 bg-[var(--ret-amber)]/5 p-3">
-			<p className="text-[11px] text-[var(--ret-amber)]">
+			<p className="text-[13px] text-[var(--ret-amber)]">
 				Machine starting… artifacts will be available when it is ready.
 			</p>
-			<p className="mt-1 text-[10px] text-[var(--ret-text-muted)]">
+			<p className="mt-1 text-xs text-[var(--ret-text-muted)]">
 				{state.message ?? "Waiting for the provider to finish starting."}
 			</p>
 		</ReticleFrame>
@@ -334,12 +331,12 @@ function MachineStateBanner({
 	if (state.reason === "no_active_machine") {
 		return (
 		<ReticleFrame className="border-[var(--ret-amber)]/40 bg-[var(--ret-amber)]/5 p-4">
-			<p className="text-[11px] text-[var(--ret-amber)]">
+			<p className="text-[13px] text-[var(--ret-amber)]">
 				No active machine.
 			</p>
 			<a
 				href="/dashboard/setup"
-				className="mt-1 inline-block text-[10px] text-[var(--ret-purple)] underline"
+				className="mt-1 inline-block text-xs text-[var(--ret-purple)] underline"
 			>
 				Provision one →
 			</a>
@@ -348,9 +345,10 @@ function MachineStateBanner({
 	}
 	return (
 	<ReticleFrame className="border-[var(--ret-red)]/40 bg-[var(--ret-red)]/5 p-3">
-		<p className="text-[11px] text-[var(--ret-red)]">
+		<p role="alert" className="text-sm text-[var(--ret-red)]">
 			{state.message ?? "Storage unavailable."}
 		</p>
+		<ReticleButton as="a" href={state.reason === "missing_credentials" ? "/dashboard/settings" : machineId ? `/dashboard/machines/${encodeURIComponent(machineId)}` : "/dashboard/machines"} variant="secondary" className="mt-3">{state.reason === "missing_credentials" ? "Open Settings" : "Manage machines"}</ReticleButton>
 	</ReticleFrame>
 	);
 }
@@ -387,14 +385,14 @@ function UploadZone({
 						: "border-[var(--ret-border)] bg-[var(--ret-bg)] hover:bg-[var(--ret-surface)]",
 			)}
 		>
-		<p className="text-[12px] text-[var(--ret-text)]">
+		<p className="text-sm text-[var(--ret-text)]">
 			{uploading ? (
-				<BrailleSpinner name="cascade" label="uploading" className="text-[12px]" />
+				<BrailleSpinner name="cascade" label="uploading" className="text-sm" />
 			) : (
 				"drop a file here"
 			)}
 		</p>
-			<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+			<p className="text-xs font-medium text-[var(--ret-text-muted)]">
 				or
 			</p>
 			<ReticleButton
@@ -405,7 +403,7 @@ function UploadZone({
 			>
 				Pick a file
 			</ReticleButton>
-		<p className="text-[10px] text-[var(--ret-text-muted)]">
+		<p className="text-xs text-[var(--ret-text-muted)]">
 			Max 8 MiB. Stored on your active machine's disk under
 			~/.agent-machines/artifacts/
 		</p>
@@ -428,16 +426,16 @@ function ArtifactCard({
 	return (
 		<ReticleFrame>
 			<div className="flex items-center justify-between gap-2 border-b border-[var(--ret-border)] px-3 py-2">
-				<span className="truncate font-mono text-[11px] text-[var(--ret-text)]">
+				<span className="truncate font-mono text-[13px] text-[var(--ret-text)]">
 					{artifact.name}
 				</span>
-				<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				<span className="text-xs font-medium text-[var(--ret-text-muted)]">
 					{formatBytes(artifact.bytes)}
 				</span>
 			</div>
 			<div className="flex items-center justify-center bg-[var(--ret-bg-soft)] p-3">
 				{waking ? (
-					<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-amber)]">
+					<span className="text-xs font-medium text-[var(--ret-amber)]">
 						machine waking...
 					</span>
 				) : isImage(artifact.mime) ? (
@@ -450,28 +448,28 @@ function ArtifactCard({
 				) : isText(artifact.mime) ? (
 					<TextPreview url={url} />
 				) : (
-					<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+					<span className="text-xs font-medium text-[var(--ret-text-muted)]">
 						{artifact.mime || "binary"}
 					</span>
 				)}
 			</div>
-			{artifact.sourcePath ? <p title={artifact.sourcePath} className="truncate px-3 pb-2 text-[10px] text-[var(--ret-text-muted)]">{artifact.sourcePath}</p> : null}
+			{artifact.sourcePath ? <p title={artifact.sourcePath} className="truncate px-3 pb-2 text-xs text-[var(--ret-text-muted)]">{artifact.sourcePath}</p> : null}
 			<div className="flex items-center justify-between gap-2 border-t border-[var(--ret-border)] px-3 py-2">
-				<span className="font-mono text-[10px] text-[var(--ret-text-muted)]">
+				<span className="font-mono text-xs text-[var(--ret-text-muted)]">
 					{new Date(artifact.createdAt).toLocaleString()}
 				</span>
 				<div className="flex items-center gap-2">
 					<a
 						href={url}
 						download={artifact.name}
-						className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-purple)] hover:underline"
+						className="text-xs font-medium text-[var(--ret-purple)] hover:underline"
 					>
 						download
 					</a>
 					<button
 						type="button"
 						onClick={onDelete}
-						className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)] hover:text-[var(--ret-red)]"
+						className="text-xs font-medium text-[var(--ret-text-muted)] hover:text-[var(--ret-red)]"
 					>
 						delete
 					</button>
@@ -500,7 +498,7 @@ function TextPreview({ url }: { url: string }) {
 			<div className="flex h-40 w-full flex-col items-center justify-center gap-2">
 				<BrailleSpinner
 					name="orbit"
-					className="text-[10px] text-[var(--ret-text-muted)]"
+					className="text-xs text-[var(--ret-text-muted)]"
 				/>
 				<Skeleton className="h-2 w-3/4" />
 				<Skeleton className="h-2 w-1/2" />
@@ -508,7 +506,7 @@ function TextPreview({ url }: { url: string }) {
 		);
 	}
 	return (
-		<pre className="max-h-40 w-full overflow-hidden font-mono text-[10px] text-[var(--ret-text-dim)]">
+		<pre className="max-h-40 w-full overflow-hidden font-mono text-xs text-[var(--ret-text-dim)]">
 			{text}
 		</pre>
 	);

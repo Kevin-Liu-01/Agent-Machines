@@ -21,6 +21,10 @@ describe("canonical hosted origin", () => {
 		const guide = readFileSync(resolve(process.cwd(), "public/llms.txt"), "utf8");
 		expect(settings.match(/export AGENT_MACHINES_URL=(\S+)/)?.[1]).toBe(canonicalOrigin);
 		expect(guide.match(/baseUrl:\s*"([^"]+)"/)?.[1]).toBe(canonicalOrigin);
+		const example = guide.match(/```ts\n([\s\S]*?)```/)?.[1];
+		expect(example).toContain('import { AgentMachines } from "agent-machines"');
+		expect(example).toContain("apiKey: process.env.AGENT_MACHINES_API_KEY");
+		expect(example).not.toMatch(/\bam\.(?:create|run)\s*\(/);
 		expect(settings).not.toMatch(/AGENT_MACHINES_URL=https:\/\/(?:www\.)?agent-machines\.com/);
 		expect(guide).not.toContain("agent-machines.com");
 	});

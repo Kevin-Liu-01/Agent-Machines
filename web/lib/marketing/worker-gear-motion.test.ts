@@ -7,6 +7,7 @@ import ts from "typescript";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { WorkerGearMotion } from "@/components/WorkerGearMotion";
+import { synchronizeGearClocks } from "./worker-gear-clock";
 
 beforeAll(() => vi.stubGlobal("React", React));
 afterAll(() => vi.unstubAllGlobals());
@@ -41,7 +42,22 @@ function mountEngine({ observerAvailable = true, hidden = false } = {}) {
 	const observe = vi.fn();
 	const disconnect = vi.fn();
 	const observerCreated = vi.fn();
-	const element = {};
+	const coreAnimation = { animationName: "spin", currentTime: 12_500 };
+	const subAnimation = { animationName: "spin", currentTime: 0 };
+	const element = {
+		querySelectorAll: () => [
+			{ dataset: { workerGear: "core" }, getAnimations: () => [coreAnimation] },
+			{ dataset: { workerGear: "idler" }, getAnimations: () => [subAnimation] },
+		],
+	};
+	let notifyMutation = () => {};
+	const observeMutations = vi.fn();
+	const disconnectMutations = vi.fn();
+	class FakeMutationObserver {
+		constructor(callback: () => void) { notifyMutation = callback; }
+		observe = observeMutations;
+		disconnect = disconnectMutations;
+	}
 	const document = {
 		visibilityState: hidden ? "hidden" : "visible",
 		addEventListener: vi.fn((name: string, listener: () => void) => { listeners.set(name, listener); }),
@@ -58,7 +74,7 @@ function mountEngine({ observerAvailable = true, hidden = false } = {}) {
 	const module = { exports: {} as { WorkerGearMotion: typeof WorkerGearMotion } };
 	runInNewContext(compiled, {
 		module, exports: module.exports, document,
-		window: observerAvailable ? { IntersectionObserver: FakeObserver } : {},
+		window: { ...(observerAvailable ? { IntersectionObserver: FakeObserver } : {}), MutationObserver: FakeMutationObserver },
 		require: (id: string) => id === "react/jsx-runtime"
 			? { jsx: React.createElement, jsxs: React.createElement }
 			: id === "react" ? {
@@ -69,7 +85,8 @@ function mountEngine({ observerAvailable = true, hidden = false } = {}) {
 				},
 				useRef: (initial: unknown) => refs[refIndex++] ?? (refs[refIndex - 1] = { current: initial }),
 				useEffect: (callback: typeof mountEffect) => { if (!mounted) mountEffect = callback; },
-			} : id.endsWith("/cn") ? { cn: (...values: string[]) => values.filter(Boolean).join(" ") }
+			} : id.endsWith("/worker-gear-clock") ? { synchronizeGearClocks }
+				: id.endsWith("/cn") ? { cn: (...values: string[]) => values.filter(Boolean).join(" ") }
 				: { Cog: () => null },
 	});
 	let tree: Element;
@@ -81,6 +98,8 @@ function mountEngine({ observerAvailable = true, hidden = false } = {}) {
 	render();
 	return {
 		render, observe, disconnect, observerCreated, document, listeners, element,
+		coreAnimation, subAnimation, observeMutations, disconnectMutations,
+		mutate: () => notifyMutation(),
 		nodes: () => elements(tree),
 		children: () => (tree.props.children as unknown[])[1],
 		checkbox: () => elements(tree).find((node) => node.type === "input")!,
@@ -95,6 +114,34 @@ function mountEngine({ observerAvailable = true, hidden = false } = {}) {
 }
 
 describe("Worker gear shared motion lifecycle", () => {
+	it("joins newly inserted or replaced gears to the core's elapsed clock", () => {
+		const engine = mountEngine();
+		engine.mount();
+		expect(engine.subAnimation.currentTime).toBe(12_500);
+		expect(engine.observeMutations).toHaveBeenCalledExactlyOnceWith(engine.element, { childList: true, subtree: true });
+		engine.coreAnimation.currentTime = 48_000;
+		engine.subAnimation.currentTime = 0;
+		engine.mutate();
+		expect(engine.subAnimation.currentTime).toBe(48_000);
+		expect(engine.coreAnimation.currentTime).toBe(48_000);
+		engine.unmount();
+		expect(engine.disconnectMutations).toHaveBeenCalledTimes(1);
+	});
+
+	it("does not create motion or borrow another clock when the core is static", () => {
+		const sub = { animationName: "spin", currentTime: 1_000 };
+		const unrelated = { animationName: "fade", currentTime: 2_000 };
+		const element = {
+			querySelectorAll: () => [
+				{ dataset: { workerGear: "core" }, getAnimations: () => [] },
+				{ dataset: { workerGear: "idler" }, getAnimations: () => [sub, unrelated] },
+			],
+		} as unknown as ParentNode;
+		synchronizeGearClocks(element);
+		expect(sub.currentTime).toBe(1_000);
+		expect(unrelated.currentTime).toBe(2_000);
+	});
+
 	it("server-renders the full diagram paused with a checked, natively labelled checkbox", () => {
 		const html = renderToStaticMarkup(React.createElement(WorkerGearMotion, { children: gears }));
 		expect(html).toContain('data-gear-motion="paused"');

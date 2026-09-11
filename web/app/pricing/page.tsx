@@ -20,15 +20,15 @@ export const metadata = buildPageMetadata({
 });
 
 const PRICING_METRICS = [
-	{ label: "Seat pricing", value: "$0", detail: "workers are the unit" },
-	{ label: "Usage tracking", value: "daily", detail: "CPU, memory, storage rollups" },
-	{ label: "Model costs", value: "BYOK", detail: "billed by the selected path" },
+	{ label: "Provider costs", value: "BYOK", detail: "billed by your compute provider" },
+	{ label: "Usage tracking", value: "Recorded", detail: "available where metrics storage is configured" },
+	{ label: "Model costs", value: "Separate", detail: "billed by your selected model service" },
 ];
 
 const PRICING_FLOW = [
 	{ label: "Choose lane", body: "Pick the provider, runtime, machine spec, and model path." },
-	{ label: "Run worker", body: "Active compute, reserved memory, storage, and model calls are tracked." },
-	{ label: "Inspect usage", body: "Dashboard usage panels expose rollups without hiding the source." },
+	{ label: "Run worker", body: "Your providers bill for compute, memory, storage, and model calls under their own terms." },
+	{ label: "Inspect usage", body: "Review available dashboard measurements and verify actual charges in your provider accounts." },
 ];
 
 export default function PricingPage() {
@@ -36,15 +36,15 @@ export default function PricingPage() {
 		<MarketingShell>
 			<main id="top">
 				<MarketingHero
-					kicker="./PRICING"
-					title="Pay for the worker you run."
-					description="Agent Machines is designed around provider-backed workers, not seats. Bring provider and model credentials, then inspect compute, memory, storage, logs, and model-path usage from the dashboard."
+					kicker="Pricing"
+					title="Your accounts. Your provider costs."
+					description="Bring model and compute credentials. Your providers bill you directly; Agent Machines does not offer a unified bill. Use the estimate below to understand the cost components, not as a quote."
 					badges={["BYOK", "usage", "providers", "models"]}
 					icon="cpu"
 					actions={
 						<>
 							<ReticleButton as="a" href="/sign-in" size="lg" className="rounded-[var(--ret-card-radius)]">
-								Start for free
+								Connect your accounts
 							</ReticleButton>
 							<ReticleButton as="a" href="/docs" variant="secondary" size="lg" className="rounded-[var(--ret-card-radius)]">
 								Setup docs
@@ -53,7 +53,7 @@ export default function PricingPage() {
 					}
 					aside={
 						<TerminalPanel
-							title="usage events"
+							title="Illustrative usage records"
 							lines={[
 								"machine active_seconds recorded",
 								"cpu_seconds rolled up daily",
@@ -66,26 +66,22 @@ export default function PricingPage() {
 					}
 				/>
 				<ReticleSpacer />
-				<SectionBand label="Rates" title="Compute, memory, and storage stay visible.">
+				<SectionBand label="Illustrative rates" title="Estimate a run.">
 					<PricingCalculator />
 				</SectionBand>
 				<ReticleSpacer />
-				<SectionBand label="Tracking" title="The billable shape matches the dashboard shape.">
+				<SectionBand label="Tracking" title="Inspect usage. Verify your bill.">
 					<div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_420px]">
 						<MetricGrid metrics={PRICING_METRICS} />
-						<TerminalPanel
-							title="dashboard surfaces"
-							lines={[
-								"/dashboard/usage",
-								"/api/dashboard/metrics/usage",
-								"/api/dashboard/logs",
-								"/api/dashboard/machines",
-							]}
-						/>
+						<nav aria-label="Inspect costs and configuration" className="grid content-start gap-3">
+							<ReticleButton as="a" href="/dashboard/usage" variant="secondary">Review usage</ReticleButton>
+							<ReticleButton as="a" href="/dashboard/benchmarks" variant="secondary">Compare provider references</ReticleButton>
+							<ReticleButton as="a" href="/dashboard/setup" variant="secondary">Configure a Worker</ReticleButton>
+						</nav>
 					</div>
 				</SectionBand>
 				<ReticleSpacer />
-				<SectionBand label="Flow" title="Nothing magic gets hidden in the price.">
+				<SectionBand label="Before you run" title="Know what can incur a charge.">
 					<FlowSteps steps={PRICING_FLOW} />
 				</SectionBand>
 				<ReticleSpacer />

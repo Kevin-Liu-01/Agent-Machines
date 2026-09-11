@@ -140,7 +140,7 @@ export function StatusHeader({ machines = [] }: Props) {
 			data-dashboard-header
 			className={cn(
 				DASHBOARD_SHELL_HEADER_ROW,
-				"sticky top-0 z-40 gap-2 bg-[var(--ret-bg)] px-3 sm:gap-3 sm:px-5",
+				"sticky top-0 z-40 gap-2 bg-[var(--ret-bg)] px-[var(--dashboard-gutter,20px)] sm:gap-3",
 			)}
 		>
 				<Link
@@ -181,19 +181,19 @@ export function StatusHeader({ machines = [] }: Props) {
 						className="hidden shrink-0 whitespace-nowrap text-xs font-medium lg:inline-flex"
 					/>
 				) : null}
-				<div className={cn("ml-auto min-w-[76px] max-w-[320px] flex-1 sm:ml-2 sm:min-w-[160px]")}>
+				<div className={cn("ml-auto min-w-[76px] max-w-[520px] flex-1 sm:ml-4 sm:min-w-[160px]")}>
 					<CommandPalette />
 				</div>
 			<div className={cn("ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2")}>
 				{!inMachineView && (
 						<Link
 							href="/dashboard/setup"
-							aria-label="New Worker"
-							title="New Worker"
+							aria-label="New setup"
+							title="New setup"
 							className={cn("inline-flex h-9 min-w-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md border border-[var(--ret-purple)]/35 bg-[var(--ret-purple-glow)] px-2 text-sm font-medium text-[var(--ret-purple)] transition-colors duration-150 hover:bg-[var(--ret-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-text)] motion-reduce:transition-none sm:px-3")}
 						>
 								<Plus className={cn("size-4")} aria-hidden="true" />
-								<span className={cn("hidden sm:inline")}>New Worker</span>
+								<span className={cn("hidden sm:inline")}>New setup</span>
 						</Link>
 				)}
 				<details ref={optionsRef} className={cn("relative")} onKeyDown={event => {
@@ -234,19 +234,20 @@ export function StatusHeader({ machines = [] }: Props) {
 
 const FLEET_CRUMB: Record<string, string> = {
 	"/dashboard": "Overview",
-	"/dashboard/machines": "Machines",
+	"/dashboard/machines": "Workspaces",
 	"/dashboard/containers": "Containers",
-	"/dashboard/usage": "Usage",
+	"/dashboard/usage": "Insights",
 	"/dashboard/settings": "Settings",
-	"/dashboard/registry": "Registry",
+	"/dashboard/registry": "Toolkit",
 	"/dashboard/skills": "Skills",
 	"/dashboard/mcps": "MCP servers",
-	"/dashboard/cron": "Schedules",
-	"/dashboard/setup": "Setup",
-	"/dashboard/workers": "Workers",
+	"/dashboard/cron": "Automations",
+	"/dashboard/setup": "Quickstart",
+	"/dashboard/workers": "Agent setups",
 	"/dashboard/benchmarks": "Benchmarks",
 	"/dashboard/memory": "Memory",
-	"/dashboard/agents": "Agent templates",
+	"/dashboard/agents": "Studio",
+	"/dashboard/components": "Building blocks",
 	"/dashboard/chat": "Console",
 	"/dashboard/terminal": "Terminal",
 	"/dashboard/logs": "Logs",

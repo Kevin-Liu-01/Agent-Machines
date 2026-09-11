@@ -9,7 +9,7 @@ export default function MachineLogsPage() {
 			<PageHeader
 				kicker="LOGS -- ~/.agent-machines/logs/"
 				title="Gateway tail"
-				description="Last 200 log lines off this machine, polled every 7 seconds."
+				description="Inspect recent output and errors. Updates every 7 seconds."
 			/>
 			<LogsTail />
 		</div>

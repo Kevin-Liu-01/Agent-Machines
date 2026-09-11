@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowRight, Check, CloudCog, LoaderCircle } from "@/components/ui/icons";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
@@ -22,10 +23,10 @@ const RUNTIMES: ReadonlyArray<{
 	id: AgentKind;
 	detail: string;
 }> = [
-	{ id: "claude-code", detail: "Deep repository work with Anthropic's coding agent." },
-	{ id: "codex", detail: "OpenAI's coding CLI for autonomous implementation." },
-	{ id: "hermes", detail: "Persistent generalist with memory, tools, and schedules." },
-	{ id: "openclaw", detail: "Computer-use worker with browser, shell, and vision." },
+	{ id: "claude-code", detail: "Anthropic's coding CLI in your configured workspace." },
+	{ id: "codex", detail: "OpenAI's coding CLI with its native configuration." },
+	{ id: "hermes", detail: "A runtime with memory files, tools, and optional schedules." },
+	{ id: "openclaw", detail: "A runtime with its own tool and workspace configuration." },
 ];
 
 const SANDBOXES: ReadonlyArray<{
@@ -95,135 +96,49 @@ export function WorkerLaunchpad() {
 		}
 	}
 
-	return (
-		<div id="launch-worker" className={cn("scroll-mt-20")}>
-		<ReticleFrame className={cn("overflow-hidden bg-[var(--ret-bg)]")}>
-			<div className={cn("flex flex-col gap-3 border-b border-[var(--ret-border)] p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5")}>
-				<div>
-					<h2 className={cn("flex items-center gap-2 text-xl font-medium tracking-tight text-[var(--ret-text)]")}>
-						<CloudCog aria-hidden="true" className={cn("h-5 w-5 shrink-0 text-[var(--ret-purple)]")} strokeWidth={1.75} />
-						Configure a Worker
-					</h2>
-					<p className={cn("mt-2 max-w-[62ch] text-[16px] leading-relaxed text-[var(--ret-text-dim)]")}>
-						Choose a runtime, then a sandbox. The sandbox click creates the Worker, provisions its home, and opens the live console.
-					</p>
-				</div>
-				<div className={cn("shrink-0 border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1 font-mono text-[14px] text-[var(--ret-text-muted)]")}>
-					Live migration policy
-				</div>
+	return <section id="launch-worker" className="scroll-mt-20" aria-labelledby="launch-workspace-title">
+		<ReticleFrame className="overflow-hidden rounded-lg bg-[var(--ret-bg)]">
+			<div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--ret-border)] px-4 py-3">
+				<h2 id="launch-workspace-title" className="flex items-center gap-2 text-lg font-medium tracking-tight"><CloudCog size={20} aria-hidden="true" className="text-[var(--ret-purple)]" />Launch a workspace</h2>
+				<span className="text-xs text-[var(--ret-text-muted)]">Your accounts. Your compute.</span>
 			</div>
-
-			<div className={cn("grid border-b border-[var(--ret-border)] lg:grid-cols-[112px_1fr]")}>
-				<StepMarker number="01" label="Runtime" active={!runtime} complete={Boolean(runtime)} />
-				<div className={cn("grid grid-cols-1 gap-px bg-[var(--ret-border)] sm:grid-cols-2 xl:grid-cols-4")}>
-					{RUNTIMES.map((item) => {
-						const selected = runtime === item.id;
-						return (
-							<button
-								key={item.id}
-								type="button"
-								aria-pressed={selected}
-								disabled={busy}
-								onClick={() => {
-									setRuntime(item.id);
-									setSandbox(null);
-									setError(null);
-								}}
-								className={cn(
-									"group min-h-28 bg-[var(--ret-bg)] p-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ret-purple)] disabled:cursor-wait disabled:opacity-60 enabled:active:bg-[var(--ret-purple-glow)]",
-									selected
-										? "bg-[var(--ret-purple-glow)]"
-										: "enabled:hover:bg-[var(--ret-surface)]",
-								)}
-							>
-								<div className={cn("flex items-center justify-between gap-3")}>
-									<div className={cn("flex items-center gap-2.5")}>
-										<Logo mark={agentLogoMark(item.id)} size={22} />
-										<span className={cn("text-[18px] font-medium text-[var(--ret-text)]")}>{AGENT_LABEL[item.id]}</span>
-									</div>
-									<span aria-hidden="true" className={cn("flex h-5 w-5 shrink-0 items-center justify-center border", selected ? "border-[var(--ret-purple)] bg-[var(--ret-purple)] text-[var(--ret-bg)]" : "border-[var(--ret-border-hover)]")}>
-										{selected ? <Check className={cn("h-3 w-3")} strokeWidth={2} /> : null}
-									</span>
-								</div>
-								<p className={cn("mt-3 text-[16px] leading-relaxed text-[var(--ret-text-dim)]")}>{item.detail}</p>
-							</button>
-						);
-					})}
-				</div>
+			<div className="grid gap-5 p-4 md:grid-cols-2">
+				<fieldset className="min-w-0">
+					<legend className="mb-3 text-sm font-medium">Choose a runtime</legend>
+					<div className="grid grid-cols-2 gap-2">
+						{RUNTIMES.map(item => <button key={item.id} type="button" aria-pressed={runtime === item.id} disabled={busy} title={item.detail}
+							onClick={() => { setRuntime(item.id); setSandbox(null); setError(null); }}
+							className={cn("flex min-h-16 min-w-0 items-center gap-2.5 rounded-md border px-3 py-3 text-left text-sm font-medium transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50", runtime === item.id ? "border-[var(--ret-purple)]/60 bg-[var(--ret-purple-glow)]" : "border-[var(--ret-border)] hover:bg-[var(--ret-surface)]")}>
+							<Logo mark={agentLogoMark(item.id)} size={22} /><span className="min-w-0 flex-1">{AGENT_LABEL[item.id]}</span>{runtime === item.id ? <Check size={16} aria-hidden="true" className="shrink-0 text-[var(--ret-purple)]" /> : null}
+						</button>)}
+					</div>
+				</fieldset>
+				<fieldset className="min-w-0">
+					<legend className="mb-3 text-sm font-medium">Choose compute</legend>
+					<div className="grid grid-cols-2 gap-2">
+						{SANDBOXES.map(item => <button key={item.id} type="button" aria-pressed={sandbox === item.id} disabled={!runtime || !config || busy} title={item.detail}
+							onClick={() => { setSandbox(item.id); setError(null); }}
+							className={cn("flex min-h-16 min-w-0 items-center gap-2.5 rounded-md border px-3 py-3 text-left transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-50", sandbox === item.id ? "border-[var(--ret-purple)]/60 bg-[var(--ret-purple-glow)]" : "border-[var(--ret-border)] enabled:hover:bg-[var(--ret-surface)]")}>
+							<Logo mark={providerLogoMark(item.id)} size={22} /><span className="min-w-0 flex-1"><span className="block text-sm font-medium">{PROVIDER_LABEL[item.id]}</span><span className="mt-0.5 block text-xs text-[var(--ret-text-muted)]">{!config ? "Loading configuration…" : config.providers[item.id]?.configured ? "Credentials saved" : "Credentials required"}</span></span>{sandbox === item.id ? <Check size={16} aria-hidden="true" className="shrink-0 text-[var(--ret-purple)]" /> : null}
+						</button>)}
+					</div>
+				</fieldset>
 			</div>
-
-			<div className={cn("grid lg:grid-cols-[112px_1fr]")}>
-				<StepMarker number="02" label="Sandbox" active={Boolean(runtime)} complete={Boolean(sandbox)} />
-				<div className={cn("grid grid-cols-1 gap-px bg-[var(--ret-border)] sm:grid-cols-2 xl:grid-cols-4")}>
-					{SANDBOXES.map((item) => {
-						const selected = sandbox === item.id;
-						const configured = config?.providers[item.id]?.configured ?? false;
-						return (
-							<button
-								key={item.id}
-								type="button"
-								aria-pressed={selected}
-								disabled={!runtime || !config || busy}
-								onClick={() => void launch(item.id)}
-								className={cn(
-									"group min-h-28 bg-[var(--ret-bg)] p-4 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ret-purple)] disabled:cursor-not-allowed disabled:opacity-60 enabled:active:bg-[var(--ret-purple-glow)]",
-									selected
-										? "bg-[var(--ret-purple-glow)]"
-										: "enabled:hover:bg-[var(--ret-surface)]",
-								)}
-							>
-								<div className={cn("flex items-center justify-between gap-3")}>
-									<div className={cn("flex items-center gap-2.5")}>
-										<Logo mark={providerLogoMark(item.id)} size={22} />
-										<span className={cn("text-[18px] font-medium text-[var(--ret-text)]")}>{PROVIDER_LABEL[item.id]}</span>
-									</div>
-									{busy && selected ? (
-										<LoaderCircle aria-hidden="true" className={cn("h-5 w-5 shrink-0 text-[var(--ret-purple)]")} strokeWidth={1.75} />
-									) : (
-										<ArrowRight aria-hidden="true" className={cn("h-5 w-5 shrink-0 text-[var(--ret-text-muted)] motion-safe:transition-transform motion-safe:duration-150 motion-safe:ease-[cubic-bezier(0.23,1,0.32,1)] pointer-fine:motion-safe:[@media(hover:hover)]:group-[:hover:not(:disabled):not(:focus-visible)]:translate-x-0.5 group-focus-visible:transition-none")} strokeWidth={1.75} />
-									)}
-								</div>
-								<p className={cn("mt-3 text-[16px] leading-relaxed text-[var(--ret-text-dim)]")}>{item.detail}</p>
-								<p className={cn(
-									"mt-3 font-mono text-[14px]",
-									configured ? "text-[var(--ret-green)]" : "text-[var(--ret-text-muted)]",
-								)}>
-									{busy && selected ? "Launching…" : !config ? "Loading configuration…" : !runtime ? "Select a runtime first" : configured ? "Ready · click to launch" : "Key required"}
-								</p>
-							</button>
-						);
-					})}
+			<div className="flex flex-wrap items-center justify-between gap-3 border-t border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-4">
+				<div className="min-w-0 flex-1" aria-live="polite">
+					<p className="text-[15px] font-medium">{runtime && sandbox ? `${AGENT_LABEL[runtime]} on ${PROVIDER_LABEL[sandbox]}` : "Choose a runtime and compute account"}</p>
+					<p className="mt-1 text-sm leading-5 text-[var(--ret-text-muted)]">{runtime && credentialVerdict && !credentialVerdict.ok ? credentialVerdict.message : sandbox && !config?.providers[sandbox]?.configured ? `Add ${PROVIDER_LABEL[sandbox]} credentials in Settings before launching.` : "Launching creates paid compute. Your providers bill you directly."}</p>
 				</div>
+				<button type="button" disabled={busy || !runtime || !sandbox || !config?.providers[sandbox]?.configured || !credentialVerdict?.ok} onClick={() => { if (sandbox) void launch(sandbox); }}
+					className="inline-flex min-h-10 items-center justify-center gap-2 rounded-md bg-[var(--ret-text)] px-4 text-sm font-medium text-[var(--ret-bg)] hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-40">
+					{busy ? <LoaderCircle size={16} aria-hidden="true" /> : <ArrowRight size={16} aria-hidden="true" />}{busy ? "Launching workspace…" : "Launch workspace"}
+				</button>
 			</div>
-
-			{error ? (
-				<div role="alert" className={cn("border-t border-[var(--ret-red)]/35 bg-[var(--ret-red)]/5 px-4 py-3 text-[16px] leading-relaxed text-[var(--ret-red)] sm:px-5")}>
-					{error} <a href="/dashboard/settings" className={cn("underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-red)]")}>Open Settings</a>
-				</div>
-			) : null}
+			<div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-[var(--ret-border)] px-4 py-2 text-xs text-[var(--ret-text-muted)]">
+				<Link href="/dashboard/settings" className="min-h-8 content-center hover:underline focus-visible:outline-2">Model &amp; provider credentials</Link>
+				<Link href="/dashboard/agents" className="min-h-8 content-center hover:underline focus-visible:outline-2">Save a template-based setup first</Link>
+			</div>
+			{error ? <div role="alert" className="border-t border-[var(--ret-red)]/30 px-4 py-3 text-sm leading-6 text-[var(--ret-red)]">{error} <Link href="/dashboard/settings" className="underline focus-visible:outline-2">Open Settings</Link></div> : null}
 		</ReticleFrame>
-		</div>
-	);
-}
-
-function StepMarker({
-	number,
-	label,
-	active,
-	complete,
-}: {
-	number: string;
-	label: string;
-	active: boolean;
-	complete: boolean;
-}) {
-	return (
-		<div className={cn(
-			"flex items-center justify-between gap-3 border-b border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-4 py-3 lg:block lg:border-b-0 lg:border-r",
-			active ? "text-[var(--ret-text)]" : "text-[var(--ret-text-muted)]",
-		)}>
-			<span className={cn("font-mono text-[13px] tabular-nums", complete && "text-[var(--ret-green)]")}>{complete ? "OK" : number}</span>
-			<p className={cn("text-[16px] font-medium lg:mt-2")}>{label}</p>
-		</div>
-	);
+	</section>;
 }

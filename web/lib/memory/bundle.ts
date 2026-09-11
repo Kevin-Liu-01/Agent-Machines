@@ -53,7 +53,7 @@ export function defaultMemoryBundle(): MemoryBundle {
 		id: DEFAULT_MEMORY_BUNDLE_ID,
 		name: "Agent Machines default",
 		description:
-			"The full loadout: persona, operating rules, agent docs, and every skill, tool, and MCP server available on your machines.",
+			"Persona, operating rules, and agent docs with the full ability catalog selected. Runtime support, installation, and service credentials determine which abilities can run.",
 		source: "default",
 		docs: defaultBundleDocs(),
 		skillIds: [ABILITY_WILDCARD],

@@ -4,42 +4,57 @@ import { ArrowRight, Braces, FileCode2, GitFork, KeyRound, Radio, Route, Termina
 import { CopyCodeButton } from "@/components/CopyCodeButton";
 import { Logo } from "@/components/Logo";
 import { MuxDiagram } from "@/components/MuxDiagram";
+import { BearingIcon } from "@/components/marketing/MechanicalDetails";
 import { cn } from "@/lib/cn";
 import { LANDING_BODY, LANDING_EYEBROW, LANDING_INSET, LANDING_SECTION_SPACE, LANDING_SPLIT, LANDING_TITLE } from "@/lib/marketing/layout";
 import { highlightTypeScript } from "@/lib/marketing/sdk-syntax.server";
 import syntax from "@/lib/marketing/sdk-syntax.module.css";
 
-const INSTALL_CODE = "npm i agent-machines";
+export const INSTALL_CODE = "npm i agent-machines @daytona/sdk e2b";
 
 // One source for the displayed example and clipboard contents.
 export const SDK_EXAMPLE = `import { createMux } from "agent-machines";
 
-// Reads your configuration and environment keys.
-const mux = createMux();
+// Set DAYTONA_API_KEY and ANTHROPIC_API_KEY first.
+// E2B_API_KEY enables the optional backup.
+const mux = createMux({
+  sandboxes: {
+    primary: "daytona",
+    backups: process.env.E2B_API_KEY ? ["e2b"] : [],
+  },
+}, { selection: null }); // Use the configured route order.
 
 const worker = await mux.create({
   agent: "claude-code",
-  sandbox: "auto", // Use your configured provider lanes.
-  name: "reviewer",
+  sandbox: "auto",
+  name: "workspace-check",
 });
 
-for await (const event of worker.run("Review my repo")) {
-  if (event.type === "text") {
-    process.stdout.write(event.delta);
+try {
+  const run = worker.run("List the files in the current directory.");
+  for await (const event of run) {
+    if (event.type === "text") process.stdout.write(event.delta);
   }
+
+  const result = await run.result();
+  if (result.exitCode !== 0 || result.truncated) {
+    throw new Error("Agent run failed or was interrupted.");
+  }
+} finally {
+  await worker.destroy(); // Deletes this sandbox and its files.
 }`;
 
 const FEATURES: ReadonlyArray<{ icon: LucideIcon; title: string }> = [
-	{ icon: Braces, title: "One typed API" },
-	{ icon: GitFork, title: "Eligible creation failover" },
-	{ icon: Radio, title: "Events + terminal access" },
+	{ icon: Braces, title: "Inspectable TypeScript interfaces" },
+	{ icon: GitFork, title: "Explicit runtime and compute choices" },
+	{ icon: Radio, title: "Stream events and check completion" },
 ];
 
 const PIPELINE: ReadonlyArray<{ icon: LucideIcon; title: string; code: string }> = [
 	{ icon: TerminalSquare, title: "Install the SDK", code: INSTALL_CODE },
-	{ icon: KeyRound, title: "Connect your providers", code: "agent-machines.json" },
-	{ icon: Route, title: "Create the Worker", code: 'mux.create({ sandbox: "auto" })' },
-	{ icon: Radio, title: "Run and inspect", code: "worker.run(prompt)" },
+	{ icon: KeyRound, title: "Connect your accounts", code: "DAYTONA_API_KEY + ANTHROPIC_API_KEY" },
+	{ icon: Route, title: "Configure the route", code: "Daytona → optional E2B backup" },
+	{ icon: Radio, title: "Run, inspect, and clean up", code: "run.result() → worker.destroy()" },
 ];
 
 const ACTION = cn(
@@ -67,7 +82,7 @@ export function StatsRow() {
 					</h2>
 				</div>
 				<div>
-					<p className={cn(LANDING_BODY, "max-w-[48ch]")}>One client. Choose an agent, give it a job, and stream the result.</p>
+					<p className={cn(LANDING_BODY, "max-w-[48ch]")}>Choose a runtime, configure its compute route, and inspect the result. Start with this small example, then adapt the source to your harness.</p>
 					<div className={cn("mt-4 flex flex-wrap gap-2")}>
 						<Link href="/docs" className={cn(ACTION, "border border-[var(--ret-border)]/60 text-[var(--ret-text)]")}>Read the SDK docs <ArrowRight size={16} aria-hidden="true" /></Link>
 						<Link href="/dashboard" className={cn(ACTION, "text-[var(--ret-text-dim)]")}>Try the dashboard <ArrowRight size={16} aria-hidden="true" /></Link>
@@ -90,7 +105,7 @@ export function StatsRow() {
 						<h2 id="routing-heading" className={cn(LANDING_TITLE)}>Two planes. One route.</h2>
 					</div>
 					<div className={cn("min-w-0")}>
-						<p className={cn(LANDING_BODY, "max-w-[48ch]")}>Choose the agent. Route the compute. Keep the Worker.</p>
+						<p className={cn(LANDING_BODY, "max-w-[48ch]")}>Choose the runtime and compute independently. Provider capabilities and credentials determine which routes are eligible.</p>
 						<p className={cn("mt-4 text-sm text-[var(--ret-text-dim)]")}><span className={cn("font-semibold text-[var(--ret-text)]")}>4 runtimes</span> <span aria-hidden="true">×</span> <span className={cn("font-semibold text-[var(--ret-text)]")}>4 providers</span></p>
 					</div>
 				</header>
@@ -101,7 +116,10 @@ export function StatsRow() {
 				<ol className={cn("grid gap-6 sm:grid-cols-2 xl:grid-cols-4 xl:gap-8")}>
 					{PIPELINE.map(({ icon: Icon, title, code }, index) => (
 						<li key={title} className={cn("relative flex min-w-0 flex-col pb-8")}>
-							<Icon size={22} strokeWidth={1.5} className={cn("mb-4 text-[var(--ret-text-secondary)]")} aria-hidden="true" />
+							<div className={cn("relative mb-4 flex items-center")}>
+								<BearingIcon gear={index === 2}><Icon size={20} /></BearingIcon>
+								{index < PIPELINE.length - 1 ? <span aria-hidden="true" className={cn("pointer-events-none absolute left-14 right-0 hidden h-px bg-[var(--ret-border)]/30 xl:-right-5 xl:block")} /> : null}
+							</div>
 							<h3 className={cn("text-lg font-semibold text-[var(--ret-text)]")}>{title}</h3>
 							<code className={cn("mt-4 block break-words rounded-md bg-[var(--ret-bg-soft)] px-3 py-2.5 font-mono text-sm leading-relaxed text-[var(--ret-text-secondary)]")}>{code}</code>
 							<span aria-hidden="true" className={cn("absolute bottom-0 right-0 text-xl tabular-nums text-[var(--ret-text)]/20")}>{String(index + 1).padStart(2, "0")}</span>
@@ -116,15 +134,17 @@ export function StatsRow() {
 function WorkerExample() {
 	return (
 		<figure className={cn(EXAMPLE_PANEL, "m-0 bg-[var(--ret-bg-soft)]")}>
-			<figcaption className={cn(EXAMPLE_HEADER)}><span className={cn("flex items-center gap-2 text-sm font-medium text-[var(--ret-text)]")}><Braces size={18} aria-hidden="true" />Example configuration</span><p className={cn("text-sm leading-6 text-[var(--ret-text-dim)]")}>The Worker described in <code className={cn("font-mono")}>reviewer.ts</code>.</p></figcaption>
+			<figcaption className={cn(EXAMPLE_HEADER)}><span className={cn("flex items-center gap-2 text-sm font-medium text-[var(--ret-text)]")}><Braces size={18} aria-hidden="true" />Example configuration</span><p className={cn("text-sm leading-6 text-[var(--ret-text-dim)]")}>The setup described in <code className={cn("font-mono")}>setup.ts</code>. An illustration, not an active workspace.</p></figcaption>
 			<div className={cn("flex min-w-0 flex-col justify-center px-5 py-8 md:px-6")}>
-				<div className={cn("flex items-center gap-4")}><Logo mark="am" size={44} /><div><p className={cn("text-sm text-[var(--ret-text-dim)]")}>Worker</p><h3 className={cn("mt-1 text-3xl font-semibold tracking-tight")}>reviewer</h3></div></div>
+				<div className={cn("flex min-w-0 items-center gap-4")}><Logo mark="am" size={44} /><div className={cn("min-w-0")}><p className={cn("text-sm text-[var(--ret-text-dim)]")}>Agent setup</p><h3 className={cn("mt-1 break-words text-3xl font-semibold tracking-tight")}>workspace-check</h3></div></div>
 				<dl className={cn("mt-8 space-y-6")}>
 					<div><dt className={cn("mb-2 text-sm text-[var(--ret-text-dim)]")}>Agent runtime</dt><dd className={cn("flex items-center gap-3 text-lg font-medium")}><Logo mark="claudecode" size={25} />Claude Code</dd></div>
-					<div><dt className={cn("mb-2 text-sm text-[var(--ret-text-dim)]")}>Sandbox placement</dt><dd><p className={cn("flex items-center gap-3 text-lg font-medium")}><Route size={25} aria-hidden="true" />Automatic</p><div className={cn("mt-3 flex flex-wrap gap-2")}>{(["e2b", "sprites", "vercel", "daytona"] as const).map(mark => <span key={mark} className={cn("grid size-10 place-items-center rounded-md border border-[var(--ret-border)]/40 bg-[var(--ret-bg)]")}><Logo mark={mark} size={24} /></span>)}</div></dd></div>
+					<div><dt className={cn("mb-2 text-sm text-[var(--ret-text-dim)]")}>Configured compute order</dt><dd className={cn("space-y-3")}><p className={cn("flex items-center gap-3 text-lg font-medium")}><Logo mark="daytona" size={25} />Daytona primary</p><p className={cn("flex items-center gap-3 text-base text-[var(--ret-text-dim)]")}><Logo mark="e2b" size={25} />E2B backup, when its key is set</p><p className={cn("text-sm leading-6 text-[var(--ret-text-dim)]")}>Only these configured lanes are considered. Ineligible lanes are skipped; only routing-safe creation failures can try the backup.</p></dd></div>
+					<div><dt className={cn("mb-2 text-sm text-[var(--ret-text-dim)]")}>Before you run it</dt><dd className={cn("space-y-2 text-sm leading-6 text-[var(--ret-text-dim)]")}><p>Use a Node ESM TypeScript project. Install the SDK and the provider packages shown beside the example.</p><p>Set <code className={cn("font-mono")}>DAYTONA_API_KEY</code> and <code className={cn("font-mono")}>ANTHROPIC_API_KEY</code>. Add <code className={cn("font-mono")}>E2B_API_KEY</code> to enable the backup.</p></dd></div>
+					<div><dt className={cn("mb-2 text-sm text-[var(--ret-text-dim)]")}>Lifecycle</dt><dd className={cn("text-sm leading-6 text-[var(--ret-text-dim)]")}>The example destroys its temporary sandbox after the task, including its files. For persistent work, choose a lifecycle policy instead. If the process stops before cleanup, check the provider account for remaining compute.</dd></div>
 				</dl>
 			</div>
-			<div className={cn(EXAMPLE_FOOTER)}><TerminalSquare size={24} className={cn("shrink-0 text-[var(--ret-text-dim)]")} aria-hidden="true" /><div><p className={cn("text-sm text-[var(--ret-text-dim)]")}>Task</p><p className={cn("mt-1 text-lg font-medium")}>Review my repo</p></div><ArrowRight size={20} className={cn("ml-auto shrink-0 text-[var(--ret-text-muted)]")} aria-hidden="true" /></div>
+			<div className={cn(EXAMPLE_FOOTER)}><TerminalSquare size={24} className={cn("shrink-0 text-[var(--ret-text-dim)]")} aria-hidden="true" /><div><p className={cn("text-sm text-[var(--ret-text-dim)]")}>Task</p><p className={cn("mt-1 text-lg font-medium")}>List the files in the current directory.</p></div><ArrowRight size={20} className={cn("ml-auto shrink-0 text-[var(--ret-text-muted)]")} aria-hidden="true" /></div>
 		</figure>
 	);
 }
@@ -138,17 +158,17 @@ function CodePanel() {
 				<CopyCodeButton text={INSTALL_CODE} label="Copy install command" />
 			</div>
 			<div className={cn("flex items-center justify-between gap-3")}>
-				<span className={cn("flex min-w-0 items-center gap-2 text-sm text-[var(--ret-text-dim)]")}><FileCode2 size={17} aria-hidden="true" /><span className={cn("truncate")}>reviewer.ts</span></span>
+				<span className={cn("flex min-w-0 items-center gap-2 text-sm text-[var(--ret-text-dim)]")}><FileCode2 size={17} aria-hidden="true" /><span className={cn("truncate")}>setup.ts</span></span>
 				<CopyCodeButton text={SDK_EXAMPLE} label="Copy SDK example" />
 			</div>
 			</div>
-			<pre tabIndex={0} aria-label="TypeScript Worker example" className={cn("m-0 min-w-0 overflow-x-auto py-5 font-mono text-sm leading-7 text-[var(--ret-text)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ret-text)]")}>
+			<pre tabIndex={0} aria-label="TypeScript agent setup example" className={cn("m-0 min-w-0 overflow-x-auto py-5 font-mono text-sm leading-7 text-[var(--ret-text)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ret-text)]")}>
 				<span className={cn("flex min-w-max pr-5 md:pr-6")}>
 					<span aria-hidden="true" className={cn("pointer-events-none sticky left-0 mr-5 shrink-0 select-none border-r border-[var(--ret-border)]/30 bg-[var(--ret-bg-mid)] pl-5 pr-3 text-right tabular-nums text-[var(--ret-text-muted)] md:pl-6")}>{SDK_EXAMPLE.split("\n").map((_, index) => index + 1).join("\n")}</span>
 					<code className={cn(syntax.code, "block")}>{highlightTypeScript(SDK_EXAMPLE)}</code>
 				</span>
 			</pre>
-			<p className={cn(EXAMPLE_FOOTER, "text-sm leading-6 text-[var(--ret-text-dim)]")}><KeyRound size={18} className={cn("shrink-0")} aria-hidden="true" />Bring your own model and sandbox credentials. Only eligible provider lanes are considered.</p>
+			<p className={cn(EXAMPLE_FOOTER, "text-sm leading-6 text-[var(--ret-text-dim)]")}><KeyRound size={18} className={cn("shrink-0")} aria-hidden="true" />Running this example creates paid compute and makes a paid model call on your accounts. Cleanup deletes the sandbox and its files.</p>
 		</div>
 	);
 }

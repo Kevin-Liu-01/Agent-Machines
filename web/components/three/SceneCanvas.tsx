@@ -11,6 +11,7 @@ type Props = {
 	camera?: CanvasProps["camera"];
 	dpr?: CanvasProps["dpr"];
 	antialias?: boolean;
+	animated?: boolean;
 };
 
 /**
@@ -23,6 +24,7 @@ export function SceneCanvas({
 	camera = { position: [0, 0, 5], fov: 35 },
 	dpr = [1, 1.5],
 	antialias = false,
+	animated = true,
 }: Props) {
 	return (
 		<Canvas
@@ -34,7 +36,7 @@ export function SceneCanvas({
 				alpha: true,
 				powerPreference: antialias ? "high-performance" : "low-power",
 			}}
-			frameloop="always"
+			frameloop={animated ? "always" : "demand"}
 		>
 			{children}
 		</Canvas>

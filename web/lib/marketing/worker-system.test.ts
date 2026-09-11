@@ -45,14 +45,28 @@ describe("Worker system explanation", () => {
 		expect(html).toContain("Read the architecture");
 	});
 
-	it("connects four layers through varied-ratio clockwork with synchronized, pausable gear rings", () => {
+	it("clusters four layers directly around the Worker with synchronized, pausable gear rings", () => {
 		const html = render();
 		expect(html.match(/data-worker-gear="satellite"/g)).toHaveLength(4);
 		expect(html.match(/data-worker-gear="core"/g)).toHaveLength(1);
-		expect(html.match(/data-worker-gear="idler"/g)).toHaveLength(ENGINE_GEARS.filter(gear => gear.kind === "idler").length);
+		expect(html.match(/data-worker-gear="idler"/g)).toHaveLength(4);
+		expect(html.match(/data-gear-profile="trapezoidal"/g)).toHaveLength(9);
+		expect(html).toContain('data-gear-detail="socket-fastener"');
+		expect(html).toContain('data-gear-detail="keyed-axle"');
+		expect(html).toContain('data-gear-face="runtime"');
+		expect(html).toContain('data-gear-face="models"');
+		expect(html).toContain('data-gear-face="tools"');
+		expect(html.match(/data-gear-detail="concentric-rings"/g)).toHaveLength(4);
+		expect(html.match(/data-gear-detail="connecting-spokes"/g)).toHaveLength(4);
+		for (const radius of [38, 60, 82]) {
+			expect(html.match(new RegExp(`data-gear-ring="${radius}"`, "g"))).toHaveLength(4);
+		}
+		expect(html.match(/data-gear-detail="hub-to-rim-arm"/g)).toHaveLength(19);
+		expect(html.match(/data-worker-part=/g)).toHaveLength(4);
+		expect(html).toContain("data-worker-legend");
 		expect(html).toContain("motion-safe:animate-spin");
 		const periods = new Set(ENGINE_GEARS.map(gear => gear.period));
-		expect(periods.size).toBeGreaterThanOrEqual(5);
+		expect(periods.size).toBe(8);
 		for (const period of periods) {
 			expect(html.split(`animation-duration:${period}s;`)).toHaveLength(ENGINE_GEARS.filter(gear => gear.period === period).length + 1);
 		}

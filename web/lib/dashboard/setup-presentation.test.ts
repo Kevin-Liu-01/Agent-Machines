@@ -71,7 +71,7 @@ function loadSteps(initialState?: unknown, wizardState?: unknown[]) {
 describe("dashboard setup presentation", () => {
 	it.each(steps)("renders readable step %s with shared solid icons and immediate state changes", (step) => {
 		const html = render(step);
-		expect(html).toContain('aria-label="Worker setup progress"');
+		expect(html).toContain('aria-label="Agent setup progress"');
 		expect(html).toContain('aria-current="step"');
 		expect(html).toContain('data-icon-family="phosphor"');
 		expect(html).toContain('data-icon-weight="fill"');
@@ -186,9 +186,9 @@ describe("dashboard setup presentation", () => {
 		if (kind === "archived") current.machines = [machine({ id: "missing-machine", archived: true })];
 		const onConfigure = vi.fn(), onChat = vi.fn(), onMachines = vi.fn();
 		const tree = loadSteps().ProvisionedStep({ config: current, onConfigure, onChat, onMachines });
-		expect(tree.props.title).toBe("No active Worker");
+		expect(tree.props.title).toBe("No active workspace");
 		expect(tree.props.description).toContain("saved setup");
-		expect(JSON.stringify(tree)).not.toMatch(/Your Worker is ready|launch operation completed|dedalus|"--"/);
+		expect(JSON.stringify(tree)).not.toMatch(/Your workspace is ready|launch operation completed|dedalus|"--"/);
 		expect(nodes(tree).find((node) => node.props.label === "Saved agent")?.props.value).toBe("Claude Code");
 		expect(nodes(tree).find((node) => node.props.label === "Saved provider")?.props.value).toBe("Retired provider");
 		expect(nodes(tree).some((node) => node.props.onClick === onChat)).toBe(false);
@@ -218,7 +218,7 @@ describe("dashboard setup presentation", () => {
 		current.machines = [machine()];
 		current.activeMachineId = current.machines[0].id;
 		const tree = loadSteps().ProvisionedStep({ config: current, onConfigure: vi.fn(), onChat, onMachines });
-		expect(tree.props.title).toBe("Your Worker is ready");
+		expect(tree.props.title).toBe("Your workspace is ready");
 		expect(nodes(tree).find((node) => node.props.label === "Active machine ID")?.props.value).toBe("ready-machine");
 		expect(nodes(tree).find((node) => node.props.label === "Agent")?.props.value).toBe("Claude Code");
 		expect(nodes(tree).find((node) => node.props.label === "Provider")?.props.value).toBe("Daytona");

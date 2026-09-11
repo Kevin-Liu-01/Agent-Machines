@@ -312,14 +312,16 @@ describe("dashboard command palette", () => {
 	it("reaches the rail's fleet pages without an active machine and makes Workers library searchable", () => {
 		const app = palette(); app.flush();
 		for (const [label, href] of [
-			["Agent templates", "/dashboard/agents"], ["Memory", "/dashboard/memory"], ["Loadouts", "/dashboard/loadout"],
+			["Agent templates", "/dashboard/agents"], ["Agent setups", "/dashboard/agents"], ["Building blocks", "/dashboard/components"],
+			["Memory", "/dashboard/agents?tab=memory"], ["Loadouts", "/dashboard/loadout"],
 			["Console", "/dashboard/chat"], ["Terminal", "/dashboard/terminal"], ["Logs", "/dashboard/logs"],
 			["Sessions", "/dashboard/sessions"], ["Artifacts", "/dashboard/artifacts"],
 		]) {
 			app.open(); app.query(label); app.key("Enter");
 			expect(app.push).toHaveBeenLastCalledWith(href);
 		}
-		app.open(); app.query("Workers library"); expect(app.options()).toHaveLength(1); app.key("Enter");
+		app.open(); app.query("Workers library"); expect(app.options()).toHaveLength(1);
+		expect(text(app.options()[0])).toBe("Agent setupsGo"); app.key("Enter");
 		expect(app.push).toHaveBeenLastCalledWith("/dashboard/agents");
 		app.unmount();
 	});
@@ -327,14 +329,21 @@ describe("dashboard command palette", () => {
 	it("preserves every existing page destination and sends creation to setup without creating resources", () => {
 		const app = palette(); app.flush();
 		for (const [label, href] of [
-			["Overview", "/dashboard"], ["Machines", "/dashboard/machines"], ["Usage", "/dashboard/usage"],
-			["Benchmarks", "/dashboard/benchmarks"], ["Learning", "/dashboard/benchmarks#learning"],
-			["Skills", "/dashboard/skills"], ["MCP servers", "/dashboard/mcps"], ["Schedules", "/dashboard/cron"],
-			["Registry", "/dashboard/registry"], ["Settings", "/dashboard/settings"], ["Setup", "/dashboard/setup"],
-			["Create a Worker", "/dashboard/setup"],
+			["Overview", "/dashboard"], ["Workspaces", "/dashboard/machines"], ["Insights", "/dashboard/usage"],
+			["Benchmarks", "/dashboard/usage?tab=benchmarks"], ["Learning", "/dashboard/usage?tab=benchmarks#learning"],
+			["Skills", "/dashboard/registry?tab=skills"], ["MCP servers", "/dashboard/registry?tab=mcps"], ["Automations", "/dashboard/cron"],
+			["Toolkit", "/dashboard/registry"], ["Settings", "/dashboard/settings"], ["Quickstart", "/dashboard/setup"],
+			["Configure an agent setup", "/dashboard/setup"],
 		]) {
-			app.open(); invoke(app.options().find((node) => text(node) === `${label}${label === "Create a Worker" ? "Set up" : "Go"}`)!, "onClick"); app.flush();
+			app.open(); invoke(app.options().find((node) => text(node) === `${label}${label === "Configure an agent setup" ? "Set up" : "Go"}`)!, "onClick"); app.flush();
 			expect(app.push).toHaveBeenLastCalledWith(href);
+		}
+		for (const alias of ["Create a Worker", "New Worker", "New setup"]) {
+			app.open(); app.query(alias);
+			expect(app.options()).toHaveLength(1);
+			expect(text(app.options()[0])).toBe("Configure an agent setupSet up");
+			app.key("Enter");
+			expect(app.push).toHaveBeenLastCalledWith("/dashboard/setup");
 		}
 		expect(app.fetch.mock.calls.every((args) => (args as unknown[])[0] === "/api/dashboard/machines")).toBe(true);
 		app.unmount();

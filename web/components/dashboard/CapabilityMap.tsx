@@ -87,10 +87,10 @@ export function CapabilityMap({ hasMachine }: { hasMachine: boolean }) {
 		<section aria-labelledby={`${id}-title`} className={cn("space-y-4")}>
 			<div className={cn("flex flex-wrap items-baseline justify-between gap-3")}>
 				<h2 id={`${id}-title`} className={cn("text-2xl font-medium tracking-tight text-[var(--ret-text)]")}>
-					Worker capabilities
+					Configure, run, and inspect
 				</h2>
 				<span className={cn("shrink-0 text-[13px] tabular-nums text-[var(--ret-text-muted)]")}>
-					{DASHBOARD_CAPABILITIES.length} operational surfaces
+					{DASHBOARD_CAPABILITIES.length} connected controls
 				</span>
 			</div>
 

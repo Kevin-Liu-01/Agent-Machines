@@ -9,7 +9,7 @@ export default function MachineSessionsPage() {
 			<PageHeader
 				kicker="SESSIONS · NATIVE HISTORY"
 				title="Conversation history"
-				description="Inspect saved Claude Code, Codex, OpenClaw, and Hermes conversations on this machine. Refreshed every 30 seconds."
+				description="Review saved conversations. Updates every 30 seconds."
 			/>
 			<SessionsList />
 		</div>

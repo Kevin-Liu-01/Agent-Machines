@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { MachineRequired } from "@/components/dashboard/MachineRequired";
 
 import { resolveActiveMachineId } from "@/lib/dashboard/active-machine";
 
@@ -11,5 +12,6 @@ export const dynamic = "force-dynamic";
  */
 export default async function DashboardChatRedirect() {
 	const id = await resolveActiveMachineId();
-	redirect(id ? `/dashboard/machines/${id}/console` : "/dashboard/machines");
+	if (id) redirect(`/dashboard/machines/${id}/console`);
+	return <MachineRequired title="Console" description="Chat, review work, and manage the tools attached to one machine." />;
 }

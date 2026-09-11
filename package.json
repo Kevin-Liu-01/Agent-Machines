@@ -1,7 +1,7 @@
 {
   "name": "agent-machines",
   "version": "0.2.0",
-  "description": "The durable Worker system for persistent digital labor. Keep identity, memory, schedules, files, and evidence while swapping the machinery. 161 skills · 39 MCP servers.",
+  "description": "Open-source building blocks for agent harnesses: runtimes, tools, state, and compute. Adopt, tune, and extend the source. Catalog: 161 skills · 39 MCP servers.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

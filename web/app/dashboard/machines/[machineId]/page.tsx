@@ -12,7 +12,6 @@ import {
 	History,
 	MessagesSquare,
 	PackageOpen,
-	Route,
 	ScrollText,
 	SquareTerminal,
 } from "@/components/ui/icons";
@@ -20,6 +19,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { DashboardPageBody } from "@/components/dashboard/DashboardPageBody";
+import { EmptyState } from "@/components/dashboard/EmptyState";
+import { ReticleButton } from "@/components/reticle/ReticleButton";
 import {
 	DashboardBarChart,
 	formatDayShort,
@@ -99,6 +100,8 @@ export default function MachineOverviewPage() {
 	const [loading, setLoading] = useState(true);
 	const [usageData, setUsageData] = useState<NormalizedMachineUsage | null>(null);
 	const [usageLoading, setUsageLoading] = useState(true);
+	const [usageError, setUsageError] = useState(false);
+	const [statusError, setStatusError] = useState<string | null>(null);
 	const [chartDays, setChartDays] = useState(7);
 	const [refreshKey, setRefreshKey] = useState(0);
 
@@ -122,6 +125,8 @@ export default function MachineOverviewPage() {
 	useEffect(() => {
 		let stopped = false;
 		setStatus(null);
+		setLoading(true);
+		setStatusError(null);
 		async function poll() {
 			try {
 				const res = await fetch(`/api/dashboard/machines/${encodeURIComponent(machineId)}`, {
@@ -130,15 +135,18 @@ export default function MachineOverviewPage() {
 				if (stopped) return;
 				if (res.status === 404) {
 					setStatus(null);
+					setStatusError("This machine is no longer available. Return to your fleet to choose another.");
+					setLoading(false);
 					stopped = true;
 					window.clearInterval(id);
 					return;
 				}
-				if (!res.ok) { setStatus(null); return; }
+				if (!res.ok) { setStatus(null); setStatusError("Live status is unavailable. Retrying automatically; saved configuration is shown below."); return; }
 				const data = (await res.json()) as MachineRouteResponse;
 				const live =
 					data.ok && data.live && typeof data.live === "object" ? data.live : null;
 				if (!stopped) {
+					setStatusError(!data.ok || live?.error ? "Live status is unavailable. Retrying automatically; saved configuration is shown below." : null);
 					setStatus({
 						machineId,
 						capabilities: data.ok ? data.machine?.capabilities ?? null : null,
@@ -153,7 +161,7 @@ export default function MachineOverviewPage() {
 					}
 				}
 			} catch {
-				if (!stopped) setStatus(null);
+				if (!stopped) { setStatus(null); setStatusError("Live status is unavailable. Retrying automatically; saved configuration is shown below."); }
 			} finally {
 				if (!stopped) setLoading(false);
 			}
@@ -168,21 +176,24 @@ export default function MachineOverviewPage() {
 	useEffect(() => {
 		let stopped = false;
 		setUsageLoading(true);
+		setUsageData(null);
+		setUsageError(false);
 		async function load() {
 			try {
 				const res = await fetch(
 					`/api/dashboard/metrics/machines/${encodeURIComponent(machineId)}/usage?days=${chartDays}`,
 					{ cache: "no-store" },
 				);
-				if (!res.ok || stopped) return;
+				if (stopped) return;
+				if (!res.ok) { setUsageError(true); return; }
 				const json: unknown = await res.json();
 				if (!stopped) {
-					setUsageData(
-						normalizeMachineUsagePayload(json, chartDays, machineId),
-					);
+					const normalized = normalizeMachineUsagePayload(json, chartDays, machineId);
+					setUsageData(normalized);
+					setUsageError(!normalized);
 				}
 			} catch {
-				/* ignore */
+				if (!stopped) setUsageError(true);
 			} finally {
 				if (!stopped) setUsageLoading(false);
 			}
@@ -205,7 +216,7 @@ export default function MachineOverviewPage() {
 		[usageResources],
 	);
 
-	if (!machine) return null;
+	if (!machine) return <EmptyState title="Machine not available" description="Choose an existing machine from your fleet to continue." action={{ label: "Open your fleet", href: "/dashboard/machines" }} />;
 
 	const allocation = status?.machineId === machineId ? status.spec : null;
 	const stateName = status?.machineId === machineId ? status.state : loading ? "loading" : "unknown";
@@ -214,7 +225,7 @@ export default function MachineOverviewPage() {
 		<div className="flex flex-col">
 			<PageHeader
 				artSlug="machines"
-				kicker={`MACHINE -- ${machine.name}`}
+				kicker="Workspace"
 				title={machine.name}
 				description={`${PROVIDER_LABEL[machine.providerKind]} / ${AGENT_LABEL[machine.agentKind]} / ${machine.model}`}
 				right={
@@ -243,12 +254,13 @@ export default function MachineOverviewPage() {
 				}
 			/>
 			<DashboardPageBody>
+				{statusError ? <p role="status" className="text-sm leading-6 text-[var(--ret-amber)]">{statusError} <Link className="underline underline-offset-4" href="/dashboard/machines">Open fleet</Link></p> : null}
 				{migration && migration.phase !== "idle" ? (
 					<div className="flex flex-wrap items-center gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-4 py-2.5">
 						<MigrationPhaseBadge state={migration} />
 						{migration.phase === "succeeded" && migration.report ? (
 							<>
-								<span className="font-mono text-[11px] text-[var(--ret-text-dim)]">
+								<span className="font-mono text-sm text-[var(--ret-text-dim)]">
 									moved to {PROVIDER_LABEL[migration.report.to.providerKind]} --{" "}
 									{migration.report.state.moved.length} paths,{" "}
 									{(migration.report.state.bytes / 1024).toFixed(0)} KB; old sandbox{" "}
@@ -258,7 +270,7 @@ export default function MachineOverviewPage() {
 								{/* A button, not a redirect -- the user may be mid-read. */}
 								<a
 									href={`/dashboard/machines/${encodeURIComponent(migration.report.newMachineId)}`}
-									className="border border-[var(--ret-purple)]/40 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-purple)] hover:bg-[var(--ret-purple)]/10"
+									className="border border-[var(--ret-purple)]/40 px-1.5 py-0.5 text-sm font-medium text-[var(--ret-purple)] hover:bg-[var(--ret-purple)]/10"
 								>
 									open new machine
 								</a>
@@ -266,7 +278,7 @@ export default function MachineOverviewPage() {
 						) : null}
 						{migration.phase === "failed" && migration.lastError ? (
 							<span
-								className="min-w-0 truncate font-mono text-[11px] text-[var(--ret-red)]"
+								className="min-w-0 truncate font-mono text-sm text-[var(--ret-red)]"
 								title={migration.lastError}
 							>
 								{migration.lastError}
@@ -275,7 +287,7 @@ export default function MachineOverviewPage() {
 					</div>
 				) : null}
 				<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-					<StatCard label="Status" icon={<Activity size={12} />}>
+					<StatCard label="Status" icon={<Activity size={16} />}>
 						{loading ? (
 							<Skeleton className="h-4 w-20" />
 						) : (
@@ -286,19 +298,19 @@ export default function MachineOverviewPage() {
 							</ReticleBadge>
 						)}
 					</StatCard>
-					<StatCard label="Provider" icon={<Cloud size={12} />}>
+					<StatCard label="Provider" icon={<Cloud size={16} />}>
 						{PROVIDER_LABEL[machine.providerKind]}
 					</StatCard>
-					<StatCard label="Agent" icon={<Bot size={12} />}>
+					<StatCard label="Agent" icon={<Bot size={16} />}>
 						{AGENT_LABEL[machine.agentKind]}
 					</StatCard>
-					<StatCard label="Actual allocation" icon={<Cpu size={12} />}>
+					<StatCard label="Actual allocation" icon={<Cpu size={16} />}>
 						{compactSpec(allocation)}
 					</StatCard>
-					<StatCard label="Model" icon={<Brain size={12} />}>
+					<StatCard label="Model" icon={<Brain size={16} />}>
 						{machine.model}
 					</StatCard>
-				<StatCard label="Machine ID" icon={<Hash size={12} />} mono>
+				<StatCard label="Machine ID" icon={<Hash size={16} />} mono>
 					{machineId}
 				</StatCard>
 				</div>
@@ -308,33 +320,28 @@ export default function MachineOverviewPage() {
 				<ReticleFrame corners={false}>
 					<div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
 						<div>
-							<p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-								<SquareTerminal size={12} />
-								Provider-safe access
+							<p className="flex items-center gap-1.5 text-sm font-medium text-[var(--ret-text-muted)]">
+								<SquareTerminal size={16} />
+								Ready for a task?
 							</p>
-							<p className="mt-1 text-[11px] text-[var(--ret-text-dim)]">
-								Commands run through the Agent Machines control plane for {PROVIDER_LABEL[machine.providerKind]}; no provider-specific gateway URL is required.
+							<p className="mt-1 text-sm text-[var(--ret-text-dim)]">
+								Open the terminal to work with {AGENT_LABEL[machine.agentKind]} on {PROVIDER_LABEL[machine.providerKind]}.
 							</p>
 						</div>
-						<Link href={`/dashboard/machines/${machineId}/terminal`} className="inline-flex shrink-0 items-center gap-1 border border-[var(--ret-purple)]/40 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-purple)] hover:bg-[var(--ret-purple)]/10">
-							Open terminal <SquareTerminal size={12} />
+						<Link href={`/dashboard/machines/${encodeURIComponent(machineId)}/terminal`} className="inline-flex shrink-0 items-center gap-1 border border-[var(--ret-purple)]/40 px-2.5 py-1.5 text-xs uppercase tracking-[0.16em] text-[var(--ret-purple)] hover:bg-[var(--ret-purple)]/10">
+							Open terminal <SquareTerminal size={16} />
 						</Link>
 					</div>
 				</ReticleFrame>
 
 				{/* ── B) Resource utilization charts ── */}
+				<div className="flex flex-wrap items-center justify-between gap-3">
+					<h2 className="flex items-center gap-2 text-lg font-semibold"><Gauge size={20} aria-hidden="true" />Sampled allocation</h2>
+					<TimeRangeSelector options={RANGE_OPTIONS_DETAIL} selected={chartDays} onSelect={setChartDays} />
+				</div>
+				{usageLoading ? <p role="status" className="text-sm text-[var(--ret-text-muted)]">Loading allocation and activity…</p> : null}
+				{usageError ? <ReticleFrame className="p-6"><h2 className="text-lg font-semibold">Usage data is unavailable</h2><p role="alert" className="mt-2 text-sm leading-6 text-[var(--ret-text-dim)]">We couldn’t load allocation or activity. This does not mean usage is zero.</p><ReticleButton className="mt-4" variant="secondary" size="sm" onClick={() => setRefreshKey(value => value + 1)}>Retry usage</ReticleButton></ReticleFrame> : <>
 				<ReticleFrame>
-					<div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--ret-border)] px-4 py-3">
-						<h2 className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-							<Gauge size={12} />
-							Sampled allocation
-						</h2>
-						<TimeRangeSelector
-							options={RANGE_OPTIONS_DETAIL}
-							selected={chartDays}
-							onSelect={setChartDays}
-						/>
-					</div>
 					<div className="divide-y divide-[var(--ret-border)]">
 					<UsageChartRow
 						title="CPU"
@@ -381,8 +388,8 @@ export default function MachineOverviewPage() {
 				{/* ── C) Activity timeline ── */}
 				<ReticleFrame>
 					<div className="border-b border-[var(--ret-border)] px-4 py-3">
-						<h2 className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-							<Activity size={12} />
+						<h2 className="flex items-center gap-1.5 text-sm font-medium text-[var(--ret-text-muted)]">
+							<Activity size={16} />
 							Activity timeline
 						</h2>
 					</div>
@@ -394,8 +401,8 @@ export default function MachineOverviewPage() {
 								))}
 							</div>
 						) : !usageData?.transitions?.length ? (
-							<p className="py-4 text-center text-[12px] text-[var(--ret-text-muted)]">
-								No recorded transitions.
+							<p className="py-4 text-center text-sm text-[var(--ret-text-muted)]">
+								No status changes recorded for this period. Choose a wider date range or inspect the machine’s <Link className="underline underline-offset-4" href={`/dashboard/machines/${encodeURIComponent(machineId)}/logs`}>logs</Link>.
 							</p>
 						) : (
 							<ol className="relative ml-2 border-l border-[var(--ret-border)]">
@@ -409,8 +416,8 @@ export default function MachineOverviewPage() {
 													: "border-[var(--ret-border)] bg-[var(--ret-bg)]",
 											)}
 										/>
-										<p className="text-[12px] text-[var(--ret-text)]">{t.label}</p>
-										<p className="mt-0.5 font-mono text-[10px] text-[var(--ret-text-muted)]">
+										<p className="text-sm text-[var(--ret-text)]">{t.label}</p>
+										<p className="mt-0.5 text-xs text-[var(--ret-text-muted)]">
 											{new Date(t.timestamp).toLocaleString()}
 										</p>
 									</li>
@@ -419,6 +426,7 @@ export default function MachineOverviewPage() {
 						)}
 					</div>
 				</ReticleFrame>
+				</>}
 			</DashboardPageBody>
 		</div>
 	);
@@ -437,18 +445,17 @@ function MachineSurfaceDeck({ machineId }: { machineId: string }) {
 	return (
 		<section aria-labelledby="machine-surfaces-title">
 			<div className="mb-2 flex items-baseline justify-between gap-3">
-				<h2 id="machine-surfaces-title" className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">Operate this machine</h2>
-				<span className="flex items-center gap-1 font-mono text-[8px] uppercase tracking-[0.14em] text-[var(--ret-purple)]"><Route size={10} /> migration in header</span>
+				<h2 id="machine-surfaces-title" className="text-sm font-medium text-[var(--ret-text-muted)]">Operate this machine</h2>
 			</div>
-			<div className="grid gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] sm:grid-cols-2 lg:grid-cols-3">
+			<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 				{MACHINE_SURFACES.map((surface) => {
 					const Icon = surface.icon;
 					return (
-						<Link key={surface.slug} href={`/dashboard/machines/${machineId}/${surface.slug}`} className="group flex min-w-0 items-center gap-3 bg-[var(--ret-bg)] p-3 transition-colors hover:bg-[var(--ret-surface)]">
-							<span className="flex h-8 w-8 shrink-0 items-center justify-center border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] text-[var(--ret-purple)]"><Icon size={14} /></span>
+						<Link key={surface.slug} href={`/dashboard/machines/${encodeURIComponent(machineId)}/${surface.slug}`} className="group flex min-w-0 items-center gap-4 rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)] p-5 transition-colors hover:bg-[var(--ret-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-text)]">
+							<span className="flex h-10 w-10 shrink-0 items-center justify-center border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] text-[var(--ret-purple)]"><Icon size={20} aria-hidden="true" /></span>
 							<span className="min-w-0">
-								<span className="block text-[12px] text-[var(--ret-text)]">{surface.label}</span>
-								<span className="block truncate text-[9px] text-[var(--ret-text-muted)]">{surface.detail}</span>
+								<span className="block text-sm text-[var(--ret-text)]">{surface.label}</span>
+								<span className="block text-sm text-[var(--ret-text-muted)]">{surface.detail}</span>
 							</span>
 						</Link>
 					);
@@ -472,11 +479,11 @@ function StatCard({
 	return (
 		<ReticleFrame>
 			<div className="px-4 py-3">
-				<dt className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				<dt className="flex items-center gap-1.5 text-sm font-medium text-[var(--ret-text-muted)]">
 					{icon ? <span className="inline-flex text-[var(--ret-text-muted)]">{icon}</span> : null}
 					{label}
 				</dt>
-				<dd className={cn("mt-1 text-[13px] text-[var(--ret-text)]", mono && "font-mono text-[11px]")}>
+				<dd className={cn("mt-1 text-base text-[var(--ret-text)]", mono && "font-mono text-sm")}>
 					{children}
 				</dd>
 			</div>
@@ -504,16 +511,16 @@ function UsageChartRow({
 	return (
 		<div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
 			<div className="shrink-0 sm:w-[120px]">
-				<h3 className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				<h3 className="text-sm font-medium text-[var(--ret-text-muted)]">
 					{title}
 				</h3>
 				<p className="mt-1 text-lg font-semibold tabular-nums text-[var(--ret-text)]">
 					{total}
-					<span className="ml-1 text-[11px] font-normal text-[var(--ret-text-dim)]">
+					<span className="ml-1 text-sm font-normal text-[var(--ret-text-dim)]">
 						{unit}
 					</span>
 				</p>
-				{!loading && <p className="mt-1 text-[10px] text-[var(--ret-text-muted)]">{note}</p>}
+				{!loading && <p className="mt-1 text-xs text-[var(--ret-text-muted)]">{note}</p>}
 			</div>
 			<div className="min-w-0 flex-1">
 				{loading ? (

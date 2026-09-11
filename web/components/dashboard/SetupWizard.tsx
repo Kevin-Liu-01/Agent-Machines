@@ -42,11 +42,11 @@ type StepDef = { id: SetupStep; label: string; hint: string; icon: IconComponent
 
 const STEPS: ReadonlyArray<StepDef> = [
 	{ id: "api-key", label: "Credentials", hint: "Connect accounts", icon: KeyRound },
-	{ id: "agent", label: "Agent", hint: "Choose a runtime", icon: Bot },
-	{ id: "provider", label: "Provider", hint: "Choose a home", icon: Server },
+	{ id: "agent", label: "Runtime", hint: "Choose a runtime", icon: Bot },
+	{ id: "provider", label: "Compute", hint: "Choose a provider", icon: Server },
 	{ id: "spec", label: "Resources", hint: "Size and model", icon: SlidersHorizontal },
 	{ id: "review", label: "Review", hint: "Confirm details", icon: ListChecks },
-	{ id: "provisioned", label: "Ready", hint: "Open your Worker", icon: CheckCircle2 },
+	{ id: "provisioned", label: "Ready", hint: "Open your workspace", icon: CheckCircle2 },
 ];
 
 const AGENTS_DESC: Record<
@@ -115,12 +115,12 @@ const PROVIDERS_DESC: Record<
 };
 
 const FIELD_INPUT = cn(
-	"min-h-11 w-full rounded-sm border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2.5 font-mono text-base text-[var(--ret-text)]",
+	"min-h-11 w-full rounded-md border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2.5 text-base text-[var(--ret-text)]",
 	"placeholder:text-[var(--ret-text-muted)] focus:border-[var(--ret-purple)] focus:outline-2 focus:outline-offset-2 focus:outline-[var(--ret-purple)]",
 );
 
 const CHOICE_CARD = cn(
-	"group relative flex h-full flex-col gap-4 rounded-sm border bg-[var(--ret-bg)] p-5 text-left",
+	"group relative flex h-full flex-col gap-4 rounded-lg border bg-[var(--ret-bg)] p-5 text-left",
 	"focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-purple)]",
 	"disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[var(--ret-bg)]",
 );
@@ -323,7 +323,7 @@ function StepRail({
 	onJump: (step: SetupStep) => void;
 }) {
 	return (
-		<ol aria-label="Worker setup progress" className={cn("grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6")}>
+		<ol aria-label="Agent setup progress" className={cn("grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6")}>
 			{STEPS.map((step) => {
 				const isActive = step.id === active;
 				const isDone = completed.has(step.id);
@@ -495,7 +495,7 @@ function CredentialsStep({
 	return (
 		<StepShell
 			title="Connect your accounts"
-			description="Provider keys create the machine; model keys power the agent. Saved keys stay in your private account settings. Leave a field blank to keep its existing value."
+			description="Compute credentials are used when you launch; model keys power the agent. Save and continue stores these keys without creating compute. Leave a field blank to keep its existing value."
 		>
 			<h3 className={cn("flex items-center gap-2 text-lg font-semibold text-[var(--ret-text)]")}><Server className={cn("h-5 w-5 text-[var(--ret-text-muted)]")} aria-hidden="true" />Sandbox providers</h3>
 			<div className={cn("grid gap-x-6 gap-y-5 lg:grid-cols-2")}>
@@ -736,8 +736,8 @@ function AgentStep({
 }) {
 	return (
 		<StepShell
-			title="Choose your agent"
-			description="Choose the runtime your Worker will use. You can change it later from the Worker's controls."
+			title="Choose your agent runtime"
+			description="Choose the runtime for this setup. You can inspect and change its configuration from the workspace controls."
 		>
 			<div className={cn("grid gap-4 md:grid-cols-2")}>
 				{AGENT_KINDS.map((kind) => {
@@ -884,7 +884,7 @@ function SpecStep({
 	return (
 		<StepShell
 			title="Choose resources and model"
-			description="These are requested resources. Provider limits and actual allocation can differ; check the Worker's allocation after launch."
+			description="These are requested resources. Provider limits and actual allocation can differ; check the workspace's allocation after launch."
 		>
 			<div className={cn("grid gap-5 sm:grid-cols-2 xl:grid-cols-4")}>
 				<NumField
@@ -1022,12 +1022,12 @@ function ReviewStep({
 	const providerHasKey = config.providers[providerKind].configured;
 	return (
 		<StepShell
-			title="Review your Worker"
+			title="Review your agent setup"
 			description="Launching creates a sandbox on your provider account, saves the machine, and prepares the selected runtime. Provider charges may apply."
 		>
 			<dl className={cn("grid gap-x-6 gap-y-1 sm:grid-cols-2")}>
-				<Row label="Agent" value={config.draftAgentKind} />
-				<Row label="Provider" value={providerKind} />
+				<Row label="Runtime" value={config.draftAgentKind} />
+				<Row label="Compute provider" value={providerKind} />
 				<Row
 					label="Requested resources"
 					value={`${config.draftSpec.vcpu} vCPU · ${memGib} GiB RAM · ${config.draftSpec.storageGib} GiB disk`}
@@ -1112,8 +1112,8 @@ function ProvisionedStep({
 	if (!active) {
 		return (
 			<StepShell
-				title="No active Worker"
-				description="Your saved setup is still here, but no active machine is linked to it. Configure a Worker or choose an existing one from your fleet."
+				title="No active workspace"
+				description="Your saved setup is still here, but no active machine is linked to it. Configure a workspace or choose an existing one from your fleet."
 			>
 				<dl className={cn("grid gap-x-6 gap-y-1 sm:grid-cols-2")}>
 					<Row label="Saved agent" value={AGENTS_DESC[config.draftAgentKind].name} />
@@ -1125,7 +1125,7 @@ function ProvisionedStep({
 						Open machines
 					</ReticleButton>
 					<ReticleButton variant="primary" size="sm" onClick={onConfigure}>
-						Configure Worker
+						Configure workspace
 						<ArrowRight className={cn("h-4 w-4")} aria-hidden="true" />
 					</ReticleButton>
 				</div>
@@ -1134,7 +1134,7 @@ function ProvisionedStep({
 	}
 	return (
 		<StepShell
-			title="Your Worker is ready"
+			title="Your workspace is ready"
 			description="The launch operation completed. Open chat to start working, or inspect the machine in your fleet."
 		>
 			<div className={cn("space-y-3")}>

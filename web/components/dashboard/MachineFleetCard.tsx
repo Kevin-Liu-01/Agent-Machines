@@ -2,9 +2,8 @@
 
 import Link from "next/link";
 import { ArrowRight, Brain, Clock3, Cpu, FolderOpen, MessagesSquare, Network, Pencil, Route, ScrollText, SquareTerminal } from "@/components/ui/icons";
-import { useMemo } from "react";
 
-import { Logo, type Mark } from "@/components/Logo";
+import { Logo } from "@/components/Logo";
 import { BootstrapPhaseBadge } from "@/components/dashboard/BootstrapPhaseBadge";
 import {
 	MachineActions,
@@ -12,8 +11,6 @@ import {
 } from "@/components/dashboard/MachineActions";
 import { MigrationPhaseBadge } from "@/components/dashboard/MigrationPhaseBadge";
 import { SubstrateMoveMenu } from "@/components/dashboard/SubstrateMoveMenu";
-import { ServiceIcon } from "@/components/ServiceIcon";
-import { ToolIcon } from "@/components/ToolIcon";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { cn } from "@/lib/cn";
@@ -22,8 +19,6 @@ import {
 	modelLogoMark,
 	providerLogoMark,
 } from "@/lib/fleet/logos";
-import type { LoadoutDisplayBadge } from "@/lib/fleet/loadout-badges";
-import { resolveMachineLoadoutBadges } from "@/lib/fleet/loadout-badges";
 import type { FleetLoadoutSnapshot } from "@/lib/fleet/use-fleet-loadout";
 import { compactSpec, reportedMachineSpec, type FleetStreamCardModel } from "@/lib/fleet/view-model";
 import type { ProviderCapabilities } from "@/lib/providers";
@@ -59,7 +54,7 @@ type LiveMachine = {
 type Props = {
 	machine: LiveMachine;
 	card: FleetStreamCardModel;
-	loadout: FleetLoadoutSnapshot | null;
+	loadout?: FleetLoadoutSnapshot | null;
 	active: boolean;
 	focused?: boolean;
 	delaySec?: number;
@@ -117,41 +112,9 @@ function shortenUrl(url: string): string {
 	}
 }
 
-function LoadoutRail({
-	tools,
-	skillCount,
-	mcpCount,
-}: {
-	tools: LoadoutDisplayBadge[];
-	skillCount: number;
-	mcpCount: number;
-}) {
-	return (
-		<div className={cn("flex min-w-0 flex-wrap items-center justify-between gap-3 border-t border-[var(--ret-border)] px-4 py-3")}>
-			<div className={cn("flex min-w-0 items-center gap-1.5")}>
-				{tools.slice(0, 6).map((tool, index) => (
-					<span key={`${tool.kind}-${index}`} className={cn("flex h-8 w-8 shrink-0 items-center justify-center border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] text-[var(--ret-text-dim)]")}>
-						{tool.kind === "service" ? (
-							<ServiceIcon slug={tool.slug} size={16} tone="mono" />
-						) : tool.kind === "mark" ? (
-							<Logo mark={tool.mark as Mark} size={16} />
-						) : (
-							<ToolIcon name={tool.name} size={16} />
-						)}
-					</span>
-				))}
-			</div>
-			<p className={cn("shrink-0 font-mono text-[12px] text-[var(--ret-text-muted)]")}>
-				{skillCount} skills · {mcpCount} MCP
-			</p>
-		</div>
-	);
-}
-
 export function MachineFleetCard({
 	machine,
 	card,
-	loadout,
 	active,
 	focused = false,
 	editing,
@@ -163,36 +126,15 @@ export function MachineFleetCard({
 }: Props) {
 	const state = machine.live.ok ? machine.live.state : "unknown";
 	const providerMessage = machine.live.ok ? machine.live.lastError : machine.live.reason;
-	const loadoutBadges = useMemo(() => {
-		if (!loadout) {
-			return {
-				tools: card.tools.map((tool): LoadoutDisplayBadge =>
-					tool.kind === "service" ? tool : { kind: "tool", name: tool.name },
-				),
-				skillCount: 0,
-				mcpCount: 0,
-			};
-		}
-		const resolved = resolveMachineLoadoutBadges(loadout.mcps, machine.agentKind);
-		return {
-			tools: resolved.tools.length > 0
-				? resolved.tools
-				: card.tools.map((tool): LoadoutDisplayBadge =>
-						tool.kind === "service" ? tool : { kind: "tool", name: tool.name },
-					),
-			skillCount: loadout.skillCount,
-			mcpCount: resolved.mcpCount,
-		};
-	}, [card.tools, loadout, machine.agentKind]);
 
-	const base = `/dashboard/machines/${machine.id}`;
+	const base = `/dashboard/machines/${encodeURIComponent(machine.id)}`;
 	const activity = card.headline ?? card.lines.at(-1) ?? "Waiting for work";
 	const connection = machine.apiUrl ? shortenUrl(machine.apiUrl) : "direct control plane";
 	const modelMark = modelLogoMark(machine.model);
 
 	return (
 		<article className={cn(
-			"group flex min-w-0 flex-col border bg-[var(--ret-bg)]",
+			"group flex min-w-0 flex-col overflow-hidden rounded-xl border bg-[var(--ret-bg)]",
 			focused ? "border-[var(--ret-purple)] ring-1 ring-[var(--ret-purple)]/20" : active ? "border-[var(--ret-purple)]/35" : "border-[var(--ret-border)] hover:border-[var(--ret-border-hover)]",
 			machine.archived && "opacity-70",
 		)}>
@@ -229,10 +171,10 @@ export function MachineFleetCard({
 					<InfoCell icon={Clock3} label="Activity" value={card.lastActivityLabel ?? card.uptime} />
 				</div>
 
-				<div className={cn("mt-4 flex min-w-0 items-start gap-3 border-l border-[var(--ret-purple)] bg-[var(--ret-purple-glow)] px-3 py-3")}>
+				<div className={cn("mt-4 flex min-w-0 items-start gap-3 rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-3 py-3")}>
 					<ActivityMark />
 					<div className={cn("min-w-0 flex-1")}>
-						<p className={cn("text-[14px] font-medium text-[var(--ret-purple)]")}>Latest signal</p>
+						<p className={cn("text-[14px] font-medium text-[var(--ret-text-muted)]")}>Latest signal</p>
 						<p className={cn("mt-1 line-clamp-2 text-[16px] leading-relaxed text-[var(--ret-text-dim)]")}>{activity}</p>
 					</div>
 				</div>
@@ -244,7 +186,7 @@ export function MachineFleetCard({
 				</div>
 			</div>
 
-			<LoadoutRail {...loadoutBadges} />
+			<div className="border-t border-[var(--ret-border)] px-4 py-3"><Link href={`${base}/loadout`} className="inline-flex min-h-9 items-center gap-2 text-sm text-[var(--ret-text-dim)] hover:text-[var(--ret-purple)] focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]"><Brain size={16} aria-hidden="true" />Inspect tools &amp; memory <ArrowRight size={16} aria-hidden="true" /></Link></div>
 
 			{providerMessage ? (
 				<p className={cn("border-t border-[var(--ret-border)] bg-[var(--ret-amber)]/5 px-4 py-3 text-[14px] leading-relaxed text-[var(--ret-amber)]")}>
@@ -280,11 +222,12 @@ export function MachineFleetCard({
 					) : null}
 					<div className={cn("flex flex-wrap items-center justify-between gap-3 border-t border-[var(--ret-border)] pt-3")}>
 						<div className={cn("flex flex-wrap items-center gap-1.5")}>
+							{!machine.archived ? <ReticleButton as="a" href={`${base}/terminal`} variant="primary" size="sm"><SquareTerminal size={16} aria-hidden="true" />Open terminal</ReticleButton> : null}
 							{onInteract && !machine.archived ? (
-								<ReticleButton variant="primary" size="sm" onClick={onInteract}>Interact</ReticleButton>
+								<ReticleButton variant="ghost" size="sm" onClick={onInteract}>Preview console</ReticleButton>
 							) : null}
-							<ReticleButton as="a" href={base} variant={onInteract ? "ghost" : "primary"} size="sm">
-								Inspect <ArrowRight aria-hidden="true" size={16} strokeWidth={1.75} />
+							<ReticleButton as="a" href={base} variant="ghost" size="sm">
+								Manage <ArrowRight aria-hidden="true" size={16} strokeWidth={1.75} />
 							</ReticleButton>
 							<ReticleButton variant="ghost" size="sm" onClick={onToggleEdit}><Pencil aria-hidden="true" size={16} strokeWidth={1.75} /> Edit</ReticleButton>
 						</div>

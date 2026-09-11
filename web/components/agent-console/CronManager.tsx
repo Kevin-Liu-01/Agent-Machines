@@ -10,11 +10,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { ChevronDown, Plus } from "@/components/ui/icons";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
 import { cn } from "@/lib/cn";
 import { describeSchedule, isValidSchedule } from "@/lib/cron/expr";
 import type { CronEntry, CronStatus } from "@/lib/user-config/schema";
+import { ScheduleStarters } from "@/components/dashboard/ScheduleStarters";
 
 type Props = {
 	machineId: string | null;
@@ -41,7 +43,7 @@ async function requireCronMutation(response: Response): Promise<void> {
 	if (!response.ok || !body.ok) throw new Error(body.message ?? body.error ?? `Cron update failed (HTTP ${response.status}).`);
 }
 
-export function CronManager({ machineId, machineOk }: Props) {
+export function CronManager({ machineId, machineOk: _machineOk }: Props) {
 	const [crons, setCrons] = useState<CronEntry[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -87,7 +89,7 @@ export function CronManager({ machineId, machineOk }: Props) {
 	};
 
 	const save = async () => {
-		if (!machineId) return;
+		if (!machineId || busyId) return;
 		const name = draft.name.trim();
 		const schedule = draft.schedule.trim();
 		const prompt = draft.prompt.trim();
@@ -148,6 +150,7 @@ export function CronManager({ machineId, machineOk }: Props) {
 	};
 
 	const runNow = async (cron: CronEntry) => {
+		if (!window.confirm(`Run "${cron.name}" now? This executes its prompt on the selected machine and may incur provider and model charges.`)) return;
 		setBusyId(cron.id);
 		setRunOut(null);
 		try {
@@ -182,31 +185,31 @@ export function CronManager({ machineId, machineOk }: Props) {
 	if (loading) {
 		return (
 			<div className="p-3">
-				<BrailleSpinner name="orbit" label="loading crons" className="text-[10px] text-[var(--ret-text-muted)]" />
+				<BrailleSpinner name="orbit" label="loading crons" className="text-sm text-[var(--ret-text-muted)]" />
 			</div>
 		);
 	}
 
 	return (
 		<div className="flex flex-col">
-			<div className="flex items-center justify-between border-b border-[var(--ret-border)] px-3 py-2">
-				<span className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
-					Scheduled · {machineCrons.length}
+			<div className="flex items-center justify-between gap-3 border-b border-[var(--ret-border)] px-5 py-4">
+				<span className="text-sm font-medium text-[var(--ret-text-muted)]">
+					Schedules · {machineCrons.length}
 				</span>
 				<ReticleButton
 					variant="primary"
 					size="sm"
 					onClick={startCreate}
-					disabled={!machineOk || editing === "new"}
+					disabled={!machineId || editing === "new" || Boolean(busyId)}
 				>
-					+ new
+					<Plus className="size-4" aria-hidden="true" /> New schedule
 				</ReticleButton>
 			</div>
 
 			{error ? (
 				<div className="border-b border-[var(--ret-border)] px-3 py-2">
-					<p className="font-mono text-[10px] text-[var(--ret-red)]">{error}</p>
-					<button type="button" onClick={() => void load()} className="mt-1 font-mono text-[10px] text-[var(--ret-accent)] underline">
+					<p className="text-sm text-[var(--ret-red)]">{error}</p>
+					<button type="button" onClick={() => void load()} className="mt-1 text-sm text-[var(--ret-accent)] underline">
 						retry
 					</button>
 				</div>
@@ -214,6 +217,7 @@ export function CronManager({ machineId, machineOk }: Props) {
 
 			{editing === "new" ? (
 				<CronForm
+					creating
 					draft={draft}
 					setDraft={setDraft}
 					onSave={save}
@@ -224,13 +228,13 @@ export function CronManager({ machineId, machineOk }: Props) {
 
 			{machineCrons.length === 0 && editing !== "new" ? (
 				<div className="p-3">
-					<p className="font-mono text-[11px] text-[var(--ret-text-muted)]">No crons yet.</p>
-					<p className="mt-1 text-[10px] leading-relaxed text-[var(--ret-text-dim)]">
-						Create one to run an agent prompt on a schedule. The scheduler fires it
-						automatically; use Run to test it now.
+					<p className="text-sm text-[var(--ret-text-muted)]">No schedules for this machine.</p>
+					<p className="mt-1 text-sm leading-relaxed text-[var(--ret-text-dim)]">
+						Create a recurring prompt. Saving enables scheduled execution and may incur provider and model charges. All schedules use UTC; the machine must be available to run.
 					</p>
 				</div>
 			) : null}
+			{machineId && machineCrons.length === 0 && !editing && !error ? <div className="p-3"><ScheduleStarters disabled={Boolean(busyId)} onSelect={draft => { setDraft(draft); setEditing("new"); setRunOut(null); }} /></div> : null}
 
 			{machineCrons.map((cron) =>
 				editing === cron.id ? (
@@ -246,7 +250,7 @@ export function CronManager({ machineId, machineOk }: Props) {
 					<CronRow
 						key={cron.id}
 						cron={cron}
-						busy={busyId === cron.id}
+						busy={Boolean(busyId)}
 						runOutput={runOut?.id === cron.id ? runOut.text : null}
 						onRun={() => void runNow(cron)}
 						onToggle={() => void toggle(cron)}
@@ -260,12 +264,14 @@ export function CronManager({ machineId, machineOk }: Props) {
 }
 
 function CronForm({
+	creating = false,
 	draft,
 	setDraft,
 	onSave,
 	onCancel,
 	saving,
 }: {
+	creating?: boolean;
 	draft: Draft;
 	setDraft: (d: Draft) => void;
 	onSave: () => void;
@@ -275,22 +281,28 @@ function CronForm({
 	const scheduleValid = isValidSchedule(draft.schedule);
 	const canSave = draft.name.trim() && draft.prompt.trim() && scheduleValid && !saving;
 	const inputCls = cn(
-		"w-full border border-[var(--ret-border)] bg-[var(--ret-bg)] px-2 py-1",
-		"font-mono text-[11px] text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)]",
+		"min-h-11 w-full rounded-md border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2",
+		"text-sm text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)]",
 		"focus:border-[var(--ret-accent)] focus:outline-none",
 	);
 
 	return (
-		<div className="border-b border-[var(--ret-border)] bg-[var(--ret-surface)]/40 px-3 py-2.5">
+		<div className="border-b border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-5">
 			<div className="flex flex-col gap-2">
+				<label className="text-sm font-medium" htmlFor="schedule-name">Name</label>
 				<input
+					id="schedule-name"
+					maxLength={120}
 					className={inputCls}
 					placeholder="name (e.g. nightly-digest)"
 					value={draft.name}
 					onChange={(e) => setDraft({ ...draft, name: e.target.value })}
 				/>
 				<div>
+					<label className="mb-2 block text-sm font-medium" htmlFor="schedule-expression">Schedule (UTC)</label>
 					<input
+						id="schedule-expression"
+						aria-invalid={!scheduleValid}
 						className={cn(inputCls, !scheduleValid && draft.schedule ? "border-[var(--ret-red)]/60" : "")}
 						placeholder="schedule (cron or 'every 30m')"
 						value={draft.schedule}
@@ -302,30 +314,38 @@ function CronForm({
 								key={p.value}
 								type="button"
 								onClick={() => setDraft({ ...draft, schedule: p.value })}
-								className="border border-[var(--ret-border)] px-1.5 py-0.5 font-mono text-[8px] text-[var(--ret-text-muted)] hover:border-[var(--ret-accent)] hover:text-[var(--ret-text)]"
+								className="border border-[var(--ret-border)] px-1.5 py-0.5 min-h-8 rounded-sm text-xs text-[var(--ret-text-muted)] hover:border-[var(--ret-accent)] hover:text-[var(--ret-text)]"
 							>
 								{p.label}
 							</button>
 						))}
 					</div>
-					<p className="mt-1 font-mono text-[9px] text-[var(--ret-text-dim)]">
+					<p className="mt-1 text-xs text-[var(--ret-text-dim)]">
 						{scheduleValid ? describeSchedule(draft.schedule) : "invalid schedule"} · UTC
 					</p>
 				</div>
+				<label className="text-sm font-medium" htmlFor="schedule-prompt">Agent prompt</label>
 				<textarea
-					className={cn(inputCls, "min-h-[64px] resize-y leading-relaxed")}
+					id="schedule-prompt"
+					maxLength={100000}
+					className={cn(inputCls, "min-h-[120px] resize-y leading-relaxed")}
 					placeholder="prompt to run on the agent…"
 					value={draft.prompt}
 					onChange={(e) => setDraft({ ...draft, prompt: e.target.value })}
 				/>
+				<p id="schedule-execution-notice" className={cn("mt-2 text-sm leading-6 text-[var(--ret-text-dim)]")}>
+					{creating ? "Saving enables automatic execution on this machine. " : "Enabled schedules run automatically on this machine. "}
+					Scheduled runs may incur provider and model charges. Times use UTC; the machine must be available to run.
+				</p>
 				<div className="flex items-center gap-2">
-					<ReticleButton variant="primary" size="sm" onClick={onSave} disabled={!canSave}>
-						{saving ? "saving…" : "save"}
+					<ReticleButton variant="primary" size="sm" onClick={onSave} disabled={!canSave} aria-describedby="schedule-execution-notice">
+						{saving ? "Saving…" : "Save schedule"}
 					</ReticleButton>
 					<button
 						type="button"
 						onClick={onCancel}
-						className="font-mono text-[10px] text-[var(--ret-text-muted)] hover:text-[var(--ret-text)]"
+						disabled={saving}
+						className="text-sm text-[var(--ret-text-muted)] hover:text-[var(--ret-text)]"
 					>
 						cancel
 					</button>
@@ -364,6 +384,7 @@ function CronRow({
 			<button
 				type="button"
 				onClick={() => setOpen((v) => !v)}
+				aria-expanded={open}
 				className="flex w-full items-center gap-2 px-3 py-2.5 text-left hover:bg-[var(--ret-surface)]"
 			>
 				<span
@@ -374,29 +395,29 @@ function CronRow({
 					aria-hidden
 				/>
 				<div className="min-w-0 flex-1">
-					<p className="truncate font-mono text-[11px] text-[var(--ret-text)]">{cron.name}</p>
-					<p className="font-mono text-[9px] text-[var(--ret-text-muted)]">
+					<p className="truncate text-sm text-[var(--ret-text)]">{cron.name}</p>
+					<p className="text-xs text-[var(--ret-text-muted)]">
 						{describeSchedule(cron.schedule)}
 						{cron.lastRunAt ? ` · ran ${timeAgo(cron.lastRunAt)}` : " · never run"}
 					</p>
 				</div>
 				{!cron.enabled ? (
-					<span className="shrink-0 font-mono text-[8px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
+					<span className="shrink-0 text-xs text-[var(--ret-text-muted)]">
 						paused
 					</span>
 				) : null}
 				<span
 					className={cn(
-						"shrink-0 font-mono text-[10px] text-[var(--ret-text-muted)] transition-transform",
-						open ? "rotate-90" : "rotate-0",
+						"shrink-0 text-sm text-[var(--ret-text-muted)] transition-transform",
+						open ? "rotate-180" : "rotate-0",
 					)}
 				>
-					{">"}
+					<ChevronDown className="size-4" aria-hidden="true" />
 				</span>
 			</button>
 			{open ? (
 				<div className="border-t border-[var(--ret-border)]/20 px-3 py-2">
-					<p className="text-[10px] leading-relaxed text-[var(--ret-text-dim)]">{cron.prompt}</p>
+					<p className="text-sm leading-relaxed text-[var(--ret-text-dim)]">{cron.prompt}</p>
 					<div className="mt-2 flex flex-wrap items-center gap-1.5">
 						<RowAction label={busy ? "…" : "run now"} onClick={onRun} disabled={busy || !cron.enabled} accent />
 						<RowAction label={cron.enabled ? "pause" : "resume"} onClick={onToggle} disabled={busy} />
@@ -404,7 +425,7 @@ function CronRow({
 						<RowAction label="delete" onClick={onDelete} disabled={busy} danger />
 					</div>
 					{runOutput ? (
-						<pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap border border-[var(--ret-border)] bg-[var(--ret-bg)] p-2 font-mono text-[9px] leading-relaxed text-[var(--ret-text-dim)]">
+						<pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap border border-[var(--ret-border)] bg-[var(--ret-bg)] p-2 text-xs leading-relaxed text-[var(--ret-text-dim)]">
 							{runOutput}
 						</pre>
 					) : null}
@@ -433,7 +454,7 @@ function RowAction({
 			onClick={onClick}
 			disabled={disabled}
 			className={cn(
-				"border border-[var(--ret-border)] px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-[0.15em] transition-colors disabled:opacity-50",
+				"border border-[var(--ret-border)] px-1.5 py-0.5 min-h-9 rounded-md text-sm transition-colors disabled:opacity-50",
 				accent
 					? "text-[var(--ret-accent)] hover:border-[var(--ret-accent)]"
 					: danger

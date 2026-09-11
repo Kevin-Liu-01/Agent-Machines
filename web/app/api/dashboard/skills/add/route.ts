@@ -156,7 +156,7 @@ export async function POST(request: Request): Promise<Response> {
 					sourceUrl: resolved.sourceUrl,
 				},
 				config: toPublicConfig(nextConfig),
-				installLog: "Saved to account. Machine is offline — skill will install on next wake (re-open this page or ask the agent to sync).",
+				installLog: "Skill metadata saved to your account, but no skill file was installed: no selected machine is available for installation. Pasted instructions are not stored in account settings. Start or select a running machine and submit again. Nothing is queued for automatic installation.",
 				installOk: false,
 			} satisfies AddSkillResponse);
 		}

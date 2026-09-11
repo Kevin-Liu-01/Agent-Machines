@@ -116,7 +116,7 @@ describe("GET /api/dashboard/route-outcomes -- auth fails closed", () => {
 		mocks.getEffectiveUserId.mockRejectedValue(new Error("clerk down"));
 		const res = await GET(req());
 		expect(res.status).toBe(500);
-		expect(await res.json()).toEqual({ ok: false, error: "clerk down" });
+		expect(await res.json()).toEqual({ ok: false, error: "unavailable", reason: "unavailable", message: "Usage data is unavailable" });
 		expect(mocks.supabaseAdmin).not.toHaveBeenCalled();
 	});
 });
@@ -183,7 +183,7 @@ describe("GET /api/dashboard/route-outcomes -- scoping", () => {
 		fakeSupabase({ data: null, error: { message: "relation missing" } });
 		const res = await GET(req());
 		expect(res.status).toBe(500);
-		expect(await res.json()).toEqual({ ok: false, error: "relation missing" });
+		expect(await res.json()).toEqual({ ok: false, error: "unavailable", reason: "unavailable", message: "Usage data is unavailable" });
 	});
 
 	it("500s when the config read throws", async () => {
@@ -191,7 +191,24 @@ describe("GET /api/dashboard/route-outcomes -- scoping", () => {
 		mocks.getUserConfig.mockRejectedValue(new Error("config unavailable"));
 		const res = await GET(req("?machineId=am-1"));
 		expect(res.status).toBe(500);
-		expect(await res.json()).toEqual({ ok: false, error: "config unavailable" });
+		expect(await res.json()).toEqual({ ok: false, error: "unavailable", reason: "unavailable", message: "Usage data is unavailable" });
+	});
+	it("checks ownership before revealing the metrics configuration prerequisite", async () => {
+		mocks.supabaseAdmin.mockImplementation(() => { throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY/SUPABASE_SECRET_KEY."); });
+		const rejected = await GET(req("?machineId=someone-elses-machine"));
+		expect(rejected.status).toBe(404);
+		expect(await rejected.json()).toEqual({ error: "unknown_machine" });
+		expect(mocks.supabaseAdmin).not.toHaveBeenCalled();
+		const response = await GET(req("?machineId=am-1"));
+		expect(response.status).toBe(503);
+		expect(response.headers.get("Cache-Control")).toBe("no-store");
+		expect(await response.json()).toEqual({ ok: false, error: "config_missing", reason: "config_missing", message: "Usage storage is not configured" });
+	});
+	it("sanitizes unexpected storage-construction errors without reporting zero traced runs", async () => {
+		mocks.supabaseAdmin.mockImplementation(() => { throw new Error("private database URL and service-key"); });
+		const response = await GET(req());
+		expect(response.status).toBe(503);
+		expect(await response.json()).toEqual({ ok: false, error: "unavailable", reason: "unavailable", message: "Usage data is unavailable" });
 	});
 });
 

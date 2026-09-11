@@ -21,6 +21,15 @@ type Params = {
 	params: Promise<{ slug: string }>;
 };
 
+const FEATURE_ACTIONS: Record<string, { href: string; label: string }> = {
+	"persistent-machines": { href: "/dashboard/machines", label: "Open your machines" },
+	"model-routing": { href: "/dashboard/settings", label: "Connect model access" },
+	isolation: { href: "/dashboard/settings", label: "Review your credentials" },
+	lifecycle: { href: "/dashboard/machines", label: "Manage your machines" },
+	"snapshots-volumes": { href: "/dashboard/machines", label: "Inspect your machines" },
+	api: { href: "/dashboard/settings", label: "Manage API keys" },
+};
+
 export function generateStaticParams() {
 	return PRODUCT_FEATURES.map((feature) => ({ slug: feature.slug }));
 }
@@ -41,40 +50,41 @@ export default async function ProductFeaturePage({ params }: Params) {
 	const { slug } = await params;
 	const feature = productFeatureBySlug(slug);
 	if (!feature) notFound();
+	const action = FEATURE_ACTIONS[slug] ?? { href: "/dashboard/agents", label: "Configure an agent" };
 
 	return (
 		<MarketingShell>
 			<main id="top">
 				<MarketingHero
-					kicker={`./${feature.eyebrow.toUpperCase()}`}
+					kicker={feature.eyebrow}
 					title={feature.title}
 					description={feature.longDescription}
 					badges={feature.badges}
 					icon={feature.icon}
 					actions={
 						<>
-							<ReticleButton as="a" href="/sign-in" size="lg" className="rounded-[var(--ret-card-radius)]">
-								Start for free
+							<ReticleButton as="a" href={action.href} size="lg" className="rounded-[var(--ret-card-radius)]">
+								{action.label}
 							</ReticleButton>
-							<ReticleButton as="a" href="/product" variant="secondary" size="lg" className="rounded-[var(--ret-card-radius)]">
-								Product index
+							<ReticleButton as="a" href="/components" variant="secondary" size="lg" className="rounded-[var(--ret-card-radius)]">
+								Explore the components
 							</ReticleButton>
 						</>
 					}
 					aside={
 						<TerminalPanel
-							title="capability trace"
+							title="configuration illustration · not execution output"
 							lines={feature.terminal}
 							className="h-full rounded-none border-0"
 						/>
 					}
 				/>
 				<ReticleSpacer />
-				<SectionBand label="Metrics" title="The dashboard surfaces the moving parts.">
+				<SectionBand label="Capabilities" title="What you can use.">
 					<MetricGrid metrics={feature.metrics} />
 				</SectionBand>
 				<ReticleSpacer />
-				<SectionBand label="Flow" title="How this works inside a machine.">
+				<SectionBand label="Workflow" title="From setup to result.">
 					<FlowSteps steps={feature.steps} />
 				</SectionBand>
 				<ReticleSpacer />

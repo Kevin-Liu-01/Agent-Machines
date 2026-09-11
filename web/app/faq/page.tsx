@@ -20,7 +20,7 @@ export default function FaqPage() {
 		<PublicDocPage
 			kicker="FAQ"
 			title="Common questions."
-			description="Short answers about the current product state. The machine, agent, tools, provider lanes, and runtime boundaries stay explicit."
+			description="Setup, costs, and what is supported today."
 			badge={`${FAQ.length} answers`}
 			aside={
 				<div className="space-y-3">
@@ -29,12 +29,12 @@ export default function FaqPage() {
 					</p>
 					<DocList>
 						<DocListItem>
-							<a href="/#architecture" className="hover:text-[var(--ret-text)]">
+							<a href="/#worker-system" className="hover:text-[var(--ret-text)]">
 								Architecture map
 							</a>
 						</DocListItem>
 						<DocListItem>
-							<a href="/#loadout" className="hover:text-[var(--ret-text)]">
+							<a href="/components#abilities" className="hover:text-[var(--ret-text)]">
 								Tool loadout
 							</a>
 						</DocListItem>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import { LibrarySearch } from "./LibrarySearch";
 import { AddSkillPanel } from "@/components/dashboard/AddSkillPanel";
 import { Logo, type Mark } from "@/components/Logo";
 import { ToolIcon } from "@/components/ToolIcon";
@@ -53,14 +54,14 @@ function customSkillSlug(entry: CustomLoadoutEntry): string {
 }
 
 /**
- * Card grid + category filter chips. Filtering is local state; we already
- * have all the metadata in memory (no per-category fetch needed). Search
- * is intentionally omitted in PR1 -- with 13 skills the chips alone are
- * enough; revisit when the library grows beyond ~30.
+ * Search and category filters compose over the loaded catalog, including
+ * enabled custom skills, without a network request on each keystroke.
  */
 export function SkillsBrowser({ skills, categories, customSkills = [] }: Props) {
 	const router = useRouter();
 	const [active, setActive] = useState<string>(ALL);
+	const [query, setQuery] = useState("");
+	const matches = (name: string, description: string) => `${name} ${description}`.toLowerCase().includes(query.trim().toLowerCase());
 	const userSkills = useMemo(
 		() => customSkills.filter((entry) => entry.kind === "skill" && entry.enabled),
 		[customSkills],
@@ -72,6 +73,8 @@ export function SkillsBrowser({ skills, categories, customSkills = [] }: Props) 
 	}, [skills, active]);
 
 	const isEmpty = skills.length === 0 && userSkills.length === 0;
+	const filteredSkills = visible.filter(skill => matches(skill.name, skill.description));
+	const filteredCustom = (active === ALL || active === CUSTOM) ? userSkills.filter(entry => matches(entry.name, entry.description ?? "")) : [];
 
 	return (
 		<>
@@ -80,23 +83,24 @@ export function SkillsBrowser({ skills, categories, customSkills = [] }: Props) 
 				onAdded={() => router.refresh()}
 			/>
 			{isEmpty ? (
-				<div className="px-6 py-10">
+				<div className="px-[var(--dashboard-gutter,20px)] py-10">
 					<div className="border border-[var(--ret-border)] bg-[var(--ret-bg)] px-6 py-12 text-center">
 						<p className="text-[13px] text-[var(--ret-text-dim)]">No skills imported yet.</p>
-						<p className="mx-auto mt-1 max-w-[48ch] text-[11px] text-[var(--ret-text-muted)]">
-							Skills you install from the Registry show up here and load on your
-							machines. Browse the full catalog to add some.
+						<p className="mx-auto mt-1 max-w-[48ch] text-[13px] text-[var(--ret-text-muted)]">
+							Save skills from the Registry to see them here. Installation is a
+							separate step on a selected, supported machine.
 						</p>
 						<Link
 							href="/dashboard/registry"
-							className="mt-4 inline-block border border-[var(--ret-purple)]/40 bg-[var(--ret-purple-glow)] px-4 py-2 font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--ret-purple)] transition-colors hover:bg-[var(--ret-purple)]/20"
+							className="mt-4 inline-block border border-[var(--ret-purple)]/40 bg-[var(--ret-purple-glow)] px-4 py-2 text-sm font-medium text-[var(--ret-purple)] transition-colors hover:bg-[var(--ret-purple)]/20"
 						>
 							Browse the Registry →
 						</Link>
 					</div>
 				</div>
 			) : null}
-			<div className={cn("px-6 py-6", isEmpty && "hidden")}>
+			<div className={cn("space-y-5 px-[var(--dashboard-gutter,20px)] py-6", isEmpty && "hidden")}>
+				<LibrarySearch value={query} onChange={setQuery} label="Search skills" />
 				<div className="flex flex-wrap items-center gap-2">
 					<Chip
 						label={`all (${skills.length + userSkills.length})`}
@@ -123,12 +127,13 @@ export function SkillsBrowser({ skills, categories, customSkills = [] }: Props) 
 					})}
 				</div>
 
-				<div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+				{!filteredSkills.length && !filteredCustom.length ? <div role="status" className="rounded-lg border border-dashed border-[var(--ret-border)] p-8 text-center text-sm text-[var(--ret-text-muted)]"><p>No skills match this search and category.</p><button type="button" onClick={() => { setQuery(""); setActive(ALL); }} className="mt-3 min-h-11 rounded-md border border-[var(--ret-border)] px-4 text-[var(--ret-text)] hover:bg-[var(--ret-surface)] focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]">Clear filters</button></div> : null}
+				<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
 					{active !== CUSTOM
-						? visible.map((skill) => <SkillCard key={skill.slug} skill={skill} />)
+						? filteredSkills.map((skill) => <SkillCard key={skill.slug} skill={skill} />)
 						: null}
 					{(active === ALL || active === CUSTOM) &&
-						userSkills.map((entry) => (
+						filteredCustom.map((entry) => (
 							<CustomSkillCard key={entry.id} entry={entry} />
 						))}
 				</div>
@@ -150,8 +155,9 @@ function Chip({
 		<button
 			type="button"
 			onClick={onClick}
+			aria-pressed={active}
 			className={cn(
-				"border px-3 py-1 font-mono text-[11px] transition-colors",
+				"min-h-9 rounded-md border px-3 py-1.5 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-[var(--ret-text)]",
 				active
 					? "border-[var(--ret-purple)]/40 bg-[var(--ret-purple-glow)] text-[var(--ret-purple)]"
 					: "border-[var(--ret-border)] text-[var(--ret-text-dim)] hover:border-[var(--ret-border-hover)] hover:text-[var(--ret-text)]",
@@ -171,14 +177,14 @@ function CustomSkillCard({ entry }: { entry: CustomLoadoutEntry }) {
 					<ToolIcon name="memory" size={14} className="text-[var(--ret-text-muted)]" />
 					<p className="font-mono text-sm text-[var(--ret-purple)]">{slug}</p>
 				</div>
-				<span className="border border-[var(--ret-purple)]/30 bg-[var(--ret-purple-glow)] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-purple)]">
+				<span className="border border-[var(--ret-purple)]/30 bg-[var(--ret-purple-glow)] px-1.5 py-0.5 text-xs font-medium text-[var(--ret-purple)]">
 					custom
 				</span>
 			</div>
 			<p className="mt-3 line-clamp-3 text-sm text-[var(--ret-text-dim)]">
 				{entry.description}
 			</p>
-			<div className="mt-auto pt-4 font-mono text-[10px] text-[var(--ret-text-muted)]">
+			<div className="mt-auto pt-4 font-mono text-xs text-[var(--ret-text-muted)]">
 				{entry.command ?? `~/.agent-machines/skills/custom/${slug}/SKILL.md`}
 			</div>
 		</div>
@@ -208,7 +214,7 @@ function SkillCard({ skill }: { skill: SkillSummary }) {
 						{skill.slug}
 					</p>
 				</div>
-				<span className="border border-[var(--ret-border)] bg-[var(--ret-surface)] px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				<span className="border border-[var(--ret-border)] bg-[var(--ret-surface)] px-1.5 py-0.5 text-xs font-medium text-[var(--ret-text-muted)]">
 					{skill.category}
 				</span>
 			</div>
@@ -219,13 +225,13 @@ function SkillCard({ skill }: { skill: SkillSummary }) {
 				{skill.tags.slice(0, 4).map((t) => (
 					<span
 						key={t}
-						className="border border-[var(--ret-border)] bg-[var(--ret-surface)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--ret-text-dim)]"
+						className="border border-[var(--ret-border)] bg-[var(--ret-surface)] px-1.5 py-0.5 font-mono text-xs text-[var(--ret-text-dim)]"
 					>
 						{t}
 					</span>
 				))}
 			</div>
-			<div className="mt-auto pt-4 font-mono text-[10px] text-[var(--ret-text-muted)]">
+			<div className="mt-auto pt-4 font-mono text-xs text-[var(--ret-text-muted)]">
 				{(skill.bytes / 1024).toFixed(1)} KiB . read
 			</div>
 		</Link>

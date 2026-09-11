@@ -1,6 +1,6 @@
 <svg width="1600" height="720" viewBox="0 0 1600 720" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title description">
-  <title id="title">Agent Machines — persistent Workers, replaceable machinery</title>
-  <desc id="description">A durable Worker keeps its identity and responsibility while runtime, sandbox, and model machinery change beneath it.</desc>
+  <title id="title">Agent Machines — open-source building blocks for agent harnesses</title>
+  <desc id="description">Connect runtimes, tools, state, and compute in an agent harness with source you can inspect, tune, and extend.</desc>
   <defs>
     <style>
       @font-face {
@@ -26,8 +26,8 @@
   </g>
   <text x="126" y="78" fill="#18181B" font-size="24" font-weight="600" letter-spacing="-0.25">agent-machines</text>
 
-  <text x="64" y="191" fill="#18181B" font-size="66" font-weight="600" letter-spacing="-2.8">Persistent Workers. Replaceable machinery.</text>
-  <text x="68" y="244" fill="#52525B" font-size="26" font-weight="400" letter-spacing="-0.3">Keep identity, memory, schedules, files, and evidence while the stack changes.</text>
+  <text x="64" y="191" fill="#18181B" font-size="66" font-weight="600" letter-spacing="-2.8">Build your own agent harness.</text>
+  <text x="68" y="244" fill="#52525B" font-size="26" font-weight="400" letter-spacing="-0.3">Runtime, tools, state, and compute. Source you can make your own.</text>
 
   <g>
     <path d="M534 394H600L701 495H750M534 495H750M534 596H600L701 495" fill="none" stroke="#71717A" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
@@ -37,7 +37,7 @@
     <g>
       <rect x="64" y="358" width="470" height="72" fill="#FBFBFB" stroke="#C7C7CA"/>
       <text x="86" y="383" fill="#52525B" font-size="13" font-weight="600" letter-spacing="1.8">RUNTIME</text>
-      <text x="86" y="412" fill="#18181B" font-size="20" font-weight="400">Hermes · OpenClaw · Claude · Codex</text>
+      <text x="86" y="412" fill="#18181B" font-size="20" font-weight="400">Claude Code · Codex · Hermes · OpenClaw</text>
     </g>
     <g>
       <rect x="64" y="459" width="470" height="72" fill="#FBFBFB" stroke="#C7C7CA"/>
@@ -47,12 +47,12 @@
     <g>
       <rect x="64" y="560" width="470" height="72" fill="#FBFBFB" stroke="#C7C7CA"/>
       <text x="86" y="585" fill="#52525B" font-size="13" font-weight="600" letter-spacing="1.8">MODEL ROUTE</text>
-      <text x="86" y="614" fill="#18181B" font-size="20" font-weight="400">Gateway · OpenRouter · Native</text>
+      <text x="86" y="614" fill="#18181B" font-size="20" font-weight="400">Native · supported gateways</text>
     </g>
 
     <rect x="750" y="358" width="786" height="274" fill="#09090B"/>
-    <text x="810" y="486" fill="#FFFFFF" font-size="40" font-weight="600" letter-spacing="-1">Persistent worker</text>
-    <text x="812" y="527" fill="#A1A1AA" font-size="21" font-weight="400">Memory · tools · cron · logs</text>
+    <text x="810" y="486" fill="#FFFFFF" font-size="40" font-weight="600" letter-spacing="-1">Your agent harness</text>
+    <text x="812" y="527" fill="#A1A1AA" font-size="21" font-weight="400">Instructions · tools · state</text>
     <g transform="translate(1400 443) scale(2.25)">
       <path fill="#9B98A8" d="M10 4h12v6H10V4ZM4 10h6v12H4V10ZM22 10h6v12h-6V10ZM10 22h12v6H10V22Z"/>
       <path fill="#FFFFFF" d="M23 5h4v4h-4V5ZM10 10h6v6h-6v-6ZM16 16h6v6h-6v-6ZM5 23h4v4H5v-4Z"/>

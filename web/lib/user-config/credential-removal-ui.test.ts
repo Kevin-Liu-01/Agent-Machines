@@ -213,7 +213,7 @@ describe("saved credential removal (actual Settings TSX)", () => {
 		ui.click("Removing…");
 		ui.click("Save settings");
 		ui.click("Sync from machine");
-		ui.nodes().find((node) => node.props.label === "Agent")!.props.onChange("hermes");
+		ui.nodes().find((node) => node.props.label === "Agent runtime")!.props.onChange("hermes");
 		expect(ui.fetch).toHaveBeenCalledOnce();
 		finish(response({ removed: ["provider:daytona"], stillConfigured: [] }));
 		await ui.settle();

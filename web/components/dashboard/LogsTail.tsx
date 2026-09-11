@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { EmptyState } from "@/components/dashboard/EmptyState";
+import { DashboardLoadingState } from "@/components/dashboard/DashboardLoadingState";
 import { useOptionalMachineContext } from "@/components/dashboard/MachineProvider";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { cn } from "@/lib/cn";
@@ -30,31 +31,44 @@ export function LogsTail() {
 	const [envelope, setEnvelope] = useState<LiveDataEnvelope<LogsPayload> | null>(null);
 	const [follow, setFollow] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const [retry, setRetry] = useState(0);
 	const tailRef = useRef<HTMLDivElement>(null);
 
 	const machineId = machineCtx?.machineId;
 
 	useEffect(() => {
 		let stopped = false;
+		let pending = false;
+		const controller = new AbortController();
+		setEnvelope(null);
+		setError(null);
 		const params = new URLSearchParams({ n: "200" });
 		if (machineId) params.set("machineId", machineId);
 
 		async function tick() {
+			if (pending || stopped) return;
+			pending = true;
 			try {
 				const response = await fetch(`/api/dashboard/logs?${params.toString()}`, {
 					cache: "no-store",
+					signal: controller.signal,
 				});
 				if (!response.ok) {
-					if (!stopped) setError(`HTTP ${response.status}`);
+					const body = await response.json().catch(() => null);
+					const detail = body?.message ?? body?.error;
+					if (!stopped) setError(typeof detail === "string" && /\s/.test(detail) ? detail : "Logs couldn’t be loaded. Try again.");
 					return;
 				}
 				const body = (await response.json()) as LiveDataEnvelope<LogsPayload>;
+				if (!body || typeof body.ok !== "boolean" || (body.ok ? !body.data || !Array.isArray(body.data.lines) || !Array.isArray(body.data.files) : typeof body.reason !== "string")) throw new Error("The log response was incomplete. Please try again.");
 				if (!stopped) {
 					setEnvelope(body);
 					setError(null);
 				}
-			} catch (err) {
-				if (!stopped) setError(err instanceof Error ? err.message : "fetch_failed");
+			} catch {
+				if (!stopped) setError("Logs couldn’t be loaded. Check your connection and try again.");
+			} finally {
+				pending = false;
 			}
 		}
 
@@ -64,9 +78,10 @@ export function LogsTail() {
 		}, POLL_MS);
 		return () => {
 			stopped = true;
+			controller.abort();
 			window.clearInterval(interval);
 		};
-	}, [machineId]);
+	}, [machineId, retry]);
 
 	useEffect(() => {
 		if (!follow) return;
@@ -78,17 +93,16 @@ export function LogsTail() {
 	if (error) {
 		return (
 			<EmptyState
-				title="Couldn't reach the logs API"
-				description={`The browser request to /api/dashboard/logs failed. ${error}.`}
+				title="Could not load logs"
+				description={error}
+				onRetry={() => setRetry(value => value + 1)}
 			/>
 		);
 	}
 
 	if (!envelope) {
 		return (
-		<div className="px-6 py-10 text-[12px] text-[var(--ret-text-muted)]">
-			Loading logs...
-		</div>
+			<DashboardLoadingState label="Loading logs…" variant="table" className="px-[var(--dashboard-gutter,20px)] py-6" />
 		);
 	}
 
@@ -103,10 +117,11 @@ export function LogsTail() {
 				title={titles[envelope.reason] ?? "Unavailable"}
 				description={envelope.message}
 				hint="# tail expected at\n~/.agent-machines/logs/*.log"
+				onRetry={envelope.reason === "config_missing" ? undefined : () => setRetry(value => value + 1)}
 				action={
-					envelope.reason === "machine_offline"
-						? { label: "View overview", href: "/dashboard" }
-						: undefined
+					envelope.reason === "config_missing"
+						? { label: "Open Quickstart", href: "/dashboard/setup" }
+						: { label: machineId ? "Manage this machine" : "Manage machines", href: machineId ? `/dashboard/machines/${encodeURIComponent(machineId)}` : "/dashboard/machines" }
 				}
 			/>
 		);
@@ -115,9 +130,9 @@ export function LogsTail() {
 	const { lines, files, tailLines, status, message } = envelope.data;
 
 	return (
-		<div className="flex flex-col gap-4 px-6 py-6">
+		<div className="flex flex-col gap-5 px-[var(--dashboard-gutter,20px)] py-8">
 			<div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-				<div className="font-mono text-[11px] text-[var(--ret-text-dim)]">
+				<div className="font-mono text-[13px] text-[var(--ret-text-dim)]">
 					<span className="text-[var(--ret-text-muted)]">files</span>{" "}
 					{files.length}
 					<span className="ml-3 text-[var(--ret-text-muted)]">tail</span>{" "}
@@ -136,10 +151,12 @@ export function LogsTail() {
 					</span>
 				</div>
 				<div className="ml-auto flex items-center gap-2">
-					<span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
+					<span className="text-xs font-medium text-[var(--ret-text-muted)]">
 						refreshed {formatAge(envelope.fetchedAt)}
 					</span>
 					<ReticleButton
+						aria-pressed={follow}
+						aria-label="Follow new log lines"
 						variant={follow ? "primary" : "ghost"}
 						size="sm"
 						onClick={() => setFollow((value) => !value)}
@@ -150,18 +167,19 @@ export function LogsTail() {
 			</div>
 
 			{status === "degraded" && message ? (
-				<div className="border border-[var(--ret-amber)]/30 bg-[var(--ret-amber)]/5 px-4 py-2 font-mono text-[10px] text-[var(--ret-amber)]">
+				<div className="border border-[var(--ret-amber)]/30 bg-[var(--ret-amber)]/5 px-4 py-2 font-mono text-xs text-[var(--ret-amber)]">
 					{message}
 				</div>
 			) : null}
 
 			<div
 				ref={tailRef}
-				className="max-h-[68dvh] overflow-y-auto border border-[var(--ret-border)] bg-[var(--ret-bg)] font-mono text-[12px] leading-relaxed"
+				className="max-h-[68dvh] overflow-y-auto border border-[var(--ret-border)] bg-[var(--ret-bg)] font-mono text-sm leading-relaxed"
 			>
 				{lines.length === 0 ? (
 				<div className="px-5 py-6 font-sans text-[var(--ret-text-muted)]">
-					No log lines yet. Send a message in chat and they'll show up here.
+					<p>{status === "degraded" ? "No readable log lines were returned." : "No log lines yet."}</p>
+					<ReticleButton as="a" href={machineId ? `/dashboard/machines/${encodeURIComponent(machineId)}/console` : "/dashboard/console"} variant="secondary" className="mt-3">Open agent console</ReticleButton>
 				</div>
 				) : (
 					<table className="w-full border-collapse">
@@ -171,7 +189,7 @@ export function LogsTail() {
 									key={`${idx}:${line.at ?? ""}:${line.message.slice(0, 16)}`}
 									className="border-b border-[var(--ret-border)] last:border-b-0 hover:bg-[var(--ret-surface)]"
 								>
-									<td className="w-[170px] px-3 py-1.5 align-top text-[10px] text-[var(--ret-text-muted)]">
+									<td className="w-[170px] px-3 py-1.5 align-top text-xs text-[var(--ret-text-muted)]">
 										{line.at ?? ""}
 									</td>
 									<td
@@ -193,7 +211,7 @@ export function LogsTail() {
 			</div>
 
 			{files.length > 0 ? (
-				<div className="font-mono text-[11px] text-[var(--ret-text-muted)]">
+				<div className="font-mono text-[13px] text-[var(--ret-text-muted)]">
 					<span>files: </span>
 					{files.map((file, idx) => (
 						<span key={file.path}>

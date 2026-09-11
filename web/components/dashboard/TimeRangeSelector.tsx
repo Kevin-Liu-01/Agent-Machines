@@ -19,7 +19,7 @@ export function TimeRangeSelector({
 }: Props) {
 	return (
 		<div className={cn("inline-flex items-center gap-2", className)}>
-			<span className="text-[10px] uppercase tracking-[0.18em] font-mono text-[var(--ret-text-muted)]">
+			<span className="text-xs text-[var(--ret-text-muted)]">
 				Range
 			</span>
 			<div className="inline-flex border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] rounded-sm overflow-hidden">
@@ -27,9 +27,10 @@ export function TimeRangeSelector({
 					<button
 						key={opt.value}
 						type="button"
+						aria-pressed={selected === opt.value}
 						onClick={() => onSelect(opt.value)}
 						className={cn(
-							"px-3 py-1.5 text-[11px] font-mono transition-colors",
+							"min-h-9 px-3 py-1.5 text-sm transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-[-2px]",
 							selected === opt.value &&
 								"bg-[var(--ret-bg)] text-[var(--ret-text)] shadow-[0_0_0_1px_var(--ret-border)]",
 							selected !== opt.value &&

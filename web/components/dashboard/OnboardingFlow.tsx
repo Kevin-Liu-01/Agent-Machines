@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { BrandMark } from "@/components/BrandMark";
@@ -11,12 +10,12 @@ import { Logo, type Mark } from "@/components/Logo";
 import { providerLogoMark } from "@/lib/fleet/logos";
 import { ServiceIcon, isServiceSlug } from "@/components/ServiceIcon";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { WingBackground } from "@/components/WingBackground";
+import { QuickstartGuide } from "@/components/dashboard/QuickstartGuide";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
-import { ArrowLeft, ArrowRight, ArrowUpRight, Check, CheckCircle2, ChevronDown, KeyRound, PackageOpen, ShieldCheck } from "@/components/ui/icons";
+import { ArrowLeft, ArrowRight, ArrowUpRight, Brain, Check, CheckCircle2, ChevronDown, KeyRound, PackageOpen, ShieldCheck } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import { waitForControlPlaneOperation } from "@/lib/control-plane/client";
 import { onboardingProviderReady, onboardingWorkspaceUrl, submitOnboardingLaunch, type OnboardingLaunch } from "@/lib/onboarding/launch";
@@ -58,16 +57,17 @@ type Props = {
 	initialConfig: PublicUserConfig;
 	presets: Preset[];
 	initialPresetId?: string;
+	embedded?: boolean;
 };
 
-type Step = "agent" | "preset" | "provider" | "key" | "boot";
+type Step = "welcome" | "connect" | "configure" | "boot";
+type StepHeadingLevel = 1 | 2;
 
 const STEPS: ReadonlyArray<{ id: Step; label: string; hint: string }> = [
-	{ id: "agent", label: "Agent", hint: "how it works" },
-	{ id: "preset", label: "Preset", hint: "starting instructions" },
-	{ id: "provider", label: "Provider", hint: "where it runs" },
-	{ id: "key", label: "Keys", hint: "connect accounts" },
-	{ id: "boot", label: "Launch", hint: "prepare your Worker" },
+	{ id: "welcome", label: "Welcome", hint: "what you need" },
+	{ id: "connect", label: "Connect", hint: "compute and model accounts" },
+	{ id: "configure", label: "Configure", hint: "review and launch" },
+	{ id: "boot", label: "Workspace", hint: "launch status and next steps" },
 ];
 
 /** Sentinel preset id for "start blank, no preset". */
@@ -216,10 +216,9 @@ const AGENT_DESC: Record<
 	},
 };
 
-export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Props) {
-	const router = useRouter();
+export function OnboardingFlow({ initialConfig, presets, initialPresetId, embedded = false }: Props) {
 	const initialPreset = resolveSelectedPreset(presets, initialPresetId);
-	const [step, setStep] = useState<Step>("agent");
+	const [step, setStep] = useState<Step>("welcome");
 	const stepContentRef = useRef<HTMLDivElement | null>(null);
 	const previousStepRef = useRef<Step>(step);
 	const [agent, setAgent] = useState<AgentKind>(
@@ -245,6 +244,10 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 		[presets, presetId],
 	);
 	const [providerKey, setProviderKey] = useState("");
+	const [aiField, setAiField] = useState<OnboardingAiKeyField>(
+		(["vercelAiGateway", "openrouter", "anthropic", "openai"] as const)
+			.find((field) => initialConfig.aiProviders[field].configured) ?? "openai",
+	);
 	const [aiKeys, setAiKeys] = useState<OnboardingAiKeys>({
 		vercelAiGateway: "",
 		openrouter: "",
@@ -377,34 +380,22 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 	useEffect(() => {
 		if (previousStepRef.current === step) return;
 		previousStepRef.current = step;
-		const heading = stepContentRef.current?.querySelector<HTMLHeadingElement>("h1");
+		const heading = stepContentRef.current?.querySelector<HTMLHeadingElement>("[data-onboarding-step-heading]");
 		heading?.focus({ preventScroll: true });
 		heading?.scrollIntoView({ behavior: "instant", block: "start" });
 	}, [step]);
 
-	// Open the exact machine just launched, even if another tab changed selection.
-	useEffect(() => {
-		if (!bootDone || !bootMachineId) return;
-		const id = window.setTimeout(() => {
-			router.replace(onboardingWorkspaceUrl(bootMachineId));
-		}, 700);
-		return () => window.clearTimeout(id);
-	}, [bootDone, bootMachineId, router]);
-
 	function handleStartBoot() {
+		if (!canProvision || busy) return;
 		setStep("boot");
 		void provision();
 	}
+	const Container = embedded ? "div" : "main";
+	const headingLevel: StepHeadingLevel = embedded ? 2 : 1;
 
 	return (
-		<main className={cn("relative min-h-[100dvh] overflow-hidden bg-[var(--ret-bg)] text-[var(--ret-text)]")}>
-			{/*
-			  Ambient brand backdrop. Light mode = cloud-lines plate,
-			  dark mode = nyx-lines plate. The kit-builder reads as a
-			  designed surface, never a cold form.
-			*/}
-			<WingBackground variant="cloud" />
-			<header className={cn("relative z-10 h-12 border-b border-[var(--ret-border)] bg-[var(--ret-bg)]/85 px-4 backdrop-blur sm:px-6")}>
+		<Container className={cn("dashboard-workspace min-w-0 bg-[var(--ret-bg)] text-[var(--ret-text)]", !embedded && "min-h-[100dvh]")}>
+			{!embedded ? <header className={cn("h-16 border-b border-[var(--ret-border)] px-5 sm:px-8")}>
 				<div className={cn("mx-auto flex h-full max-w-[var(--ret-content-max)] items-center justify-between gap-3")}>
 					<a href="/" className={cn("group flex min-w-0 items-center gap-2.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}>
 						<BrandMark size={20} gap="tight" withLabel={false} />
@@ -421,14 +412,14 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 							href="/dashboard"
 							className={cn("flex min-h-9 items-center gap-1.5 text-sm text-[var(--ret-text-muted)] outline-none hover:text-[var(--ret-text)] focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}
 						>
-					Skip <ArrowRight size={16} aria-hidden="true" />
+							Back to dashboard <ArrowRight size={16} aria-hidden="true" />
 					</a>
 					</div>
 				</div>
-			</header>
+			</header> : null}
 
-			<div className={cn("relative z-10 mx-auto grid max-w-[var(--ret-content-max)] gap-px bg-[var(--ret-border)] xl:grid-cols-[minmax(0,1fr)_320px]")}>
-				<section className={cn("min-w-0 bg-[var(--ret-bg)] px-4 py-6 sm:p-8")}>
+			<div className={cn(embedded ? "min-w-0 max-w-[1040px]" : "mx-auto max-w-[1040px] px-5 py-8 sm:px-8 sm:py-12")}>
+				<section aria-label="Agent setup quickstart" className={cn("min-w-0")}>
 					<StepRail step={step} />
 
 					{error && step !== "boot" ? (
@@ -439,60 +430,20 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 					</ReticleFrame>
 					) : null}
 
-					<div ref={stepContentRef} className={cn("mt-6")}>
-						{step === "agent" ? (
-							<AgentStep value={agent} onPick={(a) => setAgent(a)} onNext={next} />
-						) : null}
-						{step === "preset" ? (
-							<PresetStep
-								presets={presets}
-								selectedId={presetId}
-								onPick={setPresetId}
-								onBack={back}
-								onNext={next}
-							/>
-						) : null}
-						{step === "provider" ? (
-							<ProviderPickStep
-								value={provider}
-								configured={initialConfig.providers}
-								onPick={(p) => {
-									setProvider(p);
-									setProviderKey("");
-									setProviderSecondary({});
-								}}
-								onBack={back}
-								onNext={next}
-							/>
-						) : null}
-						{step === "key" ? (
-							<div className={cn("grid gap-4")}>
+					<div ref={stepContentRef} className={cn("mt-8")}>
+						{step === "welcome" ? <WelcomeStep headingLevel={headingLevel} onNext={next} /> : null}
+						{step === "connect" ? (
 							<KeyStep
-								connectionOptions={<>
-							{agentUsesRouter(agent) ? (
-								<div className={cn("border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3")}>
-									<RouterSelect
-										agentKind={agent}
-										value={routerId}
-										onChange={setRouterId}
-										aiConfigured={effectiveAiConfigured}
-									/>
-								</div>
-							) : null}
-							<div className={cn("grid gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3")}>
-								<label htmlFor="onboarding-model" className={cn("text-sm font-medium")}>Model <span className={cn("font-normal text-[var(--ret-text-muted)]")}>(optional)</span></label>
-								<input
-									id="onboarding-model"
-									value={model}
-									onChange={(event) => setModel(event.target.value)}
-									placeholder="Choose automatically for my connection"
-									maxLength={200}
-									aria-describedby="onboarding-model-help"
-									className={cn("w-full rounded border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-3 py-3 text-base outline-none focus:border-[var(--ret-purple)]")}
-								/>
-								<p id="onboarding-model-help" className={cn("text-sm leading-relaxed text-[var(--ret-text-muted)]")}>Leave blank to choose a model for your connected AI provider. For Google or a custom endpoint, enter the exact model ID it supports.</p>
-							</div>
-								</>}
+								headingLevel={headingLevel}
+								connectOnly
+								aiField={aiField}
+								onAiFieldChange={setAiField}
+								selectionOptions={<div className={cn("grid gap-6 rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-5 sm:p-6")}>
+									<AgentStep compact value={agent} onPick={(kind) => { setAgent(kind); setModel(""); }} onNext={next} />
+									<ProviderPickStep compact value={provider} configured={initialConfig.providers} onPick={(kind) => {
+										setProvider(kind); setProviderKey(""); setProviderSecondary({});
+									}} onBack={back} onNext={next} />
+								</div>}
 								agent={agent}
 								provider={provider}
 								config={initialConfig}
@@ -513,12 +464,33 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 								busy={busy}
 								canProvision={canProvision}
 								onBack={back}
-								onProvision={handleStartBoot}
+								onProvision={() => { if (canProvision) next(); }}
 							/>
-							</div>
+						) : null}
+						{step === "configure" ? (
+							<PresetStep headingLevel={headingLevel} compact presets={presets} selectedId={presetId} onPick={setPresetId} onBack={back}
+								onNext={handleStartBoot} canContinue={canProvision && !busy} continueLabel="Launch workspace"
+								launchOptions={<>
+									<dl className={cn("grid grid-cols-2 gap-5 rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-5")}>
+										<div><dt className={cn("text-sm text-[var(--ret-text-muted)]")}>Runtime</dt><dd className={cn("mt-1 flex items-center gap-2 text-base font-medium")}><Logo mark={AGENT_DESC[agent].mark} size={20} />{AGENT_LABEL[agent]}</dd></div>
+										<div><dt className={cn("text-sm text-[var(--ret-text-muted)]")}>Compute</dt><dd className={cn("mt-1 flex items-center gap-2 text-base font-medium")}><Logo mark={providerLogoMark(provider)} size={20} />{PROVIDER_LABEL[provider]}</dd></div>
+									</dl>
+									<details className={cn("rounded-lg border border-[var(--ret-border)] p-5")}>
+										<summary className={cn("cursor-pointer text-base font-medium outline-none focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}>Model and routing options</summary>
+										<div className={cn("mt-5 grid gap-5")}>
+											{agentUsesRouter(agent) ? <RouterSelect agentKind={agent} value={routerId} onChange={setRouterId} aiConfigured={effectiveAiConfigured} /> : null}
+											<label htmlFor="onboarding-model" className={cn("text-sm font-medium")}>Model (optional)</label>
+											<input id="onboarding-model" value={model} onChange={(event) => setModel(event.target.value)} placeholder="Runtime default" maxLength={200} aria-describedby="onboarding-model-help" className={cn("min-h-11 w-full rounded-md border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-3 text-base outline-none focus:border-[var(--ret-purple)]")} />
+											<p id="onboarding-model-help" className={cn("text-sm leading-relaxed text-[var(--ret-text-muted)]")}>{agentUsesRouter(agent) ? "Leave blank for a supported model on your connection. Google and custom endpoints need their exact model ID." : `Hosted ${AGENT_LABEL[agent]} requires a native ${agent === "codex" ? "OpenAI" : "Anthropic"} key and compatible model. Leave blank for its default model.`}</p>
+										</div>
+									</details>
+									<p className={cn("flex items-start gap-2 text-sm leading-relaxed text-[var(--ret-text-muted)]")}><ShieldCheck size={20} aria-hidden="true" className={cn("shrink-0")} />Launch saves your credentials and configuration before requesting a cloud workspace. These changes can remain saved if launch fails. Compute and model providers bill you directly. Stop or destroy unused workspaces from Machines.</p>
+								</>}
+							/>
 						) : null}
 						{step === "boot" ? (
 							<BootStep
+								headingLevel={headingLevel}
 								agent={agent}
 								provider={provider}
 								machineId={bootMachineId}
@@ -526,24 +498,16 @@ export function OnboardingFlow({ initialConfig, presets, initialPresetId }: Prop
 								done={bootDone}
 								busy={busy}
 								onRetry={() => void provision()}
-								onBack={() => { setError(null); setStep("key"); }}
+								onBack={() => { setError(null); setStep("connect"); }}
 								error={error}
 							/>
 						) : null}
 					</div>
 				</section>
 
-				<aside aria-label="Your Worker configuration" className={cn("relative min-w-0 bg-[var(--ret-bg-soft)]")}>
-					<RigPreview
-						agent={agent}
-						provider={provider}
-						preset={selectedPreset}
-						bootPhase={step === "boot" ? bootPhase : null}
-						bootDone={bootDone}
-					/>
-				</aside>
+				{step === "configure" ? <details className={cn("mt-6 rounded-lg border border-[var(--ret-border)]")}><summary className={cn("cursor-pointer px-5 py-4 text-sm text-[var(--ret-text-muted)]")}>Inspect selected tools and memory</summary><RigPreview headingLevel={embedded ? 3 : 2} agent={agent} provider={provider} preset={selectedPreset} bootPhase={null} bootDone={false} /></details> : null}
 			</div>
-		</main>
+		</Container>
 	);
 }
 
@@ -551,7 +515,7 @@ function StepRail({ step }: { step: Step }) {
 	const order = STEPS.map((s) => s.id);
 	const i = order.indexOf(step);
 	return (
-		<ol aria-label="Setup progress" className={cn("grid grid-cols-5 gap-2 border-b border-[var(--ret-border)] pb-5")}>
+		<ol aria-label="Setup progress" className={cn("grid grid-cols-4 gap-2 border-b border-[var(--ret-border)] pb-5")}>
 			{STEPS.map((s, idx) => {
 				const isActive = idx === i;
 				const isDone = idx < i;
@@ -596,24 +560,61 @@ function StepRail({ step }: { step: Step }) {
 	);
 }
 
+function WelcomeStep({ onNext, headingLevel = 1 }: { onNext: () => void; headingLevel?: StepHeadingLevel }) {
+	const Heading = headingLevel === 2 ? "h2" : "h1";
+	const Subheading = headingLevel === 2 ? "h3" : "h2";
+	return (
+		<div className={cn("space-y-7")}>
+			<div className={cn("max-w-[680px]")}>
+				<Heading data-onboarding-step-heading tabIndex={-1} className={cn("scroll-mt-20 font-semibold leading-tight tracking-tight outline-none", headingLevel === 2 ? "text-2xl sm:text-3xl" : "text-3xl sm:text-4xl")}>Build your first agent setup.</Heading>
+				<p className={cn("mt-4 text-base leading-7 text-[var(--ret-text-muted)]")}>Connect your accounts, choose a starter, and open your agent’s workspace.</p>
+			</div>
+			<div className={cn("rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-5 sm:p-6")}>
+				<Subheading className={cn("text-lg font-medium")}>Bring two things</Subheading>
+				<ul className={cn("mt-5 grid gap-6 text-base md:grid-cols-2")}>
+					<li className={cn("flex gap-3")}><KeyRound size={20} aria-hidden="true" className={cn("mt-1 shrink-0 text-[var(--ret-text-muted)]")} /><div>A compute account<p className={cn("mt-1 text-sm leading-6 text-[var(--ret-text-muted)]")}>Daytona, E2B, Sprites, or Vercel Sandbox. This is where your agent runs.</p></div></li>
+					<li className={cn("flex gap-3")}><Brain size={20} aria-hidden="true" className={cn("mt-1 shrink-0 text-[var(--ret-text-muted)]")} /><div>A compatible model API key<p className={cn("mt-1 text-sm leading-6 text-[var(--ret-text-muted)]")}>We’ll show the keys supported by your runtime. A chat subscription is not an API key.</p></div></li>
+				</ul>
+				<p className={cn("mt-6 border-t border-[var(--ret-border)] pt-4 text-sm leading-6 text-[var(--ret-text-muted)]")}>Existing saved credentials can be reused. Nothing new is saved or provisioned by this quickstart until you choose Launch workspace. Your providers bill you directly; no credits are included.</p>
+			</div>
+			<div className={cn("flex flex-wrap items-center justify-between gap-4")}>
+				<a href="/dashboard/components" className={cn("text-sm text-[var(--ret-text-muted)] underline-offset-4 hover:underline")}>Explore building blocks first</a>
+				<ReticleButton variant="primary" size="md" onClick={onNext}>Connect accounts <ArrowRight size={18} aria-hidden="true" /></ReticleButton>
+			</div>
+			<QuickstartGuide />
+		</div>
+	);
+}
+
 function AgentStep({
 	value,
 	onPick,
 	onNext,
+	compact = false,
 }: {
 	value: AgentKind;
 	onPick: (kind: AgentKind) => void;
 	onNext: () => void;
+	compact?: boolean;
 }) {
+	if (compact) return (
+		<fieldset className={cn("min-w-0")}>
+			<legend className={cn("mb-3 text-sm font-medium")}>Agent runtime</legend>
+			<div className={cn("grid grid-cols-2 gap-2 sm:grid-cols-4")}>
+				{(Object.keys(AGENT_DESC) as AgentKind[]).map((kind) => <button key={kind} type="button" aria-pressed={kind === value} onClick={() => onPick(kind)} className={cn("flex min-h-12 items-center justify-center gap-2 rounded-md border px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]", kind === value ? "border-[var(--ret-text)] bg-[var(--ret-surface)]" : "border-[var(--ret-border)] hover:bg-[var(--ret-surface)]")}><Logo mark={AGENT_DESC[kind].mark} size={20} />{AGENT_DESC[kind].name}</button>)}
+			</div>
+			<p className={cn("mt-3 text-sm leading-6 text-[var(--ret-text-muted)]")}>{AGENT_DESC[value].tagline} {agentUsesRouter(value) ? "Choose one supported model connection below." : `Hosted ${AGENT_LABEL[value]} requires a native ${value === "codex" ? "OpenAI" : "Anthropic"} API key.`}</p>
+		</fieldset>
+	);
 	return (
 		<div className={cn("space-y-5")}>
 			<div>
-				<p className={cn("text-sm text-[var(--ret-text-muted)]")}>Step 1 · Agent</p>
+				<p className={cn("text-sm text-[var(--ret-text-muted)]")}>Step 1 · Runtime</p>
 				<h1 tabIndex={-1} className={cn("ret-display mt-1 scroll-mt-6 text-[30px] leading-tight outline-none")}>
-					Pick your agent
+					Choose your agent runtime
 				</h1>
 				<p className={cn("mt-2 max-w-[60ch] text-base leading-relaxed text-[var(--ret-text-dim)]")}>
-					Choose one of four agent runtimes for your Worker.
+					Choose one of four agent runtimes for your setup. Next, select starting instructions, compute, and model credentials.
 				</p>
 				<details className={cn("mt-3 text-sm text-[var(--ret-text-muted)]")}>
 					<summary className={cn("w-fit cursor-pointer outline-none hover:text-[var(--ret-text)] focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}>How the runtimes work</summary>
@@ -703,25 +704,36 @@ function PresetBrand({ brand, size }: { brand?: string; size: number }) {
 }
 
 function PresetStep({
+	headingLevel = 1,
 	presets,
 	selectedId,
 	onPick,
 	onBack,
 	onNext,
+	compact = false,
+	launchOptions,
+	canContinue = true,
+	continueLabel = "Continue",
 }: {
+	headingLevel?: StepHeadingLevel;
 	presets: Preset[];
 	selectedId: string;
 	onPick: (id: string) => void;
 	onBack: () => void;
 	onNext: () => void;
+	compact?: boolean;
+	launchOptions?: ReactNode;
+	canContinue?: boolean;
+	continueLabel?: string;
 }) {
+	const Heading = headingLevel === 2 ? "h2" : "h1";
+	const selected = presets.find((preset) => preset.id === selectedId);
 	return (
 		<div className={cn("space-y-5")}>
 			<div>
-				<p className={cn("text-sm text-[var(--ret-text-muted)]")}>Step 2 · Preset</p>
-				<h1 tabIndex={-1} className={cn("ret-display mt-1 scroll-mt-6 text-[30px] leading-tight outline-none")}>Choose a starting specialist</h1>
+				<Heading data-onboarding-step-heading tabIndex={-1} className={cn("scroll-mt-20 text-3xl font-semibold leading-tight tracking-tight outline-none")}>Choose a starting configuration</Heading>
 				<p className={cn("mt-2 max-w-[60ch] text-base leading-relaxed text-[var(--ret-text-dim)]")}>
-					Start with specialist instructions and selected tools, or build from a blank Worker.
+					Choose a template with instructions and tools, or start blank.
 				</p>
 				<p className={cn("mt-3 max-w-[65ch] text-sm leading-relaxed text-[var(--ret-text-muted)]")}>
 					Connected tools may still need credentials or setup; selection is not verification.
@@ -729,10 +741,18 @@ function PresetStep({
 				</p>
 				<details className={cn("mt-3 text-sm text-[var(--ret-text-muted)]")}>
 					<summary className={cn("w-fit cursor-pointer outline-none hover:text-[var(--ret-text)] focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}>What a preset includes</summary>
-					<p className={cn("mt-2 max-w-[65ch] leading-relaxed")}>A preset supplies specialist memory, instructions, and selected skills and MCP servers. Refine the instructions in Memory and manage tools in the Registry after launch.</p>
+					<p className={cn("mt-2 max-w-[65ch] leading-relaxed")}>Edit instructions in Memory and review tools in Loadout after launch.</p>
 				</details>
 			</div>
-			<div className={cn("grid gap-3 md:grid-cols-2")}>
+			{compact ? <div className={cn("rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-5")}>
+				<label htmlFor="quickstart-preset" className={cn("block text-sm font-medium")}>Starting instructions and tools</label>
+				<select id="quickstart-preset" value={selectedId} onChange={(event) => onPick(event.target.value)} className={cn("mt-3 min-h-12 w-full rounded-md border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}>
+					{presets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+					<option value={NO_PRESET}>Start blank</option>
+				</select>
+				<p className={cn("mt-4 text-sm leading-6 text-[var(--ret-text-muted)]")}>{selected?.description ?? "Basic instructions, with the bundled Registry catalog available when you want to add tools."}</p>
+				{selected ? <p className={cn("mt-2 text-sm text-[var(--ret-text-muted)]")}>Skills: {selected.skillIds.filter((id) => id !== "*").length} · MCP servers: {selected.mcpServerIds.filter((id) => id !== "*").length}. Selected, not verified.</p> : null}
+			</div> : <div className={cn("grid gap-3 md:grid-cols-2")}>
 				{presets.map((preset) => {
 					const selected = preset.id === selectedId;
 					const skillCount = preset.skillIds.filter((id) => id !== "*").length;
@@ -795,13 +815,14 @@ function PresetStep({
 						No specialist tools selected
 					</p>
 				</button>
-			</div>
-			<div className={cn("flex items-center justify-between gap-2")}>
+			</div>}
+			{launchOptions}
+			<div className={cn("flex items-center justify-between gap-2 border-t border-[var(--ret-border)] pt-5")}>
 				<ReticleButton variant="ghost" size="md" onClick={onBack}>
 					<ArrowLeft size={18} aria-hidden="true" /> Back
 				</ReticleButton>
-				<ReticleButton variant="primary" size="md" onClick={onNext}>
-					Continue <ArrowRight size={18} aria-hidden="true" />
+				<ReticleButton variant="primary" size="md" onClick={onNext} disabled={!canContinue}>
+					{continueLabel} <ArrowRight size={18} aria-hidden="true" />
 				</ReticleButton>
 			</div>
 		</div>
@@ -883,22 +904,33 @@ function ProviderPickStep({
 	onPick,
 	onBack,
 	onNext,
+	compact = false,
 }: {
 	value: ProviderKind;
 	configured: Record<ProviderKind, { configured: boolean; scopeHint?: string }>;
 	onPick: (kind: ProviderKind) => void;
 	onBack: () => void;
 	onNext: () => void;
+	compact?: boolean;
 }) {
+	if (compact) return (
+		<fieldset className={cn("min-w-0 border-t border-[var(--ret-border)] pt-5")}>
+			<legend className={cn("mb-3 text-sm font-medium")}>Compute provider</legend>
+			<div className={cn("grid grid-cols-2 gap-2 sm:grid-cols-4")}>
+				{PROVIDER_KINDS.map((kind) => <button key={kind} type="button" aria-pressed={kind === value} onClick={() => onPick(kind)} className={cn("flex min-h-12 items-center justify-center gap-2 rounded-md border px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]", kind === value ? "border-[var(--ret-text)] bg-[var(--ret-surface)]" : "border-[var(--ret-border)] hover:bg-[var(--ret-surface)]")}><Logo mark={providerLogoMark(kind)} size={20} />{PROVIDER_LABEL[kind]}</button>)}
+			</div>
+			<p className={cn("mt-3 text-sm leading-6 text-[var(--ret-text-muted)]")}>{PROVIDERS_META[value].tagline}</p>
+		</fieldset>
+	);
 	return (
 		<div className={cn("space-y-5")}>
 			<div>
-				<p className={cn("text-sm text-[var(--ret-text-muted)]")}>Step 3 · Provider</p>
+				<p className={cn("text-sm text-[var(--ret-text-muted)]")}>Step 3 · Compute</p>
 				<h1 tabIndex={-1} className={cn("ret-display mt-1 scroll-mt-6 text-[30px] leading-tight outline-none")}>
 					Pick where it runs
 				</h1>
 				<p className={cn("mt-1 max-w-[60ch] text-base leading-relaxed text-[var(--ret-text-dim)]")}>
-					Choose the cloud provider that will host your Worker. Connect its
+					Choose the compute provider that will host your configured workspace. Connect its
 					account in the next step if needed. Storage, sleep, and recovery
 					capabilities differ by provider. The first launch also installs and
 					configures your chosen runtime.
@@ -959,7 +991,12 @@ function ProviderPickStep({
 }
 
 function KeyStep({
+	headingLevel = 1,
 	connectionOptions,
+	selectionOptions,
+	connectOnly = false,
+	aiField,
+	onAiFieldChange,
 	agent,
 	provider,
 	config,
@@ -978,7 +1015,12 @@ function KeyStep({
 	onBack,
 	onProvision,
 }: {
+	headingLevel?: StepHeadingLevel;
 	connectionOptions?: ReactNode;
+	selectionOptions?: ReactNode;
+	connectOnly?: boolean;
+	aiField?: OnboardingAiKeyField;
+	onAiFieldChange?: (field: OnboardingAiKeyField) => void;
 	agent: AgentKind;
 	provider: ProviderKind;
 	config: PublicUserConfig;
@@ -997,22 +1039,22 @@ function KeyStep({
 	onBack: () => void;
 	onProvision: () => void;
 }) {
+	const Heading = headingLevel === 2 ? "h2" : "h1";
 	const meta = PROVIDERS_META[provider];
 	const agentReqs = agentCredentialRequirements(agent);
 	return (
 		<div className={cn("space-y-5")}>
 			<div>
-				<p className={cn("text-sm text-[var(--ret-text-muted)]")}>Step 4 · Keys</p>
-				<h1 tabIndex={-1} className={cn("ret-display mt-1 scroll-mt-6 text-[30px] leading-tight outline-none")}>
-					Bring your keys
-				</h1>
+				<Heading data-onboarding-step-heading tabIndex={-1} className={cn("scroll-mt-20 text-3xl font-semibold leading-tight tracking-tight outline-none")}>
+					Connect your accounts
+				</Heading>
 				<p className={cn("mt-1 max-w-[60ch] text-base leading-relaxed text-[var(--ret-text-dim)]")}>
-					Your {PROVIDER_LABEL[provider]} key creates the machine. Your AI provider
-					key powers {AGENT_LABEL[agent]}. Credentials are saved privately to your
-					account. Your providers bill you directly for machine and model usage.
+					Choose where your agent runs and how it reaches a model. Enter new keys or reuse keys on file. Your providers bill you directly for machine and model usage.
 				</p>
 			</div>
-			<fieldset className={cn("min-w-0 space-y-4 border border-[var(--ret-border)] p-4 sm:p-5")}>
+			{selectionOptions}
+			<div className={cn("grid items-start gap-5", connectOnly && "md:grid-cols-2")}>
+			<fieldset className={cn("min-w-0 space-y-4 rounded-lg border border-[var(--ret-border)] p-4 sm:p-5")}>
 			<legend className={cn("flex items-center gap-2 px-2 text-[18px] font-medium")}><Logo mark={providerLogoMark(provider)} size={24} /> Cloud provider</legend>
 			<p className={cn("text-sm leading-relaxed text-[var(--ret-text-muted)]")}>{meta.keyHint}</p>
 			<label className={cn("flex flex-col gap-1.5")}>
@@ -1053,12 +1095,19 @@ function KeyStep({
 			))}
 			</fieldset>
 			{agentReqs.length > 0 ? (
-				<fieldset className={cn("min-w-0 space-y-4 border border-[var(--ret-border)] p-4 sm:p-5")}>
+				<fieldset className={cn("min-w-0 space-y-4 rounded-lg border border-[var(--ret-border)] p-4 sm:p-5")}>
 					<legend className={cn("flex items-center gap-2 px-2 text-[18px] font-medium")}><KeyRound size={24} aria-hidden="true" className={cn("text-[var(--ret-purple)]")} /> AI connection · {AGENT_LABEL[agent]}</legend>
 					{agentUsesRouter(agent) ? (
-						<p className={cn("text-[14px] text-[var(--ret-text-dim)]")}>Add at least one AI provider key below. You do not need all four.</p>
+						<>
+							<p className={cn("text-sm leading-6 text-[var(--ret-text-muted)]")}>{aiField ? "One compatible model connection is enough. Saved keys remain available for routing." : "Add at least one AI provider key below. You do not need all four."}</p>
+							{aiField && onAiFieldChange ? <label className={cn("flex flex-col gap-2 text-sm text-[var(--ret-text-muted)]")}>Key to add or replace
+								<select value={aiField} onChange={(event) => onAiFieldChange(event.target.value as OnboardingAiKeyField)} className={cn("min-h-11 rounded-md border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 text-base text-[var(--ret-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}>
+									{agentReqs.map((req) => <option key={req.field} value={req.field}>{req.label.replace(/ (API )?key.*$/, "")}</option>)}
+								</select>
+							</label> : null}
+						</>
 					) : null}
-					{agentReqs.map((req) => {
+					{agentReqs.filter((req) => !aiField || !agentUsesRouter(agent) || req.field === aiField).map((req) => {
 						const field = req.field as OnboardingAiKeyField;
 						const onFile = config.aiProviders[field]?.configured ?? false;
 						return (
@@ -1109,12 +1158,17 @@ function KeyStep({
 					) : null}
 				</fieldset>
 			) : null}
+			</div>
 			<div className={cn("grid gap-4")}>{connectionOptions}</div>
 			{/* Readiness and provider-specific sizing warnings remain visible. */}
-			<div className={cn("grid gap-3 md:grid-cols-2")}>
+			<details className={cn("rounded-lg border border-[var(--ret-border)] p-4")}>
+				<summary className={cn("cursor-pointer text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}>Compatibility and provider details</summary>
+			<div className={cn("mt-4 grid gap-3 md:grid-cols-2")}>
 				<AgentInfoPanel agentKind={agent} readiness={readiness} />
 				<MachineInfoPanel provider={provider} configured={substrateReady} />
 			</div>
+			{connectOnly ? <ProviderComparison selected={provider} /> : null}
+			</details>
 			{!agentCredsOk ? (
 				<p className={cn("text-[14px] text-[var(--ret-amber)]")}>
 					Add a supported AI provider key above before launching {AGENT_LABEL[agent]}.
@@ -1123,7 +1177,7 @@ function KeyStep({
 			{provider === "vercel" && value.trim() && !substrateReady ? (
 				<p className={cn("text-[14px] text-[var(--ret-amber)]")}>A Vercel access token needs both a Team ID and a Project ID before launch.</p>
 			) : null}
-			<p className={cn("flex items-start gap-2 text-sm leading-relaxed text-[var(--ret-text-muted)]")}><ShieldCheck size={18} aria-hidden="true" className={cn("mt-0.5 shrink-0")} /> Launch saves these credentials and creates a cloud workspace. Your providers bill you directly.</p>
+			<p className={cn("flex items-start gap-2 text-sm leading-relaxed text-[var(--ret-text-muted)]")}><ShieldCheck size={18} aria-hidden="true" className={cn("mt-0.5 shrink-0")} />{connectOnly ? "New keys are sent when you choose Launch workspace, before provisioning. Blank fields preserve saved keys; key presence is not a provider validation." : "Launch saves these credentials before requesting a cloud workspace. Saved changes can remain if launch fails. Your providers bill you directly."}</p>
 			<div className={cn("flex flex-wrap items-center justify-between gap-3 border-t border-[var(--ret-border)] pt-4")}>
 				<ReticleButton variant="ghost" size="md" onClick={onBack} disabled={busy}>
 					<ArrowLeft size={18} aria-hidden="true" /> Back
@@ -1137,7 +1191,7 @@ function KeyStep({
 					{busy ? (
 						<BrailleSpinner name="braille" label="Saving..." className={cn("text-sm")} />
 					) : (
-						<>Launch Worker <ArrowRight size={18} aria-hidden="true" /></>
+						<>{connectOnly ? "Continue to configuration" : "Launch workspace"} <ArrowRight size={18} aria-hidden="true" /></>
 					)}
 				</ReticleButton>
 			</div>
@@ -1146,6 +1200,7 @@ function KeyStep({
 }
 
 function BootStep({
+	headingLevel = 1,
 	agent,
 	provider,
 	machineId,
@@ -1156,6 +1211,7 @@ function BootStep({
 	onRetry,
 	onBack,
 }: {
+	headingLevel?: StepHeadingLevel;
 	agent: AgentKind;
 	provider: ProviderKind;
 	machineId: string | null;
@@ -1166,24 +1222,24 @@ function BootStep({
 	onRetry: () => void;
 	onBack: () => void;
 }) {
+	const Heading = headingLevel === 2 ? "h2" : "h1";
 	const isCliAgent = agent === "claude-code" || agent === "codex";
 	const machineReady = Boolean(machineId) || phase === "bootstrapping" || phase === "running" || done;
 	const steps = [
-		{ id: "create", label: "Save Worker and queue launch", isDone: (phase !== null && phase !== "pending") || machineReady },
+		{ id: "create", label: "Save setup and queue launch", isDone: (phase !== null && phase !== "pending") || machineReady },
 		{ id: "machine", label: `Create ${PROVIDER_LABEL[provider]} workspace`, isDone: machineReady },
 		{ id: "agent", label: `Prepare memory and configure ${AGENT_LABEL[agent]}`, isDone: done },
-		{ id: "ready", label: "Check runtime readiness and open Console", isDone: done },
+		{ id: "ready", label: "Check runtime readiness", isDone: done },
 	];
 	return (
 		<div className={cn("space-y-5")}>
 			<div>
-				<p className={cn("text-sm text-[var(--ret-text-muted)]")}>Step 5 · Launch</p>
-				<h1 tabIndex={-1} className={cn("ret-display mt-1 scroll-mt-6 text-[30px] leading-tight outline-none")}>
-					{done ? "Your Worker is ready" : error ? "Launch needs attention" : "Launching your Worker"}
-				</h1>
+				<Heading data-onboarding-step-heading tabIndex={-1} className={cn("scroll-mt-20 text-3xl font-semibold leading-tight tracking-tight outline-none")}>
+					{done ? "Your workspace is ready" : error ? "Launch needs attention" : "Launching your workspace"}
+				</Heading>
 				<p className={cn("mt-1 max-w-[60ch] text-base leading-relaxed text-[var(--ret-text-dim)]")}>
 					{done
-						? "Opening the Console so you can give your Worker its first task…"
+						? "Launch completed. Open the Console to run your first task, then inspect your configuration and selected tools."
 						: isCliAgent
 							? `Creating a ${PROVIDER_LABEL[provider]} machine, preparing your memory, and configuring the native ${AGENT_LABEL[agent]} CLI. Selected tools may need additional setup.`
 							: `Creating a ${PROVIDER_LABEL[provider]} machine, preparing your memory, and connecting ${AGENT_LABEL[agent]} to your chosen AI provider. Selected tools may need additional setup.`}
@@ -1193,6 +1249,7 @@ function BootStep({
 			{error ? (
 				<ReticleFrame className={cn("border-[var(--ret-red)]/50 bg-[var(--ret-red)]/5 p-3")}>
 					<p role="alert" className={cn("break-words text-sm leading-relaxed text-[var(--ret-red)]")}>{error}</p>
+					<p className={cn("mt-3 text-sm leading-6 text-[var(--ret-text-muted)]")}>A failed launch can still leave saved settings or created compute. Retry keeps the same setup identity. Check Machines before starting a separate setup.</p>
 					<div className={cn("mt-2 flex gap-2")}>
 						<ReticleButton variant="secondary" size="sm" onClick={onRetry} disabled={busy}>
 							Retry
@@ -1267,23 +1324,34 @@ function BootStep({
 			  blocked on (and which Daytona error code if it's failing).
 			*/}
 			{machineId ? <BootTranscript active={busy && !done} machineId={machineId} maxHeight={280} /> : null}
+			{done && machineId ? <div className={cn("space-y-5")}>
+				<div className={cn("flex flex-wrap gap-3")}>
+					<ReticleButton as="a" href={onboardingWorkspaceUrl(machineId)} variant="primary" size="md">Open this workspace <ArrowRight size={18} aria-hidden="true" /></ReticleButton>
+					<ReticleButton as="a" href="/dashboard/machines" variant="secondary" size="md">Manage compute</ReticleButton>
+				</div>
+				<p className={cn("text-sm leading-6 text-[var(--ret-text-muted)]")}>Start with “List the files in the current directory.” Check selected tools before using them. Use Machines to stop or destroy unused compute; saved files and running-process behavior vary by provider.</p>
+				<QuickstartGuide />
+			</div> : null}
 		</div>
 	);
 }
 
 function RigPreview({
+	headingLevel = 2,
 	agent,
 	provider,
 	preset,
 	bootPhase,
 	bootDone,
 }: {
+	headingLevel?: 2 | 3;
 	agent: AgentKind;
 	provider: ProviderKind;
 	preset: Preset | null;
 	bootPhase: string | null;
 	bootDone: boolean;
 }) {
+	const Heading = headingLevel === 3 ? "h3" : "h2";
 	const meta = AGENT_DESC[agent];
 	const skillIds = (preset?.skillIds ?? []).filter((id) => id !== "*");
 	const mcpIds = (preset?.mcpServerIds ?? []).filter((id) => id !== "*");
@@ -1292,7 +1360,7 @@ function RigPreview({
 	return (
 		<div className={cn("space-y-5 px-4 py-6 sm:px-6 xl:sticky xl:top-0")}>
 			<div className={cn("flex items-center justify-between gap-2")}>
-				<h2 className={cn("text-xl font-medium tracking-tight")}>Your Worker</h2>
+				<Heading className={cn("text-xl font-medium tracking-tight")}>Your agent setup</Heading>
 				{bootPhase ? (
 					<ReticleBadge className={cn("text-[13px]")} variant={bootDone ? "success" : "warning"}>
 						{bootDone ? "ready" : bootPhase}

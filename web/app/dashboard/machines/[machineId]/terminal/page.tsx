@@ -9,7 +9,7 @@ export default function MachineTerminalPage() {
 			<PageHeader
 				kicker="TERMINAL -- live PTY + one-shot command"
 				title="Talk to this machine."
-				description="Interactive mode attaches a real tmux PTY over the streaming gateway — type, run the agent CLI, and interact as if you were SSH'd in. One-shot mode fires single commands with streamed output."
+				description="Work in the agent’s terminal, or run a command and inspect its output."
 			/>
 			<div className="px-4 py-4 sm:px-5 sm:py-5">
 				<TerminalWorkspace />

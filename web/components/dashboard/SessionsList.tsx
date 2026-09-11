@@ -43,7 +43,7 @@ function SessionTranscript({ data }: { data: SessionTranscriptPayload }) {
 function History({ data, fetchedAt, endpoint, machineId }: { data: SessionsPayload; fetchedAt: string; endpoint: string; machineId?: string }) {
 	const [selected, setSelected] = useState<SessionRecord | null>(null);
 	const workHref = machineId ? `/dashboard/machines/${encodeURIComponent(machineId)}/view` : "/dashboard/machines";
-	return <div className="px-4 py-6 sm:px-6">
+	return <div className="px-[var(--dashboard-gutter,20px)] py-8">
 		<div className="mb-5 flex flex-wrap items-baseline gap-x-6 gap-y-1 text-xs text-[var(--ret-text-dim)]">
 			<span>{data.totalSessions} saved {data.totalSessions === 1 ? "session" : "sessions"}</span>
 			<span>{formatBytes(data.totalBytes)} on disk</span>
@@ -51,7 +51,7 @@ function History({ data, fetchedAt, endpoint, machineId }: { data: SessionsPaylo
 		</div>
 		<HistoryWarnings warnings={data.warnings} />
 		{data.sessions.length === 0 ? <div className="rounded-md border border-dashed border-[var(--ret-border)] px-6 py-8 text-center text-sm text-[var(--ret-text-dim)]">
-			No saved runtime conversations on this machine yet. <a href={workHref} className="underline">Open the live runtime</a> and complete a conversation. Only histories actually saved by the runtime appear here.
+			<h2 className="text-lg font-medium text-[var(--ret-text)]">No saved conversations</h2><p className="mt-2">Complete a conversation in the runtime. Histories it saves appear here.</p><a href={workHref} className="mt-4 inline-flex min-h-11 items-center rounded-md border border-[var(--ret-border)] px-4 text-[var(--ret-text)] hover:bg-[var(--ret-surface)] focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]">Open the live runtime</a>
 		</div> : <div className="overflow-x-auto rounded-md border border-[var(--ret-border)]">
 			<table className="w-full border-collapse text-sm">
 				<thead className="bg-[var(--ret-bg-soft)] text-xs text-[var(--ret-text-muted)]"><tr>
@@ -62,7 +62,7 @@ function History({ data, fetchedAt, endpoint, machineId }: { data: SessionsPaylo
 				<tbody className="divide-y divide-[var(--ret-border)]">{data.sessions.map((session) => <tr key={session.id} className={selected?.id === session.id ? "bg-[var(--ret-bg-soft)]" : "bg-[var(--ret-bg)] hover:bg-[var(--ret-surface)]"}>
 					<td className="max-w-[480px] px-4 py-3"><button type="button" aria-pressed={selected?.id === session.id} onClick={() => setSelected(session)} className="block w-full truncate rounded-sm text-left text-[var(--ret-purple)] outline-offset-4 focus-visible:outline-2" title={session.preview}>
 						{session.preview}
-					</button><span className="mt-1 block truncate text-[10px] text-[var(--ret-text-muted)]">{session.source}</span></td>
+					</button><span className="mt-1 block truncate text-xs text-[var(--ret-text-muted)]">{session.source}</span></td>
 					<td className="whitespace-nowrap px-4 py-3 text-xs text-[var(--ret-text-dim)]">{RUNTIME_NAMES[session.runtime]}</td>
 					<td className="whitespace-nowrap px-4 py-3 text-right text-xs text-[var(--ret-text-muted)]">{formatAge(session.updatedAt)}</td>
 				</tr>)}</tbody>
@@ -71,9 +71,9 @@ function History({ data, fetchedAt, endpoint, machineId }: { data: SessionsPaylo
 		{selected && <section aria-label="Selected conversation" className="mt-6 rounded-md border border-[var(--ret-border)]">
 			<div className="flex items-center gap-4 border-b border-[var(--ret-border)] px-4 py-3">
 				<h2 className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--ret-text)]">{selected.preview}</h2>
-				<button type="button" aria-label="Close conversation" onClick={() => setSelected(null)} className="rounded p-1 text-[var(--ret-text-muted)] hover:text-[var(--ret-text)]"><X size={16} /></button>
+				<button type="button" aria-label="Close conversation" onClick={() => setSelected(null)} className="grid size-11 place-items-center rounded text-[var(--ret-text-muted)] hover:text-[var(--ret-text)] focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]"><X size={16} aria-hidden="true" /></button>
 			</div>
-			<LiveDataView<SessionTranscriptPayload> key={selected.id} endpoint={`${endpoint}${endpoint.includes("?") ? "&" : "?"}sessionId=${selected.id}`} render={(transcript) => <SessionTranscript data={transcript} />} />
+			<LiveDataView<SessionTranscriptPayload> key={selected.id} loadingLabel="Loading conversation…" endpoint={`${endpoint}${endpoint.includes("?") ? "&" : "?"}sessionId=${encodeURIComponent(selected.id)}`} render={(transcript) => <SessionTranscript data={transcript} />} />
 		</section>}
 	</div>;
 }
@@ -84,5 +84,5 @@ export function SessionsList() {
 	const machineMatch = MACHINE_PATH_RE.exec(pathname);
 	const machineId = machineCtx?.machineId ?? machineMatch?.[1];
 	const endpoint = machineId ? `/api/dashboard/sessions?machineId=${encodeURIComponent(machineId)}` : "/api/dashboard/sessions";
-	return <LiveDataView<SessionsPayload> key={endpoint} endpoint={endpoint} pollMs={30_000} render={(data, fetchedAt) => <History key={endpoint} data={data} fetchedAt={fetchedAt} endpoint={endpoint} machineId={machineId} />} />;
+	return <LiveDataView<SessionsPayload> key={endpoint} endpoint={endpoint} loadingLabel="Loading saved conversations…" pollMs={30_000} render={(data, fetchedAt) => <History key={endpoint} data={data} fetchedAt={fetchedAt} endpoint={endpoint} machineId={machineId} />} />;
 }

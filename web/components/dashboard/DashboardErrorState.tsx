@@ -4,8 +4,7 @@ import { useEffect } from "react";
 
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
-import { SchematicPanel } from "@/components/reticle/SchematicPanel";
-import { ERROR_ART } from "@/lib/dashboard/category-art";
+import { RefreshCcw, TriangleAlert } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 
 export type DashboardErrorStateProps = {
@@ -34,7 +33,7 @@ export function DashboardErrorState({
 	return (
 		<ReticleFrame className={cn("mx-auto w-full max-w-2xl px-5 py-8 sm:p-10")}>
 			<div className={cn("flex min-w-0 flex-col items-center gap-4 text-center")}>
-				<SchematicPanel src={ERROR_ART.server} className={cn("w-full max-w-[260px]")} />
+				<span className="grid size-12 place-items-center rounded-lg bg-[var(--ret-bg-soft)] text-[var(--ret-amber)]"><TriangleAlert className="size-6" aria-hidden="true" /></span>
 				<h2 className={cn("ret-display text-2xl text-[var(--ret-text)]")}>Couldn’t load {scope}</h2>
 				<p className={cn("max-w-[52ch] text-base leading-7 text-[var(--ret-text-dim)]")}>
 					Try loading this view again, or return to the fleet overview.
@@ -51,6 +50,7 @@ export function DashboardErrorState({
 				) : null}
 				<div className="flex flex-wrap items-center justify-center gap-2">
 					<ReticleButton onClick={reset} variant="primary" size="sm">
+						<RefreshCcw className="size-4" aria-hidden="true" />
 						Try again
 					</ReticleButton>
 					<ReticleButton as="a" href="/dashboard" variant="secondary" size="sm">

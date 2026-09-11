@@ -5,7 +5,7 @@ import { buildPageMetadata } from "@/lib/seo/metadata";
 export const metadata = buildPageMetadata({
 	title: "Documentation",
 	description:
-		"Agent Machines system thesis and documentation for durable Workers, replaceable runtimes and sandboxes, templates, lifecycle, live migration, supervision, and operations.",
+		"Guides and source for modular agent harnesses: runtime and compute adapters, editable setups, memory documents, tools, native terminals, and the TypeScript SDK.",
 	path: "/docs",
 	keywords: ["Agent Machines docs", "agent setup", "provider credentials"],
 });
@@ -17,11 +17,11 @@ export default function DocsPage() {
 		<ResourcePageContent
 			page={page}
 			terminalLines={[
-				"1. describe the work or choose a specialist",
-				"2. connect the services it may use",
-				"3. assign responsibility and approval boundaries",
-				"4. let the control plane assemble the machinery",
-				"5. watch, approve, inspect, and move the Worker",
+				"1. inspect a template or the SDK source",
+				"2. choose runtime, model, and compute",
+				"3. edit persona, instructions, and context",
+				"4. configure tools and scoped service keys",
+				"5. run, inspect output, and refine your setup",
 			]}
 		/>
 	);

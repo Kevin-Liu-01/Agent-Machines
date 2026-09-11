@@ -1,10 +1,42 @@
-# Release and first-Worker verification
+# Release and first-harness verification
 
 This procedure checks the deployed product from a new account through completed
 work. Passing the local suites proves the checked contracts; it does not prove
 that Clerk, Supabase, the selected sandbox, and the model provider are wired
 together on the deployed domain. Record the commit, deployment URL, runtime,
 provider, Worker ID, and result for each live run. Never record keys or tokens.
+
+The release promise is a working, inspectable starting point for an agent
+harness: runtime, tools, configuration, managed state, and compute, with a real
+browser CLI and a dashboard for multiple agents. A **Worker** is the app's name
+for a configured agent workspace. Natural-language creation, public Worker
+publishing, autonomous delegation, and unified billing are not release claims.
+The [messaging and claim ledger](PRODUCT-MESSAGING.md) is the current narrative
+authority; historical evidence below retains its original scope.
+
+## Verify the building-block promise
+
+Before any live provider test:
+
+1. Check the public component catalog and documentation links against actual
+   source. Label public SDK exports separately from app-local source modules.
+   Do not advertise a component-install CLI or public harness marketplace.
+2. Follow the fresh-checkout app instructions and compile SDK examples against
+   the packed package. Direct provider use must not require a hosted account;
+   hosted examples must name their authentication and configuration requirements.
+3. Check configuration boundaries. Hosted Memory editing/import and ability
+   selection must not imply full executable configuration export or verified
+   tool installation. The default public mux driver does not implement every
+   hosted field on `WorkerSpec`.
+4. Check all support claims against runtime, upstream, provider, resource, and
+   transport limits. A source adapter or an old test matrix is not proof that
+   every current combination works.
+5. Separate implemented features from roadmap directions on the landing page,
+   component catalog, README, whitepaper, and dashboard.
+
+The local checks in the next sections are non-billable. Live tests require
+explicit authorization for the exact resources and paid operations; this
+procedure itself is not permission to provision, delete, or change production.
 
 ## September 9 evidence checkpoint
 
@@ -32,7 +64,7 @@ provider/model credential was created. See the
 [post-auth release evidence](reports/2026-09-09-post-auth-release.md).
 See the [cleanup record](reports/2026-09-09-qa-cleanup.md).
 
-The latest local candidate `pnpm check` completed with exit 0: 863 SDK/source
+The September 9 candidate `pnpm check` completed with exit 0: 863 SDK/source
 tests and 1,787 web tests across 167 files passed, with 37 explicit skips; both
 TypeScript checks, the Next.js production build, and isolated SDK packaging
 passed. This does not replace deployed checks or mark every checklist item
@@ -195,12 +227,14 @@ the existing keys, CNAMEs, identities, and authentication gates.
 ## Follow a new account to its first result
 
 1. Open a fresh browser session on the deployed URL. Check the landing page,
-   Worker catalog, docs, sign-in, and account creation at desktop and mobile
+   component catalog, docs, sign-in, and account creation at desktop and mobile
    widths. Confirm a signed-out dashboard request leads to authentication.
 2. Create a new account and complete onboarding. Its fleet starts empty. Reload
    once to verify setup persists and that returning users reach the dashboard.
-3. Choose a preconfigured Worker from the dashboard. Confirm the recipe's runtime,
-   model, loadout, and responsibility are visible before provisioning.
+3. Configure an agent by choosing its runtime and provider, or choose a
+   preconfigured recipe. Confirm its runtime, model, configuration, and selected
+   abilities are visible before provisioning. Recipe labels must not imply that
+   every tool is installed or that the agent is a verified specialist.
 4. Connect a sandbox key and a compatible model key. A missing or incompatible key
    must produce a useful error before a paid sandbox is created. Use a supported
    pair such as Claude Code + Anthropic on E2B, or Codex + OpenAI on Sprites.

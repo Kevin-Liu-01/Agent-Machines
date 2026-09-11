@@ -6,7 +6,7 @@ import ts from "typescript";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { CopyCodeButton } from "@/components/CopyCodeButton";
-import { SDK_EXAMPLE, StatsRow } from "@/components/StatsRow";
+import { INSTALL_CODE, SDK_EXAMPLE, StatsRow } from "@/components/StatsRow";
 import { LANDING_INSET, LANDING_SPLIT, LANDING_TITLE } from "./layout";
 import { highlightTypeScript } from "./sdk-syntax.server";
 
@@ -84,7 +84,7 @@ describe("server TypeScript syntax highlighting", () => {
 
 	it("keeps the real SDK snippet valid TypeScript without running it", () => {
 		const result = ts.transpileModule(SDK_EXAMPLE, {
-			fileName: "reviewer.ts", reportDiagnostics: true,
+			fileName: "setup.ts", reportDiagnostics: true,
 			compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 		});
 		expect(result.diagnostics?.filter((entry) => entry.category === ts.DiagnosticCategory.Error)).toEqual([]);
@@ -93,12 +93,12 @@ describe("server TypeScript syntax highlighting", () => {
 
 	it("renders the exact clipboard source with a separate, non-selectable line-number gutter", () => {
 		const nodes = serverElements(React.createElement(StatsRow));
-		const pre = nodes.find((node) => node.type === "pre" && node.props["aria-label"] === "TypeScript Worker example")!;
+		const pre = nodes.find((node) => node.type === "pre" && node.props["aria-label"] === "TypeScript agent setup example")!;
 		const code = elements(pre).find((node) => node.type === "code")!;
 		const gutter = elements(pre).find((node) => node.props["aria-hidden"] === "true")!;
 		const copy = nodes.filter((node) => node.type === CopyCodeButton);
 		expect(copy.map((node) => ({ text: node.props.text, label: node.props.label }))).toEqual([
-			{ text: "npm i agent-machines", label: "Copy install command" },
+			{ text: INSTALL_CODE, label: "Copy install command" },
 			{ text: SDK_EXAMPLE, label: "Copy SDK example" },
 		]);
 		expect(text(code)).toBe(SDK_EXAMPLE);

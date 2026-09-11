@@ -28,11 +28,11 @@ describe("active provider claims for visible FAQ and crawlers", () => {
 
 	it("keeps the served crawler guide on the active roster without borrowing retired proof", () => {
 		const guide = readFileSync(resolve(process.cwd(), "public/llms.txt"), "utf8");
-		const section = guide.split("## Supported sandbox providers")[1]?.split("## Harness and registry facts")[0];
+		const section = guide.split("## Compatibility and state limits")[1]?.split("\n## ")[0];
 		expect(section).toBeDefined();
 		for (const kind of PROVIDER_KINDS) expect(section?.toLowerCase()).toMatch(new RegExp(`\\b${kind}\\b`));
 		expect(guide).not.toMatch(/Dedalus|getOrCreate/);
-		expect(section).toContain("Processes restart after stopping");
+		expect(section?.replace(/\s+/g, " ")).toContain("Processes restart after stopping");
 		expect(section).toContain("not Daytona measurements");
 		expect(section).toContain("no verified compute rate or inherited timing");
 		expect(section).toContain("/home/daytona");
@@ -40,15 +40,17 @@ describe("active provider claims for visible FAQ and crawlers", () => {
 
 	it("derives crawler catalog count expectations from the same registry used by the dashboard", () => {
 		const guide = readFileSync(resolve(process.cwd(), "public/llms.txt"), "utf8");
-		const section = guide.split("## Harness and registry facts")[1]?.split("## SDK")[0];
+		const section = guide.split("## Catalog facts")[1]?.split("\n## ")[0];
 		expect(section).toBeDefined();
 		for (const [count, label] of [
 			[HARNESS.skillCount, "SKILL.md skills"],
-			[HARNESS.serviceRouteCount, "service lanes"],
+			[HARNESS.serviceRouteCount, "Service lanes"],
 			[HARNESS.mcpServerCount, "MCP servers"],
-			[`${HARNESS.cliCount}+`, "CLIs"],
+			[HARNESS.cliCount, "CLI catalog entries"],
 		] as const) {
-			expect(section).toContain(`**${count}** ${label}`);
+			expect(section).toContain(`| ${label} | ${count} |`);
 		}
+		expect(section).toContain("not proof that every tool is installed");
+		expect(section).toContain("not installed binaries");
 	});
 });

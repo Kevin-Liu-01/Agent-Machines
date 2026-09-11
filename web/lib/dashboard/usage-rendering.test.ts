@@ -48,7 +48,7 @@ function noIntervalPayload() {
 describe("sampled allocation UI (actual TSX)", () => {
 	it("Overview renders no measured interval without zero or nonfinite chart values", () => {
 		const usage = usageMetrics.normalizeMachineUsagePayload(noIntervalPayload(), 7);
-		const tree = renderSource("app/dashboard/machines/[machineId]/page.tsx", [null, null, "complete", false, usage, false, 7, 0]).default();
+		const tree = renderSource("app/dashboard/machines/[machineId]/page.tsx", [null, null, "complete", false, usage, false, false, null, 7, 0]).default();
 		const nodes = elements(tree);
 		const charts = nodes.filter((node) => node.type === "DashboardBarChart");
 		expect(charts).toHaveLength(3);
@@ -59,7 +59,7 @@ describe("sampled allocation UI (actual TSX)", () => {
 	it("Fleet usage cards and chart notes distinguish unknown allocation from measured zero", () => {
 		const payload = noIntervalPayload();
 		const usage = usageMetrics.normalizeUsagePayload(payload, 7);
-		const tree = renderSource("app/dashboard/usage/page.tsx", [7, usage, false, null]).default();
+		const tree = renderSource("components/dashboard/UsagePanel.tsx", [7, usage, false, null]).UsagePanel();
 		const cards = elements(tree).filter((node) => node.type === "StatCard" && String(node.props.label).endsWith("allocation"));
 		expect(cards).toHaveLength(3);
 		for (const card of cards) expect(card.props).toMatchObject({ value: "–", subtext: "No measured interval yet" });

@@ -9,7 +9,7 @@ export default function MachineArtifactsPage() {
 			<PageHeader
 				kicker="ARTIFACTS"
 				title="Persistent files"
-				description="Artifacts and outputs from this machine."
+				description="Preview, download, and manage this machine’s files."
 			/>
 			<ArtifactsPanel />
 		</div>

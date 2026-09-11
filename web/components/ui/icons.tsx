@@ -76,6 +76,7 @@ import { PackageIcon as PhosphorPackage } from "@phosphor-icons/react/dist/ssr/P
 import { PathIcon as PhosphorPath } from "@phosphor-icons/react/dist/ssr/Path";
 import { PencilSimpleIcon as PhosphorPencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple";
 import { PlayIcon as PhosphorPlay } from "@phosphor-icons/react/dist/ssr/Play";
+import { PauseIcon as PhosphorPause } from "@phosphor-icons/react/dist/ssr/Pause";
 import { PlugIcon as PhosphorPlug } from "@phosphor-icons/react/dist/ssr/Plug";
 import { PlugsIcon as PhosphorPlugs } from "@phosphor-icons/react/dist/ssr/Plugs";
 import { PlugsConnectedIcon as PhosphorPlugsConnected } from "@phosphor-icons/react/dist/ssr/PlugsConnected";
@@ -231,6 +232,7 @@ export const Package = /* @__PURE__ */ filledIcon("Package", PhosphorPackage);
 export const PackageOpen = /* @__PURE__ */ filledIcon("PackageOpen", PhosphorBoxArrowUp);
 export const Pencil = /* @__PURE__ */ filledIcon("Pencil", PhosphorPencilSimple);
 export const Play = /* @__PURE__ */ filledIcon("Play", PhosphorPlay);
+export const Pause = /* @__PURE__ */ filledIcon("Pause", PhosphorPause);
 export const Plug = /* @__PURE__ */ filledIcon("Plug", PhosphorPlug);
 export const Plug2 = /* @__PURE__ */ filledIcon("Plug2", PhosphorPlugs);
 export const PlugZap = /* @__PURE__ */ filledIcon("PlugZap", PhosphorLightning);

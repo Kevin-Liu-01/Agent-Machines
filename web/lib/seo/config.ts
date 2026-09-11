@@ -19,15 +19,14 @@ export const SITE = {
 	wordmark: "agent-machines",
 	url: "https://www.agent-machines.dev",
 	description:
-		"Create persistent, long-running Workers from a description or a trusted template. Keep their memory, files, schedules, abilities, and evidence while models, runtimes, and sandboxes change underneath them.",
+		"Open-source building blocks for agent harnesses. Configure runtimes, tools, memory, and compute; run real agent CLIs in your browser; inspect and extend the source.",
 	longDescription:
 		`${PRODUCT.summary} Choose Hermes, OpenClaw, Claude Code, or Codex, then choose Daytona, E2B, Sprites.dev, or Vercel Sandbox. Route model paths through Vercel AI Gateway, OpenRouter, native keys, or a compatible endpoint where the runtime supports it. ${HARNESS_SUMMARY}.`,
 	tagline: PRODUCT.tagline,
-	ogImage: "/opengraph-image?v=4",
+	ogImage: "/opengraph-image?v=5",
 	ogImageAlt:
-		"Agent Machines keeps the Worker durable while runtimes, models, tools, and sandboxes remain replaceable",
-	aiSummary:
-		"Agent Machines is the Worker system for persistent digital labor. A Worker owns its identity, responsibility, memory, instructions, schedules, files, permissions, abilities, history, and evidence; the control plane reconciles replaceable runtimes, model paths, sandbox providers, tools, terminal transports, persistence modes, and placement beneath it.",
+		"Agent Machines: open-source building blocks for agent harnesses",
+	aiSummary: PRODUCT.summary,
 	twitterHandle: "@kevin_liu_01",
 	authorName: "Kevin Liu",
 	authorUrl: "https://github.com/Kevin-Liu-01",
@@ -59,9 +58,9 @@ export const SITE = {
 		"agent SDK",
 		"persistent worker",
 		"digital worker",
-		"digital labor operating system",
+		"open source agent harness",
 		"long-running agent",
-		"agent template marketplace",
+		"modular agent building blocks",
 		"agent worker",
 		"agent observability",
 		"agent loadout",
@@ -108,11 +107,11 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "Can I run multiple agents for different jobs?",
 		answer:
-			"Yes. Provision specialist machines from opinionated presets: Hermes for memory and scheduled work, OpenClaw for browser work, Claude Code or Codex for coding tasks. Each preset bundles runtime, model path, memory, and loadout. One dashboard supervises activity, chat, cron, logs, usage, and artifacts.",
+			"Yes. Save starting configurations for coding, research, browser tasks, and other workflows. Each preset suggests a runtime, instructions, and selected abilities. Connect credentials and install the tools you need before running it. One dashboard shows your machines, terminals, files, logs, and usage.",
 	},
 	{
 		question: "What is Agent Machines?",
-		answer: `${PRODUCT.summary} Start from an off-the-shelf specialist or assemble one from modular primitives. The dashboard lets people watch, approve, inspect, and move the Worker; the SDK and API expose the same lifecycle programmatically.`,
+		answer: PRODUCT.summary,
 	},
 	{
 		question: "How is this different from a regular chatbot?",
@@ -122,7 +121,7 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "Which agents can I run?",
 		answer:
-			"Hermes, OpenClaw, Claude Code, and Codex are supported. Hermes is the default memory, cron, sessions, and MCP-native runtime. OpenClaw is the computer-use runtime. Claude Code and Codex are task-driven CLIs. All persist state under ~/.agent-machines/.",
+			"Claude Code, Codex, Hermes, and OpenClaw have runtime adapters. You can use the actual native CLI in a browser terminal or use managed execution. Native tools, model paths, and session formats vary by runtime; selecting a runtime does not install every integration in the catalog.",
 	},
 	{
 		question: "Which providers can host the machine?",
@@ -132,15 +131,15 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "How is this different from a sandbox like E2B or Daytona?",
 		answer:
-			"Those supply compute. Agent Machines adds the durable Worker above Daytona, E2B, Sprites.dev, or Vercel Sandbox: runtime setup, memory, selected abilities, schedules, logs, usage, artifacts, and the browser console. Provider-specific features such as pause, snapshots, and preview URLs are available only where supported.",
+			"Those supply compute. Agent Machines adds runtime setup, editable instructions and memory, tool configuration, terminals, files, and logs. You can reuse and modify the open-source adapters instead of rebuilding this layer. Provider-specific features such as pause, snapshots, and preview URLs remain available only where supported.",
 	},
 	{
 		question: "How do I get my own machine today?",
 		answer:
-			"Sign in, add provider and model credentials in Settings, open Workers, click a runtime such as Claude Code, then click a configured sandbox such as E2B. That sandbox click creates the Worker, provisions its machine, starts browser-driven bootstrap, and opens the live console.",
+			"Sign in and add provider and model credentials in Settings. Open Starter setups, preview a preset, and save it. Review its configuration and provision a machine when ready; saving a setup alone does not launch compute. Quick launch on the overview creates a machine directly. Compute and inference use your connected accounts.",
 	},
 	{
-		question: "What tools and skills come pre-installed?",
+		question: "What tools and skills can I add?",
 		answer: HARNESS_TOOLS_ANSWER,
 	},
 	{
@@ -156,12 +155,16 @@ export const FAQ: ReadonlyArray<FaqEntry> = [
 	{
 		question: "What inference providers are supported?",
 		answer:
-			"Models can use any OpenAI-compatible /v1 endpoint. The CLI prefers Vercel AI Gateway, then OpenRouter, then configured fallbacks; override with AGENT_CHAT_BASE_URL or configure model.base_url on the machine. The dashboard stores a model slug per machine.",
+			"Compatibility depends on both runtime and interface. The hosted dashboard uses native Anthropic for Claude Code and native OpenAI for Codex; Hermes and OpenClaw expose supported router or native-compatible paths. The direct mux SDK has a separate upstream map: Claude Code and Codex support native keys, OpenRouter, and Vercel AI Gateway; Hermes uses native Anthropic or OpenAI. An arbitrary endpoint is not guaranteed to work with every runtime.",
 	},
 	{
 		question: "What happens when a machine sleeps?",
 		answer:
-			"On supported providers, sleep pauses compute while preserving the persistent volume. The next wake resumes from disk: app artifacts, agent runtime state, skills, cron schedules, sessions, and the venv remain available.",
+			"The behavior is provider-specific. Daytona stop/start retains files but restarts processes. E2B supports pause/resume. Sprites manages idle suspension rather than manual sleep. Vercel uses filesystem snapshots with bounded sessions. Moving files between providers does not migrate live process memory or guarantee that a native conversation can resume unchanged.",
+	},
+	{
+		question: "Can I share or customize a setup?",
+		answer: "You can fork the MIT-licensed source, reuse direct SDK configuration files, bring your own skills, and export memory documents as Markdown. Full executable setup import/export, a public marketplace, and a copy-into-app component installer are not available yet. The shadcn analogy describes the source-first design principle, not an existing shadcn integration.",
 	},
 	{
 		question: "Where does my data live?",

@@ -254,7 +254,7 @@ export default function OpengraphImage() {
 						lineHeight: 1,
 					}}
 				>
-					Persistent Workers. Replaceable machinery.
+					Build your own agent setup.
 				</div>
 				<div
 					style={{
@@ -265,7 +265,7 @@ export default function OpengraphImage() {
 						marginTop: 19,
 					}}
 				>
-					Describe or choose the work. Keep its memory, tools, schedule, files, and proof.
+					Open-source harness building blocks. Real runtimes. Your tools. Your compute.
 				</div>
 			</div>
 

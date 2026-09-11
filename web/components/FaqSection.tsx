@@ -1,4 +1,5 @@
 import { MessageSquare } from "@/components/ui/icons";
+import { GearDetail } from "@/components/marketing/MechanicalDetails";
 import { cn } from "@/lib/cn";
 import { LANDING_BODY, LANDING_EYEBROW, LANDING_INSET, LANDING_SECTION_SPACE, LANDING_SPLIT, LANDING_TITLE } from "@/lib/marketing/layout";
 import { FAQ } from "@/lib/seo/config";
@@ -13,9 +14,12 @@ export function FaqSection() {
 						Before your first Worker.
 					</h2>
 				</div>
-				<p className={cn(LANDING_BODY, "max-w-[48ch]")}>
-					How Workers run, what stays with them, and how to get started.
-				</p>
+				<div className={cn("flex items-center gap-5")}>
+					<p className={cn(LANDING_BODY, "max-w-[48ch]")}>
+						How Workers run, what stays with them, and how to get started.
+					</p>
+					<span className={cn("hidden sm:block")}><GearDetail /></span>
+				</div>
 			</header>
 
 			<dl className={cn("divide-y divide-[var(--ret-border)]/30 border-y border-[var(--ret-border)]/30")}>

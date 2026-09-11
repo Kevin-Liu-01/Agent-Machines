@@ -18,7 +18,8 @@ import { DashboardPageBody } from "@/components/dashboard/DashboardPageBody";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
-import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
+import { DashboardLoadingState } from "@/components/dashboard/DashboardLoadingState";
+import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { cn } from "@/lib/cn";
 import type { AiKeyField } from "@/lib/agents/credentials";
 import { withMachineId } from "@/lib/dashboard/api-url";
@@ -82,7 +83,7 @@ export function AgentsPanel({
 			<PageHeader
 				kicker="AGENTS"
 				title="Agents & runtime"
-				description="Every agent runtime this machine can run, its key readiness, and live system insights. Switch the active agent and configure provider keys here."
+				description="Choose a runtime and review its credentials and system status."
 			/>
 			<DashboardPageBody className="space-y-5">
 				{/* Active agent banner */}
@@ -92,13 +93,13 @@ export function AgentsPanel({
 							<Bot className="h-4 w-4 text-[var(--ret-text)]" strokeWidth={1.75} />
 						</span>
 						<div>
-							<p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
+							<p className="text-xs font-medium text-[var(--ret-text-muted)]">
 								active agent · {machineName}
 							</p>
 							<p className="text-[15px] text-[var(--ret-text)]">
 								{active?.label ?? activeAgentKind}
 								{model ? (
-									<span className="ml-2 font-mono text-[11px] text-[var(--ret-text-muted)]">{model}</span>
+									<span className="ml-2 font-mono text-[13px] text-[var(--ret-text-muted)]">{model}</span>
 								) : null}
 							</p>
 						</div>
@@ -129,7 +130,7 @@ export function AgentsPanel({
 				{/* Live system insights */}
 				<section>
 					<SectionLabel icon={<Activity className="h-3.5 w-3.5" strokeWidth={1.75} />} label="System" hint="filesystem · tracking · live" />
-					<SystemInsights machineId={machineId} />
+					<SystemInsights key={machineId} machineId={machineId} />
 				</section>
 
 				{/* Cursor runs (one surface among equals, not its own nav section) */}
@@ -147,7 +148,7 @@ export function AgentsPanel({
 function SectionLabel({ icon, label, hint }: { icon: ReactNode; label: string; hint: string }) {
 	return (
 		<div className="flex items-baseline justify-between gap-2 border-b border-[var(--ret-border)] pb-1.5">
-			<span className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
+			<span className="flex items-center gap-1.5 text-xs font-medium text-[var(--ret-text-muted)]">
 				<span className="text-[var(--ret-text-dim)]">{icon}</span>
 				{label}
 			</span>
@@ -169,16 +170,16 @@ function AgentCard({ agent }: { agent: AgentCardData }) {
 					<span className={cn("h-1.5 w-1.5 rounded-full", READINESS_TONE[agent.readiness.status])} aria-hidden />
 					<span className="text-[13px] text-[var(--ret-text)]">{agent.label}</span>
 					{agent.isActive ? (
-						<span className="border border-[var(--ret-accent)]/50 px-1 font-mono text-[8px] uppercase tracking-[0.16em] text-[var(--ret-accent)]">
+						<span className="border border-[var(--ret-accent)]/50 px-1 text-xs font-medium text-[var(--ret-accent)]">
 							active
 						</span>
 					) : null}
 				</div>
-				<span className="font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
+				<span className="text-xs font-medium text-[var(--ret-text-muted)]">
 					{agent.nativeUpstream ? `native ${agent.nativeUpstream}` : "router"}
 				</span>
 			</div>
-			<p className="text-[11px] leading-relaxed text-[var(--ret-text-dim)]">{agent.readiness.detail}</p>
+			<p className="text-[13px] leading-relaxed text-[var(--ret-text-dim)]">{agent.readiness.detail}</p>
 			<div className="mt-2 flex flex-col gap-1">
 				{agent.requirements.map((req) => (
 					<div key={req.field} className="flex items-center gap-1.5">
@@ -187,13 +188,13 @@ function AgentCard({ agent }: { agent: AgentCardData }) {
 						) : (
 							<X className={cn("h-3 w-3 shrink-0", req.required ? "text-[var(--ret-red)]" : "text-[var(--ret-text-muted)]")} strokeWidth={2} />
 						)}
-						<span className="font-mono text-[10px] text-[var(--ret-text-muted)]">{req.label}</span>
+						<span className="font-mono text-xs text-[var(--ret-text-muted)]">{req.label}</span>
 					</div>
 				))}
 			</div>
 			<Link
 				href="/dashboard/settings"
-				className="mt-3 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-accent)] hover:underline"
+				className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-[var(--ret-accent)] hover:underline"
 			>
 				<KeyRound className="h-3 w-3" strokeWidth={1.75} /> configure keys
 			</Link>
@@ -209,9 +210,9 @@ function CursorCard({ hasKey }: { hasKey: boolean }) {
 					<span className={cn("h-1.5 w-1.5 rounded-full", hasKey ? "bg-[var(--ret-green)]" : "bg-[var(--ret-text-muted)]")} aria-hidden />
 					<span className="text-[13px] text-[var(--ret-text)]">Cursor bridge</span>
 				</div>
-				<span className="font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">MCP delegation</span>
+				<span className="text-xs font-medium text-[var(--ret-text-muted)]">MCP delegation</span>
 			</div>
-			<p className="text-[11px] leading-relaxed text-[var(--ret-text-dim)]">
+			<p className="text-[13px] leading-relaxed text-[var(--ret-text-dim)]">
 				Delegate code tasks to a Cursor agent via the cursor-bridge MCP. Runs show below.
 			</p>
 			<div className="mt-2 flex items-center gap-1.5">
@@ -220,11 +221,11 @@ function CursorCard({ hasKey }: { hasKey: boolean }) {
 				) : (
 					<X className="h-3 w-3 shrink-0 text-[var(--ret-text-muted)]" strokeWidth={2} />
 				)}
-				<span className="font-mono text-[10px] text-[var(--ret-text-muted)]">Cursor API key</span>
+				<span className="font-mono text-xs text-[var(--ret-text-muted)]">Cursor API key</span>
 			</div>
 			<Link
 				href="/dashboard/settings"
-				className="mt-3 inline-flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-accent)] hover:underline"
+				className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-[var(--ret-accent)] hover:underline"
 			>
 				<KeyRound className="h-3 w-3" strokeWidth={1.75} /> configure key
 			</Link>
@@ -256,11 +257,15 @@ const INITIAL_SYSTEM: SystemState = {
 
 function SystemInsights({ machineId }: { machineId: string }) {
 	const [state, setState] = useState<SystemState>(INITIAL_SYSTEM);
+	const [retry, setRetry] = useState(0);
 
 	useEffect(() => {
 		let alive = true;
+		const controller = new AbortController();
+		setState(INITIAL_SYSTEM);
 		async function load() {
 			const fsReq = fetch("/api/dashboard/exec", {
+				signal: controller.signal,
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
@@ -271,10 +276,10 @@ function SystemInsights({ machineId }: { machineId: string }) {
 			})
 				.then((r) => (r.ok ? r.json() : null))
 				.catch(() => null);
-			const sessReq = fetch(withMachineId("/api/dashboard/sessions", machineId), { cache: "no-store" })
+			const sessReq = fetch(withMachineId("/api/dashboard/sessions", machineId), { cache: "no-store", signal: controller.signal })
 				.then((r) => (r.ok ? r.json() : null))
 				.catch(() => null);
-			const cursorReq = fetch(withMachineId("/api/dashboard/cursor", machineId), { cache: "no-store" })
+			const cursorReq = fetch(withMachineId("/api/dashboard/cursor", machineId), { cache: "no-store", signal: controller.signal })
 				.then((r) => (r.ok ? r.json() : null))
 				.catch(() => null);
 
@@ -284,7 +289,7 @@ function SystemInsights({ machineId }: { machineId: string }) {
 			const parsed = parseDf((fs?.stdout as string) ?? "");
 			setState({
 				loading: false,
-				offline: fs == null || fs?.ok === false,
+				offline: fs?.ok !== true,
 				diskUsed: parsed.used,
 				diskSize: parsed.size,
 				diskPct: parsed.pct,
@@ -298,23 +303,21 @@ function SystemInsights({ machineId }: { machineId: string }) {
 		void load();
 		return () => {
 			alive = false;
+			controller.abort();
 		};
-	}, [machineId]);
+	}, [machineId, retry]);
 
 	if (state.loading) {
 		return (
-			<div className="mt-2 p-3">
-				<BrailleSpinner name="orbit" label="reading system state" className="text-[10px] text-[var(--ret-text-muted)]" />
-			</div>
+			<DashboardLoadingState label="Reading system status…" className="mt-2" />
 		);
 	}
 
 	if (state.offline) {
 		return (
 			<ReticleFrame className="mt-2 p-4">
-				<p className="font-mono text-[11px] text-[var(--ret-text-muted)]">
-					Machine offline — wake it to read filesystem and tracking insights.
-				</p>
+				<p role="alert" className="text-sm text-[var(--ret-text-muted)]">System status is unavailable. Check the machine or retry the read.</p>
+				<div className="mt-3 flex flex-wrap gap-2"><ReticleButton variant="secondary" onClick={() => setRetry(value => value + 1)}>Retry system status</ReticleButton><ReticleButton as="a" href={`/dashboard/machines/${encodeURIComponent(machineId)}`} variant="ghost">Manage this machine</ReticleButton></div>
 			</ReticleFrame>
 		);
 	}
@@ -364,7 +367,7 @@ function InsightCell({
 		<ReticleFrame className="p-3">
 			<div className="flex items-center gap-1.5 text-[var(--ret-text-muted)]">
 				{icon}
-				<span className="font-mono text-[9px] uppercase tracking-[0.18em]">{label}</span>
+				<span className="text-xs font-medium">{label}</span>
 			</div>
 			<p className="mt-1 font-mono text-[16px] text-[var(--ret-text)]">{value}</p>
 			{sub ? <p className="font-mono text-[9px] text-[var(--ret-text-muted)]">{sub}</p> : null}

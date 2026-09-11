@@ -15,8 +15,11 @@ vi.mock("@/components/BrandMark", () => ({ BrandMark: () => null }));
 vi.mock("@/components/ThemeToggle", () => ({ ThemeToggle: () => null }));
 vi.mock("@/components/WingBackground", () => ({ WingBackground: () => null }));
 vi.mock("@/components/dashboard/OnboardingFlow", () => ({ OnboardingFlow: (props: unknown) => { mocks.onboarding(props); return null; } }));
+vi.mock("@/components/dashboard/SetupWizard", () => ({ SetupWizard: () => null }));
+vi.mock("@/components/dashboard/SandboxRouterPanel", () => ({ SandboxRouterPanel: () => null }));
+vi.mock("@/lib/mux/route", () => ({ resolveRoute: () => ({ route: [], skipped: [] }) }));
 vi.mock("@/components/dashboard/WorkersLibrary", () => ({ WorkersLibrary: (props: unknown) => { mocks.library(props); return null; } }));
-vi.mock("@/lib/user-config/clerk", () => ({ getUserConfig: mocks.config }));
+vi.mock("@/lib/user-config/clerk", () => ({ getUserConfig: mocks.config, getUserConfigForRequest: mocks.config }));
 vi.mock("@/lib/user-config/schema", () => ({ toPublicConfig: (config: unknown) => config }));
 
 beforeAll(() => {
@@ -102,6 +105,23 @@ describe("mounted auth and setup route contracts", () => {
 		mocks.config.mockResolvedValue({ machines: [{ id: "existing", archived: false }] });
 		const { default: OnboardingPage } = await import("@/app/onboarding/page");
 		await expect(OnboardingPage({ searchParams: Promise.resolve({ preset: "computer-use" }) })).rejects.toThrow("REDIRECT:/dashboard/agents?preset=computer-use");
+	});
+	it("allows an existing account to deliberately re-enter standalone quickstart", async () => {
+		mocks.config.mockResolvedValue({ machines: [{ id: "existing", archived: false }] });
+		const { default: OnboardingPage } = await import("@/app/onboarding/page");
+		renderToStaticMarkup(await OnboardingPage({ searchParams: Promise.resolve({ force: "1", preset: "computer-use" }) }));
+		expect(mocks.onboarding).toHaveBeenCalledWith(expect.objectContaining({ initialPresetId: "computer-use" }));
+	});
+	it("keeps dashboard quickstart available when a machine already exists", async () => {
+		const config = { machines: [{ id: "existing", archived: false }], providers: {}, draftSpec: {}, draftModel: "" };
+		mocks.config.mockResolvedValue(config);
+		const { default: SetupPage } = await import("@/app/dashboard/setup/page");
+		const html = renderToStaticMarkup(await SetupPage());
+		expect(mocks.config).toHaveBeenCalledOnce();
+		expect(mocks.onboarding).toHaveBeenCalledWith(expect.objectContaining({ embedded: true, initialConfig: config }));
+		expect(html).toContain("Quickstart");
+		expect(html).toContain("Advanced setup and routing");
+		expect(html).toContain("creating compute remains a separate action");
 	});
 	it("keeps the preset across the legacy Workers redirect and into the library", async () => {
 		const { default: WorkersPage } = await import("@/app/dashboard/workers/page");

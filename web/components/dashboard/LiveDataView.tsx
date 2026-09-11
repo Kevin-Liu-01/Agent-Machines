@@ -3,8 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 
 import { EmptyState } from "@/components/dashboard/EmptyState";
-import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { DashboardLoadingState } from "@/components/dashboard/DashboardLoadingState";
 import type { LiveDataEnvelope } from "@/lib/dashboard/types";
 
 type Props<T> = {
@@ -12,6 +11,7 @@ type Props<T> = {
 	pollMs?: number;
 	render: (data: T, fetchedAt: string) => ReactNode;
 	offlineHint?: ReactNode;
+	loadingLabel?: string;
 };
 
 /**
@@ -24,30 +24,42 @@ export function LiveDataView<T>({
 	pollMs = 30_000,
 	render,
 	offlineHint,
+	loadingLabel = "Loading workspace data…",
 }: Props<T>) {
 	const [envelope, setEnvelope] = useState<LiveDataEnvelope<T> | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [retry, setRetry] = useState(0);
 
 	useEffect(() => {
 		let stopped = false;
+		let pending = false;
+		const controller = new AbortController();
+		setEnvelope(null);
+		setError(null);
 
 		async function tick() {
+			if (pending || stopped) return;
+			pending = true;
 			try {
-				const response = await fetch(endpoint, { cache: "no-store" });
+				const response = await fetch(endpoint, { cache: "no-store", signal: controller.signal });
 				if (!response.ok) {
 					const body = await response.json().catch(() => null);
-					if (!stopped) setError(body?.message || body?.error || `HTTP ${response.status}`);
+					const detail = body?.message ?? body?.error;
+					if (!stopped) setError(typeof detail === "string" && /\s/.test(detail) ? detail : "Workspace data couldn’t be loaded. Try again.");
 					return;
 				}
 				const body = (await response.json()) as LiveDataEnvelope<T>;
+				if (!body || typeof body.ok !== "boolean" || (body.ok ? !("data" in body) : typeof body.reason !== "string")) throw new Error("The response was incomplete. Please try again.");
 				if (!stopped) {
 					setEnvelope(body);
 					setError(null);
 				}
-			} catch (err) {
+			} catch {
 				if (!stopped) {
-					setError(err instanceof Error ? err.message : "fetch_failed");
+					setError("Workspace data couldn’t be loaded. Check your connection and try again.");
 				}
+			} finally {
+				pending = false;
 			}
 		}
 
@@ -57,34 +69,24 @@ export function LiveDataView<T>({
 		}, pollMs);
 		return () => {
 			stopped = true;
+			controller.abort();
 			window.clearInterval(interval);
 		};
-	}, [endpoint, pollMs]);
+	}, [endpoint, pollMs, retry]);
 
 	if (error) {
 		return (
 			<EmptyState
-				title="Couldn't reach the dashboard API"
+				title="Could not load workspace data"
 				description={error}
+				onRetry={() => setRetry(value => value + 1)}
 			/>
 		);
 	}
 
 	if (!envelope) {
 		return (
-			<div className="space-y-3 px-6 py-6">
-				<BrailleSpinner
-					name="orbit"
-					label={`fetching ${endpoint.split("/").pop() ?? "data"}`}
-					className="text-[12px] text-[var(--ret-text-muted)]"
-				/>
-				<div className="space-y-2">
-					<Skeleton className="h-3 w-1/3" />
-					<Skeleton className="h-3 w-2/3" />
-					<Skeleton className="h-3 w-1/2" />
-					<Skeleton className="h-3 w-3/5" />
-				</div>
-			</div>
+			<DashboardLoadingState label={loadingLabel} variant="table" className="px-[var(--dashboard-gutter,20px)] py-6" />
 		);
 	}
 
@@ -94,15 +96,17 @@ export function LiveDataView<T>({
 			config_missing: "Dashboard not configured",
 			exec_failed: "Couldn't read the machine",
 		};
+		const machineId = new URLSearchParams(endpoint.split("?")[1] ?? "").get("machineId");
 		return (
 			<EmptyState
 				title={titles[envelope.reason] ?? "Unavailable"}
 				description={envelope.message}
 				hint={offlineHint}
+				onRetry={envelope.reason === "config_missing" ? undefined : () => setRetry(value => value + 1)}
 				action={
-					envelope.reason === "machine_offline"
-						? { label: "View overview", href: "/dashboard" }
-						: undefined
+					envelope.reason === "config_missing"
+						? { label: "Open Quickstart", href: "/dashboard/setup" }
+						: { label: machineId ? "Manage this machine" : "Manage machines", href: machineId ? `/dashboard/machines/${encodeURIComponent(machineId)}` : "/dashboard/machines" }
 				}
 			/>
 		);

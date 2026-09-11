@@ -11,7 +11,7 @@ import { buildPageMetadata } from "@/lib/seo/metadata";
 export const metadata = buildPageMetadata({
 	title: "Registry",
 	description:
-		"Browse skills, MCP servers, CLI tools, plugins, service routes, and source entries for persistent Agent Machines workers.",
+		"Browse skill, MCP, CLI, and source entries for your agent setup. Inspect installation instructions, then configure runtime access and credentials.",
 	path: "/registry",
 	keywords: ["agent registry", "MCP registry", "SKILL.md skills", "agent loadout"],
 });
@@ -21,19 +21,18 @@ export default function RegistryPage() {
 		<MarketingShell>
 			<main id="top">
 				<MarketingHero
-					kicker="./REGISTRY"
-					title="Find tools your workers can run."
-					description="Search skills, MCP servers, CLIs, tools, plugins, and provider manifests from one clean browser. Sign in to attach items to a worker loadout."
-					badges={["skills", "mcps", "cli", "plugins"]}
+					kicker="Registry"
+					title="Find the parts your agent needs."
+					description="Search skills, MCP servers, and tools. Review an entry, then open it in your dashboard. Saving is not installation or verification; runtime access and credentials still need setup."
+					badges={["Skills", "MCPs", "CLIs", "Plugins"]}
 					icon="search"
 					aside={
 						<TerminalPanel
-							title="sources"
+							title="Available catalog sources"
 							lines={[
 								"skills.sh registry",
 								"official MCP registry",
 								"npm packages",
-								"Cursor plugins",
 								"GitHub repos",
 							]}
 							className="h-full border-0"

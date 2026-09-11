@@ -1,4 +1,6 @@
 import { Suspense } from "react";
+import { DashboardLoadingState } from "@/components/dashboard/DashboardLoadingState";
+import { DashboardPageBody } from "@/components/dashboard/DashboardPageBody";
 
 import { MachinesPanel } from "@/components/dashboard/MachinesPanel";
 import { PageHeader } from "@/components/dashboard/PageHeader";
@@ -15,22 +17,18 @@ export default function MachinesPage() {
 	return (
 		<div className="flex flex-col">
 			<PageHeader
-				artSlug="machines"
-				kicker="FLEET"
-				title="Your machines"
-				description="See health, runtime, provider, loadout, activity, and migration state at a glance. Every machine action stays scoped to the worker you selected."
+				kicker="Workspaces"
+				title="Workspaces"
+				description="Find a workspace, open its terminal, or manage its runtime and compute."
 				right={
 					<>
 						<ReticleButton as="a" href="/dashboard/agents" variant="ghost" size="sm">
-							Agent templates
-						</ReticleButton>
-						<ReticleButton as="a" href="/dashboard/setup" variant="primary" size="sm">
-							New machine
+							Saved setups
 						</ReticleButton>
 					</>
 				}
 			/>
-			<Suspense fallback={null}>
+			<Suspense fallback={<DashboardPageBody><DashboardLoadingState label="Loading your machines…" /></DashboardPageBody>}>
 				<MachinesPanel />
 			</Suspense>
 		</div>

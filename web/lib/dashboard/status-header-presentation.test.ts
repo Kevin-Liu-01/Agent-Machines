@@ -80,6 +80,17 @@ function renderHeader({
 }
 
 describe("dashboard header warning presentation", () => {
+	it.each([
+		["/dashboard/agents", "Studio"],
+		["/dashboard/workers", "Agent setups"],
+		["/dashboard/components", "Building blocks"],
+	])("names the %s page and setup action consistently", (pathname, label) => {
+		const view = renderHeader({ pathname });
+		expect(view.html).toContain(`title="${label}"`);
+		expect(view.html).toContain('aria-label="New setup"');
+		expect(view.html).not.toMatch(/Agent templates|New Worker/);
+	});
+
 	it("does not show a cached healthy phase anywhere after its status request fails", () => {
 		const view = renderHeader({ error: "Machine status unavailable (HTTP 502)" });
 		expect(view.nodes.filter((node) => node.type === StatusPill)).toHaveLength(0);

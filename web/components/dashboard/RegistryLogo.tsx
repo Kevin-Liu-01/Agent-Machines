@@ -93,6 +93,8 @@ export function RegistryLogo({
 				<img
 					src={src}
 					alt=""
+					loading="lazy"
+					decoding="async"
 					width={size}
 					height={size}
 					className="object-contain"

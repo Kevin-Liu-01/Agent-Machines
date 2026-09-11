@@ -12,17 +12,17 @@ import { AGENT_TEMPLATES } from "@/lib/marketing/public-site";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 
 export const metadata = buildPageMetadata({
-	title: "Agents",
+	title: "Agent templates",
 	description:
-		"Browse Agent Machines worker templates for research, coding, code review, data analysis, browser automation, support, QA, operations, security, and growth.",
+		"Inspect configurable agent starting setups: runtime suggestions, role prompts, memory, and selected skills. Make one yours before choosing where to run it.",
 	path: "/agents",
 	keywords: ["agent templates", "worker templates", "Hermes agent", "OpenClaw agent"],
 });
 
-const MARKET_METRICS = [
-	{ label: "Templates", value: String(AGENT_TEMPLATES.length), detail: "runtime plus loadout recipes" },
-	{ label: "Runtime lanes", value: "4", detail: "Hermes, OpenClaw, Claude Code, Codex" },
-	{ label: "Provider lanes", value: "4", detail: "E2B, Sprites, Daytona, Vercel" },
+const TEMPLATE_METRICS = [
+	{ label: "Starting setups", value: String(AGENT_TEMPLATES.length), detail: "role prompts and selected abilities" },
+	{ label: "Runtimes", value: "4", detail: "Hermes, OpenClaw, Claude Code, Codex" },
+	{ label: "Compute adapters", value: "4", detail: "capabilities and resource limits differ" },
 ];
 
 export default function AgentsPage() {
@@ -30,39 +30,39 @@ export default function AgentsPage() {
 		<MarketingShell>
 			<main id="top">
 				<MarketingHero
-					kicker="./AGENTS"
-					title="Pick the worker by job."
-					description="Each template is a practical recipe: runtime, provider lane, model path, loadout, workflow, observability, and the artifacts you should expect back."
+					kicker="Agents"
+					title="Start with a setup. Make it yours."
+					description="Choose a role, inspect its instructions, and connect your tools. These are editable starting configurations, not finished applications. Model and compute accounts are required to run one."
 					badges={["research", "coding", "browser", "data"]}
 					icon="bot"
 					actions={
 						<>
-							<ReticleButton as="a" href="/agents/deep-research" size="lg" className="rounded-[var(--ret-card-radius)]">
-								View deep research
+							<ReticleButton as="a" href="/dashboard/agents?preset=coding-agent" size="lg" className="rounded-[var(--ret-card-radius)]">
+								Customize a coding setup
 							</ReticleButton>
-							<ReticleButton as="a" href="/registry" variant="secondary" size="lg" className="rounded-[var(--ret-card-radius)]">
-								Browse registry
+							<ReticleButton as="a" href="/components" variant="secondary" size="lg" className="rounded-[var(--ret-card-radius)]">
+								Explore the components
 							</ReticleButton>
 						</>
 					}
 					aside={
 						<TerminalPanel
-							title="template manifest"
+							title="configuration illustration"
 							lines={[
-								"runtime selected per job",
-								"provider lane selected per account",
-								"model path stored server-side",
-								"logs and usage tracked per machine",
-								"artifacts stay inspectable",
+								"template → role prompt + selected entries",
+								"you choose → runtime + model + compute",
+								"you edit → persona + rules + context",
+								"you configure → tools + service access",
+								"run → Console or native CLI terminal",
 							]}
 							className="h-full rounded-none border-0"
 						/>
 					}
 				/>
 				<ReticleSpacer />
-				<SectionBand label="Marketplace" title="Templates for the work people actually hand agents.">
+				<SectionBand label="Templates" title="Choose the job.">
 					<div className="mb-5">
-						<MetricGrid metrics={MARKET_METRICS} />
+						<MetricGrid metrics={TEMPLATE_METRICS} />
 					</div>
 					<div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
 						{AGENT_TEMPLATES.map((agent) => (

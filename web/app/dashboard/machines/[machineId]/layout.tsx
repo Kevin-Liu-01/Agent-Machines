@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { MachineProvider } from "@/components/dashboard/MachineProvider";
+import { MachineSectionTabs } from "@/components/dashboard/MachineSectionTabs";
 import { getUserConfigForRequest } from "@/lib/user-config/clerk";
 import { DEFAULT_USER_CONFIG, toPublicConfig, type PublicMachineRef } from "@/lib/user-config/schema";
 
@@ -31,6 +32,7 @@ export default async function MachineLayout({ children, params }: Props) {
 
 	return (
 		<MachineProvider machineId={machineId} machine={machine} isActive={isActive}>
+			<MachineSectionTabs machineId={machineId} />
 			{children}
 		</MachineProvider>
 	);

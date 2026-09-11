@@ -30,7 +30,7 @@ export function TerminalWorkspace() {
 						onClick={() => setMode(tab.id)}
 						title={tab.hint}
 						className={cn(
-							"min-h-11 px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.18em] transition-colors sm:min-h-0",
+							"min-h-11 px-3 py-1.5 text-sm font-medium transition-colors sm:min-h-0",
 							mode === tab.id
 								? "bg-[var(--ret-bg)] text-[var(--ret-purple)]"
 								: "bg-[var(--ret-bg-soft)] text-[var(--ret-text-muted)] hover:text-[var(--ret-text-dim)]",

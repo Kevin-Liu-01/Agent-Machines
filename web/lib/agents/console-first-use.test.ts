@@ -13,10 +13,12 @@ describe("first useful Worker experience", () => {
 	it.each(["hermes", "openclaw"])("retains health checks for %s gateways", (agent) => {
 		expect(runtimeUsesGateway(agent)).toBe(true);
 	});
-	it("opens the bounded Console after onboarding", () => {
+	it("offers the bounded Console after completed onboarding without a timed redirect", () => {
 		expect(onboardingWorkspaceUrl("machine/one")).toBe("/dashboard/machines/machine%2Fone/console?launch=1");
 		const source = readFileSync(resolve(process.cwd(), "components/dashboard/OnboardingFlow.tsx"), "utf8");
-		expect(source).toContain("onboardingWorkspaceUrl(bootMachineId)");
+		expect(source).toContain("href={onboardingWorkspaceUrl(machineId)}");
+		expect(source).toContain("done && machineId");
+		expect(source).not.toContain("router.replace(");
 	});
 	it("offers concrete tasks without assuming Cursor or a provider-specific home", () => {
 		expect(CONSOLE_STARTERS).toHaveLength(4);

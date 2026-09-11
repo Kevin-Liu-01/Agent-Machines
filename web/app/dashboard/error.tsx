@@ -19,7 +19,7 @@ export default function DashboardError({
 	reset: () => void;
 }) {
 	return (
-		<div className="p-4 md:p-6">
+		<div className="px-[var(--dashboard-gutter,20px)] py-10">
 			<DashboardErrorState error={error} reset={reset} scope="the dashboard" />
 		</div>
 	);

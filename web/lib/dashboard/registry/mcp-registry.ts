@@ -211,28 +211,19 @@ export const mcpRegistryAdapter: RegistryAdapter = {
 	id: "mcp-registry",
 	label: "MCP Registry",
 	async search(opts: RegistrySearchOptions): Promise<RegistryItem[]> {
+		const query = opts.query.trim().toLowerCase();
+		const matches = (item: RegistryItem) => !query || [item.name, item.description, item.provider].some(value => value.toLowerCase().includes(query));
+		const limit = opts.limit ?? 500;
 		try {
 			const entries = await fetchAllServers();
-			let items = entries.map(normalize);
-			if (opts.query) {
-				const q = opts.query.toLowerCase();
-				items = items.filter(
-					(i) =>
-						i.name.toLowerCase().includes(q) ||
-						i.description.toLowerCase().includes(q) ||
-						i.provider.toLowerCase().includes(q),
-				);
-			}
+			const items = entries.map(normalize);
 			// Merge the curated SEED in front (known-good brands) without dupes.
 			const seen = new Set(items.map((i) => i.id));
 			const seedExtra = SEED.filter((s) => !seen.has(s.id));
-			return [...seedExtra, ...items].slice(0, opts.limit ?? 500);
+			// Filter after merging: curated entries must respect the query too.
+			return [...seedExtra, ...items].filter(matches).slice(0, limit);
 		} catch {
-			if (!opts.query) return SEED;
-			const q = opts.query.toLowerCase();
-			return SEED.filter(
-				(s) => s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q),
-			);
+			return SEED.filter(matches).slice(0, limit);
 		}
 	},
 };

@@ -3,6 +3,8 @@ import { resolve } from "node:path";
 import { runInNewContext } from "node:vm";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
+import { requiredNativeUpstream } from "@/lib/agents/upstreams";
+import { AGENT_KINDS, AGENT_LABEL } from "@/lib/user-config/schema";
 
 type Element = { type: unknown; props: Record<string, unknown> };
 function elements(value: unknown): Element[] {
@@ -24,6 +26,7 @@ function mountLibrary() {
 		},
 		useCallback(fn: unknown) { return fn; },
 		useEffect() {},
+		useRef: (current: unknown) => ({ current }),
 	};
 	function ReticleButton() { return null; }
 	const jsx = (type: unknown, props: Record<string, unknown>) => ({ type, props });
@@ -35,7 +38,8 @@ function mountLibrary() {
 			: id === "next/navigation" ? { useRouter: () => ({ push: (path: string) => navigation.push(path) }) }
 				: id.endsWith("ReticleButton") ? { ReticleButton }
 					: id.endsWith("preset-selection") ? { workerPresetSeed: () => ({ name: "Custom Worker", sourceValue: "bundle:default" }) }
-						: id.endsWith("user-config/schema") ? { AGENT_KINDS: ["hermes"], AGENT_LABEL: { hermes: "Hermes" } }
+						: id.endsWith("user-config/schema") ? { AGENT_KINDS, AGENT_LABEL }
+							: id.endsWith("agents/upstreams") ? { requiredNativeUpstream }
 							: new Proxy({}, { get: () => () => null }),
 		fetch: async (_url: string, options: { body: string }) => {
 			submitted.push(JSON.parse(options.body));
@@ -55,6 +59,11 @@ function mountLibrary() {
 		submitted, navigation,
 		modelField: () => elements(modal).find((element) => element.type === "input" && element.props.id === "create-worker-model")!,
 		nodes: () => elements(modal),
+		changeRuntime(value: string) {
+			const field = elements(modal).find((element) => element.props.ariaLabel === "Runtime")!;
+			(field.props.onChange as (value: string) => void)(value);
+			render();
+		},
 		changeModel(value: string) {
 			const field = elements(modal).find((element) => element.type === "input" && element.props.id === "create-worker-model")!;
 			(field.props.onChange as (event: unknown) => void)({ target: { value } });
@@ -70,6 +79,18 @@ function mountLibrary() {
 }
 
 describe("Library optional model ID (actual TSX)", () => {
+	it.each([["codex", "OpenAI"], ["claude-code", "Anthropic"]])("shows the hosted %s native model boundary without changing the submitted runtime", async (runtime, provider) => {
+		const library = mountLibrary();
+		library.changeRuntime(runtime);
+		const help = library.nodes().find((element) => element.props.id === "create-worker-model-help")?.props.children;
+		expect(help).toContain(`uses a native ${provider} key and compatible model`);
+		expect(help).toContain("router and custom-endpoint model IDs are not supported");
+		expect(library.modelField().props.placeholder).toBe("Runtime default model");
+		await library.submit();
+		expect(library.submitted[0]).toMatchObject({ agentKind: runtime });
+		expect(library.submitted[0]).not.toHaveProperty("model");
+	});
+
 	it.each(["", "   "])("omits a blank model %j to allow endpoint-aware defaults", async (model) => {
 		const library = mountLibrary();
 		library.changeModel(model);

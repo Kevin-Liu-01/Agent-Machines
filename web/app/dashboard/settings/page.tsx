@@ -10,9 +10,9 @@ export default async function SettingsPage() {
 	return (
 		<div className="flex flex-col">
 			<PageHeader
-				kicker="SETTINGS"
-				title="Make it yours"
-				description="Connect the SDK, choose machine defaults, and add provider keys. Advanced recipes stay out of the way until you need them."
+				kicker="Settings"
+				title="Accounts and defaults"
+				description="Connect accounts, manage API keys, and set workspace defaults."
 			/>
 			<SettingsPanel initialConfig={toPublicConfig(config)} />
 		</div>

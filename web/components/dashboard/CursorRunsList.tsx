@@ -27,7 +27,7 @@ export function CursorRunsList() {
 	const machineMatch = MACHINE_PATH_RE.exec(pathname);
 	const machineId = machineCtx?.machineId ?? machineMatch?.[1];
 	const chatHref = machineId
-		? `/dashboard/machines/${machineId}/chat`
+		? `/dashboard/machines/${encodeURIComponent(machineId)}/chat`
 		: "/dashboard/chat";
 	const endpoint = machineId
 		? `/api/dashboard/cursor?machineId=${encodeURIComponent(machineId)}`
@@ -35,12 +35,14 @@ export function CursorRunsList() {
 
 	return (
 		<LiveDataView<CursorRunsPayload>
+			key={endpoint}
 			endpoint={endpoint}
+			loadingLabel="Loading Cursor runs…"
 			pollMs={30_000}
 			offlineHint={"# the dashboard reads:\ncat ~/.agent-machines/cursor-runs.jsonl"}
 			render={(data, fetchedAt) => (
-				<div className="flex flex-col gap-4 px-6 py-6">
-					<div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 font-mono text-[11px] text-[var(--ret-text-dim)]">
+				<div className="flex flex-col gap-5 px-[var(--dashboard-gutter,20px)] py-8">
+					<div className="flex flex-wrap items-baseline gap-x-6 gap-y-1 font-mono text-[13px] text-[var(--ret-text-dim)]">
 						<span>
 							<span className="text-[var(--ret-text-muted)]">total</span>{" "}
 							{data.totalRuns}
@@ -56,12 +58,9 @@ export function CursorRunsList() {
 
 					{data.runs.length === 0 ? (
 						<div className="border border-dashed border-[var(--ret-border)] bg-[var(--ret-bg)] px-6 py-12 text-center text-sm text-[var(--ret-text-dim)]">
-						No Cursor agents have been spawned yet. Hand the agent some
-						code work in{" "}
-						<a href={chatHref} className="underline">
-							chat
-						</a>{" "}
-						-- it'll log every run here.
+						<h2 className="text-lg font-medium text-[var(--ret-text)]">No recorded Cursor runs</h2>
+						<p className="mt-2">Delegate a coding task from chat. Runs recorded by the runtime appear here.</p>
+						<a href={chatHref} className="mt-4 inline-flex min-h-11 items-center rounded-md border border-[var(--ret-border)] px-4 text-[var(--ret-text)] hover:bg-[var(--ret-surface)] focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]">Open chat</a>
 						</div>
 					) : (
 						<div className="flex flex-col gap-3">
@@ -83,6 +82,7 @@ function RunCard({ run }: { run: CursorRun }) {
 		<article className="overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-bg)]">
 			<button
 				type="button"
+				aria-expanded={open}
 				onClick={() => setOpen((v) => !v)}
 				className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-[var(--ret-surface)]"
 			>
@@ -92,10 +92,10 @@ function RunCard({ run }: { run: CursorRun }) {
 						<p className="font-mono text-[13px] text-[var(--ret-text)]">
 							{run.kind}
 						</p>
-						<p className="font-mono text-[11px] text-[var(--ret-text-muted)]">
+						<p className="font-mono text-[13px] text-[var(--ret-text-muted)]">
 							{run.runId.slice(0, 24)}...
 						</p>
-						<p className="font-mono text-[11px] text-[var(--ret-text-muted)]">
+						<p className="font-mono text-[13px] text-[var(--ret-text-muted)]">
 							{run.model}
 						</p>
 					</div>
@@ -103,7 +103,7 @@ function RunCard({ run }: { run: CursorRun }) {
 						{run.prompt}
 					</p>
 				</div>
-				<div className="hidden shrink-0 flex-col items-end gap-1 font-mono text-[11px] md:flex">
+				<div className="hidden shrink-0 flex-col items-end gap-1 font-mono text-[13px] md:flex">
 					<span className={cn("uppercase tracking-[0.18em]", statusClass)}>
 						{run.status}
 					</span>
@@ -122,7 +122,7 @@ function RunCard({ run }: { run: CursorRun }) {
 				</span>
 			</button>
 			{open ? (
-				<div className="grid gap-3 border-t border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-5 py-4 text-[12px] md:grid-cols-2">
+				<div className="grid gap-3 border-t border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-5 py-4 text-sm md:grid-cols-2">
 					<RunMeta label="agent_id" value={run.agentId} />
 					<RunMeta label="working_dir" value={run.workingDir} />
 					<RunMeta label="status" value={run.status} />
@@ -133,19 +133,19 @@ function RunCard({ run }: { run: CursorRun }) {
 					/>
 					<RunMeta label="duration" value={formatDuration(run.durationMs)} />
 					<div className="md:col-span-2">
-						<p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
+						<p className="text-xs font-medium text-[var(--ret-text-muted)]">
 							prompt
 						</p>
-						<pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-[12px] text-[var(--ret-text)]">
+						<pre className="mt-1 max-h-40 overflow-auto whitespace-pre-wrap border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-sm text-[var(--ret-text)]">
 							{run.prompt}
 						</pre>
 					</div>
 					{run.finalText ? (
 						<div className="md:col-span-2">
-							<p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
+							<p className="text-xs font-medium text-[var(--ret-text-muted)]">
 								final_text
 							</p>
-							<pre className="mt-1 max-h-60 overflow-auto whitespace-pre-wrap border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-[12px] text-[var(--ret-text-dim)]">
+							<pre className="mt-1 max-h-60 overflow-auto whitespace-pre-wrap border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-sm text-[var(--ret-text-dim)]">
 								{run.finalText}
 							</pre>
 						</div>
@@ -159,7 +159,7 @@ function RunCard({ run }: { run: CursorRun }) {
 function RunMeta({ label, value }: { label: string; value: string }) {
 	return (
 		<div className="flex items-baseline gap-3">
-			<span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[var(--ret-text-muted)]">
+			<span className="text-xs font-medium text-[var(--ret-text-muted)]">
 				{label}
 			</span>
 			<span className="break-all font-mono text-[var(--ret-text-dim)]">{value}</span>

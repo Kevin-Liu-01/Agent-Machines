@@ -76,7 +76,7 @@ export default function GlobalError({
 							margin: "0 0 20px",
 						}}
 					>
-						This crash escaped every page boundary. Reloading usually clears it.
+						We couldn’t open this page. Try again, or return to your dashboard.
 						{error.digest ? ` (ref ${error.digest})` : null}
 					</p>
 					<div

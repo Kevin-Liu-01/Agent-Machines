@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 
 import { DashboardPageBody } from "@/components/dashboard/DashboardPageBody";
+import { ArrowRight, ChevronDown } from "@/components/ui/icons";
+import { cn } from "@/lib/cn";
 import { Logo, type Mark } from "@/components/Logo";
 import { ServiceIcon } from "@/components/ServiceIcon";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
@@ -287,6 +289,15 @@ export function SettingsPanel({ initialConfig }: Props) {
 
 	return (
 		<DashboardPageBody>
+			<div className={cn("flex flex-wrap items-center justify-between gap-4 border-b border-[var(--ret-border)] pb-5")}>
+				<nav aria-label="Settings sections" className={cn("flex flex-wrap gap-x-5 gap-y-3 text-sm text-[var(--ret-text-muted)]")}>
+					<a href="#compute-credentials" className={cn("underline-offset-4 hover:text-[var(--ret-text)] hover:underline")}>Compute</a>
+					<a href="#model-credentials" className={cn("underline-offset-4 hover:text-[var(--ret-text)] hover:underline")}>Models</a>
+					<a href="#workspace-defaults" className={cn("underline-offset-4 hover:text-[var(--ret-text)] hover:underline")}>Defaults</a>
+					<a href="#developer-access" className={cn("underline-offset-4 hover:text-[var(--ret-text)] hover:underline")}>Developer API</a>
+				</nav>
+				<a href="/dashboard/setup" className={cn("inline-flex items-center gap-2 text-sm font-medium underline-offset-4 hover:underline")}>Open quickstart <ArrowRight size={16} aria-hidden="true" /></a>
+			</div>
 			{state.phase !== "idle" ? (
 				<ReticleFrame
 					className={
@@ -295,23 +306,22 @@ export function SettingsPanel({ initialConfig }: Props) {
 							: "border-[var(--ret-green)]/40 bg-[var(--ret-green)]/5"
 					}
 				>
-				<p className="p-3 text-[11px] text-[var(--ret-text)]">
+				<p role="status" aria-live="polite" className={cn("p-4 text-sm text-[var(--ret-text)]")}>
 					{state.phase === "saving" ? "saving..." : state.message}
 				</p>
 				</ReticleFrame>
 			) : null}
 
-			<DeveloperApiKey />
-
-			<fieldset disabled={busy} className="contents" aria-label="Account settings">
+			<fieldset disabled={busy} className={cn("min-w-0 space-y-6")} aria-label="Account settings">
 			<Section
+				id="workspace-defaults"
 				kicker="ACTIVE CONFIGURATION"
-				title="Defaults for new machines"
-				description="What every new machine inherits. These save instantly. Per-machine model/agent and the router are chosen at deploy time; abilities come from the deployed Worker's Memory."
+				title="Defaults for new workspaces"
+				description="These selections save immediately. They set starting values for new setups, without changing already deployed workspaces. Choose a model supported by the selected runtime and your credentials."
 			>
-				<div className="grid gap-px bg-[var(--ret-border)] sm:grid-cols-2 lg:grid-cols-3">
+				<div className={cn("grid gap-px bg-[var(--ret-border)] sm:grid-cols-2 lg:grid-cols-3")}>
 					<ConfigSelect
-						label="Agent"
+						label="Agent runtime"
 						value={config.draftAgentKind}
 						saving={savingField === "agent"}
 						onChange={(value) =>
@@ -323,7 +333,7 @@ export function SettingsPanel({ initialConfig }: Props) {
 						}))}
 					/>
 					<ConfigSelect
-						label="Substrate"
+						label="Compute provider"
 						value={config.draftProviderKind}
 						saving={savingField === "substrate"}
 						onChange={(value) =>
@@ -345,11 +355,12 @@ export function SettingsPanel({ initialConfig }: Props) {
 			</Section>
 
 			<Section
+				id="compute-credentials"
 				kicker="SECRETS"
-				title="Provider credentials"
-				description="Blank fields preserve existing secrets. Fill only what you want to add or rotate."
+				title="Compute accounts"
+				description="Open a provider to add or replace its credentials, then save settings. Blank fields preserve existing secrets. Keys on file have not necessarily been validated."
 			>
-			<div className="grid gap-px bg-[var(--ret-border)] md:grid-cols-2 lg:grid-cols-5">
+			<div className={cn("grid items-start gap-3 md:grid-cols-2")}>
 				<ProviderBox
 					title="Daytona"
 					mark="daytona"
@@ -387,7 +398,7 @@ export function SettingsPanel({ initialConfig }: Props) {
 					]}
 				/>
 			</div>
-				<label className="mt-3 block font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				<label className={cn("mt-5 block text-sm font-medium text-[var(--ret-text-muted)]")}>
 					Cursor API key
 					<input
 						type="password"
@@ -398,26 +409,27 @@ export function SettingsPanel({ initialConfig }: Props) {
 						value={cursorApiKey}
 						onChange={(event) => setCursorApiKey(event.target.value)}
 						placeholder={config.hasCursorKey ? "configured (leave blank to preserve)" : "optional"}
-						className="mt-1 w-full border border-[var(--ret-border)] bg-[var(--ret-bg)] px-2 py-1.5 text-[12px] text-[var(--ret-text)]"
+						className={cn("mt-2 min-h-11 w-full rounded-md border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 text-base text-[var(--ret-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}
 					/>
 				</label>
 			</Section>
 
 			<Section
+				id="model-credentials"
 				kicker="AI PROVIDERS"
 				title="LLM inference keys"
-				description="Add your own API keys for any AI provider. Hermes and OpenClaw accept any OpenAI-compatible endpoint. Claude Code requires Anthropic. Codex requires OpenAI. Blank fields preserve existing keys."
+				description="Connect a supported model provider. Hermes and OpenClaw can use supported OpenAI-compatible endpoints; model and tool compatibility varies. Hosted Claude Code requires native Anthropic credentials, and Codex requires native OpenAI credentials. Blank fields preserve existing keys."
 			>
-				<div className="mb-3 grid gap-px bg-[var(--ret-border)] md:grid-cols-4">
+				<div className={cn("mb-3 grid gap-px bg-[var(--ret-border)] md:grid-cols-4")}>
 					{AGENTS.map((agent) => {
 						const primaryKey = agent.providerKeys[0];
 						const slug = agent.serviceSlug;
 						return (
-							<div key={agent.id} className="flex items-center gap-2 bg-[var(--ret-bg)] px-3 py-2">
+							<div key={agent.id} className={cn("flex items-center gap-2 bg-[var(--ret-bg)] px-3 py-2")}>
 								<Logo mark={agent.logoMark} size={14} />
-								<div className="min-w-0 flex-1">
-									<p className="truncate font-mono text-[10px] text-[var(--ret-text)]">{agent.name}</p>
-									<p className="truncate font-mono text-[8px] text-[var(--ret-text-muted)]">{primaryKey}</p>
+								<div className={cn("min-w-0 flex-1")}>
+									<p className={cn("truncate text-sm text-[var(--ret-text)]")}>{agent.name}</p>
+									<p className={cn("truncate text-sm text-[var(--ret-text-muted)]")}>{primaryKey}</p>
 								</div>
 								{slug ? (
 									<ServiceIcon slug={slug} size={12} tone="mono" />
@@ -426,7 +438,7 @@ export function SettingsPanel({ initialConfig }: Props) {
 						);
 					})}
 				</div>
-				<div className="grid gap-px bg-[var(--ret-border)] md:grid-cols-2">
+				<div className={cn("grid items-start gap-3 md:grid-cols-2")}>
 					<AiProviderBox
 						title="Vercel AI Gateway"
 						hint="Hermes, OpenClaw preferred"
@@ -468,10 +480,10 @@ export function SettingsPanel({ initialConfig }: Props) {
 						]}
 					/>
 				</div>
-				<div className="mt-px grid gap-px bg-[var(--ret-border)]">
+				<div className={cn("mt-3")}>
 					<AiProviderBox
 						title="Custom gateway"
-						hint="LiteLLM, Portkey, RelayPlane, self-hosted -- any OpenAI-compatible endpoint"
+						hint="Supported OpenAI-compatible endpoints, including compatible self-hosted gateways. Check the endpoint's model and tool support."
 						configured={config.aiProviders.custom.configured}
 						fields={[
 							["Label", customLabel, setCustomLabel, "My gateway", "text"],
@@ -487,8 +499,8 @@ export function SettingsPanel({ initialConfig }: Props) {
 				title="Remove a saved credential"
 				description="Remove a provider, model, or tool credential saved to this account. Blank fields above still preserve saved credentials."
 			>
-				<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-					<div className="min-w-0 flex-1">
+				<div className={cn("flex flex-col gap-2 sm:flex-row sm:items-center")}>
+					<div className={cn("min-w-0 flex-1")}>
 						<ReticleSelect
 							ariaLabel="Saved credential to remove"
 							value={selectedCredential?.id ?? ""}
@@ -506,32 +518,24 @@ export function SettingsPanel({ initialConfig }: Props) {
 						{removalState.phase === "saving" ? "Removing…" : "Remove saved credential"}
 					</ReticleButton>
 				</div>
-				<p id="credential-removal-limits" className="mt-2 max-w-[90ch] text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
+				<p id="credential-removal-limits" className={cn("mt-4 max-w-[90ch] text-sm leading-6 text-[var(--ret-text-muted)]")}>
 					This removes only this account’s saved copy. It does not revoke the vendor key,
 					stop sandboxes, or erase copies already installed in Workers or profiles.
 					Future work may fail until you add a replacement. Revoke compromised keys with the vendor.
 				</p>
-				<p role="status" aria-live="polite" className="mt-2 text-[12px] text-[var(--ret-text)]">
+				<p role="status" aria-live="polite" className={cn("mt-3 text-sm text-[var(--ret-text)]")}>
 					{removalState.phase === "saving" ? "Removing saved credential…"
 						: removalState.phase === "idle" ? "" : removalState.message}
 				</p>
 			</Section>
 
-			<details className="group">
-				<summary className="flex cursor-pointer list-none items-center justify-between gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2.5">
-					<span className="flex items-center gap-2">
-						<ReticleLabel>ADVANCED</ReticleLabel>
-						<ReticleBadge>Profiles &amp; loadout (raw JSON)</ReticleBadge>
-					</span>
-					<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)] group-open:hidden">
-						show
-					</span>
-					<span className="hidden font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)] group-open:inline">
-						hide
-					</span>
+			<details className={cn("group rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg-soft)]")}>
+				<summary className={cn("flex cursor-pointer list-none items-center justify-between gap-2 px-6 py-5 text-base font-medium outline-none focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)] [&::-webkit-details-marker]:hidden")}>
+					Advanced profiles and loadouts
+					<ChevronDown size={18} aria-hidden="true" className={cn("shrink-0 text-[var(--ret-text-muted)] group-open:rotate-180")} />
 				</summary>
-				<div className="border border-t-0 border-[var(--ret-border)] bg-[var(--ret-bg)] p-3">
-					<p className="mb-3 max-w-[80ch] text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
+				<div className={cn("border-t border-[var(--ret-border)] p-6")}>
+					<p className={cn("mb-5 max-w-[80ch] text-sm leading-6 text-[var(--ret-text-muted)]")}>
 						Account-level recipes: bundled sources are the opinionated default;
 						add GitHub repos, URLs, MCP servers, CLIs, npm packages, or manual
 						tools and compose presets. Gateway profiles are your routers. Edit
@@ -546,15 +550,19 @@ export function SettingsPanel({ initialConfig }: Props) {
 				</div>
 			</details>
 
-			<div className="flex flex-wrap justify-end gap-2">
+			<div className={cn("sticky bottom-4 z-10 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)] p-4")}>
+				<p className={cn("text-sm text-[var(--ret-text-muted)]")}>Credentials and advanced edits save together.</p>
+				<div className={cn("flex flex-wrap gap-3")}>
 				<ReticleButton variant="ghost" onClick={() => void syncFromMachine()}>
 					Sync from machine
 				</ReticleButton>
 				<ReticleButton variant="primary" onClick={() => void save()}>
 					Save settings
 				</ReticleButton>
+				</div>
 			</div>
 			</fieldset>
+			<DeveloperApiKey />
 		</DashboardPageBody>
 	);
 }
@@ -576,29 +584,29 @@ function withCredentialConfigured(config: PublicUserConfig, selector: Credential
 }
 
 function Section({
-	kicker,
+	id,
 	title,
 	description,
 	children,
 }: {
+	id?: string;
 	kicker: string;
 	title: string;
 	description: string;
 	children: React.ReactNode;
 }) {
 	return (
-		<ReticleFrame>
-			<div className="border-b border-[var(--ret-border)] px-3 py-2">
-				<div className="flex items-center gap-2">
-					<ReticleLabel>{kicker}</ReticleLabel>
-					<ReticleBadge>{title}</ReticleBadge>
-				</div>
-				<p className="mt-1 max-w-[80ch] text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
+		<section id={id} className={cn("scroll-mt-24")}>
+		<ReticleFrame className={cn("rounded-lg bg-[var(--ret-bg-soft)]")}>
+			<div className={cn("border-b border-[var(--ret-border)] px-5 py-5 sm:px-6")}>
+				<h2 className={cn("text-xl font-medium text-[var(--ret-text)]")}>{title}</h2>
+				<p className={cn("mt-2 max-w-[88ch] text-sm leading-6 text-[var(--ret-text-muted)]")}>
 					{description}
 				</p>
 			</div>
-			<div className="p-3">{children}</div>
+			<div className={cn("p-5 sm:p-6")}>{children}</div>
 		</ReticleFrame>
+		</section>
 	);
 }
 
@@ -618,13 +626,13 @@ function ConfigSelect({
 	hint?: string;
 }) {
 	return (
-		<div className="bg-[var(--ret-bg)] p-3">
-			<div className="mb-1.5 flex items-center justify-between gap-2">
-				<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+		<div className={cn("bg-[var(--ret-bg)] p-3")}>
+			<div className={cn("mb-1.5 flex items-center justify-between gap-2")}>
+				<p className={cn("text-sm font-medium text-[var(--ret-text-muted)]")}>
 					{label}
 				</p>
 				{saving ? (
-					<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-purple)]">
+					<span className={cn("text-sm font-medium text-[var(--ret-purple)]")}>
 						saving…
 					</span>
 				) : null}
@@ -636,7 +644,7 @@ function ConfigSelect({
 				options={options.map((o) => ({ value: o.value, label: o.label }))}
 			/>
 			{hint ? (
-				<p className="mt-1 text-[9px] text-[var(--ret-text-muted)]">{hint}</p>
+				<p className={cn("mt-1 text-sm text-[var(--ret-text-muted)]")}>{hint}</p>
 			) : null}
 		</div>
 	);
@@ -668,13 +676,13 @@ function ModelConfigSelect({
 		),
 	];
 	return (
-		<div className="bg-[var(--ret-bg)] p-3">
-			<div className="mb-1.5 flex items-center justify-between gap-2">
-				<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+		<div className={cn("bg-[var(--ret-bg)] p-3")}>
+			<div className={cn("mb-1.5 flex items-center justify-between gap-2")}>
+				<p className={cn("text-sm font-medium text-[var(--ret-text-muted)]")}>
 					Model
 				</p>
 				{saving ? (
-					<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-purple)]">
+					<span className={cn("text-sm font-medium text-[var(--ret-purple)]")}>
 						saving…
 					</span>
 				) : null}
@@ -696,21 +704,19 @@ function ProviderBox({
 	fields: CredentialField[];
 }) {
 	return (
-		<div className="bg-[var(--ret-bg)] p-3">
-			<div className="mb-2 flex items-center justify-between gap-2">
-				<div className="flex items-center gap-2">
-					{mark ? <Logo mark={mark} size={14} tone="auto" /> : null}
-					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--ret-text)]">
+		<details className={cn("group rounded-md border border-[var(--ret-border)] bg-[var(--ret-bg)]")}>
+			<summary className={cn("flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 p-4 outline-none focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)] [&::-webkit-details-marker]:hidden")}>
+				<div className={cn("flex items-center gap-3")}>
+					{mark ? <Logo mark={mark} size={22} tone="auto" /> : null}
+					<p className={cn("text-base font-medium text-[var(--ret-text)]")}>
 						{title}
 					</p>
 				</div>
-				<ReticleBadge variant={configured ? "success" : "default"}>
-					{configured ? "configured" : "empty"}
-				</ReticleBadge>
-			</div>
-			<div className="space-y-2">
+				<span className={cn("flex items-center gap-2 text-sm text-[var(--ret-text-muted)]")}>{configured ? "Key on file" : "Not connected"}<ChevronDown size={16} aria-hidden="true" className={cn("shrink-0 group-open:rotate-180")} /></span>
+			</summary>
+			<div className={cn("space-y-4 border-t border-[var(--ret-border)] p-4")}>
 				{fields.map(([label, value, onChange, placeholder, type]) => (
-					<label key={label} className="block font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+					<label key={label} className={cn("block text-sm text-[var(--ret-text-muted)]")}>
 						{label}
 						<input
 							type={type}
@@ -721,12 +727,12 @@ function ProviderBox({
 							value={value}
 							onChange={(event) => onChange(event.target.value)}
 							placeholder={placeholder}
-							className="mt-1 w-full border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1 text-[12px] normal-case tracking-normal text-[var(--ret-text)]"
+							className={cn("mt-2 min-h-11 w-full rounded-md border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-3 py-2 text-base text-[var(--ret-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}
 						/>
 					</label>
 				))}
 			</div>
-		</div>
+		</details>
 	);
 }
 
@@ -742,23 +748,21 @@ function AiProviderBox({
 	fields: CredentialField[];
 }) {
 	return (
-		<div className="bg-[var(--ret-bg)] p-3">
-			<div className="mb-1.5 flex items-center justify-between gap-2">
+		<details className={cn("group rounded-md border border-[var(--ret-border)] bg-[var(--ret-bg)]")}>
+			<summary className={cn("flex min-h-16 cursor-pointer list-none items-center justify-between gap-3 p-4 outline-none focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)] [&::-webkit-details-marker]:hidden")}>
 				<div>
-					<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--ret-text)]">
+					<p className={cn("text-base font-medium text-[var(--ret-text)]")}>
 						{title}
 					</p>
-				<p className="text-[9px] text-[var(--ret-text-muted)]">
+				<p className={cn("mt-1 text-sm leading-5 text-[var(--ret-text-muted)]")}>
 					{hint}
 				</p>
 				</div>
-				<ReticleBadge variant={configured ? "success" : "default"}>
-					{configured ? "configured" : "empty"}
-				</ReticleBadge>
-			</div>
-			<div className="space-y-2">
+				<span className={cn("flex shrink-0 items-center gap-2 text-sm text-[var(--ret-text-muted)]")}>{configured ? "Key on file" : "Not connected"}<ChevronDown size={16} aria-hidden="true" className={cn("shrink-0 group-open:rotate-180")} /></span>
+			</summary>
+			<div className={cn("space-y-4 border-t border-[var(--ret-border)] p-4")}>
 				{fields.map(([label, value, onChange, placeholder, type]) => (
-					<label key={label} className="block font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+					<label key={label} className={cn("block text-sm text-[var(--ret-text-muted)]")}>
 						{label}
 						<input
 							type={type}
@@ -769,27 +773,27 @@ function AiProviderBox({
 							value={value}
 							onChange={(event) => onChange(event.target.value)}
 							placeholder={configured && label.toLowerCase().includes("key") ? "configured (leave blank to preserve)" : placeholder}
-							className="mt-1 w-full border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1 text-[12px] normal-case tracking-normal text-[var(--ret-text)]"
+							className={cn("mt-2 min-h-11 w-full rounded-md border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-3 py-2 text-base text-[var(--ret-text)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}
 						/>
 					</label>
 				))}
 			</div>
-		</div>
+		</details>
 	);
 }
 
 function CatalogHint() {
 	const preview = TRUSTED_ADDONS.slice(0, 8);
 	return (
-		<div className="mb-3 grid gap-px bg-[var(--ret-border)] lg:grid-cols-[0.9fr_1.1fr]">
-			<div className="bg-[var(--ret-bg)] p-3">
+		<div className={cn("mb-3 grid gap-px bg-[var(--ret-border)] lg:grid-cols-[0.9fr_1.1fr]")}>
+			<div className={cn("bg-[var(--ret-bg)] p-3")}>
 				<ReticleLabel>AVAILABLE CATALOG</ReticleLabel>
-				<p className="mt-2 text-[12px] leading-relaxed text-[var(--ret-text-dim)]">
+				<p className={cn("mt-2 text-sm leading-relaxed text-[var(--ret-text-dim)]")}>
 					{TRUSTED_ADDONS.length} trusted add-ons are browsable in the Registry.
 					Installing one adds a `customLoadout` entry to your imported pool;
 					a Memory then selects from that pool (or `*` for all of it).
 				</p>
-				<pre className="mt-3 overflow-x-auto border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-2 font-mono text-[10px] text-[var(--ret-text-dim)]">
+				<pre className={cn("mt-3 overflow-x-auto border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-2 font-mono text-sm text-[var(--ret-text-dim)]")}>
 					{`{
   "id": "my-tool",
   "name": "My Tool",
@@ -800,23 +804,23 @@ function CatalogHint() {
 }`}
 				</pre>
 			</div>
-			<div className="bg-[var(--ret-bg)] p-3">
+			<div className={cn("bg-[var(--ret-bg)] p-3")}>
 				<ReticleLabel>STARTING POINTS</ReticleLabel>
-				<div className="mt-2 grid gap-1 sm:grid-cols-2">
+				<div className={cn("mt-2 grid gap-1 sm:grid-cols-2")}>
 					{preview.map((item) => (
 						<div
 							key={item.id}
-							className="border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1.5"
+							className={cn("border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-1.5")}
 						>
-							<div className="flex items-center justify-between gap-2">
-								<p className="truncate font-mono text-[11px] text-[var(--ret-text)]">
+							<div className={cn("flex items-center justify-between gap-2")}>
+								<p className={cn("truncate text-sm text-[var(--ret-text)]")}>
 									{item.name}
 								</p>
-								<ReticleBadge className="px-1.5 py-0 text-[9px]">
+								<ReticleBadge className={cn("px-1.5 py-0 text-sm")}>
 									{item.kind}
 								</ReticleBadge>
 							</div>
-							<p className="mt-0.5 truncate font-mono text-[9px] text-[var(--ret-text-muted)]">
+							<p className={cn("mt-0.5 truncate text-sm text-[var(--ret-text-muted)]")}>
 								{item.source}
 							</p>
 						</div>
@@ -837,15 +841,15 @@ function JsonEditor({
 	onChange: (value: string) => void;
 }) {
 	return (
-		<label className="mb-3 block">
-			<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+		<label className={cn("mb-3 block")}>
+			<span className={cn("text-sm font-medium text-[var(--ret-text-muted)]")}>
 				{label}
 			</span>
 			<textarea
 				value={value}
 				onChange={(event) => onChange(event.target.value)}
 				rows={7}
-				className="mt-1 w-full resize-y border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-2 font-mono text-[11px] leading-relaxed text-[var(--ret-text)]"
+				className={cn("mt-1 w-full resize-y border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] px-2 py-2 font-mono text-sm leading-relaxed text-[var(--ret-text)]")}
 				spellCheck={false}
 			/>
 		</label>
@@ -866,134 +870,206 @@ type ApiKeyInfo = {
 	createdAt: string;
 };
 
+function isApiKeyInfo(value: unknown): value is ApiKeyInfo {
+	if (!value || typeof value !== "object") return false;
+	const info = value as Record<string, unknown>;
+	return ["prefix", "lastFour", "createdAt"].every((field) => typeof info[field] === "string" && Boolean((info[field] as string).trim()));
+}
+
 function DeveloperApiKey() {
 	const [key, setKey] = useState<ApiKeyInfo | null>(null);
 	const [token, setToken] = useState<string | null>(null);
-	const [phase, setPhase] = useState<"loading" | "idle" | "working">("loading");
+	const [phase, setPhase] = useState<"loading" | "ready" | "auth-required" | "error">("loading");
+	const [action, setAction] = useState<"create" | "rotate" | "revoke" | "copy" | null>(null);
 	const [message, setMessage] = useState<string | null>(null);
+	const [messageError, setMessageError] = useState(false);
+	const [refresh, setRefresh] = useState(0);
+	const requestBusy = useRef(false);
+	const keyInfoRef = useRef<ApiKeyInfo | null>(null);
 
 	useEffect(() => {
 		let alive = true;
-		void fetch("/api/dashboard/api-key")
+		const controller = new AbortController();
+		requestBusy.current = true;
+		setPhase("loading");
+		setMessage(null);
+		setMessageError(false);
+		void fetch("/api/dashboard/api-key", { cache: "no-store", signal: controller.signal })
 			.then(async (response) => {
 				const body = (await response.json().catch(() => ({}))) as {
-					key?: ApiKeyInfo | null;
-					message?: string;
+					configured?: boolean;
+					key?: unknown;
 				};
-				if (!response.ok) {
-					throw new Error(
-						response.status === 401
-							? "Sign in with Clerk to manage API keys."
-							: body.message ?? "Could not load API key",
-					);
+				if (!alive) return;
+				if (response.status === 401) {
+					setPhase("auth-required");
+					setToken(null);
+					return;
 				}
-				if (alive) setKey(body.key ?? null);
+				if (!response.ok || !((body.configured === false && body.key === null) || (body.configured === true && isApiKeyInfo(body.key)))) {
+					throw new Error("Could not check your API key. Retry before creating or changing a key.");
+				}
+				const nextKey = isApiKeyInfo(body.key) ? body.key : null;
+				const previous = keyInfoRef.current;
+				if (!nextKey || previous?.createdAt !== nextKey.createdAt || previous?.lastFour !== nextKey.lastFour) setToken(null);
+				keyInfoRef.current = nextKey;
+				setKey(nextKey);
+				setPhase("ready");
 			})
-			.catch((error: unknown) => {
-				if (alive) setMessage(error instanceof Error ? error.message : "Could not load API key");
+			.catch(() => {
+				if (alive) setPhase("error");
 			})
 			.finally(() => {
-				if (alive) setPhase("idle");
+				if (alive) requestBusy.current = false;
 			});
 		return () => {
 			alive = false;
+			controller.abort();
+			requestBusy.current = false;
 		};
-	}, []);
+	}, [refresh]);
 
 	async function rotate(): Promise<void> {
-		setPhase("working");
+		if (phase !== "ready" || requestBusy.current) return;
+		if (key && !window.confirm("Rotate this API key? The current key will stop working immediately. Update every script and service that uses it. You can copy the replacement only once.")) return;
+		requestBusy.current = true;
+		setAction(key ? "rotate" : "create");
 		setMessage(null);
+		setMessageError(false);
 		try {
 			const response = await fetch("/api/dashboard/api-key", { method: "POST" });
 			const body = (await response.json().catch(() => ({}))) as {
-				token?: string;
-				key?: ApiKeyInfo;
-				message?: string;
+				ok?: boolean;
+				token?: unknown;
+				key?: unknown;
 			};
-			if (!response.ok || !body.token || !body.key) {
-				throw new Error(body.message ?? "Could not create API key");
+			if (response.status === 401) {
+				setPhase("auth-required");
+				setToken(null);
+				return;
+			}
+			if (!response.ok || body.ok !== true || typeof body.token !== "string" || !body.token.trim() || !isApiKeyInfo(body.key)) {
+				throw new Error("Could not confirm the key change. The server may have processed it; check key status before trying again. Any previously displayed key may no longer work.");
 			}
 			setKey(body.key);
+			keyInfoRef.current = body.key;
 			setToken(body.token);
 			setMessage("Copy this key now. It will not be shown again.");
-		} catch (error) {
-			setMessage(error instanceof Error ? error.message : "Could not create API key");
+		} catch {
+			setPhase("error");
+			setMessageError(true);
+			setMessage("Could not confirm the key change. The server may have processed it; check key status before trying again. Any previously displayed key may no longer work.");
 		} finally {
-			setPhase("idle");
+			requestBusy.current = false;
+			setAction(null);
 		}
 	}
 
 	async function revoke(): Promise<void> {
-		setPhase("working");
+		if (phase !== "ready" || !key || requestBusy.current) return;
+		if (!window.confirm("Revoke this API key? Scripts and services using it will lose access immediately. This does not stop your machines or revoke provider keys.")) return;
+		requestBusy.current = true;
+		setAction("revoke");
 		setMessage(null);
+		setMessageError(false);
 		try {
 			const response = await fetch("/api/dashboard/api-key", { method: "DELETE" });
-			const body = (await response.json().catch(() => ({}))) as { message?: string };
-			if (!response.ok) throw new Error(body.message ?? "Could not revoke API key");
+			const body = (await response.json().catch(() => ({}))) as { ok?: boolean };
+			if (response.status === 401) {
+				setPhase("auth-required");
+				setToken(null);
+				return;
+			}
+			if (!response.ok || body.ok !== true) throw new Error("Could not confirm revocation");
 			setKey(null);
+			keyInfoRef.current = null;
 			setToken(null);
 			setMessage("API key revoked.");
-		} catch (error) {
-			setMessage(error instanceof Error ? error.message : "Could not revoke API key");
+		} catch {
+			setPhase("error");
+			setMessageError(true);
+			setMessage("Could not confirm revocation. The server may have processed it; check key status before trying again.");
 		} finally {
-			setPhase("idle");
+			requestBusy.current = false;
+			setAction(null);
 		}
 	}
 
+	async function copyKey(): Promise<void> {
+		if (!token || requestBusy.current || phase === "loading" || phase === "auth-required") return;
+		requestBusy.current = true;
+		setAction("copy");
+		setMessage(null);
+		setMessageError(false);
+		try {
+			await navigator.clipboard.writeText(token);
+			setMessage("Key copied. Store it securely; it will not be shown after you leave this page.");
+		} catch {
+			setMessageError(true);
+			setMessage("Clipboard access failed. Select and copy the displayed key manually before leaving this page.");
+		} finally {
+			requestBusy.current = false;
+			setAction(null);
+		}
+	}
+
+	const working = action !== null;
+	const needsSignIn = phase === "auth-required";
+	const status = phase === "loading" ? "Checking…" : needsSignIn ? "Sign-in required" : phase === "error" ? "Status unavailable" : key ? `${key.prefix}••••${key.lastFour}` : "No key yet";
+
 	return (
 		<Section
+			id="developer-access"
 			kicker="DEVELOPER API"
 			title="Connect the Agent Machines SDK"
 			description="Create a user-scoped key for scripts and servers. Keys are stored as hashes and can be rotated or revoked here."
 		>
-			<div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]">
-				<div className="flex min-h-28 flex-col justify-between border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-3">
-					<div className="flex items-center justify-between gap-3">
+			<div className={cn("grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)]")}>
+				<div className={cn("flex min-h-28 flex-col justify-between border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] p-3")}>
+					<div className={cn("flex items-center justify-between gap-3")}>
 						<div>
-							<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+							<p className={cn("text-sm font-medium text-[var(--ret-text-muted)]")}>
 								API key
 							</p>
-							<p className="mt-1 font-mono text-[12px] text-[var(--ret-text)]">
-								{phase === "loading"
-									? "Checking…"
-									: key
-										? `${key.prefix}••••${key.lastFour}`
-										: "No key yet"}
+							<p className={cn("mt-1 font-mono text-sm text-[var(--ret-text)]")}>
+								{status}
 							</p>
 						</div>
-						<ReticleBadge variant={key ? "success" : "default"}>
-							{key ? "active" : "off"}
+						<ReticleBadge variant={phase === "ready" && key ? "success" : "default"}>
+							{phase === "ready" ? key ? "Active" : "Not created" : "Not verified"}
 						</ReticleBadge>
 					</div>
-					<div className="mt-4 flex flex-wrap gap-2">
-						<ReticleButton size="sm" onClick={() => void rotate()} disabled={phase !== "idle"}>
-							{key ? "Rotate key" : "Create key"}
-						</ReticleButton>
-						{key ? (
-							<ReticleButton size="sm" variant="ghost" onClick={() => void revoke()} disabled={phase !== "idle"}>
-								Revoke
+					<div className={cn("mt-4 flex flex-wrap gap-2")}>
+						{phase === "ready" ? <ReticleButton size="sm" onClick={() => void rotate()} disabled={working}>
+							{action === "create" ? "Creating…" : action === "rotate" ? "Rotating…" : key ? "Rotate key" : "Create key"}
+						</ReticleButton> : null}
+						{phase === "ready" && key ? (
+							<ReticleButton size="sm" variant="ghost" onClick={() => void revoke()} disabled={working}>
+								{action === "revoke" ? "Revoking…" : "Revoke key"}
 							</ReticleButton>
 						) : null}
+						{needsSignIn ? <a href="/sign-in?redirect_url=%2Fdashboard%2Fsettings" className={cn("inline-flex min-h-11 items-center gap-2 rounded-md border border-[var(--ret-border)] px-3 text-sm outline-none hover:bg-[var(--ret-surface)] focus-visible:ring-2 focus-visible:ring-[var(--ret-purple)]")}>Sign in to manage keys <ArrowRight size={16} aria-hidden="true" /></a> : null}
+						{phase === "error" || needsSignIn ? <ReticleButton size="sm" variant="secondary" disabled={working} onClick={() => { if (!requestBusy.current) { requestBusy.current = true; setRefresh((value) => value + 1); } }}>Retry key status</ReticleButton> : null}
 					</div>
 				</div>
-				<div className="min-w-0 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3">
-					{token ? (
-						<div className="mb-3 flex items-center gap-2">
-							<code className="min-w-0 flex-1 overflow-x-auto border border-[var(--ret-purple)]/40 bg-[var(--ret-purple)]/5 px-2 py-2 text-[11px] text-[var(--ret-text)]">
+				<div className={cn("min-w-0 border border-[var(--ret-border)] bg-[var(--ret-bg)] p-3")}>
+					{token && phase === "error" ? <p className={cn("mb-2 text-sm text-[var(--ret-text-muted)]")}>Previously displayed key · status unverified. Check its status before using it.</p> : null}
+					{token && !needsSignIn ? (
+						<div className={cn("mb-3 flex items-center gap-2")}>
+							<code className={cn("min-w-0 flex-1 overflow-x-auto border border-[var(--ret-purple)]/40 bg-[var(--ret-purple)]/5 px-3 py-3 text-sm text-[var(--ret-text)]")}>
 								{token}
 							</code>
-							<ReticleButton size="sm" variant="secondary" onClick={() => void navigator.clipboard.writeText(token)}>
-								Copy
+							<ReticleButton size="sm" variant="secondary" disabled={working || phase === "loading"} onClick={() => void copyKey()}>
+								{action === "copy" ? "Copying…" : "Copy key"}
 							</ReticleButton>
 						</div>
 					) : null}
-					<pre className="overflow-x-auto font-mono text-[11px] leading-relaxed text-[var(--ret-text-dim)]">{`export AGENT_MACHINES_URL=https://www.agent-machines.dev
-export AGENT_MACHINES_API_KEY=${token ?? "am_live_…"}
-
-import { AgentMachines } from "agent-machines";
-const am = new AgentMachines();
-const agent = await am.create({ agent: "codex", sandbox: "e2b" });`}</pre>
-					{message ? <p className="mt-2 text-[10px] text-[var(--ret-text-muted)]">{message}</p> : null}
+					<pre className={cn("overflow-x-auto font-mono text-sm leading-relaxed text-[var(--ret-text-dim)]")}>{`export AGENT_MACHINES_URL=https://www.agent-machines.dev
+export AGENT_MACHINES_API_KEY=your_account_api_key`}</pre>
+					<p className={cn("mt-4 text-sm leading-6 text-[var(--ret-text-muted)]")}>This account key connects hosted SDK requests. It does not replace the compute and model keys above. Provisioning workspaces and running models can incur provider charges. <a href="/docs" className={cn("text-[var(--ret-text)] underline-offset-4 hover:underline")}>Read the SDK guide.</a></p>
+					{needsSignIn ? <p role="status" className={cn("mt-3 text-sm leading-6 text-[var(--ret-text-muted)]")}>Sign in with Clerk to manage account API keys. Local development access does not grant permission to create keys.</p> : null}
+					{phase === "error" && !message ? <p role="alert" className={cn("mt-3 text-sm leading-6 text-[var(--ret-text-muted)]")}>Could not check your API key. Retry before creating or changing a key.</p> : null}
+					{message ? <p role={messageError ? "alert" : "status"} className={cn("mt-3 text-sm leading-6 text-[var(--ret-text-muted)]")}>{message}</p> : null}
 				</div>
 			</div>
 		</Section>

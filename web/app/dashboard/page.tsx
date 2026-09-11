@@ -1,72 +1,37 @@
 import { OverviewClient } from "@/components/dashboard/OverviewClient";
-import { CapabilityMap } from "@/components/dashboard/CapabilityMap";
+import { OverviewGettingStarted } from "@/components/dashboard/OverviewGettingStarted";
 import { DashboardPageBody } from "@/components/dashboard/DashboardPageBody";
 import { PageHeader } from "@/components/dashboard/PageHeader";
 import { WorkerLaunchpad } from "@/components/dashboard/WorkerLaunchpad";
-import { WorkerSystemMap } from "@/components/dashboard/WorkerSystemMap";
-import { listMcpServers } from "@/lib/dashboard/mcps";
-import { listSkills } from "@/lib/dashboard/skills";
+import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { getUserConfigForRequest } from "@/lib/user-config/clerk";
-import { activeMachine } from "@/lib/user-config/schema";
-import { cn } from "@/lib/cn";
 
 export const dynamic = "force-dynamic";
 
 export default async function OverviewPage() {
-	// The dashboard is action-first even for an empty account: credentials are
-	// gated inline and the first Worker can be launched without a detour through
-	// the legacy multi-page setup wizard.
-	let activeMachineId: string | null = null;
-	let agentKind: import("@/lib/user-config/schema").AgentKind = "hermes";
-	let model: string | null = null;
-	let cronCount = 0;
-	let hasMachines = false;
-	try {
-		const config = await getUserConfigForRequest();
-		activeMachineId = config.activeMachineId;
-		cronCount = (config.crons ?? []).length;
-		hasMachines = config.machines.some((machine) => !machine.archived);
-		const active = activeMachine(config);
-		if (active) {
-			agentKind = active.agentKind;
-			model = active.model ?? null;
-		} else {
-			agentKind = config.draftAgentKind;
-			model = config.draftModel ?? null;
-		}
-	} catch {
-		// Auth / config probe failed -- the layout will surface the right
-		// error; render the degraded overview below.
-	}
-	const skills = listSkills();
-	const mcps = listMcpServers();
-	const tools = mcps.reduce((acc, server) => acc + server.tools.length, 0);
-
-	return (
-		<div className={cn("flex flex-col")}>
-			<PageHeader
-				kicker="Worker system"
-				title="Your Worker workspace"
-				description="Launch a Worker, open its tools, and inspect the work it leaves behind."
-			/>
-			<DashboardPageBody>
-				<WorkerSystemMap />
-				<WorkerLaunchpad />
-				<CapabilityMap hasMachine={hasMachines} />
-			</DashboardPageBody>
-			{hasMachines ? (
-				<OverviewClient
-					counts={{
-						skills: skills.length,
-						mcps: mcps.length,
-						tools,
-						crons: cronCount,
-					}}
-					agentKind={agentKind}
-					model={model}
-					activeMachineId={activeMachineId}
-				/>
-			) : null}
-		</div>
-	);
+  let savedSetupCount = 0;
+  let hasMachines = false;
+  try {
+    const config = await getUserConfigForRequest();
+    savedSetupCount = config.workers.length;
+    hasMachines = config.machines.some((machine) => !machine.archived);
+  } catch {
+    // The authenticated shell owns config/auth errors.
+  }
+  return (
+    <div className="flex flex-col">
+      <PageHeader kicker="Workspace" title="Overview" description="Your agent workspaces, saved setups, and next steps."
+        right={<ReticleButton as="a" href="/dashboard/agents" variant="ghost">Saved setups</ReticleButton>} />
+      <DashboardPageBody>
+        <OverviewGettingStarted />
+        {hasMachines ? <OverviewClient savedSetupCount={savedSetupCount} /> : null}
+        {hasMachines ? (
+          <details className="group rounded-xl border border-[var(--ret-border)] bg-[var(--ret-bg)]">
+            <summary className="cursor-pointer px-5 py-5 text-base font-medium focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]">Launch another workspace</summary>
+            <div className="border-t border-[var(--ret-border)] p-4"><WorkerLaunchpad /></div>
+          </details>
+        ) : <WorkerLaunchpad />}
+      </DashboardPageBody>
+    </div>
+  );
 }

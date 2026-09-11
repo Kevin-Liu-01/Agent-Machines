@@ -60,24 +60,25 @@ const GROUP_ORDER: Group[] = ["surfaces", "navigate", "machines", "actions"];
 
 const NAV_ITEMS: ReadonlyArray<{ label: string; href: string; keywords: string; hint?: string }> = [
 	{ label: "Overview", href: "/dashboard", keywords: "home dashboard fleet activity" },
-	{ label: "Machines", href: "/dashboard/machines", keywords: "fleet containers list deploy" },
-	{ label: "Agent templates", href: "/dashboard/agents", keywords: "agents presets workers library specialist catalog" },
-	{ label: "Usage", href: "/dashboard/usage", keywords: "cost billing resources spend" },
-	{ label: "Benchmarks", href: "/dashboard/benchmarks", keywords: "speed latency providers compare" },
-	{ label: "Learning", href: "/dashboard/benchmarks#learning", keywords: "learn self learning adaptive routing recommendations bandit policy runtime substrate model" },
+	{ label: "Workspaces", href: "/dashboard/machines", keywords: "machines fleet containers list deploy" },
+	{ label: "Agent setups", href: "/dashboard/agents", keywords: "studio agent templates agents presets workers library specialist catalog configuration" },
+	{ label: "Building blocks", href: "/dashboard/components", keywords: "harness primitives components source inspect configure runtime models memory tools compute" },
+	{ label: "Insights", href: "/dashboard/usage", keywords: "usage cost billing resources spend" },
+	{ label: "Benchmarks", href: "/dashboard/usage?tab=benchmarks", keywords: "speed latency providers compare" },
+	{ label: "Learning", href: "/dashboard/usage?tab=benchmarks#learning", keywords: "learn self learning adaptive routing recommendations bandit policy runtime substrate model" },
 	{ label: "Console", href: "/dashboard/chat", keywords: "chat agent talk conversation", hint: "Active machine or fleet" },
 	{ label: "Terminal", href: "/dashboard/terminal", keywords: "shell cli pty tmux command", hint: "Active machine or fleet" },
 	{ label: "Logs", href: "/dashboard/logs", keywords: "tail output", hint: "Active machine or fleet" },
 	{ label: "Sessions", href: "/dashboard/sessions", keywords: "history runs", hint: "Active machine or fleet" },
 	{ label: "Artifacts", href: "/dashboard/artifacts", keywords: "files output", hint: "Active machine or fleet" },
-	{ label: "Memory", href: "/dashboard/memory", keywords: "bundles context persistent identity" },
+	{ label: "Memory", href: "/dashboard/agents?tab=memory", keywords: "bundles context persistent identity" },
 	{ label: "Loadouts", href: "/dashboard/loadout", keywords: "skills mcp tools capabilities" },
-	{ label: "Skills", href: "/dashboard/skills", keywords: "library skill.md capabilities" },
-	{ label: "MCP servers", href: "/dashboard/mcps", keywords: "mcps servers tools integrations" },
-	{ label: "Schedules", href: "/dashboard/cron", keywords: "cron schedule jobs automation" },
-	{ label: "Registry", href: "/dashboard/registry", keywords: "add install browse" },
+	{ label: "Skills", href: "/dashboard/registry?tab=skills", keywords: "library skill.md capabilities" },
+	{ label: "MCP servers", href: "/dashboard/registry?tab=mcps", keywords: "mcps servers tools integrations" },
+	{ label: "Automations", href: "/dashboard/cron", keywords: "cron schedule jobs automation" },
+	{ label: "Toolkit", href: "/dashboard/registry", keywords: "registry add install browse" },
 	{ label: "Settings", href: "/dashboard/settings", keywords: "config keys credentials router model agent loadout secrets" },
-	{ label: "Setup", href: "/dashboard/setup", keywords: "wizard provision new machine" },
+	{ label: "Quickstart", href: "/dashboard/setup", keywords: "setup wizard provision new machine" },
 ];
 
 const SURFACE_ITEMS: ReadonlyArray<{ label: string; seg: string; keywords: string }> = [
@@ -265,8 +266,8 @@ export function CommandPalette({ className, compact = false }: Props = {}) {
 		list.push({
 			id: "action:spin-up",
 			group: "actions",
-			label: "Create a Worker",
-			keywords: "deploy provision create new bootstrap",
+			label: "Configure an agent setup",
+			keywords: "create a worker new worker new setup deploy provision create bootstrap",
 			href: "/dashboard/setup",
 		});
 

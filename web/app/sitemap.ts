@@ -21,6 +21,7 @@ import { SITE } from "@/lib/seo/config";
 export default function sitemap(): MetadataRoute.Sitemap {
 	const now = new Date();
 	const publicRoutes = [
+		{ path: "/components", priority: 0.9, changeFrequency: "weekly" as const },
 		{ path: "/product", priority: 0.8, changeFrequency: "monthly" as const },
 		...PRODUCT_FEATURES.map((feature) => ({
 			path: feature.href,

@@ -17,6 +17,7 @@ import { rollupRouteOutcomes, type RouteOutcomeRow } from "@/lib/learning/route-
 import { supabaseAdmin } from "@/lib/supabase/client";
 import { getUserConfig } from "@/lib/user-config/clerk";
 import { getEffectiveUserId } from "@/lib/user-config/identity";
+import { metricsUnavailableResponse, missingMetricsStorage } from "@/lib/dashboard/metrics-availability";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -57,7 +58,13 @@ export async function GET(request: NextRequest): Promise<Response> {
 		}
 
 		const since = new Date(Date.now() - days * 864e5).toISOString();
-		let query = supabaseAdmin()
+		let sb: ReturnType<typeof supabaseAdmin>;
+		try {
+			sb = supabaseAdmin();
+		} catch (failure) {
+			return metricsUnavailableResponse(missingMetricsStorage(failure) ? "config_missing" : "unavailable");
+		}
+		let query = sb
 			.from("run_traces")
 			.select(SELECT)
 			.eq("user_id", userId)
@@ -67,7 +74,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 		if (machineId) query = query.eq("machine_id", machineId);
 		const { data, error } = await query;
 		if (error) {
-			return Response.json({ ok: false, error: error.message }, { status: 500 });
+			return metricsUnavailableResponse("unavailable", 500);
 		}
 
 		const report = rollupRouteOutcomes((data ?? []) as unknown as RouteOutcomeRow[]);
@@ -75,8 +82,7 @@ export async function GET(request: NextRequest): Promise<Response> {
 			{ ok: true, scope: { machineId: machineId ?? null, days }, report },
 			{ headers: { "Cache-Control": "no-store" } },
 		);
-	} catch (err) {
-		const message = err instanceof Error ? err.message : "route_outcomes_failed";
-		return Response.json({ ok: false, error: message }, { status: 500 });
+	} catch {
+		return metricsUnavailableResponse("unavailable", 500);
 	}
 }

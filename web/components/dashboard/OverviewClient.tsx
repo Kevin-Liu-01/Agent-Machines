@@ -1,344 +1,153 @@
 "use client";
 
 import Link from "next/link";
-import {
-	Activity,
-	Cpu,
-	Gauge,
-	MessageSquare,
-	Network,
-	Plug2,
-	Server,
-	Sparkles,
-	Zap,
-} from "@/components/ui/icons";
-import { useEffect, useMemo, useState } from "react";
-
+import { useEffect, useState } from "react";
+import { ArrowRight, FolderOpen, ScrollText, SquareTerminal } from "@/components/ui/icons";
+import { useDashboardConfig } from "@/components/dashboard/DashboardConfigProvider";
+import { DashboardLoadingState } from "@/components/dashboard/DashboardLoadingState";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
-import { ReticleFrame } from "@/components/reticle/ReticleFrame";
-import { ReticleLabel } from "@/components/reticle/ReticleLabel";
-import { ActivityOverviewPanel } from "@/components/dashboard/ActivityOverviewPanel";
-import { DashboardPageBody } from "@/components/dashboard/DashboardPageBody";
-import { FleetAnalytics } from "@/components/dashboard/FleetAnalytics";
-import { FleetMetrics } from "@/components/dashboard/FleetMetrics";
-import { FleetMonitor } from "@/components/dashboard/FleetMonitor";
-import { MetricCard } from "@/components/dashboard/MetricCard";
-import { MetricsChartPanel } from "@/components/dashboard/MetricsChartPanel";
-import { ReloadKnowledge } from "@/components/dashboard/ReloadKnowledge";
-import { StatusPill } from "@/components/dashboard/StatusPill";
-import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
-import { useMachineControl } from "@/lib/dashboard/use-machine-control";
-import type { GatewaySummary } from "@/lib/dashboard/types";
-import type { AgentKind } from "@/lib/user-config/schema";
+import type { ActivityEvent, ActivityPayload } from "@/lib/dashboard/activity/types";
+import { AGENT_LABEL, PROVIDER_KINDS, PROVIDER_LABEL, type PublicMachineRef } from "@/lib/user-config/schema";
 
-const GATEWAY_POLL_MS = 5000;
-
-type CountInfo = { skills: number; mcps: number; tools: number; crons: number };
-
-type Props = {
-	counts: CountInfo;
-	agentKind: AgentKind;
-	model: string | null;
-	activeMachineId: string | null;
+type LiveMachine = PublicMachineRef & {
+  live: { ok: true; state: string; lastError: string | null } | { ok: false; reason: string };
 };
 
-export function OverviewClient({
-	counts,
-	agentKind,
-	model,
-	activeMachineId,
-}: Props) {
-	const [mounted, setMounted] = useState(false);
-	const machine = useMachineControl(activeMachineId);
-	const [gateway, setGateway] = useState<GatewaySummary | null>(null);
-	const [fleetRunning, setFleetRunning] = useState<number | null>(null);
-	const [probeStamp, setProbeStamp] = useState<number | null>(null);
+/** A small, read-only fleet summary. Never probes an HTTP gateway or wakes compute. */
+export function OverviewClient({ savedSetupCount }: { savedSetupCount: number }) {
+  const config = useDashboardConfig();
+  const [machines, setMachines] = useState<LiveMachine[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+  useEffect(() => {
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+    async function tick() {
+      if (controller.signal.aborted) return;
+      if (document.visibilityState !== "visible") { timer = setTimeout(tick, 12_000); return; }
+      try {
+        const response = await fetch("/api/dashboard/machines", { cache: "no-store", signal: controller.signal });
+        const body = await response.json();
+        if (!response.ok || !body.ok || !Array.isArray(body.machines)) throw new Error(body.message ?? "Workspace status is unavailable.");
+        if (!controller.signal.aborted) {
+          setMachines(body.machines.filter((machine: LiveMachine) => !machine.archived));
+          setError(null);
+        }
+      } catch (cause) {
+        if (!controller.signal.aborted) setError(cause instanceof Error ? cause.message : "Workspace status is unavailable.");
+      }
+      if (!controller.signal.aborted) timer = setTimeout(tick, 12_000);
+    }
+    void tick();
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [refreshKey]);
 
-	useEffect(() => {
-		setMounted(true);
-	}, []);
+  const recorded = config?.machines.filter((machine) => !machine.archived) ?? [];
+  const display = machines ?? recorded;
+  const activeId = config?.activeMachineId;
+  const active = display.find((machine) => machine.id === activeId) ?? display[0];
+  const recent = [...display].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 5);
+  const running = error || !machines ? "—" : machines.filter((machine) => machine.live.ok && machine.live.state === "ready").length;
+  const providerCount = config ? PROVIDER_KINDS.filter((kind) => config.providers[kind].configured).length : "—";
 
-	useEffect(() => {
-		if (machine.notProvisioned) return;
-
-		let stopped = false;
-		let interval: number;
-
-		async function tick() {
-			const [gwRes, summaryRes] = await Promise.all([
-				fetch("/api/dashboard/gateway", { cache: "no-store" }).catch(() => null),
-				fetch("/api/dashboard/metrics/summary", { cache: "no-store" }).catch(
-					() => null,
-				),
-			]);
-			if (stopped) return;
-
-			if (gwRes?.status === 404) {
-				window.clearInterval(interval);
-				stopped = true;
-				return;
-			}
-
-			setGateway(gwRes?.ok ? ((await gwRes.json()) as GatewaySummary) : null);
-			setProbeStamp(Date.now());
-			if (summaryRes?.ok) {
-				const body = (await summaryRes.json()) as { running?: number };
-				setFleetRunning(body.running ?? null);
-			}
-		}
-
-		void tick();
-		interval = window.setInterval(() => {
-			if (document.visibilityState === "visible") void tick();
-		}, GATEWAY_POLL_MS);
-
-		return () => {
-			stopped = true;
-			window.clearInterval(interval);
-		};
-	}, [machine.notProvisioned]);
-
-	const phase = machine.machine?.phase ?? "loading";
-	const desired = machine.machine?.desired ?? "unknown";
-	const memoryGib = machine.machine?.memoryMib
-		? (machine.machine.memoryMib / 1024).toFixed(1)
-		: "--";
-
-	const ageLabel = useMemo(() => {
-		if (!probeStamp) return null;
-		const seconds = Math.max(0, Math.round((Date.now() - probeStamp) / 1000));
-		return `${seconds}s ago`;
-	}, [probeStamp]);
-
-	const latencyTone =
-		gateway?.ok && gateway.latencyMs < 1500
-			? "ok"
-			: gateway?.ok
-				? "warn"
-				: "error";
-
-	// This stack contains browser-local charts, clocks, and polling state. Keep
-	// its server and first client render identical; the action-first launchpad
-	// and capability map above remain available in the initial HTML.
-	if (!mounted) {
-		return (
-			<DashboardPageBody>
-				<ReticleFrame className="flex min-h-28 items-center justify-center p-5">
-					<BrailleSpinner
-						name="orbit"
-						label="loading live fleet telemetry"
-						className="text-[11px] text-[var(--ret-text-muted)]"
-					/>
-				</ReticleFrame>
-			</DashboardPageBody>
-		);
-	}
-
-	if (machine.notProvisioned) {
-		return (
-			<DashboardPageBody>
-				<FleetMonitor />
-				<ReticleFrame className="p-6">
-					<div className="flex flex-col items-center gap-3 py-6 text-center">
-						<h2 className="ret-display text-lg">The fleet is empty</h2>
-						<p className="max-w-[48ch] text-[13px] text-[var(--ret-text-dim)]">
-							Choose a runtime and sandbox above. The control plane will open the Worker here as soon as the provider accepts it.
-						</p>
-					</div>
-				</ReticleFrame>
-			</DashboardPageBody>
-		);
-	}
-
-	return (
-		<DashboardPageBody>
-			<FleetMonitor />
-
-			<section className="grid grid-cols-2 gap-px overflow-hidden border border-[var(--ret-border)] bg-[var(--ret-border)] md:grid-cols-4 xl:grid-cols-6">
-				<MetricCard
-					label="fleet"
-					icon={<Server size={12} className="text-[var(--ret-text-muted)]" />}
-					value={fleetRunning != null ? String(fleetRunning) : "—"}
-					hint="machines running"
-					tone="ok"
-				/>
-				<MetricCard
-					label="active"
-					icon={<Activity size={12} className="text-[var(--ret-text-muted)]" />}
-					value={<StatusPill phase={phase} className="px-2 py-0.5 text-[11px]" />}
-					hint={
-						machine.machine?.machineId
-							? `${machine.machine.machineId.slice(0, 14)}…`
-							: "loading"
-					}
-				/>
-				<MetricCard
-					label="gateway"
-					icon={<Network size={12} className="text-[var(--ret-text-muted)]" />}
-					value={
-						gateway ? (
-							gateway.ok ? (
-								"online"
-							) : (
-								"down"
-							)
-						) : (
-							<BrailleSpinner name="orbit" className="text-[11px]" />
-						)
-					}
-					hint={gateway?.ok ? `${gateway.latencyMs} ms` : "probing"}
-					tone={gateway ? (gateway.ok ? "ok" : "error") : "default"}
-				/>
-				<MetricCard
-					label="latency"
-					icon={<Gauge size={12} className="text-[var(--ret-text-muted)]" />}
-					value={
-						gateway ? (
-							`${gateway.latencyMs} ms`
-						) : (
-							<BrailleSpinner name="orbit" className="text-[11px]" />
-						)
-					}
-					hint={gateway ? `model: ${gateway.model}` : "probing"}
-					tone={latencyTone}
-				/>
-				<MetricCard
-					label="spec"
-					icon={<Cpu size={12} className="text-[var(--ret-text-muted)]" />}
-					value={
-						machine.machine?.vcpu != null ? `${machine.machine.vcpu}v · ${memoryGib}G` : "—"
-					}
-					hint={
-						machine.machine?.storageGib != null
-							? `${machine.machine.storageGib} GiB disk`
-							: "…"
-					}
-				/>
-				<MetricCard
-					label="skills"
-					icon={<Sparkles size={12} className="text-[var(--ret-text-muted)]" />}
-					value={String(counts.skills)}
-					hint={`${counts.mcps} MCP · ${counts.tools} tools · ${counts.crons} crons`}
-					tone="purple"
-				/>
-			</section>
-
-			<ActivityOverviewPanel />
-
-			<section className="grid gap-4">
-				<div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-[var(--ret-border)] pb-2">
-					<div>
-						<span className="flex items-center gap-1.5">
-							<Activity size={12} className="text-[var(--ret-purple)]" />
-							<ReticleLabel>Telemetry</ReticleLabel>
-						</span>
-						<p className="mt-1 text-[12px] text-[var(--ret-text-dim)]">
-							Fleet ops, gateway latency, log rates, and live activity on the active machine.
-						</p>
-					</div>
-				</div>
-
-				<FleetMetrics activeMachineId={activeMachineId} />
-
-				<FleetAnalytics showStats={false} />
-
-				<MetricsChartPanel activeMachineId={activeMachineId} />
-
-				<ReloadKnowledge machinePhase={phase} />
-
-				<section className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-					<ReticleFrame className="p-4">
-						<p className="flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-							<Zap size={12} className="text-[var(--ret-purple)]" />
-							Quick actions
-						</p>
-						<h2 className="ret-display mt-1.5 text-base">
-							Talk to it. Read it. Inspect it.
-						</h2>
-						<p className="mt-1.5 max-w-[60ch] text-[13px] text-[var(--ret-text-dim)]">
-							Chat is gated. Skills and MCPs are read-only views of the same files the
-							agent reads on the VM.
-						</p>
-						<div className="mt-3 flex flex-wrap gap-2">
-							<ReticleButton as="a" href="/dashboard/chat" variant="primary" size="sm">
-								<MessageSquare size={13} /> Open chat
-							</ReticleButton>
-							<ReticleButton as="a" href="/dashboard/skills" variant="secondary" size="sm">
-								<Sparkles size={13} /> Browse skills
-							</ReticleButton>
-							<ReticleButton as="a" href="/dashboard/mcps" variant="secondary" size="sm">
-								<Plug2 size={13} /> View MCPs
-							</ReticleButton>
-						</div>
-					</ReticleFrame>
-
-					<ReticleFrame>
-						<div className="p-4">
-							<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-								Health probe
-							</p>
-							<h2 className="ret-display mt-1.5 text-base">Polling every 5s</h2>
-							<dl className="mt-3 space-y-1.5 font-mono text-[11px] text-[var(--ret-text-dim)]">
-								<ProbeRow label="phase" value={phase} />
-								<ProbeRow label="desired" value={desired} />
-								<ProbeRow label="reason" value={machine.machine?.reason ?? "—"} />
-								<ProbeRow label="last probe" value={ageLabel ?? "…"} />
-								<ProbeRow
-									label="status"
-									value={
-										gateway
-											? `HTTP ${gateway.status} · ${gateway.latencyMs} ms`
-											: "…"
-									}
-								/>
-							</dl>
-							<p className="mt-3 text-[11px] italic text-[var(--ret-text-muted)]">
-								Live:{" "}
-								<Link href="/dashboard/logs" className="underline">
-									logs
-								</Link>
-								{" · "}
-								<Link href="/dashboard/sessions" className="underline">
-									sessions
-								</Link>
-								{" · "}
-								<Link href="/dashboard/cursor" className="underline">
-									cursor
-								</Link>
-							</p>
-						</div>
-					</ReticleFrame>
-				</section>
-			</section>
-
-			<div className="flex flex-wrap items-center justify-between gap-2 border border-[var(--ret-border)] px-4 py-2.5">
-				<p className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
-					Quick links
-				</p>
-				<div className="flex flex-wrap gap-2">
-					<ReticleButton as="a" href="/dashboard/machines" variant="secondary" size="sm">
-						Machines
-					</ReticleButton>
-					<ReticleButton as="a" href="/dashboard/chat" variant="secondary" size="sm">
-						Chat
-					</ReticleButton>
-					<ReticleButton as="a" href="/dashboard/cron" variant="secondary" size="sm">
-						Cron
-					</ReticleButton>
-					<ReticleButton as="a" href="/dashboard/usage" variant="ghost" size="sm">
-						Usage
-					</ReticleButton>
-				</div>
-			</div>
-		</DashboardPageBody>
-	);
+  return (
+    <div className="space-y-6">
+      <dl className="grid grid-cols-2 overflow-hidden rounded-xl border border-[var(--ret-border)] bg-[var(--ret-bg)] lg:grid-cols-4">
+        {[["Workspaces", !machines && !config ? "—" : display.length], ["Reported running", running], ["Saved setups", savedSetupCount], ["Compute accounts", providerCount]].map(([label, value]) => (
+          <div key={label} className="border-b border-r border-[var(--ret-border)] px-5 py-5 last:border-r-0 lg:border-b-0">
+            <dt className="text-sm text-[var(--ret-text-muted)]">{label}</dt>
+            <dd className="mt-2 text-2xl font-medium tabular-nums text-[var(--ret-text)]">{value}</dd>
+          </div>
+        ))}
+      </dl>
+      {error ? <div role="alert" className="rounded-lg border border-[var(--ret-amber)]/30 px-4 py-3 text-sm text-[var(--ret-amber)]">{error} Showing saved workspace records. <button type="button" onClick={() => setRefreshKey((key) => key + 1)} className="ml-2 min-h-9 underline focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]">Retry status</button></div> : null}
+      {!machines && !config && !error ? <DashboardLoadingState label="Loading your workspaces…" variant="table" /> : null}
+      {active ? (
+        <section className="rounded-xl border border-[var(--ret-border)] bg-[var(--ret-bg)] p-5 sm:p-6" aria-labelledby="continue-work-title">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="min-w-0">
+              <p className="text-sm text-[var(--ret-text-muted)]">{active.id === activeId ? "Selected workspace" : "Recent workspace"}</p>
+              <h2 id="continue-work-title" className="mt-2 break-words text-xl font-medium text-[var(--ret-text)]">{active.name}</h2>
+              <p className="mt-2 text-sm text-[var(--ret-text-dim)]">{AGENT_LABEL[active.agentKind]} · {PROVIDER_LABEL[active.providerKind]} · {active.model}</p>
+            </div>
+            <ReticleButton as="a" href={`/dashboard/machines/${encodeURIComponent(active.id)}/terminal`} variant="primary"><SquareTerminal size={18} aria-hidden="true" /> Open terminal</ReticleButton>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 border-t border-[var(--ret-border)] pt-4 text-sm">
+            {[["console", "Agent console", SquareTerminal], ["artifacts", "Workspace files", FolderOpen], ["logs", "Activity & logs", ScrollText], ["", "Manage workspace", ArrowRight]].map(([path, label, Icon]) => {
+              const Mark = Icon as typeof ArrowRight;
+              return <Link key={String(path)} href={`/dashboard/machines/${encodeURIComponent(active.id)}${path ? `/${path}` : ""}`} className="inline-flex min-h-9 items-center gap-2 text-[var(--ret-text-dim)] hover:text-[var(--ret-purple)] focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]"><Mark size={16} aria-hidden="true" />{label as string}</Link>;
+            })}
+          </div>
+        </section>
+      ) : null}
+      {recent.length ? (
+        <section className="overflow-hidden rounded-xl border border-[var(--ret-border)] bg-[var(--ret-bg)]" aria-labelledby="recent-workspaces-title">
+          <div className="flex items-center justify-between gap-3 border-b border-[var(--ret-border)] px-5 py-4"><h2 id="recent-workspaces-title" className="text-lg font-medium">Workspaces</h2><Link href="/dashboard/machines" className="min-h-9 content-center text-sm text-[var(--ret-purple)] hover:underline focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]">View fleet →</Link></div>
+          <ul className="divide-y divide-[var(--ret-border)]">{recent.map((machine) => {
+            const live = machines?.find((item) => item.id === machine.id)?.live;
+            const state = error ? "Status unavailable" : live ? live.ok ? live.state === "ready" ? "Running" : live.state : "Unavailable" : "Checking status…";
+            return <li key={machine.id} className="flex flex-wrap items-center gap-4 px-5 py-4"><div className="min-w-0 flex-1"><Link href={`/dashboard/machines/${encodeURIComponent(machine.id)}`} className="text-[15px] font-medium hover:text-[var(--ret-purple)] focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]">{machine.name}</Link><p className="mt-1 text-sm text-[var(--ret-text-muted)]">{AGENT_LABEL[machine.agentKind]} · {PROVIDER_LABEL[machine.providerKind]}</p></div><span className="text-sm text-[var(--ret-text-muted)]">{state}</span><Link href={`/dashboard/machines/${encodeURIComponent(machine.id)}/terminal`} aria-label={`Open terminal for ${machine.name}`} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[var(--ret-border)] px-3 text-sm hover:bg-[var(--ret-surface)] focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]"><SquareTerminal size={16} aria-hidden="true" />Terminal</Link></li>;
+          })}</ul>
+        </section>
+      ) : null}
+      <RecordedActivity />
+    </div>
+  );
 }
 
-function ProbeRow({ label, value }: { label: string; value: string }) {
+function RecordedActivity() {
+	const [events, setEvents] = useState<ActivityEvent[] | null>(null);
+	const [error, setError] = useState(false);
+	const [refreshKey, setRefreshKey] = useState(0);
+	useEffect(() => {
+		const controller = new AbortController();
+		let timer: ReturnType<typeof setTimeout>;
+		async function refresh() {
+			if (controller.signal.aborted) return;
+			if (document.visibilityState !== "visible") {
+				timer = setTimeout(refresh, 30_000);
+				return;
+			}
+			try {
+				const response = await fetch("/api/dashboard/activity", { cache: "no-store", signal: controller.signal });
+				const body = await response.json() as ActivityPayload;
+				if (!response.ok || !body.ok || !Array.isArray(body.days)) throw new Error("Activity unavailable");
+				if (!controller.signal.aborted) {
+					setEvents(body.days.flatMap((day) => day.events).sort((a, b) => b.at.localeCompare(a.at)).slice(0, 6));
+					setError(false);
+				}
+			} catch {
+				if (!controller.signal.aborted) setError(true);
+			}
+			if (!controller.signal.aborted) timer = setTimeout(refresh, 30_000);
+		}
+		void refresh();
+		return () => { controller.abort(); clearTimeout(timer); };
+	}, [refreshKey]);
+
 	return (
-		<div className="flex items-center justify-between gap-3">
-			<dt className="text-[var(--ret-text-muted)]">{label}</dt>
-			<dd className="truncate text-[var(--ret-text)]">{value}</dd>
-		</div>
+		<section className="overflow-hidden rounded-xl border border-[var(--ret-border)] bg-[var(--ret-bg)]" aria-labelledby="recorded-activity-title">
+			<div className="border-b border-[var(--ret-border)] px-5 py-4">
+				<h2 id="recorded-activity-title" className="text-lg font-medium">Recent activity</h2>
+				<p className="mt-1 text-sm leading-6 text-[var(--ret-text-muted)]">Workspace lifecycle events</p>
+			</div>
+			{error ? (
+				<p role="alert" className="px-5 py-4 text-sm text-[var(--ret-amber)]">Activity is unavailable. <button type="button" onClick={() => setRefreshKey((key) => key + 1)} className="min-h-9 underline focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]">Retry</button></p>
+			) : events === null ? (
+				<DashboardLoadingState label="Loading recorded activity…" variant="table" className="p-5" />
+			) : events.length === 0 ? (
+				<div className="px-5 py-6 text-sm text-[var(--ret-text-muted)]"><p>No recorded activity yet.</p><Link href="/dashboard/machines" className="mt-2 inline-flex min-h-11 items-center gap-2 text-[var(--ret-purple)] hover:underline focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]">Open your workspaces<ArrowRight size={16} aria-hidden="true" /></Link></div>
+			) : (
+				<ul className="divide-y divide-[var(--ret-border)]">
+					{events.map((event) => (
+						<li key={event.id} className="flex flex-wrap items-start gap-4 px-5 py-4">
+							<ScrollText size={18} aria-hidden="true" className="mt-1 shrink-0 text-[var(--ret-text-muted)]" />
+							<div className="min-w-0 flex-1"><p className="break-words text-[15px] text-[var(--ret-text)]">{event.title}</p><p className="mt-1 text-sm text-[var(--ret-text-muted)]">{event.subtitle}</p></div>
+							<time dateTime={event.at} className="text-sm tabular-nums text-[var(--ret-text-muted)]">{new Date(event.at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</time>
+						</li>
+					))}
+				</ul>
+			)}
+		</section>
 	);
 }

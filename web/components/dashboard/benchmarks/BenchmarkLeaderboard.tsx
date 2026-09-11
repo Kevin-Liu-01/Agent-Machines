@@ -7,6 +7,7 @@ import type {
 import type { ProviderKind } from "@/lib/user-config/schema";
 
 import { ProviderBadge } from "./ProviderBadge";
+import { SourceTag } from "./BenchmarkUi";
 
 /**
  * Winner cards for the headline metrics (fastest boot / resume / exec)
@@ -15,9 +16,11 @@ import { ProviderBadge } from "./ProviderBadge";
 export function BenchmarkLeaderboard({
 	leaderboard,
 	scores,
+	scoreSource = null,
 }: {
 	leaderboard: LeaderboardEntry[];
 	scores: ScoreEntry[];
+	scoreSource?: MetricValueSource;
 }) {
 	const top = scores.find((s) => s.score !== null) ?? null;
 
@@ -41,7 +44,7 @@ export function BenchmarkLeaderboard({
 				providerLabel={top?.label ?? null}
 				value={top?.score != null ? formatScore(top.score) : "—"}
 				valueSuffix={top?.score != null ? "/100" : undefined}
-				source={null}
+				source={top?.score != null ? scoreSource : null}
 			/>
 		</div>
 	);
@@ -62,31 +65,18 @@ function WinnerCard({
 	valueSuffix?: string;
 	source: MetricValueSource;
 }) {
-	const tag = source === "reference" ? "ref" : source === "demo" ? "demo" : null;
 	return (
-		<div className="relative flex flex-col gap-2 border border-[var(--ret-border)] bg-[var(--ret-bg)] px-4 py-3.5">
+		<div className="relative flex flex-col gap-4 rounded-lg border border-[var(--ret-border)]/50 bg-[var(--ret-bg)] px-5 py-5">
 			<div className="flex items-center justify-between gap-2">
-				<span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				<span className="text-xs font-medium text-[var(--ret-text-muted)]">
 					{kicker}
 				</span>
-				{tag ? (
-					<span
-						className="border border-[var(--ret-border)] px-1 font-mono text-[8px] uppercase tracking-[0.14em] text-[var(--ret-text-muted)]"
-						title={
-							tag === "ref"
-								? "Cited reference figure, no measured run for this metric yet"
-								: "Synthetic demo data"
-						}
-					>
-						{tag}
-					</span>
-				) : null}
 			</div>
 			<div className="flex items-end justify-between gap-2">
 				<span className="text-2xl font-semibold tabular-nums leading-none text-[var(--ret-text)]">
 					{value}
 					{valueSuffix ? (
-						<span className="ml-0.5 text-[12px] font-normal text-[var(--ret-text-dim)]">
+						<span className="ml-0.5 text-sm font-normal text-[var(--ret-text-dim)]">
 							{valueSuffix}
 						</span>
 					) : null}
@@ -100,10 +90,11 @@ function WinnerCard({
 					className="mt-0.5"
 				/>
 			) : (
-				<span className="mt-0.5 text-[11px] text-[var(--ret-text-muted)]">
-					no winner yet
+				<span className="mt-0.5 text-[13px] text-[var(--ret-text-muted)]">
+					No result available
 				</span>
 			)}
+			<div><SourceTag source={source} /></div>
 		</div>
 	);
 }

@@ -5,25 +5,16 @@ import { usePathname } from "next/navigation";
 import {
 	Activity,
 	BarChart3,
-	Bot,
 	Boxes,
-	Brain,
+	ChevronDown,
 	ChevronLeft,
 	Clock,
-	Gauge,
 	History,
 	LayoutGrid,
 	type LucideIcon,
-	MessagesSquare,
-	Package,
-	Plug2,
 	Rocket,
-	ScrollText,
 	Server,
 	SlidersHorizontal,
-	Sparkles,
-	SquareTerminal,
-	Store,
 	UsersRound,
 } from "@/components/ui/icons";
 
@@ -34,14 +25,7 @@ import { AgentSwitcher } from "./AgentSwitcher";
 import { MachineSwitcher } from "./MachineSwitcher";
 import { ModelSwitcher } from "./ModelSwitcher";
 
-/**
- * Dashboard sidebar.
- *
- * Fleet view groups top-down by frequency of use: FLEET (operate the fleet),
- * LIBRARY (what's installed), ACCOUNT (keys + provisioning). Machine view
- * splits WORK (what you do) and LIVE (what's running). Icons use the shared filled family;
- * rows are icon + label, with section headers carrying the one-line hint.
- */
+/** Six fleet workspaces. Detailed tools live inside their owning workspace. */
 
 type NavItem = {
 	href: string;
@@ -56,6 +40,7 @@ type NavItem = {
 	 * up on every child route (e.g. Console highlighting Overview).
 	 */
 	exact?: boolean;
+	aliases?: readonly string[];
 };
 
 type NavSection = {
@@ -72,61 +57,43 @@ type Props = {
 	onExpand?: () => void;
 };
 
-// Fleet view, top-down: operate the fleet, then what's installed on it,
-// then account-level keys + provisioning. "Machines" is the single fleet
-// listing (the old "Containers" page folded its analytics in here).
+// Keep the rail small; aliases preserve active context for existing deep links.
 const FLEET_ITEMS: ReadonlyArray<NavItem> = [
 	{ href: "/dashboard", label: "Overview", icon: LayoutGrid, exact: true },
-	{ href: "/dashboard/machines", label: "Machines", icon: Server },
-	{ href: "/dashboard/agents", label: "Agent templates", icon: UsersRound },
-	{ href: "/dashboard/usage", label: "Usage", icon: BarChart3 },
-	{ href: "/dashboard/benchmarks", label: "Benchmarks", icon: Gauge },
-];
-
-const OPERATE_ITEMS: ReadonlyArray<NavItem> = [
-	{ href: "/dashboard/chat", label: "Console", icon: MessagesSquare },
-	{ href: "/dashboard/terminal", label: "Terminal", icon: SquareTerminal },
-	{ href: "/dashboard/logs", label: "Logs", icon: ScrollText },
-	{ href: "/dashboard/sessions", label: "Sessions", icon: History },
-	{ href: "/dashboard/artifacts", label: "Artifacts", icon: Package },
-];
-
-const EXTEND_ITEMS: ReadonlyArray<NavItem> = [
-	{ href: "/dashboard/memory", label: "Memory", icon: Brain },
-	{ href: "/dashboard/loadout", label: "Loadouts", icon: Boxes },
-	{ href: "/dashboard/skills", label: "Skills", icon: Sparkles },
-	{ href: "/dashboard/mcps", label: "MCP servers", icon: Plug2 },
-	{ href: "/dashboard/cron", label: "Schedules", icon: Clock },
-	{ href: "/dashboard/registry", label: "Registry", icon: Store },
+	{ href: "/dashboard/machines", label: "Workspaces", icon: Server, aliases: ["/dashboard/chat", "/dashboard/terminal", "/dashboard/logs", "/dashboard/sessions", "/dashboard/artifacts"] },
+	{ href: "/dashboard/agents", label: "Studio", icon: UsersRound, aliases: ["/dashboard/workers", "/dashboard/memory"] },
+	{ href: "/dashboard/registry", label: "Toolkit", icon: Boxes, aliases: ["/dashboard/skills", "/dashboard/mcps", "/dashboard/loadout", "/dashboard/components"] },
+	{ href: "/dashboard/cron", label: "Automations", icon: Clock },
+	{ href: "/dashboard/usage", label: "Insights", icon: BarChart3, aliases: ["/dashboard/benchmarks"] },
 ];
 
 const ACCOUNT_ITEMS: ReadonlyArray<NavItem> = [
+	{ href: "/dashboard/setup", label: "Quickstart", icon: Rocket },
 	{ href: "/dashboard/settings", label: "Settings", icon: SlidersHorizontal },
 ];
 
 const SETUP_ITEM: NavItem = {
 	href: "/dashboard/setup",
-	label: "Setup",
+	label: "Quickstart",
 	icon: Rocket,
 };
 
 function machineWorkItems(base: string): ReadonlyArray<NavItem> {
 	return [
 		{ href: base, label: "Overview", icon: LayoutGrid, exact: true },
-		{ href: `${base}/view`, label: "View", icon: Activity, badge: "live" },
-		{ href: `${base}/console`, label: "Console", icon: MessagesSquare },
-		{ href: `${base}/terminal`, label: "Terminal", icon: SquareTerminal },
-		{ href: `${base}/agents`, label: "Agents", icon: Bot },
-		{ href: `${base}/loadout`, label: "Loadout", icon: Boxes },
+		{ href: `${base}/view`, label: "Workbench", icon: Activity, aliases: [`${base}/console`, `${base}/terminal`] },
+		{ href: `${base}/loadout`, label: "Tools & runtime", icon: Boxes, aliases: [`${base}/agents`] },
 	];
 }
 
 function machineLiveItems(base: string): ReadonlyArray<NavItem> {
 	return [
-		{ href: `${base}/logs`, label: "Logs", icon: ScrollText, badge: "live" },
-		{ href: `${base}/sessions`, label: "Sessions", icon: History, badge: "live" },
-		{ href: `${base}/artifacts`, label: "Artifacts", icon: Package },
+		{ href: `${base}/logs`, label: "Activity & files", icon: History, aliases: [`${base}/sessions`, `${base}/artifacts`] },
 	];
+}
+
+function matchesItem(pathname: string, item: NavItem) {
+	return [item.href, ...(item.aliases ?? [])].some(href => pathname === href || pathname.startsWith(`${href}/`));
 }
 
 const MACHINE_PATH_RE = /^\/dashboard\/machines\/([^/]+)/;
@@ -168,14 +135,12 @@ export function SidebarNav({ setupComplete, machines, compact = false, onExpand 
 
 	const setupItem: NavItem = { ...SETUP_ITEM, dot: !setupComplete };
 	const sections: NavSection[] = [
-		{ id: "fleet", label: "Fleet", hint: "Build & route", items: FLEET_ITEMS },
-		{ id: "operate", label: "Operate", hint: "Active machine", items: OPERATE_ITEMS },
-		{ id: "extend", label: "Extend", hint: "Memory & tools", items: EXTEND_ITEMS },
+		{ id: "fleet", label: "Workspace", hint: "", items: FLEET_ITEMS.map(item => item.href === setupItem.href ? setupItem : item) },
 		{
 			id: "account",
 			label: "Account",
 			hint: "Keys & setup",
-			items: [...ACCOUNT_ITEMS, setupItem],
+			items: ACCOUNT_ITEMS.map(item => item.href === setupItem.href ? setupItem : item),
 		},
 	];
 
@@ -208,26 +173,30 @@ export function MobileDashboardNav({ setupComplete, machines }: Props) {
 				...machineLiveItems(`/dashboard/machines/${machineMatch[1]}`),
 			]
 		: [
-				...FLEET_ITEMS,
-				...OPERATE_ITEMS,
-				...EXTEND_ITEMS,
-				...ACCOUNT_ITEMS,
-				setupItem,
+				...FLEET_ITEMS.map(item => item.href === setupItem.href ? setupItem : item),
+				...ACCOUNT_ITEMS.map(item => item.href === setupItem.href ? setupItem : item),
 			];
+	const activeItem = items.find(item => item.exact ? pathname === item.href : matchesItem(pathname, item));
 
 	return (
 		<nav
 			aria-label={machineMatch ? "Machine dashboard sections" : "Dashboard sections"}
 			className={cn("min-w-0 max-w-full overflow-hidden border-b border-[var(--ret-border)] bg-[var(--ret-bg)] lg:hidden")}
 		>
-			<div className={cn("ret-scrollbar-hidden flex gap-1 overflow-x-auto overscroll-x-contain px-3 py-2")}>
+			<details key={pathname} className={cn("group/mobile-navigation px-[var(--dashboard-gutter,16px)]")}>
+				<summary className={cn("flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--ret-text)] [&::-webkit-details-marker]:hidden")}>
+					<span className={cn("flex min-w-0 items-center gap-2")}><LayoutGrid className={cn("size-4 shrink-0 text-[var(--ret-text-muted)]")} aria-hidden="true" /><span className={cn("truncate")}>{activeItem?.label ?? "Workspace navigation"}</span></span>
+					<span className={cn("flex shrink-0 items-center gap-2 text-[var(--ret-text-muted)]")}>Navigate <ChevronDown className={cn("size-4 group-open/mobile-navigation:rotate-180")} aria-hidden="true" /></span>
+				</summary>
+			<div className={cn("grid max-h-[65dvh] grid-cols-2 gap-1 overflow-y-auto overscroll-contain border-t border-[var(--ret-border)] py-3")}>
 				{items.map((item) => {
 					const active = item.exact
 						? pathname === item.href
-						: pathname === item.href || pathname.startsWith(`${item.href}/`);
+						: matchesItem(pathname, item);
 					return <MobileRow key={item.href} item={item} active={active} />;
 				})}
 			</div>
+			</details>
 		</nav>
 	);
 }
@@ -293,7 +262,7 @@ function Section({
 	return (
 		<div role="group" aria-label={section.label} className={cn("flex flex-col gap-0.5", compact && "border-t border-[var(--ret-border)]/60 pt-3 first:border-t-0 first:pt-0")}>
 			<div className={cn(compact ? "sr-only" : "flex items-baseline justify-between gap-2 px-2 pb-1.5")}>
-				<p className={cn("text-sm font-medium text-[var(--ret-text)]")}>
+				<p className={cn("text-xs font-medium text-[var(--ret-text-muted)]")}>
 					{section.label}
 				</p>
 				<p className={cn("text-xs leading-5 text-[var(--ret-text-muted)]")}>
@@ -303,7 +272,7 @@ function Section({
 			{section.items.map((item) => {
 				const active = item.exact
 					? pathname === item.href
-					: pathname === item.href || pathname.startsWith(`${item.href}/`);
+					: matchesItem(pathname, item);
 				return <Row key={item.href} item={item} active={active} compact={compact} />;
 			})}
 		</div>
@@ -372,11 +341,11 @@ function MobileRow({ item, active }: { item: NavItem; active: boolean }) {
 			href={item.href}
 			aria-current={active ? "page" : undefined}
 			className={cn(
-				"group flex min-h-11 shrink-0 items-center gap-2 rounded-sm border px-3 text-sm transition-[color,background-color,border-color] duration-150 ease-[var(--ret-ease-out)]",
+				"group flex min-h-11 min-w-0 items-center gap-2 rounded-md border px-2 text-sm transition-[color,background-color,border-color] duration-150 ease-[var(--ret-ease-out)]",
 				"focus-visible:transition-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--ret-text)] motion-reduce:transition-none",
 				active
 					? "border-[var(--ret-purple)]/45 bg-[var(--ret-purple-glow)] text-[var(--ret-purple)]"
-					: "border-[var(--ret-border)] bg-[var(--ret-bg-soft)] text-[var(--ret-text-dim)] hover:text-[var(--ret-text)]",
+					: "border-transparent text-[var(--ret-text-dim)] hover:bg-[var(--ret-bg-soft)] hover:text-[var(--ret-text)]",
 			)}
 		>
 			<Icon
@@ -387,7 +356,7 @@ function MobileRow({ item, active }: { item: NavItem; active: boolean }) {
 					active ? "text-[var(--ret-purple)]" : "text-[var(--ret-text-muted)]",
 				)}
 			/>
-			<span className="whitespace-nowrap">{item.label}</span>
+			<span className="truncate">{item.label}</span>
 			{item.dot ? (
 				<>
 					<span aria-hidden="true" className={cn("size-1.5 shrink-0 rounded-full bg-[var(--ret-amber)]")} />

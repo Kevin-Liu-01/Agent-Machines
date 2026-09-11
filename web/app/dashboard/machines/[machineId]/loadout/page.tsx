@@ -34,7 +34,7 @@ export default async function MachineLoadoutPage({
 			<PageHeader
 				kicker="LOADOUT"
 				title="This machine's loadout"
-				description="The deployed Worker, its Memory, and the abilities that Memory selects from your imported pool. Import more in the Registry; reshape the selection in Memory."
+				description="Review this Worker’s memory and tools. Add abilities from the Registry."
 			/>
 			<MachineRouterCard />
 

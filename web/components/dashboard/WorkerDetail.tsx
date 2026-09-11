@@ -9,7 +9,8 @@ import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleSelect } from "@/components/reticle/ReticleSelect";
-import { BrailleSpinner } from "@/components/ui/BrailleSpinner";
+import { DashboardLoadingState } from "@/components/dashboard/DashboardLoadingState";
+import { EmptyState } from "@/components/dashboard/EmptyState";
 import { useDashboardConfig } from "@/components/dashboard/DashboardConfigProvider";
 import { RouterSelect } from "@/components/dashboard/RouterSelect";
 import { validateAgentCredentials } from "@/lib/agents/credentials";
@@ -316,18 +317,13 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 
 	if (error) {
 		return (
-			<div className="px-5 py-8">
-				<p className="font-mono text-[12px] text-[var(--ret-red)]">{error}</p>
-				<Link href="/dashboard/workers" className="mt-2 inline-block font-mono text-[11px] text-[var(--ret-accent)] hover:underline">
-					← back to Workers
-				</Link>
-			</div>
+			<EmptyState title="Could not load this setup" description={error} onRetry={() => void load()} action={{ label: "Back to agent setups", href: "/dashboard/workers" }} />
 		);
 	}
 	if (!worker) {
 		return (
-			<div className="px-5 py-12">
-				<BrailleSpinner name="orbit" label="loading worker" className="text-[11px] text-[var(--ret-text-muted)]" />
+			<div className="px-5 py-6">
+				<DashboardLoadingState label="Loading your agent setup…" variant="editor" />
 			</div>
 		);
 	}
@@ -336,7 +332,7 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 		<div className="flex flex-col">
 			<div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--ret-border)] px-5 py-4">
 				<div className="flex min-w-0 items-center gap-3">
-					<Link href="/dashboard/workers" className="text-[var(--ret-text-muted)] hover:text-[var(--ret-text)]">
+					<Link href="/dashboard/workers" aria-label="Back to agent setups" className="text-[var(--ret-text-muted)] hover:text-[var(--ret-text)]">
 						<ChevronLeft className="h-4 w-4" strokeWidth={1.75} />
 					</Link>
 					<input
@@ -365,6 +361,11 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 			) : null}
 
 			<div className="space-y-5 px-5 py-5">
+				<div className={cn("flex flex-wrap gap-x-5 gap-y-2 border-b border-[var(--ret-border)] pb-3 text-[14px]")}>
+					<Link href="/dashboard/components" className={cn("min-h-9 content-center text-[var(--ret-purple)] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-purple)]")}>Inspect building blocks</Link>
+					<Link href="/dashboard/settings" className={cn("min-h-9 content-center text-[var(--ret-text-dim)] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-purple)]")}>Model &amp; compute credentials</Link>
+					<Link href={`/dashboard/memory/${encodeURIComponent(worker.memoryBundleId)}`} className={cn("min-h-9 content-center text-[var(--ret-text-dim)] underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-purple)]")}>Edit memory &amp; selected tools</Link>
+				</div>
 				{/* Config */}
 				<section className="space-y-3">
 					<SectionLabel label="Configuration" hint="runtime · model · router · memory" />
@@ -415,7 +416,7 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 					<Field label="Role prompt (optional)">
 						<textarea
 							className={cn(fieldCls, "min-h-[90px] resize-y leading-relaxed")}
-							placeholder="extra instructions layered on top of the memory bundle for this worker…"
+							placeholder="Extra instructions layered on top of this setup's memory bundle…"
 							value={worker.rolePrompt ?? ""}
 							onChange={(e) => setWorker({ ...worker, rolePrompt: e.target.value })}
 						/>
@@ -424,7 +425,8 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 
 				{/* Deploy */}
 				<section className="space-y-3">
-					<SectionLabel label="Deploy" hint="provision a machine running this worker" />
+					<SectionLabel label="Launch on compute" hint="provision a workspace with this configuration" />
+					<p className={cn("text-[14px] leading-relaxed text-[var(--ret-text-dim)]")}>Save &amp; deploy creates compute on your provider account. Your providers bill you directly.</p>
 					<ReticleFrame className="flex flex-wrap items-center gap-2 p-3">
 						<Server className="h-4 w-4 text-[var(--ret-text-dim)]" strokeWidth={1.75} />
 						<ReticleSelect
@@ -448,7 +450,7 @@ export function WorkerDetail({ workerId }: { workerId: string }) {
 					</ReticleFrame>
 					{!providerReady || (credentialVerdict && !credentialVerdict.ok) ? (
 						<p className="text-[12px] text-[var(--ret-amber)]">
-							{!providerReady ? `Add ${PROVIDER_LABEL[provider]} credentials to deploy this Worker.` : credentialVerdict && !credentialVerdict.ok ? credentialVerdict.message : ""}{" "}
+							{!providerReady ? `Add ${PROVIDER_LABEL[provider]} credentials to launch this setup.` : credentialVerdict && !credentialVerdict.ok ? credentialVerdict.message : ""}{" "}
 							<Link href="/dashboard/settings" className="underline underline-offset-2">Open settings</Link>
 						</p>
 					) : null}

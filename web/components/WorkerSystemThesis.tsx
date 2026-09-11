@@ -23,9 +23,10 @@ import Link from "next/link";
 
 import { Logo, type Mark } from "@/components/Logo";
 import { WorkerGearMotion } from "@/components/WorkerGearMotion";
+import { WorkerGearWheel } from "@/components/WorkerGearWheel";
 import { cn } from "@/lib/cn";
 import { LANDING_BODY, LANDING_EYEBROW, LANDING_INSET, LANDING_SECTION_SPACE, LANDING_SPLIT, LANDING_TITLE } from "@/lib/marketing/layout";
-import { CORE_GEAR, ENGINE_GEARS, ENGINE_HEIGHT, ENGINE_WIDTH, GEAR_MODULE, GEAR_TRAINS, gearPath, type EngineGear } from "@/lib/marketing/worker-gears";
+import { COMPONENT_GEARS, CORE_CAPTION_Y, CORE_GEAR, ENGINE_GEARS, ENGINE_HEIGHT, ENGINE_WIDTH, GEAR_MODULE, gearPath, type EngineGear } from "@/lib/marketing/worker-gears";
 
 type MachineOption = { label: string } & (
 	| { mark: Mark; icon?: never }
@@ -36,7 +37,7 @@ const MACHINE_PARTS: ReadonlyArray<{
 	label: string;
 	description: string;
 	icon: LucideIcon;
-	gear: keyof typeof GEAR_TRAINS;
+	gear: keyof typeof COMPONENT_GEARS;
 	options: ReadonlyArray<MachineOption>;
 }> = [
 	{
@@ -141,7 +142,7 @@ export function WorkerSystemThesis() {
 				<WorkerGearMotion>
 					<p className={cn("mb-3 text-sm text-[var(--ret-text-muted)] lg:hidden")}>Scroll to explore the engine. Every layer connects to your Worker.</p>
 					<div role="region" aria-label="Interlocking Worker engine" tabIndex={0} className={cn("overflow-x-auto overscroll-x-contain rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--ret-text)]")}>
-						<div className={cn("relative mx-auto min-w-[1000px] max-w-[1180px]")} style={{ aspectRatio: `${ENGINE_WIDTH} / ${ENGINE_HEIGHT}` }}>
+						<div className={cn("relative mx-auto min-w-[1000px] max-w-[1040px]")} style={{ aspectRatio: `${ENGINE_WIDTH} / ${ENGINE_HEIGHT}` }}>
 							{/* One coordinate system preserves pitch-circle contact at every width.
 							    All rotations share a clock and pause state; labels never rotate. */}
 							<svg viewBox={`0 0 ${ENGINE_WIDTH} ${ENGINE_HEIGHT}`} className={cn("pointer-events-none absolute inset-0 size-full text-[var(--ret-text-dim)]")} aria-hidden="true">
@@ -153,9 +154,14 @@ export function WorkerSystemThesis() {
 					</div>
 				</WorkerGearMotion>
 
-				<figcaption className={cn("mx-auto mt-7 max-w-[76ch] text-center text-sm leading-6 text-[var(--ret-text-muted)]")}>
-					The Worker keeps its saved state; each provider supplies its own capabilities.
-					Migration transfers files and restarts managed work—not live process memory.
+				<figcaption className={cn("mx-auto mt-5 max-w-[1040px]")}>
+					<div data-worker-legend className={cn("grid grid-cols-2 gap-x-6 gap-y-5 border-t border-[var(--ret-border)]/40 pt-6 lg:grid-cols-4")}>
+						{MACHINE_PARTS.map((part) => <MachinePartCaption key={part.gear} part={part} />)}
+					</div>
+					<p className={cn("mx-auto mt-6 max-w-[76ch] text-center text-sm leading-6 text-[var(--ret-text-muted)]")}>
+						The Worker keeps its saved state; each provider supplies its own capabilities.
+						Migration transfers files and restarts managed work—not live process memory.
+					</p>
 				</figcaption>
 			</figure>
 
@@ -197,7 +203,7 @@ function WorkerCore() {
 					</div>
 				</div>
 			</div>
-			<p className={cn("absolute flex -translate-x-1/2 items-center justify-center gap-2 whitespace-nowrap text-sm text-[var(--ret-text-dim)]")} style={{ left: "50%", top: `${(CORE_GEAR.y + CORE_GEAR.radius + 34) / ENGINE_HEIGHT * 100}%` }}>
+			<p className={cn("absolute flex -translate-x-1/2 items-center justify-center gap-2 whitespace-nowrap text-sm text-[var(--ret-text-dim)]")} style={{ left: "50%", top: `${CORE_CAPTION_Y / ENGINE_HEIGHT * 100}%` }}>
 				<Fingerprint className={cn("size-4 text-[var(--ret-green)]")} aria-hidden="true" />
 				Same identity. Saved context.
 			</p>
@@ -207,38 +213,40 @@ function WorkerCore() {
 
 function MachinePart({ part }: { part: (typeof MACHINE_PARTS)[number] }) {
 	const Icon = part.icon;
-	const gear = GEAR_TRAINS[part.gear].at(-1)!;
+	const gear = COMPONENT_GEARS[part.gear];
 	return (
-		<>
-			<div className={cn("absolute aspect-square -translate-x-1/2 -translate-y-1/2 text-center")} style={{ left: `${gear.x / ENGINE_WIDTH * 100}%`, top: `${gear.y / ENGINE_HEIGHT * 100}%`, width: `${160 / ENGINE_WIDTH * 100}%` }}>
-				<div className={cn("absolute inset-0 flex flex-col items-center justify-center rounded-full bg-[var(--ret-bg-soft)]")}>
-					<Icon className={cn("mb-2 size-5 text-[var(--ret-text-muted)]")} strokeWidth={1.6} aria-hidden="true" />
-					<h3 className={cn("text-base font-semibold tracking-tight text-[var(--ret-text)]")}>{part.label}</h3>
-					<div className={cn("mt-3 flex items-center justify-center gap-2")}>
-						{part.options.map((option) => (
-							<span key={option.label} title={option.label} className={cn("grid size-5 shrink-0 place-items-center text-[var(--ret-text)]")} aria-hidden="true">
-								{option.mark ? <Logo mark={option.mark} size={20} /> : option.icon ? <option.icon className={cn("size-5")} strokeWidth={1.5} /> : null}
-							</span>
-						))}
-					</div>
+		<div data-worker-part={part.gear} className={cn("absolute aspect-square -translate-x-1/2 -translate-y-1/2 text-center")} style={{ left: `${gear.x / ENGINE_WIDTH * 100}%`, top: `${gear.y / ENGINE_HEIGHT * 100}%`, width: `${gear.radius * 1.6 / ENGINE_WIDTH * 100}%` }}>
+			<div className={cn("absolute inset-0 flex flex-col items-center justify-center rounded-full bg-[var(--ret-bg-soft)]")}>
+				<Icon className={cn("mb-2 size-5 text-[var(--ret-text-muted)]")} strokeWidth={1.6} aria-hidden="true" />
+				<h3 className={cn("text-base font-semibold tracking-tight text-[var(--ret-text)]")}>{part.label}</h3>
+				<div className={cn("mt-3 flex items-center justify-center gap-2")}>
+					{part.options.map((option) => (
+						<span key={option.label} title={option.label} className={cn("grid size-5 shrink-0 place-items-center text-[var(--ret-text)]")} aria-hidden="true">
+							{option.mark ? <Logo mark={option.mark} size={20} /> : option.icon ? <option.icon className={cn("size-5")} strokeWidth={1.5} /> : null}
+						</span>
+					))}
 				</div>
 			</div>
-			<div className={cn("absolute -translate-x-1/2 text-center")} style={{ left: `${gear.x / ENGINE_WIDTH * 100}%`, top: `${(gear.y + gear.radius + GEAR_MODULE + 15) / ENGINE_HEIGHT * 100}%`, width: `${220 / ENGINE_WIDTH * 100}%` }}>
-			<p className={cn("text-base leading-6 text-[var(--ret-text-dim)]")}>{part.description}</p>
-			<ul className={cn("mt-1.5 flex flex-wrap justify-center gap-x-2 gap-y-0.5 text-[13px] leading-5 text-[var(--ret-text-muted)]")}>
-				{part.options.map((option) => (
-					<li key={option.label}>{option.label}</li>
-				))}
+		</div>
+	);
+}
+
+function MachinePartCaption({ part }: { part: (typeof MACHINE_PARTS)[number] }) {
+	const Icon = part.icon;
+	return (
+		<div>
+			<p className={cn("flex items-center gap-2 text-sm font-medium text-[var(--ret-text)]")}><Icon className={cn("size-4 shrink-0 text-[var(--ret-text-muted)]")} aria-hidden="true" />{part.label}</p>
+			<p className={cn("mt-2 text-sm text-[var(--ret-text-dim)]")}>{part.description}</p>
+			<ul className={cn("mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[13px] leading-5 text-[var(--ret-text-muted)]")}>
+				{part.options.map((option) => <li key={option.label}>{option.label}</li>)}
 			</ul>
-			</div>
-		</>
+		</div>
 	);
 }
 
 function GearWheel({ gear }: { gear: EngineGear }) {
-	const idler = gear.kind === "idler";
+	if (gear.kind === "idler") return <g opacity={0.7}><WorkerGearWheel gear={gear} /></g>;
 	const root = gear.radius - GEAR_MODULE * 1.25;
-	const spokes = gear.teeth >= 20 ? 5 : 3;
 	return (
 		<g transform={`translate(${gear.x} ${gear.y})`}>
 			<g transform={`rotate(${gear.phaseRadians * 180 / Math.PI})`}>
@@ -249,21 +257,11 @@ function GearWheel({ gear }: { gear: EngineGear }) {
 					className={cn("origin-[0_0] [transform-box:view-box] motion-safe:animate-spin group-data-[gear-motion=paused]/engine:[animation-play-state:paused]")}
 					style={{ animationDuration: `${gear.period}s`, animationDirection: gear.direction === 1 ? "normal" : "reverse" }}
 				>
-					<path d={gearPath(gear.teeth)} fill="var(--ret-bg-soft)" stroke="var(--ret-border-hover)" strokeWidth="1" strokeLinejoin="round" />
-					<circle r={root - 3} fill="var(--ret-bg)" stroke="currentColor" strokeWidth={idler ? 0.75 : 1.4} />
-					<circle r={root * 0.88} fill="none" stroke="var(--ret-border)" strokeWidth={idler ? 2 : 4} />
-					{!idler && <circle r={root * 0.81} fill="none" stroke="var(--ret-border-hover)" strokeWidth="0.8" strokeDasharray="2 8" />}
-					{!idler && [45, 135, 225, 315].map(angle => <circle key={angle} cx={root * 0.93} cy="0" r="2.5" transform={`rotate(${angle})`} fill="var(--ret-text-muted)" />)}
-					{idler && (
-						<>
-							{Array.from({ length: spokes }, (_, index) => (
-								<path key={index} d={`M 7 -2 Q ${root * 0.42} ${-root * 0.25} ${root * 0.83} -3 L ${root * 0.83} 3 Q ${root * 0.42} ${-root * 0.08} 7 2 Z`} transform={`rotate(${index * 360 / spokes})`} fill="var(--ret-border-hover)" />
-							))}
-							<circle r="9" fill="var(--ret-bg-soft)" stroke="var(--ret-text-muted)" strokeWidth="1" />
-							<circle r="3" fill="var(--ret-text-dim)" />
-							<path d="M -2 -2 L 2 2" stroke="var(--ret-bg)" strokeWidth="1" />
-						</>
-					)}
+					<path data-gear-profile="trapezoidal" d={gearPath(gear.teeth)} fill="var(--ret-bg-soft)" stroke="var(--ret-border-hover)" strokeWidth="1" strokeLinejoin="miter" />
+					<circle r={root - 3} fill="var(--ret-bg)" stroke="currentColor" strokeWidth="1.4" />
+					<circle r={root * 0.88} fill="none" stroke="var(--ret-border)" strokeWidth="4" />
+					<circle r={root * 0.81} fill="none" stroke="var(--ret-border-hover)" strokeWidth="0.8" strokeDasharray="2 8" />
+					{[45, 135, 225, 315].map(angle => <circle key={angle} cx={root * 0.93} cy="0" r="2.5" transform={`rotate(${angle})`} fill="var(--ret-text-muted)" />)}
 				</g>
 			</g>
 		</g>

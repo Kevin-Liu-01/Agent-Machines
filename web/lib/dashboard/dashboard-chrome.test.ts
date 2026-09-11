@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import ts from "typescript";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { SidebarNav } from "@/components/dashboard/SidebarNav";
+import { MobileDashboardNav, SidebarNav } from "@/components/dashboard/SidebarNav";
 import { DASHBOARD_SHELL_HEADER_ROW } from "./shell-chrome";
 
 const route = vi.hoisted(() => ({ pathname: "/dashboard/agents" }));
@@ -23,14 +23,14 @@ function nodes(value: unknown): Element[] {
 }
 
 function mountChrome() {
-	let expanded = false;
+	let expanded: boolean | undefined;
 	const jsx = (type: unknown, props: Record<string, unknown>) => ({ type, props });
 	const module = { exports: {} as { DashboardChrome: (props: Record<string, unknown>) => Element } };
 	runInNewContext(ts.transpileModule(readFileSync(resolve(process.cwd(), "components/dashboard/DashboardChrome.tsx"), "utf8"), {
 		compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
 	}).outputText, {
 		module, exports: module.exports,
-		require: (id: string) => id === "react" ? { useState: () => [expanded, (value: boolean | ((old: boolean) => boolean)) => { expanded = typeof value === "function" ? value(expanded) : value; }] }
+		require: (id: string) => id === "react" ? { useState: (initial: boolean) => { expanded ??= initial; return [expanded, (value: boolean | ((old: boolean) => boolean)) => { expanded = typeof value === "function" ? value(expanded!) : value; }]; } }
 			: id === "react/jsx-runtime" ? { jsx, jsxs: jsx }
 				: id.endsWith("/cn") ? { cn: (...values: unknown[]) => values.filter(Boolean).join(" ") }
 					: id.endsWith("shell-chrome") ? { DASHBOARD_SHELL_HEADER_ROW }
@@ -41,6 +41,22 @@ function mountChrome() {
 }
 
 describe("custom dashboard chrome", () => {
+	it("keeps all mobile destinations in a closed, route-keyed navigation disclosure", () => {
+		route.pathname = "/dashboard/skills";
+		const tree = MobileDashboardNav({ setupComplete: false, machines: [] });
+		const disclosure = nodes(tree).find(node => node.type === "details")!;
+		expect(disclosure.props.open).toBeUndefined();
+		expect((disclosure as Element & { key: string }).key).toBe("/dashboard/skills");
+		const html = renderToStaticMarkup(tree);
+		expect(html).toContain("Navigate");
+		expect(html).toContain("max-h-[65dvh]");
+		expect(html.match(/href=/g)).toHaveLength(8);
+		expect(html.match(/aria-current=\"page\"/g)).toHaveLength(1);
+		const activeLink = html.match(/<a\b[^>]*aria-current="page"[^>]*>/)?.[0];
+		expect(activeLink).toContain('href="/dashboard/registry"');
+		expect(html).not.toContain("overflow-x-auto");
+	});
+
 	it("uses one fixed48px, non-wrapping row for both headers", () => {
 		expect(DASHBOARD_SHELL_HEADER_ROW.split(" ")).toEqual(expect.arrayContaining(["h-12", "min-h-12", "max-h-12", "flex-nowrap"]));
 		const source = readFileSync(resolve(process.cwd(), "components/dashboard/StatusHeader.tsx"), "utf8");
@@ -48,22 +64,22 @@ describe("custom dashboard chrome", () => {
 		expect(source).not.toMatch(/flex-wrap|flex-\[1_1_/);
 	});
 
-	it("starts with a72px rail and expands immediately without changing destinations or content", () => {
+	it("starts with readable labels and collapses immediately without changing destinations or content", () => {
 		const chrome = mountChrome();
 		let tree = chrome.render();
-		expect(tree.props["data-sidebar-expanded"]).toBe(false);
-		expect(tree.props.className).toContain("lg:grid-cols-[72px_minmax(0,1fr)]");
-		const button = nodes(tree).find(node => node.props["aria-label"] === "Expand sidebar")!;
-		expect(button.props["aria-expanded"]).toBe(false);
+		expect(tree.props["data-sidebar-expanded"]).toBe(true);
+		expect(tree.props.className).toContain("lg:grid-cols-[208px_minmax(0,1fr)]");
+		const button = nodes(tree).find(node => node.props["aria-label"] === "Collapse sidebar")!;
+		expect(button.props["aria-expanded"]).toBe(true);
 		expect(nodes(tree).some(node => node.props.id === button.props["aria-controls"])).toBe(true);
 		button.props.onClick();
 		tree = chrome.render();
-		expect(tree.props["data-sidebar-expanded"]).toBe(true);
-		expect(tree.props.className).toContain("lg:grid-cols-[224px_minmax(0,1fr)]");
-		expect(nodes(tree).find(node => node.type === "SidebarNav")?.props.compact).toBe(false);
+		expect(tree.props["data-sidebar-expanded"]).toBe(false);
+		expect(tree.props.className).toContain("lg:grid-cols-[72px_minmax(0,1fr)]");
+		expect(nodes(tree).find(node => node.type === "SidebarNav")?.props.compact).toBe(true);
 		expect(nodes(tree).find(node => node.type === "main")?.props.children).toBe("Dashboard content");
-		nodes(tree).find(node => node.props["aria-label"] === "Collapse sidebar")!.props.onClick();
-		expect(chrome.render().props["data-sidebar-expanded"]).toBe(false);
+		nodes(tree).find(node => node.props["aria-label"] === "Expand sidebar")!.props.onClick();
+		expect(chrome.render().props["data-sidebar-expanded"]).toBe(true);
 	});
 
 	it("retains every labeled fleet destination and active state in the compact rail", () => {
@@ -72,8 +88,8 @@ describe("custom dashboard chrome", () => {
 		const expanded = renderToStaticMarkup(React.createElement(SidebarNav, { setupComplete: false, machines: [], compact: false }));
 		const hrefs = (html: string) => [...html.matchAll(/href="([^"]+)"/g)].map(match => match[1]);
 		expect(hrefs(compact)).toEqual(hrefs(expanded));
-		expect(hrefs(compact)).toHaveLength(18);
-		for (const label of ["Overview", "Agent templates", "Machines", "Settings", "Schedules", "MCP servers"]) {
+		expect(hrefs(compact)).toHaveLength(8);
+		for (const label of ["Overview", "Studio", "Toolkit", "Workspaces", "Settings", "Automations", "Insights"]) {
 			expect(compact).toContain(`title="${label}"`);
 			expect(compact).toContain(`>${label}</span>`);
 		}
@@ -85,7 +101,7 @@ describe("custom dashboard chrome", () => {
 		route.pathname = "/dashboard/machines/fixture-worker/terminal";
 		const html = renderToStaticMarkup(React.createElement(SidebarNav, { setupComplete: true, machines: [], compact: true, onExpand: vi.fn() }));
 		expect(html).toContain('aria-label="Show controls for fixture-work"');
-		expect(html).toContain('href="/dashboard/machines/fixture-worker/terminal"');
+		expect(html).toContain('href="/dashboard/machines/fixture-worker/view"');
 		expect(html.match(/aria-current="page"/g)).toHaveLength(1);
 		route.pathname = "/dashboard/agents";
 	});

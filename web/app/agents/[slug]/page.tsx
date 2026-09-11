@@ -10,7 +10,6 @@ import {
 	SectionBand,
 	TerminalPanel,
 } from "@/components/marketing/MarketingPage";
-import { ReticleBadge } from "@/components/reticle/ReticleBadge";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import {
 	AGENT_TEMPLATES,
@@ -49,77 +48,85 @@ export default async function AgentTemplatePage({ params }: Params) {
 		<MarketingShell>
 			<main id="top">
 				<MarketingHero
-					kicker={`./${agent.category.toUpperCase()}`}
+					kicker={agent.category}
 					title={agent.title}
 					description={agent.longDescription}
-					badges={[agent.runtime, agent.category, "logs", "artifacts"]}
+					badges={[agent.runtime, agent.category, "editable setup", "BYOK"]}
 					icon={agent.icon}
 					actions={
 						<>
-							<ReticleButton as="a" href={presetDestination("/onboarding", listPresets(), agent.slug)} size="lg" className="rounded-[var(--ret-card-radius)]">
-								Set up this Worker
+							<ReticleButton as="a" href={presetDestination("/dashboard/agents", listPresets(), agent.slug)} size="lg" className="rounded-[var(--ret-card-radius)]">
+								Customize this setup
 							</ReticleButton>
 							<ReticleButton as="a" href="/agents" variant="secondary" size="lg" className="rounded-[var(--ret-card-radius)]">
-								All agents
+								All templates
 							</ReticleButton>
 						</>
 					}
 					aside={
 						<TerminalPanel
-							title="agent loadout"
+							title="starting configuration illustration"
 							lines={[
-								`runtime: ${agent.runtime}`,
-								`provider: ${agent.providerLane}`,
-								`model: ${agent.modelPath}`,
-								...agent.loadout.map((item) => `tool: ${item}`),
+								`suggested runtime: ${agent.runtime}`,
+								`compute: ${agent.providerLane}`,
+								`model setup: ${agent.modelPath}`,
+								...agent.loadout.map((item) => `selected entry: ${item}`),
 							]}
 							className="h-full rounded-none border-0"
 						/>
 					}
 				/>
 				<ReticleSpacer />
-				<SectionBand label="Template" title="Runtime, model path, and tools stay explicit.">
-					<div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+				<SectionBand label="Template" title="Review the starting setup.">
+					<p className="mb-5 max-w-3xl text-sm leading-relaxed text-[var(--ret-text-dim)]">
+						Selected entries are not verified tools. Installation, credentials, runtime support, and permissions require setup. Provider choices are not a guarantee that every workload fits every machine.
+					</p>
+					<div className="space-y-5">
 						<MetricGrid metrics={agent.metrics} />
-						<div className="border border-[var(--ret-border)] bg-[var(--ret-bg)]">
-							<div className="border-b border-[var(--ret-border)] px-4 py-3">
-								<p className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
-									Loadout
+						<div className="overflow-hidden rounded-lg border border-[var(--ret-border)]/45 bg-[var(--ret-bg)]">
+							<div className="px-5 pt-5">
+								<p className="text-sm font-medium text-[var(--ret-text-dim)]">
+									Selected skill and MCP entries
 								</p>
 							</div>
-							<div className="flex flex-wrap gap-2 border-b border-[var(--ret-border)] p-4">
+							<div className="flex flex-wrap gap-2 border-b border-[var(--ret-border)]/35 p-5">
 								{agent.loadout.map((item) => (
-									<ReticleBadge key={item} variant="default">
+									<a key={item} href={`/dashboard/registry?q=${encodeURIComponent(item)}`} className="inline-flex min-h-11 items-center rounded-md border border-[var(--ret-border)]/50 px-3 text-sm text-[var(--ret-text)] hover:bg-[var(--ret-surface)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--ret-purple)]" aria-label={`Review ${item} in Registry`}>
 										{item}
-									</ReticleBadge>
+									</a>
 								))}
 							</div>
-							<div className="font-mono text-[11px] text-[var(--ret-text-dim)]">
+							<div className="text-sm leading-6 text-[var(--ret-text-dim)]">
 								<div className="grid grid-cols-[128px_minmax(0,1fr)] border-b border-[var(--ret-border)] last:border-b-0">
 									<span className="border-r border-[var(--ret-border)] px-4 py-3 uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
 										Runtime
 									</span>
-									<span className="truncate px-4 py-3 text-[var(--ret-text)]">{agent.runtime}</span>
+									<span className="min-w-0 break-words px-4 py-3 text-[var(--ret-text)]">{agent.runtime}</span>
 								</div>
 								<div className="grid grid-cols-[128px_minmax(0,1fr)] border-b border-[var(--ret-border)] last:border-b-0">
 									<span className="border-r border-[var(--ret-border)] px-4 py-3 uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
 										Model
 									</span>
-									<span className="truncate px-4 py-3 text-[var(--ret-text)]">{agent.modelPath}</span>
+									<span className="min-w-0 break-words px-4 py-3 text-[var(--ret-text)]">{agent.modelPath}</span>
 								</div>
 								<div className="grid grid-cols-[128px_minmax(0,1fr)] border-b border-[var(--ret-border)] last:border-b-0">
 									<span className="border-r border-[var(--ret-border)] px-4 py-3 uppercase tracking-[0.16em] text-[var(--ret-text-muted)]">
 										Provider
 									</span>
-									<span className="truncate px-4 py-3 text-[var(--ret-text)]">{agent.providerLane}</span>
+									<span className="min-w-0 break-words px-4 py-3 text-[var(--ret-text)]">{agent.providerLane}</span>
 								</div>
 							</div>
 						</div>
 					</div>
 				</SectionBand>
 				<ReticleSpacer />
-				<SectionBand label="Workflow" title="The agent page shows what happens next.">
+				<SectionBand label="Example task" title="Adapt the workflow.">
 					<FlowSteps steps={agent.workflow} />
+					<div className="mt-5 flex flex-wrap gap-3">
+						<ReticleButton as="a" href="/dashboard/memory" variant="secondary">Edit memory</ReticleButton>
+						<ReticleButton as="a" href="/dashboard/registry" variant="secondary">Configure tools</ReticleButton>
+						<ReticleButton as="a" href="https://github.com/Kevin-Liu-01/Agent-Machines/blob/main/web/data/presets.json" variant="ghost" target="_blank" rel="noreferrer">View preset source</ReticleButton>
+					</div>
 				</SectionBand>
 				<ReticleSpacer />
 			</main>

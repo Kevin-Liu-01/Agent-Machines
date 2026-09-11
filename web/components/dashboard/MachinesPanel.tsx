@@ -1,26 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { MachineFleetCard } from "@/components/dashboard/MachineFleetCard";
 import { FleetInteractPane } from "@/components/dashboard/FleetInteractPane";
 import { DashboardPageBody } from "@/components/dashboard/DashboardPageBody";
+import { DashboardLoadingState } from "@/components/dashboard/DashboardLoadingState";
+import { WorkspacePreview } from "@/components/dashboard/WorkspacePreview";
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
 import { ReticleSelect } from "@/components/reticle/ReticleSelect";
-import { SchematicPanel } from "@/components/reticle/SchematicPanel";
+import { SearchOutline as Search, Server, SquareTerminal } from "@/components/ui/icons";
+import { filterFleet, type FleetFilter } from "@/lib/dashboard/fleet-presentation";
 import type { LogLine } from "@/lib/dashboard/types";
 import { fetchLogTail, headlineFromLogs, isFleetLogsLoaded, shouldFetchFleetLogs } from "@/lib/fleet/fetch-log-tail";
-import { useFleetLoadout } from "@/lib/fleet/use-fleet-loadout";
+import { useDashboardConfig } from "@/components/dashboard/DashboardConfigProvider";
+import { validateAgentCredentials } from "@/lib/agents/credentials";
 import { compactSpec, reportedMachineSpec, toFleetStreamCard } from "@/lib/fleet/view-model";
 import { cn } from "@/lib/cn";
 import { waitForControlPlaneOperation } from "@/lib/control-plane/client";
 import type { ProviderCapabilities } from "@/lib/providers";
 import {
 	AGENT_LABEL,
-	DEFAULT_MODEL,
 	PROVIDER_KINDS,
 	PROVIDER_LABEL,
 	type AgentKind,
@@ -80,12 +83,18 @@ export function MachinesPanel() {
 	const [loading, setLoading] = useState(true);
 	const [editing, setEditing] = useState<string | null>(null);
 	const [showProvision, setShowProvision] = useState(false);
-	const [view, setView] = useState<FleetView>("cards");
-	const loadout = useFleetLoadout();
+	const [view, setView] = useState<FleetView>("table");
+	const [query, setQuery] = useState("");
+	const [statusFilter, setStatusFilter] = useState<FleetFilter>("all");
+	const refreshGeneration = useRef(0);
 
 	useEffect(() => {
-		const saved = window.localStorage.getItem(VIEW_STORAGE_KEY);
-		if (saved === "cards" || saved === "table") setView(saved);
+		try {
+			const saved = window.localStorage.getItem(VIEW_STORAGE_KEY);
+			if (saved === "cards" || saved === "table") setView(saved);
+		} catch {
+			// Private browsing may disable storage; the table still works.
+		}
 	}, []);
 
 	const selectView = useCallback((next: FleetView) => {
@@ -98,17 +107,22 @@ export function MachinesPanel() {
 	}, []);
 
 	const refresh = useCallback(async () => {
+		const generation = ++refreshGeneration.current;
 		try {
 			const response = await fetch("/api/dashboard/machines", {
 				cache: "no-store",
 			});
 			if (!response.ok) {
-				setError(`HTTP ${response.status}`);
+				if (generation === refreshGeneration.current) setError(`HTTP ${response.status}`);
 				return;
 			}
 			const payload = (await response.json()) as Payload;
+			if (generation !== refreshGeneration.current) return;
+			if (!payload.ok || !Array.isArray(payload.machines)) throw new Error("Workspace data is unavailable. Try again.");
 			setData(payload);
 			setError(null);
+			// The default table needs metadata only, not a log-tail request per machine.
+			if (view !== "cards") return;
 
 			setLogsFetched((prev) => ({
 				...prev,
@@ -123,36 +137,38 @@ export function MachinesPanel() {
 			const pairs = await Promise.all(
 				pollable.map(async (m) => [m.id, await fetchLogTail(m.id)] as const),
 			);
+			if (generation !== refreshGeneration.current) return;
 			setLogsById(Object.fromEntries(pairs));
 			setLogsFetched((prev) => ({
 				...prev,
 				...Object.fromEntries(pollable.map((m) => [m.id, true])),
 			}));
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "fetch failed");
+			if (generation === refreshGeneration.current) setError(err instanceof Error ? err.message : "fetch failed");
 		} finally {
-			setLoading(false);
+			if (generation === refreshGeneration.current) setLoading(false);
 		}
-	}, []);
+	}, [view]);
 
 	useEffect(() => {
 		refresh();
 		const id = window.setInterval(() => {
 			if (document.visibilityState === "visible") refresh();
 		}, POLL_MS);
-		return () => window.clearInterval(id);
+		return () => { refreshGeneration.current += 1; window.clearInterval(id); };
 	}, [refresh]);
 
 	const machines = data?.machines ?? [];
-	const visible = machines.filter((m) => !m.archived);
+	const current = machines.filter((m) => !m.archived);
+	const visible = filterFleet(current, query, statusFilter);
 	const archived = machines.filter((m) => m.archived);
 	const activeMachineId = data?.activeMachineId ?? null;
-	const readyCount = visible.filter((machine) => machine.live.ok && machine.live.state === "ready").length;
-	const attentionCount = visible.filter(
+	const readyCount = current.filter((machine) => machine.live.ok && machine.live.state === "ready").length;
+	const attentionCount = current.filter(
 		(machine) => !machine.live.ok || (machine.live.state !== "ready" && machine.live.state !== "sleeping"),
 	).length;
-	const providerCount = new Set(visible.map((machine) => machine.providerKind)).size;
-	const activeName = visible.find((machine) => machine.id === activeMachineId)?.name ?? "none";
+	const providerCount = new Set(current.map((machine) => machine.providerKind)).size;
+	const activeName = current.find((machine) => machine.id === activeMachineId)?.name ?? "none";
 	const focusMachine = focusId
 		? machines.find((m) => m.id === focusId && !m.archived) ?? null
 		: null;
@@ -190,25 +206,19 @@ export function MachinesPanel() {
 		<DashboardPageBody>
 			{error ? (
 				<ReticleFrame className="border-[var(--ret-red)]/50 bg-[var(--ret-red)]/5 p-3">
-				<p className="text-[11px] text-[var(--ret-red)]">
-					error: {error}
+				<p role="alert" className="text-sm text-[var(--ret-red)]">
+					error: {error} <button type="button" onClick={() => void refresh()} className="ml-2 min-h-9 underline focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]">Retry</button>
 				</p>
 				</ReticleFrame>
 			) : null}
 
 			{loading && machines.length === 0 ? (
-				<section className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-					{[0, 1].map((i) => (
-						<ReticleFrame key={i}>
-							<div className="h-[320px] animate-pulse bg-[var(--ret-surface)]/40" />
-						</ReticleFrame>
-					))}
-				</section>
+				<DashboardLoadingState label="Loading your machines…" variant="table" />
 			) : null}
 
 			{!loading && machines.length > 0 ? (
 				<FleetSummary
-					total={visible.length}
+					total={current.length}
 					ready={readyCount}
 					attention={attentionCount}
 					providers={providerCount}
@@ -216,13 +226,11 @@ export function MachinesPanel() {
 				/>
 			) : null}
 
-			{/* Quick provision controls */}
+			{/* New machine controls */}
 			{!loading ? (
 				<div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
 					<div className="flex min-w-0 items-center gap-3">
-						<h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
-							Fleet
-						</h2>
+						<h2 className="text-lg font-medium text-[var(--ret-text)]">Your fleet</h2>
 						<ViewToggle view={view} onChange={selectView} />
 					</div>
 					<div className="grid min-w-0 grid-cols-1 gap-2 sm:flex sm:items-center">
@@ -232,7 +240,7 @@ export function MachinesPanel() {
 							onClick={() => setShowProvision((v) => !v)}
 							className="w-full sm:w-auto"
 						>
-							{showProvision ? "Cancel" : "+ New machine"}
+							{showProvision ? "Cancel" : "New machine"}
 						</ReticleButton>
 						<ReticleButton
 							as="a"
@@ -241,7 +249,7 @@ export function MachinesPanel() {
 							size="sm"
 							className="w-full sm:w-auto"
 						>
-							Setup wizard
+							Guided setup
 						</ReticleButton>
 					</div>
 				</div>
@@ -258,13 +266,22 @@ export function MachinesPanel() {
 				/>
 			) : null}
 
-			{!loading && machines.length === 0 && !showProvision ? (
-				<EmptyShell
-					title="No machines yet"
-					body="Click '+ New machine' above or use the setup wizard for guided provisioning."
-					cta={null}
-				/>
+			{!loading && !error && machines.length === 0 && !showProvision ? (
+				<WorkspacePreview onCreate={() => setShowProvision(true)} />
 			) : null}
+
+			{!loading && current.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 focus-within:border-[var(--ret-purple)]">
+            <Search size={18} aria-hidden="true" className="shrink-0 text-[var(--ret-text-muted)]" />
+            <span className="sr-only">Search machines</span>
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, runtime, provider, or model…" className="min-w-0 flex-1 bg-transparent py-2 text-[15px] text-[var(--ret-text)] outline-none placeholder:text-[var(--ret-text-muted)]" />
+          </label>
+          <div className="w-full sm:w-44"><ReticleSelect ariaLabel="Filter machine status" value={statusFilter} onChange={(value) => setStatusFilter(value as FleetFilter)} options={[{ value: "all", label: "All statuses" }, { value: "ready", label: "Running" }, { value: "sleeping", label: "Sleeping" }, { value: "attention", label: "Needs attention" }]} /></div>
+          <span role="status" className="text-sm text-[var(--ret-text-muted)]">{visible.length} of {current.length}</span>
+        </div>
+      ) : null}
+      {!loading && current.length > 0 && visible.length === 0 ? <EmptyShell title="No matching machines" body="Try another name, provider, runtime, or status." cta={<ReticleButton variant="ghost" onClick={() => { setQuery(""); setStatusFilter("all"); }}>Clear filters</ReticleButton>} /> : null}
 
 			{visible.length > 0 && view === "table" ? (
 				<MachineTable machines={visible} activeMachineId={activeMachineId} />
@@ -293,7 +310,6 @@ export function MachinesPanel() {
 									key={machine.id}
 									machine={machine}
 									card={card}
-									loadout={loadout}
 									active={machine.id === activeMachineId}
 									focused={machine.id === focusMachine?.id}
 									delaySec={idx * 0.65}
@@ -328,10 +344,9 @@ export function MachinesPanel() {
 			) : null}
 
 			{archived.length > 0 ? (
-				<section className="space-y-3">
-					<h2 className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
-						Archived ({archived.length})
-					</h2>
+				<details className="rounded-xl border border-[var(--ret-border)] p-5">
+					<summary className="cursor-pointer text-base font-medium focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]">Archived machines ({archived.length})</summary>
+					<p className="my-4 text-sm text-[var(--ret-text-muted)]">Archiving hides a machine from your active fleet. It does not stop provider billing.</p>
 					<div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
 						{archived.map((machine, idx) => {
 							const card = cardsById.get(machine.id);
@@ -341,7 +356,6 @@ export function MachinesPanel() {
 									key={machine.id}
 									machine={machine}
 									card={card}
-									loadout={loadout}
 									active={false}
 									delaySec={idx * 0.15}
 									logsLoaded={isFleetLogsLoaded(machine, logsFetched)}
@@ -354,7 +368,7 @@ export function MachinesPanel() {
 							);
 						})}
 					</div>
-				</section>
+				</details>
 			) : null}
 		</DashboardPageBody>
 	);
@@ -383,9 +397,9 @@ function FleetSummary({
 	return (
 		<ReticleFrame corners={false} className="grid overflow-hidden sm:grid-cols-2 lg:grid-cols-[0.7fr_0.7fr_0.8fr_0.8fr_2fr]">
 			{cells.map((cell) => (
-				<div key={cell.label} className="min-w-0 border-b border-[var(--ret-border)] px-3 py-2.5 last:border-b-0 sm:border-r lg:border-b-0">
-					<p className="font-mono text-[8px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">{cell.label}</p>
-					<p className={cn("mt-1 truncate font-mono text-[13px]", cell.tone)} title={cell.value}>{cell.value}</p>
+				<div key={cell.label} className="min-w-0 border-b border-[var(--ret-border)] px-5 py-4 last:border-b-0 sm:border-r lg:border-b-0">
+					<p className="text-sm capitalize text-[var(--ret-text-muted)]">{cell.label}</p>
+					<p className={cn("mt-2 truncate text-xl font-medium tabular-nums", cell.tone)} title={cell.value}>{cell.value}</p>
 				</div>
 			))}
 		</ReticleFrame>
@@ -408,7 +422,7 @@ function ViewToggle({
 					onClick={() => onChange(option)}
 					aria-pressed={view === option}
 					className={cn(
-						"px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] transition-colors",
+						"min-h-10 px-3 py-2 text-sm capitalize transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--ret-purple)]",
 						view === option
 							? "bg-[var(--ret-surface)] text-[var(--ret-text)]"
 							: "text-[var(--ret-text-muted)] hover:text-[var(--ret-text)]",
@@ -422,85 +436,52 @@ function ViewToggle({
 }
 
 function MachineTable({
-	machines,
-	activeMachineId,
+  machines,
+  activeMachineId,
 }: {
-	machines: LiveMachine[];
-	activeMachineId: string | null;
+  machines: LiveMachine[];
+  activeMachineId: string | null;
 }) {
-	return (
-		<ReticleFrame>
-			<div className="overflow-x-auto">
-				<table className="w-full text-left text-[12px]">
-					<thead>
-						<tr className="border-b border-[var(--ret-border)] text-[var(--ret-text-muted)]">
-							<th className="px-4 py-2 font-mono text-[10px] font-normal uppercase tracking-[0.18em]">Machine</th>
-							<th className="px-4 py-2 font-mono text-[10px] font-normal uppercase tracking-[0.18em]">Agent</th>
-							<th className="px-4 py-2 font-mono text-[10px] font-normal uppercase tracking-[0.18em]">Status</th>
-							<th className="hidden px-4 py-2 font-mono text-[10px] font-normal uppercase tracking-[0.18em] md:table-cell">Actual allocation</th>
-							<th className="hidden px-4 py-2 font-mono text-[10px] font-normal uppercase tracking-[0.18em] lg:table-cell">Created</th>
-							<th className="px-4 py-2">
-								<span className="sr-only">Open</span>
-							</th>
-						</tr>
-					</thead>
-					<tbody>
-						{machines.map((machine) => {
-							const state = machine.live.ok ? machine.live.state : "unknown";
-							const meta = TABLE_PHASE[state] ?? TABLE_PHASE.unknown;
-							const allocation = compactSpec(reportedMachineSpec(machine.live));
-							const isActive = machine.id === activeMachineId;
-							return (
-								<tr
-									key={machine.id}
-									className="border-b border-[var(--ret-border)] transition-colors hover:bg-[var(--ret-surface)]"
-								>
-									<td className="px-4 py-2.5">
-										<span className="flex items-center gap-1.5">
-											<span className="truncate font-mono text-[12px] text-[var(--ret-text)]">
-												{machine.name}
-											</span>
-											{isActive ? (
-												<span className="shrink-0 border border-[var(--ret-purple)]/45 bg-[var(--ret-purple-glow)] px-1 text-[8px] uppercase tracking-[0.2em] text-[var(--ret-purple)]">
-													active
-												</span>
-											) : null}
-										</span>
-										<span className="block truncate font-mono text-[10px] text-[var(--ret-text-muted)]">
-											{machine.id.slice(0, 22)}
-										</span>
-									</td>
-									<td className="px-4 py-2.5 text-[11px] text-[var(--ret-text-dim)]">
-										{AGENT_LABEL[machine.agentKind]}
-									</td>
-									<td className="px-4 py-2.5">
-										<span className="inline-flex items-center gap-1.5">
-											<span className={cn("inline-block h-1.5 w-1.5 rounded-full", meta.dot)} />
-											<span className={cn("text-[11px]", meta.text)}>{meta.label}</span>
-										</span>
-									</td>
-									<td className="hidden px-4 py-2.5 font-mono text-[11px] text-[var(--ret-text-dim)] md:table-cell">
-										{allocation}
-									</td>
-									<td className="hidden px-4 py-2.5 text-[11px] text-[var(--ret-text-dim)] lg:table-cell">
-										{new Date(machine.createdAt).toLocaleDateString()}
-									</td>
-									<td className="px-4 py-2.5 text-right">
-										<Link
-											href={`/dashboard/machines/${machine.id}`}
-											className="font-mono text-[11px] text-[var(--ret-text-muted)] transition-colors hover:text-[var(--ret-text)]"
-										>
-											open →
-										</Link>
-									</td>
-								</tr>
-							);
-						})}
-					</tbody>
-				</table>
-			</div>
-		</ReticleFrame>
-	);
+  return (
+    <ReticleFrame corners={false} className="overflow-hidden rounded-xl">
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[760px] text-left text-sm">
+          <caption className="sr-only">Machines in your fleet. Status and allocation are reported by the provider.</caption>
+          <thead className="bg-[var(--ret-bg-soft)] text-[var(--ret-text-muted)]">
+            <tr className="border-b border-[var(--ret-border)]">
+              {["Machine", "Runtime / provider", "Status", "Actual allocation", "Actions"].map((label) => <th key={label} scope="col" className="px-5 py-4 text-sm font-medium">{label}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {machines.map((machine) => {
+              const state = machine.live.ok ? machine.live.state : "unknown";
+              const meta = TABLE_PHASE[state] ?? TABLE_PHASE.unknown;
+              const allocation = compactSpec(reportedMachineSpec(machine.live));
+              const base = `/dashboard/machines/${encodeURIComponent(machine.id)}`;
+              return (
+                <tr key={machine.id} className="border-b border-[var(--ret-border)] last:border-b-0 hover:bg-[var(--ret-surface)]">
+                  <td className="max-w-64 px-5 py-5">
+                    <Link href={base} className="block truncate text-[15px] font-medium text-[var(--ret-text)] hover:text-[var(--ret-purple)] focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]">{machine.name}</Link>
+                    <p className="mt-1 truncate text-sm text-[var(--ret-text-muted)]">{machine.id === activeMachineId ? "Selected workspace" : machine.model || "Runtime default"}</p>
+                  </td>
+                  <td className="px-5 py-5 text-[var(--ret-text-dim)]">{AGENT_LABEL[machine.agentKind]}<p className="mt-1 text-sm text-[var(--ret-text-muted)]">{machine.providerLabel}</p></td>
+                  <td className="px-5 py-5">
+                    <span className={cn("inline-flex items-center gap-2 whitespace-nowrap", meta.text)}><span aria-hidden="true" className={cn("h-1.5 w-1.5 rounded-full", meta.dot)} />{meta.label}</span>
+                    {!machine.live.ok ? <p className="mt-1 max-w-52 text-sm text-[var(--ret-text-muted)]">{machine.live.reason}</p> : null}
+                  </td>
+                  <td className="whitespace-nowrap px-5 py-5 font-mono text-sm text-[var(--ret-text-dim)]">{allocation}</td>
+                  <td className="px-5 py-5"><div className="flex items-center gap-3">
+                    <Link href={`${base}/terminal`} aria-label={`Open terminal for ${machine.name}`} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[var(--ret-border)] px-3 text-sm text-[var(--ret-text)] hover:bg-[var(--ret-bg-soft)] focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]"><SquareTerminal size={16} aria-hidden="true" />Terminal</Link>
+                    <Link href={base} aria-label={`Manage ${machine.name}`} className="min-h-10 content-center text-sm text-[var(--ret-text-muted)] hover:text-[var(--ret-purple)] focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]">Manage</Link>
+                  </div></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </ReticleFrame>
+  );
 }
 
 function EmptyShell({
@@ -515,12 +496,9 @@ function EmptyShell({
 	return (
 		<ReticleFrame>
 			<div className="space-y-3 p-8 text-center">
-				<SchematicPanel
-					slug="machines"
-					className="mx-auto w-full max-w-[240px]"
-				/>
-				<h3 className="ret-display text-base">{title}</h3>
-				<p className="mx-auto max-w-[64ch] text-[12px] text-[var(--ret-text-dim)]">
+				<Server aria-hidden="true" size={28} className="mx-auto mb-4 text-[var(--ret-text-muted)]" />
+				<h3 className="text-xl font-medium">{title}</h3>
+				<p className="mx-auto max-w-[60ch] text-base leading-7 text-[var(--ret-text-dim)]">
 					{body}
 				</p>
 				{cta ? <div className="flex justify-center">{cta}</div> : null}
@@ -560,7 +538,7 @@ function EditPanel({
 			const patch: Record<string, unknown> = { name: n, model: m };
 			if (u !== apiUrl) patch.apiUrl = u || null;
 			if (k.trim().length > 0) patch.apiKey = k.trim();
-			const response = await fetch(`/api/dashboard/machines/${machineId}`, {
+			const response = await fetch(`/api/dashboard/machines/${encodeURIComponent(machineId)}`, {
 				method: "PATCH",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(patch),
@@ -582,7 +560,7 @@ function EditPanel({
 	return (
 		<div className="space-y-3 border-t border-[var(--ret-border)] bg-[var(--ret-surface)] px-4 py-3">
 			{err ? (
-				<p className="text-[11px] text-[var(--ret-red)]">
+				<p className="text-sm text-[var(--ret-red)]">
 					{err}
 				</p>
 			) : null}
@@ -636,9 +614,10 @@ function QuickProvisionForm({
 	onDone: () => void;
 	onCancel: () => void;
 }) {
-	const [providerKind, setProviderKind] = useState<ProviderKind>("daytona");
+	const config = useDashboardConfig();
+	const [providerKind, setProviderKind] = useState<ProviderKind>(config?.draftProviderKind && PROVIDER_KINDS.includes(config.draftProviderKind) ? config.draftProviderKind : "daytona");
 	const [agentKind, setAgentKind] = useState<AgentKind>("hermes");
-	const [model, setModel] = useState(DEFAULT_MODEL);
+	const [model, setModel] = useState("");
 	const [name, setName] = useState("");
 	const [vcpu, setVcpu] = useState("1");
 	const [memoryMib, setMemoryMib] = useState("2048");
@@ -647,7 +626,10 @@ function QuickProvisionForm({
 	const [err, setErr] = useState<string | null>(null);
 	const [result, setResult] = useState<string | null>(null);
 
+	const credentials = config ? validateAgentCredentials(agentKind, config) : null;
+	const canProvision = Boolean(config?.providers[providerKind]?.configured && credentials?.ok);
 	async function provision() {
+		if (!canProvision || busy) return;
 		setBusy(true);
 		setErr(null);
 		setResult(null);
@@ -682,7 +664,7 @@ function QuickProvisionForm({
 			setResult(`Ready: ${displayId}`);
 			await onRefresh();
 
-			window.setTimeout(onDone, 1500);
+			onDone();
 		} catch (e) {
 			setErr(e instanceof Error ? e.message : "provision failed");
 		} finally {
@@ -693,18 +675,18 @@ function QuickProvisionForm({
 	return (
 		<ReticleFrame>
 			<div className="space-y-3 p-4">
-				<p className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+				<p className="text-sm font-medium text-[var(--ret-text-muted)]">
 					Quick provision
 				</p>
 				{err ? (
-					<p className="break-words text-[11px] text-[var(--ret-red)]">{err}</p>
+					<p className="break-words text-sm text-[var(--ret-red)]">{err}</p>
 				) : null}
 				{result ? (
-					<p className="break-words text-[11px] text-[var(--ret-green)]">{result}</p>
+					<p className="break-words text-sm text-[var(--ret-green)]">{result}</p>
 				) : null}
 				<div className="grid gap-3 md:grid-cols-3">
 					<label className="flex flex-col gap-1.5">
-						<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+						<span className="text-sm font-medium text-[var(--ret-text-muted)]">
 							Provider
 						</span>
 						<ReticleSelect
@@ -715,13 +697,13 @@ function QuickProvisionForm({
 						/>
 					</label>
 					<label className="flex flex-col gap-1.5">
-						<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+						<span className="text-sm font-medium text-[var(--ret-text-muted)]">
 							Agent
 						</span>
 						<ReticleSelect
 							ariaLabel="Agent"
 							value={agentKind}
-							onChange={(v) => setAgentKind(v as AgentKind)}
+							onChange={(v) => { setAgentKind(v as AgentKind); setModel(""); }}
 							options={(["hermes", "openclaw", "claude-code", "codex"] as const).map((a) => ({
 								value: a,
 								label: AGENT_LABEL[a],
@@ -731,20 +713,22 @@ function QuickProvisionForm({
 					<EditField label="name" value={name} onChange={setName} placeholder="my-agent" />
 				</div>
 				<div className="grid gap-3 md:grid-cols-4">
-					<EditField label="model" value={model} onChange={setModel} placeholder={DEFAULT_MODEL} colSpan />
+					<EditField label="Model ID (optional)" value={model} onChange={setModel} placeholder="Leave blank for a supported runtime default" colSpan />
 					<EditField label="Requested vCPU" value={vcpu} onChange={setVcpu} placeholder="1" />
 					<EditField label="Requested RAM (MiB)" value={memoryMib} onChange={setMemoryMib} placeholder="2048" />
 					<EditField label="Requested disk (GiB)" value={storageGib} onChange={setStorageGib} placeholder="10" />
 				</div>
 				{providerKind === "e2b" ? (
-					<p className="text-[11px] text-[var(--ret-amber)]">E2B allocation is defined by its template. These sizing requests do not resize the sandbox; a larger allocation requires a suitable E2B template.</p>
+					<p className="text-sm text-[var(--ret-amber)]">E2B allocation is defined by its template. These sizing requests do not resize the sandbox; a larger allocation requires a suitable E2B template.</p>
 				) : null}
-				<div className="grid grid-cols-1 gap-2 sm:flex sm:justify-end">
+				<p className="text-sm leading-6 text-[var(--ret-text-muted)]">Launching creates paid compute on your provider account. Sizing is requested; actual allocation and runtime support depend on the provider.</p>
+        {!canProvision ? <p role="status" className="text-sm leading-6 text-[var(--ret-amber)]">{!config ? "Loading configuration…" : !config.providers[providerKind]?.configured ? `Add ${PROVIDER_LABEL[providerKind]} credentials before launching.` : credentials && !credentials.ok ? credentials.message : "Connect model credentials."} <Link href="/dashboard/settings" className="underline focus-visible:outline-2 focus-visible:outline-[var(--ret-purple)]">Open Settings</Link></p> : null}
+        <div className="grid grid-cols-1 gap-2 sm:flex sm:justify-end">
 					<ReticleButton variant="ghost" size="sm" onClick={onCancel} disabled={busy} className="w-full sm:w-auto">
 						Cancel
 					</ReticleButton>
-					<ReticleButton variant="primary" size="sm" onClick={() => void provision()} disabled={busy} className="w-full sm:w-auto">
-						{busy ? "Provisioning..." : "Provision"}
+					<ReticleButton variant="primary" size="sm" onClick={() => void provision()} disabled={busy || !canProvision} className="w-full sm:w-auto">
+						{busy ? "Launching…" : "Launch machine"}
 					</ReticleButton>
 				</div>
 			</div>
@@ -769,7 +753,7 @@ function EditField({
 }) {
 	return (
 		<label className={cn("flex min-w-0 flex-col gap-1.5", colSpan ? "md:col-span-2" : "")}>
-			<span className="font-mono text-[10px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+			<span className="text-sm font-medium text-[var(--ret-text-muted)]">
 				{label}
 			</span>
 			<input
@@ -778,7 +762,7 @@ function EditField({
 				value={value}
 				placeholder={placeholder}
 				onChange={(e) => onChange(e.target.value)}
-				className="min-h-10 min-w-0 border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 font-mono text-[12px] text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)] focus:border-[var(--ret-purple)] focus:outline-none"
+				className="min-h-10 min-w-0 border border-[var(--ret-border)] bg-[var(--ret-bg)] px-3 py-2 text-[15px] text-[var(--ret-text)] placeholder:text-[var(--ret-text-muted)] focus:border-[var(--ret-purple)] focus:outline-none"
 			/>
 		</label>
 	);

@@ -1,59 +1,97 @@
-# Agent Machines -- the end state
+# Agent Machines roadmap
 
-## 2026-09-09 provider update
+## Current direction · September 10, 2026
 
-The active providers are now Daytona, E2B, Sprites, and Vercel Sandbox. Older
-provider names below are historical engineering records, not current options
-or affiliations. Daytona validation is tracked separately from those results.
+**Open-source building blocks for agent harnesses.** The priority is to make
+runtimes, tools, configuration, state, and compute easier to assemble into a
+working system that developers can inspect, tune, and extend.
 
-## 2026-08-15 Worker-system overlay
+The source-first shorthand is “shadcn for agent harnesses.” It describes the
+adoption model, not an implemented shadcn registry, component-install command,
+or public marketplace. The old routing-first and consumer-Worker analogies in
+the historical record below are superseded.
 
-The canonical product invariant is now: **the Worker is durable; everything
-underneath it is replaceable**. The Worker owns identity, responsibility,
-memory, instructions, schedules, files, permissions, abilities, history, and
-evidence. The router, runtime, model, sandbox, tools, transport, storage, and
-scheduler are machinery beneath that object.
+Start with the [README](../README.md), [architecture](WHITEPAPER.md), and
+[canonical claim ledger](PRODUCT-MESSAGING.md). Detailed implementation status
+belongs in [CONTROL-PLANE-V2.md](CONTROL-PLANE-V2.md) and [MUX.md](MUX.md).
+Use [LAUNCH.md](LAUNCH.md) for dated deployed evidence, not the historical audit
+below.
 
-The infrastructure router remains the technical wedge. The larger product is
-a creation and supervision system for long-running digital labor: take a
-specialist off the shelf, assemble one from primitives, or eventually describe
-the responsibility and let the system propose the Worker. See
-[WHITEPAPER.md](./WHITEPAPER.md) for the category thesis and
-[CONTROL-PLANE-V2.md](./CONTROL-PLANE-V2.md) for current shipped boundaries.
+## What exists now
 
-The detailed promise-vs-reality table below is a point-in-time 2026-08-01 audit,
-not a current status ledger. It is retained for historical traceability; newer
-dated overlays and linked validation documents supersede its counts and gaps.
+| Area | Implemented starting point | Important boundary |
+|---|---|---|
+| Runtimes | Claude Code, Codex, Hermes, OpenClaw adapters in [`src/mux/harnesses`](../src/mux/harnesses) | Upstream and capacity support differ by runtime and by hosted/direct surface |
+| Compute | Daytona, E2B, Sprites, Vercel Sandbox adapters in [`src/mux/providers`](../src/mux/providers) | Adapter support is not a freshly verified 4×4 matrix or lifecycle parity |
+| Browser interaction | Real remote agent CLI, worker-owned terminal sessions, and reconnect in [the terminal layer](../web/lib/dashboard/terminal-session.ts) | Process retention follows provider behavior; reconnect is not universal process restoration |
+| Configuration | Hosted instructions, Memory bundles, environment/model settings, and selected abilities | Markdown Memory export is not a complete executable harness export |
+| Tools and skills | Bundled procedures, credential-gated integrations, and [registry discovery](../web/lib/dashboard/registry) | Selected, installed, connected, and verified are distinct |
+| Multiple agents | Dashboard recipes, launch, files, logs, sessions, loadouts, schedules, and operations | Recipes are starting configurations, not evaluated autonomous specialists |
+| Lifecycle | [Declarative intent, journals, stores, and reconciler](../src/control-plane) | A consumer must run reconciliation; hosted Memory/bootstrap behavior is not supplied by the default public mux driver |
+| Programmatic use | [Hosted client, direct mux, and lifecycle exports](../src/index.ts) | These are distinct surfaces, not one interchangeable API |
 
-## 2026-08-13 v2 cutover overlay
+The dashboard calls a configured agent workspace a **Worker**. Preserving its
+supported configuration and managed files is what makes repeated use practical.
+That architecture supports the harness-building thesis; “persistent digital
+labor” is not the headline promise.
 
-The rebuild now has a new architectural boundary: `src/control-plane` owns a
-declarative Worker resource, durable operations, idempotency, expiring leases,
-cold-start-before-run, scheduled dispatch dedupe, and lifecycle
-reconciliation. `MuxWorkerRuntimeDriver` carries those decisions through the
-existing mux, including application-level live provider migration. The
-dashboard's primary Workers surface submits one runtime + sandbox launch
-intent and opens the console while bootstrap runs.
+## Next: make adoption repeatable
 
-This does **not** make the historical promise-vs-reality table below fully
-green. The journal has memory, atomic JSON, and transactional Supabase
-adapters; every hosted lifecycle mutation submits intent through it, and the
-scheduler reclaims expired work. Hosted environments still need migration 009,
-and Clerk `UserConfig` / `MachineRef` remains the compatibility projection for
-older read surfaces. The exact shipped/pending boundary lives in
-[CONTROL-PLANE-V2.md](./CONTROL-PLANE-V2.md) and supersedes older wording that
-calls the lifecycle kernel or hosted journal "not started."
+This is an ordered work direction, not a release-date commitment.
 
-> Scope document. What Agent Machines is when it is finished, what exists in
-> code today, and the precise distance between the two. Every "exists" claim
-> below cites a file. Every gap is stated as a defect, not a feature idea.
->
-> Written 2026-08-01 against `feat/sandbox-mux`. The spine is the router
-> property table in [YC-APPLICATION-JULY-2026.md](./YC-APPLICATION-JULY-2026.md);
-> the measured substrate behavior is [MUX-RESULTS.md](./MUX-RESULTS.md) and
-> nothing here contradicts it.
+| Priority | Work | Completion evidence |
+|---|---|---|
+| 1. A clear first run | Keep clone, local preview, hosted setup, and direct SDK examples accurate and distinct | A fresh checkout follows the documented path; snippets compile against the packed public package |
+| 2. Find and understand the modules | Source-backed catalog with contracts, dependencies, extension points, and honest adoption labels | Each component points to real source; exported package APIs are distinguished from app-local code |
+| 3. Reusable harness configuration | Clarify how runtime, environment, instructions, skills, tools, and state compose | A documented configuration can be applied and inspected with explicit unsupported combinations |
+| 4. Installation proof | Expose tool selection, installation attempts, credential requirements, and runtime verification separately | A chosen tool cannot appear verified from a catalog entry or successful shell exit alone |
+| 5. Provider/runtime confidence | Maintain bounded, dated smoke evidence for supported configurations | Exact runtime, model, provider, resources, output artifact, and teardown result recorded per run |
+| 6. Lifecycle clarity | Finish hosted read-model cutover and improve recovery/operation visibility | Worker intent and operation history remain consistent through interruption, retry, and supported migration |
+| 7. Extension examples | Show how to add an adapter or use the kernel without the full web app | Small examples run with explicit credentials and documented dependencies |
 
----
+The source-level [loadout module](../src/mux/loadout.ts) is not yet part of the
+compiled public package or default router path. Packaging, integration, and
+runtime-specific behavior must be proven before advertising it as an
+installable SDK capability.
+
+## Longer-term directions
+
+| Direction | Not yet a current product claim | Evidence required before promotion |
+|---|---|---|
+| Natural-language harness creation | Describe an outcome and get a proposed configuration | Inspectable configuration, compatibility validation, approval, and a real completed run |
+| Publishing and sharing | Versioned complete harness/Worker definitions | Export/import contract, permissions, dependencies, versioning, and working installation |
+| Public Worker marketplace | Browse, publish, and install complete third-party Workers | A real publishing and installation system; today’s tool registry is not this |
+| Autonomous delegation | Agents manage subordinate agents within explicit authority | Scoped credentials, approvals, budgets, audit history, and bounded delegation tests |
+| Unified provider billing | A consolidated charge across compute and models | Metering reconciliation and actual billing integration; BYOK and usage estimates do not qualify |
+| Broader outcome-based routing | Choose complete configurations from measured task outcomes | Comparable evidence and safe routing beyond the existing surface-specific placement behavior |
+
+## Claims that remain out of bounds
+
+- No universal runtime/provider/model compatibility or freshly verified 4×4 matrix.
+- No claim that every bundled skill or MCP connector is installed or production-tested.
+- No complete harness export from Memory’s Markdown download.
+- No component-install CLI or public marketplace implied by the shadcn analogy.
+- No mid-run automatic replay, cross-provider RAM migration, or lossless transfer
+  of every native runtime session.
+- No natural-language creation, autonomous delegation, or unified provider bill
+  presented as shipped.
+- No hosted routing or Memory behavior inferred solely from a direct SDK type.
+
+## Verification and history
+
+Local tests, typechecks, builds, and isolated package checks are necessary but
+do not prove a deployed run. September 9 evidence includes new-account Codex on
+Daytona through completed work and artifact read-back. Older strict matrix
+results include a retired provider and must retain their original scope.
+
+The section below preserves the August engineering audit, implementation
+notes, line references, and findings. It is historical evidence—not the current
+positioning, build order, provider set, or capability ledger. Its present-tense
+wording and “must not claim” list describe the state at the recorded dates;
+current source-backed references above supersede them.
+
+<details>
+<summary>Historical routing and implementation audit · August 2026</summary>
 
 ## 1. The end state
 
@@ -770,3 +808,5 @@ partner who read the code agree?* Today the sentence that survives is:
 > still never re-placed), and one bill are next.
 
 Everything in section 3 exists to shorten that second sentence.
+
+</details>

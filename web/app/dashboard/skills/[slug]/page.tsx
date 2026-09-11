@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { PageHeader } from "@/components/dashboard/PageHeader";
+import { ArrowLeft } from "@/components/ui/icons";
 import { findSkill, listSkills } from "@/lib/dashboard/skills";
 
 type Params = { slug: string };
@@ -27,18 +28,18 @@ export default async function SkillDetailPage({
 		<div className="flex flex-col">
 			<PageHeader
 				artSlug="skills"
-				kicker={`SKILL -- ${skill.category.toUpperCase()}`}
+				kicker={`Skill · ${skill.category}`}
 				title={skill.slug}
 				description={skill.description}
 				right={
 					<ReticleButton as="a" href="/dashboard/skills" variant="ghost" size="sm">
-						<span aria-hidden>←</span>
+						<ArrowLeft className="size-4" aria-hidden="true" />
 						<span className="ml-1.5">All skills</span>
 					</ReticleButton>
 				}
 			/>
-			<div className="grid gap-6 px-6 py-6 lg:grid-cols-[1fr_220px]">
-				<article className="prose-msg max-w-none border border-[var(--ret-border)] bg-[var(--ret-bg)] p-6 md:p-8">
+			<div className="grid gap-6 px-[var(--dashboard-gutter,20px)] py-6 lg:grid-cols-[minmax(0,1fr)_220px]">
+				<article className="prose-msg min-w-0 max-w-none overflow-x-auto rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)] p-5 md:p-8">
 					<ReactMarkdown remarkPlugins={[remarkGfm]}>
 						{skill.body}
 					</ReactMarkdown>
@@ -55,7 +56,7 @@ export default async function SkillDetailPage({
 								{skill.tags.map((t) => (
 									<span
 										key={t}
-										className="border border-[var(--ret-border)] bg-[var(--ret-surface)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--ret-text-dim)]"
+										className="rounded border border-[var(--ret-border)] bg-[var(--ret-surface)] px-2 py-1 text-xs text-[var(--ret-text-dim)]"
 									>
 										{t}
 									</span>
@@ -70,7 +71,7 @@ export default async function SkillDetailPage({
 									<li key={slug}>
 										<Link
 											href={`/dashboard/skills/${slug}`}
-											className="font-mono text-[11px] text-[var(--ret-purple)] hover:underline"
+											className="block py-1 text-sm text-[var(--ret-purple)] hover:underline"
 										>
 											{slug}
 										</Link>
@@ -94,7 +95,7 @@ function MetaBlock({
 }) {
 	return (
 		<div className="border border-[var(--ret-border)] bg-[var(--ret-bg)] p-4">
-			<p className="font-mono text-[10px] uppercase tracking-[0.22em] text-[var(--ret-text-muted)]">
+			<p className="text-sm font-medium text-[var(--ret-text-muted)] first-letter:uppercase">
 				{title}
 			</p>
 			<div className="mt-3 space-y-2 text-sm">{children}</div>
@@ -104,8 +105,8 @@ function MetaBlock({
 
 function MetaRow({ label, value }: { label: string; value: string }) {
 	return (
-		<div className="flex items-center justify-between gap-2 font-mono text-[11px]">
-			<span className="text-[var(--ret-text-muted)]">{label}</span>
+		<div className="flex items-center justify-between gap-2 text-sm">
+			<span className="text-[var(--ret-text-muted)] first-letter:uppercase">{label}</span>
 			<span className="text-[var(--ret-text-dim)]">{value}</span>
 		</div>
 	);

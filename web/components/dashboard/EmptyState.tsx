@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { ReticleFrame } from "@/components/reticle/ReticleFrame";
-import { SchematicPanel } from "@/components/reticle/SchematicPanel";
+import { ArrowRight, Boxes } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 
 type Props = {
@@ -10,38 +10,32 @@ type Props = {
 	description: ReactNode;
 	hint?: ReactNode;
 	action?: { label: string; href: string };
-	/** Circuit-art slug for a framed schematic graphic (recipe B). */
+	onRetry?: () => void;
+	secondaryAction?: { label: string; href: string };
+	/** Legacy artwork props retained for existing callers; states use quiet icons. */
 	artSlug?: string;
 	/** Explicit art src (e.g. an error graphic) if not a category slug. */
 	artSrc?: string;
 };
 
 /**
- * Shared empty / offline / config-missing state. When given art, a framed
- * schematic graphic (recipe B) anchors the surface so "nothing here" still
- * feels intentional; otherwise it stays a clean bordered card. Dashboard
- * frames omit Reticle corner crosses via shell context.
+ * Shared empty / offline / config-missing state. Every state explains the
+ * prerequisite or recovery action instead of presenting an empty canvas.
  */
 export function EmptyState({
 	title,
 	description,
 	hint,
 	action,
-	artSlug,
-	artSrc,
+	secondaryAction,
+	onRetry,
 }: Props) {
 	return (
-		<div className={cn("mx-auto w-full max-w-2xl px-4 py-8 sm:px-5 sm:py-12")}>
+		<div className={cn("mx-auto w-full max-w-3xl px-[var(--dashboard-gutter,20px)] py-4")}>
 			<ReticleFrame>
-				<div className={cn("px-5 py-8 text-center sm:p-10")}>
-					{artSlug || artSrc ? (
-						<SchematicPanel
-							slug={artSlug}
-							src={artSrc}
-							className="mx-auto mb-7 w-full max-w-[260px]"
-						/>
-					) : null}
-					<h2 className={cn("text-2xl font-semibold tracking-tight text-[var(--ret-text)]")}>
+				<div className={cn("p-5 text-center sm:p-6")}>
+					<span className={cn("mx-auto mb-3 grid size-10 place-items-center rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg-soft)] text-[var(--ret-text-muted)]")}><Boxes className={cn("size-5")} aria-hidden="true" /></span>
+					<h2 className={cn("text-xl font-semibold tracking-tight text-[var(--ret-text)]")}>
 						{title}
 					</h2>
 					<p className={cn("mx-auto mt-3 max-w-[52ch] text-base leading-7 text-[var(--ret-text-dim)]")}>
@@ -52,11 +46,14 @@ export function EmptyState({
 							{hint}
 						</pre>
 					) : null}
-					{action ? (
-						<div className="mt-6 flex justify-center">
-							<ReticleButton as="a" href={action.href} variant="secondary" size="sm">
+					{action || secondaryAction || onRetry ? (
+						<div className="mt-4 flex flex-wrap justify-center gap-2">
+							{onRetry ? <ReticleButton onClick={onRetry} variant="primary" size="sm">Try again</ReticleButton> : null}
+							{action ? <ReticleButton as="a" href={action.href} variant={onRetry ? "secondary" : "primary"} size="sm">
 								{action.label}
-							</ReticleButton>
+								<ArrowRight className={cn("size-4")} aria-hidden="true" />
+							</ReticleButton> : null}
+							{secondaryAction ? <ReticleButton as="a" href={secondaryAction.href} variant="secondary" size="sm">{secondaryAction.label}</ReticleButton> : null}
 						</div>
 					) : null}
 				</div>

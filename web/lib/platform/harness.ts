@@ -1,9 +1,8 @@
 /**
  * Agent Machines harness — registry-derived stats and product framing.
  *
- * Durable Workers with replaceable machinery: describe or choose a specialist,
- * then route its runtime, model, substrate, and abilities without losing the
- * Worker's identity, responsibility, state, or evidence.
+ * Open-source building blocks for agent harnesses. Catalog availability,
+ * installed capabilities, and runtime compatibility are distinct concepts.
  *
  * Counts come from live registries (loadout, MCP catalog, skills manifest).
  */
@@ -26,34 +25,34 @@ import type { AgentKind } from "@/lib/types";
 
 export const PRODUCT = {
 	name: "Agent Machines",
-	/** Site title suffix, OG, GitHub — lead with the durable-Worker invariant. */
-	tagline: "Persistent Workers. Replaceable machinery.",
+	/** Shared public positioning; operational boundaries stay explicit below. */
+	tagline: "Open-source building blocks for agent harnesses.",
 	oneLiner:
-		"Describe the work you need or choose a trusted specialist, then keep its memory, files, schedules, abilities, and evidence while runtimes, models, and sandboxes change underneath it.",
+		"Start with a working agent setup. Choose a runtime and compute, connect your tools, and make the source your own.",
 	summary:
-		"Agent Machines is the Worker system for persistent digital labor: create a long-running specialist from intent or a template, supervise its work, and preserve its identity, responsibility, memory, files, schedules, permissions, and evidence across replaceable runtimes, models, tools, and sandbox providers.",
+		"Agent Machines provides open-source building blocks for agent harnesses: runtime adapters, sandbox providers, browser terminals, editable instructions and memory, skills, and MCP configuration. Start from a preset or assemble your own setup, run the actual agent CLI, and manage remote agents from one dashboard. Inspect, modify, and extend the source as your workflow changes.",
 	analogies: {
 		primary:
-			"OpenRouter for routing the machinery, Lovable/Bolt/v0 for composing a Worker, and ChatGPT-simple access to the first useful result",
+			"Think shadcn for agent harnesses: useful starting points and source you can inspect and adapt—not a shadcn component registry or a one-command harness installer.",
 		substrate:
-			"Agent Machines is the product layer; Daytona, E2B, Sprites.dev, and Vercel Sandbox supply replaceable infrastructure underneath",
+			"Daytona, E2B, Sprites, and Vercel Sandbox provide compute through capability-aware adapters.",
 	},
 	audiences: {
 		humans:
-			"Describe a responsibility or choose a specialist, connect the services it may use, then watch, approve, inspect, and move the Worker from one dashboard.",
+			"For developers and technical teams building custom agent environments without rebuilding provisioning, terminals, and configuration from scratch.",
 		agents:
-			"MCP + CLI surface so a head agent can launch, switch, observe, and tear down worker machines (the endgame).",
+			"Use the SDK and HTTP API to create and run agents programmatically; the dashboard exposes the same remote workspaces.",
 	},
 	fleet:
-		"Provision specialist Workers from opinionated templates or modular primitives. Each Worker keeps its identity, responsibility, memory bundle, schedules, files, loadout, history, and evidence while the implementation beneath it changes.",
+		"Save an agent setup, provision its compute, and manage its terminal, configuration, files, and logs. A Worker is a saved setup and its running workspace—not a claim that a preset can complete a job without configuration or supervision.",
 	substrateNote:
-		"Daytona, E2B, Sprites.dev, and Vercel Sandbox implement the substrate contract, but each lane exposes only its supported capabilities. The provider is replaceable machinery, never the Worker itself.",
+		"Runtimes, models, tools, memory, and compute have separate configuration surfaces. Supported combinations differ between the hosted dashboard and direct SDK; lifecycle and migration operations depend on the provider.",
 	moat: [
-		"Durable Worker identity — responsibility, memory, files, schedules, permissions, history, and evidence survive implementation changes",
-		"Worker composer — useful off-the-shelf specialists today, intent-to-Worker assembly as the creation layer",
-		"Outcome router — runtime, model, substrate, abilities, cost, constraints, and health become one evaluated lane",
-		"Owned harness — SKILL.md procedures, MCPs, CLIs, tools, and service routes compound outside a closed chat",
-		"Programmatic control plane — dashboard for humans, MCP/CLI for Worker-to-Worker orchestration",
+		"A working foundation — runtime and provider adapters, lifecycle controls, and real browser CLIs",
+		"Inspectable source — MIT-licensed code you can fork, modify, and extend",
+		"Configurable setups — instructions, selected skills, MCP connections, and model credentials",
+		"One dashboard — multiple remote agents with files, sessions, and logs",
+		"Clear boundaries — explicit compatibility, provider capabilities, and catalog installation requirements",
 	],
 } as const;
 
@@ -62,7 +61,7 @@ export const HARNESS_LAYERS = [
 		id: "skills",
 		label: "Skills",
 		description:
-			"SKILL.md behavior packs synced from knowledge/. Loaded on intent — npm for agent intelligence.",
+			"Browse SKILL.md procedures from knowledge/, select abilities, and inspect the instructions before installing them.",
 	},
 	{
 		id: "services",
@@ -78,9 +77,9 @@ export const HARNESS_LAYERS = [
 	},
 	{
 		id: "cli",
-		label: "Closed-loop CLIs",
+		label: "CLI catalog",
 		description:
-			"agent-browser, Playwright, gh, curl, httpx, jq, sqlite3, ss, dig — verification without hallucinating success.",
+			"Discover tools such as agent-browser, Playwright, and gh. Installation, credentials, and runtime support are checked separately.",
 	},
 	{
 		id: "builtins",
@@ -162,11 +161,11 @@ export const HARNESS_SUMMARY = [
 
 /** Deploy pitch — matches demo script framing. */
 export const HARNESS_DEPLOY_LINE =
-	`One click: ${HARNESS.skillCount} skills, ${HARNESS.mcpTiers.bundled}+ service MCPs, ${HARNESS.cliCount}+ CLIs, ${HARNESS.nativeToolMin}+ native tools (varies by agent), browser automation, cron, optional Cursor bridge.`;
+	`Start with a preset, then choose from ${HARNESS.skillCount} skill entries and ${HARNESS.mcpServerCount} MCP catalog entries. Configure and install what your runtime supports; connect your own service credentials.`;
 
 /** FAQ-safe tools answer — registry-aware, not a fake single number. */
 export const HARNESS_TOOLS_ANSWER =
-	`The harness ships ${HARNESS.skillCount} SKILL.md files, ${HARNESS.serviceRouteCount} ranked service lanes (MCP → CLI → skills per vendor), ${HARNESS.mcpServerCount} MCP catalog entries (${HARNESS.mcpTiers.core} core + ${HARNESS.mcpTiers.bundled} bundled + ${HARNESS.mcpTiers.ide} IDE), ${HARNESS.cliCount}+ closed-loop CLIs, and ${HARNESS.nativeToolMin}–${HARNESS.nativeToolMax} agent-native tools depending on runtime (Hermes, OpenClaw, Claude Code, Codex). The loadout registry — not static marketing copy — is the source of truth.`;
+	`The source includes ${HARNESS.skillCount} SKILL.md entries and ${HARNESS.mcpServerCount} MCP catalog entries, plus CLI and service guides. These are available building blocks, not a promise that every tool is installed, authenticated, or compatible with every runtime. Preview and select abilities, connect the required services, then use the dashboard installation controls. Runtime-native tools vary by agent.`;
 
 export function nativeToolsLabel(agent: AgentKind = "hermes"): string {
 	const n = HARNESS.nativeToolsByAgent[agent];

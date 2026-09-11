@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { CopyCodeButton } from "@/components/CopyCodeButton";
 import { MuxDiagram } from "@/components/MuxDiagram";
-import { SDK_EXAMPLE, StatsRow } from "@/components/StatsRow";
+import { INSTALL_CODE, SDK_EXAMPLE, StatsRow } from "@/components/StatsRow";
 import { HARNESS_CAPABILITIES, SUBSTRATE_CAPABILITIES } from "@/lib/mux/capabilities";
 
 beforeAll(() => vi.stubGlobal("React", React));
@@ -51,7 +51,7 @@ describe("SDK and routing explanation (actual rendered components)", () => {
 		expect(html).toMatch(/<a\b[^>]*href="\/dashboard"[^>]*>Try the dashboard/);
 		expect(html).toContain('aria-label="SDK setup steps"');
 		expect(html).toMatch(/<ol\b/);
-		for (const label of ["Install the SDK", "Connect your providers", "Create the Worker", "Run and inspect"]) {
+		for (const label of ["Install the SDK", "Connect your accounts", "Configure the route", "Run, inspect, and clean up"]) {
 			expect(html).toMatch(new RegExp(`<h3\\b[^>]*>${label}</h3>`));
 		}
 		expect(textContent(html)).toContain(`${HARNESS_CAPABILITIES.length} runtimes`);
@@ -83,12 +83,12 @@ describe("SDK and routing explanation (actual rendered components)", () => {
 	it("copies the same install command and TypeScript example that the page displays", () => {
 		const controls = copyControls(React.createElement(StatsRow));
 		expect(controls).toEqual([
-			expect.objectContaining({ label: "Copy install command", text: "npm i agent-machines" }),
+			expect.objectContaining({ label: "Copy install command", text: INSTALL_CODE }),
 			expect.objectContaining({ label: "Copy SDK example", text: SDK_EXAMPLE }),
 		]);
 		const html = renderToStaticMarkup(React.createElement(StatsRow));
-		expect(html).toMatch(/<code\b[^>]*>npm i agent-machines<\/code>/);
-		const pre = html.match(/<pre\b[^>]*aria-label="TypeScript Worker example"[^>]*>([\s\S]*?)<\/pre>/)!;
+		expect(html).toContain(INSTALL_CODE);
+		const pre = html.match(/<pre\b[^>]*aria-label="TypeScript agent setup example"[^>]*>([\s\S]*?)<\/pre>/)!;
 		expect(pre).not.toBeNull();
 		expect(pre[0]).toContain('tabindex="0"');
 		const withoutLineNumbers = pre[1].replace(/<span\b(?=[^>]*aria-hidden="true")[^>]*>[\s\S]*?<\/span>/g, "");
@@ -98,7 +98,7 @@ describe("SDK and routing explanation (actual rendered components)", () => {
 
 	it("keeps the shared example syntactically valid TypeScript without executing it", () => {
 		const result = ts.transpileModule(SDK_EXAMPLE, {
-			fileName: "reviewer.ts",
+			fileName: "setup.ts",
 			reportDiagnostics: true,
 			compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 		});
@@ -107,18 +107,22 @@ describe("SDK and routing explanation (actual rendered components)", () => {
 		expect(result.outputText).toContain("for await");
 	});
 
-	it("pairs the code with a visual configuration, not a fabricated running Worker", () => {
+	it("pairs the code with its actual compute configuration and lifecycle", () => {
 		const html = renderToStaticMarkup(React.createElement(StatsRow));
 		const example = html.match(/<figure\b[^>]*>[\s\S]*?Example configuration[\s\S]*?<\/figure>/)![0];
 		expect(example).toBeDefined();
-		for (const label of ["reviewer", "Claude Code", "Automatic", "Review my repo"]) {
+		for (const label of ["workspace-check", "Claude Code", "Daytona primary", "E2B backup, when its key is set", "List the files in the current directory."]) {
 			expect(textContent(example)).toContain(label);
 		}
-		expect(SDK_EXAMPLE).toContain('name: "reviewer"');
+		expect(SDK_EXAMPLE).toContain('name: "workspace-check"');
 		expect(SDK_EXAMPLE).toContain('agent: "claude-code"');
 		expect(SDK_EXAMPLE).toContain('sandbox: "auto"');
-		expect(SDK_EXAMPLE).toContain('worker.run("Review my repo")');
-		expect(textContent(example)).not.toMatch(/running|completed|verified|live/i);
+		expect(SDK_EXAMPLE).toContain('worker.run("List the files in the current directory.")');
+		expect(textContent(example)).toContain("An illustration, not an active workspace");
+		expect(textContent(example)).toContain("destroys its temporary sandbox");
+		expect(textContent(example)).not.toMatch(/Sprites|Vercel|verified result|live status/i);
+		expect(textContent(html)).toContain("creates paid compute and makes a paid model call");
+		for (const variable of ["DAYTONA_API_KEY", "ANTHROPIC_API_KEY", "E2B_API_KEY"]) expect(textContent(example)).toContain(variable);
 		expect(example).not.toMatch(/<button\b|aria-live=/);
 	});
 

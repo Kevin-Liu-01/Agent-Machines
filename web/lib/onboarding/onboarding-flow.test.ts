@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from "vitest";
 import * as credentials from "@/lib/agents/credentials";
 import * as upstreams from "@/lib/agents/upstreams";
 import * as schema from "@/lib/user-config/schema";
-import { onboardingProviderReady } from "./launch";
+import { onboardingProviderReady, onboardingWorkspaceUrl } from "./launch";
 import { selectedPreset } from "./preset-selection";
 
 type Element = { type: any; props: Record<string, any> };
@@ -24,11 +24,12 @@ function text(value: unknown): string {
 }
 
 const preset = { id: "test-preset", name: "Test specialist", description: "Existing instructions", skillIds: ["git"], mcpServerIds: ["github"] };
-function fixture() {
+function fixture(launch?: { submit: (...args: any[]) => unknown; wait: (...args: any[]) => unknown }) {
 	let cursor = 0;
 	const cells: Array<{ value: any }> = [];
 	let effects: Array<() => void> = [];
 	const heading = { focus: vi.fn(), scrollIntoView: vi.fn() };
+	const headingQuery = vi.fn(() => heading);
 	const requests = vi.fn(() => { throw new Error("No provider request is allowed in presentation tests"); });
 	const react = {
 		useState(initial: unknown) {
@@ -44,10 +45,10 @@ function fixture() {
 	const jsx = (type: unknown, props: Record<string, unknown>) => ({ type, props });
 	const module = { exports: {} as Record<string, (props: Record<string, any>) => Element> };
 	const source = readFileSync(resolve(process.cwd(), "components/dashboard/OnboardingFlow.tsx"), "utf8");
-	runInNewContext(ts.transpileModule(`${source}\nexport { AgentStep, PresetStep, ProviderPickStep, ProviderComparison, StepRail, KeyStep, BootStep };`, {
+	runInNewContext(ts.transpileModule(`${source}\nexport { WelcomeStep, AgentStep, PresetStep, ProviderPickStep, ProviderComparison, StepRail, KeyStep, BootStep };`, {
 		compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
 	}).outputText, {
-		module, exports: module.exports, fetch: requests,
+		module, exports: module.exports, fetch: requests, crypto: { randomUUID: () => "test-worker-id" },
 		require: (id: string) => id === "react" ? react
 			: id === "react/jsx-runtime" ? { jsx, jsxs: jsx }
 				: id === "next/navigation" ? { useRouter: () => ({ replace: vi.fn() }) }
@@ -55,19 +56,20 @@ function fixture() {
 						: id.endsWith("agents/credentials") ? credentials
 							: id.endsWith("agents/upstreams") ? upstreams
 								: id.endsWith("onboarding/preset-selection") ? { selectedPreset }
-									: id.endsWith("onboarding/launch") ? { onboardingProviderReady, submitOnboardingLaunch: requests }
+									: id.endsWith("onboarding/launch") ? { onboardingProviderReady, onboardingWorkspaceUrl, submitOnboardingLaunch: launch?.submit ?? requests }
+										: id.endsWith("control-plane/client") ? { waitForControlPlaneOperation: launch?.wait ?? requests }
 										: id.endsWith("/cn") ? { cn: (...values: unknown[]) => values.filter(Boolean).join(" ") }
 											: new Proxy({}, { get: (_target, key) => key === "ReticleButton" ? "button" : () => null }),
 	});
 	const wizard = module.exports;
 	return {
-		wizard, requests, heading,
-		render(config = schema.toPublicConfig(structuredClone(schema.DEFAULT_USER_CONFIG))) {
+		wizard, requests, heading, headingQuery,
+		render(config = schema.toPublicConfig(structuredClone(schema.DEFAULT_USER_CONFIG)), extra = {}) {
 			cursor = 0;
 			effects = [];
-			const tree = wizard.OnboardingFlow({ initialConfig: config, presets: [preset] });
+			const tree = wizard.OnboardingFlow({ initialConfig: config, presets: [preset], ...extra });
 			for (const element of nodes(tree)) {
-				if (element.props.ref && typeof element.props.ref === "object") element.props.ref.current = { querySelector: () => heading };
+				if (element.props.ref && typeof element.props.ref === "object") element.props.ref.current = { querySelector: headingQuery };
 			}
 			for (const effect of effects) effect();
 			return tree;
@@ -81,18 +83,23 @@ describe("onboarding presentation contracts (actual TSX)", () => {
 		let tree = render();
 		expect(heading.focus).not.toHaveBeenCalled();
 		expect(heading.scrollIntoView).not.toHaveBeenCalled();
-		for (const component of ["AgentStep", "PresetStep", "ProviderPickStep"]) {
-			nodes(tree).find((node) => node.type?.name === component)!.props.onNext();
-			tree = render();
-		}
-		expect(heading.focus).toHaveBeenCalledTimes(3);
+		nodes(tree).find((node) => node.type?.name === "WelcomeStep")!.props.onNext();
+		tree = render();
+		let keys = nodes(tree).find((node) => node.type?.name === "KeyStep")!;
+		keys.props.onChange("test-cloud-key");
+		keys.props.onAiKeyChange("openai", "test-model-key");
+		tree = render();
+		keys = nodes(tree).find((node) => node.type?.name === "KeyStep")!;
+		keys.props.onProvision();
+		tree = render();
+		expect(heading.focus).toHaveBeenCalledTimes(2);
 		expect(heading.focus).toHaveBeenLastCalledWith({ preventScroll: true });
 		expect(heading.scrollIntoView).toHaveBeenLastCalledWith({ behavior: "instant", block: "start" });
 		render();
-		expect(heading.focus).toHaveBeenCalledTimes(3);
-		nodes(tree).find((node) => node.type?.name === "KeyStep")!.props.onBack();
+		expect(heading.focus).toHaveBeenCalledTimes(2);
+		nodes(tree).find((node) => node.type?.name === "PresetStep")!.props.onBack();
 		render();
-		expect(heading.focus).toHaveBeenCalledTimes(4);
+		expect(heading.focus).toHaveBeenCalledTimes(3);
 	});
 
 	it("invariant_unselected_presets_do_not_claim_to_be_selected", () => {
@@ -109,9 +116,9 @@ describe("onboarding presentation contracts (actual TSX)", () => {
 		const { render, requests } = fixture();
 		const config = { ...schema.toPublicConfig(schema.DEFAULT_USER_CONFIG), draftProviderKind: provider as schema.ProviderKind };
 		const before = structuredClone(config);
-		const tree = render(config);
-		const preview = nodes(tree).find((node) => node.type?.name === "RigPreview")!;
-		expect(preview.props.provider).toBe("daytona");
+		nodes(render(config)).find((node) => node.type?.name === "WelcomeStep")!.props.onNext();
+		const connection = nodes(render(config)).find((node) => node.type?.name === "KeyStep")!;
+		expect(connection.props.provider).toBe("daytona");
 		expect(config).toEqual(before);
 		expect(requests).not.toHaveBeenCalled();
 	});
@@ -138,7 +145,7 @@ describe("onboarding presentation contracts (actual TSX)", () => {
 
 	it("invariant_progress_identifies_the_current_step_without_fake_navigation", () => {
 		const { wizard } = fixture();
-		for (const step of ["agent", "preset", "provider", "key", "boot"]) {
+		for (const step of ["welcome", "connect", "configure", "boot"]) {
 			const tree = wizard.StepRail({ step });
 			expect(nodes(tree).filter((node) => node.props["aria-current"] === "step")).toHaveLength(1);
 			expect(nodes(tree).filter((node) => node.type === "button")).toHaveLength(0);
@@ -187,27 +194,38 @@ describe("onboarding presentation contracts (actual TSX)", () => {
 	it("invariant_navigation_uses_real_readiness_without_saving_draft_credentials", () => {
 		const { render, requests } = fixture();
 		let tree = render();
-		for (const component of ["AgentStep", "PresetStep", "ProviderPickStep"]) {
-			nodes(tree).find((node) => node.type?.name === component)!.props.onNext();
-			tree = render();
-		}
+		nodes(tree).find((node) => node.type?.name === "WelcomeStep")!.props.onNext();
+		tree = render();
 		let keyStep = nodes(tree).find((node) => node.type?.name === "KeyStep")!;
 		expect(keyStep.props.canProvision).toBe(false);
+		keyStep.props.onProvision();
+		expect(nodes(render()).find((node) => node.type?.name === "PresetStep")).toBeUndefined();
 		keyStep.props.onChange("test-cloud-value");
 		keyStep.props.onAiKeyChange("openai", "test-ai-value");
 		tree = render();
 		keyStep = nodes(tree).find((node) => node.type?.name === "KeyStep")!;
 		expect(keyStep.props.canProvision).toBe(true);
-		keyStep.props.onBack();
+		keyStep.props.onProvision();
 		tree = render();
-		nodes(tree).find((node) => node.type?.name === "ProviderPickStep")!.props.onPick("vercel");
+		const review = nodes(tree).find((node) => node.type?.name === "PresetStep")!;
+		expect(review.props.continueLabel).toBe("Launch workspace");
+		expect(review.props.canContinue).toBe(true);
+		review.props.onBack();
 		tree = render();
-		nodes(tree).find((node) => node.type?.name === "ProviderPickStep")!.props.onNext();
+		keyStep = nodes(tree).find((node) => node.type?.name === "KeyStep")!;
+		nodes(keyStep.props.selectionOptions).find((node) => node.type?.name === "ProviderPickStep")!.props.onPick("vercel");
 		tree = render();
 		keyStep = nodes(tree).find((node) => node.type?.name === "KeyStep")!;
 		expect(keyStep.props.value).toBe("");
 		expect(keyStep.props.secondary).toEqual({});
 		expect(keyStep.props.canProvision).toBe(false);
+		keyStep.props.onChange("test-vercel-token");
+		keyStep.props.onSecondaryChange("teamId", "test-team");
+		keyStep = nodes(render()).find((node) => node.type?.name === "KeyStep")!;
+		expect(keyStep.props.canProvision).toBe(false);
+		keyStep.props.onSecondaryChange("projectId", "test-project");
+		keyStep = nodes(render()).find((node) => node.type?.name === "KeyStep")!;
+		expect(keyStep.props.canProvision).toBe(true);
 		expect(requests).not.toHaveBeenCalled();
 	});
 
@@ -216,12 +234,106 @@ describe("onboarding presentation contracts (actual TSX)", () => {
 		const onRetry = vi.fn(), onBack = vi.fn();
 		const tree = wizard.BootStep({ agent: "codex", provider: "e2b", machineId: null, phase: "failed", done: false, busy: false, error: "Test observation failed", onRetry, onBack });
 		expect(text(tree)).toContain("Test observation failed");
-		expect(text(tree)).not.toContain("Your Worker is ready");
+		expect(text(tree)).not.toContain("Your workspace is ready");
 		for (const callback of [onRetry, onBack]) {
 			const action = nodes(tree).find((node) => node.props.onClick === callback)!;
 			expect(action.props.disabled).toBe(false);
 			action.props.onClick();
 			expect(callback).toHaveBeenCalledOnce();
 		}
+	});
+
+	it("invariant_quickstart_has_a_real_welcome_and_the_same_embedded_dashboard_entry", () => {
+		const { wizard, render, requests } = fixture();
+		const onNext = vi.fn();
+		const welcome = wizard.WelcomeStep({ onNext });
+		expect(text(welcome)).toContain("Build your first agent setup");
+		expect(text(welcome)).toContain("A chat subscription is not an API key");
+		expect(text(welcome)).toContain("Nothing new is saved or provisioned by this quickstart until");
+		nodes(welcome).find((node) => node.props.onClick === onNext)!.props.onClick();
+		expect(onNext).toHaveBeenCalledOnce();
+		const embedded = render(undefined, { embedded: true });
+		expect(nodes(embedded).find((node) => node.type === "header")).toBeUndefined();
+		expect(nodes(embedded).find((node) => node.type?.name === "WelcomeStep")).toBeDefined();
+		expect(requests).not.toHaveBeenCalled();
+	});
+
+	it.each(["AgentStep", "ProviderPickStep"])("invariant_compact_%s_keeps_all_four_real_choices", (name) => {
+		const { wizard, requests } = fixture();
+		const onPick = vi.fn();
+		const tree = wizard[name]({ compact: true, value: name === "AgentStep" ? "codex" : "daytona", configured: schema.toPublicConfig(schema.DEFAULT_USER_CONFIG).providers, onPick });
+		const choices = nodes(tree).filter((node) => node.type === "button");
+		expect(choices).toHaveLength(4);
+		expect(choices.filter((node) => node.props["aria-pressed"])).toHaveLength(1);
+		choices.forEach((choice) => { expect(choice.props.type).toBe("button"); choice.props.onClick(); });
+		expect(onPick.mock.calls.map(([choice]) => choice)).toEqual(name === "AgentStep" ? ["hermes", "openclaw", "claude-code", "codex"] : schema.PROVIDER_KINDS);
+		expect(requests).not.toHaveBeenCalled();
+	});
+
+	it("invariant_runtime_change_rechecks_native_credentials_and_only_renders_compatible_key_fields", () => {
+		const { wizard, render, requests } = fixture();
+		nodes(render()).find((node) => node.type?.name === "WelcomeStep")!.props.onNext();
+		let keys = nodes(render()).find((node) => node.type?.name === "KeyStep")!;
+		keys.props.onChange("test-compute");
+		keys.props.onAiKeyChange("anthropic", "test-anthropic");
+		keys = nodes(render()).find((node) => node.type?.name === "KeyStep")!;
+		expect(keys.props.canProvision).toBe(true);
+		nodes(keys.props.selectionOptions).find((node) => node.type?.name === "AgentStep")!.props.onPick("codex");
+		keys = nodes(render()).find((node) => node.type?.name === "KeyStep")!;
+		expect(keys.props.canProvision).toBe(false);
+		const inputs = nodes(wizard.KeyStep(keys.props)).filter((node) => node.type === "input" && node.props.type === "password");
+		expect(inputs).toHaveLength(2);
+		expect(inputs[1].props.value).toBe("");
+		inputs[1].props.onChange({ target: { value: "test-openai" } });
+		keys = nodes(render()).find((node) => node.type?.name === "KeyStep")!;
+		expect(keys.props.aiKeys.openai).toBe("test-openai");
+		expect(keys.props.canProvision).toBe(true);
+		expect(requests).not.toHaveBeenCalled();
+	});
+
+	it.each([false, true])("invariant_launch_has_accessible_step_headings_and_is_explicit_deduplicated_and_completion_gated_embedded_%s", async (embedded) => {
+		let finish!: (result: { machineId: string }) => void;
+		const submit = vi.fn(async (state: { operationId: string | null }) => { state.operationId = "test-operation"; return "test-operation"; });
+		const wait = vi.fn(() => new Promise<{ machineId: string }>((resolve) => { finish = resolve; }));
+		const { wizard, render: renderFixture, requests, headingQuery } = fixture({ submit, wait });
+		const render = () => renderFixture(undefined, { embedded });
+		function expectStepHeading(element: Element) {
+			const headings = nodes(element.type(element.props)).filter((node) => "data-onboarding-step-heading" in node.props);
+			expect(headings).toHaveLength(1);
+			expect(headings[0].type).toBe(embedded ? "h2" : "h1");
+			expect(headings[0].props.tabIndex).toBe(-1);
+			expect(headings[0].props.className).toContain("scroll-mt-20");
+		}
+		const welcome = nodes(render()).find((node) => node.type?.name === "WelcomeStep")!;
+		expectStepHeading(welcome);
+		welcome.props.onNext();
+		let keys = nodes(render()).find((node) => node.type?.name === "KeyStep")!;
+		expectStepHeading(keys);
+		keys.props.onChange("  test-compute  ");
+		keys.props.onAiKeyChange("openai", "  test-openai  ");
+		keys = nodes(render()).find((node) => node.type?.name === "KeyStep")!;
+		keys.props.onProvision();
+		const review = nodes(render()).find((node) => node.type?.name === "PresetStep")!;
+		expectStepHeading(review);
+		expect(text(review.props.launchOptions)).toContain("before requesting a cloud workspace");
+		expect(text(review.props.launchOptions)).toContain("can remain saved if launch fails");
+		expect(submit).not.toHaveBeenCalled();
+		review.props.onNext();
+		review.props.onNext();
+		await vi.waitFor(() => expect(wait).toHaveBeenCalledOnce());
+		expect(submit).toHaveBeenCalledOnce();
+		expect((submit.mock.calls[0] as unknown as [unknown, unknown])[1]).toMatchObject({ setup: { providerCredentials: { daytona: { apiKey: "test-compute" } }, aiProviderKeys: { openai: "test-openai" } } });
+		let boot = nodes(render()).find((node) => node.type?.name === "BootStep")!;
+		expectStepHeading(boot);
+		expect(boot.props.done).toBe(false);
+		expect(nodes(wizard.BootStep(boot.props)).some((node) => node.props.href?.includes("/console"))).toBe(false);
+		finish({ machineId: "exact-machine" });
+		await vi.waitFor(() => expect(nodes(render()).find((node) => node.type?.name === "BootStep")!.props.done).toBe(true));
+		boot = nodes(render()).find((node) => node.type?.name === "BootStep")!;
+		expect(boot.props.done).toBe(true);
+		expect(nodes(wizard.BootStep(boot.props)).some((node) => node.props.href === onboardingWorkspaceUrl("exact-machine"))).toBe(true);
+		expect(nodes(render()).find((node) => node.type?.name === "BootStep")).toBeDefined();
+		expect(headingQuery).toHaveBeenLastCalledWith("[data-onboarding-step-heading]");
+		expect(requests).not.toHaveBeenCalled();
 	});
 });

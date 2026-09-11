@@ -1,5 +1,6 @@
 import { CapabilityAtlas } from "@/components/CapabilityAtlas";
 import { ProductShowcase } from "@/components/ProductShowcase";
+import { HarnessComponentsSection } from "@/components/marketing/HarnessComponents";
 import {
 	MarketingHero,
 	MarketingShell,
@@ -13,7 +14,7 @@ import { buildPageMetadata } from "@/lib/seo/metadata";
 export const metadata = buildPageMetadata({
 	title: "Product",
 	description:
-		"Explore the durable Worker system: off-the-shelf specialists, modular runtimes and sandboxes, persistent state, lifecycle, supervision, and APIs.",
+		"Build an agent setup from open-source runtime adapters, sandbox providers, tools, memory documents, and browser terminals. Inspect the source and customize each layer.",
 	path: "/product",
 	keywords: ["agent product", "runtime router", "sandbox router", "worker observability"],
 });
@@ -23,15 +24,15 @@ export default function ProductPage() {
 		<MarketingShell>
 			<main id="top">
 				<MarketingHero
-					kicker="./PRODUCT"
-					title="Keep the Worker. Swap the machinery."
-					description="Choose a persistent specialist or compose one from modular primitives. Its identity, responsibility, memory, files, schedules, permissions, history, and evidence survive changes to the runtime, model, tools, and sandbox."
-					badges={["durable identity", "persistent work", "supervision", "portability"]}
+					kicker="Product"
+					title="Your agent setup. Built from open parts."
+					description="Real agent runtimes, your tools, and a remote workspace. Configure each layer in the dashboard or adapt the open-source implementation."
+					badges={["MIT source", "Runtime adapters", "Your credentials", "Real CLIs"]}
 					icon="server"
 					actions={
 						<>
-							<ReticleButton as="a" href="/sign-in" size="lg" className="rounded-[var(--ret-card-radius)]">
-								Start for free
+							<ReticleButton as="a" href="/dashboard/agents" size="lg" className="rounded-[var(--ret-card-radius)]">
+								Build your setup
 							</ReticleButton>
 							<ReticleButton as="a" href="/docs" variant="secondary" size="lg" className="rounded-[var(--ret-card-radius)]">
 								Read docs
@@ -40,11 +41,11 @@ export default function ProductPage() {
 					}
 					aside={
 						<TerminalPanel
-							title="worker recipe"
+								title="The configurable layers · overview"
 							lines={[
-								"runtime: hermes | openclaw | claude | codex",
+									"runtime: hermes | openclaw | claude-code | codex",
 								"provider: e2b | sprites | daytona | vercel",
-								"model: router profile or native key",
+									"model: supported router profile or native key",
 								"loadout: skills + MCP + CLI + cron",
 								"observe: logs + usage + artifacts",
 							]}
@@ -52,6 +53,8 @@ export default function ProductPage() {
 						/>
 					}
 				/>
+				<ReticleSpacer />
+				<HarnessComponentsSection />
 				<ReticleSpacer />
 				<WorkerSystemThesis />
 				<ReticleSpacer />

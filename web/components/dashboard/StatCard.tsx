@@ -15,26 +15,26 @@ export function StatCard({ label, value, unit, badge, subtext, className }: Prop
 	return (
 		<div
 			className={cn(
-				"relative border border-[var(--ret-border)] bg-[var(--ret-bg)] px-6 py-6 flex flex-col items-center justify-center text-center",
+				"relative flex min-w-0 flex-col gap-2 rounded-lg border border-[var(--ret-border)] bg-[var(--ret-bg)] p-5 text-left",
 				className,
 			)}
 		>
 			{badge && (
 				<div className="absolute top-2 left-2">{badge}</div>
 			)}
-			<span className="text-[10px] uppercase tracking-widest font-mono text-[var(--ret-text-muted)] mb-2">
+			<span className="text-sm font-medium text-[var(--ret-text-muted)]">
 				{label}
 			</span>
-			<span className="text-4xl font-semibold tabular-nums text-[var(--ret-text)]">
+			<span className="break-words text-3xl font-semibold tracking-tight tabular-nums text-[var(--ret-text)]">
 				{value}
 				{unit && (
-					<span className="text-[13px] font-mono text-[var(--ret-text-dim)] ml-1">
+					<span className="ml-2 text-xs font-normal tracking-normal text-[var(--ret-text-dim)]">
 						{unit}
 					</span>
 				)}
 			</span>
 			{subtext && (
-				<span className="absolute bottom-2 right-3 text-[10px] font-mono text-[var(--ret-text-muted)]">
+				<span className="text-xs leading-5 text-[var(--ret-text-muted)]">
 					{subtext}
 				</span>
 			)}

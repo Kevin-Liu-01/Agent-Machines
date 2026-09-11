@@ -298,6 +298,7 @@ export function HeroOrbit({
 	activeAgent,
 	activeSubstrate,
 	mode = "portrait",
+	animated = true,
 	onSelectAgent,
 	onSelectSubstrate,
 }: {
@@ -305,6 +306,7 @@ export function HeroOrbit({
 	activeAgent: string | null;
 	activeSubstrate?: SubstrateId;
 	mode?: "portrait" | "gears";
+	animated?: boolean;
 	onSelectAgent?: (idx: number) => void;
 	onSelectSubstrate?: (id: SubstrateId) => void;
 }) {
@@ -318,6 +320,7 @@ export function HeroOrbit({
 				camera={{ position: camPos, fov: gears ? 42 : 34 }}
 				dpr={gears ? 2 : undefined}
 				antialias={gears}
+				animated={animated}
 			>
 				<HeroOrbitInner
 					activeAgent={activeAgent}

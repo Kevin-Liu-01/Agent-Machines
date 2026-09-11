@@ -19,10 +19,10 @@ export function ProviderBadge({
 	className,
 }: Props) {
 	return (
-		<span className={cn("inline-flex items-center gap-1.5", className)}>
+		<span className={cn("inline-flex min-w-0 items-center gap-2", className)}>
 			<ProviderMark provider={provider} size={size} />
 			{showLabel ? (
-				<span className="truncate text-[12px] text-[var(--ret-text)]">
+				<span className="text-sm font-medium text-[var(--ret-text)]">
 					{label ?? provider}
 				</span>
 			) : null}

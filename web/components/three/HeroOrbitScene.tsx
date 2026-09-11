@@ -155,7 +155,14 @@ function SubstrateCore({ substrate }: { substrate: SubstrateId }) {
 		};
 	}, [outerGeom, innerGeom]);
 
-	useFrame((_, delta) => {
+	useFrame((state, frameDelta) => {
+		const delta = state.frameloop === "always" ? Math.min(frameDelta, 0.05) : 0;
+		if (state.frameloop !== "always") {
+			appear.current = 1;
+			pop.current?.scale.setScalar(1);
+			if (outerMat.current) outerMat.current.opacity = 0.98;
+			if (innerMat.current) innerMat.current.opacity = 0.5;
+		}
 		clock.current += delta;
 		// Spin happens entirely around the origin (groups are never translated),
 		// so the core stays anchored dead-center no matter the camera orbit. The
@@ -664,11 +671,10 @@ function GearChip({
 			<div
 				title={title}
 				onClick={onClick}
+				className="transition-[opacity,transform] duration-200 motion-reduce:transition-none"
 				style={{
 					opacity: active ? 1 : 0.55,
 					transform: active ? "scale(1.2)" : "scale(0.86)",
-					transition:
-						"opacity 0.4s ease, transform 0.55s cubic-bezier(0.34,1.56,0.64,1)",
 					// Re-enabled per-chip even though the hero orbit wrapper is
 					// pointer-events:none, so only the logos are interactive.
 					pointerEvents: onClick ? "auto" : "none",
@@ -730,18 +736,15 @@ function SubstrateGear({
 	onSelect?: (id: SubstrateId) => void;
 }) {
 	const g = useRef<THREE.Group>(null);
-	const target = useRef(GEAR_LOCK - subTheta(activeSubstrate));
-	useEffect(() => {
-		target.current = GEAR_LOCK - subTheta(activeSubstrate);
-	}, [activeSubstrate]);
-	useFrame((_, delta) => {
+	const target = GEAR_LOCK - subTheta(activeSubstrate);
+	useFrame((state, delta) => {
 		if (!g.current) return;
 		g.current.rotation.z = lerpAngle(
 			g.current.rotation.z,
-			target.current,
-			1 - Math.exp(-GEAR_LERP * delta),
+			target,
+			state.frameloop === "always" ? 1 - Math.exp(-GEAR_LERP * Math.min(delta, 0.05)) : 1,
 		);
-	});
+	}, -1); // Set geometry before Drei projects the HTML logos, including demand frames.
 	return (
 		<group ref={g}>
 			<GearWheel
@@ -807,18 +810,15 @@ function AgentGear({
 	onSelect?: (idx: number) => void;
 }) {
 	const g = useRef<THREE.Group>(null);
-	const target = useRef(GEAR_LOCK - STATIONS[activeIdx].theta);
-	useEffect(() => {
-		target.current = GEAR_LOCK - STATIONS[activeIdx].theta;
-	}, [activeIdx]);
-	useFrame((_, delta) => {
+	const target = GEAR_LOCK - STATIONS[activeIdx].theta;
+	useFrame((state, delta) => {
 		if (!g.current) return;
 		g.current.rotation.z = lerpAngle(
 			g.current.rotation.z,
-			target.current,
-			1 - Math.exp(-GEAR_LERP * delta),
+			target,
+			state.frameloop === "always" ? 1 - Math.exp(-GEAR_LERP * Math.min(delta, 0.05)) : 1,
 		);
-	});
+	}, -1);
 	return (
 		<group ref={g}>
 			<GearWheel

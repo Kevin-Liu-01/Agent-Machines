@@ -4,8 +4,10 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import { Logo } from "@/components/Logo";
 import { ReticleLabel } from "@/components/reticle/ReticleLabel";
-import { Skeleton } from "@/components/ui/Skeleton";
+import { DashboardLoadingState } from "@/components/dashboard/DashboardLoadingState";
 import { cn } from "@/lib/cn";
+import { METRICS_AVAILABILITY_COPY, metricsFailureReason, type MetricsUnavailableReason } from "@/lib/dashboard/metrics-availability";
+import { ReticleButton } from "@/components/reticle/ReticleButton";
 import { agentLogoMark, providerLogoMark } from "@/lib/fleet/logos";
 import {
 	routeKey,
@@ -43,7 +45,7 @@ const GAP_LABEL: Record<string, string> = {
 function Unknown({ reason }: { reason: UnavailableReason }) {
 	return (
 		<span
-			className="font-mono text-[11px] text-[var(--ret-text-muted)]"
+			className="font-mono text-[13px] text-[var(--ret-text-muted)]"
 			title={REASON_COPY[reason]}
 		>
 			unknown
@@ -94,15 +96,15 @@ function RouteAxis({ route }: { route: RouteOutcome }) {
 	return (
 		<div className="flex items-center gap-2 whitespace-nowrap">
 			{agentMark ? <Logo mark={agentMark} size={13} /> : null}
-			<span className="text-[12px] font-medium text-[var(--ret-text)]">{agentLabel}</span>
-			<span className="font-mono text-[10px] text-[var(--ret-text-muted)]">on</span>
+			<span className="text-sm font-medium text-[var(--ret-text)]">{agentLabel}</span>
+			<span className="font-mono text-xs text-[var(--ret-text-muted)]">on</span>
 			{substrateMark ? <Logo mark={substrateMark} size={13} /> : null}
-			<span className="text-[12px] font-medium text-[var(--ret-text)]">
+			<span className="text-sm font-medium text-[var(--ret-text)]">
 				{substrateLabel}
 			</span>
 			{route.recognized ? null : (
 				<span
-					className="border border-[var(--ret-amber)]/30 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-[var(--ret-amber)]"
+					className="border border-[var(--ret-amber)]/30 px-1.5 py-0.5 text-xs font-medium text-[var(--ret-amber)]"
 					title="the run log's arm snapshot is unvalidated free text; this axis is not a known agent or substrate"
 				>
 					unrecognized
@@ -123,7 +125,7 @@ function SuccessCell({ metric }: { metric: RouteOutcome["taskSuccess"] }) {
 				: "text-[var(--ret-red)]";
 	return (
 		<>
-			<span className={cn("font-mono text-[12px] tabular-nums", tone)}>
+			<span className={cn("font-mono text-sm tabular-nums", tone)}>
 				{(rate * 100).toFixed(0)}%
 			</span>
 			<Hint>
@@ -138,7 +140,7 @@ function FirstOutputCell({ route }: { route: RouteOutcome }) {
 	return (
 		<>
 			{route.timeToFirstOutput.status === "available" ? (
-				<span className="font-mono text-[12px] tabular-nums text-[var(--ret-text)]">
+				<span className="font-mono text-sm tabular-nums text-[var(--ret-text)]">
 					{formatDuration(route.timeToFirstOutput.value.p50Ms)}
 				</span>
 			) : (
@@ -157,7 +159,7 @@ function CostCell({ cost }: { cost: RouteOutcome["cost"] }) {
 	return (
 		<>
 			{cost.total.status === "available" ? (
-				<span className="font-mono text-[12px] tabular-nums text-[var(--ret-text)]">
+				<span className="font-mono text-sm tabular-nums text-[var(--ret-text)]">
 					{formatCost(cost.total.value.meanMillicents)}
 				</span>
 			) : (
@@ -194,7 +196,7 @@ function RateCell({
 			: "text-[var(--ret-text)]";
 	return (
 		<>
-			<span className={cn("font-mono text-[12px] tabular-nums", tone)}>
+			<span className={cn("font-mono text-sm tabular-nums", tone)}>
 				{(rate * 100).toFixed(0)}%
 			</span>
 			<Hint>
@@ -223,27 +225,33 @@ type Props = {
 export function RouteOutcomesPanel({ machineId, days = 30, className }: Props) {
 	const [report, setReport] = useState<RouteOutcomesReport | null>(null);
 	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState<string | null>(null);
+	const [error, setError] = useState<MetricsUnavailableReason | null>(null);
+	const [retry, setRetry] = useState(0);
 
 	useEffect(() => {
 		let stopped = false;
+		const controller = new AbortController();
 		setLoading(true);
+		setError(null);
+		setReport(null);
 		const params = new URLSearchParams({ days: String(days) });
 		if (machineId) params.set("machineId", machineId);
-		fetch(`/api/dashboard/route-outcomes?${params.toString()}`, { cache: "no-store" })
+		fetch(`/api/dashboard/route-outcomes?${params.toString()}`, { cache: "no-store", signal: controller.signal })
 			.then(async (res) => {
-				if (!res.ok) throw new Error(`HTTP ${res.status}`);
-				const json = (await res.json()) as { ok?: boolean; report?: RouteOutcomesReport };
-				if (!json.ok || !json.report) throw new Error("invalid route-outcomes payload");
+				const json = (await res.json()) as { ok?: boolean; report?: RouteOutcomesReport; reason?: unknown } | null;
+				if (!res.ok || !json?.ok || !json.report || !Array.isArray(json.report.routes) || !Array.isArray(json.report.gaps)) {
+					if (!stopped) setError(metricsFailureReason(json));
+					return;
+				}
 				if (!stopped) {
 					setReport(json.report);
 					setError(null);
 				}
 			})
-			.catch((err: unknown) => {
+			.catch(() => {
 				if (!stopped) {
 					setReport(null);
-					setError(err instanceof Error ? err.message : "fetch failed");
+					setError("unavailable");
 				}
 			})
 			.finally(() => {
@@ -251,33 +259,28 @@ export function RouteOutcomesPanel({ machineId, days = 30, className }: Props) {
 			});
 		return () => {
 			stopped = true;
+			controller.abort();
 		};
-	}, [machineId, days]);
+	}, [machineId, days, retry]);
 
 	return (
 		<div className={cn("border border-[var(--ret-border)] bg-[var(--ret-bg)]", className)}>
 			<div className="flex items-baseline justify-between gap-3 border-b border-[var(--ret-border)] px-4 py-3">
 				<ReticleLabel>Route outcomes</ReticleLabel>
-				<span className="font-mono text-[10px] text-[var(--ret-text-muted)]">
+				<span className="font-mono text-xs text-[var(--ret-text-muted)]">
 					{report ? `${report.totalRuns} traced runs . last ${days}d` : `last ${days}d`}
 				</span>
 			</div>
 
 			{error ? (
-				<p className="px-4 py-4 font-mono text-[11px] text-[var(--ret-red)]">
-					error: {error}
-				</p>
-			) : loading ? (
-				<div className="space-y-2 p-4">
-					{[0, 1, 2].map((i) => (
-						<Skeleton key={i} className="h-9 w-full" />
-					))}
+				<div className={cn("p-5")}>
+					<div role="alert"><h3 className={cn("text-base font-semibold")}>{METRICS_AVAILABILITY_COPY[error].title}</h3><p className={cn("mt-2 text-sm leading-6 text-[var(--ret-text-dim)]")}>{METRICS_AVAILABILITY_COPY[error].description}</p></div>
+					<ReticleButton variant="secondary" size="sm" className={cn("mt-4")} onClick={() => setRetry(value => value + 1)}>Retry route outcomes</ReticleButton>
 				</div>
+			) : loading ? (
+				<DashboardLoadingState label="Loading route outcomes…" variant="table" className="p-4" />
 			) : !report || report.routes.length === 0 ? (
-				<p className="px-4 py-6 text-center text-[12px] text-[var(--ret-text-muted)]">
-					No traced runs in this window. Only scheduled (cron) runs emit a trace
-					today, so console, API, and SDK runs are absent by design, not missing.
-				</p>
+				<div className="px-4 py-6 text-center text-sm text-[var(--ret-text-muted)]"><p>No traced runs in this window. Only scheduled (cron) runs are included; console, API, and SDK runs are not tracked here.</p><ReticleButton as="a" href="/dashboard/cron" variant="secondary" className="mt-4">Open schedules</ReticleButton></div>
 			) : (
 				<div className="overflow-x-auto">
 					<table className="w-full text-left">
@@ -302,7 +305,7 @@ export function RouteOutcomesPanel({ machineId, days = 30, className }: Props) {
 										<RouteAxis route={route} />
 									</Cell>
 									<Cell>
-										<span className="font-mono text-[12px] tabular-nums text-[var(--ret-text-dim)]">
+										<span className="font-mono text-sm tabular-nums text-[var(--ret-text-dim)]">
 											{route.runs}
 										</span>
 									</Cell>
@@ -330,19 +333,19 @@ export function RouteOutcomesPanel({ machineId, days = 30, className }: Props) {
 
 			{report && report.gaps.length > 0 ? (
 				<div className="border-t border-[var(--ret-border)] px-4 py-3">
-					<div className="font-mono text-[9px] uppercase tracking-[0.18em] text-[var(--ret-text-muted)]">
+					<div className="text-xs font-medium text-[var(--ret-text-muted)]">
 						not reported on any route
 					</div>
 					<ul className="mt-2 grid gap-1.5">
 						{report.gaps.map((gap) => (
 							<li
 								key={gap.metric}
-								className="flex flex-wrap items-baseline gap-2 text-[11px] text-[var(--ret-text-dim)]"
+								className="flex flex-wrap items-baseline gap-2 text-[13px] text-[var(--ret-text-dim)]"
 							>
 								<span className="font-medium text-[var(--ret-text-secondary)]">
 									{GAP_LABEL[gap.metric] ?? gap.metric}
 								</span>
-								<span className="font-mono text-[10px] text-[var(--ret-text-muted)]">
+								<span className="font-mono text-xs text-[var(--ret-text-muted)]">
 									{gap.reasons.map((reason) => REASON_COPY[reason]).join("; ")}
 								</span>
 							</li>

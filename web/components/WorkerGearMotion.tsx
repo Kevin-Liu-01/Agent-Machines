@@ -4,8 +4,9 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Cog } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
+import { synchronizeGearClocks } from "@/lib/marketing/worker-gear-clock";
 
-/** One play state for every CSS gear, so pausing never resets their phase. */
+/** A shared elapsed clock and play state prevent phase drift, including HMR. */
 export function WorkerGearMotion({ children }: { children: ReactNode }) {
 	const root = useRef<HTMLDivElement>(null);
 	const [enabled, setEnabled] = useState(true);
@@ -15,6 +16,15 @@ export function WorkerGearMotion({ children }: { children: ReactNode }) {
 	useEffect(() => {
 		const element = root.current;
 		if (!element) return;
+
+		synchronizeGearClocks(element);
+		// Streamed children or a live component replacement can start a new CSS
+		// animation later than the core. Rejoin its clock without a frame loop or
+		// resetting the core's angle. Attribute changes from playback are ignored.
+		const clockObserver = typeof window.MutationObserver === "function"
+			? new window.MutationObserver(() => synchronizeGearClocks(element))
+			: null;
+		clockObserver?.observe(element, { childList: true, subtree: true });
 
 		const updateVisibility = () => setDocumentVisible(document.visibilityState !== "hidden");
 		updateVisibility();
@@ -30,6 +40,7 @@ export function WorkerGearMotion({ children }: { children: ReactNode }) {
 		observer?.observe(element);
 
 		return () => {
+			clockObserver?.disconnect();
 			observer?.disconnect();
 			document.removeEventListener("visibilitychange", updateVisibility);
 		};
