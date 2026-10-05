@@ -282,7 +282,7 @@ const LINK_FOCUS = "focus-visible:outline-2 focus-visible:outline-offset-4 focus
 
 export function CapabilityAtlas() {
 	return (
-		<div id="loadout" className={cn("scroll-mt-[72px] border-y border-[var(--ret-border)]/30 bg-[var(--ret-bg)]")}>
+		<div id="loadout" className={cn("scroll-mt-[72px] bg-[var(--ret-bg)]")}>
 			<header className={cn(LANDING_INSET, LANDING_SECTION_SPACE, LANDING_SPLIT, "items-end")}>
 				<div>
 					<p className={cn(LANDING_EYEBROW)}><PublicIcon name="layers" className={cn("h-[18px] w-[18px] shrink-0")} />Worker capabilities</p>

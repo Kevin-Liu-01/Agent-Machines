@@ -104,7 +104,7 @@ export function WorkerSystemThesis() {
 		<section
 			id="worker-system"
 			aria-labelledby="worker-system-heading"
-			className={cn("scroll-mt-[72px] border-y border-[var(--ret-border)]/50 bg-[var(--ret-bg)]")}
+			className={cn("scroll-mt-[72px] bg-[var(--ret-bg)]")}
 		>
 			<header data-landing-header className={cn(LANDING_INSET, LANDING_SECTION_SPACE, LANDING_SPLIT, "items-end")}>
 				<div>

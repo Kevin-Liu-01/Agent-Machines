@@ -1,25 +1,25 @@
-import type { CSSProperties } from "react";
-
 import { cn } from "@/lib/cn";
 
 import { ReticleCross } from "./ReticleCross";
+import { RETICLE_SIZES } from "./constants";
 
 type Props = {
 	className?: string;
-	/** Height of the hatched fill area (only applies when hatch=true). */
+	/** Height of the strip between section boundaries. */
 	height?: number;
 	corners?: boolean;
-	/** Fill the spacer with diagonal hatch. Default false (single hairline). */
+	/** Fill the spacer with diagonal hatch. Default false (empty strip). */
 	hatch?: boolean;
 };
 
-const CROSS_LEFT = "calc(50% - var(--ret-content-max) / 2 - 5px)";
-const CROSS_RIGHT = "calc(50% - var(--ret-content-max) / 2 - 5px)";
+// Absolute positioning starts inside the border; align to its stroke center.
+const CROSS_OFFSET = RETICLE_SIZES.crossArm + RETICLE_SIZES.hairline / 2;
+const CROSS_EDGE = `calc(50% - var(--ret-content-max) / 2 - ${CROSS_OFFSET}px)`;
 
 /**
  * Section divider. Two modes:
  *
- * - `hatch=false` (default): single full-width hairline + cross marks.
+ * - `hatch=false` (default): empty strip bounded by hairlines + cross marks.
  * - `hatch=true`: two hairlines bounding a hatched strip.
  */
 export function ReticleSpacer({
@@ -50,19 +50,19 @@ export function ReticleSpacer({
 				<>
 					<ReticleCross
 						className="absolute z-20"
-						style={{ top: "-5px", left: CROSS_LEFT }}
+						style={{ top: `-${CROSS_OFFSET}px`, left: CROSS_EDGE }}
 					/>
 					<ReticleCross
 						className="absolute z-20"
-						style={{ top: "-5px", right: CROSS_RIGHT }}
+						style={{ top: `-${CROSS_OFFSET}px`, right: CROSS_EDGE }}
 					/>
 					<ReticleCross
 						className="absolute z-20"
-						style={{ bottom: "-5px", left: CROSS_LEFT }}
+						style={{ bottom: `-${CROSS_OFFSET}px`, left: CROSS_EDGE }}
 					/>
 					<ReticleCross
 						className="absolute z-20"
-						style={{ bottom: "-5px", right: CROSS_RIGHT }}
+						style={{ bottom: `-${CROSS_OFFSET}px`, right: CROSS_EDGE }}
 					/>
 				</>
 			)}

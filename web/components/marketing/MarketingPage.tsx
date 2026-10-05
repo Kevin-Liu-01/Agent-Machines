@@ -14,11 +14,11 @@ import { LANDING_INSET, LANDING_SECTION_SPACE, LANDING_TITLE } from "@/lib/marke
 import { SITE } from "@/lib/seo/config";
 import { cn } from "@/lib/cn";
 
-export function MarketingShell({ children }: { children: ReactNode }) {
+export function MarketingShell({ children, footerSeparated = true }: { children: ReactNode; footerSeparated?: boolean }) {
 	return <ReticlePageGrid>
 		<PublicNavbar githubRepo={SITE.githubRepo} githubLink={<GitHubStarLink repo={SITE.githubRepo} />} />
 		<div>{children}</div>
-		<Footer />
+		<Footer separated={footerSeparated} />
 	</ReticlePageGrid>;
 }
 

@@ -25,7 +25,7 @@ function SourceMap() {
 export const metadata = buildPageMetadata({ title: "Agent harness building blocks", description: "Explore the runtime adapters, sandbox providers, tools, memory documents, and browser terminals behind Agent Machines. Inspect the source and configure your own setup.", path: "/components" });
 
 export default function ComponentsPage() {
-	return <MarketingShell><main>
+	return <MarketingShell footerSeparated={false}><main>
 		<MarketingHero kicker="Building blocks" title="Start with working parts. Make them yours." icon="boxes" description="A foundation for building your own agent harness: runtime and provider adapters, editable instructions, tools, and a remote workspace. Configure them in the dashboard or extend the MIT-licensed source." badges={["Open source", "Configurable", "Real agent CLIs"]} aside={<SourceMap />} actions={<><ReticleButton as="a" href="/dashboard/agents" size="lg">Choose a starting setup</ReticleButton><ReticleButton as="a" href="https://github.com/Kevin-Liu-01/Agent-Machines" variant="secondary" size="lg">Explore the source</ReticleButton></>} />
 		<ReticleSection contentClassName="px-5 pb-12 md:px-8"><HarnessComponentGrid /></ReticleSection>
 		<ReticleSection contentClassName="px-5 py-12 md:px-8">

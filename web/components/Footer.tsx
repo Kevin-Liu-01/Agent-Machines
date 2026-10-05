@@ -70,11 +70,12 @@ const AGENTS: ReadonlyArray<{ label: string; href: string; mark: FooterMark }> =
 	},
 ];
 
-export function Footer() {
+/** The page grid owns side rails; a preceding spacer can own the top edge. */
+export function Footer({ separated = false }: { separated?: boolean }) {
 	return (
-		<footer className="relative border-t border-[var(--ret-border)] bg-[var(--ret-bg)] text-xs text-[var(--ret-text-muted)]">
+		<footer className={cn("relative border-[var(--ret-border)] bg-[var(--ret-bg)] text-xs text-[var(--ret-text-muted)]", !separated && "border-t")}>
 			<div className="mx-auto w-full max-w-[var(--ret-content-max)]">
-				<div className="grid border-x border-[var(--ret-border)] md:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))]">
+				<div className="grid border-[var(--ret-border)] md:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))]">
 					<div className={cn(LANDING_INSET, "flex min-h-[220px] flex-col justify-between border-b border-[var(--ret-border)] py-8 md:border-b-0 md:border-r")}>
 						<div>
 							<BrandMark size={30} gap="tight" withLabel={false} />
@@ -111,7 +112,7 @@ export function Footer() {
 						</div>
 					))}
 				</div>
-				<div className="grid border-x border-t border-[var(--ret-border)] md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+				<div className="grid border-t border-[var(--ret-border)] md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
 					<StackBlock label="Substrates">
 						{SUBSTRATES.map((item) => (
 							<FooterBadge key={item.label} label={item.label} mark={item.mark} />
@@ -129,11 +130,11 @@ export function Footer() {
 						<FooterBadge label="Tools" mark="tools" muted />
 					</StackBlock>
 				</div>
-				<div className={cn(LANDING_INSET, "flex flex-col gap-3 border-x border-t border-[var(--ret-border)] py-5 text-sm text-[var(--ret-text-muted)] md:flex-row md:items-center md:justify-between")}>
+				<div className={cn(LANDING_INSET, "flex flex-col gap-3 border-t border-[var(--ret-border)] py-5 text-sm text-[var(--ret-text-muted)] md:flex-row md:items-center md:justify-between")}>
 					<span>Copyright 2026 Agent Machines</span>
 					<span>MIT · Reticle / Sigil UI</span>
 				</div>
-				<div className="relative overflow-hidden border-x border-t border-[var(--ret-border)] px-5 pb-12 pt-9 md:pb-14">
+				<div className="relative overflow-hidden border-t border-[var(--ret-border)] px-5 pb-12 pt-9 md:pb-14">
 					<div
 						aria-hidden="true"
 						className="ret-circuit-texture-footer pointer-events-none absolute inset-0 opacity-[0.08] mix-blend-multiply invert dark:opacity-[0.12] dark:mix-blend-screen dark:invert-0"

@@ -72,7 +72,7 @@ export default function HomePage() {
 				<ReticleSpacer />
 			</main>
 
-			<Footer />
+			<Footer separated />
 		</ReticlePageGrid>
 	);
 }
