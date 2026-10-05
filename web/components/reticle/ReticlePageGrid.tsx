@@ -12,15 +12,19 @@ type Props = {
 	contentMax?: number;
 };
 
+// Keep diagonal strokes on a small, pixel-aligned tile so long pages do not
+// produce uneven line weights from a full-height repeating gradient.
 const LEFT_MARGIN_HATCH: CSSProperties = {
 	backgroundImage:
-		"repeating-linear-gradient(45deg, transparent 0 4px, var(--ret-rail) 4px 5px, transparent 5px 8px)",
+		"linear-gradient(45deg, transparent calc(50% - 0.75px), var(--ret-rail) calc(50% - 0.25px), var(--ret-rail) calc(50% + 0.25px), transparent calc(50% + 0.75px))",
+	backgroundSize: "12px 12px",
 	backgroundClip: "padding-box",
 };
 
 const RIGHT_MARGIN_HATCH: CSSProperties = {
 	backgroundImage:
-		"repeating-linear-gradient(135deg, transparent 0 4px, var(--ret-rail) 4px 5px, transparent 5px 8px)",
+		"linear-gradient(135deg, transparent calc(50% - 0.75px), var(--ret-rail) calc(50% - 0.25px), var(--ret-rail) calc(50% + 0.25px), transparent calc(50% + 0.75px))",
+	backgroundSize: "12px 12px",
 	backgroundClip: "padding-box",
 };
 
